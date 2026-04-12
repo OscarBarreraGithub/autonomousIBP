@@ -42,6 +42,10 @@ target_include_directories(amflow
 )
 
 target_compile_features(amflow PUBLIC cxx_std_17)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+   CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+  target_link_libraries(amflow PUBLIC stdc++fs)
+endif()
 amflow_apply_default_warnings(amflow)
 amflow_apply_optional_dependencies(amflow)
 

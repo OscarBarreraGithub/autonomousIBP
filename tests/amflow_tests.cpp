@@ -2925,9 +2925,31 @@ void KiraExecutionExecFailureIsFailedToStartTest() {
          "stderr logs should capture execve startup failures");
 }
 
+std::filesystem::path KiraResultsFixtureFamilyRoot(const std::string& fixture_name) {
+  return TestDataRoot() / "kira-results" / fixture_name / "results" / "planar_double_box";
+}
+
+void CopyKiraResultsFixtureFamily(const std::filesystem::path& fixture_family_root,
+                                  const std::filesystem::path& destination_family_root,
+                                  const bool copy_masters = true,
+                                  const bool copy_rules = true) {
+  std::filesystem::create_directories(destination_family_root);
+  if (copy_masters) {
+    std::filesystem::copy_file(fixture_family_root / "masters",
+                               destination_family_root / "masters",
+                               std::filesystem::copy_options::overwrite_existing);
+  }
+  if (copy_rules) {
+    std::filesystem::copy_file(fixture_family_root / "kira_target.m",
+                               destination_family_root / "kira_target.m",
+                               std::filesystem::copy_options::overwrite_existing);
+  }
+}
+
 void KiraParsedResultsHappyPathTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path root = TestDataRoot() / "kira-results/happy";
+  const std::filesystem::path family_root = root / "results" / "planar_double_box";
   const amflow::ParsedReductionResult result =
       backend.ParseReductionResult(root, "planar_double_box");
   const auto& first_rule =
@@ -2943,6 +2965,10 @@ void KiraParsedResultsHappyPathTest() {
          "happy-path fixture should append identity rules for the masters");
   Expect(result.master_list.masters[0].Label() == "planar_double_box[1,1,1,1,1,1,1]",
          "happy-path fixture should preserve the first master label");
+  Expect(result.master_list.source_path == family_root / "masters",
+         "happy-path fixture should parse masters from the direct results tree");
+  Expect(result.rule_path == family_root / "kira_target.m",
+         "happy-path fixture should parse rules from the direct results tree");
   Expect(first_rule.target.Label() == "planar_double_box[2,1,1,1,1,1,1]",
          "happy-path fixture should preserve the first reduction target");
   Expect(first_rule.terms.size() == 2,
@@ -2955,6 +2981,113 @@ void KiraParsedResultsHappyPathTest() {
          "identity rules should be appended after explicit rules");
   Expect(result.rules[2].terms.size() == 1 && result.rules[2].terms[0].coefficient == "1",
          "identity rules should keep unit coefficients");
+}
+
+void KiraParsedResultsResolveGeneratedConfigReducerRootTest() {
+  const std::filesystem::path fixture_family_root = KiraResultsFixtureFamilyRoot("happy");
+  const std::filesystem::path reducer_root =
+      FreshTempDir("amflow-bootstrap-kira-generated-config-reducer-root");
+  const std::filesystem::path generated_family_root =
+      reducer_root / "generated-config" / "results" / "planar_double_box";
+  CopyKiraResultsFixtureFamily(fixture_family_root, generated_family_root);
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(reducer_root, "planar_double_box");
+
+  Expect(result.status == amflow::ParsedReductionStatus::ParsedRules,
+         "outer reducer-root parsing should still recover explicit Kira rules");
+  Expect(result.master_list.source_path == generated_family_root / "masters",
+         "outer reducer-root parsing should resolve masters from generated-config/results");
+  Expect(result.rule_path == generated_family_root / "kira_target.m",
+         "outer reducer-root parsing should resolve the rule file next to the parsed masters");
+  Expect(result.explicit_rule_count == 2,
+         "outer reducer-root parsing should preserve the explicit-rule count");
+  Expect(FindRuleByTarget(result.rules, "planar_double_box[2,1,1,1,1,1,1]").terms.size() == 2,
+         "outer reducer-root parsing should preserve the happy-path reduction content");
+}
+
+void KiraParsedResultsPreferCompleteGeneratedConfigOverCompleteDirectTest() {
+  const std::filesystem::path reducer_root =
+      FreshTempDir("amflow-bootstrap-kira-generated-config-wins-complete-tie");
+  const std::filesystem::path direct_family_root =
+      reducer_root / "results" / "planar_double_box";
+  const std::filesystem::path generated_family_root =
+      reducer_root / "generated-config" / "results" / "planar_double_box";
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("happy"), direct_family_root);
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("canonicalized-rules"),
+                               generated_family_root);
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(reducer_root, "planar_double_box");
+  const auto& summed_rule =
+      FindRuleByTarget(result.rules, "planar_double_box[2,1,1,1,1,1,1]");
+
+  Expect(result.status == amflow::ParsedReductionStatus::ParsedRules,
+         "complete generated-config should beat a complete direct tree");
+  Expect(result.master_list.source_path == generated_family_root / "masters",
+         "complete generated-config should win ties for the masters path");
+  Expect(result.rule_path == generated_family_root / "kira_target.m",
+         "complete generated-config should win ties for the rule path");
+  Expect(result.explicit_rule_count == 1,
+         "complete generated-config should contribute its explicit-rule content");
+  Expect(summed_rule.terms.size() == 1 && summed_rule.terms[0].coefficient == "5",
+         "complete generated-config should preserve the selected rule payload");
+}
+
+void KiraParsedResultsCompleteDirectBeatsGeneratedConfigMastersOnlyTest() {
+  const std::filesystem::path reducer_root =
+      FreshTempDir("amflow-bootstrap-kira-direct-wins-generated-masters-only");
+  const std::filesystem::path direct_family_root =
+      reducer_root / "results" / "planar_double_box";
+  const std::filesystem::path generated_family_root =
+      reducer_root / "generated-config" / "results" / "planar_double_box";
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("happy"), direct_family_root);
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("happy"),
+                               generated_family_root,
+                               true,
+                               false);
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(reducer_root, "planar_double_box");
+
+  Expect(result.status == amflow::ParsedReductionStatus::ParsedRules,
+         "generated-config masters-only should not shadow a complete direct tree");
+  Expect(result.master_list.source_path == direct_family_root / "masters",
+         "generated-config masters-only should leave the direct masters path selected");
+  Expect(result.rule_path == direct_family_root / "kira_target.m",
+         "generated-config masters-only should leave the direct rule path selected");
+  Expect(result.explicit_rule_count == 2,
+         "generated-config masters-only should preserve the complete direct explicit rules");
+}
+
+void KiraParsedResultsCompleteDirectBeatsGeneratedConfigRuleOnlyTest() {
+  const std::filesystem::path reducer_root =
+      FreshTempDir("amflow-bootstrap-kira-direct-wins-generated-rule-only");
+  const std::filesystem::path direct_family_root =
+      reducer_root / "results" / "planar_double_box";
+  const std::filesystem::path generated_family_root =
+      reducer_root / "generated-config" / "results" / "planar_double_box";
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("happy"), direct_family_root);
+  CopyKiraResultsFixtureFamily(KiraResultsFixtureFamilyRoot("canonicalized-rules"),
+                               generated_family_root,
+                               false,
+                               true);
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(reducer_root, "planar_double_box");
+
+  Expect(result.status == amflow::ParsedReductionStatus::ParsedRules,
+         "generated-config rule-only should not shadow a complete direct tree");
+  Expect(result.master_list.source_path == direct_family_root / "masters",
+         "generated-config rule-only should leave the direct masters path selected");
+  Expect(result.rule_path == direct_family_root / "kira_target.m",
+         "generated-config rule-only should leave the direct rule path selected");
+  Expect(result.explicit_rule_count == 2,
+         "generated-config rule-only should preserve the complete direct explicit rules");
 }
 
 void KiraParsedResultsMissingRuleFallsBackToIdentityTest() {
@@ -11609,6 +11742,10 @@ int main() {
     KiraExecutionRejectsMissingPreparedFilesTest();
     KiraExecutionExecFailureIsFailedToStartTest();
     KiraParsedResultsHappyPathTest();
+    KiraParsedResultsResolveGeneratedConfigReducerRootTest();
+    KiraParsedResultsPreferCompleteGeneratedConfigOverCompleteDirectTest();
+    KiraParsedResultsCompleteDirectBeatsGeneratedConfigMastersOnlyTest();
+    KiraParsedResultsCompleteDirectBeatsGeneratedConfigRuleOnlyTest();
     KiraParsedResultsMissingRuleFallsBackToIdentityTest();
     KiraParsedResultsRejectMalformedMastersTest();
     KiraParsedResultsRejectMalformedRulesTest();

@@ -5,26 +5,45 @@ This document defines the first stable C++ interface boundary for the port.
 The Batch 32 and Batch 33 notes below remain the current reviewed boundary
 split. The Batch 34 and Batch 35 notes record the current reviewed
 coefficient-evaluation and singular-point seams. The Batch 36 note records the
-current implemented scalar regular-point local-series seam, and the Batch 37
-note records the current implemented upper-triangular matrix regular-point
-patch seam. The Batch 38 note records the current implemented exact
-regular-patch residual and overlap diagnostics. The Batch 39 note records the
-current implemented exact one-hop regular-point continuation solver surface on
-the reviewed upper-triangular subset, without overclaiming later singular-path
-or multi-hop solver semantics. The Batch 40 note records the current
-implemented standalone library-only default-solver wrapper over that reviewed
-Batch 39 continuation surface. The Batch 41 note records the current reviewed
-scalar regular-singular / Frobenius patch seam. The Batch 42 note records the
-current reviewed upper-triangular matrix regular-singular / Frobenius patch
-seam on the diagonal-residue, no-log subset, and the Batch 43 note records the
-current implemented exact mixed regular-start to regular-singular-target
-continuation slice on the integer-exponent Frobenius subset. The Batch 44 note
+current reviewed scalar regular-point local-series seam, and the Batch 37 note
+records the current reviewed upper-triangular matrix regular-point patch seam.
+The Batch 38 note records the current reviewed exact regular-patch residual and
+overlap diagnostics. The Batch 39 note records the current reviewed exact
+one-hop regular-point continuation solver surface on the reviewed
+upper-triangular subset, without overclaiming later singular-path or multi-hop
+solver semantics. The Batch 40 note records the current reviewed standalone
+library-only default-solver wrapper over that reviewed Batch 39 continuation
+surface. The Batch 41 note records the current reviewed scalar
+regular-singular / Frobenius patch seam. The Batch 42 note records the current
+reviewed upper-triangular matrix regular-singular / Frobenius patch seam on
+the diagonal-residue, no-log subset, and the Batch 43 note records the current
+reviewed exact mixed regular-start to regular-singular-target continuation
+slice on the integer-exponent Frobenius subset. The Batch 44 note
 records the current reviewed caller-supplied boundary-provider seam that
 maps explicit `BoundaryRequest` entries to explicit `BoundaryCondition` data
 without changing the solver path, and the Batch 45 note records the current
 reviewed pure builtin `eta -> infinity` boundary-request generator over a
 validated `ProblemSpec`. The Batch 46 note records the current reviewed
 single-name ending-planned wrapper over that reviewed Batch 45 generator.
+
+## Current Durable Status
+
+- the accepted public surface on the current `main` base is the reviewed `Batch 1` through
+  `Batch 46` boundary at commit `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+- `Milestone M1` is complete on that reviewed surface
+- `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
+  imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
+- `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
+  `sapphire` build/test gate is green
+- `K0a` is accepted as a narrow parser-contract hardening milestone via clean-candidate
+  `sapphire` job `5315267`
+- `K0` is not accepted, so this contract does not yet include an accepted reducer-smoke packet,
+  honest K0 bootstrap-manifest semantics, or any widened Kira smoke claim
+- the accepted public Kira parse contract now includes the narrow mixed-root outer-root family
+  resolution documented below; that parser hardening does not by itself accept the K0 reducer-smoke
+  packet or its manifest semantics
+- `Batch 47` remains pending, so manual-vs-automatic boundary equivalence and automatic boundary
+  execution/provider parity are still outside the accepted public boundary
 
 ## Core Types
 
@@ -42,7 +61,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `UpperTriangularMatrixFrobeniusSeriesPatch` plus `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)`: the first upper-triangular matrix regular-singular / Frobenius local propagator seam over one selected reviewed `DESystem` variable on the diagonal-residue, no-log subset
 - `ScalarSeriesPatchOverlapDiagnostics`, `EvaluateScalarSeriesPatchResidual(...)`, and `MatchScalarSeriesPatches(...)`: exact scalar patch residual and overlap diagnostics over already-generated regular patches
 - `UpperTriangularMatrixSeriesPatchOverlapDiagnostics`, `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)`, and `MatchUpperTriangularMatrixSeriesPatches(...)`: exact upper-triangular matrix patch residual and overlap diagnostics over already-generated regular patches
-- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the implemented Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset
+- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset
 - `PrecisionPolicy`: precision and stability controls
 - `ArtifactManifest`: reproducibility and cache metadata
 - `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary
@@ -114,6 +133,11 @@ The Kira runner keeps reducer execution explicit and deterministic:
 
 The bootstrap also exposes a deterministic parsed-result surface for Kira artifacts:
 
+- accepted parser entry roots are either a direct family-results tree rooted at
+  `results/<family>/` or an outer reducer root that resolves one family-results tree under either
+  `generated-config/results/<family>/` or `results/<family>/`
+- when both accepted family-results locations exist under an outer reducer root, the parser prefers
+  the more complete tree; ties favor `generated-config/results/<family>/`
 - `results/<family>/masters` is parsed as one master integral per non-empty line, using the first whitespace-delimited token exactly as the AMFlow snapshot does
 - `results/<family>/kira_target.m` is parsed as a narrow Mathematica-rule subset: an outer list of `target -> linear combination of masters`
 - malformed masters, malformed rule expressions, duplicate targets, and rule terms that reference masters outside the parsed basis fail locally with deterministic parse errors
@@ -188,7 +212,9 @@ The first eta-generated reduction execution seam is also bootstrap-only:
 
 - `RunEtaGeneratedReduction(...)` composes the accepted eta preparation seam, existing Kira execution boundary, parsed-result ingestion, and generated-row DE assembly into one typed eta-only flow
 - reducer execution always runs after successful preparation; if execution fails, the wrapper returns cleanly with `parsed_reduction_result` and `assembled_system` unset
-- if execution succeeds, the wrapper parses `results/<family>/masters` and `kira_target.m` from the reducer execution working-directory artifact root, then assembles the eta `DESystem`
+- if execution succeeds, the wrapper resolves the accepted family-results tree from the reducer
+  execution working-directory artifact root, then parses `masters` and `kira_target.m` from that
+  chosen tree before assembling the eta `DESystem`
 - successful process execution is not enough on its own: malformed parsed reductions or identity-fallback reductions for generated eta targets fail during the parse/assembly phase
 - this batch does not add CLI, `SkipReduction`, invariant reduction orchestration, or broader end-to-end orchestration beyond the eta-only wrapper
 
@@ -197,7 +223,9 @@ The first invariant-generated reduction execution seam is also bootstrap-only:
 - `RunInvariantGeneratedReduction(...)` keeps the existing seed-based overload intact and also exposes a one-invariant-at-a-time overload that takes `(ProblemSpec, ParsedMasterList, invariant_name, ReductionOptions, ArtifactLayout, kira_executable, fermat_executable)`
 - the invariant-name overload is a thin wrapper: it composes the accepted automatic invariant-preparation seam from `BuildInvariantDerivativeSeed(...)` and `PrepareInvariantGeneratedReduction(...)`, then routes through the same post-preparation execution, parsing, and generated-row assembly logic as the seed-based overload
 - reducer execution always runs after successful preparation; if execution fails, the wrapper returns cleanly with `parsed_reduction_result` and `assembled_system` unset
-- if execution succeeds, both overloads parse `results/<family>/masters` and `kira_target.m` from the reducer execution working-directory artifact root using the original family name, then assemble the invariant `DESystem`
+- if execution succeeds, both overloads resolve the accepted family-results tree from the reducer
+  execution working-directory artifact root using the original family name, then parse `masters`
+  and `kira_target.m` from that chosen tree before assembling the invariant `DESystem`
 - invariant execution continues to use the original family and kinematics without eta insertion, and the automatic overload preserves the exact generated-target order from the reviewed automatic preparation path
 - successful process execution is not enough on its own: malformed parsed reductions, identity-fallback reductions, or missing explicit rules for generated invariant targets fail during the parse/assembly phase
 - this batch still does not claim the full upstream symbolic automatic-derivative solver; it remains one invariant at a time and does not add multi-invariant orchestration, CLI, `SkipReduction`, or broader symbolic-subset widening beyond the reviewed bootstrap path
@@ -380,7 +408,7 @@ The first singular-point detection and classification seam is now reviewed:
 - unknown variable names, missing passive bindings, malformed coefficient expressions, malformed point expressions, and unsupported singular-form analysis fail deterministically
 - this batch does not widen the reviewed Batch 34 grammar, does not generate local series, does not add Frobenius/resonance data, does not perform continuation, does not replace the scaffolded `BootstrapSeriesSolver`, and does not add boundary generation or CLI behavior
 
-The first scalar regular-point local-series patch seam is currently implemented and pending review:
+The first scalar regular-point local-series patch seam is now reviewed:
 
 - `GenerateScalarRegularPointSeriesPatch(...)` takes a reviewed `DESystem`, one selected `variable_name`, one `center_expression`, one non-negative `order`, and passive numeric bindings
 - the seam is scalar-only in Batch 36: it requires exactly one master and a declared `1x1` coefficient matrix for the selected variable, and it rejects non-scalar systems or unsupported matrix shapes locally
@@ -391,7 +419,7 @@ The first scalar regular-point local-series patch seam is currently implemented 
 - negative orders, singular centers, malformed center expressions, unknown variable names, missing passive bindings, malformed coefficient expressions, and coefficient shapes whose local quotient would require negative powers or cancellation beyond the visible requested truncation fail deterministically
 - this batch does not add triangular or block-matrix patch generation, Frobenius / regular-singular handling, overlap matching, continuation, standalone solver wrappers, `SolveRequest` changes, `BootstrapSeriesSolver` replacement, boundary generation, or CLI behavior
 
-The first upper-triangular matrix regular-point local propagator seam is currently implemented and pending review:
+The first upper-triangular matrix regular-point local propagator seam is now reviewed:
 
 - `GenerateUpperTriangularRegularPointSeriesPatch(...)` takes a reviewed `DESystem`, one selected `variable_name`, one `center_expression`, one non-negative `order`, and passive numeric bindings
 - the seam is narrow in Batch 37: it requires a declared selected coefficient matrix that is square and dimension-matched to `masters.size()`, and it supports only systems that are already upper-triangular in the declared master order through the requested local degree
@@ -402,7 +430,7 @@ The first upper-triangular matrix regular-point local propagator seam is current
 - negative orders, singular centers, malformed center expressions, unknown variable names, missing passive bindings, malformed coefficient expressions, unsupported local quotients, non-square or dimension-mismatched selected matrices, and surviving strictly lower-triangular local support fail deterministically
 - this batch does not add automatic block discovery or permutation, general dense-matrix support, Frobenius / regular-singular handling, overlap matching, continuation, standalone solver wrappers, `SolveRequest` changes, `BootstrapSeriesSolver` replacement, boundary generation, or CLI behavior
 
-The first scalar regular-singular / Frobenius local-series patch seam is currently implemented and reviewed:
+The first scalar regular-singular / Frobenius local-series patch seam is now reviewed:
 
 - `GenerateScalarFrobeniusSeriesPatch(...)` takes a reviewed `DESystem`, one selected `variable_name`, one `center_expression`, one non-negative `order`, and passive numeric bindings
 - the seam is scalar-only in Batch 41: it requires exactly one master and a declared `1x1` coefficient matrix for the selected variable, and it rejects non-scalar systems or unsupported matrix shapes locally
@@ -413,7 +441,7 @@ The first scalar regular-singular / Frobenius local-series patch seam is current
 - negative orders, regular centers, higher-order poles, malformed center expressions, unknown variable names, missing passive bindings, malformed coefficient expressions, and unsupported singular shapes fail deterministically
 - this batch does not add logarithmic terms, resonance handling, multiple Frobenius branches, matrix or block singular patches, public Frobenius residual/overlap diagnostics, continuation changes, `SolveRequest` widening, passive-binding solve inputs, `BootstrapSeriesSolver` replacement, boundary generation, or CLI behavior
 
-The first upper-triangular matrix regular-singular / Frobenius local propagator seam is currently implemented and reviewed:
+The first upper-triangular matrix regular-singular / Frobenius local propagator seam is now reviewed:
 
 - `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)` takes a reviewed `DESystem`, one selected `variable_name`, one `center_expression`, one non-negative `order`, and passive numeric bindings
 - the seam is narrow in Batch 42: it requires a declared selected coefficient matrix that is square and dimension-matched to `masters.size()`, and it supports only systems whose simple-pole residue matrix is already diagonal in the declared master order and whose residue-stripped regular tail is already upper-triangular through the requested local degree
@@ -425,7 +453,7 @@ The first upper-triangular matrix regular-singular / Frobenius local propagator 
 - negative orders, regular centers, higher-order poles, malformed center expressions, unknown variable names, missing passive bindings, malformed coefficient expressions, unsupported singular shapes, non-square or dimension-mismatched selected matrices, off-diagonal residue simple poles, surviving strictly lower-triangular regular-tail support, and forced logarithmic resonances fail deterministically
 - this batch does not add dense or automatically discovered block decomposition, Jordan or off-diagonal residue support, explicit logarithmic basis functions or multiple Frobenius branches, public Frobenius residual/overlap diagnostics, continuation changes, `SolveRequest` widening, passive-binding solve inputs, `BootstrapSeriesSolver` replacement, boundary generation, or CLI behavior
 
-The first exact regular-patch residual and overlap diagnostics seams are currently implemented and pending review:
+The first exact regular-patch residual and overlap diagnostics seams are now reviewed:
 
 - `EvaluateScalarSeriesPatchResidual(...)` takes one reviewed scalar `DESystem`, one selected `variable_name`, one already-generated `SeriesPatch`, one explicit `point_expression`, and passive numeric bindings, then returns the exact scalar residual `p'(x) - a(x) p(x)` as `ExactRational`
 - `MatchScalarSeriesPatches(...)` takes one selected `variable_name`, two compatible scalar `SeriesPatch` values, one explicit `match_point_expression`, one distinct explicit `check_point_expression`, and passive numeric bindings, then returns exact `lambda` and exact `mismatch` where `lambda = p_right(match) / p_left(match)` and `mismatch = p_right(check) - lambda * p_left(check)`
@@ -438,7 +466,7 @@ The first exact regular-patch residual and overlap diagnostics seams are current
 - singular residual or overlap evaluations are not reclassified: if the selected coefficient matrix is singular at the requested residual point, if `p_left(match)` vanishes, or if `Y_left(match)` is singular, Batch 38 propagates the underlying exact `division by zero` failure directly instead of adding singular-path logic
 - this batch does not add regular-patch continuation, automatic point selection, overlap norms or tolerances, `SolveRequest` integration, `BootstrapSeriesSolver` replacement, dense/non-triangular matrix diagnostics, Frobenius / regular-singular handling, boundary generation, or CLI behavior
 
-The first exact one-hop continuation solver seam is currently implemented through the reviewed Batch 39 regular path plus the reviewed Batch 43 mixed extension:
+The first exact one-hop continuation solver seam is now reviewed through the reviewed Batch 39 regular path plus the reviewed Batch 43 mixed extension:
 
 - `BootstrapSeriesSolver::Solve(...)` keeps the public `SeriesSolver` / `SolveRequest` surface unchanged and supports only two exact one-hop paths on the reviewed upper-triangular subset: the reviewed Batch 39 regular-start to regular-target path and the reviewed Batch 43 regular-start to regular-singular-target mixed path
 - the solver currently requires a well-formed `DESystem` with exactly one declared differentiation variable and one explicit manual start boundary attached through the existing `boundary_requests` plus `boundary_conditions` surface
@@ -453,7 +481,7 @@ The first exact one-hop continuation solver seam is currently implemented throug
 - `PrecisionPolicy` and `requested_digits` remain accepted on `SolveRequest` but are explicitly unused on the reviewed exact Batch 39 and Batch 43 subsets
 - these batches do not add singular-start boundary semantics, singular-to-regular or singular-to-singular continuation, multi-hop continuation, passive-binding solve inputs, precision-escalation semantics, automatic boundary generation, public Frobenius residual or handoff diagnostics, or public transported-target output
 
-The first standalone differential-equation solver wrapper seam is currently implemented and pending review:
+The first standalone differential-equation solver wrapper seam is now reviewed:
 
 - `SolveDifferentialEquation(const SolveRequest& request)` is a library-only thin wrapper over the reviewed Batch 39 and Batch 43 exact continuation solver surface
 - the wrapper constructs the default solver via `MakeBootstrapSeriesSolver()`, invokes `Solve(request)` once, and returns the resulting `SolverDiagnostics` unchanged

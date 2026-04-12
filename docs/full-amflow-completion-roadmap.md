@@ -36,10 +36,10 @@ exit gate. The current live state must always be read from `docs/implementation-
 | Track | Purpose | Current mapping |
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
-| `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34`, `Batch 35` review/fix loop, then `Batch 36-39` |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | boundary contract/fixture prep ahead of `Batch 44+` |
-| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | pinned `Ubuntu 22.04` environment, `Kira 3.1`, `Fermat`, smoke jobs |
-| `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` bootstrap/pinning, then rolling `M0b` golden capture |
+| `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 46`; `Batch 47` pending after `K0b` |
+| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, `K0` still open |
+| `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
 ### Exit Gates
 
@@ -47,8 +47,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- |
 | `R0` | this track scheduler recorded in the roadmap; ledger note superseding the stale next-row rule; explicit owner/interface table for `P/S/B/K/R` |
 | `P0` | backend decision record; enabled Linux build profile with the chosen stack; benchmark/smoke report on that stack |
-| `K0` | pinned Linux manifest with executable paths and versions; provisioning/runbook; one retained reducer smoke run with deterministic artifacts |
-| `M0a` | cluster harness root, pinned manifests for AMFlow/CPC/Kira/Fermat/Wolfram inputs, frozen placeholder/golden layout, dependency sanity report |
+| `K0` | pinned Linux/toolchain manifest with executable paths and versions; provisioning/runbook; one retained coherent reducer-smoke run with deterministic artifacts and an honest bootstrap manifest |
+| `M0a` | cluster harness root, pinned manifests for AMFlow/CPC/Kira/Fermat/Wolfram inputs, frozen placeholder/golden layout, dependency-sanity report, and Wolfram smoke evidence |
 | `S0` | reviewed `Batch 35`; reviewed `Batch 36-39`; residual and overlap checks live; library solver path no longer scaffolded on the supported nonsingular subset |
 | `M0b` | real captured golden outputs and comparison summaries for the first benchmark set plus rerun reproducibility evidence |
 
@@ -66,14 +66,32 @@ exit gate. The current live state must always be read from `docs/implementation-
 - Incomplete `M0b` blocks `T3/T4` parity-pass claims, any “matches upstream reference” claim
   outside the captured subset, and any `M3/M5/M6` or release sign-off.
 
+## Current Durable Status
+
+- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+  (`Fix GNU 8 std::filesystem linkage`) and is the accepted release baseline
+- reviewed implementation remains accepted through `Batch 46`; `Milestone M1` is complete on that
+  reviewed surface
+- `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
+- `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
+  `sapphire` canonical configure/build/test packet passed at job `5305579`
+- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
+  `sapphire` job `5315267`
+- `Gate K0` is still open; there is still no accepted coherent reducer-smoke packet with an honest
+  bootstrap manifest on `main`
+- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
+  Acceptance Packet`
+- `Batch 47` and `Milestone M2` remain pending after `K0b`
+
 ## Current State At R0
 
 ### Implemented And Reviewed
 
 - file-backed `ProblemSpec` loading, validation, deterministic YAML emission, and bootstrap CLI
   entrypoints
-- reference-harness bootstrap, pinned manifesting, placeholder benchmark catalog layout, and safe
-  extraction/pinning helpers
+- reference-harness bootstrap, pinned manifesting, placeholder benchmark catalog layout, safe
+  extraction/pinning helpers, and the accepted `M0a` cluster bootstrap packet for pinned
+  Linux/Kira/Fermat/Wolfram inputs
 - explicit Kira preparation, execution, parsing, and typed DE assembly from reduced rows
 - eta insertion plus eta-generated reduction preparation, execution, parsing, `DESystem`
   consumption, and solver handoff wrappers
@@ -88,27 +106,35 @@ exit gate. The current live state must always be read from `docs/implementation-
   `AmfOptions` ending planners returning typed `EndingDecision`
 - typed manual-boundary request/attachment surfaces
 - exact rational coefficient evaluation over reviewed `DESystem` coefficient strings
+- reviewed finite singular-point detection/classification, regular-point patching, Frobenius
+  patching, exact overlap/residual diagnostics, exact one-hop continuation, and the standalone
+  default-solver wrapper through `Batch 40`
+- reviewed boundary-provider and builtin/planned `eta -> infinity` boundary-request seams through
+  `Batch 46`
+- accepted `B0/G1` build-gate repair on `main`, restoring GNU 8 `std::filesystem` linkage for the
+  canonical cluster build/test path
 
 ### Still Missing Or Still Bootstrap-Only
 
-- `SeriesSolver` is still scaffolded and returns `failure_code = "not_implemented"`
 - builtin eta modes other than `All` are still explicit bootstrap stubs
-- there is no real ending-system planner, boundary-task model, or `eta -> infinity` boundary
-  generator
+- there is still no accepted K0 reducer-smoke packet with an honest bootstrap manifest
+- accepted `K0a` mixed-root reducer parse hardening does not close `K0`; `K0b` is the next
+  milestone and must still deliver an honest bootstrap manifest plus a clean accepted
+  reducer-smoke packet
+- there is no accepted manual-vs-automatic boundary equivalence harness yet; `Batch 47` remains
+  pending and `Milestone M2` is still open
+- solver/provider coupling, automatic boundary execution, and `BoundaryCondition` generation from
+  builtin/planned `eta -> infinity` requests remain deferred
 - `BuildInvariantDerivativeSeed(...)` is still limited to a narrow bootstrap symbolic subset
 - there is no multi-invariant orchestration, multiple top-sector orchestration, or loop-core
   reduction-span parity gate
-- there is no local series engine, singular-point analysis, patch matching, analytic continuation,
-  or residual-enforced continuation driver
 - there is no dynamic precision manager, no cache/restart semantics, and no live `SkipReduction`
   runtime path
 - feature parity is still missing for complex kinematics, arbitrary `D0`, fixed-`eps`, linear
   propagators, phase-space integration, standalone DE solving at parity quality, and full
   user-defined eta/ending execution paths
-- the reference harness is still `bootstrap-only`; no real upstream AMFlow goldens have been
-  captured
-- `Batch 35` singular-point analysis is in flight on the batch train and must still clear
-  independent review before it becomes accepted state
+- the reference harness is still `bootstrap-only`; `M0a` is accepted, but `M0b` is still open and
+  no real upstream AMFlow goldens have been captured yet
 
 ## Missing Workstreams Grouped Into Major Tracks
 
@@ -148,11 +174,12 @@ Goal:
   boundary data
 
 Missing:
-- boundary-request data model
-- boundary-provider interface
-- builtin boundary-request generation
-- merge/validation rules for attaching boundary data to `DESystem` or `SolveRequest`
-- user-defined ending integration into the same typed pipeline
+- provider lookup/execution and solver coupling for automatic boundary generation on the supported
+  subset
+- `BoundaryCondition` generation and attachment from builtin/planned `eta -> infinity` requests
+- broader user-defined ending integration beyond the reviewed singleton
+  `<family>::eta->infinity` path
+- manual-vs-automatic boundary equivalence evidence for the supported subset (`Batch 47`)
 
 Primary output:
 - explicit, testable boundary tasks instead of placeholder terminal-node lists
@@ -163,13 +190,12 @@ Goal:
 - replace the solver scaffold with a high-precision local-series engine
 
 Missing:
-- symbolic-to-numeric coefficient evaluation at requested kinematic points
-- singular-point detection and classification
-- regular-point expansion kernels
-- regular-singular/Frobenius kernels
-- overlap matching and residual evaluation
-- continuation driver between patches
-- standalone DE solver entrypoint
+- singular-start boundary semantics
+- singular-to-regular and singular-to-singular continuation paths
+- fractional-exponent mixed continuation
+- public Frobenius diagnostics
+- multi-hop stepping and transported-target output
+- broader matrix/kinematic coverage beyond the current reviewed exact one-hop subset
 
 Primary output:
 - a real `SeriesSolver` implementation with T2 self-consistency rather than a scaffold
@@ -370,7 +396,7 @@ dependency change.
 
 | Batch | Scope | Depends On |
 | --- | --- | --- |
-| `Milestone M0a` | cluster-first reference-harness bootstrap: pinned Linux manifests, placeholder/golden layout, dependency sanity checks, and stable artifact paths for AMFlow/CPC/Kira/Fermat/Wolfram inputs | existing Batch-2 harness state |
+| `Milestone M0a` | cluster-first reference-harness bootstrap: pinned Linux manifests, placeholder/golden layout, dependency sanity checks, Wolfram smoke evidence, and stable artifact paths for AMFlow/CPC/Kira/Fermat/Wolfram inputs | existing Batch-2 harness state |
 | `Milestone M0b` | rolling real-golden capture and reproducibility evidence for the frozen example classes, mandatory benchmark families, and upstream regression families | `Milestone M0a` |
 
 ### Phase B: Solver MVP
@@ -398,7 +424,7 @@ dependency change.
 | `Batch 44` | boundary-provider interface that maps a `BoundaryRequest` to explicit `BoundaryCondition` data with deterministic failures | `Milestone M1`, `Batch 33` |
 | `Batch 45` | first builtin `eta -> infinity` boundary-request generator for a trivial bootstrap subset, still without full numerical solving | `Batch 44`, `Batch 31` |
 | `Batch 46` | first ending-planned boundary wrapper that composes reviewed ending selection with boundary-request generation | `Batch 45` |
-| `Batch 47` | manual-vs-automatic boundary equivalence harness for simple Euclidean loop families | `Batch 46`, `Milestone M0a` |
+| `Batch 47` | manual-vs-automatic boundary equivalence harness for simple Euclidean loop families | `Batch 46`, `Milestone M0a`, `K0b` |
 | `Milestone M2` | boundary gate: ending decisions produce typed boundary requests, boundary planning/provider failures surface as `boundary_unsolved`, and manual vs automatic boundary workflows agree on the supported subset | `Batch 44` through `Batch 47` |
 
 ### Phase D: Flow-Construction Parity

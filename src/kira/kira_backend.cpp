@@ -940,9 +940,49 @@ std::vector<ParsedReductionRule> MakeIdentityRules(
   return rules;
 }
 
+bool HasFamilyMastersFile(const std::filesystem::path& family_results_dir) {
+  return std::filesystem::exists(family_results_dir / "masters");
+}
+
+bool HasFamilyRulesFile(const std::filesystem::path& family_results_dir) {
+  return std::filesystem::exists(family_results_dir / "kira_target.m");
+}
+
+int FamilyResultsCompletenessScore(const std::filesystem::path& family_results_dir) {
+  const bool has_masters = HasFamilyMastersFile(family_results_dir);
+  const bool has_rules = HasFamilyRulesFile(family_results_dir);
+  if (has_masters && has_rules) {
+    return 3;
+  }
+  if (has_masters) {
+    return 2;
+  }
+  if (has_rules) {
+    return 1;
+  }
+  return 0;
+}
+
 std::filesystem::path FamilyResultsDir(const std::filesystem::path& artifact_root,
                                        const std::string& family) {
-  return artifact_root / "results" / family;
+  const std::filesystem::path generated_config_results_dir =
+      artifact_root / "generated-config" / "results" / family;
+  const std::filesystem::path direct_results_dir = artifact_root / "results" / family;
+
+  const int generated_config_score =
+      FamilyResultsCompletenessScore(generated_config_results_dir);
+  const int direct_results_score = FamilyResultsCompletenessScore(direct_results_dir);
+
+  // Prefer the most complete family-results tree; ties stay on generated-config so
+  // the outer reducer-root contract keeps resolving to the new layout when both are valid.
+  if (generated_config_score >= direct_results_score && generated_config_score > 0) {
+    return generated_config_results_dir;
+  }
+  if (direct_results_score > 0) {
+    return direct_results_dir;
+  }
+
+  return direct_results_dir;
 }
 
 std::string ReadTextFileOrThrow(const std::filesystem::path& path,
@@ -1427,7 +1467,7 @@ ParsedReductionResult KiraBackend::ParseReductionResult(
     const std::string& family) const {
   ParsedReductionResult result;
   result.master_list = ParseMasterList(artifact_root, family);
-  result.rule_path = FamilyResultsDir(artifact_root, family) / "kira_target.m";
+  result.rule_path = result.master_list.source_path.parent_path() / "kira_target.m";
 
   std::set<std::string> master_labels;
   for (const auto& master : result.master_list.masters) {

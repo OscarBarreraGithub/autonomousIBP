@@ -2,6 +2,26 @@
 
 This ledger is the review surface for incremental AMFlow-port batches. Every implementation batch should be recorded here with its scope, verification evidence, and second-pass review status before it is treated as accepted.
 
+## Current Durable Status
+
+| Item | Status | Evidence | Notes |
+| --- | --- | --- | --- |
+| Authoritative `main` base | accepted | `fdbceea3cb94ee2e811573ad446e5777917c1bb0` (`Fix GNU 8 std::filesystem linkage`) | accepted pre-`K0a` release baseline; tracks `origin/main` |
+| `Milestone M1` | complete | reviewed `Batch 32` through `Batch 43` | the reviewed solver MVP gate is closed on the current public subset |
+| `Milestone M0a` | accepted | pinned Linux/toolchain manifest, phase-0 bootstrap root, dependency-sanity packet, and Wolfram smoke packet | bootstrap readiness only; no real reference capture or parity claim yet |
+| `Operational Gate B0/G1` | accepted | clean-candidate `sapphire` verification job `5305579` | restores GNU 8 `std::filesystem` linkage and the canonical `cmake -S . -B build` / `cmake --build build --parallel 1` / `ctest --test-dir build --output-on-failure` gate |
+| `K0a` | accepted | clean-candidate `sapphire` verification job `5315267` | accepts only the narrow mixed-root reducer parse hardening on top of the current release base; `K0` still remains open pending `K0b` |
+| `Gate K0` | pending | reducer-smoke packet not yet accepted | no accepted coherent Kira smoke packet or honest bootstrap manifest on `main` |
+| `Batch 47` / `Milestone M2` | pending | depends on accepted `K0` plus the Batch-47 equivalence harness | automatic boundary/provider equivalence is still not part of the accepted repo state |
+
+`K0a: Mixed-Root Parse Contract Repair` is now accepted as a narrow parser-contract hardening
+milestone via clean-candidate job `5315267`. The next atomic engineering milestone is
+`K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet`. Mixed-layout reducer-root
+robustness is now part of the accepted parser surface, but until `K0b` lands no durable doc should
+claim an accepted K0 reducer packet or honest K0 bootstrap-manifest coverage. Batch-47
+manual-vs-automatic boundary equivalence remains separate and unaccepted until `Batch 47` and
+`Milestone M2` close.
+
 ## Entry Template
 
 | Batch | Scope | Owner | Reviewer | Status | Verification | Notes |

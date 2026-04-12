@@ -23,6 +23,23 @@ The workflow is optimized for the current repo shape:
 - accepted work is tracked batch-by-batch in `docs/implementation-ledger.md`
 - public seams are frozen incrementally in `docs/public-contract.md`
 
+## Current Durable Status
+
+- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+  (`Fix GNU 8 std::filesystem linkage`)
+- reviewed code remains accepted through `Batch 46`; `Milestone M1` is complete
+- `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
+- `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
+  at job `5305579`
+- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
+  `sapphire` job `5315267`
+- `K0` is still open, so no durable doc or review packet may claim accepted Kira smoke evidence or
+  honest bootstrap-manifest coverage yet
+- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
+  Acceptance Packet`
+- `Batch 47` and `Milestone M2` remain pending after `K0b`; manual-vs-automatic boundary
+  equivalence is still outside the accepted repo state
+
 ## Mandatory Read Set Before Planning
 
 Every new orchestrator thread should read these before picking the next batch:
@@ -291,9 +308,22 @@ In practice, most batches should own:
 
 ## Verification Rules
 
+Light git/doc inspection may happen on the login node. Real builds, tests, reducer jobs,
+reference-harness jobs, benchmark captures, and provisioning probes must run through fresh Slurm
+jobs. For the current cluster-controlled repo state, `sapphire` is the canonical acceptance lane
+unless a narrower retained packet explicitly documents a different partition and why that packet is
+non-canonical.
+
 The following commands are mandatory for every code batch:
 
 - `cmake --build build`
+- `ctest --test-dir build --output-on-failure`
+
+The following configure/build/test triplet is mandatory for milestone-grade packets and any
+repo-wide or build-system change:
+
+- `cmake -S . -B build`
+- `cmake --build build --parallel 1`
 - `ctest --test-dir build --output-on-failure`
 
 These commands must be run against the same worktree and the same `build/` directory, in
@@ -415,7 +445,9 @@ The final user-facing report for each batch should also include:
 Until the solver and reference harness broaden substantially, the default implementation workflow for a new batch is:
 
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
-2. choose the next narrow seam implied by the highest reviewed batch and `specs/parity-matrix.yaml`
+2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
+   roadmap gates, and the active blocker chain; on the current baseline that means `K0b`, not
+   `Batch 47`
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

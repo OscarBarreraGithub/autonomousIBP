@@ -1,5 +1,15 @@
 # Workflow Reference
 
+Current durable repo status:
+
+- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+- reviewed implementation is accepted through `Batch 46`
+- `Milestone M0a` and `Operational Gate B0/G1` are accepted
+- `K0a` is accepted via clean-candidate `sapphire` job `5315267`
+- `K0` is still pending
+- the next atomic milestone is `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet`
+- `Batch 47` remains pending; do not claim automatic boundary equivalence yet
+
 The durable workflow for this repo now lives in:
 
 - `docs/orchestration-workflow.md`

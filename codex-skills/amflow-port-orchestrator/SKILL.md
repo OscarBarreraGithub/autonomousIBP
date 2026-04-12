@@ -9,6 +9,23 @@ description: Use this skill when planning or coordinating AMFlow migration work 
 
 Use this skill when the task is to plan, coordinate, or review the AMFlow C++ port as a multi-agent program. The purpose is to keep migration work aligned with the frozen parity contract and the reference corpus in `references/`.
 
+## Current Durable Status
+
+- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+  (`Fix GNU 8 std::filesystem linkage`)
+- reviewed implementation is accepted through `Batch 46`; `Milestone M1` is complete
+- `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
+- `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
+  job `5305579`
+- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
+  `sapphire` job `5315267`
+- `K0` is still open, so this skill must not claim accepted Kira smoke evidence or honest
+  bootstrap-manifest semantics yet
+- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
+  Acceptance Packet`
+- `Batch 47` remains pending after `K0b`; manual-vs-automatic boundary equivalence is still
+  outside the accepted repo state
+
 ## Workflow
 
 Use the durable repo workflow in `docs/orchestration-workflow.md`.
@@ -47,6 +64,8 @@ Do not overclaim acceptance while backfilling:
   that blocker explicitly and do not claim the blocked target as complete
 
 Run the `reference-harness` track when the batch touches upstream capture, pinned goldens, or harness scripts.
+Run the `cluster-control` lane when the task touches repo-wide build gates, retained reducer smoke
+evidence, or milestone packets such as `M0a`, `K0`, `K0a`, `K0b`, or `Batch 47`.
 
 ## Required Inputs
 

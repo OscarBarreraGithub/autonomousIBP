@@ -1,6 +1,53 @@
 # Reference Harness Bootstrap
 
-The upstream AMFlow harness is separate from the C++ runtime and exists only to capture goldens and parity signals. Batch 2 turns the harness from a dry-run sketch into a concrete phase-0 bootstrap that can materialize its layout, record pinned inputs, optionally fetch upstream assets, and freeze placeholder golden metadata before Mathematica is available.
+The upstream AMFlow harness is separate from the C++ runtime and exists only to capture goldens and
+parity signals. Batch 2 turned the harness from a dry-run sketch into a concrete phase-0 bootstrap
+that can materialize its layout, record pinned inputs, optionally fetch upstream assets, and
+freeze placeholder golden metadata before Mathematica is available. `Milestone M0a` is now
+accepted on top of that bootstrap as cluster/reference-harness readiness only; it does not imply
+captured goldens or completed upstream comparisons.
+
+## Current Durable Status
+
+- accepted harness/bootstrap milestone: `M0a`
+- authoritative repo baseline for that status: `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+- accepted Slurm lane for the retained `M0a` packets: `sapphire`
+- retained acceptance jobs:
+  - phase-0 bootstrap rerun: `5276851`
+  - shared Linux toolchain manifest: `5296876`
+  - dependency sanity: `5297205`
+  - Wolfram smoke: `5297206`
+- accepted retained artifact roots:
+  - shared Linux toolchain manifest:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/toolchain/linux-toolchain-manifest.json`
+  - phase-0 bootstrap root:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-rerun-20260412-url/`
+  - phase-0 provenance sidecar:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-rerun-20260412-url/manifests/phase0-reference-upstream-provenance.json`
+  - dependency-sanity packet:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/m0a-dependency-sanity/`
+  - Wolfram smoke packet:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/m0a-wolfram-smoke/`
+- accepted pinned upstream AMFlow source for the bootstrap lane:
+  `https://gitlab.com/multiloop-pku/amflow.git` at ref `1.1`, with annotated tag object
+  `a29fbdfe330ab172fe5ccdafcac2d6ec9211800e` and materialized checkout commit
+  `775162498ab18493c45254b861669b4151b841ee`
+- accepted pinned external tool paths in the current bootstrap lane:
+  - Kira default binary:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/autonomousIBP/kira/installs/kira-3.1/bin/kira-3.1`
+  - Kira fallback binary:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/autonomousIBP/kira/installs/kira-3.1_128/bin/kira-3.1_128`
+  - Fermat:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/autonomousIBP/fermat/5.25/ferl64/fer64`
+  - Wolfram kernel:
+    `/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/MathKernel`
+- accepted pinned CPC extraction root:
+  `/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted`
+- accepted non-harness follow-on on top of this baseline: `K0a` parser-contract hardening is
+  cleared via clean-candidate `sapphire` job `5315267`; `K0b` is the next repo-level blocker, but
+  that does not widen `M0a` beyond bootstrap readiness
+- `M0a` remains bootstrap-only: the phase-0 root still carries placeholder goldens and pending
+  comparison summaries, so `M0b` remains open and no upstream parity claim is available yet
 
 ## Canonical Baseline
 

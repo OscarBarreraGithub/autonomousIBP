@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN"
+      "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>LiteRed mathematica package</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <link rel="stylesheet" href="style/fancyTab.css" type="text/css" />
+  <link rel="stylesheet" href="style/style.css" type="text/css" />
+  <link rel="stylesheet" href="style/MyStyle(en).css" id="SS1" type="text/css">
+	<link rel="icon" type="image/png" href="images/LiteRedFavicon.png">
+	<link rel="shortcut icon" type="image/png" href="images/LiteRedFavicon.png">
+ 	<script type="text/javascript" src="scripts/act.js"></script>
+	<script type="text/javascript" src="scripts/fancyTab.js"></script>
+  <script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-36961335-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</head>
+<body onload="init()">
+<h1><code class="litered">LiteRed</code> package</h1>
+<div class="tabPane">
+  <div id="summary" class="tab">
+      <span class="tab_bg"><span class="en">Summary</span> <span class="ru">Резюме</span></span> <span class="tab_fg"
+      onclick="select(this)"><span class="en">Summary</span> <span class="ru">Резюме</span></span>
+
+      <div class="tab_content">
+        <table border="0">
+          <col width="120px" />
+          <col />
+
+          <tbody>
+            <tr>
+              <!-- Description -->
+
+              <td valign="top" align="right"><b>Description:</b></td>
+
+              <td>
+                <code class="litered">LiteRed</code> is a <a href="http://www.wolfram.com/mathematica/" style=
+                "font-style:italic!important">Mathematica</a> package performing the <i>IBP reduction</i> of the multiloop
+                integrals. It also contains the tools for the construction of the <i>differential equations</i> and <i>dimensional
+                recurrence relations</i>. <span class="litered"><code>LiteRed</code></span> stands for <span class=
+                "litered">L</span>oop <span class="litered">i</span>n<span class="litered">te</span>grals <span class=
+                "litered">Red</span>uction.<br />
+              </td>
+            </tr>
+
+            <tr>
+              <!-- Author -->
+
+              <td valign="top" align="right"><b>Author:</b></td>
+
+              <td>
+                Roman N. Lee, <a href="http://www.inp.nsk.su/" style="font-weight:normal!important">The Budker Institute of Nuclear
+                Physics</a>, Novosibirsk.<br />
+              </td>
+            </tr>
+
+            <tr>
+              <!-- Terms of use -->
+
+              <td valign="top" align="right"><b>Terms of use:</b></td>
+
+              <td><span class="litered"><code>LiteRed</code></span> is distributed under the terms of GNU GPLv2.<br /></td>
+            </tr>
+
+            <tr>
+              <!-- First release -->
+
+              <td valign="top" align="right"><b>First release:</b></td>
+
+              <td>12.12.2012</td>
+            </tr>
+
+            <tr>
+              <!-- Latest release -->
+
+              <td valign="top" align="right"><b>Latest release:</b></td>
+
+              <td>15.03.2023</td>
+            </tr>
+
+            <tr>
+              <!-- Feedback -->
+
+              <td valign="top" align="right"><b>Feedback:</b></td>
+
+              <td>
+                Write an <a href="mailto://r.n.lee@inp.nsk.su">email</a> or leave a comment on <a href=
+                "https://plus.google.com/116546599047774968592" rel="publisher">Google+ page</a>.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <div id="news" class="tab">
+      <span class="tab_bg"><span class="en">News</span> <span class="ru">Новости</span></span> <span class="tab_fg" onclick=
+      "select(this)"><span class="en">News</span> <span class="ru">Новости</span></span>
+
+      <div class="tab_content">
+        <dl id="newslist">
+          <dt>15.03.2023</dt>
+
+          <dd>
+            <span>
+              Due to name coflict in LiteRed1.83 and in the most recent version of Mathematica (v. 13.2), LiteRed 1.83 stopped to work in this version.
+              Please, download the <a href="LiteRedV1/LiteRedV1.84.zip">version 1.84</a> which is a patch for compatibility of LiteRed with Mathematica 13.2. <br/>
+              <b>NB. Litered 1.* will not be developed anymore. Users are encouraged to switch to LiteRed2, which is an essential rewrite of LiteRed with many new features. 
+                It can be downloaded from <a href="https://bitbucket.org/rnlee/litered2/">bitbucket repository</a>. </b>.
+            </span>
+          </dd>
+          <dt>11.01.2020</dt>
+
+          <dd>
+            <span>
+              Due to <a href="https://mathematica.stackexchange.com/questions/237871/broken-valueq-function-in-mma12-2">incompatible changes</a> in the most recent version of Mathematica (v. 12.2), LiteRed 1.82 stopped to work in this version.
+              Please, download the <a href="LiteRedV1/LiteRedV1.83.zip">version 1.83</a> which is a patch for compatibility of LiteRed with Mathematica 12.2. <br/>
+              <b>NB.
+                LiteRed will soon be replaced by LiteRed2, which is an essential rewrite of LiteRed with many new features. If you want to give it a try, please, <a href="mailto://r.n.lee@inp.nsk.su"> write to the author</a></b>.
+            </span>
+          </dd>
+
+
+          <dt>04.06.2015</dt>
+
+          <dd><span class="en">A small noncritical typo creeped in the distributive of Version 1.82. Make sure you downloaded <a href="LiteRedV1/LiteRedV1.82.zip">latest distributive file</a> (file date should be 03.06.2015).</span> <span class="ru">В дистрибутиве версии 1.82 обнаружена небольшая некритическая опечатка. Убедитесь, что вы загрузили <a href="LiteRedV1/LiteRedV1.82.zip">последнюю версию дистрибутива</a> (дата файла архива должна быть 03.06.2015).</span></dd>
+
+
+          <dt>01.06.2015</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.82.zip">Version 1.82</a> of the LiteRed package is released. Fixed bug with preparation of IBP identities in `SolvejSector` procedure sometimes resulting in undesirable complications of identities.</span> <span class="ru">Выпущена <a href= "LiteRedV1/LiteRedV1.82.zip">Версия 1.82</a> пакета LiteRed. Исправлен баг в подготовке IBP тождеств в процедуре `SolvejSector`, приводящий иногда к нежелательным усложнениям тождеств.</span></dd>
+
+
+
+		  <dt>06.04.2015</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.81.zip">Version 1.81</a> of the LiteRed package is released. Fixed bug
+          with wrong `SolvejSector::leak` message.</span> <span class="ru">Выпущена <a href=
+          "LiteRedV1/LiteRedV1.81.zip">Версия 1.81</a> пакета LiteRed. Исправлен баг с
+          неправильным сообщением `SolvejSector::leak`.</span></dd>
+
+          <dt>17.03.2015</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.8.zip">Version 1.8</a> of the LiteRed package is released. Some bug
+          fixes + possibility to choose index ordering for specific sectors. Extended list of changes can be found in news.txt file
+          in the distributive.</span> <span class="ru">Выпущена <a href="LiteRedV1/LiteRedV1.8.zip">Версия 1.8</a>
+          пакета LiteRed. Исправление багов + возможность выбора упорядочения
+          индексов для отдельных секторов. Подробный список изменений
+          можно найти в файле news.txt, включенном в дистрибутив.</span></dd>
+
+          <dt>19.06.2014</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.6.zip">Version 1.6</a> of the LiteRed package is released. Corrected
+          functionality for cut denominators (option CutDs of AnalyzeSectors). Mapping between master integrals which are
+          parametrization-equivalent (but not necessarily shift-equivalent). Simple tools for AB-form of the identities. More
+          extended list of changes can be found in news.txt file in the distributive.</span> <span class="ru">Выпущена
+          <a href="LiteRedV1/LiteRedV1.6.zip">Версия 1.6</a> пакета LiteRed. Исправлена
+          функциональность, касающаяся разрезанных знаменателей ( опция CutDs
+          процедуры AnalyzeSectors). Поиск симметрий между мастерами,
+          эквивалентными с точки зрения параметризации (но не обязательно
+          эквивалентными с точки зрения сдвигов). Простые инструменты для
+          AB-формы тождеств. Более подробный список изменений можно найти в
+          файле news.txt, включенном в дистрибутив.</span></dd>
+
+          <dt>22.11.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.51.zip">Version 1.51</a> of the LiteRed package is released. Now
+          <code>DiskSave[basis]</code> saves also the external definitions needed for basis, like declaring vectors and numbers,
+          setting dimension variable and scalar products. Then, when the basis is loaded, LiteRed warns if some definitions are
+          missing. You may want to resave bases (load and save) obtained with earlier versions of LiteRed.<br />
+          New functions to manipulate definitions:<br />
+          <code>CheckDefinitions[basis1]</code> Checks external definitions and prints those which are missing.<br />
+          <code>ExecuteDefinitions[basis1]</code> Checks external definitions, prints and executes those which are missing.<br />
+          <a href="Mint/MintV1.1.zip">Mint v1.1</a> is released (bugfix).</span> <span class="ru">Выпущена <a href=
+          "LiteRedV1/LiteRedV1.51.zip">Версия 1.51</a> пакета LiteRed. Теперь <code>DiskSave[basis]</code>
+          сохраняет внешние определения, используемые базисом, такие как
+          декларирование переменных, определение переменной для
+          размерности и скалярных произведений. Когда базис загружается,
+          пакет выдает предупреждение, если какие-то определения
+          отсутствуют.<br />
+          Функции для манипуляций с определениями:<br />
+          <code>CheckDefinitions[basis1]</code> Проверяет внешние определения и печатает
+          недостающие.<br />
+          <code>ExecuteDefinitions[basis1]</code> Проверяет внешние определения, печатает и
+          выполняет недостающие.<br />
+          Выпущен <a href="Mint/MintV1.1.zip">Mint v1.1</a> (bugfix).</span></dd>
+
+          <dt>16.10.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.5.zip">Version 1.5</a> of the LiteRed package is released.<br />
+          <code>FindExtSymmetries[basis1,basis2]</code> finds mappings of the sectors of <code>basis1</code> to unique sectors of
+          <code>basis2</code>.<br />
+          Option <code>EMs</code> of <code>FindSymmetries</code> is now set by default to <code>False</code> due to bad behaviour
+          in some case. Setting <code>EMs-&gt;True</code> (which was the default so far) directs LiteRed to search for linear
+          transformations of external momenta preserving their scalar products. Now, it is also possible to indicate explicitely
+          those transformations as <code>EMs-&gt;{{p-&gt;p,q-&gt;q},{p-&gt;...,q-&gt;...},...}</code>.<br />
+          <code>SolvejSector</code> now has option <code>NMIs-&gt;Automatic</code>, which directs to use Mint to determine the
+          number of master integrals and stop searching rules if this number is achieved.<br />
+          See &quot;LiteRed example 8.nb&quot; in the distributive for the example of its use.</span> <span class=
+          "ru">Выпущена <a href="LiteRedV1/LiteRedV1.5.zip">версия 1.5</a> пакета LiteRed.<br />
+          <code>FindExtSymmetries[basis1,basis2]</code> находит отображения секторов базиса
+          <code>basis1</code> на уникальные сектора базиса <code>basis2</code>.<br />
+          Опция <code>EMs</code> у <code>FindSymmetries</code> теперь по умолчанию установлена в
+          <code>False</code> из-за плохого поведения в некоторых случаях. Установка
+          <code>EMs-&gt;True</code> (которая была до сих пор по умолчанию) заставляет
+          LiteRed искать линейные преобразования внешних импульсов,
+          сохраняющие их скалярные произведения. Теперь также возможно
+          явно указывать такие преобразования:
+          <code>EMs-&gt;{{p-&gt;p,q-&gt;q},{p-&gt;...,q-&gt;...},...}</code>.<br />
+          У процедуры <code>SolvejSector</code> теперь есть опция <code>NMIs-&gt;Automatic</code>,
+          которая приводит к использованию пакета Mint для определения числа
+          интегралов и остановке, когда это число получено.<br />
+          См. пример использования в &quot;LiteRed example 8.nb&quot; в пакете
+          дистрибутива.</span></dd>
+
+          <dt>03.09.2013</dt>
+
+          <dd><span class="en">A <a href="Mint/MintV1.01.zip"><code>Mint v1.01</code></a> compatible with Mathematica 8 has been
+          released.</span><span class="ru">Выпущен <a href="Mint/MintV1.01.zip"><code>Mint v1.01</code></a>
+          совместимый с Mathematica 8.</span></dd>
+
+          <dt>29.08.2013</dt>
+
+          <dd><span class="en">A <a href="Mint/MintV1.zip"><code>Mint</code></a> package for counting the number of master
+          integrals has been released.</span><span class="ru">Выпущен пакет <a href=
+          "Mint/MintV1.zip"><code>Mint</code></a> для подсчета числа
+          мастер-интегралов.</span><br />
+          <span class="en"><a href="LiteRedV1/LiteRedV1.4.zip">Version 1.4</a> of the LiteRed package is released.<br />
+          GramP[nm] gives Baikov formula for the basis nm.</span> <span class="ru">Выпущена <a href=
+          "LiteRedV1/LiteRedV1.4.zip">версия 1.4</a> пакета LiteRed.<br />
+          GramP[nm] возвращает формулу Байкова для базиса nm.</span></dd>
+
+          <dt>04.06.2013</dt>
+
+          <dd><span class="en">A typo creeped in the distributive of <a href="LiteRedV1/LiteRedV1.32.zip">version 1.32</a>. Make
+          sure that you use a corrected version.</span> <span class="ru">В дистрибутиве <a href=
+          "LiteRedV1/LiteRedV1.32.zip">версии 1.32</a> обнаружена опечатка. Используйте
+          исправленную версию.</span></dd>
+
+          <dt>23.05.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.32.zip">version 1.32</a> is released.<br />
+          FeynParUF can now be called also as FeynParUF[dens_List,lms_List].<br />
+          NewBasis now has option Append. If this option is set to True, NewBasis appends, if necessary, the irreducible
+          denominators to the basis.<br />
+          Small bug fixes.</span> <span class="ru">выпущена <a href="LiteRedV1/LiteRedV1.32.zip">версия
+          1.32</a>.<br />
+          FeynParUF теперь можно вызывать как FeynParUF[dens_List,lms_List].<br />
+          Добавлена опция Append в NewBasis. Если эта опция установлена в True, NewBasis
+          добавляет, если нужно, неприводимые знаменатели.<br />
+          Небольшие исправления.</span></dd>
+
+          <dt>18.05.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.3.zip">version 1.3</a> is released. AnalyzeSectors now uses Feynman
+          parametrization for more accurate zero sectors detection.</span> <span class="ru">выпущена <a href=
+          "LiteRedV1/LiteRedV1.3.zip">версия 1.3</a>. Процедура AnalyzeSectors теперь использует
+          фейнмановскую параметризацию для более точного определения
+          нулевых секторов.</span></dd>
+
+          <dt>13.04.2013</dt>
+
+          <dd>
+            <span class="en"><a href="LiteRedV1/LiteRedV1.21.zip">version 1.21</a> is released. IBPReduce is rewritten to work
+            within reduction variant 2 from</span> <span class="ru">выпущена <a href=
+            "LiteRedV1/LiteRedV1.21.zip">версия 1.21</a>. Процедура IBPReduce теперь работает по
+            алгоритму 2 из</span> <a href="http://arxiv.org/abs/1302.5885">arXiv:1302.5885</a> <span class="en">. Small
+            bugfix in FindSymmetries. AnalyzeSectors now has option CutDs.</span> <span class="ru">. Небольшие
+            исправления в FindSymmetries. У AnalyzeSectors теперь есть опция CutDs.</span>
+          </dd>
+
+          <dt>06.02.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.1.zip">version 1.1</a> is released. New algorithm in FindSymmetries +
+          small bugfix.</span> <span class="ru">выпущена <a href="LiteRedV1/LiteRedV1.1.zip">версия 1.1</a>.
+          Новый алгоритм в процедуре FindSymmetries + небольшие исправления.</span></dd>
+
+          <dt>24.01.2013</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.02.zip">version 1.02</a> compatible with Mathematica 9 is
+          released.</span> <span class="ru">выпущена <a href="LiteRedV1/LiteRedV1.02.zip">версия 1.02</a>,
+          совместимая с Mathematica 9.</span></dd>
+
+          <dt>21.12.2012</dt>
+
+          <dd><span class="en">minor corrections to circumvent the Mathematica bug (bug #5 described <a href=
+          "https://sites.google.com/site/romanleescripts/mathematica-bugs">here</a>).</span> <span class="ru">небольшие
+          изменения чтобы обойти баг(баг #5 <a href=
+          "https://sites.google.com/site/romanleescripts/mathematica-bugs">здесь</a>).</span></dd>
+
+          <dt>12.12.2012</dt>
+
+          <dd><span class="en"><a href="LiteRedV1/LiteRedV1.0.zip">version 1.0</a> has been released</span> <span class=
+          "ru">выпущена <a href="LiteRedV1/LiteRedV1.0.zip">версия 1.0</a></span></dd>
+        </dl>
+      </div>
+    </div>
+	<div id="download" class="tab">
+		<span class="tab_bg">
+      <span class="en">Download</span>
+      <span class="ru">Загрузить</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Download</span>
+      <span class="ru">Загрузить</span>
+		</span>
+		<div class="tab_content">
+      <span class="en">Download the latest version of&nbsp;</span>
+      <span class="ru">Загрузить последнюю версию&nbsp;</span>
+      <a class="litered" href="LiteRedV1/LiteRedV1.84.zip" style="font-size:1.5em;font-weight:bold">
+      <code>LiteRed</code>
+      </a>
+			<hr/>
+      <span class="en">Download the latest version of&nbsp;</span>
+      <span class="ru">Загрузить последнюю версию&nbsp;</span>
+			<a class="mint" href="Mint/MintV1.1.zip" style="font-size:1.5em;font-weight:bold"><code>Mint</code></a>
+		</div>
+	</div>
+	<div id="utils" class="tab">
+		<span class="tab_bg">
+      <span class="en">Utilities</span>
+      <span class="ru">Полезные программы</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Utilities</span>
+      <span class="ru">Полезные программы</span>
+		</span>
+		<div class="tab_content">
+			<a class="mint" href="Mint/MintV1.1.zip"><code>Mint</code></a> &mdash; a package counting the masters in a given sector, see the description in <a href="http://arxiv.org/abs/1308.6676">arXiv:1308.6676</a>
+		</div>
+	</div>
+	<div id="examples" class="tab">
+		<span class="tab_bg">
+      <span class="en">Examples</span>
+      <span class="ru">Примеры</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Examples</span>
+      <span class="ru">Примеры</span>
+		</span>
+		<iframe class="tab_content" name="exampleFrame" id="exampleFrame" style="border:0;height:400px;box-shadow: none;padding:0;width:700px" seamless="seamless" src="examples.html">
+			<a href="examples.html">Examples</a>
+		</iframe>
+	</div>
+	<div id="bases" class="tab">
+		<span class="tab_bg">
+      <span class="en">Bases</span>
+      <span class="ru">Базисы</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Bases</span>
+      <span class="ru">Базисы</span>
+		</span>
+    <iframe class="tab_content" name="basesFrame" id="basesFrame" style="border:0;padding:0;box-shadow: none;height:500px;width:702px" seamless="seamless" src="bases.html">
+    <a href="bases.html">Bases</a>
+    </iframe>
+	</div>
+	<div id="man" class="tab">
+		<span class="tab_bg">
+      <span class="en">Manual</span>
+      <span class="ru">Справочник</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Manual</span>
+      <span class="ru">Справочник</span>
+		</span>
+		<div class="tab_content">
+			<span style="color:red;font-weight:bold;font-size:200%">Under construction.</span><br/><br/>
+			For short introduction, read <a href="http://arxiv.org/abs/1212.2685">arXiv:1212.2685</a> and <a href="http://arxiv.org/abs/1310.1145">arXiv:1310.1145</a>.
+		</div>
+	</div>
+  <div id="feedback" class="tab">
+		<span class="tab_bg">
+      <span class="en">Feedback</span>
+      <span class="ru">Обратная связь</span>
+		</span>
+		<span class="tab_fg" onclick="select(this)">
+      <span class="en">Feedback</span>
+      <span class="ru">Обратная связь</span>
+		</span>
+		<div class="tab_content">
+      <div class="en">Write an <a href="mailto://r.n.lee@inp.nsk.su">email</a> or subscribe to <a href="https://plus.google.com/116546599047774968592" rel="publisher">Google+ page</a>.
+      </div>
+      <div class="ru">Напишите <a href="mailto://r.n.lee@inp.nsk.su">письмо</a> автору или подпишитесь на <a href="https://plus.google.com/116546599047774968592" rel="publisher">страницу Google+</a>.
+      </div>
+		</div>
+	</div>	<div id="en2ru">
+		<span class="en" onclick="toRu()">на русский</span>
+		<span class="ru" onclick="toEn()">to english</span>
+	</div>
+</div>
+</body>
+</html>

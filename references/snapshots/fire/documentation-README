@@ -1,0 +1,28 @@
+This directory is where documentation of the project will be generated.
+Doxygen is used to create documentation for FIRE.
+Doxygen config file resides in this directory, "FIRE6/documentation"
+
+As the documentation will be changed frequently in upcoming commits,
+the results of compilation won't be included in repo for the time being.
+
+Documentation is generated without caller\callee graph for now.
+
+To generate docs you need to have doxygen installed.
+
+To generate docs run in FIRE6 directory:
+* make doc
+
+This will create html/ and latex/ subfolders here.
+html/ contains complete docs, latex/ contains latex sources.
+
+To generate .pdf from latex sources, run in FIRE6 directory:
+* make doc_pdf
+You will need to have appropriate tools installed, like pdflatex
+This will generate refman.pdf and place it directly in documentation/
+
+To view docs after creation, either
+* open FIRE6/documentation/html/index.html in your Web Browser
+* open FIRE6/documentation/refman.pdf (after generating it)
+
+To delete documentation run
+* make cleandoc

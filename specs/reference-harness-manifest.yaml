@@ -1,0 +1,58 @@
+schema_version: 1
+run_id: "phase0-reference"
+created_at_utc: "2026-04-10T00:00:00Z"
+upstream:
+  amflow:
+    source:
+      kind: "git"
+      url: "https://gitlab.com/amflow/amflow.git"
+      path: "/path/to/harness-root/inputs/upstream/amflow"
+      requested_ref: "main"
+      resolved_commit: "replace-me"
+      status: "ready"
+  cpc_archive:
+    source:
+      kind: "url"
+      url: "https://example.invalid/amflow-cpc.zip"
+      path: "/path/to/harness-root/inputs/downloads/amflow-cpc.zip"
+      archive_path: "/path/to/harness-root/inputs/downloads/amflow-cpc.zip"
+      extracted_path: "/path/to/harness-root/inputs/extracted/cpc"
+      sha256: "replace-me"
+      status: "ready"
+  kira:
+    version: "3.1"
+    executable: "/path/to/kira"
+  fermat:
+    version: "replace-me"
+    executable: "/path/to/fermat"
+  wolfram:
+    kernel: "/path/to/WolframKernel"
+    mathematica_version: "replace-me"
+environment:
+  platform: "ubuntu-22.04-x86_64"
+  threads: 8
+  work_root: "/path/to/harness-root"
+layout:
+  manifests: "/path/to/harness-root/manifests"
+  inputs: "/path/to/harness-root/inputs"
+  upstream: "/path/to/harness-root/inputs/upstream"
+  downloads: "/path/to/harness-root/inputs/downloads"
+  extracted: "/path/to/harness-root/inputs/extracted"
+  logs: "/path/to/harness-root/logs"
+  generated-config: "/path/to/harness-root/generated-config"
+  results: "/path/to/harness-root/results"
+  comparisons: "/path/to/harness-root/comparisons"
+  goldens: "/path/to/harness-root/goldens"
+  templates: "/path/to/harness-root/templates"
+  state: "/path/to/harness-root/state"
+phase0:
+  benchmark_catalog: "/path/to/harness-root/templates/phase0-benchmarks.json"
+  golden_index: "/path/to/harness-root/goldens/phase0/index.json"
+  placeholder_goldens_frozen: true
+
+# Semantics:
+# - when source.kind is "git" and source.path points at inputs/upstream/amflow, status "ready"
+#   means the checkout origin matched the requested URL and the requested ref was fetched before
+#   resolved_commit was pinned.
+# - phase-0 placeholder refresh rewrites missing or placeholder-status files by default and keeps
+#   promoted real artifacts unless an explicit force refresh is requested.

@@ -1,0 +1,67 @@
+SetAMFOptions
+	
+	"AMFMode" - A list of built-in or user-defined keywords which specify the preferred scheme of inserting eta. Built-in keywords include "Prescription", "Mass", "Propagator", "Branch", "Loop" and "All". {"Prescription", "Mass", "Propagator"} by default.
+	
+	"EndingScheme" - A list of built-in or user-defined keywords which specify the preferred scheme of determining terminal nodes. Built-in keywords include "Tradition", "Cutkosky", "SingleMass" and "Trivial". {"Tradition", "Cutkosky", "SingleMass", "Trivial"} by default.
+
+	"D0" - A rational number D0 such that the integrals will be computed with D = D0-2eps. 4 by default.
+
+	"WorkingPre" - Working precision when performing numerical computations, including solving differential equations and fitting. 100 by default.
+
+	"ChopPre" - Chop precision when identifying 0 during numerical computations. 20 by default.
+
+	"XOrder" - Truncated order of expansions when solving differential equations. 100 by default.
+
+	"ExtraXOrder" - Extra number of orders when dealing with expansions near eta = Infinity. 20 by default.
+
+	"LearnXOrder" - Truncated order of expansions when learning the asymptotic behaviors of integrals near eta = 0. By setting to a negative number, the learning phase will be skipped. -1 by default.
+
+	"TestXOrder" - Number of orders used when identifying trivial regions near eta = 0 (if learning phase is not skipped). 5 by default.
+
+	"RationalizePre" - Precesion goal for rationalizing numbers used in the differential equations solver. 100 by default.
+	
+	"RunLength" - The maximally allowed number of steps during the analytic continuation of eta from Infinity to -i0. 1000 by default.
+
+	"UseCache" - A parameter that indicates whether data from cached files should be used. False by default.
+        
+	"SkipReduction" - A parameter that indicates whether first-step integrals reduction should be skipped. False by default.
+
+SetReductionOptions
+	
+	"IBPReducer" - Integration-by-parts reducer. Available reducers include "FiniteFlow+LiteRed", "Kira" and "FIRE+LiteRed". "FiniteFlow+LiteRed" by default.
+
+	"BlackBoxRank" - Suggested maxiaml rank of seed integrals when constructing IBP systems. But if the maximal rank of target integrals s is larger than the value of this option, then the maxiaml rank of seed integrals will be adjusted to s internally. 3 by default.
+
+	"BlackBoxDot" - Suggested maxiaml dot of seed integrals when constructing IBP systems. But if the maximal dot of target integrals r is larger than the value of this option, then the maxiaml dot of seed integrals will be adjusted to r internally. 0 by default.
+
+	"ComplexMode" - A parameter that indicates whether complex-valued kinematics are allowed or not during reductions. True by default.
+
+	"DeleteBlackBoxDirectory" - A parameter that indicates whether the temporary working directory for reduction jobs should be deleted or not when the jobs are done. False by default.
+
+SetReducerOptions ("FiniteFlow+LiteRed" used)
+
+	"ExcludeLevel" - A non-negative integer that specifies the level of exclusion when identifying master integrals. 0 by default.
+
+	"CriticalMasters" - Maxiaml number of master integrals allowed for the reduction jobs. 1000 by default.
+	
+	"MaxPrime" - Maximal number of prime numbers allowed to reconstruct rational numbers. 200 by default.
+
+	"MaxDegree" - Maximal degree of polynomials allowed to be reconstructed. 1000 by default.
+
+	"EMSymmetry" - A parameter that indicates whether symmetries among external legs should be exploited when preparing the topology using LiteRed. False by default.
+
+SetReducerOptions ("FIRE+LiteRed" used)
+
+	"EMSymmetry" - A parameter that indicates whether symmetries among external legs should be exploited when preparing the topology using LiteRed. False by default.
+
+SetReducerOptions ("Kira" used)
+
+	"IntegralOrder" - A positive integer ranging from 1 to 8 that specifies the integral ordering for Kira. 5 by default.
+
+	"ReductionMode" - Reduction mode for Kira. Available modes include "Kira", "FireFly", "Mixed" and "NoFactorScan". "Kira" by default.
+
+	"PermutationOption" - Preference of internal propagators permutation for Kira. Can be 1, 2, 3, 4, or None. None by default.
+	
+	"MasterRank" - Any integral will be removed from the list of master integrals if its rank is higher than this option. Infinity by default.
+	
+	"MasterDot" - Any integral will be removed from the list of master integrals if its dot is higher than this option. Infinity by default.

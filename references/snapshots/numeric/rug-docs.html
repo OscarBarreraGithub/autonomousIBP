@@ -1,0 +1,655 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Arbitrary-precision numbers"><title>rug - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="/-/rustdoc.static/${f}">`).join(""))</script><link rel="stylesheet" href="/-/rustdoc.static/normalize-9960930a.css"><link rel="stylesheet" href="/-/static/vendored.css?0-0-0-15f7e1e9dfac4fc5b7cc4abfd7682239002ba909-2026-04-08" media="all" /><link rel="stylesheet" href="/-/rustdoc.static/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="/-/rustdoc.static/" data-current-crate="rug" data-themes="" data-resource-suffix="-20260319-1.96.0-nightly-bcf3d36c9" data-rustdoc-version="1.96.0-nightly (bcf3d36c9 2026-03-19)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="/-/rustdoc.static/storage-41dd4d93.js"></script><script defer src="../crates-20260319-1.96.0-nightly-bcf3d36c9.js"></script><script defer src="/-/rustdoc.static/main-5013f961.js"></script><noscript><link rel="stylesheet" href="/-/rustdoc.static/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="/-/rustdoc.static/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="/-/rustdoc.static/favicon-044be391.svg"><link rel="stylesheet" href="/-/static/rustdoc-2025-08-20.css?0-0-0-15f7e1e9dfac4fc5b7cc4abfd7682239002ba909-2026-04-08" media="all" /><link rel="stylesheet" href="/-/static/font-awesome.css?0-0-0-15f7e1e9dfac4fc5b7cc4abfd7682239002ba909-2026-04-08" media="all" />
+
+<link rel="search" href="/-/static/opensearch.xml" type="application/opensearchdescription+xml" title="Docs.rs" />
+
+<script type="text/javascript">(function() {
+    function applyTheme(theme) {
+        if (theme) {
+            document.documentElement.dataset.docsRsTheme = theme;
+        }
+    }
+
+    window.addEventListener("storage", ev => {
+        if (ev.key === "rustdoc-theme") {
+            applyTheme(ev.newValue);
+        }
+    });
+
+    // see ./storage-change-detection.html for details
+    window.addEventListener("message", ev => {
+        if (ev.data && ev.data.storage && ev.data.storage.key === "rustdoc-theme") {
+            applyTheme(ev.data.storage.value);
+        }
+    });
+
+    applyTheme(window.localStorage.getItem("rustdoc-theme"));
+})();</script></head><body class="rustdoc-page">
+<div class="nav-container">
+    <div class="container">
+        <div class="pure-menu pure-menu-horizontal" role="navigation" aria-label="Main navigation">
+            <form action="/releases/search"
+                  method="GET"
+                  id="nav-search-form"
+                  class="landing-search-form-nav  ">
+
+                
+                <a href="/" class="pure-menu-heading pure-menu-link docsrs-logo" aria-label="Docs.rs">
+                    <span title="Docs.rs"><span class="fa fa-solid fa-cubes " aria-hidden="true"></span></span>
+                    <span class="title">Docs.rs</span>
+                </a><ul class="pure-menu-list">
+    <script id="crate-metadata" type="application/json">
+        
+        {
+            "name": "rug",
+            "version": "1.29.0"
+        }
+    </script><li class="pure-menu-item pure-menu-has-children crate-dropdown">
+            <a href="#" class="pure-menu-link crate-name" title="Arbitrary-precision integers, rational, floating-point and complex numbers based
+on GMP, MPFR and MPC.">
+                <span class="fa fa-solid fa-cube " aria-hidden="true"></span>
+                <span class="title">rug-1.29.0</span>
+            </a><div class="pure-menu-children package-details-menu">
+                
+                <ul class="pure-menu-list menu-item-divided">
+                    <li class="pure-menu-heading" id="crate-title">
+                        rug 1.29.0
+                        <span id="clipboard" class="svg-clipboard" title="Copy crate name and version information"></span>
+                    </li><li class="pure-menu-item">
+                        <a href="/rug/1.29.0/rug/" class="pure-menu-link description" id="permalink" title="Get a link to this specific version"><span class="fa fa-solid fa-link " aria-hidden="true"></span> Permalink
+                        </a>
+                    </li><li class="pure-menu-item">
+                        <a href="/crate/rug/latest" class="pure-menu-link description" title="See rug in docs.rs">
+                            <span class="fa fa-solid fa-cube " aria-hidden="true"></span> Docs.rs crate page
+                        </a>
+                    </li><li class="pure-menu-item">
+                            <span class="pure-menu-link description license"><span class="fa fa-solid fa-scale-unbalanced-flip " aria-hidden="true"></span>
+                            LGPL-3.0+</span>
+                        </li></ul>
+
+                <div class="pure-g menu-item-divided">
+                    <div class="pure-u-1-2 right-border">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Links</li>
+
+                            <li class="pure-menu-item">
+                                    <a href="https://gitlab.com/tspiteri/rug" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-code-branch " aria-hidden="true"></span> Repository
+                                    </a>
+                                </li><li class="pure-menu-item">
+                                <a href="https://crates.io/crates/rug" class="pure-menu-link" title="See rug in crates.io">
+                                    <span class="fa fa-solid fa-cube " aria-hidden="true"></span> crates.io
+                                </a>
+                            </li>
+
+                            
+                            <li class="pure-menu-item">
+                                <a href="/crate/rug/latest/source/" title="Browse source of rug-1.29.0" class="pure-menu-link">
+                                    <span class="fa fa-solid fa-folder-open " aria-hidden="true"></span> Source
+                                </a>
+                            </li>
+                        </ul>
+                    </div><div class="pure-u-1-2">
+                        <ul class="pure-menu-list" id="topbar-owners">
+                            <li class="pure-menu-heading">Owners</li><li class="pure-menu-item">
+                                    <a href="https://crates.io/users/tspiteri" class="pure-menu-link">
+                                        <span class="fa fa-solid fa-user " aria-hidden="true"></span> tspiteri
+                                    </a>
+                                </li></ul>
+                    </div>
+                </div>
+
+                <div class="pure-g menu-item-divided">
+                    <div class="pure-u-1-2 right-border">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Dependencies</li>
+
+                            
+                            <li class="pure-menu-item">
+                                <div class="pure-menu pure-menu-scrollable sub-menu" tabindex="-1">
+                                    <ul class="pure-menu-list">
+                                        <li class="pure-menu-item"><a href="/az/^1.3/" class="pure-menu-link">
+                az ^1.3
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/borsh/^1.5.5/" class="pure-menu-link">
+                borsh ^1.5.5
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/gmp-mpfr-sys/~1.7/" class="pure-menu-link">
+                gmp-mpfr-sys ~1.7
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/libc/^0.2.44/" class="pure-menu-link">
+                libc ^0.2.44
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/libm/^0.2/" class="pure-menu-link">
+                libm ^0.2
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/num-complex/^0.4.6/" class="pure-menu-link">
+                num-complex ^0.4.6
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/num-integer/^0.1.46/" class="pure-menu-link">
+                num-integer ^0.1.46
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/num-traits/^0.2.18/" class="pure-menu-link">
+                num-traits ^0.2.18
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde/^1.0.25/" class="pure-menu-link">
+                serde ^1.0.25
+                
+                    <i class="dependencies normal">normal</i>
+                    
+                        <i>optional</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/bincode/^1/" class="pure-menu-link">
+                bincode ^1
+                
+                    <i class="dependencies dev">dev</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/byteorder/^1/" class="pure-menu-link">
+                byteorder ^1
+                
+                    <i class="dependencies dev">dev</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde_json/^1/" class="pure-menu-link">
+                serde_json ^1
+                
+                    <i class="dependencies dev">dev</i>
+                    
+                
+            </a>
+        </li><li class="pure-menu-item"><a href="/serde_test/^1/" class="pure-menu-link">
+                serde_test ^1
+                
+                    <i class="dependencies dev">dev</i>
+                    
+                
+            </a>
+        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="pure-u-1-2">
+                        <ul class="pure-menu-list">
+                            <li class="pure-menu-heading">Versions</li>
+
+                            <li class="pure-menu-item">
+                                <div class="pure-menu pure-menu-scrollable sub-menu" id="releases-list" tabindex="-1" data-url="/crate/rug/latest/menus/releases/rug/">
+                                    <span class="rotate"><span class="fa fa-solid fa-spinner " aria-hidden="true"></span></span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                    
+                    
+                    <div class="pure-g">
+                        <div class="pure-u-1">
+                            <ul class="pure-menu-list">
+                                <li>
+                                    <a href="/crate/rug/latest" class="pure-menu-link">
+                                        <b>100%</b>
+                                        of the crate is documented
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div></div>
+        </li><li class="pure-menu-item pure-menu-has-children">
+                <a href="#" class="pure-menu-link" aria-label="Platform">
+                    <span class="fa fa-solid fa-gears " aria-hidden="true"></span>
+                    <span class="title">Platform</span>
+                </a>
+
+                
+                <ul class="pure-menu-children" id="platforms" data-url="/crate/rug/latest/menus/platforms/rug/"><li class="pure-menu-item">
+            <a href="/crate/rug/latest/target-redirect/rug/" class="pure-menu-link" data-fragment="retain" rel="nofollow">x86_64-unknown-linux-gnu</a>
+        </li></ul>
+            </li><li class="pure-menu-item">
+                <a href="/crate/rug/latest/features" title="Browse available feature flags of rug-1.29.0" class="pure-menu-link">
+                    <span class="fa fa-solid fa-flag " aria-hidden="true"></span>
+                    <span class="title">Feature flags</span>
+                </a>
+            </li>
+        
+    
+</ul><div class="spacer"></div>
+                
+                
+
+<ul class="pure-menu-list">
+                    <li class="pure-menu-item pure-menu-has-children">
+                        <a href="#" class="pure-menu-link" aria-label="docs.rs">docs.rs</a>
+                        <ul class="pure-menu-children aligned-icons"><li class="pure-menu-item"><a class="pure-menu-link" href="/about"><span class="fa fa-solid fa-circle-info " aria-hidden="true"></span> About docs.rs</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/badges"><span class="fa fa-brands fa-fonticons " aria-hidden="true"></span> Badges</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/builds"><span class="fa fa-solid fa-gears " aria-hidden="true"></span> Builds</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/metadata"><span class="fa fa-solid fa-table " aria-hidden="true"></span> Metadata</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/redirections"><span class="fa fa-solid fa-road " aria-hidden="true"></span> Shorthand URLs</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/download"><span class="fa fa-solid fa-download " aria-hidden="true"></span> Download</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/about/rustdoc-json"><span class="fa fa-solid fa-file-code " aria-hidden="true"></span> Rustdoc JSON</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="/releases/queue"><span class="fa fa-solid fa-gears " aria-hidden="true"></span> Build queue</a></li><li class="pure-menu-item"><a class="pure-menu-link" href="https://foundation.rust-lang.org/policies/privacy-policy/#docs.rs" target="_blank"><span class="fa fa-solid fa-shield-halved " aria-hidden="true"></span> Privacy policy</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <ul class="pure-menu-list"><li class="pure-menu-item pure-menu-has-children">
+                        <a href="#" class="pure-menu-link" aria-label="Rust">Rust</a>
+                        <ul class="pure-menu-children">
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://www.rust-lang.org/" target="_blank">Rust website</a></li>
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/book/" target="_blank">The Book</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/std/" target="_blank">Standard Library API Reference</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/rust-by-example/" target="_blank">Rust by Example</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/cargo/guide/" target="_blank">The Cargo Guide</a></li>
+
+                            <li class="pure-menu-item"><a class="pure-menu-link" href="https://doc.rust-lang.org/nightly/clippy" target="_blank">Clippy Documentation</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <div id="search-input-nav">
+                    <label for="nav-search">
+                        <span class="fa fa-solid fa-magnifying-glass " aria-hidden="true"></span>
+                    </label>
+
+                    
+                    
+                    <input id="nav-search" name="query" type="text" aria-label="Find crate by search query" tabindex="-1"
+                        placeholder="Find crate"
+                        >
+                </div>
+            </form>
+        </div>
+    </div>
+</div><div class="rustdoc mod crate container-rustdoc" id="rustdoc_body_wrapper" tabindex="-1"><script async src="/-/static/menu.js?0-0-0-15f7e1e9dfac4fc5b7cc4abfd7682239002ba909-2026-04-08"></script>
+<script async src="/-/static/index.js?0-0-0-15f7e1e9dfac4fc5b7cc4abfd7682239002ba909-2026-04-08"></script>
+
+<iframe src="/-/storage-change-detection.html" width="0" height="0" style="display: none"></iframe><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate rug</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../rug/index.html"><img src="data:image/svg+xml;base64,
+PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmVyc2lvbj0iMS4xIiB2aWV3Qm94PSIwIDAgMzMuODY3IDMzLjg2NyIgeG1s
+bnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIC0yNjMuMTMpIj48Y2lyY2xl
+IGN4PSIxNi45MzMiIGN5PSIyODAuMDciIHI9IjE2LjkzMyIgZmlsbD0iI2Y3ZjFhMSIvPjxnIGZpbGw9IiMwMDcyYjIiIHN0cm9r
+ZS13aWR0aD0iLjI2NDU4cHgiPjxnIHN0cm9rZT0iIzAwMCI+PGcgYXJpYS1sYWJlbD0iNiI+PHBhdGggZD0ibTE0LjM2MSAyNzgu
+NzFjMC42NjA0IDAgMS4yODQxIDAuMjc1MTYgMS4yODQxIDEuMzk0MiAwIDEuMjI5MS0wLjU4NzAyIDEuNjE0My0xLjI0NzQgMS42
+MTQzLTAuNTY4NjggMC0xLjI2NTgtMC4zODUyMy0xLjUyMjYtMi4wMTc5IDAuMzY2ODktMC42OTcwOSAwLjkzNTU2LTAuOTkwNiAx
+LjQ4NTktMC45OTA2em0wLjExMDA3IDUuMzU2NmMyLjIwMTMgMCA0LjAzNTgtMS40Njc2IDQuMDM1OC0zLjk2MjRzLTEuNTQwOS0z
+LjU5NTUtMy41MjIxLTMuNTk1NWMtMC42MjM3MSAwLTEuNjE0MyAwLjQwMzU4LTIuMTgzIDEuMTU1NyAwLjEyODQxLTIuMzQ4MSAx
+LjAwODktMy4xMzY5IDIuMTQ2My0zLjEzNjkgMC42NjA0IDAgMS4zOTQyIDAuNDAzNTcgMS43NjExIDAuODA3MTVsMS42NTEtMS44
+NzExYy0wLjc3MDQ2LTAuNzcwNDYtMS45ODEyLTEuNDY3Ni0zLjYzMjItMS40Njc2LTIuNDk0OCAwLTQuODA2MiAyLjAxNzktNC44
+MDYyIDYuMjM3MSAwIDQuMjE5MiAyLjMxMTQgNS44MzM1IDQuNTQ5NCA1LjgzMzV6IiBzdHJva2U9Im5vbmUiLz48L2c+PGcgdHJh
+bnNmb3JtPSJyb3RhdGUoMTUuNTE1KSIgYXJpYS1sYWJlbD0iMiI+PHBhdGggZD0ibTk4LjAyOCAyNjcuOTVoNS4wNDYxdi0xLjM5
+OThoLTEuNjAzYy0wLjMyNzM4IDAtMC44MjQwOSAwLjA0NTEtMS4xOTY2IDAuMDkwMyAxLjI3NTYtMS4yNTMxIDIuNDQ5Ny0yLjQy
+NzEgMi40NDk3LTMuNzI1MyAwLTEuMzY2LTAuOTU5NTYtMi4yNjkxLTIuMzcwNy0yLjI2OTEtMS4wMDQ3IDAtMS42ODIgMC4zOTUx
+MS0yLjM3MDcgMS4xNzRsMC44NjkyNCAwLjg1Nzk2YzAuMzYxMjQtMC4zODM4MyAwLjc1NjM2LTAuNzMzNzggMS4yNzU2LTAuNzMz
+NzggMC42MjA4OSAwIDEuMDE2IDAuMzgzODIgMS4wMTYgMS4wODM3IDAgMS4wMDQ3LTEuMzA5NSAyLjI5MTYtMy4xMTU3IDMuODk0
+N3oiIGZpbGwtb3BhY2l0eT0iLjk3MjU1IiBzdHJva2U9Im5vbmUiLz48L2c+PGcgdHJhbnNmb3JtPSJyb3RhdGUoLTExLjAzMyki
+IGFyaWEtbGFiZWw9IjgiPjxwYXRoIGQ9Im0tMzguOTIgMjkwLjc2YzEuMjc0MiAwIDIuMTIzNy0wLjc0MDgzIDIuMTIzNy0xLjcw
+ODggMC0wLjgzOTYyLTAuNTAzNzctMS4zMDM5LTEuMDg2Ni0xLjYyOTh2LTAuMDM5NWMwLjQwNDk5LTAuMjk2MzMgMC44Mzk2MS0w
+LjgxOTg2IDAuODM5NjEtMS40NDIyIDAtMS4wMTc0LTAuNzIxMDgtMS42OTktMS44NDcxLTEuNjk5LTEuMDg2NiAwLTEuODk2NSAw
+LjY1MTkzLTEuODk2NSAxLjY2OTMgMCAwLjY2MTgxIDAuMzg1MjMgMS4xMjYxIDAuODY5MjQgMS40NzE4djAuMDM5NWMtMC41OTI2
+NyAwLjMxNjA5LTEuMTM1OSAwLjgyOTc0LTEuMTM1OSAxLjYxMDEgMCAxLjAxNzQgMC45MDg3NiAxLjcyODYgMi4xMzM2IDEuNzI4
+NnptMC40MTQ4Ny0zLjY2NDdjLTAuNzAxMzItMC4yNzY1Ny0xLjI2NDQtMC41NTMxNS0xLjI2NDQtMS4xODUzIDAtMC41NDMyOCAw
+LjM3NTM2LTAuODU5MzcgMC44NTkzNy0wLjg1OTM3IDAuNTgyNzkgMCAwLjkyODUxIDAuNDA0OTkgMC45Mjg1MSAwLjk1ODE1IDAg
+MC4zOTUxMS0wLjE4NzY4IDAuNzUwNzEtMC41MjM1MiAxLjA4NjZ6bS0wLjM5NTExIDIuODU0N2MtMC42NDIwNiAwLTEuMTU1Ny0w
+LjQxNDg2LTEuMTU1Ny0xLjAzNzIgMC0wLjQ4NDAxIDAuMjg2NDYtMC44ODkgMC42ODE1Ny0xLjE3NTUgMC44NDk0OSAwLjM0NTcy
+IDEuNTExMyAwLjU5MjY3IDEuNTExMyAxLjI3NDIgMCAwLjU4Mjc5LTAuNDM0NjIgMC45MzgzOS0xLjAzNzIgMC45MzgzOXoiIGZp
+bGwtb3BhY2l0eT0iLjk0MTE4IiBzdHJva2U9Im5vbmUiLz48L2c+PGcgdHJhbnNmb3JtPSJyb3RhdGUoNi41MDA4KSIgYXJpYS1s
+YWJlbD0iMyI+PHBhdGggZD0ibTM5LjMwMiAyODMuNjRjMS4wMzI5IDAgMS44ODgxLTAuNTc1NzMgMS44ODgxLTEuNTU3OSAwLTAu
+NzExMi0wLjQ4MjYtMS4xNjg0LTEuMTE3Ni0xLjMzNzd2LTAuMDMzOWMwLjU4NDItMC4yMjg2IDAuOTM5OC0wLjYzNSAwLjkzOTgt
+MS4yMzYxIDAtMC45MTQ0LTAuNzExMi0xLjQyMjQtMS43NDQxLTEuNDIyNC0wLjY0MzQ3IDAtMS4xNTk5IDAuMjcwOTMtMS42MTcx
+IDAuNjc3MzNsMC40OTk1MyAwLjYwMTE0YzAuMzMwMi0wLjMwNDggMC42NjA0LTAuNTA4IDEuMDgzNy0wLjUwOCAwLjQ5MTA3IDAg
+MC43OTU4NyAwLjI3MDkzIDAuNzk1ODcgMC43MTk2NiAwIDAuNDk5NTQtMC4zNDcxMyAwLjg2MzYtMS40MDU1IDAuODYzNnYwLjcx
+MTJjMS4yMjc3IDAgMS41ODMzIDAuMzU1NiAxLjU4MzMgMC45MTQ0IDAgMC41MDgtMC40MDY0IDAuODEyODEtMC45OTA2IDAuODEy
+ODEtMC41NDE4NyAwLTAuOTU2NzMtMC4yNjI0Ny0xLjI3ODUtMC41OTI2N2wtMC40NjU2NyAwLjYyNjUzYzAuMzgxIDAuNDIzMzQg
+MC45NTY3MyAwLjc2MiAxLjgyODggMC43NjJ6IiBmaWxsLW9wYWNpdHk9Ii44Nzg0MyIgc3Ryb2tlPSJub25lIi8+PC9nPjxnIHRy
+YW5zZm9ybT0icm90YXRlKDguMzU2KSIgYXJpYS1sYWJlbD0iMSI+PHBhdGggZD0ibTQ2LjQwNSAyNjguOWgzLjI0Mjd2LTAuNzk1
+ODdoLTEuMDU4M3YtNC41ODg5aC0wLjcyODEzYy0wLjMzODY3IDAuMjAzMi0wLjcxMTIgMC4zMzg2Ny0xLjI0NDYgMC40NDAyN3Yw
+LjYwOTZoMC45OTA2djMuNTM5MWgtMS4yMDIzeiIgZmlsbC1vcGFjaXR5PSIuNzUyOTQiIHN0cm9rZT0ibm9uZSIvPjwvZz48ZyB0
+cmFuc2Zvcm09InJvdGF0ZSgxMi44NjEpIiBhcmlhLWxhYmVsPSI4Ij48cGF0aCBkPSJtODUuMDM2IDI2MS42M2MxLjA5MjIgMCAx
+LjgyMDMtMC42MzUgMS44MjAzLTEuNDY0NyAwLTAuNzE5NjctMC40MzE4LTEuMTE3Ni0wLjkzMTMzLTEuMzk3di0wLjAzMzljMC4z
+NDcxMy0wLjI1NCAwLjcxOTY3LTAuNzAyNzMgMC43MTk2Ny0xLjIzNjEgMC0wLjg3MjA3LTAuNjE4MDctMS40NTYzLTEuNTgzMy0x
+LjQ1NjMtMC45MzEzMyAwLTEuNjI1NiAwLjU1ODgtMS42MjU2IDEuNDMwOSAwIDAuNTY3MjYgMC4zMzAyIDAuOTY1MiAwLjc0NTA3
+IDEuMjYxNXYwLjAzMzljLTAuNTA4IDAuMjcwOTMtMC45NzM2NyAwLjcxMTItMC45NzM2NyAxLjM4MDEgMCAwLjg3MjA3IDAuNzc4
+OTMgMS40ODE3IDEuODI4OCAxLjQ4MTd6bTAuMzU1Ni0zLjE0MTFjLTAuNjAxMTMtMC4yMzcwNy0xLjA4MzctMC40NzQxNC0xLjA4
+MzctMS4wMTYgMC0wLjQ2NTY3IDAuMzIxNzMtMC43MzY2IDAuNzM2Ni0wLjczNjYgMC40OTk1MyAwIDAuNzk1ODcgMC4zNDcxMyAw
+Ljc5NTg3IDAuODIxMjYgMCAwLjMzODY3LTAuMTYwODcgMC42NDM0Ny0wLjQ0ODczIDAuOTMxMzR6bS0wLjMzODY3IDIuNDQ2OWMt
+MC41NTAzMyAwLTAuOTkwNi0wLjM1NTYtMC45OTA2LTAuODg5IDAtMC40MTQ4NiAwLjI0NTUzLTAuNzYyIDAuNTg0Mi0xLjAwNzUg
+MC43MjgxMyAwLjI5NjMzIDEuMjk1NCAwLjUwOCAxLjI5NTQgMS4wOTIyIDAgMC40OTk1My0wLjM3MjUzIDAuODA0MzMtMC44ODkg
+MC44MDQzM3oiIGZpbGwtb3BhY2l0eT0iLjYyNzQ1IiBzdHJva2U9Im5vbmUiLz48L2c+PGcgdHJhbnNmb3JtPSJyb3RhdGUoNC4z
+MDk5KSIgYXJpYS1sYWJlbD0iNSI+PHBhdGggZD0ibTQ2LjM0MSAyODkuNDljMC45OTA2IDAgMS44OTY1LTAuNjc3MzQgMS44OTY1
+LTEuODU0MiAwLTEuMTU5OS0wLjc3MDQ3LTEuNjg0OS0xLjY5MzMtMS42ODQ5LTAuMjc5NCAwLTAuNDgyNiAwLjA2NzctMC43MTEy
+IDAuMTc3OGwwLjExMDA3LTEuMzAzOWgyLjAzMnYtMC44MjEyN2gtMi44Nzg3bC0wLjE2MDg3IDIuNjU4NSAwLjQ2NTY3IDAuMjk2
+MzNjMC4zMjE3My0wLjIxMTY3IDAuNTE2NDctMC4zMDQ4IDAuODYzNi0wLjMwNDggMC41OTI2NyAwIDAuOTkwNiAwLjM2NDA3IDAu
+OTkwNiAxLjAwNzUgMCAwLjY1MTk0LTAuNDQwMjcgMS4wMzI5LTEuMDQxNCAxLjAzMjktMC41NDE4NyAwLTAuOTM5OC0wLjI3MDk0
+LTEuMjYxNS0wLjU3NTc0bC0wLjQ0ODczIDAuNjI2NTRjMC4zOTc5MyAwLjM5NzkzIDAuOTY1MiAwLjc0NTA3IDEuODM3MyAwLjc0
+NTA3eiIgZmlsbC1vcGFjaXR5PSIuNTAxOTYiIHN0cm9rZT0ibm9uZSIvPjwvZz48ZyBmaWxsLW9wYWNpdHk9Ii4zNzY0NyIgYXJp
+YS1sYWJlbD0iMyI+PHBhdGggZD0ibTkuODg1OSAyOTMuNDZjMS4wMzI5IDAgMS44ODgxLTAuNTc1NzQgMS44ODgxLTEuNTU3OSAw
+LTAuNzExMi0wLjQ4MjYtMS4xNjg0LTEuMTE3Ni0xLjMzNzd2LTAuMDMzOWMwLjU4NDItMC4yMjg2IDAuOTM5OC0wLjYzNSAwLjkz
+OTgtMS4yMzYxIDAtMC45MTQ0LTAuNzExMi0xLjQyMjQtMS43NDQxLTEuNDIyNC0wLjY0MzQ3IDAtMS4xNTk5IDAuMjcwOTQtMS42
+MTcxIDAuNjc3MzRsMC40OTk1MyAwLjYwMTEzYzAuMzMwMi0wLjMwNDggMC42NjA0LTAuNTA4IDEuMDgzNy0wLjUwOCAwLjQ5MTA3
+IDAgMC43OTU4NyAwLjI3MDkzIDAuNzk1ODcgMC43MTk2NyAwIDAuNDk5NTMtMC4zNDcxMyAwLjg2MzYtMS40MDU1IDAuODYzNnYw
+LjcxMTJjMS4yMjc3IDAgMS41ODMzIDAuMzU1NiAxLjU4MzMgMC45MTQ0IDAgMC41MDgtMC40MDY0IDAuODEyOC0wLjk5MDYgMC44
+MTI4LTAuNTQxODcgMC0wLjk1NjczLTAuMjYyNDctMS4yNzg1LTAuNTkyNjdsLTAuNDY1NjcgMC42MjY1NGMwLjM4MSAwLjQyMzMz
+IDAuOTU2NzMgMC43NjIgMS44Mjg4IDAuNzYyeiIgc3Ryb2tlPSJub25lIi8+PC9nPjxnIHRyYW5zZm9ybT0icm90YXRlKC0xMS4z
+NTIpIiBhcmlhLWxhYmVsPSIwIj48cGF0aCBkPSJtLTUxLjQ3MSAyNzYuMTdjMS4xMTc2IDAgMS44Mjg4LTAuOTk5MDcgMS44Mjg4
+LTIuODE5NCAwLTEuODExOS0wLjcxMTItMi43Njg2LTEuODI4OC0yLjc2ODYtMS4xMTc2IDAtMS44Mjg4IDAuOTQ4MjYtMS44Mjg4
+IDIuNzY4NiAwIDEuODIwMyAwLjcxMTIgMi44MTk0IDEuODI4OCAyLjgxOTR6bTAtMC43NjJjLTAuNTE2NDcgMC0wLjg5NzQ3LTAu
+NTMzNC0wLjg5NzQ3LTIuMDU3NHMwLjM4MS0yLjAwNjYgMC44OTc0Ny0yLjAwNjZjMC41MjQ5MyAwIDAuODk3NDcgMC40ODI2IDAu
+ODk3NDcgMi4wMDY2cy0wLjM3MjUzIDIuMDU3NC0wLjg5NzQ3IDIuMDU3NHoiIGZpbGwtb3BhY2l0eT0iLjI1MDk4IiBzdHJva2U9
+Im5vbmUiLz48L2c+PGcgdHJhbnNmb3JtPSJyb3RhdGUoMjIuNTA2KSIgYXJpYS1sYWJlbD0iNyI+PHBhdGggZD0ibTExOC4xNSAy
+NDMuMDhoMC45OTA2YzAuMDkzMS0yLjA5OTcgMC4zNDcxMy0zLjIwODkgMS42NDI1LTQuNzkyMXYtMC41OTI2NmgtMy42MTUzdjAu
+ODIxMjZoMi41NTY5Yy0xLjA3NTMgMS40NjQ3LTEuNDczMiAyLjY1MDEtMS41NzQ4IDQuNTYzNXoiIGZpbGwtb3BhY2l0eT0iLjEy
+NTQ5IiBzdHJva2U9Im5vbmUiLz48L2c+PGcgdHJhbnNmb3JtPSJyb3RhdGUoLTkuNzI3MykiIGFyaWEtbGFiZWw9IjEiPjxwYXRo
+IGQ9Im0tMTguMjk5IDI4Mi43OWgzLjI0Mjd2LTAuNzk1ODdoLTEuMDU4M3YtNC41ODg5aC0wLjcyODEzYy0wLjMzODY3IDAuMjAz
+Mi0wLjcxMTIgMC4zMzg2Ni0xLjI0NDYgMC40NDAyNnYwLjYwOTZoMC45OTA2djMuNTM5MWgtMS4yMDIzeiIgZmlsbC1vcGFjaXR5
+PSIuMDYyNzQ1IiBzdHJva2U9Im5vbmUiLz48L2c+PC9nPjxnIGFyaWEtbGFiZWw9Ii4iPjxwYXRoIGQ9Im0yMC45MiAyODMuOThj
+MC42NTQ3NiAwIDEuMTI4OS0wLjUxOTI5IDEuMTI4OS0xLjE3NCAwLTAuNjU0NzYtMC40NzQxMy0xLjE3NC0xLjEyODktMS4xNzQt
+MC42NTQ3NiAwLTEuMTI4OSAwLjUxOTI5LTEuMTI4OSAxLjE3NCAwIDAuNjU0NzUgMC40NzQxMyAxLjE3NCAxLjEyODkgMS4xNzR6
+Ii8+PC9nPjwvZz48L2c+PC9zdmc+Cg==
+" alt="logo"></a><h2><a href="../rug/index.html">rug</a><span class="version">1.29.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#arbitrary-precision-numbers" title="Arbitrary-precision numbers">Arbitrary-precision numbers</a><ul><li><a href="#quick-example" title="Quick example">Quick example</a></li><li><a href="#using-with-primitive-types" title="Using with primitive types">Using with primitive types</a></li><li><a href="#operators" title="Operators">Operators</a></li><li><a href="#incomplete-computation-values" title="Incomplete-computation values">Incomplete-computation values</a></li><li><a href="#using-rug" title="Using Rug">Using Rug</a></li><li><a href="#optional-features" title="Optional features">Optional features</a></li><li><a href="#experimental-optional-features" title="Experimental optional features">Experimental optional features</a></li></ul></li></ul><h3><a href="#reexports">Crate Items</a></h3><ul class="block"><li><a href="#reexports" title="Re-exports">Re-exports</a></li><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>rug</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/rug/lib.rs.html#17-725">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="arbitrary-precision-numbers"><a class="doc-anchor" href="#arbitrary-precision-numbers">§</a>Arbitrary-precision numbers</h2>
+<p>Rug provides integers and floating-point numbers with arbitrary precision and
+correct rounding:</p>
+<ul>
+<li><a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a> is a bignum integer with arbitrary precision,</li>
+<li><a href="struct.Rational.html" title="struct rug::Rational"><code>Rational</code></a> is a bignum rational number with arbitrary precision,</li>
+<li><a href="struct.Float.html" title="struct rug::Float"><code>Float</code></a> is a multi-precision floating-point number with correct rounding,
+and</li>
+<li><a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a> is a multi-precision complex number with correct rounding.</li>
+</ul>
+<p>Rug is a high-level interface to the following <a href="https://www.gnu.org/">GNU</a> libraries:</p>
+<ul>
+<li><a href="https://gmplib.org/">GMP</a> for integers and rational numbers,</li>
+<li><a href="https://www.mpfr.org/">MPFR</a> for floating-point numbers, and</li>
+<li><a href="https://www.multiprecision.org/mpc/">MPC</a> for complex numbers.</li>
+</ul>
+<p>Rug is free software: you can redistribute it and/or modify it under the terms
+of the GNU Lesser General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the full text of the <a href="https://www.gnu.org/licenses/lgpl-3.0.en.html">GNU LGPL</a> and <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU GPL</a> for details.</p>
+<p>You are also free to use the examples in this documentation without any
+restrictions; the examples are in the public domain.</p>
+<h3 id="quick-example"><a class="doc-anchor" href="#quick-example">§</a>Quick example</h3>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::{Assign, Integer};
+<span class="kw">let </span><span class="kw-2">mut </span>int = Integer::new();
+<span class="macro">assert_eq!</span>(int, <span class="number">0</span>);
+int.assign(<span class="number">14</span>);
+<span class="macro">assert_eq!</span>(int, <span class="number">14</span>);
+
+<span class="kw">let </span>decimal = <span class="string">"98_765_432_109_876_543_210"</span>;
+int.assign(Integer::parse(decimal).unwrap());
+<span class="macro">assert!</span>(int &gt; <span class="number">100_000_000</span>);
+
+<span class="kw">let </span>hex_160 = <span class="string">"ffff0000ffff0000ffff0000ffff0000ffff0000"</span>;
+int.assign(Integer::parse_radix(hex_160, <span class="number">16</span>).unwrap());
+<span class="macro">assert_eq!</span>(int.significant_bits(), <span class="number">160</span>);
+int = (int &gt;&gt; <span class="number">128</span>) - <span class="number">1</span>;
+<span class="macro">assert_eq!</span>(int, <span class="number">0xfffe_ffff_u32</span>);</code></pre></div>
+<ul>
+<li><code><a href="struct.Integer.html" title="struct rug::Integer">Integer</a>::<a href="struct.Integer.html#method.new" title="associated function rug::Integer::new">new</a></code> creates a new <a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a>
+intialized to zero.</li>
+<li>To assign values to Rug types, we use the <a href="trait.Assign.html" title="trait rug::Assign"><code>Assign</code></a> trait and its method
+<a href="trait.Assign.html#tymethod.assign" title="method rug::Assign::assign"><code>Assign::assign</code></a>. We do not use the <a href="https://doc.rust-lang.org/reference/expressions/operator-expr.html#assignment-expressions">assignment operator <code>=</code></a>
+as that would drop the left-hand-side operand and replace it with a
+right-hand-side operand of the same type, which is not what we want here.</li>
+<li>Arbitrary precision numbers can hold numbers that are too large to fit in a
+primitive type. To assign such a number to the large types, we use strings
+rather than primitives; in the example this is done using
+<code><a href="struct.Integer.html" title="struct rug::Integer">Integer</a>::<a href="struct.Integer.html#method.parse" title="associated function rug::Integer::parse">parse</a></code> and
+<code><a href="struct.Integer.html" title="struct rug::Integer">Integer</a>::<a href="struct.Integer.html#method.parse_radix" title="associated function rug::Integer::parse_radix">parse_radix</a></code>.</li>
+<li>We can compare Rug types to primitive types or to other Rug types using the
+normal comparison operators, for example <code>int &gt; 100_000_000</code>.</li>
+<li>Most arithmetic operations are supported with Rug types and primitive types
+on either side of the operator, for example <code>int &gt;&gt; 128</code>.</li>
+</ul>
+<h3 id="using-with-primitive-types"><a class="doc-anchor" href="#using-with-primitive-types">§</a>Using with primitive types</h3>
+<p>With Rust primitive types, arithmetic operators usually operate on two values of
+the same type, for example <code>12i32 + 5i32</code>. Unlike primitive types, conversion to
+and from Rug types can be expensive, so the arithmetic operators are overloaded
+to work on many combinations of Rug types and primitives. The following are
+provided:</p>
+<ol>
+<li>Where they make sense, all arithmetic operators are overloaded to work with
+Rug types and the primitives <a href="https://doc.rust-lang.org/nightly/std/primitive.i8.html" title="primitive i8"><code>i8</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.i16.html" title="primitive i16"><code>i16</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.i32.html" title="primitive i32"><code>i32</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.i64.html" title="primitive i64"><code>i64</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.i128.html" title="primitive i128"><code>i128</code></a>,
+<a href="https://doc.rust-lang.org/nightly/std/primitive.u8.html" title="primitive u8"><code>u8</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u16.html" title="primitive u16"><code>u16</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u32.html" title="primitive u32"><code>u32</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u64.html" title="primitive u64"><code>u64</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.u128.html" title="primitive u128"><code>u128</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.f32.html" title="primitive f32"><code>f32</code></a> and <a href="https://doc.rust-lang.org/nightly/std/primitive.f64.html" title="primitive f64"><code>f64</code></a>.</li>
+<li>Where they make sense, conversions using the <a href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From"><code>From</code></a> trait and assignments
+using the <a href="trait.Assign.html" title="trait rug::Assign"><code>Assign</code></a> trait are supported for all the primitives in 1 above
+as well as <a href="https://doc.rust-lang.org/nightly/std/primitive.bool.html" title="primitive bool"><code>bool</code></a>, <a href="https://doc.rust-lang.org/nightly/std/primitive.isize.html" title="primitive isize"><code>isize</code></a> and <a href="https://doc.rust-lang.org/nightly/std/primitive.usize.html" title="primitive usize"><code>usize</code></a>.</li>
+<li>Comparisons between Rug types and all the numeric primitives listed in 1 and
+2 above are supported.</li>
+<li>For <a href="struct.Rational.html" title="struct rug::Rational"><code>Rational</code></a> numbers, conversions and comparisons are also supported for
+tuples containing two integer primitives: the first is the numerator and the
+second is the denominator which must not be zero. The two primitives do not
+need to be of the same type.</li>
+<li>For <a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a> numbers, conversions and comparisons are also supported for
+tuples containing two primitives: the first is the real part and the second
+is the imaginary part. The two primitives do not need to be of the same
+type.</li>
+</ol>
+<h3 id="operators"><a class="doc-anchor" href="#operators">§</a>Operators</h3>
+<p>Operators are overloaded to work on Rug types alone or on a combination of Rug
+types and Rust primitives. When at least one operand is an owned value of a Rug
+type, the operation will consume that value and return a value of the Rug type.
+For example</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::Integer;
+<span class="kw">let </span>a = Integer::from(<span class="number">10</span>);
+<span class="kw">let </span>b = <span class="number">5 </span>- a;
+<span class="macro">assert_eq!</span>(b, <span class="number">5 </span>- <span class="number">10</span>);</code></pre></div>
+<p>Here <code>a</code> is consumed by the subtraction, and <code>b</code> is an owned <a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a>.</p>
+<p>If on the other hand there are no owned Rug types and there are references
+instead, the returned value is not the final value, but an
+incomplete-computation value. For example</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::Integer;
+<span class="kw">let </span>(a, b) = (Integer::from(<span class="number">10</span>), Integer::from(<span class="number">20</span>));
+<span class="kw">let </span>incomplete = <span class="kw-2">&amp;</span>a - <span class="kw-2">&amp;</span>b;
+<span class="comment">// This would fail to compile: assert_eq!(incomplete, -10);
+</span><span class="kw">let </span>sub = Integer::from(incomplete);
+<span class="macro">assert_eq!</span>(sub, -<span class="number">10</span>);</code></pre></div>
+<p>Here <code>a</code> and <code>b</code> are not consumed, and <code>incomplete</code> is not the final value. It
+still needs to be converted or assigned into an <a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a>. This is covered in
+more detail in the <a href="#incomplete-computation-values"><em>Incomplete-computation values</em></a> section.</p>
+<h4 id="shifting-operations"><a class="doc-anchor" href="#shifting-operations">§</a>Shifting operations</h4>
+<p>The left shift <code>&lt;&lt;</code> and right shift <code>&gt;&gt;</code> operators support shifting by negative
+values, for example <code>a &lt;&lt; 5</code> is equivalent to <code>a &gt;&gt; -5</code>.</p>
+<p>The shifting operators are also supported for the <a href="struct.Float.html" title="struct rug::Float"><code>Float</code></a> and <a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a>
+number types, where they are equivalent to multiplication or division by a power
+of two. Only the exponent of the value is affected; the mantissa is unchanged.</p>
+<h4 id="exponentiation"><a class="doc-anchor" href="#exponentiation">§</a>Exponentiation</h4>
+<p>Exponentiation (raising to a power) does not have a dedicated operator in Rust.
+In order to perform exponentiation of Rug types, the <a href="ops/trait.Pow.html" title="trait rug::ops::Pow"><code>Pow</code></a> trait has
+to be brought into scope, for example</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::ops::Pow;
+<span class="kw">use </span>rug::Integer;
+<span class="kw">let </span>base = Integer::from(<span class="number">10</span>);
+<span class="kw">let </span>power = base.pow(<span class="number">5</span>);
+<span class="macro">assert_eq!</span>(power, <span class="number">100_000</span>);</code></pre></div><h4 id="compound-assignments-to-right-hand-side-operands"><a class="doc-anchor" href="#compound-assignments-to-right-hand-side-operands">§</a>Compound assignments to right-hand-side operands</h4>
+<p>Traits are provided for compound assignment to right-hand-side operands. This
+can be useful for non-commutative operations like subtraction. The names of the
+traits and their methods are similar to Rust compound assignment traits, with
+the suffix “<code>Assign</code>” replaced with “<code>From</code>”. For example the counterpart to
+<a href="https://doc.rust-lang.org/nightly/core/ops/arith/trait.SubAssign.html" title="trait core::ops::arith::SubAssign"><code>SubAssign</code></a> is <a href="ops/trait.SubFrom.html" title="trait rug::ops::SubFrom"><code>SubFrom</code></a>:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::ops::SubFrom;
+<span class="kw">use </span>rug::Integer;
+<span class="kw">let </span><span class="kw-2">mut </span>rhs = Integer::from(<span class="number">10</span>);
+<span class="comment">// set rhs = 100 - rhs
+</span>rhs.sub_from(<span class="number">100</span>);
+<span class="macro">assert_eq!</span>(rhs, <span class="number">90</span>);</code></pre></div><h3 id="incomplete-computation-values"><a class="doc-anchor" href="#incomplete-computation-values">§</a>Incomplete-computation values</h3>
+<p>There are two main reasons why operations like <code>&amp;a - &amp;b</code> do not perform a
+complete computation and return a Rug type:</p>
+<ol>
+<li>Sometimes we need to assign the result to an object that already exists.
+Since Rug types require memory allocations, this can help reduce the number
+of allocations. (While the allocations might not affect performance
+noticeably for computationally intensive functions, they can have a much
+more significant effect on faster functions like addition.)</li>
+<li>For the <a href="struct.Float.html" title="struct rug::Float"><code>Float</code></a> and <a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a> number types, we need to know the
+precision when we create a value, and the operation itself does not convey
+information about what precision is desired for the result.</li>
+</ol>
+<p>There are two things that can be done with incomplete-computation values:</p>
+<ol>
+<li>Assign them to an existing object without unnecessary allocations. This is
+usually achieved using the <a href="trait.Assign.html" title="trait rug::Assign"><code>Assign</code></a> trait or a similar method, for example
+<code>int.<a href="trait.Assign.html#tymethod.assign" title="method rug::Assign::assign">assign</a>(incomplete)</code> and
+<code>float.<a href="ops/trait.AssignRound.html#tymethod.assign_round" title="method rug::ops::AssignRound::assign_round">assign_round</a>(incomplete, <a href="float/enum.Round.html" title="enum rug::float::Round">Round</a>::<a href="float/enum.Round.html#variant.Up" title="variant rug::float::Round::Up">Up</a>)</code>.</li>
+<li>Convert them to the final value using the <a href="trait.Complete.html" title="trait rug::Complete"><code>Complete</code></a> trait, the <a href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html" title="trait core::convert::From"><code>From</code></a>
+trait or a similar method. For example incomplete integers can be completed
+using <code>incomplete.<a href="trait.Complete.html#tymethod.complete" title="method rug::Complete::complete">complete</a>()</code> or
+<code><a href="struct.Integer.html" title="struct rug::Integer">Integer</a>::<a href="https://doc.rust-lang.org/nightly/core/convert/trait.From.html#tymethod.from" title="associated function core::convert::From::from">from</a>(incomplete)</code>. Incomplete
+floating-point numbers can be completed using
+<code>incomplete.<a href="ops/trait.CompleteRound.html#method.complete" title="method rug::ops::CompleteRound::complete">complete</a>(53)</code> or
+<code><a href="struct.Float.html" title="struct rug::Float">Float</a>::<a href="struct.Float.html#method.with_val" title="associated function rug::Float::with_val">with_val</a>(53, incomplete)</code> since the
+precision has to be specified.</li>
+</ol>
+<p>Let us consider a couple of examples.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::{Assign, Integer};
+<span class="kw">let </span><span class="kw-2">mut </span>buffer = Integer::new();
+<span class="comment">// ... buffer can be used and reused ...
+</span><span class="kw">let </span>(a, b) = (Integer::from(<span class="number">10</span>), Integer::from(<span class="number">20</span>));
+<span class="kw">let </span>incomplete = <span class="kw-2">&amp;</span>a - <span class="kw-2">&amp;</span>b;
+buffer.assign(incomplete);
+<span class="macro">assert_eq!</span>(buffer, -<span class="number">10</span>);</code></pre></div>
+<p>Here the assignment from <code>incomplete</code> into <code>buffer</code> does not require an
+allocation unless the result does not fit in the current capacity of <code>buffer</code>.
+If <code>&amp;a - &amp;b</code> returned an <a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a> instead, then an allocation would take
+place even if it is not necessary.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>rug::float::Constant;
+<span class="kw">use </span>rug::Float;
+<span class="comment">// x has a precision of 10 bits
+</span><span class="kw">let </span>x = Float::with_val(<span class="number">10</span>, <span class="number">180</span>);
+<span class="comment">// y has a precision of 50 bits
+</span><span class="kw">let </span>y = Float::with_val(<span class="number">50</span>, Constant::Pi);
+<span class="kw">let </span>incomplete = <span class="kw-2">&amp;</span>x / <span class="kw-2">&amp;</span>y;
+<span class="comment">// z has a precision of 45 bits
+</span><span class="kw">let </span>z = Float::with_val(<span class="number">45</span>, incomplete);
+<span class="macro">assert!</span>(<span class="number">57.295 </span>&lt; z &amp;&amp; z &lt; <span class="number">57.296</span>);</code></pre></div>
+<p>The precision to use for the result depends on the requirements of the algorithm
+being implemented. Here <code>z</code> is created with a precision of 45.</p>
+<p>Many operations can return incomplete-computation values, for example</p>
+<ul>
+<li>unary operators applied to references, for example <code>-&amp;int</code></li>
+<li>binary operators applied to two references, for example <code>&amp;int1 + &amp;int2</code></li>
+<li>binary operators applied to a primitive and a reference, for example <code>&amp;int * 10</code></li>
+<li>methods that take a reference, for example
+<code>int.<a href="struct.Integer.html#method.abs_ref" title="method rug::Integer::abs_ref">abs_ref</a>()</code></li>
+<li>methods that take two references, for example
+<code>int1.<a href="struct.Integer.html#method.gcd_ref" title="method rug::Integer::gcd_ref">gcd_ref</a>(&amp;int2)</code></li>
+<li>string parsing, for example
+<code><a href="struct.Integer.html" title="struct rug::Integer">Integer</a>::<a href="struct.Integer.html#method.parse" title="associated function rug::Integer::parse">parse</a>("12")</code></li>
+</ul>
+<p>These operations return objects that can be stored in temporary variables like
+<code>incomplete</code> in the last few code examples. However, the names of the types are
+not public, and consequently, the incomplete-computation values cannot be for
+example stored in a struct. If you need to store the value in a struct, complete
+it to its final type and value.</p>
+<h3 id="using-rug"><a class="doc-anchor" href="#using-rug">§</a>Using Rug</h3>
+<p>Rug is available on <a href="https://crates.io/crates/rug">crates.io</a>. To use Rug in your crate, add it as
+a dependency inside <a href="https://doc.rust-lang.org/cargo/guide/dependencies.html"><em>Cargo.toml</em></a>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies]
+rug = &quot;1.29&quot;</code></pre></div>
+<p>Rug requires rustc version 1.85.0 or later.</p>
+<p>Rug also depends on the <a href="https://gmplib.org/">GMP</a>, <a href="https://www.mpfr.org/">MPFR</a> and <a href="https://www.multiprecision.org/mpc/">MPC</a> libraries through the low-level
+FFI bindings in the <a href="https://crates.io/crates/gmp-mpfr-sys">gmp-mpfr-sys crate</a>, which needs some setup to
+build; the <a href="https://docs.rs/gmp-mpfr-sys/1.7.0/x86_64-unknown-linux-gnu/gmp_mpfr_sys/index.html" title="mod gmp_mpfr_sys">gmp-mpfr-sys documentation</a> has some details on usage under
+<a href="https://docs.rs/gmp-mpfr-sys/1.7.0/x86_64-unknown-linux-gnu/gmp_mpfr_sys/index.html#building-on-gnulinux" title="mod gmp_mpfr_sys">GNU/Linux</a>, <a href="https://docs.rs/gmp-mpfr-sys/1.7.0/x86_64-unknown-linux-gnu/gmp_mpfr_sys/index.html#building-on-macos" title="mod gmp_mpfr_sys">macOS</a> and <a href="https://docs.rs/gmp-mpfr-sys/1.7.0/x86_64-unknown-linux-gnu/gmp_mpfr_sys/index.html#building-on-windows" title="mod gmp_mpfr_sys">Windows</a>.</p>
+<h3 id="optional-features"><a class="doc-anchor" href="#optional-features">§</a>Optional features</h3>
+<p>The Rug crate has six optional features:</p>
+<ol>
+<li><code>integer</code>, enabled by default. Required for the <a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a> type and its
+supporting features.</li>
+<li><code>rational</code>, enabled by default. Required for the <a href="struct.Rational.html" title="struct rug::Rational"><code>Rational</code></a> number type
+and its supporting features. This feature requires the <code>integer</code> feature.</li>
+<li><code>float</code>, enabled by default. Required for the <a href="struct.Float.html" title="struct rug::Float"><code>Float</code></a> type and its
+supporting features.</li>
+<li><code>complex</code>, enabled by default. Required for the <a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a> number type and
+its supporting features. This feature requires the <code>float</code> feature.</li>
+<li><code>rand</code>, enabled by default. Required for the <a href="rand/struct.RandState.html" title="struct rug::rand::RandState"><code>RandState</code></a>
+type and its supporting features. This feature requires the <code>integer</code>
+feature.</li>
+<li><code>std</code>, enabled by default. This is for features that are not possible under
+<code>no_std</code>, such as methods that return <a href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String"><code>String</code></a>.</li>
+<li><code>serde</code>, disabled by default. This provides serialization support for the
+<a href="struct.Integer.html" title="struct rug::Integer"><code>Integer</code></a>, <a href="struct.Rational.html" title="struct rug::Rational"><code>Rational</code></a>, <a href="struct.Float.html" title="struct rug::Float"><code>Float</code></a> and <a href="struct.Complex.html" title="struct rug::Complex"><code>Complex</code></a> number types, providing
+that they are enabled. This feature requires the <code>std</code> feature and the
+<a href="https://crates.io/crates/serde">serde crate</a>.</li>
+</ol>
+<p>The first six optional features are enabled by default; to use features
+selectively, you can add the dependency like this to <a href="https://doc.rust-lang.org/cargo/guide/dependencies.html"><em>Cargo.toml</em></a>:</p>
+<div class="example-wrap"><pre class="language-toml"><code>[dependencies.rug]
+version = &quot;1.29&quot;
+default-features = false
+features = [&quot;integer&quot;, &quot;float&quot;, &quot;std&quot;]</code></pre></div>
+<p>Here only the <code>integer</code>, <code>float</code> and <code>rand</code> features are enabled. If none of the
+features are selected, the <a href="https://crates.io/crates/gmp-mpfr-sys">gmp-mpfr-sys crate</a> is not required and
+thus not enabled. In that case, only the <a href="trait.Assign.html" title="trait rug::Assign"><code>Assign</code></a> trait and the traits that
+are in the <a href="ops/index.html" title="mod rug::ops"><code>ops</code></a> module are provided by the crate.</p>
+<h3 id="experimental-optional-features"><a class="doc-anchor" href="#experimental-optional-features">§</a>Experimental optional features</h3>
+<p>It is not considered a breaking change if the following experimental features
+are removed. The removal of experimental features would however require a minor
+version bump. Similarly, on a minor version bump, optional dependencies can be
+updated to an incompatible newer version.</p>
+<ol>
+<li><code>num-traits</code>, disabled by default. This implements some traits from the
+<a href="https://crates.io/crates/num-traits"><em>num-traits</em> crate</a> and the <a href="https://crates.io/crates/num-integer"><em>num-integer</em> crate</a>. (The plan is to promote
+this to an optional feature once the <a href="https://crates.io/crates/num-traits"><em>num-traits</em> crate</a> and the
+<a href="https://crates.io/crates/num-integer"><em>num-integer</em> crate</a> reach version 1.0.0.)</li>
+<li><code>num-complex</code>, disabled by default. This adds conversion methods to and from
+complex floats as provided by the <a href="https://crates.io/crates/num-complex"><em>num-complex</em> crate</a>. (The plan is to
+promote this to an optional feature once the <a href="https://crates.io/crates/num-complex"><em>num-complex</em> crate</a> reaces
+version 1.0.0.)</li>
+<li><code>nightly-float</code>, disabled by default. This requires the nightly compiler,
+and implements some operations with the experimental <a href="https://doc.rust-lang.org/nightly/std/primitive.f16.html"><code>f16</code></a> and <a href="https://doc.rust-lang.org/nightly/std/primitive.f128.html"><code>f128</code></a>
+primitives. (The plan is to always implement the operations and remove this
+experimental feature once the primitives are stabilized.)</li>
+<li><code>borsh</code>, disabled by default. This provides serialization support using the
+<a href="https://crates.io/crates/borsh"><em>borsh</em> crate</a>. (The plan is to promote this to an optional feature.)</li>
+</ol>
+</div></details><h2 id="reexports" class="section-header">Re-exports<a href="#reexports" class="anchor">§</a></h2><dl class="item-table reexports"><dt id="reexport.az"><code>pub use <a class="mod" href="https://docs.rs/az/1.3.0/x86_64-unknown-linux-gnu/az/index.html" title="mod az">az</a>;</code></dt></dl><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="complex/index.html" title="mod rug::complex">complex</a></dt><dd>Multi-precision complex numbers with correct rounding.</dd><dt><a class="mod" href="float/index.html" title="mod rug::float">float</a></dt><dd>Multi-precision floating-point numbers with correct rounding.</dd><dt><a class="mod" href="integer/index.html" title="mod rug::integer">integer</a></dt><dd>Arbitrary-precision integers.</dd><dt><a class="mod" href="ops/index.html" title="mod rug::ops">ops</a></dt><dd>Operations on numbers.</dd><dt><a class="mod" href="rand/index.html" title="mod rug::rand">rand</a></dt><dd>Random number generation.</dd><dt><a class="mod" href="rational/index.html" title="mod rug::rational">rational</a></dt><dd>Arbitrary-precision rational numbers.</dd></dl><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Complex.html" title="struct rug::Complex">Complex</a></dt><dd>A multi-precision complex number with arbitrarily large precision and correct
+rounding.</dd><dt><a class="struct" href="struct.Float.html" title="struct rug::Float">Float</a></dt><dd>A multi-precision floating-point number with arbitrarily large precision and
+correct rounding</dd><dt><a class="struct" href="struct.Integer.html" title="struct rug::Integer">Integer</a></dt><dd>An arbitrary-precision integer.</dd><dt><a class="struct" href="struct.Rational.html" title="struct rug::Rational">Rational</a></dt><dd>An arbitrary-precision rational number.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.Assign.html" title="trait rug::Assign">Assign</a></dt><dd>Assigns to a number from another value.</dd><dt><a class="trait" href="trait.Complete.html" title="trait rug::Complete">Complete</a></dt><dd>Completes an <a href="index.html#incomplete-computation-values" title="mod rug">incomplete-computation value</a>.</dd></dl></section></div></main></div></body></html>

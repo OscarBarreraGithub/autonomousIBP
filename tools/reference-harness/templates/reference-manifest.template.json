@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "run_id": "replace-me",
+  "created_at_utc": "replace-me",
+  "upstream": {
+    "amflow": {
+      "source": {
+        "kind": "unset",
+        "url": "",
+        "path": "",
+        "requested_ref": "",
+        "resolved_commit": "",
+        "status": "unconfigured"
+      }
+    },
+    "cpc_archive": {
+      "source": {
+        "kind": "unset",
+        "url": "",
+        "path": "",
+        "archive_path": "",
+        "extracted_path": "",
+        "sha256": "",
+        "status": "unconfigured"
+      }
+    },
+    "kira": {
+      "version": "3.1",
+      "executable": ""
+    },
+    "fermat": {
+      "version": "replace-me",
+      "executable": ""
+    },
+    "wolfram": {
+      "kernel": "",
+      "mathematica_version": "replace-me"
+    }
+  },
+  "environment": {
+    "platform": "ubuntu-22.04-x86_64",
+    "threads": 8,
+    "work_root": "replace-me"
+  },
+  "layout": {
+    "manifests": "",
+    "inputs": "",
+    "upstream": "",
+    "downloads": "",
+    "extracted": "",
+    "logs": "",
+    "generated-config": "",
+    "results": "",
+    "comparisons": "",
+    "goldens": "",
+    "templates": "",
+    "state": ""
+  },
+  "phase0": {
+    "benchmark_catalog": "",
+    "golden_index": "",
+    "placeholder_goldens_frozen": false
+  },
+  "notes": [
+    "Fill all pinned inputs before collecting real goldens.",
+    "A git-backed upstream AMFlow source is only ready after the checkout origin matches the requested URL and the requested ref has been fetched before pinning the resolved commit."
+  ]
+}

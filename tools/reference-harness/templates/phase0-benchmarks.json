@@ -1,0 +1,76 @@
+{
+  "phase0_benchmarks": [
+    {
+      "id": "automatic_vs_manual",
+      "label": "automatic_vs_manual",
+      "required": true,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Primary package-paper regression and automatic/manual equivalence check."
+    },
+    {
+      "id": "automatic_loop",
+      "label": "automatic_loop",
+      "required": true,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Baseline fully automatic loop-integral workflow."
+    },
+    {
+      "id": "complex_kinematics",
+      "label": "complex_kinematics",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Complex-valued kinematics smoke test if present in the pinned example set."
+    },
+    {
+      "id": "differential_equation_solver",
+      "label": "differential_equation_solver",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Standalone DE solver smoke test if present in the pinned example set."
+    },
+    {
+      "id": "automatic_phasespace",
+      "label": "automatic_phasespace",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Phase-space parity smoke test if present in the pinned example set."
+    },
+    {
+      "id": "linear_propagator",
+      "label": "linear_propagator",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Linear-propagator smoke test if present in the pinned example set."
+    },
+    {
+      "id": "spacetime_dimension",
+      "label": "spacetime_dimension",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "Arbitrary-D0 smoke test if present in the pinned example set."
+    },
+    {
+      "id": "user_defined_amfmode",
+      "label": "user_defined_amfmode",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "User-defined eta-insertion hook smoke test if present in the pinned example set."
+    },
+    {
+      "id": "user_defined_ending",
+      "label": "user_defined_ending",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "User-defined ending scheme smoke test if present in the pinned example set."
+    }
+  ]
+}

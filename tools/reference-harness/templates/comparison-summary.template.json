@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "replace-me",
+  "status": "pending-reference-capture",
+  "reference_golden": "",
+  "latest_run_result": "",
+  "checks": [
+    {
+      "name": "reference_run_present",
+      "status": "pending"
+    },
+    {
+      "name": "replacement_rules_exported",
+      "status": "pending"
+    },
+    {
+      "name": "coefficient_table_frozen",
+      "status": "pending"
+    }
+  ]
+}

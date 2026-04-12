@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "replace-me",
+  "benchmark_label": "replace-me",
+  "required": false,
+  "feature_gate": "phase0",
+  "status": "placeholder",
+  "oracle": {
+    "kind": "upstream-amflow",
+    "manifest": "",
+    "benchmark_catalog": ""
+  },
+  "expected_outputs": {
+    "replacement_rules": "",
+    "coefficient_table": "",
+    "wolfram_log": "",
+    "kira_log": "",
+    "generated_config_dir": ""
+  },
+  "notes": [
+    "Populate from the pinned upstream AMFlow reference harness once a licensed Wolfram environment is available."
+  ]
+}

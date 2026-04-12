@@ -1,0 +1,7 @@
+interface:
+  display_name: "AMFlow Port Orchestrator"
+  short_description: "Coordinate the AMFlow C++ migration workflow."
+  default_prompt: "Use $amflow-port-orchestrator to coordinate the AMFlow C++ port across planning, scrutiny, verification, and reference-harness tracks."
+
+policy:
+  allow_implicit_invocation: true

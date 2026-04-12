@@ -1,0 +1,24 @@
+(* Fill these variables before running in a licensed Wolfram environment. *)
+
+manifestPath = "/path/to/manifests/phase0-reference.json";
+benchmarkId = "automatic_vs_manual";
+outputRoot = "/path/to/results/phase0/automatic_vs_manual";
+
+amflowRoot = "/path/to/amflow";
+exampleRoot = "/path/to/cpc-archive/examples/automatic_vs_manual";
+
+Get[FileNameJoin[{amflowRoot, "AMFlow.m"}]];
+
+Print["AMFlow reference harness template loaded."];
+Print["Manifest: " <> manifestPath];
+Print["Benchmark: " <> benchmarkId];
+Print["Run the selected example here and export final replacement rules to JSON or text."];
+
+placeholderRecord = <|
+  "manifest" -> manifestPath,
+  "benchmark" -> benchmarkId,
+  "status" -> "replace-with-real-reference-run",
+  "output_root" -> outputRoot
+|>;
+
+Export[FileNameJoin[{outputRoot, "reference-run.placeholder.json"}], placeholderRecord, "JSON"];

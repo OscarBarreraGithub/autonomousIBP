@@ -28,8 +28,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 ## Current Durable Status
 
-- the accepted public surface on the current `main` base is the reviewed `Batch 1` through
-  `Batch 46` boundary at commit `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+- the accepted public/runtime surface on the current `main` base is still the reviewed `Batch 1`
+  through `Batch 46` boundary, now carried forward on clean
+  `main@f2f3f03f36ef1095b76bf1f52c413a907d041856`
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -46,11 +47,20 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `K0` and `K0b` are therefore accepted only for that frozen repo-local K0 smoke subset: one
   coherent retained reducer-smoke packet with an honest file-backed bootstrap manifest now exists
   on `main`
-- the public contract does not widen beyond the current reviewed `Batch 46` boundary; the accepted
-  K0 smoke subset is only the repo-local frozen fixture derived from preserved input plus the
-  narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet
-- `Batch 47` remains pending, so manual-vs-automatic boundary equivalence and automatic boundary
-  execution/provider parity are still outside the accepted public boundary
+- `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence over
+  that already-reviewed `Batch 46` surface, not as a new runtime/API seam: on the supported
+  simple Euclidean massless sample subset, builtin `Tradition` plus one exact user-defined
+  singleton `<family>::eta->infinity` path agree between manual and automatic attachment, and the
+  reviewed pre-solve failures remain preserved with solver non-invocation
+- the public contract still does not widen beyond the current reviewed `Batch 46` boundary; the
+  accepted K0 smoke subset remains only the repo-local frozen fixture derived from preserved input
+  plus the narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet,
+  and the accepted `Batch 47` / `Milestone M2` packet is evidence over the existing request /
+  provider / solver seams rather than a new public surface
+- broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
+  smoke, and upstream `automatic_vs_manual` parity are still outside the accepted public boundary
+- `Batch 48` is the next roadmap-owned implementation lane, while `M0b` remains separately open
+  and still blocks broader parity claims
 
 ## Core Types
 

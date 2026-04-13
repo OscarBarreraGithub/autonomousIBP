@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 46`; `Batch 47` is the next pending lane |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` is the next roadmap-owned lane |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -68,7 +68,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4` and is the current accepted release baseline
+- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856` and is the current accepted release baseline
 - reviewed implementation remains accepted through `Batch 46`; `Milestone M1` is complete on that
   reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
@@ -83,7 +83,14 @@ exit gate. The current live state must always be read from `docs/implementation-
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
 - `Gate K0` is now closed only for that frozen repo-local smoke subset: one coherent retained
   reducer-smoke packet with an honest bootstrap manifest is accepted on `main`
-- `Batch 47` and `Milestone M2` are the next pending lane after that narrow `K0` / `K0b` acceptance
+- `Batch 47` / `Milestone M2` are now accepted narrowly after that `K0` / `K0b` acceptance: on
+  the supported simple Euclidean massless sample subset only, builtin `Tradition` plus one exact
+  user-defined singleton `<family>::eta->infinity` path agree between manual and automatic
+  attachment, and the reviewed pre-solve failures remain preserved with solver non-invocation
+- this does not widen the public/runtime surface beyond reviewed `Batch 46`, does not accept
+  broader automatic-boundary execution/provider parity, and does not relax the separate `M0b`
+  blocker on broader parity claims
+- `Batch 48` is now the next roadmap-owned implementation lane
 
 ## Current State At R0
 
@@ -119,8 +126,9 @@ exit gate. The current live state must always be read from `docs/implementation-
 ### Still Missing Or Still Bootstrap-Only
 
 - builtin eta modes other than `All` are still explicit bootstrap stubs
-- there is no accepted manual-vs-automatic boundary equivalence harness yet; `Batch 47` remains
-  pending and `Milestone M2` is still open
+- accepted manual-vs-automatic boundary equivalence is still narrow: only the supported simple
+  Euclidean massless sample subset is covered, and only for builtin `Tradition` plus one exact
+  user-defined singleton `<family>::eta->infinity`
 - solver/provider coupling, automatic boundary execution, and `BoundaryCondition` generation from
   builtin/planned `eta -> infinity` requests remain deferred
 - `BuildInvariantDerivativeSeed(...)` is still limited to a narrow bootstrap symbolic subset

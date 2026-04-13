@@ -119,6 +119,39 @@ void ExpectBoundaryUnsolved(Callable&& callable,
   throw std::runtime_error(message);
 }
 
+template <typename Callable>
+std::string CaptureInvalidArgumentMessage(Callable&& callable,
+                                          const std::string& message) {
+  try {
+    static_cast<void>(callable());
+  } catch (const std::invalid_argument& error) {
+    return error.what();
+  }
+  throw std::runtime_error(message);
+}
+
+template <typename Callable>
+std::string CaptureRuntimeErrorMessage(Callable&& callable,
+                                       const std::string& message) {
+  try {
+    static_cast<void>(callable());
+  } catch (const std::runtime_error& error) {
+    return error.what();
+  }
+  throw std::runtime_error(message);
+}
+
+template <typename Callable>
+std::string CaptureBoundaryUnsolvedMessage(Callable&& callable,
+                                           const std::string& message) {
+  try {
+    static_cast<void>(callable());
+  } catch (const amflow::BoundaryUnsolvedError& error) {
+    return error.what();
+  }
+  throw std::runtime_error(message);
+}
+
 std::string ReadFile(const std::filesystem::path& path) {
   std::ifstream stream(path);
   if (!stream) {
@@ -537,14 +570,21 @@ amflow::PrecisionPolicy MakeDistinctPrecisionPolicy() {
   return policy;
 }
 
+amflow::SolverDiagnostics MakeRequestDrivenEquivalenceHarnessDiagnostics(
+    const amflow::SolveRequest& request);
+
 class RecordingSeriesSolver final : public amflow::SeriesSolver {
  public:
+  bool use_request_driven_diagnostics = false;
   amflow::SolverDiagnostics returned_diagnostics;
 
   amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
     ++call_count_;
     has_request_ = true;
     last_request_ = request;
+    if (use_request_driven_diagnostics) {
+      return MakeRequestDrivenEquivalenceHarnessDiagnostics(request);
+    }
     return returned_diagnostics;
   }
 
@@ -728,6 +768,11 @@ amflow::BoundaryCondition MakeValidBoundaryCondition() {
   return {"eta", "eta=1", {"1/3", "2/5"}, "manual"};
 }
 
+amflow::BoundaryCondition MakeEtaInfinityBoundaryCondition(
+    const std::string& strategy = "builtin::eta->infinity") {
+  return {"eta", "infinity", {"B1", "B2"}, strategy};
+}
+
 amflow::SolveRequest MakeBoundarySolveRequest() {
   amflow::SolveRequest request;
   request.system = MakeBoundaryAttachmentBaselineDESystem();
@@ -737,6 +782,42 @@ amflow::SolveRequest MakeBoundarySolveRequest() {
   request.precision_policy = MakeDistinctPrecisionPolicy();
   request.requested_digits = 73;
   return request;
+}
+
+amflow::SolveRequest MakeEtaInfinitySolveRequest(const amflow::BoundaryRequest& request) {
+  amflow::SolveRequest solve_request;
+  solve_request.system = amflow::MakeSampleDESystem();
+  solve_request.boundary_requests = {request};
+  solve_request.start_location = "infinity";
+  solve_request.target_location = "eta=0";
+  solve_request.precision_policy = MakeDistinctPrecisionPolicy();
+  solve_request.requested_digits = 61;
+  return solve_request;
+}
+
+amflow::SolverDiagnostics MakeRequestDrivenEquivalenceHarnessDiagnostics(
+    const amflow::SolveRequest& request) {
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = true;
+  const std::size_t boundary_value_count =
+      request.boundary_conditions.empty() ? 0 : request.boundary_conditions.front().values.size();
+  const std::size_t summary_size = request.start_location.size() + request.target_location.size() +
+                                   request.boundary_conditions.size() + boundary_value_count;
+  diagnostics.residual_norm = static_cast<double>(
+                                  request.system.masters.size() * 16 +
+                                  request.boundary_requests.size() * 8 +
+                                  request.boundary_conditions.size() * 4 +
+                                  request.system.variables.size() * 2 +
+                                  (request.requested_digits % 16)) /
+                              1024.0;
+  diagnostics.overlap_mismatch =
+      static_cast<double>(summary_size + request.precision_policy.x_order_step) / 512.0;
+  diagnostics.failure_code.clear();
+  diagnostics.summary = "recorded deterministic eta-infinity boundary solve from " +
+                        request.start_location + " to " + request.target_location + " with " +
+                        std::to_string(request.boundary_conditions.size()) +
+                        " attached conditions";
+  return diagnostics;
 }
 
 amflow::SolveRequest MakeManualStartBoundarySolveRequest(
@@ -4501,6 +4582,603 @@ void GenerateBuiltinEtaInfinityBoundaryRequestAttachesThroughProviderSeamTest() 
              SameBoundaryCondition(attached.boundary_conditions.front(), explicit_boundary),
          "builtin eta->infinity request integration should attach the provider-returned "
          "boundary condition unchanged");
+}
+
+void Batch47BuiltinTraditionEtaInfinityBoundaryEquivalenceTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::BoundaryRequest manual_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const std::vector<amflow::BoundaryCondition> explicit_boundaries = {
+      MakeEtaInfinityBoundaryCondition()};
+  const std::vector<amflow::BoundaryCondition> original_explicit_boundaries = explicit_boundaries;
+  amflow::SolveRequest manual_input = MakeEtaInfinitySolveRequest(manual_request_boundary);
+  const amflow::SolveRequest original_manual_input = manual_input;
+  const amflow::SolveRequest manual_attached =
+      amflow::AttachManualBoundaryConditions(manual_input, explicit_boundaries);
+
+  const amflow::BoundaryRequest automatic_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::SolveRequest automatic_input = MakeEtaInfinitySolveRequest(automatic_request_boundary);
+  const amflow::SolveRequest original_automatic_input = automatic_input;
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity", explicit_boundaries);
+  const amflow::SolveRequest automatic_attached =
+      amflow::AttachBoundaryConditionsFromProvider(automatic_input, provider);
+  const amflow::SolveRequest original_manual_attached = manual_attached;
+  const amflow::SolveRequest original_automatic_attached = automatic_attached;
+
+  Expect(SameBoundaryRequest(automatic_request_boundary, manual_request_boundary),
+         "Batch 47 builtin Tradition equivalence should preserve the exact reviewed "
+         "eta->infinity boundary request shape");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 47 builtin Tradition equivalence should not mutate the shared input problem "
+         "spec");
+  Expect(SameSolveRequest(manual_input, original_manual_input) &&
+             SameSolveRequest(automatic_input, original_automatic_input),
+         "Batch 47 builtin Tradition equivalence should not mutate the caller-owned "
+         "pre-attachment solve requests");
+  Expect(explicit_boundaries.size() == original_explicit_boundaries.size() &&
+             SameBoundaryCondition(explicit_boundaries.front(),
+                                   original_explicit_boundaries.front()),
+         "Batch 47 builtin Tradition equivalence should not mutate the caller-owned explicit "
+         "boundary payload");
+  Expect(provider.strategy_call_count() == 1 && provider.provide_call_count() == 1,
+         "Batch 47 builtin Tradition equivalence should consult the provider exactly once");
+  Expect(provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(provider.seen_requests().front(), automatic_request_boundary),
+         "Batch 47 builtin Tradition equivalence should feed the planned request through the "
+         "provider seam unchanged");
+  Expect(SameSolveRequest(automatic_attached, manual_attached),
+         "Batch 47 builtin Tradition equivalence should attach the same SolveRequest through "
+         "manual and automatic eta->infinity workflows");
+
+  RecordingSeriesSolver manual_solver;
+  RecordingSeriesSolver automatic_solver;
+  manual_solver.use_request_driven_diagnostics = true;
+  automatic_solver.use_request_driven_diagnostics = true;
+  const amflow::SolverDiagnostics manual_diagnostics = manual_solver.Solve(manual_attached);
+  const amflow::SolverDiagnostics automatic_diagnostics =
+      automatic_solver.Solve(automatic_attached);
+
+  Expect(manual_solver.call_count() == 1 && automatic_solver.call_count() == 1,
+         "Batch 47 builtin Tradition equivalence should call the deterministic solver exactly "
+         "once per successful lane");
+  Expect(SameSolveRequest(manual_attached, original_manual_attached) &&
+             SameSolveRequest(automatic_attached, original_automatic_attached),
+         "Batch 47 builtin Tradition equivalence should not mutate the attached solve requests "
+         "after solver execution");
+  Expect(SameSolveRequest(automatic_solver.last_request(), manual_solver.last_request()),
+         "Batch 47 builtin Tradition equivalence should feed the same attached request into the "
+         "same deterministic solver behavior");
+  Expect(SameSolveRequest(manual_solver.last_request(), original_manual_attached) &&
+             SameSolveRequest(automatic_solver.last_request(), original_automatic_attached),
+         "Batch 47 builtin Tradition equivalence should forward the attached request to the "
+         "solver unchanged");
+  Expect(SameSolverDiagnostics(automatic_diagnostics, manual_diagnostics),
+         "Batch 47 builtin Tradition equivalence should preserve downstream solver diagnostics");
+}
+
+void Batch47UserDefinedEtaInfinitySingletonEquivalenceTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::BoundaryRequest manual_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const std::vector<amflow::BoundaryCondition> explicit_boundaries = {
+      MakeEtaInfinityBoundaryCondition()};
+  const std::vector<amflow::BoundaryCondition> original_explicit_boundaries = explicit_boundaries;
+  amflow::SolveRequest manual_input = MakeEtaInfinitySolveRequest(manual_request_boundary);
+  const amflow::SolveRequest original_manual_input = manual_input;
+  const amflow::SolveRequest manual_attached =
+      amflow::AttachManualBoundaryConditions(manual_input, explicit_boundaries);
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "CustomScheme";
+  custom_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  const amflow::BoundaryRequest automatic_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "CustomScheme", {custom_scheme});
+  amflow::SolveRequest automatic_input = MakeEtaInfinitySolveRequest(automatic_request_boundary);
+  const amflow::SolveRequest original_automatic_input = automatic_input;
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity", explicit_boundaries);
+  const amflow::SolveRequest automatic_attached =
+      amflow::AttachBoundaryConditionsFromProvider(automatic_input, provider);
+  const amflow::SolveRequest original_manual_attached = manual_attached;
+  const amflow::SolveRequest original_automatic_attached = automatic_attached;
+
+  Expect(custom_scheme->call_count() == 1,
+         "Batch 47 user-defined singleton equivalence should plan the exact custom ending once");
+  Expect(custom_scheme->last_planned_spec_yaml() == original_spec_yaml &&
+             amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 47 user-defined singleton equivalence should not mutate the shared input "
+         "problem spec while planning");
+  Expect(SameBoundaryRequest(automatic_request_boundary, manual_request_boundary),
+         "Batch 47 user-defined singleton equivalence should preserve the exact reviewed "
+         "eta->infinity boundary request shape");
+  Expect(SameSolveRequest(manual_input, original_manual_input) &&
+             SameSolveRequest(automatic_input, original_automatic_input),
+         "Batch 47 user-defined singleton equivalence should not mutate the caller-owned "
+         "pre-attachment solve requests");
+  Expect(explicit_boundaries.size() == original_explicit_boundaries.size() &&
+             SameBoundaryCondition(explicit_boundaries.front(),
+                                   original_explicit_boundaries.front()),
+         "Batch 47 user-defined singleton equivalence should not mutate the caller-owned "
+         "explicit boundary payload");
+  Expect(SameSolveRequest(automatic_attached, manual_attached),
+         "Batch 47 user-defined singleton equivalence should attach the same SolveRequest "
+         "through manual and automatic eta->infinity workflows");
+
+  RecordingSeriesSolver manual_solver;
+  RecordingSeriesSolver automatic_solver;
+  manual_solver.use_request_driven_diagnostics = true;
+  automatic_solver.use_request_driven_diagnostics = true;
+  const amflow::SolverDiagnostics manual_diagnostics = manual_solver.Solve(manual_attached);
+  const amflow::SolverDiagnostics automatic_diagnostics =
+      automatic_solver.Solve(automatic_attached);
+
+  Expect(manual_solver.call_count() == 1 && automatic_solver.call_count() == 1,
+         "Batch 47 user-defined singleton equivalence should call the deterministic solver "
+         "exactly once per successful lane");
+  Expect(SameSolveRequest(manual_attached, original_manual_attached) &&
+             SameSolveRequest(automatic_attached, original_automatic_attached),
+         "Batch 47 user-defined singleton equivalence should not mutate the attached solve "
+         "requests after solver execution");
+  Expect(SameSolveRequest(automatic_solver.last_request(), manual_solver.last_request()),
+         "Batch 47 user-defined singleton equivalence should feed the same attached request "
+         "into the same deterministic solver behavior");
+  Expect(SameSolveRequest(manual_solver.last_request(), original_manual_attached) &&
+             SameSolveRequest(automatic_solver.last_request(), original_automatic_attached),
+         "Batch 47 user-defined singleton equivalence should forward the attached request to "
+         "the solver unchanged");
+  Expect(SameSolverDiagnostics(automatic_diagnostics, manual_diagnostics),
+         "Batch 47 user-defined singleton equivalence should preserve downstream solver "
+         "diagnostics");
+}
+
+void Batch47UnsupportedTerminalNodePreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&spec]() {
+        static_cast<void>(
+            amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Trivial", {}));
+      },
+      "direct planned eta->infinity boundary generation should reject unsupported terminal "
+      "nodes for the Batch 47 baseline");
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &provider, &solver]() {
+        const amflow::BoundaryRequest request =
+            amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Trivial", {});
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(request), provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve unsupported terminal "
+      "node rejection");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve unsupported "
+         "terminal-node diagnostics unchanged");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not consult the provider "
+         "after unsupported terminal-node rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "unsupported terminal-node rejection");
+}
+
+void Batch47PlanningFailurePreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::EndingDecision unused_decision;
+  unused_decision.terminal_strategy = "RetryScheme";
+  unused_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto direct_scheme = std::make_shared<RecordingEndingScheme>(
+      unused_decision, "RetryScheme", "retry ending planning failed");
+  const auto composed_scheme = std::make_shared<RecordingEndingScheme>(
+      unused_decision, "RetryScheme", "retry ending planning failed");
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureRuntimeErrorMessage(
+      [&spec, &direct_scheme]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            spec, "RetryScheme", {direct_scheme}));
+      },
+      "direct planned eta->infinity boundary generation should fail for the Batch 47 "
+      "planning-failure baseline");
+  const std::string composed_message = CaptureRuntimeErrorMessage(
+      [&spec, &composed_scheme, &provider, &solver]() {
+        const amflow::BoundaryRequest request =
+            amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "RetryScheme", {composed_scheme});
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(request), provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve planning failures");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve planning-failure "
+         "diagnostics unchanged");
+  Expect(composed_scheme->call_count() == 1 &&
+             provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should stop before provider use "
+         "when planning fails");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver when "
+         "planning fails");
+}
+
+void Batch47UnsupportedBatch45SubsetPreservesDiagnosticTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators.front().mass = "msq";
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&spec]() {
+        static_cast<void>(
+            amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {}));
+      },
+      "direct planned eta->infinity boundary generation should reject unsupported Batch 45 "
+      "subset specs for the Batch 47 baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &provider, &solver]() {
+        const amflow::BoundaryRequest request =
+            amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(request), provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve Batch 45 subset "
+      "rejection");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve unsupported Batch "
+         "45 subset diagnostics unchanged");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not consult the provider "
+         "after Batch 45 subset rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "unsupported Batch 45 subset rejection");
+}
+
+void Batch47ProviderStrategyMismatchPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  RecordingStaticBoundaryProvider direct_provider("manual", {MakeEtaInfinityBoundaryCondition()});
+  RecordingStaticBoundaryProvider composed_provider("manual", {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject strategy mismatch for the Batch 47 baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve strategy mismatch "
+      "rejection");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve provider strategy "
+         "mismatch diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "provider strategy mismatch");
+}
+
+void Batch47ProviderBoundaryUnsolvedPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  ThrowingBoundaryProvider direct_provider("builtin::eta->infinity",
+                                           "provider could not resolve eta @ infinity");
+  ThrowingBoundaryProvider composed_provider("builtin::eta->infinity",
+                                             "provider could not resolve eta @ infinity");
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should propagate provider boundary_unsolved for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve provider "
+      "boundary_unsolved diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve provider "
+         "boundary_unsolved diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "provider boundary_unsolved");
+}
+
+void Batch47ProviderWrongVariableOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::BoundaryCondition malformed_boundary = MakeEtaInfinityBoundaryCondition();
+  malformed_boundary.variable = "s";
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject wrong-variable provider output for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve wrong-variable "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve wrong-variable "
+         "output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "wrong-variable provider output");
+}
+
+void Batch47ProviderWrongLocationOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::BoundaryCondition malformed_boundary = MakeEtaInfinityBoundaryCondition();
+  malformed_boundary.location = "eta=3";
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject wrong-location provider output for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve wrong-location "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve wrong-location "
+         "provider output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "wrong-location provider output");
+}
+
+void Batch47ProviderWrongStrategyOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::BoundaryCondition malformed_boundary = MakeEtaInfinityBoundaryCondition();
+  malformed_boundary.strategy = "manual";
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject wrong-strategy provider output for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve wrong-strategy "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve wrong-strategy "
+         "provider output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "wrong-strategy provider output");
+}
+
+void Batch47ProviderEmptyValuesOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::BoundaryCondition malformed_boundary = MakeEtaInfinityBoundaryCondition();
+  malformed_boundary.values.clear();
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject empty-values provider output for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve empty-values "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve empty-values "
+         "provider output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "empty-values provider output");
+}
+
+void Batch47ProviderWrongValueCountOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::BoundaryCondition malformed_boundary = MakeEtaInfinityBoundaryCondition();
+  malformed_boundary.values = {"B1"};
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity", {malformed_boundary});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request_boundary, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(direct_request_boundary), direct_provider));
+      },
+      "direct provider attachment should reject wrong-value-count provider output for the Batch "
+      "47 baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request_boundary, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProvider(
+            MakeEtaInfinitySolveRequest(planned_request_boundary), composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve wrong-value-count "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve wrong-value-count "
+         "provider output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "wrong-value-count provider output");
+}
+
+void Batch47ProviderDuplicateLociOutputPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::SolveRequest direct_request = MakeEtaInfinitySolveRequest(direct_request_boundary);
+  amflow::SolveRequest planned_request = MakeEtaInfinitySolveRequest(planned_request_boundary);
+  direct_request.boundary_requests.push_back(direct_request_boundary);
+  planned_request.boundary_requests.push_back(planned_request_boundary);
+  amflow::BoundaryCondition first = MakeEtaInfinityBoundaryCondition();
+  amflow::BoundaryCondition duplicate = MakeEtaInfinityBoundaryCondition();
+  duplicate.values = {"7/11", "13/17"};
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity",
+                                                  {first, duplicate});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity",
+                                                    {first, duplicate});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(direct_request,
+                                                                       direct_provider));
+      },
+      "direct provider attachment should reject duplicate-loci provider output for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached =
+            amflow::AttachBoundaryConditionsFromProvider(planned_request, composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve duplicate-loci "
+      "provider output diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve duplicate-loci "
+         "provider output diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "duplicate-loci provider output");
+}
+
+void Batch47ConflictingReattachmentPreservesDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::BoundaryRequest direct_request_boundary =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  const amflow::BoundaryRequest planned_request_boundary =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, "Tradition", {});
+  amflow::SolveRequest direct_request = MakeEtaInfinitySolveRequest(direct_request_boundary);
+  amflow::SolveRequest planned_request = MakeEtaInfinitySolveRequest(planned_request_boundary);
+  direct_request.boundary_conditions = {MakeEtaInfinityBoundaryCondition()};
+  planned_request.boundary_conditions = {MakeEtaInfinityBoundaryCondition()};
+  RecordingStaticBoundaryProvider direct_provider("builtin::eta->infinity",
+                                                  {MakeEtaInfinityBoundaryCondition()});
+  RecordingStaticBoundaryProvider composed_provider("builtin::eta->infinity",
+                                                    {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&direct_request, &direct_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProvider(direct_request,
+                                                                       direct_provider));
+      },
+      "direct provider attachment should reject conflicting reattachment for the Batch 47 "
+      "baseline");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&planned_request, &composed_provider, &solver]() {
+        const amflow::SolveRequest attached =
+            amflow::AttachBoundaryConditionsFromProvider(planned_request, composed_provider);
+        static_cast<void>(solver.Solve(attached));
+      },
+      "Batch 47 composed automatic eta->infinity harness should preserve conflicting "
+      "reattachment diagnostics");
+
+  Expect(composed_message == baseline_message,
+         "Batch 47 composed automatic eta->infinity harness should preserve conflicting "
+         "reattachment diagnostics unchanged");
+  Expect(solver.call_count() == 0,
+         "Batch 47 composed automatic eta->infinity harness should not call the solver after "
+         "conflicting reattachment");
 }
 
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
@@ -12328,6 +13006,20 @@ int main() {
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonStandardPropagatorsTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAttachesThroughProviderSeamTest();
+    Batch47BuiltinTraditionEtaInfinityBoundaryEquivalenceTest();
+    Batch47UserDefinedEtaInfinitySingletonEquivalenceTest();
+    Batch47UnsupportedTerminalNodePreservesDiagnosticTest();
+    Batch47PlanningFailurePreservesDiagnosticTest();
+    Batch47UnsupportedBatch45SubsetPreservesDiagnosticTest();
+    Batch47ProviderStrategyMismatchPreservesDiagnosticTest();
+    Batch47ProviderBoundaryUnsolvedPreservesDiagnosticTest();
+    Batch47ProviderWrongVariableOutputPreservesDiagnosticTest();
+    Batch47ProviderWrongLocationOutputPreservesDiagnosticTest();
+    Batch47ProviderWrongStrategyOutputPreservesDiagnosticTest();
+    Batch47ProviderEmptyValuesOutputPreservesDiagnosticTest();
+    Batch47ProviderWrongValueCountOutputPreservesDiagnosticTest();
+    Batch47ProviderDuplicateLociOutputPreservesDiagnosticTest();
+    Batch47ConflictingReattachmentPreservesDiagnosticTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

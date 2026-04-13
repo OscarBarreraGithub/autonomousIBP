@@ -25,7 +25,7 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4`
+- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856`
 - reviewed code remains accepted through `Batch 46`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
@@ -40,8 +40,11 @@ The workflow is optimized for the current repo shape:
 - `K0` and `K0b` are therefore closed only for that narrow repo-local frozen smoke subset: durable
   docs and review packets may claim one coherent retained reducer-smoke packet with an honest
   bootstrap manifest on `main`, but still may not widen into broader smoke or parity acceptance
-- `Batch 47` and `Milestone M2` are now the next pending lane; manual-vs-automatic boundary
-  equivalence is still outside the accepted repo state
+- `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence on the
+  supported simple Euclidean massless sample subset only; this does not widen the accepted
+  runtime/public surface beyond reviewed `Batch 46`
+- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
+  open and still blocks broader parity claims
 
 ## Mandatory Read Set Before Planning
 
@@ -450,7 +453,7 @@ Until the solver and reference harness broaden substantially, the default implem
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
    roadmap gates, and the active blocker chain; on the current baseline that means start
-   `Batch 47` / `Milestone M2`, not reopen `K0b`
+   `Batch 48`, not reopen `K0b` or `Batch 47`
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

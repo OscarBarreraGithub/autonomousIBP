@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4`
+- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -23,6 +23,18 @@ The migration is phase-gated. Every phase must pass:
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
 - `K0` and `K0b` are now accepted only for the frozen repo-local K0 smoke subset via that one
   coherent retained reducer-smoke packet with an honest bootstrap manifest on `main`
+- `Batch 47` / `Milestone M2` are now accepted narrowly on top of
+  `main@f2f3f03f36ef1095b76bf1f52c413a907d041856`: local staging `cmake -S . -B build`,
+  `cmake --build build`, and `ctest --test-dir build --output-on-failure` already passed; clean-
+  candidate `sapphire` job `5431987` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b47-clean-candidate-20260413T072226Z-LRVIIR`;
+  and independent rereview found no blocking findings after the strengthened equivalence,
+  non-mutation, and failure-preservation fixes
+- that acceptance is limited to manual-vs-automatic `eta -> infinity` boundary-equivalence on the
+  supported simple Euclidean massless sample subset and does not accept broader automatic boundary
+  execution/provider parity, broader ending semantics, broader Kira smoke, or upstream parity
+- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
+  open and still blocks broader parity claims
 
 ## Test Taxonomy
 
@@ -64,14 +76,18 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - latest accepted clean-candidate gate for the `K0b.1` packet is job `5425248`
 - latest accepted coherent K0 reducer-smoke packet job is `5425379` on `sapphire`, retained at
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke`
+- latest accepted clean-candidate gate for the narrow `Batch 47` / `Milestone M2` packet is job
+  `5431987` for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b47-clean-candidate-20260413T072226Z-LRVIIR`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
-  manifest; broader Kira smoke, broader reducer parity, and `Batch 47` / `Milestone M2` remain
-  separate future gates
+  manifest; `Batch 47` / `Milestone M2` are now also satisfied narrowly on the supported sample
+  subset, while broader Kira smoke, broader reducer parity, `M0b`, and later parity milestones
+  remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 

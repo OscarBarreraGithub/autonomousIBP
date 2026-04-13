@@ -11,7 +11,7 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 
 ## Current Durable Status
 
-- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4`
+- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856`
 - reviewed implementation is accepted through `Batch 46`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
@@ -26,8 +26,11 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 - `K0` and `K0b` are now closed only for that narrow repo-local smoke subset; this skill may claim
   one coherent retained reducer-smoke packet with an honest bootstrap manifest on `main`, but
   still must not widen into broader Kira smoke or parity acceptance
-- `Batch 47` / `Milestone M2` are the next pending lane; manual-vs-automatic boundary
-  equivalence is still outside the accepted repo state
+- `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence on the
+  supported simple Euclidean massless sample subset only; this does not widen the accepted
+  runtime/public surface beyond reviewed `Batch 46`
+- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
+  open and still blocks broader parity claims
 
 ## Workflow
 
@@ -69,7 +72,8 @@ Do not overclaim acceptance while backfilling:
 Run the `reference-harness` track when the batch touches upstream capture, pinned goldens, or harness scripts.
 Run the `cluster-control` lane when the task touches repo-wide build gates, retained reducer smoke
 evidence, repo-local K0 smoke fixtures derived from preserved input, or milestone packets such as
-`M0a`, `K0-pre-spec`, `K0-pre`, `K0`, `K0b`, or `Batch 47`.
+`M0a`, `K0-pre-spec`, `K0-pre`, `K0`, `K0b`, or the accepted narrow `Batch 47` / `Milestone M2`
+packet.
 
 ## Required Inputs
 

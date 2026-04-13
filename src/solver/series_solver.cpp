@@ -1792,7 +1792,8 @@ std::string SelectBuiltinEtaModeName(const ProblemSpec& spec,
       static_cast<void>(eta_mode->Plan(spec));
       return eta_mode_name;
     } catch (const std::runtime_error&) {
-      if (index + 1 == eta_mode_names.size()) {
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
+          index + 1 == eta_mode_names.size()) {
         throw;
       }
     }
@@ -1810,12 +1811,14 @@ EtaInsertionDecision SelectResolvedEtaModeDecision(
   }
 
   for (std::size_t index = 0; index < eta_mode_names.size(); ++index) {
+    const std::string& eta_mode_name = eta_mode_names[index];
     const std::shared_ptr<EtaMode> eta_mode =
-        ResolveEtaMode(eta_mode_names[index], user_defined_modes);
+        ResolveEtaMode(eta_mode_name, user_defined_modes);
     try {
       return eta_mode->Plan(spec);
     } catch (const std::exception&) {
-      if (index + 1 == eta_mode_names.size()) {
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
+          index + 1 == eta_mode_names.size()) {
         throw;
       }
     }

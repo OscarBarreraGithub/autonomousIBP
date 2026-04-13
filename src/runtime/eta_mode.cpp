@@ -48,6 +48,25 @@ void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision
   }
 }
 
+struct EtaTopologyPropagatorSummary {
+  std::string expression;
+  std::string mass;
+  PropagatorKind kind = PropagatorKind::Standard;
+  int prescription = -1;
+};
+
+struct EtaTopologySummary {
+  std::string family_name;
+  std::vector<std::string> loop_momenta;
+  std::vector<int> top_level_sectors;
+  std::vector<std::string> incoming_momenta;
+  std::vector<std::string> outgoing_momenta;
+  std::string momentum_conservation;
+  std::vector<EtaTopologyPropagatorSummary> propagators;
+  std::vector<std::string> scalar_product_rule_rights;
+  std::vector<std::set<std::string>> scalar_product_rule_identifiers;
+};
+
 std::set<std::string> ExtractIdentifiers(const std::string& expression) {
   std::set<std::string> identifiers;
   std::size_t index = 0;
@@ -70,6 +89,42 @@ std::set<std::string> ExtractIdentifiers(const std::string& expression) {
     identifiers.insert(expression.substr(begin, index - begin));
   }
   return identifiers;
+}
+
+EtaTopologySummary BuildEtaTopologySummary(const ProblemSpec& spec) {
+  EtaTopologySummary summary;
+  summary.family_name = spec.family.name;
+  summary.loop_momenta = spec.family.loop_momenta;
+  summary.top_level_sectors = spec.family.top_level_sectors;
+  summary.incoming_momenta = spec.kinematics.incoming_momenta;
+  summary.outgoing_momenta = spec.kinematics.outgoing_momenta;
+  summary.momentum_conservation = spec.kinematics.momentum_conservation;
+  summary.propagators.reserve(spec.family.propagators.size());
+  for (const auto& propagator : spec.family.propagators) {
+    summary.propagators.push_back(
+        EtaTopologyPropagatorSummary{propagator.expression,
+                                     propagator.mass,
+                                     propagator.kind,
+                                     propagator.prescription});
+  }
+  summary.scalar_product_rule_rights.reserve(spec.kinematics.scalar_product_rules.size());
+  summary.scalar_product_rule_identifiers.reserve(spec.kinematics.scalar_product_rules.size());
+  for (const auto& rule : spec.kinematics.scalar_product_rules) {
+    summary.scalar_product_rule_rights.push_back(rule.right);
+    summary.scalar_product_rule_identifiers.push_back(ExtractIdentifiers(rule.right));
+  }
+  return summary;
+}
+
+std::string DescribeEtaTopologySummary(const EtaTopologySummary& summary) {
+  std::ostringstream description;
+  description << "family="
+              << (summary.family_name.empty() ? std::string("<unnamed>") : summary.family_name)
+              << ", loop_momenta=" << summary.loop_momenta.size()
+              << ", top_level_sectors=" << summary.top_level_sectors.size()
+              << ", propagators=" << summary.propagators.size()
+              << ", scalar_product_rules=" << summary.scalar_product_rule_rights.size();
+  return description.str();
 }
 
 bool IsSingleIdentifier(const std::string& expression) {
@@ -261,6 +316,16 @@ class BuiltinEtaMode final : public EtaMode {
                   << " non-auxiliary propagators in declaration order for mode Propagator";
       decision.explanation = explanation.str();
       return decision;
+    }
+
+    if (name_ == "Branch" || name_ == "Loop") {
+      const EtaTopologySummary topology_summary = BuildEtaTopologySummary(spec);
+      throw std::runtime_error("eta mode " + name_ +
+                               " is blocked in bootstrap: internal eta-topology preflight "
+                               "snapshot collected the current family/kinematics surface, but "
+                               "topology-analysis/candidate-analysis for Branch/Loop selectors "
+                               "is not implemented yet (" +
+                               DescribeEtaTopologySummary(topology_summary) + ")");
     }
 
     if (name_ == "Mass") {

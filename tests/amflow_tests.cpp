@@ -2360,7 +2360,7 @@ void UnsupportedBuiltinEtaModesRejectTest() {
         [&mode, &spec]() {
           static_cast<void>(mode->Plan(spec));
         },
-        "not implemented in bootstrap",
+        "topology-analysis/candidate-analysis for Branch/Loop selectors is not implemented yet",
         "remaining unsupported builtin eta modes should fail deterministically in bootstrap");
   }
 }
@@ -10978,7 +10978,9 @@ void SolveEtaModePlannedSeriesPlanningFailureTest() {
                                                             MakeDistinctPrecisionPolicy(),
                                                             55));
       },
-      "eta mode Branch is not implemented in bootstrap",
+      "eta mode Branch is blocked in bootstrap: internal eta-topology preflight snapshot "
+      "collected the current family/kinematics surface, but topology-analysis/candidate-analysis for "
+      "Branch/Loop selectors is not implemented yet",
       "eta-mode-planned solver handoff should preserve eta-mode planning failures");
 
   Expect(solver.call_count() == 0,
@@ -11602,13 +11604,53 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
               MakeDistinctPrecisionPolicy(),
               55));
         },
-        "eta mode " + mode_name + " is not implemented in bootstrap",
+        "eta mode " + mode_name +
+            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
+            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
+            "Branch/Loop selectors is not implemented yet",
         "builtin eta-mode solver handoff should preserve unsupported builtin planning "
         "diagnostics");
 
     Expect(solver.call_count() == 0,
            "builtin eta-mode solver handoff should not call the solver when builtin planning "
            "fails");
+  }
+}
+
+void SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+        FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-" + mode_name + "-preflight-failure"));
+    RecordingSeriesSolver solver;
+
+    ExpectRuntimeError(
+        [&spec, &master_basis, &layout, &solver, &mode_name]() {
+          static_cast<void>(amflow::SolveBuiltinEtaModeListSeries(
+              spec,
+              master_basis,
+              {mode_name, "Propagator"},
+              MakeKiraReductionOptions(),
+              layout,
+              layout.root / "bin" / "unused-kira.sh",
+              layout.root / "bin" / "unused-fermat.sh",
+              solver,
+              "eta=0",
+              "eta=1",
+              MakeDistinctPrecisionPolicy(),
+              55));
+        },
+        "eta mode " + mode_name +
+            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
+            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
+            "Branch/Loop selectors is not implemented yet",
+        "builtin eta-mode-list solver handoff should preserve " + mode_name +
+            " preflight failures");
+
+    Expect(solver.call_count() == 0,
+           "builtin eta-mode-list solver handoff should not call the solver when " + mode_name +
+               " planning fails");
   }
 }
 
@@ -11789,7 +11831,7 @@ void SolveBuiltinEtaModeListSeriesHappyPathFallbackTest() {
   const amflow::SolverDiagnostics diagnostics =
       amflow::SolveBuiltinEtaModeListSeries(spec,
                                             master_basis,
-                                            {"Branch", "Propagator"},
+                                            {"Propagator"},
                                             MakeKiraReductionOptions(),
                                             layout,
                                             kira_path,
@@ -12362,7 +12404,7 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
-  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Branch", "Propagator"});
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
@@ -12833,7 +12875,7 @@ void SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest() {
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinAllEtaHappySpec();
-  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Branch", "Propagator"});
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-amf-options-eta-mode-solver-exec-failure"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-fail.sh";
@@ -12881,6 +12923,44 @@ void SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest() {
   Expect(solver.call_count() == 0,
          "AmfOptions eta-mode solver handoff should not call the solver when eta DE "
          "construction fails after builtin selection");
+}
+
+void SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({mode_name, "Propagator"});
+    const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+        FreshTempDir("amflow-bootstrap-amf-options-eta-mode-" + mode_name + "-preflight-failure"));
+    RecordingSeriesSolver solver;
+
+    ExpectRuntimeError(
+        [&spec, &amf_options, &master_basis, &layout, &solver]() {
+          static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+              spec,
+              master_basis,
+              amf_options,
+              MakeKiraReductionOptions(),
+              layout,
+              layout.root / "bin" / "unused-kira.sh",
+              layout.root / "bin" / "unused-fermat.sh",
+              solver,
+              "eta=0",
+              "eta=1",
+              MakeDistinctPrecisionPolicy(),
+              55));
+        },
+        "eta mode " + mode_name +
+            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
+            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
+            "Branch/Loop selectors is not implemented yet",
+        "AmfOptions eta-mode solver handoff should preserve " + mode_name +
+            " preflight failures");
+
+    Expect(solver.call_count() == 0,
+           "AmfOptions eta-mode solver handoff should not call the solver when " + mode_name +
+               " planning fails");
+  }
 }
 
 void SolveResolvedEtaModeSeriesBuiltinHappyPathTest() {
@@ -13256,6 +13336,49 @@ void SolveResolvedEtaModeListSeriesHappyPathFallbackTest() {
          "resolved eta-mode list solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "resolved eta-mode list solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const auto custom_mode =
+        std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+    const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+        FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-" + mode_name + "-preflight-failure"));
+    RecordingSeriesSolver solver;
+
+    ExpectRuntimeError(
+        [&spec, &master_basis, &layout, &solver, &mode_name, &custom_mode]() {
+          static_cast<void>(amflow::SolveResolvedEtaModeListSeries(
+              spec,
+              master_basis,
+              {mode_name, "CustomMode"},
+              {custom_mode},
+              MakeKiraReductionOptions(),
+              layout,
+              layout.root / "bin" / "unused-kira.sh",
+              layout.root / "bin" / "unused-fermat.sh",
+              solver,
+              "eta=0",
+              "eta=1",
+              MakeDistinctPrecisionPolicy(),
+              55));
+        },
+        "eta mode " + mode_name +
+            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
+            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
+            "Branch/Loop selectors is not implemented yet",
+        "resolved eta-mode-list solver handoff should preserve " + mode_name +
+            " preflight failures");
+
+    Expect(custom_mode->call_count() == 0,
+           "resolved eta-mode-list solver handoff should not call the later selected mode when " +
+               mode_name + " planning fails");
+    Expect(solver.call_count() == 0,
+           "resolved eta-mode-list solver handoff should not call the solver when " + mode_name +
+               " planning fails");
+  }
 }
 
 void SolveResolvedEtaModeListSeriesBuiltinMassShortCircuitTest() {
@@ -14777,6 +14900,7 @@ int main() {
     SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest();
     SolveBuiltinEtaModeSeriesRejectsUnknownBuiltinNameTest();
     SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest();
+    SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest();
     SolveBuiltinEtaModeSeriesRejectsPropagatorWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeSeriesExecutionFailureTest();
@@ -14798,12 +14922,14 @@ int main() {
     SolveAmfOptionsEtaModeSeriesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesRejectsUnknownBuiltinNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest();
+    SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest();
     SolveResolvedEtaModeSeriesBuiltinHappyPathTest();
     SolveResolvedEtaModeSeriesUserDefinedHappyPathTest();
     SolveResolvedEtaModeSeriesRejectsUnknownNameWithUserDefinedRegistryTest();
     SolveResolvedEtaModeSeriesRejectsRegistryValidationFailureTest();
     SolveResolvedEtaModeSeriesPlanningFailureTest();
     SolveResolvedEtaModeListSeriesHappyPathFallbackTest();
+    SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest();
     SolveResolvedEtaModeListSeriesBuiltinMassShortCircuitTest();
     SolveResolvedEtaModeListSeriesStopsAfterFirstCompletedModeTest();
     SolveResolvedEtaModeListSeriesRejectsEmptyModeListTest();

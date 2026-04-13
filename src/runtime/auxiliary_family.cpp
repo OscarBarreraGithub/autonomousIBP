@@ -61,14 +61,9 @@ AuxiliaryFamilyTransformResult ApplyEtaInsertion(const ProblemSpec& spec,
       throw std::runtime_error("eta insertion cannot target auxiliary propagator index: " +
                                std::to_string(index));
     }
-    if (Trim(original.mass) != "0") {
-      throw std::runtime_error(
-          "eta insertion bootstrap only supports selected propagators with mass == \"0\": " +
-          std::to_string(index));
-    }
-
     Propagator& transformed = result.transformed_spec.family.propagators[index];
     transformed.expression = "(" + original.expression + ") + " + eta_symbol;
+    transformed.mass = Trim(original.mass);
     result.rewritten_propagator_indices.push_back(index);
   }
 

@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
+- authoritative `main` base is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -32,17 +32,21 @@ The migration is phase-gated. Every phase must pass:
 - `Batch 48` is accepted on `main`: final accepted clean-candidate `sapphire` job `5439311`
   cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the clean
   baseline before the current staging work
-- the current accepted staging packet is `Batch 49` (`Propagator` only): local module-loaded
-  `cmake -S . -B build`, `cmake --build build --parallel 1`, and
-  `ctest --test-dir build --output-on-failure` passed in `/tmp/autoIBP-b49-propagator`; clean-
-  candidate `sapphire` job `5445260` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`;
-  and second-pass rereview found no blockers remaining
-- that staging acceptance is limited to the bootstrap structural selector for builtin
-  `Propagator` on the current reviewed subset and does not accept `Mass` selector semantics,
-  `Propagator::prescription` metadata interpretation, broader automatic boundary
-  execution/provider parity, broader ending semantics, broader Kira smoke, or upstream parity
-- `Batch 49b` is now the next roadmap-owned implementation lane, while `M0b` remains separately
+- `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
+  narrow builtin `Propagator` structural-selector packet
+- the current accepted staging packet is `Batch 49b`: local module-loaded `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, and `ctest --test-dir build --output-on-failure` passed in
+  `/tmp/autoIBP-b49b-mass`; clean-candidate `sapphire` job `5455850` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`;
+  and second-pass rereview found no blocking or medium findings remaining
+- that staging acceptance is limited to the narrow bootstrap builtin `Mass` seam on the current
+  reviewed subset plus the minimal eta-generated-path mass-coherence widening required to keep
+  selected equal-mass reducer-facing literals aligned with planner grouping. It does not accept
+  full upstream topology/component-order `Mass` semantics, broader same-priority tie-break parity,
+  broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation,
+  broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
+  smoke, or upstream parity
+- `Batch 50` is now the next roadmap-owned implementation lane, while `M0b` remains separately
   open and still blocks broader parity claims
 
 ## Test Taxonomy
@@ -90,19 +94,21 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b47-clean-candidate-20260413T072226Z-LRVIIR`
 - latest accepted clean-candidate gate for the landed `Batch 48` packet is job `5439311`; the
   landing commit is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
-- latest accepted clean-candidate gate for the current `Batch 49` / `Propagator`-only staging
-  packet is job `5445260` for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`
+- latest accepted clean-candidate gate for the landed `Batch 49` packet is job `5445260`; the
+  landing commit is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
+- latest accepted clean-candidate gate for the current `Batch 49b` staging packet is job
+  `5455850` for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
-  manifest; `Batch 47` / `Milestone M2` and landed `Batch 48` are now also satisfied narrowly on
-  the supported sample subset on `main`, and the current `Batch 49` / `Propagator`-only staging
-  packet has also cleared the clean-candidate gate on top of clean
-  `main@f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`, while broader Kira smoke, broader reducer
+  manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, and landed `Batch 49` are now also
+  satisfied narrowly on the supported sample subset on `main`, and the current `Batch 49b`
+  staging packet has also cleared the clean-candidate gate on top of clean
+  `main@b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`, while broader Kira smoke, broader reducer
   parity, `M0b`, and later parity milestones remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap

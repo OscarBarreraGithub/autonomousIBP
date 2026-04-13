@@ -29,8 +29,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 ## Current Durable Status
 
 - the accepted public/runtime surface on the current `main` base is the reviewed `Batch 1`
-  through `Batch 48` boundary, now carried forward on clean
-  `main@f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
+  through `Batch 49` boundary, now carried forward on clean
+  `main@b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -54,23 +54,34 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   reviewed pre-solve failures remain preserved with solver non-invocation
 - `Batch 48` is accepted on `main`: final accepted clean-candidate `sapphire` job `5439311`
   cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the
-  authoritative clean baseline
-- the public contract on `main` widens only through the current reviewed `Batch 48` boundary; the
+  prior authoritative clean baseline
+- `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
+  narrow builtin `Propagator` structural-selector packet
+- the public contract on `main` widens only through the current reviewed `Batch 49` boundary; the
   accepted K0 smoke subset remains only the repo-local frozen fixture derived from preserved input
   plus the narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet,
   the accepted `Batch 47` / `Milestone M2` packet remains evidence over the existing request /
-  provider / solver seams rather than a new public surface, and `Batch 48` adds only the narrow
-  bootstrap `Prescription` alias over reviewed `All`
+  provider / solver seams rather than a new public surface, `Batch 48` adds only the narrow
+  bootstrap `Prescription` alias over reviewed `All`, and `Batch 49` adds only the narrow
+  builtin `Propagator` structural selector over the reviewed local candidate surface
+- the current accepted staging packet is `Batch 49b`: local module-loaded
+  `cmake -S . -B build`, `cmake --build build --parallel 1`, and
+  `ctest --test-dir build --output-on-failure` passed in `/tmp/autoIBP-b49b-mass`; clean-
+  candidate `sapphire` job `5455850` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`;
+  and second-pass rereview cleared with no blocking or medium findings remaining
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
-  smoke, upstream `automatic_vs_manual` parity, accepted `Mass` semantics, and any
-  `Propagator::prescription` metadata interpretation are still outside the accepted public boundary
-- `Batch 49` is the current accepted staging packet on top of that clean `main` baseline: local
-  module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`, and clean-
-  candidate `sapphire` job `5445260` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`;
-  it is intentionally limited to the builtin eta-mode `Propagator` structural selector only,
-  while `Mass` remains deferred because a safe selector rule is not yet accepted and `M0b`
-  remains separately open and still blocks broader parity claims
+  smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
+  broader symbolic mass canonicalization, and any `Propagator::prescription` metadata
+  interpretation are still outside the accepted public boundary
+- that accepted staging packet is still narrow and is not yet landed: it adds only a bootstrap
+  builtin `Mass` seam over the reviewed local candidate surface plus the minimal eta-generated-path
+  coherence widening needed to keep selected equal-mass reducer-facing literals aligned with
+  planner grouping. The remaining accepted gaps stay explicit: the independence preference is only
+  a local token-based heuristic, selected-mass normalization is only outer-whitespace trimming on
+  rewritten selected propagators, there is no broader topology/component-order parity, no broader
+  same-priority tie-break parity, and no broader symbolic mass canonicalization claim. It does not
+  by itself close `M0b` or imply broader upstream parity
 
 ## Core Types
 
@@ -540,11 +551,12 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - only the selected propagators are rewritten, and the bootstrap rewrite is deterministic string-level logic of the form `(<old expression>) + eta`
 - `kinematics.invariants` appends `eta` exactly once and preserves existing order otherwise
 - the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`prescription`
-- empty selections, duplicate indices, out-of-range indices, selected auxiliary propagators, and selected propagators with `mass != "0"` fail locally with deterministic diagnostics
+- empty selections, duplicate indices, out-of-range indices, and selected auxiliary propagators fail locally with deterministic diagnostics; selected nonzero-mass propagators are now allowed on this reviewed eta-generated path, and rewritten selected propagators carry `Trim(original.mass)` in the transformed copy so the reducer-facing equal-mass surface stays coherent with planner grouping. This is only outer-whitespace trimming on selected rewritten literals, not broader mass canonicalization
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
-- builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; end-to-end execution over that structural selection still depends on the existing `ApplyEtaInsertion(...)` guard that every selected propagator have `mass == "0"`
-- builtin modes `Mass`, `Branch`, and `Loop` remain explicit bootstrap stubs and fail as not implemented; `Mass` remains deferred specifically because a safe selector rule is not yet accepted on the reviewed subset
-- the current `Batch 49` staging packet is accepted only as a bootstrap-only built-in planner seam over that reviewed selector set. It does not interpret `Propagator::prescription` integer metadata, does not claim `AMFlowInfo["Prescription"]` / `feynman_prescription` parity, does not generate derivatives, does not implement Mass-mode semantics or full upstream prescription semantics, and does not add file-backed eta manifests
+- builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
+- builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists
+- builtin modes `Branch` and `Loop` remain explicit bootstrap stubs and fail as not implemented
+- the current `Batch 49b` staging packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
 
 ## Upgrade Rules
 

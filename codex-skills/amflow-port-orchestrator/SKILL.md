@@ -11,8 +11,8 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 
 ## Current Durable Status
 
-- authoritative `main` base is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
-- reviewed implementation is accepted through landed `Batch 48` on `main`; `Milestone M1` is complete
+- authoritative `main` base is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
+- reviewed implementation is accepted through landed `Batch 49` on `main`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
   job `5305579`
@@ -32,13 +32,18 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 - `Batch 48` is accepted on `main`: final accepted clean-candidate `sapphire` job `5439311`
   cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the clean
   baseline
-- the current accepted staging packet is `Batch 49` (`Propagator` only) on top of that clean
-  baseline: local module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`,
-  and clean-candidate `sapphire` job `5445260` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`
-- `Mass` remains deferred because a safe selector rule is not yet accepted; `Batch 49b` is now the
-  next roadmap-owned implementation lane, while `M0b` remains separately open and still blocks
-  broader parity claims
+- `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
+  narrow builtin `Propagator` structural-selector packet
+- the current accepted staging packet is `Batch 49b` on top of that clean baseline: local
+  module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49b-mass`, clean-candidate
+  `sapphire` job `5455850` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`,
+  and second-pass rereview cleared with no blocking or medium findings remaining
+- that accepted staging packet is still narrow: the `Mass` preference is only a local token-based
+  heuristic, selected-mass coherence is only outer-whitespace trimming on rewritten selected
+  propagators, there is no broader topology/component-order or symbolic mass-canonicalization
+  claim, and `Batch 50` is now the next roadmap-owned implementation lane while `M0b` remains
+  separately open and still blocks broader parity claims
 
 ## Workflow
 

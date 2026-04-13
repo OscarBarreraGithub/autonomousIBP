@@ -736,6 +736,74 @@ amflow::ProblemSpec MakeBuiltinPropagatorMassBoundarySpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeBuiltinMassHappySpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].mass = "msq";
+  spec.family.propagators[6].mass = "msq";
+  spec.family.propagators[2].mass = "t-msq";
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinMassTrimEqualitySpec() {
+  amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  spec.family.propagators[0].mass = " msq ";
+  return spec;
+}
+
+void UseRecoveredMassPreferenceScalarProductRules(amflow::ProblemSpec& spec) {
+  spec.kinematics.scalar_product_rules = {
+      {"p1*p1", "0"},
+      {"p2*p2", "0"},
+      {"p3*p3", "msq"},
+      {"p1*p2", "s/2"},
+      {"p1*p3", "(t-msq)/2"},
+      {"p2*p3", "(msq-s-t)/2"},
+  };
+}
+
+amflow::ProblemSpec MakeBuiltinMassPreferenceSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  UseRecoveredMassPreferenceScalarProductRules(spec);
+  spec.family.propagators[0].mass = "t-msq";
+  spec.family.propagators[6].mass = "t-msq";
+  spec.family.propagators[2].mass = "msq";
+  spec.family.propagators[5].mass = "msq";
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinMassDependentOnlySpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  UseRecoveredMassPreferenceScalarProductRules(spec);
+  spec.family.propagators[0].mass = "t-msq";
+  spec.family.propagators[6].mass = "t-msq";
+  spec.family.propagators[2].mass = "s+t";
+  spec.family.propagators[5].mass = "s+t";
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinMassMixedAuxiliarySharedMassSpec() {
+  amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Auxiliary;
+  spec.family.propagators[1].mass = "msq";
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinMassAuxiliaryOnlyNonzeroSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Auxiliary;
+  spec.family.propagators[1].mass = "msq";
+  spec.family.propagators[4].kind = amflow::PropagatorKind::Auxiliary;
+  spec.family.propagators[4].mass = "msq";
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinMassOverSelectionSpec() {
+  amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  spec.family.propagators[2].mass = "m2";
+  spec.family.propagators[3].mass = "m2";
+  return spec;
+}
+
 amflow::ProblemSpec MakeBuiltinAllAuxiliarySpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   for (auto& propagator : spec.family.propagators) {
@@ -1899,6 +1967,57 @@ void EtaInsertionKiraEmissionTest() {
          "Kira emission should include eta in the invariant list");
 }
 
+void EtaInsertionTrimsSelectedMassLiteralsForCoherentMassSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassTrimEqualitySpec();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  const amflow::AuxiliaryFamilyTransformResult result =
+      amflow::ApplyEtaInsertion(spec, decision);
+
+  Expect(result.rewritten_propagator_indices == std::vector<std::size_t>{0, 6},
+         "eta insertion should still rewrite the Mass-selected equal-mass propagators");
+  Expect(result.transformed_spec.family.propagators[0].mass == "msq" &&
+             result.transformed_spec.family.propagators[6].mass == "msq",
+         "eta insertion should trim outer whitespace on selected mass literals so the "
+         "rewritten equal-mass surface stays coherent");
+  Expect(result.transformed_spec.family.propagators[2].mass == spec.family.propagators[2].mass,
+         "eta insertion should not broaden mass canonicalization to unselected propagators");
+  Expect(spec.family.propagators[0].mass == " msq " &&
+             spec.family.propagators[6].mass == "msq",
+         "eta insertion should keep the input problem spec unchanged while trimming only the "
+         "rewritten mass literals in the transformed copy");
+}
+
+void EtaInsertionKiraEmissionTrimsSelectedMassLiteralsTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassTrimEqualitySpec();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+  const amflow::ProblemSpec transformed =
+      amflow::ApplyEtaInsertion(spec, decision).transformed_spec;
+
+  amflow::ReductionOptions options;
+  options.ibp_reducer = "Kira";
+  options.permutation_option = 1;
+
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-kira-mass-trim"));
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(transformed, options, layout);
+
+  Expect(preparation.validation_messages.empty(),
+         "Kira preparation should accept the transformed trim-equality Mass surface");
+  const auto family_yaml_it = preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.generated_files.end(),
+         "Kira preparation should emit family YAML for the trimmed Mass path");
+  Expect(family_yaml_it->second.find("[\"((k1)^2) + eta\", \"msq\"]") != std::string::npos &&
+             family_yaml_it->second.find("[\"((k2-p1-p2)^2) + eta\", \"msq\"]") !=
+                 std::string::npos,
+         "Kira family YAML should carry canonical trimmed equal-mass literals for the rewritten "
+         "Mass-selected propagators");
+  Expect(family_yaml_it->second.find("\" msq \"") == std::string::npos,
+         "Kira family YAML should not preserve outer-whitespace variants on rewritten "
+         "Mass-selected literals");
+}
+
 void EtaInsertionRejectsDuplicateIndicesTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::EtaInsertionDecision decision;
@@ -1956,20 +2075,31 @@ void EtaInsertionRejectsAuxiliaryPropagatorsTest() {
       "eta insertion should reject selected auxiliary propagators");
 }
 
-void EtaInsertionRejectsNonzeroMassPropagatorsTest() {
-  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
-  spec.family.propagators[6].mass = "msq";
+void EtaInsertionAllowsNonzeroMassPropagatorsTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
 
   amflow::EtaInsertionDecision decision;
   decision.mode_name = "Explicit";
-  decision.selected_propagator_indices = {6};
+  decision.selected_propagator_indices = {0, 6};
+  decision.selected_propagators = {
+      spec.family.propagators[0].expression,
+      spec.family.propagators[6].expression,
+  };
 
-  ExpectRuntimeError(
-      [&spec, &decision]() {
-        static_cast<void>(amflow::ApplyEtaInsertion(spec, decision));
-      },
-      "mass == \"0\"",
-      "eta insertion should reject selected propagators with nonzero mass in bootstrap");
+  const amflow::AuxiliaryFamilyTransformResult result =
+      amflow::ApplyEtaInsertion(spec, decision);
+
+  Expect(result.rewritten_propagator_indices == decision.selected_propagator_indices,
+         "eta insertion should continue to rewrite the exact selected nonzero-mass propagators");
+  Expect(result.transformed_spec.family.propagators[0].expression == "((k1)^2) + eta" &&
+             result.transformed_spec.family.propagators[6].expression ==
+                 "((k2-p1-p2)^2) + eta",
+         "eta insertion should preserve the reviewed string-level rewrite for selected "
+         "nonzero-mass propagators");
+  Expect(result.transformed_spec.family.propagators[0].mass == "msq" &&
+             result.transformed_spec.family.propagators[6].mass == "msq",
+         "eta insertion should preserve coherent canonical mass literals on the selected "
+         "nonzero-mass path when the input masses are already trimmed");
 }
 
 void AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
@@ -2089,9 +2219,142 @@ void PropagatorEtaModeDoesNotMutateInputProblemSpecTest() {
          "Propagator eta mode should not mutate the input problem spec");
 }
 
+void MassEtaModeSelectsEqualNonzeroMassGroupTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.mode_name == "Mass",
+         "Mass eta mode should preserve its mode name in the planning decision");
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
+         "Mass eta mode should select one exact trimmed equal-nonzero-mass group in "
+         "declaration order");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[0].expression,
+                                      spec.family.propagators[6].expression},
+         "Mass eta mode should expose the matching propagator expressions for the chosen "
+         "equal-mass group");
+  Expect(decision.explanation ==
+             "Bootstrap Mass selector chose the first scalar-product-rule-independent equal "
+             "non-zero mass group \"msq\" with 2 non-auxiliary propagators on the current "
+             "local declaration-order candidate surface",
+         "Mass eta mode should use an honest bootstrap explanation for the reviewed local "
+         "candidate surface");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Mass eta mode should not mutate the input problem spec");
+}
+
+void MassEtaModeTreatsTrimmedExactMassLabelsAsOneGroupTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassTrimEqualitySpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
+         "Mass eta mode should group exact equal nonzero mass labels by trimmed text on the "
+         "planner surface");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[0].expression,
+                                      spec.family.propagators[6].expression},
+         "Mass eta mode should preserve declaration order within the trimmed equal-mass group");
+}
+
+void MassEtaModePrefersScalarProductRuleIndependentGroupTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassPreferenceSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2, 5},
+         "Mass eta mode should prefer a later scalar-product-rule-independent equal-mass group "
+         "over an earlier dependent one");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression,
+                                      spec.family.propagators[5].expression},
+         "Mass eta mode should preserve declaration order within the chosen independent group");
+  Expect(decision.explanation ==
+             "Bootstrap Mass selector chose the first scalar-product-rule-independent equal "
+             "non-zero mass group \"msq\" with 2 non-auxiliary propagators on the current "
+             "local declaration-order candidate surface",
+         "Mass eta mode should treat exact local mass labels like msq as local mass-parameter "
+         "tokens rather than automatically marking them dependent from scalar-product-rule RHS "
+         "text");
+}
+
+void MassEtaModeFallsBackToFirstDependentGroupTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassDependentOnlySpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
+         "Mass eta mode should fall back to the first equal nonzero mass group when every local "
+         "candidate group remains syntactically dependent");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[0].expression,
+                                      spec.family.propagators[6].expression},
+         "Mass eta mode fallback should preserve declaration order within the first dependent "
+         "group");
+  Expect(decision.explanation ==
+             "Bootstrap Mass selector chose the first equal non-zero mass group \"t-msq\" with "
+             "2 non-auxiliary propagators on the current local declaration-order candidate "
+             "surface because no scalar-product-rule-independent group was available",
+         "Mass eta mode should explain the dependent-only fallback honestly");
+}
+
+void MassEtaModeRejectsAllZeroMassSpecTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+
+  ExpectRuntimeError(
+      [&mode, &spec]() {
+        static_cast<void>(mode->Plan(spec));
+      },
+      "eta mode Mass found no non-auxiliary non-zero-mass propagator group in bootstrap",
+      "Mass eta mode should fail deterministically when every non-auxiliary propagator is "
+      "massless");
+}
+
+void MassEtaModeRejectsAuxiliaryOnlyNonzeroMassSpecTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassAuxiliaryOnlyNonzeroSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+
+  ExpectRuntimeError(
+      [&mode, &spec]() {
+        static_cast<void>(mode->Plan(spec));
+      },
+      "eta mode Mass found no non-auxiliary non-zero-mass propagator group in bootstrap",
+      "Mass eta mode should ignore auxiliary-only nonzero masses and fail deterministically "
+      "when no reviewed candidate remains");
+}
+
+void MassEtaModeDoesNotOverSelectAcrossDistinctMassGroupsTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassOverSelectionSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
+         "Mass eta mode should not collapse to every massive propagator when only one equal-mass "
+         "group should be chosen");
+  Expect(decision.selected_propagator_indices.size() == 2,
+         "Mass eta mode should keep the selected equal-mass group narrow");
+}
+
+void MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinMassMixedAuxiliarySharedMassSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Mass");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
+         "Mass eta mode should select only the non-auxiliary members of a chosen equal-mass "
+         "group");
+  Expect(std::find(decision.selected_propagator_indices.begin(),
+                   decision.selected_propagator_indices.end(),
+                   1) == decision.selected_propagator_indices.end(),
+         "Mass eta mode should not leak auxiliary propagators into a matching equal-mass group");
+}
+
 void UnsupportedBuiltinEtaModesRejectTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
-  for (const std::string& mode_name : std::vector<std::string>{"Mass", "Branch", "Loop"}) {
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
     ExpectRuntimeError(
         [&mode, &spec]() {
@@ -10695,7 +10958,7 @@ void SolveEtaModePlannedSeriesPlanningFailureTest() {
   amflow::ParsedMasterList master_basis;
   const amflow::ArtifactLayout layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-mode-plan-failure"));
-  const auto eta_mode = amflow::MakeBuiltinEtaMode("Mass");
+  const auto eta_mode = amflow::MakeBuiltinEtaMode("Branch");
 
   RecordingSeriesSolver solver;
 
@@ -10715,7 +10978,7 @@ void SolveEtaModePlannedSeriesPlanningFailureTest() {
                                                             MakeDistinctPrecisionPolicy(),
                                                             55));
       },
-      "not implemented in bootstrap",
+      "eta mode Branch is not implemented in bootstrap",
       "eta-mode-planned solver handoff should preserve eta-mode planning failures");
 
   Expect(solver.call_count() == 0,
@@ -10946,6 +11209,93 @@ void SolveBuiltinEtaModeSeriesPrescriptionHappyPathTest() {
          "builtin eta-mode solver handoff should return solver diagnostics verbatim");
 }
 
+void SolveBuiltinEtaModeSeriesMassHappyPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=3/11";
+  const std::string target_location = "eta=17/19";
+  const int requested_digits = 71;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  Expect(baseline_decision.selected_propagator_indices ==
+             MakeEtaGeneratedHappyDecision().selected_propagator_indices,
+         "builtin Mass eta-mode solve should recover the reviewed {0,6} eta-generated subset on "
+         "the narrow mixed-mass bootstrap fixture");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-mass-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-mass"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.001953125;
+  solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded mass builtin eta-mode solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeSeries(spec,
+                                        master_basis,
+                                        "Mass",
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin Mass eta-mode solve should not mutate the input problem spec");
+  Expect(solver.call_count() == 1,
+         "builtin Mass eta-mode solve should call the supplied solver exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin Mass eta-mode solve should forward the selected Mass eta DESystem unchanged "
+         "into SolveRequest");
+  Expect(request.start_location == start_location,
+         "builtin Mass eta-mode solve should preserve the start location");
+  Expect(request.target_location == target_location,
+         "builtin Mass eta-mode solve should preserve the target location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin Mass eta-mode solve should preserve every precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "builtin Mass eta-mode solve should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin Mass eta-mode solve should return solver diagnostics verbatim");
+}
+
 void SolveBuiltinEtaModeSeriesPropagatorHappyPathTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root =
@@ -11036,47 +11386,95 @@ void SolveBuiltinEtaModeSeriesPropagatorHappyPathTest() {
          "builtin eta-mode solver handoff should return solver diagnostics verbatim");
 }
 
-void SolveBuiltinEtaModeSeriesPropagatorRejectsSelectedNonzeroMassTest() {
+void SolveBuiltinEtaModeSeriesPropagatorAllowsSelectedNonzeroMassTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root =
       WritePropagatorHappyFixture("amflow-bootstrap-builtin-eta-mode-propagator-mass-fixture");
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinPropagatorMassBoundarySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::EtaInsertionDecision decision =
       amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=5/13";
+  const std::string target_location = "eta=19/23";
+  const int requested_digits = 59;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-propagator-mass-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-builtin-eta-mode-propagator-mass"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
   RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0009765625;
+  solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded propagator mixed-mass eta-mode solve";
 
   Expect(decision.selected_propagator_indices ==
              std::vector<std::size_t>{0, 2, 3, 5, 6},
          "Propagator planning should still succeed structurally on the mixed mass-boundary "
          "fixture");
 
-  ExpectRuntimeError(
-      [&spec, &master_basis, &layout, &solver]() {
-        static_cast<void>(amflow::SolveBuiltinEtaModeSeries(spec,
-                                                            master_basis,
-                                                            "Propagator",
-                                                            MakeKiraReductionOptions(),
-                                                            layout,
-                                                            layout.root / "bin" / "unused-kira.sh",
-                                                            layout.root / "bin" /
-                                                                "unused-fermat.sh",
-                                                            solver,
-                                                            "eta=0",
-                                                            "eta=1",
-                                                            MakeDistinctPrecisionPolicy(),
-                                                            55));
-      },
-      "mass == \"0\"",
-      "builtin Propagator eta-mode solve should preserve the downstream eta-insertion "
-      "mass guard for selected propagators");
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeSeries(spec,
+                                        master_basis,
+                                        "Propagator",
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
 
-  Expect(solver.call_count() == 0,
-         "builtin Propagator eta-mode solve should not call the solver when eta insertion "
-         "rejects a selected nonzero-mass propagator");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin Propagator eta-mode solve should not mutate the mixed mass-boundary fixture");
+  Expect(solver.call_count() == 1,
+         "builtin Propagator eta-mode solve should now reach the solver on the reviewed "
+         "selected-nonzero-mass path");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin Propagator eta-mode solve should preserve the widened mixed-mass eta "
+         "DESystem construction");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location,
+         "builtin Propagator eta-mode solve should preserve solver locations on the widened "
+         "mixed-mass path");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin Propagator eta-mode solve should preserve every precision-policy field after "
+         "the mixed-mass widening");
+  Expect(request.requested_digits == requested_digits,
+         "builtin Propagator eta-mode solve should preserve requested_digits on the widened "
+         "path");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin Propagator eta-mode solve should return solver diagnostics verbatim on the "
+         "widened mixed-mass path");
 }
 
 void SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest() {
@@ -11177,7 +11575,6 @@ void SolveBuiltinEtaModeSeriesRejectsUnknownBuiltinNameTest() {
 
 void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
   const std::vector<std::string> unsupported_modes = {
-      "Mass",
       "Branch",
       "Loop",
   };
@@ -11392,7 +11789,7 @@ void SolveBuiltinEtaModeListSeriesHappyPathFallbackTest() {
   const amflow::SolverDiagnostics diagnostics =
       amflow::SolveBuiltinEtaModeListSeries(spec,
                                             master_basis,
-                                            {"Mass", "Propagator"},
+                                            {"Branch", "Propagator"},
                                             MakeKiraReductionOptions(),
                                             layout,
                                             kira_path,
@@ -11421,6 +11818,173 @@ void SolveBuiltinEtaModeListSeriesHappyPathFallbackTest() {
          "builtin eta-mode-list solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "builtin eta-mode-list solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveBuiltinEtaModeListSeriesMassShortCircuitTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=4/9";
+  const std::string target_location = "eta=25/27";
+  const int requested_digits = 83;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-mass-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-mass"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0009765625;
+  solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded builtin eta-mode list mass solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeListSeries(spec,
+                                            master_basis,
+                                            {"Mass", "Propagator"},
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin eta-mode-list Mass short-circuit should not mutate the input problem spec");
+  Expect(solver.call_count() == 1,
+         "builtin eta-mode-list Mass short-circuit should stop after Mass selects a reviewed "
+         "candidate group");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin eta-mode-list Mass short-circuit should forward the selected Mass eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location,
+         "builtin eta-mode-list Mass short-circuit should preserve solver locations");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin eta-mode-list Mass short-circuit should preserve every precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "builtin eta-mode-list Mass short-circuit should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin eta-mode-list Mass short-circuit should return solver diagnostics verbatim");
+}
+
+void SolveBuiltinEtaModeListSeriesMassDependentFallbackShortCircuitTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinMassDependentOnlySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-5/9";
+  const std::string target_location = "eta=29/31";
+  const int requested_digits = 79;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-mass-dependent-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-mass-dependent"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00048828125;
+  solver.returned_diagnostics.overlap_mismatch = 0.0009765625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded builtin eta-mode list dependent-mass solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeListSeries(spec,
+                                            master_basis,
+                                            {"Mass", "Propagator"},
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin eta-mode-list Mass fallback short-circuit should not mutate the input problem "
+         "spec");
+  Expect(solver.call_count() == 1,
+         "builtin eta-mode-list Mass fallback short-circuit should still stop after the "
+         "planning-successful dependent-only Mass selection");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin eta-mode-list Mass fallback short-circuit should forward the dependent-only "
+         "Mass eta DESystem rather than falling through to Propagator");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location,
+         "builtin eta-mode-list Mass fallback short-circuit should preserve solver locations");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin eta-mode-list Mass fallback short-circuit should preserve every "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "builtin eta-mode-list Mass fallback short-circuit should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin eta-mode-list Mass fallback short-circuit should return solver diagnostics "
+         "verbatim");
 }
 
 void SolveBuiltinEtaModeListSeriesPrescriptionShortCircuitTest() {
@@ -11593,13 +12157,13 @@ void SolveBuiltinEtaModeListSeriesPrescriptionFailureFallsThroughToMassFailureTe
             MakeDistinctPrecisionPolicy(),
             55));
       },
-      "eta mode Mass is not implemented in bootstrap",
+      "eta mode Mass found no non-auxiliary non-zero-mass propagator group in bootstrap",
       "builtin eta-mode-list solver handoff should fall through from an empty Prescription "
-      "planning result and preserve the Mass stub failure");
+      "planning result and preserve the Mass no-candidate failure");
 
   Expect(solver.call_count() == 0,
          "builtin eta-mode-list solver handoff should not call the solver when Prescription "
-         "fails and Mass remains stubbed");
+         "fails and Mass has no reviewed candidate group");
 }
 
 void SolveBuiltinEtaModeListSeriesRejectsEmptyModeListTest() {
@@ -11798,7 +12362,7 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
-  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Mass", "Propagator"});
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Branch", "Propagator"});
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
@@ -11908,6 +12472,120 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
              SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "AmfOptions eta-mode solver handoff should return the same solver diagnostics as the "
          "direct builtin-list baseline");
+}
+
+void SolveAmfOptionsEtaModeSeriesMassShortCircuitTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Mass", "Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-mass-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path,
+                                        eta_symbol);
+
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-amf-options-eta-mode-mass"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary = "recorded amf-options mass solve";
+  solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveBuiltinEtaModeListSeries(spec,
+                                            master_basis,
+                                            amf_options.amf_modes,
+                                            MakeKiraReductionOptions(),
+                                            baseline_layout,
+                                            baseline_kira_path,
+                                            baseline_fermat_path,
+                                            baseline_solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits,
+                                            eta_symbol);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions Mass short-circuit should not mutate the input problem spec");
+  Expect(baseline_solver.call_count() == 1 && solver.call_count() == 1,
+         "AmfOptions Mass short-circuit should stop after the first planning-successful Mass "
+         "mode with one solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(baseline_request.system, baseline_system),
+         "AmfOptions Mass short-circuit should preserve the direct Mass-planned eta DESystem on "
+         "the builtin-list baseline");
+  Expect(SameDESystem(request.system, baseline_request.system),
+         "AmfOptions Mass short-circuit should forward the same selected Mass eta DESystem as "
+         "the direct builtin-list baseline");
+  Expect(request.start_location == baseline_request.start_location &&
+             request.start_location == start_location,
+         "AmfOptions Mass short-circuit should preserve the start location unchanged");
+  Expect(request.target_location == baseline_request.target_location &&
+             request.target_location == target_location,
+         "AmfOptions Mass short-circuit should preserve the target location unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "AmfOptions Mass short-circuit should preserve every precision-policy field");
+  Expect(request.requested_digits == baseline_request.requested_digits &&
+             request.requested_digits == requested_digits,
+         "AmfOptions Mass short-circuit should preserve requested_digits unchanged");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "AmfOptions Mass short-circuit should return the same solver diagnostics as the direct "
+         "builtin-list baseline");
 }
 
 void SolveAmfOptionsEtaModeSeriesBootstrapSolverStopsAfterFirstCompletedModeTest() {
@@ -12155,7 +12833,7 @@ void SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest() {
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinAllEtaHappySpec();
-  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Mass", "Propagator"});
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Branch", "Propagator"});
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-amf-options-eta-mode-solver-exec-failure"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-fail.sh";
@@ -12578,6 +13256,98 @@ void SolveResolvedEtaModeListSeriesHappyPathFallbackTest() {
          "resolved eta-mode list solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "resolved eta-mode list solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveResolvedEtaModeListSeriesBuiltinMassShortCircuitTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinMassHappySpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=2/5";
+  const std::string target_location = "rho=7/8";
+  const int requested_digits = 97;
+  const std::string eta_symbol = "rho";
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-mass-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path,
+                                        eta_symbol);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-mass"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.000244140625;
+  solver.returned_diagnostics.overlap_mismatch = 0.00048828125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded resolved eta-mode list mass solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveResolvedEtaModeListSeries(spec,
+                                             master_basis,
+                                             {"Mass", "CustomMode"},
+                                             {custom_mode},
+                                             MakeKiraReductionOptions(),
+                                             layout,
+                                             kira_path,
+                                             fermat_path,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "resolved eta-mode list Mass short-circuit should not mutate the input problem spec");
+  Expect(custom_mode->call_count() == 0,
+         "resolved eta-mode list Mass short-circuit should not plan later user-defined modes "
+         "once builtin Mass selects a reviewed candidate group");
+  Expect(solver.call_count() == 1,
+         "resolved eta-mode list Mass short-circuit should call the supplied solver exactly "
+         "once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "resolved eta-mode list Mass short-circuit should forward the selected Mass eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.start_location == start_location && request.target_location == target_location,
+         "resolved eta-mode list Mass short-circuit should preserve solver locations");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "resolved eta-mode list Mass short-circuit should preserve every precision-policy "
+         "field");
+  Expect(request.requested_digits == requested_digits,
+         "resolved eta-mode list Mass short-circuit should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "resolved eta-mode list Mass short-circuit should return solver diagnostics verbatim");
 }
 
 void SolveResolvedEtaModeListSeriesStopsAfterFirstCompletedModeTest() {
@@ -13602,11 +14372,13 @@ int main() {
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();
     EtaInsertionKiraEmissionTest();
+    EtaInsertionTrimsSelectedMassLiteralsForCoherentMassSurfaceTest();
+    EtaInsertionKiraEmissionTrimsSelectedMassLiteralsTest();
     EtaInsertionRejectsDuplicateIndicesTest();
     EtaInsertionRejectsOutOfRangeIndicesTest();
     EtaInsertionRejectsEmptySelectionTest();
     EtaInsertionRejectsAuxiliaryPropagatorsTest();
-    EtaInsertionRejectsNonzeroMassPropagatorsTest();
+    EtaInsertionAllowsNonzeroMassPropagatorsTest();
     AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     AllEtaModeSkipsAuxiliaryPropagatorsTest();
     PrescriptionEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
@@ -13614,6 +14386,14 @@ int main() {
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();
+    MassEtaModeSelectsEqualNonzeroMassGroupTest();
+    MassEtaModeTreatsTrimmedExactMassLabelsAsOneGroupTest();
+    MassEtaModePrefersScalarProductRuleIndependentGroupTest();
+    MassEtaModeFallsBackToFirstDependentGroupTest();
+    MassEtaModeRejectsAllZeroMassSpecTest();
+    MassEtaModeRejectsAuxiliaryOnlyNonzeroMassSpecTest();
+    MassEtaModeDoesNotOverSelectAcrossDistinctMassGroupsTest();
+    MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest();
     UnsupportedBuiltinEtaModesRejectTest();
     ResolveEtaModeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEtaModeResolvesUniqueUserDefinedModeTest();
@@ -13991,8 +14771,9 @@ int main() {
     SolveEtaModePlannedSeriesExecutionFailureTest();
     SolveBuiltinEtaModeSeriesHappyPathTest();
     SolveBuiltinEtaModeSeriesPrescriptionHappyPathTest();
+    SolveBuiltinEtaModeSeriesMassHappyPathTest();
     SolveBuiltinEtaModeSeriesPropagatorHappyPathTest();
-    SolveBuiltinEtaModeSeriesPropagatorRejectsSelectedNonzeroMassTest();
+    SolveBuiltinEtaModeSeriesPropagatorAllowsSelectedNonzeroMassTest();
     SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest();
     SolveBuiltinEtaModeSeriesRejectsUnknownBuiltinNameTest();
     SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest();
@@ -14000,6 +14781,8 @@ int main() {
     SolveBuiltinEtaModeSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeSeriesExecutionFailureTest();
     SolveBuiltinEtaModeListSeriesHappyPathFallbackTest();
+    SolveBuiltinEtaModeListSeriesMassShortCircuitTest();
+    SolveBuiltinEtaModeListSeriesMassDependentFallbackShortCircuitTest();
     SolveBuiltinEtaModeListSeriesPrescriptionShortCircuitTest();
     SolveBuiltinEtaModeListSeriesBootstrapSolverStopsAfterFirstCompletedModeTest();
     SolveBuiltinEtaModeListSeriesRejectsEmptyModeListTest();
@@ -14009,6 +14792,7 @@ int main() {
     SolveBuiltinEtaModeListSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeListSeriesExecutionFailureStopsIterationTest();
     SolveAmfOptionsEtaModeSeriesHappyPathTest();
+    SolveAmfOptionsEtaModeSeriesMassShortCircuitTest();
     SolveAmfOptionsEtaModeSeriesBootstrapSolverStopsAfterFirstCompletedModeTest();
     SolveAmfOptionsEtaModeSeriesUsesDefaultAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesRejectsEmptyAmfModeListTest();
@@ -14020,6 +14804,7 @@ int main() {
     SolveResolvedEtaModeSeriesRejectsRegistryValidationFailureTest();
     SolveResolvedEtaModeSeriesPlanningFailureTest();
     SolveResolvedEtaModeListSeriesHappyPathFallbackTest();
+    SolveResolvedEtaModeListSeriesBuiltinMassShortCircuitTest();
     SolveResolvedEtaModeListSeriesStopsAfterFirstCompletedModeTest();
     SolveResolvedEtaModeListSeriesRejectsEmptyModeListTest();
     SolveResolvedEtaModeListSeriesRejectsUnknownNameImmediatelyTest();

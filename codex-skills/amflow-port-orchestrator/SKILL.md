@@ -11,8 +11,7 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 
 ## Current Durable Status
 
-- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
-  (`Fix GNU 8 std::filesystem linkage`)
+- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4`
 - reviewed implementation is accepted through `Batch 46`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
@@ -21,13 +20,14 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
   latest candidate-local smoke replay job `5356840` passed
 - `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
   subset; latest clean-candidate build/test job `5356948` passed
-- `K0` and `K0b` are still open, so this skill must not claim K0 gate closure, honest
-  bootstrap-manifest semantics, or broader Kira smoke acceptance beyond that narrow repo-local
-  subset
-- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next as the next atomic
-  engineering milestone
-- `Batch 47` remains pending after `K0b`; manual-vs-automatic boundary equivalence is still
-  outside the accepted repo state
+- `K0b.1` is accepted on that frozen repo-local smoke subset: clean-candidate job `5425248`
+  passed, packet job `5425379` passed on `sapphire`, and the canonical retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
+- `K0` and `K0b` are now closed only for that narrow repo-local smoke subset; this skill may claim
+  one coherent retained reducer-smoke packet with an honest bootstrap manifest on `main`, but
+  still must not widen into broader Kira smoke or parity acceptance
+- `Batch 47` / `Milestone M2` are the next pending lane; manual-vs-automatic boundary
+  equivalence is still outside the accepted repo state
 
 ## Workflow
 

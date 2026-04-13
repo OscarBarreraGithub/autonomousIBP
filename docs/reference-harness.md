@@ -49,8 +49,12 @@ captured goldens or completed upstream comparisons.
 - accepted non-harness follow-on on top of this baseline: `K0-pre` is accepted as the narrow Kira
   kinematics YAML contract repair for that frozen smoke subset; latest clean-candidate build/test
   job `5356948` passed
-- `K0` and `K0b` are still not accepted; `K0b` resumes next, and none of this widens `M0a`
-  beyond bootstrap readiness
+- accepted non-harness follow-on on top of this baseline: `K0b.1` is accepted on that frozen
+  repo-local smoke subset; clean-candidate job `5425248` passed, packet job `5425379` passed on
+  `sapphire`, and the canonical retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
+- `K0` and `K0b` are therefore accepted only for that frozen repo-local smoke subset, and none of
+  this widens `M0a` beyond bootstrap readiness or implies any broader parity claim
 - `M0a` remains bootstrap-only: the phase-0 root still carries placeholder goldens and pending
   comparison summaries, so `M0b` remains open and no upstream parity claim is available yet
 

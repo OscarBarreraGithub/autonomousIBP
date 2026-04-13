@@ -85,19 +85,17 @@ BoundaryCondition MakeSampleBoundaryCondition() {
 
 ArtifactManifest MakeBootstrapManifest() {
   ArtifactManifest manifest;
-  manifest.run_id = "bootstrap-run";
+  manifest.manifest_kind = "sample-demo";
+  manifest.run_id = "sample-demo-manifest";
+  manifest.spec_provenance = "builtin sample/demo ProblemSpec";
   manifest.spec_fingerprint = "sample-planar-double-box";
-  manifest.upstream_reference = "AMFlow 1.2";
-  manifest.platform = "bootstrap";
-  manifest.amflow_commit = "unconfigured";
-  manifest.kira_version = "3.1";
-  manifest.fermat_version = "unconfigured";
-  manifest.mathematica_version = "validation-only";
-  manifest.threads = 8;
-  manifest.non_default_options = {
-      {"IntegralOrder", "5"},
-      {"ReductionMode", "Kira"},
-  };
+  manifest.family = "planar_double_box";
+  manifest.target_count = 1;
+  manifest.execution_status = "sample-demo-not-run";
+  manifest.exit_code = 0;
+  manifest.amflow_commit = "sample-demo";
+  manifest.git_status_short = "sample-demo";
+  manifest.threads = 0;
   return manifest;
 }
 

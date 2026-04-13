@@ -37,8 +37,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 46`; `Batch 47` pending after `K0b` |
-| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, `K0-pre-spec` and `K0-pre` accepted on the narrow repo-local smoke subset, `K0`/`K0b` still open |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 46`; `Batch 47` is the next pending lane |
+| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
 ### Exit Gates
@@ -68,8 +68,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
-  (`Fix GNU 8 std::filesystem linkage`) and is the accepted release baseline
+- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4` and is the current accepted release baseline
 - reviewed implementation remains accepted through `Batch 46`; `Milestone M1` is complete on that
   reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
@@ -79,11 +78,12 @@ exit gate. The current live state must always be read from `docs/implementation-
   latest candidate-local smoke replay job `5356840` passed
 - `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
   subset; latest clean-candidate build/test job `5356948` passed
-- `Gate K0` is still open; there is still no accepted coherent reducer-smoke packet with an honest
-  bootstrap manifest on `main`, and the accepted repo-local frozen fixture is narrower than `K0`
-- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next as the next atomic
-  engineering milestone
-- `Batch 47` and `Milestone M2` remain pending after `K0b`
+- `K0b.1` is accepted on that frozen repo-local smoke subset: clean-candidate job `5425248`
+  passed, packet job `5425379` passed on `sapphire`, and the retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
+- `Gate K0` is now closed only for that frozen repo-local smoke subset: one coherent retained
+  reducer-smoke packet with an honest bootstrap manifest is accepted on `main`
+- `Batch 47` and `Milestone M2` are the next pending lane after that narrow `K0` / `K0b` acceptance
 
 ## Current State At R0
 
@@ -119,11 +119,6 @@ exit gate. The current live state must always be read from `docs/implementation-
 ### Still Missing Or Still Bootstrap-Only
 
 - builtin eta modes other than `All` are still explicit bootstrap stubs
-- there is still no accepted `K0` gate closure or honest bootstrap manifest; the accepted
-  `K0-pre-spec` repo-local fixture freeze and accepted `K0-pre` kinematics-YAML repair are both
-  narrower than `K0`
-- `K0b` resumes next and must still deliver an honest bootstrap manifest plus a clean accepted
-  reducer-smoke packet
 - there is no accepted manual-vs-automatic boundary equivalence harness yet; `Batch 47` remains
   pending and `Milestone M2` is still open
 - solver/provider coupling, automatic boundary execution, and `BoundaryCondition` generation from

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -132,6 +133,28 @@ std::filesystem::path FreshTempDir(const std::string& label) {
   std::filesystem::remove_all(path);
   std::filesystem::create_directories(path);
   return path;
+}
+
+std::string ShellSingleQuote(const std::string& value) {
+  std::string quoted = "'";
+  for (const char character : value) {
+    if (character == '\'') {
+      quoted += "'\"'\"'";
+    } else {
+      quoted.push_back(character);
+    }
+  }
+  quoted.push_back('\'');
+  return quoted;
+}
+
+std::filesystem::path CurrentBuildBinaryPath(const std::string& name) {
+  const std::filesystem::path self = std::filesystem::read_symlink("/proc/self/exe");
+  return self.parent_path() / name;
+}
+
+int RunShellCommand(const std::string& command) {
+  return std::system(command.c_str());
 }
 
 std::filesystem::path TestDataRoot() {
@@ -1329,6 +1352,38 @@ std::string MakeFixtureCopyScript(const std::filesystem::path& fixture_root,
   }
   if (write_stdout) {
     script << "echo \"fixture:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeK0SmokeFixtureCopyScript(const bool write_stdout = true,
+                                         const bool add_direct_results_root = false,
+                                         const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "generated_dest=\"$PWD/results/automatic_vs_manual_k0_smoke\"\n";
+  script << "mkdir -p \"$generated_dest\"\n";
+  script << "cat > \"$generated_dest/masters\" <<'EOF'\n";
+  script << "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] 0\n";
+  script << "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-2,-1] 0\n";
+  script << "EOF\n";
+  script << "cat > \"$generated_dest/kira_target.m\" <<'EOF'\n";
+  script << "{\n";
+  script << "  automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] -> "
+            "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0]\n";
+  script << "}\n";
+  script << "EOF\n";
+  if (add_direct_results_root) {
+    script << "direct_dest=\"$PWD/../results/automatic_vs_manual_k0_smoke\"\n";
+    script << "mkdir -p \"$direct_dest\"\n";
+    script << "cat > \"$direct_dest/masters\" <<'EOF'\n";
+    script << "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] 0\n";
+    script << "EOF\n";
+  }
+  if (write_stdout) {
+    script << "echo \"k0:$1\"\n";
   }
   script << "exit " << exit_code << "\n";
   return script.str();
@@ -11821,21 +11876,303 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallba
          "construction fails after mixed selection");
 }
 
-void BootstrapArtifactManifestTest() {
-  const auto layout = amflow::EnsureArtifactLayout(std::filesystem::temp_directory_path() /
-                                                   "amflow-bootstrap-manifest-test");
+void BootstrapBuiltinSampleManifestTest() {
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-sample-manifest-test"));
   const amflow::ArtifactManifest manifest = amflow::MakeBootstrapManifest();
   const std::string yaml = amflow::SerializeArtifactManifestYaml(manifest);
   const std::filesystem::path path = amflow::WriteArtifactManifest(layout, manifest);
 
+  Expect(manifest.manifest_kind == "sample-demo",
+         "write-manifest should stay explicitly sample/demo");
+  Expect(manifest.run_id == "sample-demo-manifest",
+         "sample/demo manifest should not reuse the K0 packet run id");
+  Expect(path == layout.manifests_dir / "sample-demo-manifest.yaml",
+         "sample/demo manifest should use its own filename");
+  Expect(std::filesystem::exists(path), "sample/demo manifest should be written");
+  Expect(ReadFile(path) == yaml, "sample/demo manifest file should match the serialized YAML");
+  Expect(yaml.find("manifest_kind: \"sample-demo\"\n") != std::string::npos,
+         "sample/demo manifest YAML should declare its sample/demo kind");
+  Expect(yaml.find("spec:\n  provenance: \"builtin sample/demo ProblemSpec\"\n") !=
+             std::string::npos,
+         "sample/demo manifest YAML should say it is builtin sample/demo data");
+  Expect(yaml.find("run_id: \"bootstrap-run\"\n") == std::string::npos,
+         "sample/demo manifest YAML should not reuse the K0 packet run id");
+  Expect(yaml.find("automatic_vs_manual_k0_smoke") == std::string::npos,
+         "sample/demo manifest YAML should not leak the K0 smoke packet identity");
+  Expect(yaml.find("AMFlow 1.2") == std::string::npos,
+         "sample/demo manifest YAML should not overclaim an upstream runtime snapshot");
+}
+
+void K0BootstrapManifestSerializationTest() {
+  const std::filesystem::path spec_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
+  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(spec_path);
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-k0-manifest-serialization"));
+  const std::filesystem::path results_root =
+      layout.generated_config_dir / "results" / "automatic_vs_manual_k0_smoke";
+  const std::filesystem::path direct_results_root =
+      layout.results_dir / "automatic_vs_manual_k0_smoke";
+  std::filesystem::create_directories(results_root);
+  std::filesystem::create_directories(direct_results_root);
+  {
+    std::ofstream stream(results_root / "masters");
+    stream << "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] 0\n";
+  }
+  {
+    std::ofstream stream(results_root / "kira_target.m");
+    stream << "{automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] -> "
+              "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0]}\n";
+  }
+  {
+    std::ofstream stream(direct_results_root / "masters");
+    stream << "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0] 0\n";
+  }
+
+  amflow::ReductionOptions options = MakeKiraReductionOptions();
+  const amflow::ArtifactManifest manifest = amflow::MakeFileBackedKiraRunManifest(
+      {spec_path,
+       "repo-local frozen K0 smoke fixture derived from preserved input",
+       amflow::SerializeProblemSpecYaml(spec),
+       spec.family.name,
+       spec.targets.size(),
+       layout.root,
+       layout.generated_config_dir,
+       layout.root / "bin" / "fake-kira.sh",
+       layout.root / "bin" / "fake-fermat.sh",
+       "/tmp/fake-kira jobs.yaml",
+       "completed",
+       0,
+       std::filesystem::path(AMFLOW_SOURCE_DIR),
+       "9cf233eb8c955961a8c78903d28f6899a40f48e4",
+       "clean",
+       1,
+       {{"IBPReducer", options.ibp_reducer},
+        {"IntegralOrder", std::to_string(options.integral_order)},
+        {"ReductionMode", amflow::ToString(options.reduction_mode)},
+        {"PermutationOption", std::to_string(*options.permutation_option)}},
+       {{"PermutationOption", std::to_string(*options.permutation_option)}},
+       layout.logs_dir / "kira.attempt-0001.stdout.log",
+       layout.logs_dir / "kira.attempt-0001.stderr.log"});
+  const std::string yaml = amflow::SerializeArtifactManifestYaml(manifest);
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult parsed =
+      backend.ParseReductionResult(layout.root, "automatic_vs_manual_k0_smoke");
+
+  Expect(manifest.manifest_kind == "file-backed-kira-run",
+         "file-backed K0 manifest should declare the file-backed run kind");
   Expect(manifest.run_id == "bootstrap-run",
-         "bootstrap manifest should preserve the repo-local default run id");
-  Expect(path == layout.manifests_dir / "bootstrap-run.yaml",
-         "bootstrap manifest should use the repo-local default run id as its filename");
-  Expect(std::filesystem::exists(path), "bootstrap manifest should be written");
-  Expect(ReadFile(path) == yaml, "bootstrap manifest file should match the serialized YAML");
-  Expect(yaml.find("run_id: \"bootstrap-run\"\n") != std::string::npos,
-         "bootstrap manifest YAML should preserve the repo-local default run id");
+         "file-backed K0 manifest should keep the retained packet run id");
+  Expect(manifest.spec_path == std::filesystem::absolute(spec_path),
+         "file-backed K0 manifest should preserve the exact spec path");
+  Expect(manifest.family == "automatic_vs_manual_k0_smoke",
+         "file-backed K0 manifest should preserve the K0 smoke family name");
+  Expect(manifest.target_count == 4,
+         "file-backed K0 manifest should preserve the frozen K0 target count");
+  Expect(manifest.results_family_root == parsed.master_list.source_path.parent_path() &&
+             manifest.results_family_root == results_root,
+         "file-backed K0 manifest should preserve the same results-family root the parser "
+         "actually resolves");
+  Expect(manifest.masters_path == results_root / "masters",
+         "file-backed K0 manifest should record the actual masters path");
+  Expect(manifest.rule_path == results_root / "kira_target.m",
+         "file-backed K0 manifest should record the actual rule path");
+  Expect(manifest.non_default_options.size() == 1 &&
+             manifest.non_default_options.at("PermutationOption") == "1",
+         "file-backed K0 manifest should record only actual non-default reducer options");
+  Expect(yaml.find("spec:\n  provenance: \"repo-local frozen K0 smoke fixture derived from "
+                   "preserved input\"\n") != std::string::npos,
+         "file-backed K0 manifest YAML should preserve the reviewed provenance boundary");
+  Expect(yaml.find("results_family_root: \"" + results_root.string() + "\"\n") !=
+             std::string::npos,
+         "file-backed K0 manifest YAML should preserve the resolved results-family root");
+  Expect(yaml.find("PermutationOption: \"1\"\n") != std::string::npos,
+         "file-backed K0 manifest YAML should preserve the active non-default permutation "
+         "option");
+}
+
+void RunKiraFromFileRefreshesManifestFromParsedReducerArtifactsTest() {
+  const std::filesystem::path spec_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
+  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(spec_path);
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-k0-manifest-refresh"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-k0.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeK0SmokeFixtureCopyScript(true, true, 0));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  amflow::KiraBackend backend;
+  const amflow::ReductionOptions options = MakeKiraReductionOptions();
+  const auto preparation = backend.Prepare(spec, options, layout);
+  const amflow::CommandExecutionResult result =
+      backend.ExecutePrepared(preparation, layout, kira_path, fermat_path);
+
+  const amflow::ArtifactManifest manifest = amflow::MakeFileBackedKiraRunManifest(
+      {spec_path,
+       "repo-local frozen K0 smoke fixture derived from preserved input",
+       amflow::SerializeProblemSpecYaml(spec),
+       spec.family.name,
+       spec.targets.size(),
+       layout.root,
+       result.working_directory,
+       kira_path,
+       fermat_path,
+       result.command,
+       "completed",
+       result.exit_code,
+       std::filesystem::path(AMFLOW_SOURCE_DIR),
+       "9cf233eb8c955961a8c78903d28f6899a40f48e4",
+       "clean",
+       1,
+       {{"IBPReducer", options.ibp_reducer},
+        {"IntegralOrder", std::to_string(options.integral_order)},
+        {"ReductionMode", amflow::ToString(options.reduction_mode)},
+        {"PermutationOption", std::to_string(*options.permutation_option)}},
+       {{"PermutationOption", std::to_string(*options.permutation_option)}},
+       result.stdout_log_path,
+       result.stderr_log_path});
+  const std::filesystem::path manifest_path = amflow::WriteArtifactManifest(layout, manifest);
+  const std::string yaml = ReadFile(manifest_path);
+  std::size_t manifest_count = 0;
+  for (const auto& entry : std::filesystem::directory_iterator(layout.manifests_dir)) {
+    static_cast<void>(entry);
+    ++manifest_count;
+  }
+
+  Expect(result.Succeeded(), "fake K0 file-backed Kira run should complete successfully");
+  Expect(manifest_path == layout.manifests_dir / "bootstrap-run.yaml",
+         "file-backed K0 run should write the retained bootstrap-run manifest name");
+  Expect(manifest_count == 1,
+         "file-backed K0 run should leave exactly one authoritative manifest in the packet");
+  Expect(manifest.results_family_root ==
+             layout.generated_config_dir / "results" / "automatic_vs_manual_k0_smoke",
+         "file-backed K0 run should record the exact generated-config results tree used by the "
+         "parser contract");
+  Expect(yaml.find("stdout_log: \"" + result.stdout_log_path.string() + "\"\n") !=
+             std::string::npos &&
+             yaml.find("stderr_log: \"" + result.stderr_log_path.string() + "\"\n") !=
+                 std::string::npos,
+         "file-backed K0 manifest YAML should preserve the actual execution log paths");
+  Expect(yaml.find("sample-planar-double-box") == std::string::npos &&
+             yaml.find("AMFlow 1.2") == std::string::npos &&
+             yaml.find("threads: 8") == std::string::npos,
+         "file-backed K0 manifest YAML should not fall back to the old sample placeholder "
+         "values");
+}
+
+void RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-bootstrap-k0-manifest-nonzero-exit-cli");
+  const std::filesystem::path kira_path = run_root / "bin" / "fake-kira-fail.sh";
+  const std::filesystem::path fermat_path = run_root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"expected-k0-cli-failure\" 1>&2\n"
+      "exit 9\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " run-kira-from-file " +
+      ShellSingleQuote((std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml")
+                           .string()) +
+      " " + ShellSingleQuote(kira_path.string()) + " " + ShellSingleQuote(fermat_path.string()) +
+      " " + ShellSingleQuote(run_root.string()) + " >/dev/null 2>&1";
+
+  Expect(RunShellCommand(command) != 0,
+         "nonzero fake Kira exit should keep the CLI run non-successful");
+
+  const std::filesystem::path manifest_path = run_root / "manifests/bootstrap-run.yaml";
+  const std::string yaml = ReadFile(manifest_path);
+  const std::filesystem::path expected_results_root =
+      run_root / "results/automatic_vs_manual_k0_smoke";
+
+  Expect(std::filesystem::exists(manifest_path),
+         "nonzero file-backed CLI run should still write the bootstrap manifest");
+  Expect(yaml.find("status: \"completed\"\n") != std::string::npos &&
+             yaml.find("exit_code: 9\n") != std::string::npos,
+         "nonzero file-backed CLI run should preserve the real reducer exit status");
+  Expect(yaml.find("results_family_root: \"" + expected_results_root.string() + "\"\n") !=
+             std::string::npos,
+         "nonzero file-backed CLI run should still record the parser-contract default "
+         "results-family root");
+  Expect(yaml.find("masters_path: ") == std::string::npos &&
+             yaml.find("rule_path: ") == std::string::npos,
+         "nonzero file-backed CLI run should not invent result-file paths when no outputs exist");
+}
+
+void RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path temp_repo = FreshTempDir("amflow-bootstrap-k0-spec-copy-repo");
+  std::filesystem::create_directories(temp_repo / ".git");
+  const std::filesystem::path spec_copy = temp_repo / "other/problem-spec.k0-smoke.yaml";
+  std::filesystem::create_directories(spec_copy.parent_path());
+  {
+    std::ofstream stream(spec_copy);
+    stream << ReadFile(std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml");
+  }
+  const std::filesystem::path kira_path = temp_repo / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = temp_repo / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeK0SmokeFixtureCopyScript(true, false, 0));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " run-kira-from-file " +
+      ShellSingleQuote(spec_copy.string()) + " " + ShellSingleQuote(kira_path.string()) + " " +
+      ShellSingleQuote(fermat_path.string()) + " " +
+      ShellSingleQuote((temp_repo / "artifacts").string()) + " >/dev/null 2>&1";
+
+  Expect(RunShellCommand(command) == 0,
+         "repo-local spec copy should still be runnable through the CLI");
+
+  const std::string yaml =
+      ReadFile(temp_repo / "artifacts/manifests/bootstrap-run.yaml");
+  Expect(yaml.find("provenance: \"repo-local frozen K0 smoke fixture derived from preserved "
+                   "input\"\n") == std::string::npos,
+         "repo-local copies of the K0 smoke spec should not inherit the reviewed frozen-fixture "
+         "provenance label");
+  Expect(yaml.find("provenance: \"repo-local file-backed ProblemSpec\"\n") != std::string::npos,
+         "repo-local copies of the K0 smoke spec should use the generic repo-local provenance");
+}
+
+void ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path external_root =
+      FreshTempDir("amflow-bootstrap-k0-external-spec-no-git");
+  const std::filesystem::path spec_copy = external_root / "problem-spec.k0-smoke.yaml";
+  {
+    std::ofstream stream(spec_copy);
+    stream << ReadFile(std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml");
+  }
+  const std::filesystem::path kira_path = external_root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = external_root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeK0SmokeFixtureCopyScript(true, false, 0));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " run-kira-from-file " +
+      ShellSingleQuote(spec_copy.string()) + " " + ShellSingleQuote(kira_path.string()) + " " +
+      ShellSingleQuote(fermat_path.string()) + " " +
+      ShellSingleQuote((external_root / "artifacts").string()) + " >/dev/null 2>&1";
+
+  Expect(RunShellCommand(command) == 0,
+         "external file-backed spec should still be runnable through the CLI");
+
+  const std::string yaml =
+      ReadFile(external_root / "artifacts/manifests/bootstrap-run.yaml");
+  Expect(yaml.find("git_status_short: \"clean\"\n") == std::string::npos,
+         "external file-backed specs should not claim a synthetic clean git status");
+  Expect(yaml.find("repository:\n  root: ") == std::string::npos &&
+             yaml.find("repository:\n  commit: ") == std::string::npos,
+         "external file-backed specs should omit repository root/commit facts when the git "
+         "probe is unavailable");
 }
 
 void OptionDefaultsTest() {
@@ -12265,7 +12602,12 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsUnknownNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
-    BootstrapArtifactManifestTest();
+    BootstrapBuiltinSampleManifestTest();
+    K0BootstrapManifestSerializationTest();
+    RunKiraFromFileRefreshesManifestFromParsedReducerArtifactsTest();
+    RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest();
+    RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
+    ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     OptionDefaultsTest();
     std::cout << "amflow bootstrap tests passed\n";
     return 0;

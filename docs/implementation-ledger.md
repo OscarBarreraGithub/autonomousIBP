@@ -6,23 +6,28 @@ This ledger is the review surface for incremental AMFlow-port batches. Every imp
 
 | Item | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Authoritative `main` base | accepted | `fdbceea3cb94ee2e811573ad446e5777917c1bb0` (`Fix GNU 8 std::filesystem linkage`) | accepted pre-`K0` release baseline; tracks `origin/main` |
+| Authoritative `main` base | accepted | `9cf233eb8c955961a8c78903d28f6899a40f48e4` | accepted post-`K0-pre` / `K0b.1` release baseline; tracks `origin/main` |
 | `Milestone M1` | complete | reviewed `Batch 32` through `Batch 43` | the reviewed solver MVP gate is closed on the current public subset |
 | `Milestone M0a` | accepted | pinned Linux/toolchain manifest, phase-0 bootstrap root, dependency-sanity packet, and Wolfram smoke packet | bootstrap readiness only; no real reference capture or parity claim yet |
 | `Operational Gate B0/G1` | accepted | clean-candidate `sapphire` verification job `5305579` | restores GNU 8 `std::filesystem` linkage and the canonical `cmake -S . -B build` / `cmake --build build --parallel 1` / `ctest --test-dir build --output-on-failure` gate |
 | `K0-pre-spec` | accepted | latest candidate-local smoke replay job `5356840` passed | accepts only a repo-local K0 smoke fixture freeze derived from preserved input; no broader smoke or manifest claim follows from it |
-| `K0-pre` | accepted | latest clean-candidate build/test job `5356948` passed | accepts only the narrow Kira kinematics YAML contract repair needed for that frozen smoke subset; `K0` and `K0b` remain open |
-| `Gate K0` | pending | reducer-smoke packet not yet accepted | no accepted coherent Kira smoke packet or honest bootstrap manifest on `main`; the accepted repo-local frozen fixture is narrower than `K0` |
+| `K0-pre` | accepted | latest clean-candidate build/test job `5356948` passed | accepts only the narrow Kira kinematics YAML contract repair needed for that frozen smoke subset |
+| `K0b.1` | accepted | clean-candidate job `5425248`, coherent packet job `5425379`, and independent rereview approval | accepts only the truthful file-backed bootstrap-manifest seam for the frozen repo-local K0 smoke packet; `write-manifest` remains sample/demo only |
+| `Gate K0` | accepted | canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` plus job `5425379` | one coherent retained reducer-smoke packet with an honest bootstrap manifest is now accepted on `main` for the frozen repo-local K0 smoke subset only |
 | `Batch 47` / `Milestone M2` | pending | depends on accepted `K0` plus the Batch-47 equivalence harness | automatic boundary/provider equivalence is still not part of the accepted repo state |
 
 `K0-pre-spec: Repo-Local K0 Smoke Fixture Freeze` is accepted as a narrow repo-local smoke-fixture
 freeze derived from preserved input, with latest candidate-local smoke replay job `5356840`
 passed. `K0-pre: Kira Kinematics YAML Contract Repair` is accepted as the matching narrow contract
-repair, with latest clean-candidate build/test job `5356948` passed. These acceptances do not
-close `K0` or `K0b`: no durable doc should claim an accepted coherent K0 reducer packet, an
-honest K0 bootstrap manifest, or any wider Kira smoke surface than the frozen repo-local subset.
-`K0b` resumes next, and Batch-47 manual-vs-automatic boundary equivalence remains separate and
-unaccepted until `Batch 47` and `Milestone M2` close.
+repair, with latest clean-candidate build/test job `5356948` passed. `K0b.1: Truthful File-Backed
+Bootstrap Manifest For The Frozen K0 Smoke Packet` is now accepted on top of that narrow subset:
+clean-candidate job `5425248` passed, coherent packet job `5425379` passed on `sapphire`, the
+canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke`
+is coherent and complete, and the independent rereview cleared with no blocking findings.
+These acceptances close `K0` and `K0b` only for the frozen repo-local K0 smoke subset: one
+coherent retained reducer-smoke packet with an honest bootstrap manifest is now accepted on `main`,
+while broader Kira smoke, parity, and manual-vs-automatic boundary-equivalence claims remain
+unaccepted. `Batch 47` / `Milestone M2` are the next roadmap-owned lane.
 
 ## Entry Template
 
@@ -41,6 +46,7 @@ inside the active track, not the authoritative global order.
 
 | Batch | Scope | Owner | Reviewer | Status | Verification | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
+| `K0b.1` | truthful file-backed bootstrap manifest for the frozen K0 smoke packet; keep `write-manifest` sample/demo only | implementation worker | independent rereview | `reviewed` | local implementation verification: `module load cmake/4.2.3-fasrc01`; `cmake -S . -B build` -> exit `0`; `cmake --build build` -> exit `0`; `ctest --test-dir build --output-on-failure` -> exit `0`, `1/1` tests passed; targeted CLI smoke: `./build/amflow-cli write-manifest "$tmp"` -> wrote `manifests/sample-demo-manifest.yaml` with sample/demo-only content and no K0 identity; targeted CLI smoke: `./build/amflow-cli run-kira-from-file specs/problem-spec.k0-smoke.yaml "$fake_kira" "$fake_fermat" "$tmp"` -> exit `0`, wrote `manifests/bootstrap-run.yaml` with truthful file-backed spec provenance, `status: "completed"`, and resolved `generated-config/results/automatic_vs_manual_k0_smoke`; acceptance verification: clean-candidate job `5425248` passed for candidate `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/k0b1-final-20260413T061602Z-2330933`; coherent packet job `5425379` passed on `sapphire`; canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete | accepted on `main@9cf233eb8c955961a8c78903d28f6899a40f48e4` for the frozen repo-local K0 smoke subset only. Independent rereview found no blocking findings and recommended accepting `K0b.1` plus advancing both `K0` and `K0b`. `second-pass: approved`; next-batch recommendation: start `Batch 47` / `Milestone M2`, manual-vs-automatic boundary equivalence on the accepted narrow baseline |
 | `Batch 1` | file-backed `ProblemSpec` loading, CLI support for external specs, and stronger parser/target validation | Codex | reviewer agent | reviewed | `cmake --build build`; `ctest --test-dir build --output-on-failure`; CLI sanity checks for `load-spec` and `emit-kira-from-file` | accepted after duplicate-key, additive-field, and malformed-target fixes |
 | `Batch 2` | phase-0 reference harness bootstrap, pinned-input manifesting, optional upstream fetch, placeholder golden freeze, and tar-safe archive handling | Codex | reviewer agent | reviewed | `python3 -m py_compile` on harness scripts; helper `--self-check` runs; representative bootstrap invocation to a temp root | accepted after remote verification, extraction refresh, path-safe benchmark IDs, placeholder refresh, and explicit tar-policy fixes |
 | `Batch 3` | external Kira process execution with structured results, deterministic logs, explicit startup-failure handling, and CLI runner commands | Codex | reviewer agent | reviewed | `cmake --build build`; `ctest --test-dir build --output-on-failure`; fake-executable CLI and rejected-run regression coverage | accepted after cwd recording, deterministic rejected-run logs, checked preparation writes, unique attempt-scoped logs, and `FailedToStart` classification fixes |

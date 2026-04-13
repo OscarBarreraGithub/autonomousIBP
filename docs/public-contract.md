@@ -39,11 +39,16 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   latest candidate-local smoke replay job `5356840` passed
 - `K0-pre` is accepted as a narrow Kira kinematics YAML contract repair for that frozen smoke
   subset; latest clean-candidate build/test job `5356948` passed
-- `K0` and `K0b` are not accepted, so this contract still excludes any coherent K0
-  reducer-smoke packet, honest K0 bootstrap-manifest semantics, or broader Kira smoke claim
+- `K0b.1` is accepted on the frozen repo-local K0 smoke subset: clean-candidate job `5425248`
+  passed, packet job `5425379` passed on `sapphire`, and the retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and
+  complete
+- `K0` and `K0b` are therefore accepted only for that frozen repo-local K0 smoke subset: one
+  coherent retained reducer-smoke packet with an honest file-backed bootstrap manifest now exists
+  on `main`
 - the public contract does not widen beyond the current reviewed `Batch 46` boundary; the accepted
   K0 smoke subset is only the repo-local frozen fixture derived from preserved input plus the
-  narrow `K0-pre` kinematics-YAML repair
+  narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet
 - `Batch 47` remains pending, so manual-vs-automatic boundary equivalence and automatic boundary
   execution/provider parity are still outside the accepted public boundary
 
@@ -132,6 +137,24 @@ The Kira runner keeps reducer execution explicit and deterministic:
 - validation failures and missing executables are reported as invalid configuration errors without attempting execution
 - fork, `chdir`, and `execve` startup failures are reported as `FailedToStart`, distinct from a completed reducer process that exits nonzero
 - nonzero reducer exits are surfaced directly with the recorded exit code and preserved logs
+
+The bootstrap manifest surface is intentionally split:
+
+- `write-manifest <dir>` writes a sample/demo manifest only; it is not a file-backed K0 packet and
+  must not be treated as retained reducer evidence
+- `run-kira-from-file <file> <kira> <fermat> [dir]` writes `manifests/bootstrap-run.yaml` from the
+  actual file-backed run facts for that artifact root
+- the file-backed manifest records the loaded spec provenance boundary, exact spec path,
+  deterministic spec fingerprint, family name, target count, artifact root, execution working
+  directory, explicit Kira/Fermat executable paths, rendered command text, execution status,
+  exit code, repository commit/status snapshot when available, and the exact family-results tree
+  that the parser contract would consume
+- when reducer outputs already exist under both accepted parser roots, the manifest records the
+  same preferred family-results tree that the parser uses: the most complete tree, with ties
+  favoring `generated-config/results/<family>/`
+- `non_default_options` records only actual deviations from the bootstrap reducer defaults; the
+  snapshot defaults such as `IntegralOrder=5` and `ReductionMode=Kira` are not reported there as
+  if they were overrides
 
 The bootstrap also exposes a deterministic parsed-result surface for Kira artifacts:
 

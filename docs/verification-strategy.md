@@ -8,8 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
-  (`Fix GNU 8 std::filesystem linkage`)
+- authoritative `main` base is `9cf233eb8c955961a8c78903d28f6899a40f48e4`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -18,9 +17,12 @@ The migration is phase-gated. Every phase must pass:
   latest candidate-local smoke replay job `5356840` passed
 - `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
   subset; latest clean-candidate build/test job `5356948` passed the canonical build/test gate
-- `K0` and `K0b` are still pending; no accepted coherent Kira reducer-smoke packet with an honest
-  bootstrap manifest exists on `main`
-- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next
+- `K0b.1` is accepted: clean-candidate job `5425248` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/k0b1-final-20260413T061602Z-2330933`,
+  packet job `5425379` passed on `sapphire`, and the canonical retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
+- `K0` and `K0b` are now accepted only for the frozen repo-local K0 smoke subset via that one
+  coherent retained reducer-smoke packet with an honest bootstrap manifest on `main`
 
 ## Test Taxonomy
 
@@ -59,14 +61,17 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   job `5356840`
 - latest accepted clean-candidate build/test confirmation for the `K0-pre` kinematics-YAML repair
   is job `5356948`
+- latest accepted clean-candidate gate for the `K0b.1` packet is job `5425248`
+- latest accepted coherent K0 reducer-smoke packet job is `5425379` on `sapphire`, retained at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
-- `K0` acceptance will additionally require one coherent retained reducer packet with an honest
-  bootstrap manifest; the accepted repo-local frozen fixture derived from preserved input does not
-  satisfy that gate, and the current `main` branch does not have it yet
+- `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
+  manifest; broader Kira smoke, broader reducer parity, and `Batch 47` / `Milestone M2` remain
+  separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 

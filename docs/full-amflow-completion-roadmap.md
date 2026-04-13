@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted narrowly as the bootstrap-only `Prescription` alias seam; `Batch 49` is the next roadmap-owned lane |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; the current accepted staging packet is `Batch 49` (`Propagator` only); `Batch 49b` is the next roadmap-owned lane |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -68,9 +68,9 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856` and is the current accepted release baseline
-- reviewed implementation remains accepted through `Batch 46`; `Milestone M1` is complete on that
-  reviewed surface
+- authoritative `main` base is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` and is the current accepted release baseline
+- reviewed implementation remains accepted through landed `Batch 48`; `Milestone M1` is complete
+  on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` canonical configure/build/test packet passed at job `5305579`
@@ -87,10 +87,21 @@ exit gate. The current live state must always be read from `docs/implementation-
   the supported simple Euclidean massless sample subset only, builtin `Tradition` plus one exact
   user-defined singleton `<family>::eta->infinity` path agree between manual and automatic
   attachment, and the reviewed pre-solve failures remain preserved with solver non-invocation
+- `Batch 48` is accepted on `main` as the bootstrap-only builtin eta-mode `Prescription` planner
+  seam on the current supported subset; final accepted clean-candidate `sapphire` job `5439311`
+  cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the clean
+  release baseline
+- the current accepted staging packet on top of that clean baseline is `Batch 49`, intentionally
+  narrowed to the builtin eta-mode `Propagator` structural selector only: local module-loaded
+  configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`, and clean-candidate `sapphire`
+  job `5445260` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`;
+  `Mass` remains deferred because a safe selector rule is not yet accepted
 - this does not widen the public/runtime surface beyond reviewed `Batch 46`, does not accept
-  broader automatic-boundary execution/provider parity, and does not relax the separate `M0b`
-  blocker on broader parity claims
-- `Batch 48` is accepted narrowly as the bootstrap-only builtin eta-mode `Prescription` planner seam on the current supported subset; `Batch 49` is now the next roadmap-owned implementation lane
+  broader automatic-boundary execution/provider parity, does not accept `Mass` semantics or
+  `Propagator::prescription` / `feynman_prescription` parity, and does not relax the separate
+  `M0b` blocker on broader parity claims
+- `Batch 49b` is now the next roadmap-owned implementation lane
 
 ## Current State At R0
 
@@ -125,7 +136,10 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ### Still Missing Or Still Bootstrap-Only
 
-- builtin eta modes other than `All` are still explicit bootstrap stubs
+- builtin eta-mode planning beyond reviewed `All` is still bootstrap-limited: landed
+  `Prescription` is only an alias over `All`, the current accepted staging packet adds only the
+  `Propagator` structural selector, and `Mass`, `Branch`, and `Loop` remain deferred bootstrap
+  work
 - accepted manual-vs-automatic boundary equivalence is still narrow: only the supported simple
   Euclidean massless sample subset is covered, and only for builtin `Tradition` plus one exact
   user-defined singleton `<family>::eta->infinity`
@@ -438,12 +452,13 @@ dependency change.
 | Batch | Scope | Depends On |
 | --- | --- | --- |
 | `Batch 48` | bootstrap-only builtin eta-mode planning seam for `Prescription`, keeping the other stubbed builtins deferred | `Batch 27`, `Milestone M1`, `Milestone M2` |
-| `Batch 49` | builtin eta-mode planning seam for `Mass` and `Propagator`, with explicit regression coverage for the known upstream `Mass`-mode bug surface | `Batch 48` |
-| `Batch 50` | builtin eta-mode planning seam for `Branch` and `Loop` | `Batch 49` |
+| `Batch 49` | builtin eta-mode planning seam for `Propagator` as a structural selector over the current reviewed subset only | `Batch 48` |
+| `Batch 49b` | deferred builtin eta-mode planning seam for `Mass`, gated on an accepted safe selector rule plus explicit regression coverage for the known upstream `Mass`-mode bug surface | `Batch 49` |
+| `Batch 50` | builtin eta-mode planning seam for `Branch` and `Loop` | `Batch 49b` |
 | `Batch 51` | multi-invariant orchestration seam that iterates the reviewed one-invariant generator/execution path without widening solver behavior | `Batch 17`, `Milestone M1`, `Milestone M2` |
 | `Batch 52` | symbolic widening of `BuildInvariantDerivativeSeed(...)` beyond the current massless-standard bootstrap subset while staying representable on the family propagator table | `Batch 51` |
 | `Batch 53` | multiple top-sector Kira target orchestration and reduction-span validation over the accepted preparation/execution seams | `Batch 8`, `Batch 12`, `Batch 51`, `Batch 52` |
-| `Milestone M3` | loop-core parity gate: family model matches reference, prefactors are locked, and Kira reduction span matches on the first mandatory package families | `Batch 48` through `Batch 53`, `Milestone M0b` |
+| `Milestone M3` | loop-core parity gate: family model matches reference, prefactors are locked, and Kira reduction span matches on the first mandatory package families | `Batch 48`, `Batch 49`, `Batch 49b`, and `Batch 50` through `Batch 53`, `Milestone M0b` |
 
 ### Phase E: Numerical Robustness And Runtime Policy
 

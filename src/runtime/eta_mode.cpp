@@ -18,6 +18,17 @@ bool IsBuiltinEtaModeName(const std::string& name) {
   return false;
 }
 
+void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision& decision) {
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const auto& propagator = spec.family.propagators[index];
+    if (propagator.kind == PropagatorKind::Auxiliary) {
+      continue;
+    }
+    decision.selected_propagator_indices.push_back(index);
+    decision.selected_propagators.push_back(propagator.expression);
+  }
+}
+
 void ValidateUserDefinedEtaModeRegistry(
     const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes) {
   std::vector<std::string> seen_names;
@@ -52,14 +63,7 @@ class BuiltinEtaMode final : public EtaMode {
     decision.mode_name = name_;
 
     if (name_ == "Prescription") {
-      for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
-        const auto& propagator = spec.family.propagators[index];
-        if (propagator.kind == PropagatorKind::Auxiliary) {
-          continue;
-        }
-        decision.selected_propagator_indices.push_back(index);
-        decision.selected_propagators.push_back(propagator.expression);
-      }
+      SelectNonAuxiliaryPropagators(spec, decision);
       if (decision.selected_propagator_indices.empty()) {
         throw std::runtime_error(
             "eta mode Prescription found no non-auxiliary propagators in bootstrap");
@@ -72,15 +76,22 @@ class BuiltinEtaMode final : public EtaMode {
       return decision;
     }
 
-    if (name_ == "All") {
-      for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
-        const auto& propagator = spec.family.propagators[index];
-        if (propagator.kind == PropagatorKind::Auxiliary) {
-          continue;
-        }
-        decision.selected_propagator_indices.push_back(index);
-        decision.selected_propagators.push_back(propagator.expression);
+    if (name_ == "Propagator") {
+      SelectNonAuxiliaryPropagators(spec, decision);
+      if (decision.selected_propagator_indices.empty()) {
+        throw std::runtime_error(
+            "eta mode Propagator found no non-auxiliary propagators in bootstrap");
       }
+      std::ostringstream explanation;
+      explanation << "Bootstrap structural selector selected "
+                  << decision.selected_propagator_indices.size()
+                  << " non-auxiliary propagators in declaration order for mode Propagator";
+      decision.explanation = explanation.str();
+      return decision;
+    }
+
+    if (name_ == "All") {
+      SelectNonAuxiliaryPropagators(spec, decision);
       if (decision.selected_propagator_indices.empty()) {
         throw std::runtime_error("eta mode All found no non-auxiliary propagators in bootstrap");
       }

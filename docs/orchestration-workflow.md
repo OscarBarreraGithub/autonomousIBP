@@ -25,8 +25,8 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- authoritative `main` base is `f2f3f03f36ef1095b76bf1f52c413a907d041856`
-- reviewed code remains accepted through `Batch 46`; `Milestone M1` is complete
+- authoritative `main` base is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
+- reviewed code remains accepted through landed `Batch 48` on `main`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
@@ -43,7 +43,14 @@ The workflow is optimized for the current repo shape:
 - `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence on the
   supported simple Euclidean massless sample subset only; this does not widen the accepted
   runtime/public surface beyond reviewed `Batch 46`
-- `Batch 48` is accepted narrowly in staging only on the clean baseline; `Batch 49` is now the
+- `Batch 48` is accepted on `main`: final accepted clean-candidate `sapphire` job `5439311`
+  cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the clean
+  baseline
+- the current accepted staging packet is `Batch 49` (`Propagator` only) on top of that clean
+  baseline: local module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`,
+  and clean-candidate `sapphire` job `5445260` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`
+- `Mass` remains deferred because a safe selector rule is not yet accepted; `Batch 49b` is now the
   next roadmap-owned implementation lane, while `M0b` remains separately open and still blocks
   broader parity claims
 
@@ -454,7 +461,8 @@ Until the solver and reference harness broaden substantially, the default implem
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
    roadmap gates, and the active blocker chain; on the current baseline that means start
-   `Batch 49`, not reopen `K0b`, `Batch 47`, or accepted `Batch 48`
+   `Batch 49b`, not reopen `K0b`, `Batch 47`, landed `Batch 48`, or the accepted `Batch 49`
+   staging packet
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

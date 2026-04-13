@@ -28,9 +28,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 ## Current Durable Status
 
-- the accepted public/runtime surface on the current `main` base is still the reviewed `Batch 1`
-  through `Batch 46` boundary, now carried forward on clean
-  `main@f2f3f03f36ef1095b76bf1f52c413a907d041856`
+- the accepted public/runtime surface on the current `main` base is the reviewed `Batch 1`
+  through `Batch 48` boundary, now carried forward on clean
+  `main@f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -52,16 +52,25 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   simple Euclidean massless sample subset, builtin `Tradition` plus one exact user-defined
   singleton `<family>::eta->infinity` path agree between manual and automatic attachment, and the
   reviewed pre-solve failures remain preserved with solver non-invocation
-- the public contract still does not widen beyond the current reviewed `Batch 46` boundary; the
+- `Batch 48` is accepted on `main`: final accepted clean-candidate `sapphire` job `5439311`
+  cleared the landing packet and commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the
+  authoritative clean baseline
+- the public contract on `main` widens only through the current reviewed `Batch 48` boundary; the
   accepted K0 smoke subset remains only the repo-local frozen fixture derived from preserved input
   plus the narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet,
-  and the accepted `Batch 47` / `Milestone M2` packet is evidence over the existing request /
-  provider / solver seams rather than a new public surface
+  the accepted `Batch 47` / `Milestone M2` packet remains evidence over the existing request /
+  provider / solver seams rather than a new public surface, and `Batch 48` adds only the narrow
+  bootstrap `Prescription` alias over reviewed `All`
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
-  smoke, and upstream `automatic_vs_manual` parity are still outside the accepted public boundary
-- `Batch 48` is accepted narrowly only in the staging repo on the clean baseline after clean-
-  candidate `sapphire` job `5438386` passed for the Batch 48 candidate packet; it remains
-  unmerged on `main`, and `M0b` remains separately open and still blocks broader parity claims
+  smoke, upstream `automatic_vs_manual` parity, accepted `Mass` semantics, and any
+  `Propagator::prescription` metadata interpretation are still outside the accepted public boundary
+- `Batch 49` is the current accepted staging packet on top of that clean `main` baseline: local
+  module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`, and clean-
+  candidate `sapphire` job `5445260` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`;
+  it is intentionally limited to the builtin eta-mode `Propagator` structural selector only,
+  while `Mass` remains deferred because a safe selector rule is not yet accepted and `M0b`
+  remains separately open and still blocks broader parity claims
 
 ## Core Types
 
@@ -533,8 +542,9 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`prescription`
 - empty selections, duplicate indices, out-of-range indices, selected auxiliary propagators, and selected propagators with `mass != "0"` fail locally with deterministic diagnostics
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
-- builtin modes `Mass`, `Propagator`, `Branch`, and `Loop` remain explicit bootstrap stubs and fail as not implemented
-- this batch is accepted only as a bootstrap-only built-in planner seam over that reviewed selector. It does not interpret `Propagator::prescription` integer metadata beyond preserving it, does not claim `AMFlowInfo["Prescription"]` / `feynman_prescription` parity, does not generate derivatives, does not implement full upstream prescription semantics, and does not add file-backed eta manifests
+- builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; end-to-end execution over that structural selection still depends on the existing `ApplyEtaInsertion(...)` guard that every selected propagator have `mass == "0"`
+- builtin modes `Mass`, `Branch`, and `Loop` remain explicit bootstrap stubs and fail as not implemented; `Mass` remains deferred specifically because a safe selector rule is not yet accepted on the reviewed subset
+- the current `Batch 49` staging packet is accepted only as a bootstrap-only built-in planner seam over that reviewed selector set. It does not interpret `Propagator::prescription` integer metadata, does not claim `AMFlowInfo["Prescription"]` / `feynman_prescription` parity, does not generate derivatives, does not implement Mass-mode semantics or full upstream prescription semantics, and does not add file-backed eta manifests
 
 ## Upgrade Rules
 

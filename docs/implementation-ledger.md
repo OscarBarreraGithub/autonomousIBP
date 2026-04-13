@@ -6,7 +6,7 @@ This ledger is the review surface for incremental AMFlow-port batches. Every imp
 
 | Item | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Authoritative `main` base | accepted | `f2f3f03f36ef1095b76bf1f52c413a907d041856` | current clean post-`K0-pre` / `K0b.1` release baseline; tracks `origin/main` |
+| Authoritative `main` base | accepted | `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` | current clean post-`Batch 48` release baseline; tracks `origin/main` |
 | `Milestone M1` | complete | reviewed `Batch 32` through `Batch 43` | the reviewed solver MVP gate is closed on the current public subset |
 | `Milestone M0a` | accepted | pinned Linux/toolchain manifest, phase-0 bootstrap root, dependency-sanity packet, and Wolfram smoke packet | bootstrap readiness only; no real reference capture or parity claim yet |
 | `Operational Gate B0/G1` | accepted | clean-candidate `sapphire` verification job `5305579` | restores GNU 8 `std::filesystem` linkage and the canonical `cmake -S . -B build` / `cmake --build build --parallel 1` / `ctest --test-dir build --output-on-failure` gate |
@@ -15,7 +15,8 @@ This ledger is the review surface for incremental AMFlow-port batches. Every imp
 | `K0b.1` | accepted | clean-candidate job `5425248`, coherent packet job `5425379`, and independent rereview approval | accepts only the truthful file-backed bootstrap-manifest seam for the frozen repo-local K0 smoke packet; `write-manifest` remains sample/demo only |
 | `Gate K0` | accepted | canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` plus job `5425379` | one coherent retained reducer-smoke packet with an honest bootstrap manifest is now accepted on `main` for the frozen repo-local K0 smoke subset only |
 | `Batch 47` / `Milestone M2` | accepted | local configure/build/ctest on the reviewed staging slice, clean-candidate `sapphire` job `5431987`, and independent rereview approval | accepted only as narrow manual-vs-automatic `eta -> infinity` boundary-equivalence evidence on the supported simple Euclidean massless sample subset; no broader automatic-boundary execution/provider parity or public-surface widening follows |
-| `Batch 48` | reviewed | `module load cmake/4.2.3-fasrc01 && cmake -S . -B build` -> exit `0`; `module load cmake/4.2.3-fasrc01 && cmake --build build` -> exit `0`; `module load cmake/4.2.3-fasrc01 && ctest --test-dir build --output-on-failure` -> exit `0`, `1/1` tests passed; clean-candidate `sapphire` job `5438386` passed for candidate `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b48-clean-candidate-20260413T081339Z-7xk2Pn` | builtin eta mode `Prescription` is a bootstrap alias over the reviewed `All` selector on the current supported loop-integral subset only; it preserves `mode_name == "Prescription"` and an honest bootstrap-alias explanation string, while `Mass`, `Propagator`, `Branch`, and `Loop` remain stubbed. Explicit defers: no interpretation of `Propagator::prescription` integer metadata, no upstream `AMFlowInfo["Prescription"]` / `feynman_prescription` parity claim, and no widening of solver construction, boundary generation, ending logic, CLI, cache, precision policy, or user-defined-hook behavior. `second-pass: approved`; next-batch recommendation: start `Batch 49`, while `M0b` remains separately open and still blocks broader parity claims |
+| `Batch 48` | accepted | final accepted clean-candidate `sapphire` job `5439311`; landing commit `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` | builtin eta mode `Prescription` is a bootstrap alias over the reviewed `All` selector on the current supported loop-integral subset only; it preserves `mode_name == "Prescription"` and an honest bootstrap-alias explanation string, while `Mass`, `Propagator`, `Branch`, and `Loop` remained deferred at landing. Explicit defers: no interpretation of `Propagator::prescription` integer metadata, no upstream `AMFlowInfo["Prescription"]` / `feynman_prescription` parity claim, and no widening of solver construction, boundary generation, ending logic, CLI, cache, precision policy, or user-defined-hook behavior. `second-pass: approved`; landing accepted on `main`; next-batch recommendation: start `Batch 49`, while `M0b` remains separately open and still blocks broader parity claims |
+| `Batch 49` | accepted in staging | `module load cmake/4.2.3-fasrc01 && cmake -S . -B build` -> exit `0`; `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1` -> exit `0`; `module load cmake/4.2.3-fasrc01 && ctest --test-dir build --output-on-failure` -> exit `0`; clean-candidate `sapphire` job `5445260` passed for candidate `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6` | builtin eta mode `Propagator` is a bootstrap structural selector over all non-auxiliary propagators in declaration order on the current reviewed subset only; it preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and still relies on `ApplyEtaInsertion(...)` rejecting selected propagators with `mass != "0"`. Explicit defers: no accepted safe selector rule for `Mass`, no interpretation of `Propagator::prescription` integer metadata, no upstream `AMFlowInfo["Prescription"]` / `feynman_prescription` parity claim, and no widening of solver construction, boundary generation, ending logic, CLI, cache, precision policy, or user-defined-hook behavior. `second-pass: approved`; current accepted staging packet only; next-batch recommendation: start `Batch 49b`, while `M0b` remains separately open and still blocks broader parity claims |
 
 `K0-pre-spec: Repo-Local K0 Smoke Fixture Freeze` is accepted as a narrow repo-local smoke-fixture
 freeze derived from preserved input, with latest candidate-local smoke replay job `5356840`
@@ -27,8 +28,8 @@ canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verificati
 is coherent and complete, and the independent rereview cleared with no blocking findings.
 These acceptances close `K0` and `K0b` only for the frozen repo-local K0 smoke subset: one
 coherent retained reducer-smoke packet with an honest bootstrap manifest is now accepted on `main`.
-On top of the current authoritative `main@f2f3f03f36ef1095b76bf1f52c413a907d041856` baseline,
-`Batch 47` / `Milestone M2` are now also accepted narrowly as behavioral evidence only: on the
+Carried forward on the current authoritative `main@f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
+baseline, `Batch 47` / `Milestone M2` remain accepted narrowly as behavioral evidence only: on the
 supported simple Euclidean massless sample subset, builtin `Tradition` and one exact user-defined
 singleton `<family>::eta->infinity` path produce the same attached `SolveRequest`, the same
 deterministic downstream solver behavior, and preserve the reviewed pre-solve diagnostics with
@@ -36,8 +37,16 @@ solver non-invocation for unsupported terminal nodes, planning failure, unsuppor
 specs, provider strategy mismatch, provider-thrown `boundary_unsolved`, malformed provider outputs,
 duplicate loci, and conflicting reattachment. This does not widen the accepted runtime/public
 surface beyond reviewed `Batch 46`, does not accept broader automatic-boundary execution/provider
-parity, and does not relax the standing `M0b` parity caveat. `Batch 48` is now accepted narrowly in
-staging only on the clean baseline and remains unmerged on `main`.
+parity, and does not relax the standing `M0b` parity caveat. `Batch 48` is now accepted on
+`main`: final clean-candidate `sapphire` job `5439311` cleared the landing packet, and commit
+`f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c` is the authoritative clean baseline before the current
+staging work. The current accepted staging packet on top of that clean baseline is `Batch 49`:
+local module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49-propagator`, and clean-
+candidate `sapphire` job `5445260` passed for candidate
+`/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49-clean-candidate-20260413T092450Z-c6f0e6`.
+That packet is intentionally narrowed to the builtin eta-mode `Propagator` structural selector
+only; `Mass` remains deferred because a safe selector rule is not yet accepted, and no
+`Propagator::prescription` / `feynman_prescription` parity claim follows here.
 
 ## Entry Template
 
@@ -134,7 +143,7 @@ inside the active track, not the authoritative global order.
 - Confirm `EtaInsertionDecision` carries propagator indices and builtin mode `All` selects all non-auxiliary propagators by index.
 - Confirm `ApplyEtaInsertion(...)` rewrites only the selected propagators, appends `eta` to invariants exactly once, preserves the input spec, and preserves non-expression propagator metadata.
 - Confirm eta insertion rejects empty selections, duplicate indices, out-of-range indices, selected auxiliary propagators, and selected nonzero-mass propagators deterministically.
-- Confirm builtin eta modes other than `All` fail deterministically as bootstrap stubs and do not silently pick a placeholder propagator.
+- Confirm builtin eta modes beyond the accepted narrow set stay honest: reviewed `All` remains the baseline selector, landed `Prescription` remains only a bootstrap alias over `All`, the current staging `Propagator` seam remains only the reviewed structural selector, and unaccepted builtin modes such as `Mass`, `Branch`, and `Loop` still fail deterministically without silently picking a placeholder propagator.
 - Confirm eta derivative generation uses the reviewed auxiliary-family transform, emits `-ai * J(...,ai+1,...)` only for rewritten propagators with `ai != 0`, and preserves deduplicated reduction-target order.
 - Confirm eta derivative generation rejects master family mismatches and master-index arity mismatches against the transformed family.
 - Confirm invariant derivative generation consumes explicit same-family denominator-derivative expressions, adds factor indices onto the shifted master indices, combines duplicate row targets in encounter order, preserves deduplicated global target order, and rejects variable-kind/family/arity mismatches deterministically.

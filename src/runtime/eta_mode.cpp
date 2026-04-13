@@ -51,6 +51,27 @@ class BuiltinEtaMode final : public EtaMode {
     EtaInsertionDecision decision;
     decision.mode_name = name_;
 
+    if (name_ == "Prescription") {
+      for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+        const auto& propagator = spec.family.propagators[index];
+        if (propagator.kind == PropagatorKind::Auxiliary) {
+          continue;
+        }
+        decision.selected_propagator_indices.push_back(index);
+        decision.selected_propagators.push_back(propagator.expression);
+      }
+      if (decision.selected_propagator_indices.empty()) {
+        throw std::runtime_error(
+            "eta mode Prescription found no non-auxiliary propagators in bootstrap");
+      }
+      std::ostringstream explanation;
+      explanation << "Bootstrap alias selected "
+                  << decision.selected_propagator_indices.size()
+                  << " non-auxiliary propagators in declaration order for mode Prescription";
+      decision.explanation = explanation.str();
+      return decision;
+    }
+
     if (name_ == "All") {
       for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
         const auto& propagator = spec.family.propagators[index];

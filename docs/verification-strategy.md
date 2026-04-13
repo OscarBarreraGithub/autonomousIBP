@@ -30,10 +30,15 @@ The migration is phase-gated. Every phase must pass:
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b47-clean-candidate-20260413T072226Z-LRVIIR`;
   and independent rereview found no blocking findings after the strengthened equivalence,
   non-mutation, and failure-preservation fixes
+- `Batch 48` is accepted narrowly in staging only on the clean baseline: local module-loaded
+  `cmake -S . -B build`, `cmake --build build`, and `ctest --test-dir build --output-on-failure`
+  passed on staging; clean-candidate `sapphire` job `5438386` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b48-clean-candidate-20260413T081339Z-7xk2Pn`;
+  and second-pass rereview found no blockers remaining
 - that acceptance is limited to manual-vs-automatic `eta -> infinity` boundary-equivalence on the
   supported simple Euclidean massless sample subset and does not accept broader automatic boundary
   execution/provider parity, broader ending semantics, broader Kira smoke, or upstream parity
-- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
+- `Batch 49` is now the next roadmap-owned implementation lane, while `M0b` remains separately
   open and still blocks broader parity claims
 
 ## Test Taxonomy
@@ -79,15 +84,18 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - latest accepted clean-candidate gate for the narrow `Batch 47` / `Milestone M2` packet is job
   `5431987` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b47-clean-candidate-20260413T072226Z-LRVIIR`
+- latest accepted clean-candidate gate for the narrow `Batch 48` packet is job `5438386` for
+  candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b48-clean-candidate-20260413T081339Z-7xk2Pn`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
-  manifest; `Batch 47` / `Milestone M2` are now also satisfied narrowly on the supported sample
-  subset, while broader Kira smoke, broader reducer parity, `M0b`, and later parity milestones
-  remain separate future gates
+  manifest; `Batch 47` / `Milestone M2` and `Batch 48` are now also satisfied narrowly on the
+  supported sample subset, while broader Kira smoke, broader reducer parity, `M0b`, and later
+  parity milestones remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 

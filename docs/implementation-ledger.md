@@ -15,6 +15,7 @@ This ledger is the review surface for incremental AMFlow-port batches. Every imp
 | `K0b.1` | accepted | clean-candidate job `5425248`, coherent packet job `5425379`, and independent rereview approval | accepts only the truthful file-backed bootstrap-manifest seam for the frozen repo-local K0 smoke packet; `write-manifest` remains sample/demo only |
 | `Gate K0` | accepted | canonical retained root `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` plus job `5425379` | one coherent retained reducer-smoke packet with an honest bootstrap manifest is now accepted on `main` for the frozen repo-local K0 smoke subset only |
 | `Batch 47` / `Milestone M2` | accepted | local configure/build/ctest on the reviewed staging slice, clean-candidate `sapphire` job `5431987`, and independent rereview approval | accepted only as narrow manual-vs-automatic `eta -> infinity` boundary-equivalence evidence on the supported simple Euclidean massless sample subset; no broader automatic-boundary execution/provider parity or public-surface widening follows |
+| `Batch 48` | reviewed | `module load cmake/4.2.3-fasrc01 && cmake -S . -B build` -> exit `0`; `module load cmake/4.2.3-fasrc01 && cmake --build build` -> exit `0`; `module load cmake/4.2.3-fasrc01 && ctest --test-dir build --output-on-failure` -> exit `0`, `1/1` tests passed; clean-candidate `sapphire` job `5438386` passed for candidate `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b48-clean-candidate-20260413T081339Z-7xk2Pn` | builtin eta mode `Prescription` is a bootstrap alias over the reviewed `All` selector on the current supported loop-integral subset only; it preserves `mode_name == "Prescription"` and an honest bootstrap-alias explanation string, while `Mass`, `Propagator`, `Branch`, and `Loop` remain stubbed. Explicit defers: no interpretation of `Propagator::prescription` integer metadata, no upstream `AMFlowInfo["Prescription"]` / `feynman_prescription` parity claim, and no widening of solver construction, boundary generation, ending logic, CLI, cache, precision policy, or user-defined-hook behavior. `second-pass: approved`; next-batch recommendation: start `Batch 49`, while `M0b` remains separately open and still blocks broader parity claims |
 
 `K0-pre-spec: Repo-Local K0 Smoke Fixture Freeze` is accepted as a narrow repo-local smoke-fixture
 freeze derived from preserved input, with latest candidate-local smoke replay job `5356840`
@@ -35,8 +36,8 @@ solver non-invocation for unsupported terminal nodes, planning failure, unsuppor
 specs, provider strategy mismatch, provider-thrown `boundary_unsolved`, malformed provider outputs,
 duplicate loci, and conflicting reattachment. This does not widen the accepted runtime/public
 surface beyond reviewed `Batch 46`, does not accept broader automatic-boundary execution/provider
-parity, and does not relax the standing `M0b` parity caveat. `Batch 48` is now the next
-roadmap-owned implementation lane.
+parity, and does not relax the standing `M0b` parity caveat. `Batch 48` is now accepted narrowly in
+staging only on the clean baseline and remains unmerged on `main`.
 
 ## Entry Template
 

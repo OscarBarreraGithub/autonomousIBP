@@ -43,8 +43,9 @@ The workflow is optimized for the current repo shape:
 - `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence on the
   supported simple Euclidean massless sample subset only; this does not widen the accepted
   runtime/public surface beyond reviewed `Batch 46`
-- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
-  open and still blocks broader parity claims
+- `Batch 48` is accepted narrowly in staging only on the clean baseline; `Batch 49` is now the
+  next roadmap-owned implementation lane, while `M0b` remains separately open and still blocks
+  broader parity claims
 
 ## Mandatory Read Set Before Planning
 
@@ -453,7 +454,7 @@ Until the solver and reference harness broaden substantially, the default implem
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
    roadmap gates, and the active blocker chain; on the current baseline that means start
-   `Batch 48`, not reopen `K0b` or `Batch 47`
+   `Batch 49`, not reopen `K0b`, `Batch 47`, or accepted `Batch 48`
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

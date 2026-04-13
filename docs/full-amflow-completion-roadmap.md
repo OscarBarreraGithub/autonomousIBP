@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` is the next roadmap-owned lane |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted narrowly as the bootstrap-only `Prescription` alias seam; `Batch 49` is the next roadmap-owned lane |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -90,7 +90,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 - this does not widen the public/runtime surface beyond reviewed `Batch 46`, does not accept
   broader automatic-boundary execution/provider parity, and does not relax the separate `M0b`
   blocker on broader parity claims
-- `Batch 48` is now the next roadmap-owned implementation lane
+- `Batch 48` is accepted narrowly as the bootstrap-only builtin eta-mode `Prescription` planner seam on the current supported subset; `Batch 49` is now the next roadmap-owned implementation lane
 
 ## Current State At R0
 
@@ -437,7 +437,7 @@ dependency change.
 
 | Batch | Scope | Depends On |
 | --- | --- | --- |
-| `Batch 48` | first full builtin eta-mode planning seam for `Prescription`, keeping the other stubbed builtins deferred | `Batch 27`, `Milestone M1`, `Milestone M2` |
+| `Batch 48` | bootstrap-only builtin eta-mode planning seam for `Prescription`, keeping the other stubbed builtins deferred | `Batch 27`, `Milestone M1`, `Milestone M2` |
 | `Batch 49` | builtin eta-mode planning seam for `Mass` and `Propagator`, with explicit regression coverage for the known upstream `Mass`-mode bug surface | `Batch 48` |
 | `Batch 50` | builtin eta-mode planning seam for `Branch` and `Loop` | `Batch 49` |
 | `Batch 51` | multi-invariant orchestration seam that iterates the reviewed one-invariant generator/execution path without widening solver behavior | `Batch 17`, `Milestone M1`, `Milestone M2` |

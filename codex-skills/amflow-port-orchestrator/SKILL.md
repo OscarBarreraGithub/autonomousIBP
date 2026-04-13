@@ -29,8 +29,9 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 - `Batch 47` / `Milestone M2` are now accepted narrowly as behavioral-equivalence evidence on the
   supported simple Euclidean massless sample subset only; this does not widen the accepted
   runtime/public surface beyond reviewed `Batch 46`
-- `Batch 48` is now the next roadmap-owned implementation lane, while `M0b` remains separately
-  open and still blocks broader parity claims
+- `Batch 48` is accepted narrowly in staging only on the clean baseline; `Batch 49` is now the
+  next roadmap-owned implementation lane, while `M0b` remains separately open and still blocks
+  broader parity claims
 
 ## Workflow
 

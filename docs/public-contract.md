@@ -59,8 +59,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   provider / solver seams rather than a new public surface
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, and upstream `automatic_vs_manual` parity are still outside the accepted public boundary
-- `Batch 48` is the next roadmap-owned implementation lane, while `M0b` remains separately open
-  and still blocks broader parity claims
+- `Batch 48` is accepted narrowly only in the staging repo on the clean baseline after clean-
+  candidate `sapphire` job `5438386` passed for the Batch 48 candidate packet; it remains
+  unmerged on `main`, and `M0b` remains separately open and still blocks broader parity claims
 
 ## Core Types
 
@@ -531,8 +532,9 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - `kinematics.invariants` appends `eta` exactly once and preserves existing order otherwise
 - the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`prescription`
 - empty selections, duplicate indices, out-of-range indices, selected auxiliary propagators, and selected propagators with `mass != "0"` fail locally with deterministic diagnostics
-- builtin eta mode `All` selects all non-auxiliary propagators by index; builtin modes `Prescription`, `Mass`, `Propagator`, `Branch`, and `Loop` are still explicit bootstrap stubs and fail as not implemented
-- this batch does not generate derivatives, does not implement full builtin eta-mode semantics beyond `All`, and does not add file-backed eta manifests
+- builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
+- builtin modes `Mass`, `Propagator`, `Branch`, and `Loop` remain explicit bootstrap stubs and fail as not implemented
+- this batch is accepted only as a bootstrap-only built-in planner seam over that reviewed selector. It does not interpret `Propagator::prescription` integer metadata beyond preserving it, does not claim `AMFlowInfo["Prescription"]` / `feynman_prescription` parity, does not generate derivatives, does not implement full upstream prescription semantics, and does not add file-backed eta manifests
 
 ## Upgrade Rules
 

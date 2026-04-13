@@ -14,13 +14,13 @@ The migration is phase-gated. Every phase must pass:
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
   `ctest --test-dir build --output-on-failure`
-- `K0a` is accepted as a narrow parser-contract hardening milestone: clean-candidate `sapphire`
-  job `5315267` passed the canonical build/test gate with the mixed-root regression coverage in
-  `amflow-tests`
-- `K0` is still pending; no accepted Kira reducer-smoke packet or honest bootstrap-manifest packet
-  exists on `main`
-- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
-  Acceptance Packet`
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed the canonical build/test gate
+- `K0` and `K0b` are still pending; no accepted coherent Kira reducer-smoke packet with an honest
+  bootstrap manifest exists on `main`
+- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next
 
 ## Test Taxonomy
 
@@ -55,13 +55,18 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   - `cmake --build build --parallel 1`
   - `ctest --test-dir build --output-on-failure`
 - current accepted clean-candidate build gate evidence is job `5305579` on `sapphire`
+- latest accepted candidate-local smoke replay for the repo-local `K0-pre-spec` fixture freeze is
+  job `5356840`
+- latest accepted clean-candidate build/test confirmation for the `K0-pre` kinematics-YAML repair
+  is job `5356948`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` acceptance will additionally require one coherent retained reducer packet with an honest
-  bootstrap manifest; the current `main` branch does not have that yet
+  bootstrap manifest; the accepted repo-local frozen fixture derived from preserved input does not
+  satisfy that gate, and the current `main` branch does not have it yet
 
 ## Immediate Enforcement In This Bootstrap
 

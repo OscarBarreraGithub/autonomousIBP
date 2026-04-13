@@ -67,6 +67,17 @@ std::string SectorList(const std::vector<int>& sectors) {
   return out.str();
 }
 
+std::string JoinRaw(const std::vector<std::string>& values) {
+  std::ostringstream out;
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << values[index];
+  }
+  return out.str();
+}
+
 std::string TargetList(const std::vector<TargetIntegral>& targets) {
   std::ostringstream out;
   for (const auto& target : targets) {
@@ -529,6 +540,150 @@ FactorizedExpression SplitTopLevelFactors(const std::string& expression,
   return result;
 }
 
+std::string NormalizeKiraExpression(const std::string& expression) {
+  return NormalizeExpression(StripOuterParentheses(expression));
+}
+
+char SignedTermSign(const std::string& term) {
+  const std::string normalized = NormalizeKiraExpression(term);
+  if (!normalized.empty() && normalized.front() == '-') {
+    return '-';
+  }
+  return '+';
+}
+
+std::string SignedTermBody(const std::string& term) {
+  std::string normalized = NormalizeKiraExpression(term);
+  if (!normalized.empty() && (normalized.front() == '+' || normalized.front() == '-')) {
+    normalized.erase(normalized.begin());
+  }
+  return normalized;
+}
+
+std::string NegateSignedTerm(const std::string& term) {
+  const std::string body = SignedTermBody(term);
+  if (body.empty()) {
+    return "0";
+  }
+  if (SignedTermSign(term) == '-') {
+    return body;
+  }
+  return "-" + body;
+}
+
+std::string JoinSignedTerms(const std::vector<std::string>& terms) {
+  if (terms.empty()) {
+    return "0";
+  }
+
+  std::ostringstream out;
+  for (std::size_t index = 0; index < terms.size(); ++index) {
+    const std::string normalized = NormalizeKiraExpression(terms[index]);
+    if (normalized.empty() || normalized == "0") {
+      continue;
+    }
+    if (index == 0) {
+      if (!normalized.empty() && normalized.front() == '+') {
+        out << normalized.substr(1);
+      } else {
+        out << normalized;
+      }
+      continue;
+    }
+    if (!normalized.empty() && normalized.front() == '-') {
+      out << normalized;
+    } else if (!normalized.empty() && normalized.front() == '+') {
+      out << "+" << normalized.substr(1);
+    } else {
+      out << "+" << normalized;
+    }
+  }
+
+  const std::string joined = out.str();
+  if (joined.empty()) {
+    return "0";
+  }
+  return joined;
+}
+
+std::vector<std::string> MomentumConservationTerms(
+    const std::string& conservation,
+    const std::vector<std::string>& incoming_momenta,
+    const std::vector<std::string>& outgoing_momenta) {
+  const std::vector<std::string> equation_sides =
+      SplitTopLevel(Trim(conservation), '=', "Kira momentum_conservation");
+  if (equation_sides.size() != 2) {
+    throw std::runtime_error("Kira momentum_conservation must contain exactly one '=': " +
+                             conservation);
+  }
+
+  std::vector<std::string> canonical_terms =
+      SplitTopLevelTerms(equation_sides[0], "Kira momentum_conservation lhs");
+  const std::vector<std::string> rhs_terms =
+      SplitTopLevelTerms(equation_sides[1], "Kira momentum_conservation rhs");
+  canonical_terms.reserve(canonical_terms.size() + rhs_terms.size());
+  for (const auto& term : rhs_terms) {
+    canonical_terms.push_back(NegateSignedTerm(term));
+  }
+
+  std::vector<std::string> candidate_momenta;
+  candidate_momenta.reserve(outgoing_momenta.size() + incoming_momenta.size());
+  for (auto it = outgoing_momenta.rbegin(); it != outgoing_momenta.rend(); ++it) {
+    candidate_momenta.push_back(NormalizeKiraExpression(*it));
+  }
+  for (auto it = incoming_momenta.rbegin(); it != incoming_momenta.rend(); ++it) {
+    candidate_momenta.push_back(NormalizeKiraExpression(*it));
+  }
+
+  for (const auto& candidate : candidate_momenta) {
+    for (std::size_t index = 0; index < canonical_terms.size(); ++index) {
+      if (SignedTermBody(canonical_terms[index]) != candidate) {
+        continue;
+      }
+      std::vector<std::string> expression_terms;
+      expression_terms.reserve(canonical_terms.size() - 1);
+      const bool negate_others = SignedTermSign(canonical_terms[index]) == '+';
+      for (std::size_t other = 0; other < canonical_terms.size(); ++other) {
+        if (other == index) {
+          continue;
+        }
+        expression_terms.push_back(negate_others ? NegateSignedTerm(canonical_terms[other])
+                                                 : NormalizeKiraExpression(canonical_terms[other]));
+      }
+      return {candidate, JoinSignedTerms(expression_terms)};
+    }
+  }
+
+  std::vector<std::string> terms;
+  terms.reserve(equation_sides.size());
+  for (const auto& term : equation_sides) {
+    terms.push_back(NormalizeKiraExpression(term));
+  }
+  return terms;
+}
+
+std::pair<std::string, std::string> ScalarProductRuleOperands(const std::string& left) {
+  const std::string normalized = NormalizeKiraExpression(left);
+  if (normalized.size() > 2 &&
+      normalized.compare(normalized.size() - 2, 2, "^2") == 0) {
+    const std::string base =
+        NormalizeKiraExpression(normalized.substr(0, normalized.size() - 2));
+    if (!base.empty()) {
+      return {base, base};
+    }
+  }
+
+  const FactorizedExpression factors =
+      SplitTopLevelFactors(normalized, "Kira scalarproduct_rules entry");
+  if (factors.factors.size() != 2 || factors.operators.size() != 1 ||
+      factors.operators.front() != '*') {
+    throw std::runtime_error("Kira scalarproduct_rules left side must be a product or square: " +
+                             left);
+  }
+  return {NormalizeKiraExpression(factors.factors[0]),
+          NormalizeKiraExpression(factors.factors[1])};
+}
+
 std::size_t FindTopLevelArrow(const std::string& rule_text, const std::string& context) {
   int parentheses_depth = 0;
   int bracket_depth = 0;
@@ -985,6 +1140,31 @@ std::filesystem::path FamilyResultsDir(const std::filesystem::path& artifact_roo
   return direct_results_dir;
 }
 
+std::size_t ActiveSectorLineCount(const int sector, const std::size_t propagator_count) {
+  if (sector <= 0 || propagator_count == 0) {
+    return 0;
+  }
+
+  std::size_t active_lines = 0;
+  const unsigned long long mask = static_cast<unsigned long long>(sector);
+  const std::size_t max_supported_bits = sizeof(mask) * 8;
+  for (std::size_t index = 0; index < propagator_count && index < max_supported_bits; ++index) {
+    if ((mask & (1ULL << index)) != 0ULL) {
+      ++active_lines;
+    }
+  }
+  return active_lines;
+}
+
+int ReductionRank(const ProblemSpec& spec, const ReductionOptions& options) {
+  std::size_t active_lines = 0;
+  for (const int sector : spec.family.top_level_sectors) {
+    active_lines = std::max(active_lines,
+                            ActiveSectorLineCount(sector, spec.family.propagators.size()));
+  }
+  return static_cast<int>(active_lines) + options.black_box_dot;
+}
+
 std::string ReadTextFileOrThrow(const std::filesystem::path& path,
                                 const std::string& description) {
   if (!std::filesystem::exists(path)) {
@@ -1298,7 +1478,11 @@ KiraJobFiles KiraBackend::EmitJobFilesForTargets(
   kinematics_yaml << "kinematics:\n";
   kinematics_yaml << "  incoming_momenta: [" << Join(spec.kinematics.incoming_momenta) << "]\n";
   kinematics_yaml << "  outgoing_momenta: [" << Join(spec.kinematics.outgoing_momenta) << "]\n";
-  kinematics_yaml << "  momentum_conservation: [" << Quote(spec.kinematics.momentum_conservation) << "]\n";
+  kinematics_yaml << "  momentum_conservation: ["
+                  << JoinRaw(MomentumConservationTerms(spec.kinematics.momentum_conservation,
+                                                      spec.kinematics.incoming_momenta,
+                                                      spec.kinematics.outgoing_momenta))
+                  << "]\n";
   kinematics_yaml << "  kinematic_invariants:\n";
   for (const auto& invariant : spec.kinematics.invariants) {
     kinematics_yaml << "    - [" << Quote(invariant) << ", 2]\n";
@@ -1306,22 +1490,25 @@ KiraJobFiles KiraBackend::EmitJobFilesForTargets(
   if (!spec.kinematics.scalar_product_rules.empty()) {
     kinematics_yaml << "  scalarproduct_rules:\n";
     for (const auto& rule : spec.kinematics.scalar_product_rules) {
-      kinematics_yaml << "    - [" << Quote(rule.left) << ", " << Quote(rule.right) << "]\n";
+      const auto [left_operand, right_operand] = ScalarProductRuleOperands(rule.left);
+      kinematics_yaml << "    - [[" << left_operand << ", " << right_operand << "], "
+                      << NormalizeKiraExpression(rule.right) << "]\n";
     }
   }
   files.kinematics_yaml = kinematics_yaml.str();
 
   std::ostringstream jobs_yaml;
+  const std::string target_file = "target";
   jobs_yaml << "jobs:\n";
   jobs_yaml << "  - reduce_sectors:\n";
   jobs_yaml << "      reduce:\n";
   jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
            << SectorList(spec.family.top_level_sectors) << "], r: "
-           << spec.family.propagators.size() << ", s: " << options.black_box_rank
+           << ReductionRank(spec, options) << ", s: " << options.black_box_rank
            << ", d: " << options.black_box_dot << "}\n";
   jobs_yaml << "      select_integrals:\n";
   jobs_yaml << "        select_mandatory_list:\n";
-  jobs_yaml << "          - [" << Quote(spec.family.name) << ", target]\n";
+  jobs_yaml << "          - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
   jobs_yaml << "      preferred_masters: preferred\n";
   jobs_yaml << "      integral_ordering: " << options.integral_order << "\n";
   switch (options.reduction_mode) {
@@ -1348,6 +1535,11 @@ KiraJobFiles KiraBackend::EmitJobFilesForTargets(
     case ReductionMode::Masters:
       jobs_yaml << "      run_initiate: masters\n";
       break;
+  }
+  if (options.reduction_mode != ReductionMode::Masters) {
+    jobs_yaml << "  - kira2math:\n";
+    jobs_yaml << "      target:\n";
+    jobs_yaml << "        - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
   }
   files.jobs_yaml = jobs_yaml.str();
 

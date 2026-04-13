@@ -31,12 +31,15 @@ The workflow is optimized for the current repo shape:
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
-- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
-  `sapphire` job `5315267`
-- `K0` is still open, so no durable doc or review packet may claim accepted Kira smoke evidence or
-  honest bootstrap-manifest coverage yet
-- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
-  Acceptance Packet`
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed
+- `K0` and `K0b` are still open, so durable docs and review packets may claim only that narrow
+  repo-local frozen smoke subset and matching YAML repair, not K0 gate closure, honest
+  bootstrap-manifest coverage, or broader smoke acceptance
+- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next as the next atomic
+  engineering milestone
 - `Batch 47` and `Milestone M2` remain pending after `K0b`; manual-vs-automatic boundary
   equivalence is still outside the accepted repo state
 
@@ -446,8 +449,8 @@ Until the solver and reference harness broaden substantially, the default implem
 
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
-   roadmap gates, and the active blocker chain; on the current baseline that means `K0b`, not
-   `Batch 47`
+   roadmap gates, and the active blocker chain; on the current baseline that means resume `K0b`,
+   not `Batch 47`
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

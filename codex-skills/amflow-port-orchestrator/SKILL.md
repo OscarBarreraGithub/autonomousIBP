@@ -17,12 +17,15 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
   job `5305579`
-- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
-  `sapphire` job `5315267`
-- `K0` is still open, so this skill must not claim accepted Kira smoke evidence or honest
-  bootstrap-manifest semantics yet
-- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
-  Acceptance Packet`
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed
+- `K0` and `K0b` are still open, so this skill must not claim K0 gate closure, honest
+  bootstrap-manifest semantics, or broader Kira smoke acceptance beyond that narrow repo-local
+  subset
+- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next as the next atomic
+  engineering milestone
 - `Batch 47` remains pending after `K0b`; manual-vs-automatic boundary equivalence is still
   outside the accepted repo state
 
@@ -65,7 +68,8 @@ Do not overclaim acceptance while backfilling:
 
 Run the `reference-harness` track when the batch touches upstream capture, pinned goldens, or harness scripts.
 Run the `cluster-control` lane when the task touches repo-wide build gates, retained reducer smoke
-evidence, or milestone packets such as `M0a`, `K0`, `K0a`, `K0b`, or `Batch 47`.
+evidence, repo-local K0 smoke fixtures derived from preserved input, or milestone packets such as
+`M0a`, `K0-pre-spec`, `K0-pre`, `K0`, `K0b`, or `Batch 47`.
 
 ## Required Inputs
 

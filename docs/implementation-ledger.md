@@ -6,21 +6,23 @@ This ledger is the review surface for incremental AMFlow-port batches. Every imp
 
 | Item | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| Authoritative `main` base | accepted | `fdbceea3cb94ee2e811573ad446e5777917c1bb0` (`Fix GNU 8 std::filesystem linkage`) | accepted pre-`K0a` release baseline; tracks `origin/main` |
+| Authoritative `main` base | accepted | `fdbceea3cb94ee2e811573ad446e5777917c1bb0` (`Fix GNU 8 std::filesystem linkage`) | accepted pre-`K0` release baseline; tracks `origin/main` |
 | `Milestone M1` | complete | reviewed `Batch 32` through `Batch 43` | the reviewed solver MVP gate is closed on the current public subset |
 | `Milestone M0a` | accepted | pinned Linux/toolchain manifest, phase-0 bootstrap root, dependency-sanity packet, and Wolfram smoke packet | bootstrap readiness only; no real reference capture or parity claim yet |
 | `Operational Gate B0/G1` | accepted | clean-candidate `sapphire` verification job `5305579` | restores GNU 8 `std::filesystem` linkage and the canonical `cmake -S . -B build` / `cmake --build build --parallel 1` / `ctest --test-dir build --output-on-failure` gate |
-| `K0a` | accepted | clean-candidate `sapphire` verification job `5315267` | accepts only the narrow mixed-root reducer parse hardening on top of the current release base; `K0` still remains open pending `K0b` |
-| `Gate K0` | pending | reducer-smoke packet not yet accepted | no accepted coherent Kira smoke packet or honest bootstrap manifest on `main` |
+| `K0-pre-spec` | accepted | latest candidate-local smoke replay job `5356840` passed | accepts only a repo-local K0 smoke fixture freeze derived from preserved input; no broader smoke or manifest claim follows from it |
+| `K0-pre` | accepted | latest clean-candidate build/test job `5356948` passed | accepts only the narrow Kira kinematics YAML contract repair needed for that frozen smoke subset; `K0` and `K0b` remain open |
+| `Gate K0` | pending | reducer-smoke packet not yet accepted | no accepted coherent Kira smoke packet or honest bootstrap manifest on `main`; the accepted repo-local frozen fixture is narrower than `K0` |
 | `Batch 47` / `Milestone M2` | pending | depends on accepted `K0` plus the Batch-47 equivalence harness | automatic boundary/provider equivalence is still not part of the accepted repo state |
 
-`K0a: Mixed-Root Parse Contract Repair` is now accepted as a narrow parser-contract hardening
-milestone via clean-candidate job `5315267`. The next atomic engineering milestone is
-`K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet`. Mixed-layout reducer-root
-robustness is now part of the accepted parser surface, but until `K0b` lands no durable doc should
-claim an accepted K0 reducer packet or honest K0 bootstrap-manifest coverage. Batch-47
-manual-vs-automatic boundary equivalence remains separate and unaccepted until `Batch 47` and
-`Milestone M2` close.
+`K0-pre-spec: Repo-Local K0 Smoke Fixture Freeze` is accepted as a narrow repo-local smoke-fixture
+freeze derived from preserved input, with latest candidate-local smoke replay job `5356840`
+passed. `K0-pre: Kira Kinematics YAML Contract Repair` is accepted as the matching narrow contract
+repair, with latest clean-candidate build/test job `5356948` passed. These acceptances do not
+close `K0` or `K0b`: no durable doc should claim an accepted coherent K0 reducer packet, an
+honest K0 bootstrap manifest, or any wider Kira smoke surface than the frozen repo-local subset.
+`K0b` resumes next, and Batch-47 manual-vs-automatic boundary equivalence remains separate and
+unaccepted until `Batch 47` and `Milestone M2` close.
 
 ## Entry Template
 

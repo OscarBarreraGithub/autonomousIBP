@@ -1457,8 +1457,62 @@ void ProblemSpecExampleFileTest() {
          "example problem spec should expose the bootstrap family");
   Expect(spec.family.propagators.size() == 7,
          "example problem spec should include the full propagator list");
+  Expect(spec.family.top_level_sectors == std::vector<int>{127},
+         "example problem spec should preserve the reviewed top sector");
+  Expect(spec.family.preferred_masters == std::vector<std::string>{
+             "planar_double_box[1,1,1,1,1,1,1]"},
+         "example problem spec should preserve the reviewed preferred-master list");
+  Expect(amflow::SerializeProblemSpecYaml(spec) ==
+             amflow::SerializeProblemSpecYaml(amflow::MakeSampleProblemSpec()),
+         "example problem spec should stay locked to MakeSampleProblemSpec");
+  Expect(spec.kinematics.scalar_product_rules.size() == 3,
+         "example problem spec should preserve the reviewed scalar-product replacement system");
+  Expect(spec.kinematics.scalar_product_rules[2].left == "p1*p2" &&
+             spec.kinematics.scalar_product_rules[2].right == "s/2",
+         "example problem spec should preserve the reviewed p1.p2 replacement");
+  Expect(spec.family.propagators[6].expression == "(k2-p1-p2)^2" &&
+             spec.family.propagators[6].mass == "0",
+         "example problem spec should preserve the reviewed seventh propagator");
   Expect(spec.targets.size() == 1,
-         "example problem spec should include the bootstrap target");
+         "example problem spec should include the reviewed bootstrap target");
+  Expect(spec.targets[0].Label() == "planar_double_box[1,1,1,1,1,1,1]",
+         "example problem spec should preserve the reviewed target label");
+}
+
+void K0SmokeProblemSpecFileTest() {
+  const std::filesystem::path path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
+  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(path);
+  const auto messages = amflow::ValidateProblemSpec(spec);
+
+  Expect(messages.empty(), "K0 smoke spec should validate cleanly");
+  Expect(spec.family.name == "automatic_vs_manual_k0_smoke",
+         "K0 smoke spec should use its dedicated family name");
+  Expect(spec.family.propagators.size() == 9,
+         "K0 smoke spec should preserve the repo-local frozen 9-propagator family");
+  Expect(spec.family.top_level_sectors == std::vector<int>{127},
+         "K0 smoke spec should preserve the repo-local frozen seven-line top sector");
+  Expect(spec.family.preferred_masters.empty(),
+         "K0 smoke spec should not claim a preferred-master list");
+  Expect(spec.family.propagators[4].expression == "(k2+p3)^2" &&
+             spec.family.propagators[4].mass == "msq",
+         "K0 smoke spec should preserve the repo-local frozen massive fifth propagator");
+  Expect(spec.kinematics.scalar_product_rules.size() == 6,
+         "K0 smoke spec should preserve the repo-local frozen scalar-product system");
+  Expect(spec.targets.size() == 4,
+         "K0 smoke spec should preserve the repo-local frozen target list");
+  Expect(std::all_of(spec.targets.begin(), spec.targets.end(), [](const amflow::TargetIntegral& target) {
+           return target.indices.size() == 9 &&
+                  std::all_of(target.indices.begin(), target.indices.begin() + 7,
+                              [](const int index) { return index > 0; }) &&
+                  target.indices[7] <= 0 && target.indices[8] <= 0;
+         }),
+         "K0 smoke spec should keep the frozen target support on lines 1-7 only");
+  Expect(spec.targets[0].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0]" &&
+             spec.targets[1].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-2,-1]" &&
+             spec.targets[2].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-1,-2]" &&
+             spec.targets[3].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,0,-3]",
+         "K0 smoke spec should preserve the repo-local frozen target order");
 }
 
 void LoadedSpecValidationRejectsMalformedTargetsTest() {
@@ -2480,6 +2534,44 @@ void KiraPreparationTest() {
          "bootstrap Kira job should request back substitution");
 }
 
+void KiraPreparationEmitsKira31CompatibleYamlFragmentsTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::KiraBackend backend;
+  const amflow::KiraJobFiles files = backend.EmitJobFiles(spec, MakeKiraReductionOptions());
+
+  Expect(files.jobs_yaml.find("select_mandatory_list:\n"
+                              "          - [\"planar_double_box\", target]\n") !=
+             std::string::npos,
+         "Kira jobs.yaml should use a file-based select_mandatory_list entry");
+  Expect(files.jobs_yaml.find("  - kira2math:\n"
+                              "      target:\n"
+                              "        - [\"planar_double_box\", target]\n") !=
+             std::string::npos,
+         "Kira jobs.yaml should restore the kira2math export block for the target file");
+  Expect(files.jobs_yaml.find("[planar_double_box, target]") == std::string::npos,
+         "Kira jobs.yaml should quote the family name in the selector tuple");
+  Expect(files.integralfamilies_yaml.find("top_level_sectors: [127]\n") != std::string::npos &&
+             files.integralfamilies_yaml.find("[\"(k2-p1-p2)^2\", \"0\"]") !=
+                 std::string::npos,
+         "Kira family YAML should preserve the reviewed shared-sample topology");
+
+  Expect(files.kinematics_yaml.find("momentum_conservation: [p4, -p1-p2-p3]\n") !=
+             std::string::npos,
+         "Kira kinematics.yaml should emit Kira's dependent-momentum conservation pair");
+  Expect(files.kinematics_yaml.find("    - [[p1, p1], 0]\n") != std::string::npos &&
+             files.kinematics_yaml.find("    - [[p2, p2], 0]\n") != std::string::npos &&
+             files.kinematics_yaml.find("    - [[p1, p2], s/2]\n") != std::string::npos &&
+             files.kinematics_yaml.find("[[p3, p3], msq]") == std::string::npos,
+         "Kira kinematics.yaml should emit the reviewed shared-sample scalarproduct_rules set");
+  Expect(files.kinematics_yaml.find("[\"p1 + p2 + p3 + p4 = 0\"]") == std::string::npos &&
+             files.kinematics_yaml.find("[\"p1*p1\", \"0\"]") == std::string::npos,
+         "Kira kinematics.yaml should no longer emit legacy scalar-string forms");
+  Expect(files.target_list == "planar_double_box[1,1,1,1,1,1,1]\n",
+         "Kira target emission should preserve the reviewed shared-sample target");
+  Expect(files.preferred_masters == "planar_double_box[1,1,1,1,1,1,1]\n\n",
+         "Kira sample emission should preserve the reviewed preferred-master list");
+}
+
 void KiraPreparationFromFileSpecTest() {
   const std::filesystem::path path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.example.yaml";
@@ -2500,7 +2592,89 @@ void KiraPreparationFromFileSpecTest() {
          "file-backed spec should emit integralfamilies.yaml");
   Expect(preparation.generated_files.at("config/integralfamilies.yaml")
              .find("\"(k2-p1-p2)^2\"") != std::string::npos,
-         "file-backed spec should preserve the full propagator list");
+         "file-backed shared sample should preserve the reviewed propagator list");
+  Expect(preparation.generated_files.at("target") == "planar_double_box[1,1,1,1,1,1,1]\n",
+         "file-backed shared sample should preserve the reviewed target list");
+  Expect(preparation.generated_files.at("preferred") ==
+             "planar_double_box[1,1,1,1,1,1,1]\n\n",
+         "file-backed shared sample should preserve the reviewed preferred-master list");
+}
+
+void K0SmokeKiraPreparationFromFileSpecTest() {
+  const std::filesystem::path path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
+  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(path);
+
+  amflow::ReductionOptions options;
+  options.ibp_reducer = "Kira";
+  options.permutation_option = 1;
+
+  const auto layout = amflow::EnsureArtifactLayout(std::filesystem::temp_directory_path() /
+                                                   "amflow-bootstrap-k0-smoke-kira-file-test");
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(spec, options, layout);
+  const std::string& kinematics_yaml = preparation.generated_files.at("config/kinematics.yaml");
+  const std::string expected_normalized_kinematics_yaml =
+      "kinematics:\n"
+      "  incoming_momenta: [\"p1\", \"p2\"]\n"
+      "  outgoing_momenta: [\"p3\", \"p4\"]\n"
+      "  momentum_conservation: [p4, -p1-p2-p3]\n"
+      "  kinematic_invariants:\n"
+      "    - [\"s\", 2]\n"
+      "    - [\"t\", 2]\n"
+      "    - [\"msq\", 2]\n"
+      "  scalarproduct_rules:\n"
+      "    - [[p1, p1], 0]\n"
+      "    - [[p2, p2], 0]\n"
+      "    - [[p3, p3], msq]\n"
+      "    - [[p1, p2], s/2]\n"
+      "    - [[p1, p3], (t-msq)/2]\n"
+      "    - [[p2, p3], (msq-s-t)/2]\n";
+  const std::string expected_target_list =
+      "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-3,0]\n"
+      "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-2,-1]\n"
+      "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-1,-2]\n"
+      "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,0,-3]\n";
+
+  Expect(preparation.validation_messages.empty(),
+         "K0 smoke spec should prepare cleanly for Kira");
+  Expect(preparation.generated_files.count("config/integralfamilies.yaml") == 1,
+         "K0 smoke spec should emit integralfamilies.yaml");
+  Expect(preparation.generated_files.count("jobs.yaml") == 1,
+         "K0 smoke spec should emit jobs.yaml");
+  Expect(preparation.generated_files.at("config/integralfamilies.yaml")
+             .find("\"automatic_vs_manual_k0_smoke\"") != std::string::npos &&
+             preparation.generated_files.at("config/integralfamilies.yaml")
+                     .find("top_level_sectors: [127]\n") != std::string::npos &&
+             preparation.generated_files.at("config/integralfamilies.yaml")
+                     .find("[\"(k2+p3)^2\", \"msq\"]") != std::string::npos &&
+             preparation.generated_files.at("config/integralfamilies.yaml")
+                     .find("[\"(k2+p1)^2\", \"0\"]") != std::string::npos,
+         "K0 smoke Kira preparation should preserve the repo-local frozen 9-propagator family");
+  Expect(kinematics_yaml == expected_normalized_kinematics_yaml,
+         "K0 smoke Kira preparation should emit the pinned normalized Kira kinematics.yaml "
+         "for the repo-local frozen fixture");
+  Expect(kinematics_yaml.find("momentum_conservation: \"p1 + p2 + p3 + p4 = 0\"") ==
+                 std::string::npos &&
+             kinematics_yaml.find("  invariants: [\"s\", \"t\", \"msq\"]\n") ==
+                 std::string::npos &&
+             kinematics_yaml.find("    - left: \"p1*p1\"\n") == std::string::npos &&
+             kinematics_yaml.find("      right: \"0\"\n") == std::string::npos &&
+             kinematics_yaml.find("[\"p1 + p2 + p3 + p4 = 0\"]") == std::string::npos &&
+             kinematics_yaml.find("[\"p1*p1\", \"0\"]") == std::string::npos,
+         "K0 smoke Kira preparation should not emit pre-normalized source-spec or quoted-scalar "
+         "legacy kinematics forms");
+  Expect(preparation.generated_files.at("target") == expected_target_list,
+         "K0 smoke Kira preparation should preserve the repo-local frozen target list");
+  Expect(preparation.generated_files.at("jobs.yaml")
+                 .find("        - {topologies: [\"automatic_vs_manual_k0_smoke\"], sectors: "
+                       "[127], r: 7, s: 3, d: 0}\n") != std::string::npos &&
+             preparation.generated_files.at("jobs.yaml").find("sectors: [511]") ==
+                 std::string::npos,
+         "K0 smoke Kira preparation should derive the Kira seed from the narrowed seven-line "
+         "sector and its r value");
+  Expect(preparation.generated_files.at("preferred").empty(),
+         "K0 smoke Kira preparation should not emit an invented preferred-master list");
 }
 
 void KiraPrepareForTargetsHappyPathTest() {
@@ -11647,18 +11821,21 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallba
          "construction fails after mixed selection");
 }
 
-void ArtifactManifestTest() {
+void BootstrapArtifactManifestTest() {
   const auto layout = amflow::EnsureArtifactLayout(std::filesystem::temp_directory_path() /
                                                    "amflow-bootstrap-manifest-test");
-  const auto manifest = amflow::MakeBootstrapManifest();
-  const auto path = amflow::WriteArtifactManifest(layout, manifest);
+  const amflow::ArtifactManifest manifest = amflow::MakeBootstrapManifest();
+  const std::string yaml = amflow::SerializeArtifactManifestYaml(manifest);
+  const std::filesystem::path path = amflow::WriteArtifactManifest(layout, manifest);
 
-  Expect(std::filesystem::exists(path), "artifact manifest should be written");
-  std::ifstream stream(path);
-  const std::string content((std::istreambuf_iterator<char>(stream)),
-                            std::istreambuf_iterator<char>());
-  Expect(content.find("run_id: \"bootstrap-run\"") != std::string::npos,
-         "artifact manifest should contain the run id");
+  Expect(manifest.run_id == "bootstrap-run",
+         "bootstrap manifest should preserve the repo-local default run id");
+  Expect(path == layout.manifests_dir / "bootstrap-run.yaml",
+         "bootstrap manifest should use the repo-local default run id as its filename");
+  Expect(std::filesystem::exists(path), "bootstrap manifest should be written");
+  Expect(ReadFile(path) == yaml, "bootstrap manifest file should match the serialized YAML");
+  Expect(yaml.find("run_id: \"bootstrap-run\"\n") != std::string::npos,
+         "bootstrap manifest YAML should preserve the repo-local default run id");
 }
 
 void OptionDefaultsTest() {
@@ -11678,6 +11855,7 @@ int main() {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
     ProblemSpecExampleFileTest();
+    K0SmokeProblemSpecFileTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();
@@ -11725,7 +11903,9 @@ int main() {
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();
     KiraPreparationTest();
+    KiraPreparationEmitsKira31CompatibleYamlFragmentsTest();
     KiraPreparationFromFileSpecTest();
+    K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();
     KiraPrepareStillUsesProblemSpecTargetsTest();
     KiraPrepareForTargetsRejectsEmptyTargetListTest();
@@ -12085,7 +12265,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsUnknownNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
-    ArtifactManifestTest();
+    BootstrapArtifactManifestTest();
     OptionDefaultsTest();
     std::cout << "amflow bootstrap tests passed\n";
     return 0;

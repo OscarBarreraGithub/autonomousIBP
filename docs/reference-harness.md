@@ -43,9 +43,14 @@ captured goldens or completed upstream comparisons.
     `/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/MathKernel`
 - accepted pinned CPC extraction root:
   `/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted`
-- accepted non-harness follow-on on top of this baseline: `K0a` parser-contract hardening is
-  cleared via clean-candidate `sapphire` job `5315267`; `K0b` is the next repo-level blocker, but
-  that does not widen `M0a` beyond bootstrap readiness
+- accepted non-harness follow-on on top of this baseline: `K0-pre-spec` is accepted as a repo-local
+  K0 smoke fixture freeze derived from preserved input; latest candidate-local smoke replay job
+  `5356840` passed
+- accepted non-harness follow-on on top of this baseline: `K0-pre` is accepted as the narrow Kira
+  kinematics YAML contract repair for that frozen smoke subset; latest clean-candidate build/test
+  job `5356948` passed
+- `K0` and `K0b` are still not accepted; `K0b` resumes next, and none of this widens `M0a`
+  beyond bootstrap readiness
 - `M0a` remains bootstrap-only: the phase-0 root still carries placeholder goldens and pending
   comparison summaries, so `M0b` remains open and no upstream parity claim is available yet
 

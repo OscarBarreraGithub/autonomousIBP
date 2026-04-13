@@ -5,10 +5,14 @@ Current durable repo status:
 - authoritative `main` base is `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
 - reviewed implementation is accepted through `Batch 46`
 - `Milestone M0a` and `Operational Gate B0/G1` are accepted
-- `K0a` is accepted via clean-candidate `sapphire` job `5315267`
-- `K0` is still pending
-- the next atomic milestone is `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet`
-- `Batch 47` remains pending; do not claim automatic boundary equivalence yet
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed
+- `K0` and `K0b` are still pending
+- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next
+- `Batch 47` remains pending; do not claim broader K0 acceptance or automatic boundary
+  equivalence yet
 
 The durable workflow for this repo now lives in:
 

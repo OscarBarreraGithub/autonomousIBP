@@ -38,7 +38,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
 | `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 46`; `Batch 47` pending after `K0b` |
-| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, `K0` still open |
+| `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, `K0-pre-spec` and `K0-pre` accepted on the narrow repo-local smoke subset, `K0`/`K0b` still open |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
 ### Exit Gates
@@ -75,12 +75,14 @@ exit gate. The current live state must always be read from `docs/implementation-
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` canonical configure/build/test packet passed at job `5305579`
-- `K0a` is accepted as a narrow mixed-root reducer parse hardening milestone via clean-candidate
-  `sapphire` job `5315267`
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as the narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed
 - `Gate K0` is still open; there is still no accepted coherent reducer-smoke packet with an honest
-  bootstrap manifest on `main`
-- the next atomic engineering milestone is `K0b: Honest Bootstrap Manifest And Clean K0
-  Acceptance Packet`
+  bootstrap manifest on `main`, and the accepted repo-local frozen fixture is narrower than `K0`
+- `K0b: Honest Bootstrap Manifest And Clean K0 Acceptance Packet` resumes next as the next atomic
+  engineering milestone
 - `Batch 47` and `Milestone M2` remain pending after `K0b`
 
 ## Current State At R0
@@ -117,9 +119,10 @@ exit gate. The current live state must always be read from `docs/implementation-
 ### Still Missing Or Still Bootstrap-Only
 
 - builtin eta modes other than `All` are still explicit bootstrap stubs
-- there is still no accepted K0 reducer-smoke packet with an honest bootstrap manifest
-- accepted `K0a` mixed-root reducer parse hardening does not close `K0`; `K0b` is the next
-  milestone and must still deliver an honest bootstrap manifest plus a clean accepted
+- there is still no accepted `K0` gate closure or honest bootstrap manifest; the accepted
+  `K0-pre-spec` repo-local fixture freeze and accepted `K0-pre` kinematics-YAML repair are both
+  narrower than `K0`
+- `K0b` resumes next and must still deliver an honest bootstrap manifest plus a clean accepted
   reducer-smoke packet
 - there is no accepted manual-vs-automatic boundary equivalence harness yet; `Batch 47` remains
   pending and `Milestone M2` is still open

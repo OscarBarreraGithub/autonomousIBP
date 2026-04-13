@@ -35,13 +35,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
-- `K0a` is accepted as a narrow parser-contract hardening milestone via clean-candidate
-  `sapphire` job `5315267`
-- `K0` is not accepted, so this contract does not yet include an accepted reducer-smoke packet,
-  honest K0 bootstrap-manifest semantics, or any widened Kira smoke claim
-- the accepted public Kira parse contract now includes the narrow mixed-root outer-root family
-  resolution documented below; that parser hardening does not by itself accept the K0 reducer-smoke
-  packet or its manifest semantics
+- `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
+  latest candidate-local smoke replay job `5356840` passed
+- `K0-pre` is accepted as a narrow Kira kinematics YAML contract repair for that frozen smoke
+  subset; latest clean-candidate build/test job `5356948` passed
+- `K0` and `K0b` are not accepted, so this contract still excludes any coherent K0
+  reducer-smoke packet, honest K0 bootstrap-manifest semantics, or broader Kira smoke claim
+- the public contract does not widen beyond the current reviewed `Batch 46` boundary; the accepted
+  K0 smoke subset is only the repo-local frozen fixture derived from preserved input plus the
+  narrow `K0-pre` kinematics-YAML repair
 - `Batch 47` remains pending, so manual-vs-automatic boundary equivalence and automatic boundary
   execution/provider parity are still outside the accepted public boundary
 

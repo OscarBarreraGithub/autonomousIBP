@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05`
+- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -46,8 +46,24 @@ The migration is phase-gated. Every phase must pass:
   broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation,
   broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, or upstream parity
-- `Batch 50` is now the next roadmap-owned implementation lane, while `M0b` remains separately
-  open and still blocks broader parity claims
+- `Batch 50a` is accepted on `main`: clean-candidate `sapphire` job `5465841` passed for
+  candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`,
+  final status `COMPLETED` on `holy8a32607` in `00:00:32`, second-pass rereview found no
+  remaining findings, and the landing commit is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- that landed `Batch 50a` packet is still narrow: it adds only the internal eta-topology preflight
+  seam and truthful early failure for `Branch` / `Loop`; it does not accept real selector
+  semantics, `AnalyzeTopSector` parity, graph-polynomial availability, or broader topology
+  analysis
+- `Batch 50b` is now the current local packet only: an internal topology-prerequisite bridge and
+  prereq-snapshot seam for `Branch` / `Loop`, still blocked, still unaccepted, and still deferring
+  truthful selector semantics to `Batch 50`
+- local module-loaded `cmake -S . -B build`, `cmake --build build --parallel 1`, and
+  `ctest --test-dir build --output-on-failure` passed for the current `Batch 50b` worktree packet
+- clean-candidate attempt `5480669` is not acceptance evidence: that submission OOM-killed during
+  configure because it omitted an explicit memory request
+- `Batch 50` remains the next roadmap-owned selector-semantics lane after `Batch 50b`, while
+  `M0b` remains separately open and still blocks broader parity claims
 
 ## Test Taxonomy
 
@@ -98,16 +114,21 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   landing commit is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
 - latest accepted clean-candidate gate for the landed `Batch 49b` packet is job `5457143` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`
+- latest accepted clean-candidate gate for the landed `Batch 50a` packet is job `5465841` for
+  candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`;
+  final status `COMPLETED` on `holy8a32607` in `00:00:32`, and the landing commit is
+  `bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
-  manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, landed `Batch 49`, and landed
-  `Batch 49b` are now also satisfied narrowly on the supported sample subset on `main`, while
-  broader Kira smoke, broader reducer parity, `M0b`, and later parity milestones remain separate
-  future gates
+  manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, landed `Batch 49`, landed `Batch 49b`,
+  and landed `Batch 50a` are now also satisfied narrowly on the supported sample subset on `main`,
+  while broader Kira smoke, broader reducer parity, `Batch 50b`, `Batch 50`, `M0b`, and later
+  parity milestones remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 

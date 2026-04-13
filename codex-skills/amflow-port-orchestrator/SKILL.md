@@ -11,8 +11,8 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 
 ## Current Durable Status
 
-- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05`
-- reviewed implementation is accepted through landed `Batch 49b` on `main`; `Milestone M1` is complete
+- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- reviewed implementation is accepted through landed `Batch 50a` on `main`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
   job `5305579`
@@ -42,8 +42,24 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 - that landed `Batch 49b` packet is still narrow: the `Mass` preference is only a local token-based
   heuristic, selected-mass coherence is only outer-whitespace trimming on rewritten selected
   propagators, there is no broader topology/component-order or symbolic mass-canonicalization
-  claim, and `Batch 50` is now the next roadmap-owned implementation lane while `M0b` remains
-  separately open and still blocks broader parity claims
+  claim
+- `Batch 50a` is accepted on `main`: clean-candidate `sapphire` job `5465841` passed for
+  candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`,
+  final status `COMPLETED` on `holy8a32607` in `00:00:32`, second-pass rereview cleared, and the
+  landing commit is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- that landed `Batch 50a` packet is still narrow: it adds only the internal eta-topology preflight
+  seam and truthful early failure for `Branch` / `Loop`; it does not accept real selector
+  semantics, `AnalyzeTopSector` parity, graph-polynomial availability, or broader topology
+  analysis
+- `Batch 50b` is the current local packet only: an internal topology-prerequisite bridge and
+  prereq-snapshot seam for `Branch` / `Loop`, still blocked, still unaccepted, and still deferring
+  truthful selector semantics to `Batch 50`
+- local module-loaded configure/build/ctest passed for the current `Batch 50b` worktree packet
+- clean-candidate attempt `5480669` is not acceptance evidence: it OOM-killed during configure
+  because the submission omitted an explicit memory request
+- `Batch 50` is now the next roadmap-owned selector-semantics implementation lane after `Batch 50b`
+  while `M0b` remains separately open and still blocks broader parity claims
 
 ## Workflow
 

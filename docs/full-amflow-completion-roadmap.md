@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; `Batch 49b` accepted on `main` as the narrow `Mass` selector seam; `Batch 50a` is the internal eta-topology preflight snapshot seam; `Batch 50` is the next roadmap-owned lane for truthful Branch/Loop selector semantics |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; `Batch 49b` accepted on `main` as the narrow `Mass` selector seam; `Batch 50a` accepted on `main` as the internal eta-topology preflight snapshot seam; `Batch 50b` is the current internal topology-prerequisite bridge packet; `Batch 50` remains the first truthful Branch/Loop selector-semantics lane |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -68,8 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05` and is the current accepted release baseline
-- reviewed implementation remains accepted through landed `Batch 49b`; `Milestone M1` is complete
+- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a` and is the current accepted release baseline
+- reviewed implementation remains accepted through landed `Batch 50a`; `Milestone M1` is complete
   on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
@@ -98,12 +98,26 @@ exit gate. The current live state must always be read from `docs/implementation-
   `5457143` passed for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`,
   and second-pass rereview cleared with no blocking or medium findings remaining
+- `Batch 50a` is accepted on `main` on top of that baseline: local module-loaded
+  configure/build/ctest passed, final clean-candidate `sapphire` job `5465841` passed for
+  candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`,
+  second-pass rereview cleared with no findings, and landing commit
+  `bbd7b744b69a413bf34e4b706cd737e2b266256a` is the accepted release baseline
 - this does not widen the public/runtime surface beyond reviewed `Batch 46`, does not accept
   broader automatic-boundary execution/provider parity, does not accept full upstream
   topology/component-order `Mass` semantics, broader symbolic mass canonicalization, or
   `Propagator::prescription` / `feynman_prescription` parity, and does not relax the separate
   `M0b` blocker on broader parity claims
-- `Batch 50a` is the current internal eta-topology preflight snapshot seam, and `Batch 50` is the next roadmap-owned implementation lane for truthful Branch/Loop selector semantics
+- `Batch 50a` is accepted on `main` as the internal eta-topology preflight snapshot seam for
+  `Branch` / `Loop`, with no truthful selector semantics yet
+- `Batch 50b` is the current local packet: an internal topology-prerequisite bridge/prereq
+  snapshot over the current family/kinematics surface with explicit available-versus-missing field
+  reporting while `Branch` and `Loop` remain blocked; only local module-loaded
+  `cmake -S . -B build`, `cmake --build build --parallel 1`, and
+  `ctest --test-dir build --output-on-failure` are complete so far
+- `Batch 50` remains the next roadmap-owned implementation lane for truthful Branch/Loop selector
+  semantics after `Batch 50b`
 
 ## Current State At R0
 
@@ -142,8 +156,10 @@ exit gate. The current live state must always be read from `docs/implementation-
   `Prescription` is only an alias over `All`, landed `Propagator` is only the reviewed structural
   selector on `main`, and `Batch 49b` adds only a narrow local `Mass` seam with a token-based
   independence heuristic plus selected-propagator outer-whitespace trimming on rewritten mass
-  literals. `Batch 50a` is the internal eta-topology preflight snapshot seam for `Branch` / `Loop`,
-  while the actual selector semantics remain deferred to `Batch 50`
+  literals. Landed `Batch 50a` adds only internal eta-topology preflight blocker telemetry for
+  `Branch` / `Loop`, the current local `Batch 50b` packet adds only an internal
+  topology-prerequisite bridge/prereq snapshot with explicit availability and missing-field
+  reporting, and the actual truthful selector semantics remain deferred to `Batch 50`
 - accepted manual-vs-automatic boundary equivalence is still narrow: only the supported simple
   Euclidean massless sample subset is covered, and only for builtin `Tradition` plus one exact
   user-defined singleton `<family>::eta->infinity`
@@ -459,11 +475,12 @@ dependency change.
 | `Batch 49` | builtin eta-mode planning seam for `Propagator` as a structural selector over the current reviewed subset only | `Batch 48` |
 | `Batch 49b` | narrow bootstrap builtin eta-mode planning seam for `Mass` on the current local reviewed subset, with only the minimal eta-generated-path mass-coherence widening needed to keep selected equal-mass reducer-facing literals aligned with planner grouping | `Batch 49` |
 | `Batch 50a` | internal eta-topology preflight snapshot seam for `Branch` and `Loop` on the current family/kinematics surface, keeping the public API unchanged and making the blocker explicit | `Batch 49b` |
-| `Batch 50` | truthful builtin eta-mode selector semantics for `Branch` and `Loop` over the new internal eta-topology summary | `Batch 50a` |
+| `Batch 50b` | internal topology-prerequisite bridge/prereq snapshot for `Branch` and `Loop` over the current family/kinematics surface, with explicit availability and missing-field reporting while both modes remain blocked | `Batch 50a` |
+| `Batch 50` | truthful builtin eta-mode selector semantics for `Branch` and `Loop` over the internal topology-prerequisite bridge, after real candidate analysis exists | `Batch 50b` |
 | `Batch 51` | multi-invariant orchestration seam that iterates the reviewed one-invariant generator/execution path without widening solver behavior | `Batch 17`, `Milestone M1`, `Milestone M2` |
 | `Batch 52` | symbolic widening of `BuildInvariantDerivativeSeed(...)` beyond the current massless-standard bootstrap subset while staying representable on the family propagator table | `Batch 51` |
 | `Batch 53` | multiple top-sector Kira target orchestration and reduction-span validation over the accepted preparation/execution seams | `Batch 8`, `Batch 12`, `Batch 51`, `Batch 52` |
-| `Milestone M3` | loop-core parity gate: family model matches reference, prefactors are locked, and Kira reduction span matches on the first mandatory package families | `Batch 48`, `Batch 49`, `Batch 49b`, `Batch 50a`, and `Batch 50` through `Batch 53`, `Milestone M0b` |
+| `Milestone M3` | loop-core parity gate: family model matches reference, prefactors are locked, and Kira reduction span matches on the first mandatory package families | `Batch 48`, `Batch 49`, `Batch 49b`, `Batch 50a`, `Batch 50b`, and `Batch 50` through `Batch 53`, `Milestone M0b` |
 
 ### Phase E: Numerical Robustness And Runtime Policy
 

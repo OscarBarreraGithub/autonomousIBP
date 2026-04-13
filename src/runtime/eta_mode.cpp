@@ -49,10 +49,14 @@ void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision
 }
 
 struct EtaTopologyPropagatorSummary {
+  std::size_t declaration_order_index = 0;
   std::string expression;
   std::string mass;
   PropagatorKind kind = PropagatorKind::Standard;
   int prescription = -1;
+  bool is_non_auxiliary = false;
+  bool is_cut_like = false;
+  std::vector<std::string> loop_momentum_identifiers;
 };
 
 struct EtaTopologySummary {
@@ -64,7 +68,27 @@ struct EtaTopologySummary {
   std::string momentum_conservation;
   std::vector<EtaTopologyPropagatorSummary> propagators;
   std::vector<std::string> scalar_product_rule_rights;
-  std::vector<std::set<std::string>> scalar_product_rule_identifiers;
+  std::vector<std::string> scalar_product_rule_identifiers;
+  std::size_t non_auxiliary_candidate_count = 0;
+  std::size_t cut_like_count = 0;
+};
+
+struct TopologyFieldStatus {
+  bool available = false;
+  std::string reason;
+};
+
+struct EtaTopologyPrereqSnapshot {
+  EtaTopologySummary surface;
+  TopologyFieldStatus u0;
+  TopologyFieldStatus vacQ;
+  TopologyFieldStatus var;
+  std::size_t loopnum = 0;
+  std::vector<std::size_t> var_proxy_declaration_indices;
+  std::vector<std::string> mass;
+  std::vector<std::size_t> cutvar;
+  std::vector<int> pres;
+  std::vector<std::string> missing_fields;
 };
 
 std::set<std::string> ExtractIdentifiers(const std::string& expression) {
@@ -91,6 +115,47 @@ std::set<std::string> ExtractIdentifiers(const std::string& expression) {
   return identifiers;
 }
 
+std::vector<std::string> CollectExpressionLoopMomentumIdentifiers(
+    const std::string& expression,
+    const std::vector<std::string>& loop_momenta) {
+  const std::set<std::string> identifiers = ExtractIdentifiers(expression);
+  std::vector<std::string> present;
+  for (const auto& loop_momentum : loop_momenta) {
+    if (identifiers.find(loop_momentum) != identifiers.end()) {
+      present.push_back(loop_momentum);
+    }
+  }
+  return present;
+}
+
+std::vector<std::size_t> CollectCutPropagatorIndices(const ProblemSpec& spec) {
+  std::vector<std::size_t> cut_indices;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if (spec.family.propagators[index].kind == PropagatorKind::Cut) {
+      cut_indices.push_back(index);
+    }
+  }
+  return cut_indices;
+}
+
+std::vector<int> CollectPrescriptions(const ProblemSpec& spec) {
+  std::vector<int> prescriptions;
+  prescriptions.reserve(spec.family.propagators.size());
+  for (const auto& propagator : spec.family.propagators) {
+    prescriptions.push_back(propagator.prescription);
+  }
+  return prescriptions;
+}
+
+std::vector<std::string> CollectMassStrings(const ProblemSpec& spec) {
+  std::vector<std::string> masses;
+  masses.reserve(spec.family.propagators.size());
+  for (const auto& propagator : spec.family.propagators) {
+    masses.push_back(propagator.mass);
+  }
+  return masses;
+}
+
 EtaTopologySummary BuildEtaTopologySummary(const ProblemSpec& spec) {
   EtaTopologySummary summary;
   summary.family_name = spec.family.name;
@@ -100,19 +165,35 @@ EtaTopologySummary BuildEtaTopologySummary(const ProblemSpec& spec) {
   summary.outgoing_momenta = spec.kinematics.outgoing_momenta;
   summary.momentum_conservation = spec.kinematics.momentum_conservation;
   summary.propagators.reserve(spec.family.propagators.size());
-  for (const auto& propagator : spec.family.propagators) {
-    summary.propagators.push_back(
-        EtaTopologyPropagatorSummary{propagator.expression,
-                                     propagator.mass,
-                                     propagator.kind,
-                                     propagator.prescription});
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const auto& propagator = spec.family.propagators[index];
+    EtaTopologyPropagatorSummary propagator_summary;
+    propagator_summary.declaration_order_index = index;
+    propagator_summary.expression = propagator.expression;
+    propagator_summary.mass = propagator.mass;
+    propagator_summary.kind = propagator.kind;
+    propagator_summary.prescription = propagator.prescription;
+    propagator_summary.is_non_auxiliary = propagator.kind != PropagatorKind::Auxiliary;
+    propagator_summary.is_cut_like = propagator.kind == PropagatorKind::Cut;
+    propagator_summary.loop_momentum_identifiers =
+        CollectExpressionLoopMomentumIdentifiers(propagator.expression, summary.loop_momenta);
+    if (propagator_summary.is_non_auxiliary) {
+      ++summary.non_auxiliary_candidate_count;
+    }
+    if (propagator_summary.is_cut_like) {
+      ++summary.cut_like_count;
+    }
+    summary.propagators.push_back(std::move(propagator_summary));
   }
   summary.scalar_product_rule_rights.reserve(spec.kinematics.scalar_product_rules.size());
-  summary.scalar_product_rule_identifiers.reserve(spec.kinematics.scalar_product_rules.size());
+  std::set<std::string> scalar_product_rule_identifiers;
   for (const auto& rule : spec.kinematics.scalar_product_rules) {
     summary.scalar_product_rule_rights.push_back(rule.right);
-    summary.scalar_product_rule_identifiers.push_back(ExtractIdentifiers(rule.right));
+    const std::set<std::string> identifiers = ExtractIdentifiers(rule.right);
+    scalar_product_rule_identifiers.insert(identifiers.begin(), identifiers.end());
   }
+  summary.scalar_product_rule_identifiers.assign(scalar_product_rule_identifiers.begin(),
+                                                 scalar_product_rule_identifiers.end());
   return summary;
 }
 
@@ -123,7 +204,98 @@ std::string DescribeEtaTopologySummary(const EtaTopologySummary& summary) {
               << ", loop_momenta=" << summary.loop_momenta.size()
               << ", top_level_sectors=" << summary.top_level_sectors.size()
               << ", propagators=" << summary.propagators.size()
-              << ", scalar_product_rules=" << summary.scalar_product_rule_rights.size();
+              << ", candidate_non_auxiliary_variables=" << summary.non_auxiliary_candidate_count
+              << ", cut_like_variables=" << summary.cut_like_count
+              << ", scalar_product_rules=" << summary.scalar_product_rule_rights.size()
+              << ", scalar_product_rule_identifiers="
+              << summary.scalar_product_rule_identifiers.size();
+  return description.str();
+}
+
+EtaTopologyPrereqSnapshot BuildEtaTopologyPrereqSnapshot(const ProblemSpec& spec) {
+  EtaTopologyPrereqSnapshot snapshot;
+  snapshot.surface = BuildEtaTopologySummary(spec);
+  snapshot.u0 = {false, "not derivable from the current family/kinematics surface"};
+  snapshot.vacQ = {
+      false, "conservative vacuum classification is not available on the current surface"};
+  snapshot.loopnum = snapshot.surface.loop_momenta.size();
+  snapshot.mass = CollectMassStrings(spec);
+  snapshot.cutvar = CollectCutPropagatorIndices(spec);
+  snapshot.pres = CollectPrescriptions(spec);
+  snapshot.var_proxy_declaration_indices.reserve(snapshot.surface.non_auxiliary_candidate_count);
+  for (const auto& propagator : snapshot.surface.propagators) {
+    if (propagator.is_non_auxiliary) {
+      snapshot.var_proxy_declaration_indices.push_back(propagator.declaration_order_index);
+    }
+  }
+  if (snapshot.var_proxy_declaration_indices.empty()) {
+    snapshot.var = {
+        false,
+        "no declaration-order non-auxiliary propagators are available for the current proxy "
+        "list"};
+  } else {
+    snapshot.var = {
+        true,
+        "current proxy from declaration-order non-auxiliary propagators; not upstream-fidelity "
+        "Feynman-parameter candidate analysis"};
+  }
+  snapshot.missing_fields = {
+      "u0",
+      "vacuum_classification",
+      "component_factorization",
+      "graph_polynomials_u_f_massterm",
+      "true_feynman_parameter_candidate_analysis",
+  };
+  return snapshot;
+}
+
+template <typename T>
+std::string DescribeList(const std::vector<T>& values) {
+  std::ostringstream description;
+  description << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index != 0) {
+      description << "|";
+    }
+    description << values[index];
+  }
+  description << "]";
+  return description.str();
+}
+
+std::string DescribeFieldStatus(const std::string& label, const TopologyFieldStatus& status) {
+  std::ostringstream description;
+  description << label;
+  if (status.available) {
+    description << "=<available>";
+  } else {
+    description << ":<missing>";
+  }
+  if (!status.reason.empty()) {
+    description << "(" << status.reason << ")";
+  }
+  return description.str();
+}
+
+std::string DescribeEtaTopologyPrereqSnapshot(const EtaTopologyPrereqSnapshot& snapshot) {
+  std::ostringstream description;
+  description << "topology_prereq_bridge={"
+              << DescribeFieldStatus("u0", snapshot.u0)
+              << ", "
+              << DescribeFieldStatus("vacQ", snapshot.vacQ)
+              << ", "
+              << DescribeFieldStatus("var_proxy", snapshot.var)
+              << ", loopnum=" << snapshot.loopnum
+              << ", mass=" << DescribeList(snapshot.mass)
+              << ", cutvar=" << DescribeList(snapshot.cutvar)
+              << ", pres=" << DescribeList(snapshot.pres)
+              << ", candidate_non_auxiliary_variables="
+              << snapshot.surface.non_auxiliary_candidate_count
+              << ", cut_like_variables=" << snapshot.surface.cut_like_count
+              << ", scalar_product_rule_identifiers="
+              << snapshot.surface.scalar_product_rule_identifiers.size()
+              << ", missing_fields=" << DescribeList(snapshot.missing_fields)
+              << "}";
   return description.str();
 }
 
@@ -319,13 +491,14 @@ class BuiltinEtaMode final : public EtaMode {
     }
 
     if (name_ == "Branch" || name_ == "Loop") {
-      const EtaTopologySummary topology_summary = BuildEtaTopologySummary(spec);
+      const EtaTopologyPrereqSnapshot topology_snapshot = BuildEtaTopologyPrereqSnapshot(spec);
       throw std::runtime_error("eta mode " + name_ +
                                " is blocked in bootstrap: internal eta-topology preflight "
                                "snapshot collected the current family/kinematics surface, but "
                                "topology-analysis/candidate-analysis for Branch/Loop selectors "
                                "is not implemented yet (" +
-                               DescribeEtaTopologySummary(topology_summary) + ")");
+                               DescribeEtaTopologySummary(topology_snapshot.surface) + "; " +
+                               DescribeEtaTopologyPrereqSnapshot(topology_snapshot) + ")");
     }
 
     if (name_ == "Mass") {

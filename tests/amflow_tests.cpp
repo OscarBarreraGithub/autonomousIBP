@@ -152,6 +152,30 @@ std::string CaptureBoundaryUnsolvedMessage(Callable&& callable,
   throw std::runtime_error(message);
 }
 
+void ExpectBranchLoopBootstrapBlockerMessage(const std::string& message,
+                                             const std::string& mode_name,
+                                             const std::string& context) {
+  const std::vector<std::string> expected_substrings = {
+      "eta mode " + mode_name + " is blocked in bootstrap",
+      "internal eta-topology preflight snapshot collected the current family/kinematics surface",
+      "topology-analysis/candidate-analysis for Branch/Loop selectors is not implemented yet",
+      "topology_prereq_bridge={",
+      "u0:<missing>",
+      "loopnum=",
+      "cutvar=",
+      "pres=",
+      "missing_fields=[",
+  };
+  for (const auto& expected_substring : expected_substrings) {
+    Expect(message.find(expected_substring) != std::string::npos,
+           context + ": missing blocker substring: " + expected_substring);
+  }
+  Expect(message.find("nontrivial_prescriptions=") == std::string::npos,
+         context + ": blocker should not overclaim nontrivial prescription classification");
+  Expect(message.find("nontrivial_prescriptions_present=") == std::string::npos,
+         context + ": blocker should not advertise interpreted prescription availability");
+}
+
 std::string ReadFile(const std::filesystem::path& path) {
   std::ifstream stream(path);
   if (!stream) {
@@ -2356,12 +2380,42 @@ void UnsupportedBuiltinEtaModesRejectTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
-    ExpectRuntimeError(
+    const std::string message = CaptureRuntimeErrorMessage(
         [&mode, &spec]() {
           static_cast<void>(mode->Plan(spec));
         },
-        "topology-analysis/candidate-analysis for Branch/Loop selectors is not implemented yet",
         "remaining unsupported builtin eta modes should fail deterministically in bootstrap");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "remaining unsupported builtin eta modes should fail deterministically in bootstrap");
+  }
+}
+
+void UnsupportedBuiltinEtaModesAllAuxiliaryVarProxyMissingTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinAllAuxiliarySpec();
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&mode, &spec]() {
+          static_cast<void>(mode->Plan(spec));
+        },
+        "all-auxiliary unsupported builtin eta modes should fail deterministically in "
+        "bootstrap");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "all-auxiliary unsupported builtin eta modes should fail deterministically in "
+        "bootstrap");
+    Expect(message.find("candidate_non_auxiliary_variables=0") != std::string::npos,
+           "all-auxiliary Branch/Loop blockers should surface the zero non-auxiliary candidate "
+           "count");
+    Expect(message.find("var_proxy:<missing>(no declaration-order non-auxiliary propagators are "
+                        "available for the current proxy list)") != std::string::npos,
+           "all-auxiliary Branch/Loop blockers should report var_proxy as missing with an honest "
+           "zero-candidate reason");
+    Expect(message.find("var_proxy=<available>") == std::string::npos,
+           "all-auxiliary Branch/Loop blockers should not advertise var_proxy as available");
   }
 }
 
@@ -10962,7 +11016,7 @@ void SolveEtaModePlannedSeriesPlanningFailureTest() {
 
   RecordingSeriesSolver solver;
 
-  ExpectRuntimeError(
+  const std::string message = CaptureRuntimeErrorMessage(
       [&spec, &master_basis, &layout, &eta_mode, &solver]() {
         static_cast<void>(amflow::SolveEtaModePlannedSeries(spec,
                                                             master_basis,
@@ -10978,9 +11032,10 @@ void SolveEtaModePlannedSeriesPlanningFailureTest() {
                                                             MakeDistinctPrecisionPolicy(),
                                                             55));
       },
-      "eta mode Branch is blocked in bootstrap: internal eta-topology preflight snapshot "
-      "collected the current family/kinematics surface, but topology-analysis/candidate-analysis for "
-      "Branch/Loop selectors is not implemented yet",
+      "eta-mode-planned solver handoff should preserve eta-mode planning failures");
+  ExpectBranchLoopBootstrapBlockerMessage(
+      message,
+      "Branch",
       "eta-mode-planned solver handoff should preserve eta-mode planning failures");
 
   Expect(solver.call_count() == 0,
@@ -11588,7 +11643,7 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
         FreshTempDir("amflow-bootstrap-builtin-eta-mode-unsupported-" + mode_name));
     RecordingSeriesSolver solver;
 
-    ExpectRuntimeError(
+    const std::string message = CaptureRuntimeErrorMessage(
         [&spec, &master_basis, &layout, &mode_name, &solver]() {
           static_cast<void>(amflow::SolveBuiltinEtaModeSeries(
               spec,
@@ -11604,10 +11659,11 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
               MakeDistinctPrecisionPolicy(),
               55));
         },
-        "eta mode " + mode_name +
-            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
-            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
-            "Branch/Loop selectors is not implemented yet",
+        "builtin eta-mode solver handoff should preserve unsupported builtin planning "
+        "diagnostics");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
         "builtin eta-mode solver handoff should preserve unsupported builtin planning "
         "diagnostics");
 
@@ -11625,7 +11681,7 @@ void SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest() {
         FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-" + mode_name + "-preflight-failure"));
     RecordingSeriesSolver solver;
 
-    ExpectRuntimeError(
+    const std::string message = CaptureRuntimeErrorMessage(
         [&spec, &master_basis, &layout, &solver, &mode_name]() {
           static_cast<void>(amflow::SolveBuiltinEtaModeListSeries(
               spec,
@@ -11641,10 +11697,11 @@ void SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest() {
               MakeDistinctPrecisionPolicy(),
               55));
         },
-        "eta mode " + mode_name +
-            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
-            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
-            "Branch/Loop selectors is not implemented yet",
+        "builtin eta-mode-list solver handoff should preserve " + mode_name +
+            " preflight failures");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
         "builtin eta-mode-list solver handoff should preserve " + mode_name +
             " preflight failures");
 
@@ -12934,7 +12991,7 @@ void SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest() {
         FreshTempDir("amflow-bootstrap-amf-options-eta-mode-" + mode_name + "-preflight-failure"));
     RecordingSeriesSolver solver;
 
-    ExpectRuntimeError(
+    const std::string message = CaptureRuntimeErrorMessage(
         [&spec, &amf_options, &master_basis, &layout, &solver]() {
           static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
               spec,
@@ -12950,10 +13007,11 @@ void SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest() {
               MakeDistinctPrecisionPolicy(),
               55));
         },
-        "eta mode " + mode_name +
-            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
-            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
-            "Branch/Loop selectors is not implemented yet",
+        "AmfOptions eta-mode solver handoff should preserve " + mode_name +
+            " preflight failures");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
         "AmfOptions eta-mode solver handoff should preserve " + mode_name +
             " preflight failures");
 
@@ -13348,7 +13406,7 @@ void SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest() {
         FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-" + mode_name + "-preflight-failure"));
     RecordingSeriesSolver solver;
 
-    ExpectRuntimeError(
+    const std::string message = CaptureRuntimeErrorMessage(
         [&spec, &master_basis, &layout, &solver, &mode_name, &custom_mode]() {
           static_cast<void>(amflow::SolveResolvedEtaModeListSeries(
               spec,
@@ -13365,10 +13423,11 @@ void SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest() {
               MakeDistinctPrecisionPolicy(),
               55));
         },
-        "eta mode " + mode_name +
-            " is blocked in bootstrap: internal eta-topology preflight snapshot collected the "
-            "current family/kinematics surface, but topology-analysis/candidate-analysis for "
-            "Branch/Loop selectors is not implemented yet",
+        "resolved eta-mode-list solver handoff should preserve " + mode_name +
+            " preflight failures");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
         "resolved eta-mode-list solver handoff should preserve " + mode_name +
             " preflight failures");
 
@@ -14518,6 +14577,7 @@ int main() {
     MassEtaModeDoesNotOverSelectAcrossDistinctMassGroupsTest();
     MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest();
     UnsupportedBuiltinEtaModesRejectTest();
+    UnsupportedBuiltinEtaModesAllAuxiliaryVarProxyMissingTest();
     ResolveEtaModeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEtaModeResolvesUniqueUserDefinedModeTest();
     ResolveEtaModeRejectsUnknownNameWithUserDefinedRegistryTest();

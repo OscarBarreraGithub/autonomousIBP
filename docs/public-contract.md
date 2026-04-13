@@ -29,8 +29,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 ## Current Durable Status
 
 - the accepted public/runtime surface on the current `main` base is the reviewed `Batch 1`
-  through `Batch 49b` boundary, now carried forward on clean
-  `main@213384d329900a2cf9d034722ef48f8d376e2a05`
+  through `Batch 50a` boundary, now carried forward on clean
+  `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -57,22 +57,36 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   prior authoritative clean baseline
 - `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
   narrow builtin `Propagator` structural-selector packet
-- the public contract on `main` widens only through the current reviewed `Batch 49` boundary; the
-  accepted K0 smoke subset remains only the repo-local frozen fixture derived from preserved input
-  plus the narrow `K0-pre` kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet,
-  the accepted `Batch 47` / `Milestone M2` packet remains evidence over the existing request /
-  provider / solver seams rather than a new public surface, `Batch 48` adds only the narrow
-  bootstrap `Prescription` alias over reviewed `All`, and `Batch 49` adds only the narrow
-  builtin `Propagator` structural selector over the reviewed local candidate surface
 - `Batch 49b` is accepted on `main`: local module-loaded `cmake -S . -B build`,
   `cmake --build build --parallel 1`, and `ctest --test-dir build --output-on-failure` passed in
   `/tmp/autoIBP-b49b-mass`; final clean-candidate `sapphire` job `5457143` passed for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`;
   and second-pass rereview cleared with no blocking or medium findings remaining
+- `Batch 50a` is accepted on `main`: local module-loaded `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, and `ctest --test-dir build --output-on-failure` passed;
+  final clean-candidate `sapphire` job `5465841` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`;
+  second-pass rereview cleared with no findings; and commit
+  `bbd7b744b69a413bf34e4b706cd737e2b266256a` is the current clean release baseline
+- the public contract on `main` still widens only narrowly: the accepted K0 smoke subset remains
+  only the repo-local frozen fixture derived from preserved input plus the narrow `K0-pre`
+  kinematics-YAML repair and accepted `K0b.1` bootstrap-manifest packet; the accepted `Batch 47` /
+  `Milestone M2` packet remains evidence over the existing request / provider / solver seams rather
+  than a new public surface; `Batch 48` adds only the narrow bootstrap `Prescription` alias over
+  reviewed `All`; `Batch 49` adds only the narrow builtin `Propagator` structural selector over
+  the reviewed local candidate surface; `Batch 49b` adds only the narrow local `Mass` selector plus
+  the minimal eta-generated-path mass-coherence widening; and `Batch 50a` adds only internal
+  eta-topology preflight blocker telemetry for still-blocked `Branch` / `Loop` without truthful
+  selector semantics
+- the current local unlanded `Batch 50b` packet is narrower still: it keeps `Branch` and `Loop`
+  blocked, adds only an internal topology-prerequisite bridge/prereq snapshot over the current
+  family/kinematics surface, and reports explicit available versus missing fields instead of fake
+  selector behavior
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
-  broader symbolic mass canonicalization, and any `Propagator::prescription` metadata
-  interpretation are still outside the accepted public boundary
+  truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,
+  `AnalyzeTopSector` parity, and any `Propagator::prescription` metadata interpretation are still
+  outside the accepted public boundary
 - that landed `Batch 49b` packet is still narrow: it adds only a bootstrap builtin `Mass` seam
   over the reviewed local candidate surface plus the minimal eta-generated-path coherence widening
   needed to keep selected equal-mass reducer-facing literals aligned with planner grouping. The
@@ -554,7 +568,7 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
 - builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists
-- builtin modes `Branch` and `Loop` remain explicit bootstrap stubs: the runtime now carries an internal eta-topology preflight snapshot over the current family/kinematics surface, but the topology-analysis/candidate-analysis needed for real Branch/Loop selector semantics is still deferred. This is a blocker, not a fake selector choice, alias, or fallback, and it does not widen the public API
+- builtin modes `Branch` and `Loop` remain explicit bootstrap stubs on accepted `main`: the landed `Batch 50a` runtime carries an internal eta-topology preflight snapshot over the current family/kinematics surface, but the topology-analysis/candidate-analysis needed for real Branch/Loop selector semantics is still deferred. The current local `Batch 50b` packet narrows that internal work into a topology-prerequisite bridge/prereq snapshot with explicit available-versus-missing field reporting over the same current surface. Both states are blockers, not fake selector choices, aliases, or fallbacks, and neither widens the public API
 - the landed `Batch 49b` packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
 
 ## Upgrade Rules

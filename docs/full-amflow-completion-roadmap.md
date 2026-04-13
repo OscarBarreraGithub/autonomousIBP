@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; the current accepted staging packet is `Batch 49b`; `Batch 50` is the next roadmap-owned lane |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; `Batch 49b` accepted on `main` as the narrow `Mass` selector seam; `Batch 50` is the next roadmap-owned lane |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -68,8 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- authoritative `main` base is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` and is the current accepted release baseline
-- reviewed implementation remains accepted through landed `Batch 49`; `Milestone M1` is complete
+- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05` and is the current accepted release baseline
+- reviewed implementation remains accepted through landed `Batch 49b`; `Milestone M1` is complete
   on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
@@ -93,10 +93,10 @@ exit gate. The current live state must always be read from `docs/implementation-
   release baseline
 - `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
   narrow builtin eta-mode `Propagator` structural-selector packet
-- the current accepted staging packet on top of that clean baseline is `Batch 49b`: local
-  module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49b-mass`, clean-candidate
-  `sapphire` job `5455850` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`,
+- `Batch 49b` is accepted on `main` on top of that clean baseline: local module-loaded
+  configure/build/ctest passed in `/tmp/autoIBP-b49b-mass`, final clean-candidate `sapphire` job
+  `5457143` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`,
   and second-pass rereview cleared with no blocking or medium findings remaining
 - this does not widen the public/runtime surface beyond reviewed `Batch 46`, does not accept
   broader automatic-boundary execution/provider parity, does not accept full upstream
@@ -140,9 +140,9 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 - builtin eta-mode planning beyond reviewed `All` is still bootstrap-limited: landed
   `Prescription` is only an alias over `All`, landed `Propagator` is only the reviewed structural
-  selector on `main`, the current accepted staging packet adds only a narrow local `Mass` seam
-  with a token-based independence heuristic plus selected-propagator outer-whitespace trimming on
-  rewritten mass literals, and `Branch` / `Loop` remain deferred bootstrap work
+  selector on `main`, and `Batch 49b` adds only a narrow local `Mass` seam with a token-based
+  independence heuristic plus selected-propagator outer-whitespace trimming on rewritten mass
+  literals, while `Branch` / `Loop` remain deferred bootstrap work
 - accepted manual-vs-automatic boundary equivalence is still narrow: only the supported simple
   Euclidean massless sample subset is covered, and only for builtin `Tradition` plus one exact
   user-defined singleton `<family>::eta->infinity`

@@ -29,8 +29,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 ## Current Durable Status
 
 - the accepted public/runtime surface on the current `main` base is the reviewed `Batch 1`
-  through `Batch 49` boundary, now carried forward on clean
-  `main@b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
+  through `Batch 49b` boundary, now carried forward on clean
+  `main@213384d329900a2cf9d034722ef48f8d376e2a05`
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -64,24 +64,23 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   provider / solver seams rather than a new public surface, `Batch 48` adds only the narrow
   bootstrap `Prescription` alias over reviewed `All`, and `Batch 49` adds only the narrow
   builtin `Propagator` structural selector over the reviewed local candidate surface
-- the current accepted staging packet is `Batch 49b`: local module-loaded
-  `cmake -S . -B build`, `cmake --build build --parallel 1`, and
-  `ctest --test-dir build --output-on-failure` passed in `/tmp/autoIBP-b49b-mass`; clean-
-  candidate `sapphire` job `5455850` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`;
+- `Batch 49b` is accepted on `main`: local module-loaded `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, and `ctest --test-dir build --output-on-failure` passed in
+  `/tmp/autoIBP-b49b-mass`; final clean-candidate `sapphire` job `5457143` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`;
   and second-pass rereview cleared with no blocking or medium findings remaining
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   broader symbolic mass canonicalization, and any `Propagator::prescription` metadata
   interpretation are still outside the accepted public boundary
-- that accepted staging packet is still narrow and is not yet landed: it adds only a bootstrap
-  builtin `Mass` seam over the reviewed local candidate surface plus the minimal eta-generated-path
-  coherence widening needed to keep selected equal-mass reducer-facing literals aligned with
-  planner grouping. The remaining accepted gaps stay explicit: the independence preference is only
-  a local token-based heuristic, selected-mass normalization is only outer-whitespace trimming on
-  rewritten selected propagators, there is no broader topology/component-order parity, no broader
-  same-priority tie-break parity, and no broader symbolic mass canonicalization claim. It does not
-  by itself close `M0b` or imply broader upstream parity
+- that landed `Batch 49b` packet is still narrow: it adds only a bootstrap builtin `Mass` seam
+  over the reviewed local candidate surface plus the minimal eta-generated-path coherence widening
+  needed to keep selected equal-mass reducer-facing literals aligned with planner grouping. The
+  remaining accepted gaps stay explicit: the independence preference is only a local token-based
+  heuristic, selected-mass normalization is only outer-whitespace trimming on rewritten selected
+  propagators, there is no broader topology/component-order parity, no broader same-priority
+  tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
+  close `M0b` or imply broader upstream parity
 
 ## Core Types
 
@@ -556,7 +555,7 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
 - builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists
 - builtin modes `Branch` and `Loop` remain explicit bootstrap stubs and fail as not implemented
-- the current `Batch 49b` staging packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
+- the landed `Batch 49b` packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
 
 ## Upgrade Rules
 

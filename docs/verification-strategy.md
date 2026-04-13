@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
+- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -34,12 +34,12 @@ The migration is phase-gated. Every phase must pass:
   baseline before the current staging work
 - `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
   narrow builtin `Propagator` structural-selector packet
-- the current accepted staging packet is `Batch 49b`: local module-loaded `cmake -S . -B build`,
+- `Batch 49b` is accepted on `main`: local module-loaded `cmake -S . -B build`,
   `cmake --build build --parallel 1`, and `ctest --test-dir build --output-on-failure` passed in
-  `/tmp/autoIBP-b49b-mass`; clean-candidate `sapphire` job `5455850` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`;
+  `/tmp/autoIBP-b49b-mass`; final clean-candidate `sapphire` job `5457143` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`;
   and second-pass rereview found no blocking or medium findings remaining
-- that staging acceptance is limited to the narrow bootstrap builtin `Mass` seam on the current
+- that landed `Batch 49b` packet is limited to the narrow bootstrap builtin `Mass` seam on the
   reviewed subset plus the minimal eta-generated-path mass-coherence widening required to keep
   selected equal-mass reducer-facing literals aligned with planner grouping. It does not accept
   full upstream topology/component-order `Mass` semantics, broader same-priority tie-break parity,
@@ -96,20 +96,18 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   landing commit is `f4bf8af2419a20f04ae40eceebbd5d12f3b2a92c`
 - latest accepted clean-candidate gate for the landed `Batch 49` packet is job `5445260`; the
   landing commit is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
-- latest accepted clean-candidate gate for the current `Batch 49b` staging packet is job
-  `5455850` for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`
+- latest accepted clean-candidate gate for the landed `Batch 49b` packet is job `5457143` for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
 - `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
-  manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, and landed `Batch 49` are now also
-  satisfied narrowly on the supported sample subset on `main`, and the current `Batch 49b`
-  staging packet has also cleared the clean-candidate gate on top of clean
-  `main@b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`, while broader Kira smoke, broader reducer
-  parity, `M0b`, and later parity milestones remain separate future gates
+  manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, landed `Batch 49`, and landed
+  `Batch 49b` are now also satisfied narrowly on the supported sample subset on `main`, while
+  broader Kira smoke, broader reducer parity, `M0b`, and later parity milestones remain separate
+  future gates
 
 ## Immediate Enforcement In This Bootstrap
 

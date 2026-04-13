@@ -25,8 +25,8 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- authoritative `main` base is `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2`
-- reviewed code remains accepted through landed `Batch 49` on `main`; `Milestone M1` is complete
+- authoritative `main` base is `213384d329900a2cf9d034722ef48f8d376e2a05`
+- reviewed code remains accepted through landed `Batch 49b` on `main`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
@@ -48,12 +48,12 @@ The workflow is optimized for the current repo shape:
   baseline
 - `Batch 49` is accepted on `main`: commit `b0275a8d8ce3f33577629f44d7b168b4d4ef8bb2` landed the
   narrow builtin `Propagator` structural-selector packet
-- the current accepted staging packet is `Batch 49b` on top of that clean baseline: local
-  module-loaded configure/build/ctest passed in `/tmp/autoIBP-b49b-mass`, clean-candidate
-  `sapphire` job `5455850` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-clean-candidate-20260413T111217Z-GAqpaJ`,
+- `Batch 49b` is accepted on `main` on top of that clean baseline: local module-loaded
+  configure/build/ctest passed in `/tmp/autoIBP-b49b-mass`, final clean-candidate `sapphire` job
+  `5457143` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b49b-final-clean-candidate-20260413T112519Z-Kabcrq`,
   and second-pass rereview cleared with no blocking or medium findings remaining
-- that accepted staging packet is still narrow: the `Mass` preference is only a local token-based
+- that landed `Batch 49b` packet is still narrow: the `Mass` preference is only a local token-based
   heuristic, selected-mass coherence is only outer-whitespace trimming on rewritten selected
   propagators, there is no broader topology/component-order or symbolic mass-canonicalization
   claim, and `Batch 50` is now the next roadmap-owned implementation lane while `M0b` remains
@@ -467,7 +467,7 @@ Until the solver and reference harness broaden substantially, the default implem
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
    roadmap gates, and the active blocker chain; on the current baseline that means start
    `Batch 50`, not reopen `K0b`, `Batch 47`, landed `Batch 48`, landed `Batch 49`, or the
-   accepted `Batch 49b` staging packet
+   landed `Batch 49b` packet
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

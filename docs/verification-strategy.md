@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- current `main` / `origin/main` head is `95f33f398bbdebf2084bf360a498fea3de89fc30`
+- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`
 - last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
@@ -69,48 +69,12 @@ The migration is phase-gated. Every phase must pass:
   under retained artifact root
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and the durable docs now record that evidence
-- the current local `Batch 50` worktree packet now implements a first supported `Branch` / `Loop`
-  selector slice over the single-top-sector squared-linear-momentum subset: local
-  `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build
-  --output-on-failure`, and `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 50` packet found no material issues, and final
-  clean-candidate job `6265957` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50-final-clean-candidate-20260417T191228Z-2a59f577`
-  under retained artifact root
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50-final-clean-candidate-20260417T191228Z-2a59f577`;
-  the packet is still not landed, so `M0b` remains separately open and broader parity claims stay
-  blocked
-- the current local `Batch 51` worktree packet now adds ordered multi-invariant
-  `BuildInvariantGeneratedDESystemList(...)` / `SolveInvariantGeneratedSeriesList(...)` wrappers
-  over the reviewed one-invariant automatic invariant-generated path: local `cmake -S . -B build`,
-  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
-  `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 51` packet found no material runtime issues after
-  tightening order-preservation, invalid-name, and artifact-isolation coverage; no
-  clean-candidate or landing evidence exists yet, so broader parity and acceptance claims remain
-  blocked
-- the current local `Batch 52` worktree packet now widens `BuildInvariantDerivativeSeed(...)` to
-  accept invariant-independent identifier or rational-constant propagator masses on the bootstrap
-  subset: local `cmake -S . -B build`, `cmake --build build --parallel 1`,
+- landed `Batch 50` through `Batch 54` are now dependency-satisfied `main` history for future
+  verification planning; broader parity claims still remain blocked because `M0b` is still open
+- the current local `Batch 55` packet now adds typed `master_set_instability` and
+  `continuation_budget_exhausted` failures on top of the landed retry surface; local
+  `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 52` packet found no concrete issues after tightening
-  the accepted mass surface to exact identifiers or nonzero-denominator rational constants
-- the current local `Batch 53` worktree packet now adds the first multiple-top-sector Kira target
-  orchestration slice over the accepted preparation/execution seams: local `cmake -S . -B build`,
-  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
-  `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 53` packet found no material findings after
-  hardening prep-side sector validation and invalid-configuration coverage
-- the current local `Batch 54` worktree packet now adds precision-budget preflight plus an
-  internal retry controller on generated-solver handoffs; direct
-  `SolveDifferentialEquation(...)` is still passthrough. Local `cmake -S . -B build`,
-  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
-  `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 54` packet found no material findings after the
-  hard-cap fix and direct insufficient-precision regressions
-- `Batch 54` still lacks clean-candidate evidence and landing, and `Batch 55` remains blocked on
-  closing the standalone wrapper gap and retiring helper-only retry tests in favour of
-  wrapper-path coverage
 
 ## Test Taxonomy
 

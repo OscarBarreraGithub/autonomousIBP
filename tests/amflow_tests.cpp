@@ -11312,6 +11312,47 @@ void SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest() {
          "construction fails");
 }
 
+void SolveInvariantGeneratedSeriesAutomaticClassifiesMasterSetInstabilityTest() {
+  amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
+  master_basis.family = "wrong_auto_family";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-master-set-instability"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-master-set-instability.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(MakeAutoInvariantHappyProblemSpec(),
+                                            master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
+         "automatic invariant solver handoff should classify master-basis drift as "
+         "master_set_instability");
+  Expect(diagnostics.summary.find("master_set_instability:") == 0 &&
+             diagnostics.summary.find("ParsedMasterList.family") != std::string::npos,
+         "automatic invariant solver handoff should preserve the underlying parsed-master-list "
+         "family diagnostic text when classifying master_set_instability");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff should not call the solver when master-set "
+         "instability blocks DE construction");
+}
+
 void SolveInvariantGeneratedSeriesAutomaticPropagatesInsufficientPrecisionDiagnosticTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-solver-insufficient-precision"));
@@ -11538,11 +11579,16 @@ void TestPrecisionRetryWrapper_CeilingStopTest() {
   Expect(first_request.requested_digits == requested_digits &&
              second_request.requested_digits == requested_digits,
          "retry wrapper ceiling-stop should preserve requested_digits on every attempted call");
-  Expect(!diagnostics.success && diagnostics.failure_code == "insufficient_precision",
-         "retry wrapper ceiling-stop should return insufficient_precision deterministically");
-  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics[1]),
-         "retry wrapper ceiling-stop should return the terminal insufficient_precision "
-         "diagnostics from the final real wrapper attempt");
+  Expect(!diagnostics.success && diagnostics.failure_code == "continuation_budget_exhausted",
+         "retry wrapper ceiling-stop should return continuation_budget_exhausted "
+         "deterministically");
+  Expect(diagnostics.summary.find("continuation_budget_exhausted:") == 0 &&
+             diagnostics.summary.find("precision ceiling reached before satisfying the stability "
+                                      "checks") != std::string::npos &&
+             diagnostics.summary.find(solver.returned_diagnostics[1].summary) !=
+                 std::string::npos,
+         "retry wrapper ceiling-stop should preserve both the exhausted-budget reason and the "
+         "terminal solver diagnostic text");
 }
 
 void TestPrecisionRetryWrapper_DiagnosticsMatchTest() {
@@ -12252,6 +12298,47 @@ void SolveEtaGeneratedSeriesExecutionFailureTest() {
 
   Expect(solver.call_count() == 0,
          "eta solver handoff should not call the solver when eta DE construction fails");
+}
+
+void SolveEtaGeneratedSeriesClassifiesMasterSetInstabilityTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  master_basis.family = "wrong_eta_family";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-master-set-instability"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(amflow::MakeSampleProblemSpec(),
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      "eta=0",
+                                      "eta=1",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
+         "eta solver handoff should classify master-basis drift as master_set_instability");
+  Expect(diagnostics.summary.find("master_set_instability:") == 0 &&
+             diagnostics.summary.find("ParsedMasterList.family") != std::string::npos,
+         "eta solver handoff should preserve the underlying parsed-master-list family "
+         "diagnostic text when classifying master_set_instability");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when master-set instability blocks DE "
+         "construction");
 }
 
 void SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest() {
@@ -16446,6 +16533,7 @@ int main() {
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
+    SolveInvariantGeneratedSeriesAutomaticClassifiesMasterSetInstabilityTest();
     SolveInvariantGeneratedSeriesAutomaticPropagatesInsufficientPrecisionDiagnosticTest();
     TestPrecisionRetryWrapper_PassAfterBumpTest();
     TestPrecisionRetryWrapper_NoRetryOnOtherFailureTest();
@@ -16463,6 +16551,7 @@ int main() {
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesBootstrapSolverPassthroughTest();
     SolveEtaGeneratedSeriesExecutionFailureTest();
+    SolveEtaGeneratedSeriesClassifiesMasterSetInstabilityTest();
     SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest();
     SolveEtaGeneratedSeriesRejectsEmptyGeneratedTargetsTest();
     SolveEtaModePlannedSeriesHappyPathTest();

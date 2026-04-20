@@ -30,19 +30,25 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
-- current `main@95f33f398bbdebf2084bf360a498fea3de89fc30` additionally carries the landed `Batch 50b`
-  topology-prerequisite bridge packet; durable clean-candidate evidence is now recorded in these
-  docs via job `5482487` for candidate
+- the starting `main` state for this packet additionally carried landed `Batch 50b` through
+  `Batch 54` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
+  `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
+  `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`;
+  durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
-  but that packet remains internal-only and does not widen the last fully accepted public/runtime
-  boundary
-- the current local worktree additionally carries an unlanded `Batch 50` packet: on the current
-  single-top-sector squared-linear-momentum subset, builtin `Branch` and `Loop` now derive
-  supported
-  topology groups from a first-Symanzik support and select unique uncut propagators
-  deterministically; local verification is green, second-pass review is clear, and clean-candidate
-  evidence is now retained via job `6265957`, but the last fully accepted public boundary still
-  does not move until this packet lands
+  and `Batch 50b` remains internal-only despite being landed on `main`
+- current `main` now also carries the landed narrow public/runtime packets that follow that bridge:
+  `Batch 50` adds the first supported `Branch` / `Loop` selector slice on the single-top-sector
+  squared-linear-momentum subset, `Batch 51` adds ordered multi-invariant list wrappers over the
+  reviewed one-invariant automatic path, `Batch 52` widens invariant-generated seed construction
+  to invariant-independent identifier or rational-constant masses on the bootstrap subset,
+  `Batch 53` adds first multiple-top-sector Kira target orchestration, and `Batch 54` adds
+  precision-budget preflight plus a generated-wrapper retry controller while direct
+  `SolveDifferentialEquation(...)` remains passthrough
+- the current local worktree additionally carries `Batch 55`: generated-wrapper DE-construction
+  master-basis drift now returns `failure_code = "master_set_instability"`, exhausted monotone
+  retry progress returns `failure_code = "continuation_budget_exhausted"`, and local verification
+  is green
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -94,7 +100,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   it keeps `Branch` and `Loop` blocked, adds only an internal topology-prerequisite bridge/prereq
   snapshot over the current family/kinematics surface, and reports explicit available versus
   missing fields instead of fake selector behavior
-- the current local `Batch 50` packet is still narrow even where it succeeds: it is limited to the
+- the landed `Batch 50` packet on current `main` is still narrow even where it succeeds: it is limited to the
   single-top-sector squared-linear-momentum subset, uses deterministic local size-then-declaration
   ordering plus repeated-first-choice deduplication, and still does not claim multi-top-sector
   coverage, broader propagator grammar support, linear-propagator support, full upstream
@@ -583,8 +589,17 @@ The first exact one-hop continuation solver seam is now reviewed through the rev
 - both supported paths use the deterministic `match`/`check` pair for exact acceptance; the regular path requires exact regular residuals plus exact overlap mismatch to vanish, while the mixed path requires the exact start-side regular residual, exact target-side Frobenius residual, and exact regular/Frobenius handoff mismatch to vanish entrywise
 - on success the solver returns `diagnostics.success = true`, `residual_norm = 0.0`, `overlap_mismatch = 0.0`, empty `failure_code`, and a deterministic short success summary, while transported target values and the mixed handoff matrix remain internal and are not exposed on the public surface
 - well-formed but unsupported or inexact one-hop requests return `failure_code = "unsupported_solver_path"`, including singular starts, unsupported matrix shape/support outside the reviewed upper-triangular subset, forced logarithmic resonances, fractional-exponent mixed targets, singular internal one-hop evaluations, and nonzero exact residual or handoff checks
-- `PrecisionPolicy` and `requested_digits` remain accepted on `SolveRequest`; on the current local reviewed `Batch 54` surface, `EvaluatePrecisionBudget(...)` still enforces the hard-cap preflight before patch generation, so requests whose `requested_digits` exceed `max_working_precision` return `failure_code = "insufficient_precision"` immediately (`src/solver/series_solver.cpp:2100-2104`, `src/solver/precision_policy.cpp:40-65`)
-- invariant- and eta-generated solver handoffs layer a narrow internal retry controller on top of that surface: on retryable `insufficient_precision`, `requested_digits` stays fixed and the wrapper retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`; otherwise it stops deterministically and returns the current diagnostic (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`, `src/solver/series_solver.cpp:2687-2712`, `src/solver/series_solver.cpp:2753-2780`)
+- `PrecisionPolicy` and `requested_digits` remain accepted on `SolveRequest`; on the landed
+  `Batch 54` surface, `EvaluatePrecisionBudget(...)` enforces the hard-cap preflight before patch
+  generation, so requests whose `requested_digits` exceed `max_working_precision` return
+  `failure_code = "insufficient_precision"` immediately
+- invariant- and eta-generated solver handoffs layer a narrow internal retry controller on top of
+  that surface: on retryable `insufficient_precision`, `requested_digits` stays fixed and the
+  wrapper retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or
+  `x_order`; on the current local `Batch 55` surface, generated-wrapper master-basis drift during
+  DE construction returns `failure_code = "master_set_instability"` and exhausted monotone retry
+  progress returns `failure_code = "continuation_budget_exhausted"` instead of falling back to the
+  raw terminal retry diagnostic
 - these batches do not add singular-start boundary semantics, singular-to-regular or singular-to-singular continuation, multi-hop continuation, passive-binding solve inputs, standalone `SolveDifferentialEquation(...)` retry integration, automatic boundary generation, public Frobenius residual or handoff diagnostics, or public transported-target output
 
 The first standalone differential-equation solver wrapper seam is now reviewed:
@@ -611,13 +626,13 @@ The first auxiliary-family transformation seam is also intentionally narrow:
   real Branch/Loop selector semantics is still deferred. The landed `Batch 50b` packet on current
   `main` narrows that internal work into a topology-prerequisite bridge/prereq snapshot with
   explicit available-versus-missing field reporting over the same current surface. Durable
-  clean-candidate evidence is now recorded for that internal packet. The current local `Batch 50`
-  worktree then adds a first supported selector slice over the single-top-sector
+  clean-candidate evidence is now recorded for that internal packet. The landed `Batch 50`
+  packet then adds a first supported selector slice over the single-top-sector
   squared-linear-momentum subset only: it derives first-Symanzik support from active non-auxiliary
   propagators, computes Branch/Loop groups, intersects with uncut candidates, and selects unique
   propagators deterministically before eta insertion. Broader topology parity and boundary claims
-  remain deferred. Neither the landed `50a`/`50b` states nor the current unlanded `Batch 50`
-  packet widens the last fully accepted public API
+  remain deferred. Neither the landed `50a`/`50b` states nor the landed narrow `Batch 50` packet
+  widens the last fully accepted public API
 - the landed `Batch 49b` packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
 
 ## Upgrade Rules

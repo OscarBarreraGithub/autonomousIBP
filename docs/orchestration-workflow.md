@@ -25,8 +25,9 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- current `main` / `origin/main` head is `95f33f398bbdebf2084bf360a498fea3de89fc30`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, and reviewed code remains accepted through landed `Batch 50a`; `Milestone M1` is complete
+- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`
+- landed `Batch 50` through `Batch 54` are now present on `main` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 54`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
@@ -77,40 +78,16 @@ The workflow is optimized for the current repo shape:
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`
   under retained artifact root
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`
-- current local `Batch 50` worktree packet now implements a first supported `Branch` / `Loop`
-  selector slice on the current single-top-sector squared-linear-momentum subset; local
-  configure/build/ctest and `./build/amflow-tests` passed in the current thread
-- second-pass rereview on that local `Batch 50` packet found no material issues on the declared
-  narrow scope
-- final clean-candidate job `6265957` now also passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50-final-clean-candidate-20260417T191228Z-2a59f577`
-  under retained artifact root
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50-final-clean-candidate-20260417T191228Z-2a59f577`
-- current local `Batch 51` worktree packet now adds the first ordered multi-invariant
-  invariant-generated list wrappers over the reviewed one-invariant path; local
-  configure/build/ctest and `./build/amflow-tests` passed in the current thread
-- second-pass rereview on that local `Batch 51` packet found no material runtime issues after
-  tightening order-preservation, invalid-name, and artifact-isolation coverage
-- current local `Batch 52` worktree packet now widens `BuildInvariantDerivativeSeed(...)` to the
-  first invariant-independent nonzero-mass slice; local configure/build/ctest and
-  `./build/amflow-tests` passed in the current thread
-- second-pass rereview on that local `Batch 52` packet found no concrete issues after tightening
-  the accepted mass surface to exact identifiers or nonzero-denominator rational constants
-- current local `Batch 53` worktree packet now adds the first multiple-top-sector Kira target
-  orchestration slice over the accepted preparation/execution seams: local
-  configure/build/ctest and `./build/amflow-tests` passed in the current thread
-- second-pass rereview on that local `Batch 53` packet found no material findings after
-  hardening prep-side sector validation and invalid-configuration coverage
-- current local `Batch 54` worktree packet now adds precision-budget preflight plus an internal
-  retry controller on generated-solver handoffs; direct `SolveDifferentialEquation(...)` is still
-  passthrough. Local configure/build/ctest and `./build/amflow-tests` passed in the current thread
-- second-pass rereview on that local `Batch 54` packet found no material findings after the
-  hard-cap fix and direct insufficient-precision regressions
-- the active roadmap-owned implementation lane remains `Batch 54`: `Batch 55` remains blocked on
-  closing the standalone wrapper gap and retiring helper-only retry tests in favour of
-  wrapper-path coverage. `Batch 54` clean-candidate/landing bookkeeping and the earlier
-  `Batch 53` / `Batch 52` / `Batch 51` / `Batch 50` bookkeeping still remain pending. `M0b`
-  remains separately open and still blocks broader parity claims
+- landed `Batch 50` through `Batch 54` are no longer local-only bookkeeping items; future
+  orchestration must treat them as dependency-satisfied `main` history rather than open local
+  packets
+- the current local `Batch 55` packet hardens typed diagnostics on top of landed `Batch 54`:
+  generated-wrapper DE-construction master-basis drift now returns `master_set_instability`,
+  exhausted monotone retry progress now returns `continuation_budget_exhausted`, and the mandatory
+  local gate `cmake -S . -B build`, `cmake --build build --parallel 1`,
+  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed in this thread
+- the active roadmap-owned implementation lane is now `Batch 55`; the standing parallel lane
+  remains `M0b`, and truthful `M3` closure still waits on `M0b`
 
 ## Mandatory Read Set Before Planning
 

@@ -37,6 +37,8 @@ constexpr char kMatrixOverlapPrefix[] =
 constexpr char kBootstrapSolverPrefix[] = "bootstrap regular-point continuation solver";
 constexpr char kUnsupportedSolverPathCode[] = "unsupported_solver_path";
 constexpr char kInsufficientPrecisionCode[] = "insufficient_precision";
+constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
+constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
 constexpr int kBootstrapContinuationOrder = 4;
 
 ExactRational ZeroRational() {
@@ -1885,6 +1887,45 @@ SolverDiagnostics MakeInsufficientPrecisionDiagnostics(const PrecisionDecision& 
   return diagnostics;
 }
 
+std::string StripFailureCodePrefix(const std::string& summary, const std::string& failure_code) {
+  const std::string prefix = failure_code + ": ";
+  if (summary.rfind(prefix, 0) == 0) {
+    return summary.substr(prefix.size());
+  }
+  return summary;
+}
+
+SolverDiagnostics MakeMasterSetInstabilityDiagnostics(const std::string& summary) {
+  SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = kMasterSetInstabilityCode;
+  diagnostics.summary = summary.rfind(std::string(kMasterSetInstabilityCode) + ": ", 0) == 0
+                            ? summary
+                            : std::string(kMasterSetInstabilityCode) + ": " + summary;
+  return diagnostics;
+}
+
+SolverDiagnostics MakeContinuationBudgetExhaustedDiagnostics(
+    const SolverDiagnostics& diagnostics,
+    const std::string& reason) {
+  SolverDiagnostics exhausted = diagnostics;
+  exhausted.success = false;
+  exhausted.failure_code = kContinuationBudgetExhaustedCode;
+
+  std::string summary_reason = StripFailureCodePrefix(reason, kInsufficientPrecisionCode);
+  if (summary_reason.empty()) {
+    summary_reason = "precision retry controller could not make further monotone progress";
+  }
+
+  exhausted.summary = std::string(kContinuationBudgetExhaustedCode) + ": " + summary_reason;
+  if (!diagnostics.summary.empty()) {
+    exhausted.summary += "; last_solver_diagnostic=" + diagnostics.summary;
+  }
+  return exhausted;
+}
+
 PrecisionObservation MakePrecisionObservationFromDiagnostics(const SolveRequest& request,
                                                             const SolverDiagnostics& diagnostics) {
   PrecisionObservation observation;
@@ -1899,6 +1940,13 @@ PrecisionObservation MakePrecisionObservationFromDiagnostics(const SolveRequest&
 
 bool IsRetryablePrecisionInstability(const SolverDiagnostics& diagnostics) {
   return !diagnostics.success && diagnostics.failure_code == kInsufficientPrecisionCode;
+}
+
+bool IsMasterSetInstabilityMessage(const std::string& message) {
+  return message.find("master basis") != std::string::npos ||
+         message.find("ParsedMasterList.family") != std::string::npos ||
+         message.find("parsed master list") != std::string::npos ||
+         message.find("unexpected master set") != std::string::npos;
 }
 
 SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request) {
@@ -1916,11 +1964,13 @@ SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveReque
         EvaluatePrecision(request.precision_policy,
                           MakePrecisionObservationFromDiagnostics(request, diagnostics));
     if (decision.status != PrecisionStatus::Escalate) {
-      return diagnostics;
+      return MakeContinuationBudgetExhaustedDiagnostics(diagnostics, decision.reason);
     }
     if (decision.suggested_working_precision <= request.precision_policy.working_precision &&
         decision.suggested_x_order <= request.precision_policy.x_order) {
-      return diagnostics;
+      return MakeContinuationBudgetExhaustedDiagnostics(
+          diagnostics,
+          "precision retry controller could not advance working precision or truncation order");
     }
 
     request.precision_policy.working_precision = decision.suggested_working_precision;
@@ -2698,13 +2748,20 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits) {
   SolveRequest request;
-  request.system = BuildInvariantGeneratedDESystem(spec,
-                                                   master_basis,
-                                                   invariant_name,
-                                                   options,
-                                                   layout,
-                                                   kira_executable,
-                                                   fermat_executable);
+  try {
+    request.system = BuildInvariantGeneratedDESystem(spec,
+                                                     master_basis,
+                                                     invariant_name,
+                                                     options,
+                                                     layout,
+                                                     kira_executable,
+                                                     fermat_executable);
+  } catch (const std::runtime_error& error) {
+    if (IsMasterSetInstabilityMessage(error.what())) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+    throw;
+  }
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;
@@ -2765,14 +2822,21 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     const int requested_digits,
     const std::string& eta_symbol) {
   SolveRequest request;
-  request.system = BuildEtaGeneratedDESystem(spec,
-                                             master_basis,
-                                             decision,
-                                             options,
-                                             layout,
-                                             kira_executable,
-                                             fermat_executable,
-                                             eta_symbol);
+  try {
+    request.system = BuildEtaGeneratedDESystem(spec,
+                                               master_basis,
+                                               decision,
+                                               options,
+                                               layout,
+                                               kira_executable,
+                                               fermat_executable,
+                                               eta_symbol);
+  } catch (const std::runtime_error& error) {
+    if (IsMasterSetInstabilityMessage(error.what())) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+    throw;
+  }
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;

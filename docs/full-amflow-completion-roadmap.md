@@ -37,7 +37,7 @@ exit gate. The current live state must always be read from `docs/implementation-
 | --- | --- | --- |
 | `Track P: Production Backend` | choose, enable, and benchmark the production symbolic/exact/precision stack | backend decision, Linux build profile, perf/smoke evidence |
 | `Track S: Solver Risk Retirement` | retire the highest-risk solver-core work early | reviewed `Batch 34` through `Batch 43`; `Milestone M1` complete |
-| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; `Batch 49b` accepted on `main` as the narrow `Mass` selector seam; `Batch 50a` accepted on `main` as the internal eta-topology preflight snapshot seam; landed `Batch 50b` now has refreshed clean-candidate evidence recorded as the internal topology-prerequisite bridge packet; current local `Batch 50` worktree implements the first supported Branch/Loop selector slice on the single-top-sector squared-linear-momentum subset and carries retained clean-candidate evidence via job `6265957`; current local `Batch 51` worktree adds ordered multi-invariant invariant-generated list wrappers over the reviewed one-invariant path and has cleared local verification plus second-pass review; current local `Batch 52` worktree widens `BuildInvariantDerivativeSeed(...)` to the first invariant-independent nonzero-mass slice and has cleared local verification plus second-pass review; current local `Batch 53` worktree adds the first reviewed multiple-top-sector Kira target orchestration slice and has cleared local verification plus second-pass review |
+| `Track B: Boundary And Parity Prep` | prepare boundary-provider and parity fixtures/contracts without widening live auto-boundary behavior early | reviewed `Batch 44` through `Batch 47`; `Milestone M2` accepted narrowly; `Batch 48` accepted on `main` as the bootstrap-only `Prescription` alias seam; `Batch 49` accepted on `main` as the narrow `Propagator` structural-selector seam; `Batch 49b` accepted on `main` as the narrow `Mass` selector seam; `Batch 50a` accepted on `main` as the internal eta-topology preflight snapshot seam; landed `Batch 50b` now has refreshed clean-candidate evidence recorded as the internal topology-prerequisite bridge packet; landed `Batch 50` implements the first supported Branch/Loop selector slice on the single-top-sector squared-linear-momentum subset and carries retained clean-candidate evidence via job `6265957`; landed `Batch 51` adds ordered multi-invariant invariant-generated list wrappers over the reviewed one-invariant path; landed `Batch 52` widens `BuildInvariantDerivativeSeed(...)` to the first invariant-independent nonzero-mass slice; landed `Batch 53` adds the first reviewed multiple-top-sector Kira target orchestration slice |
 | `Track K: Kira/Fermat Cluster` | provision the real Linux reducer/runtime lane | `M0a` accepted, `B0/G1` accepted, and `K0-pre-spec` / `K0-pre` / `K0b.1` accepted on the narrow repo-local smoke subset; `K0` is closed on that subset |
 | `Track R: Continuous Reference Capture` | make `M0` an always-on evidence lane instead of a late one-off | `M0a` accepted bootstrap/pinning, then rolling `M0b` golden capture |
 
@@ -68,9 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- current `main` / `origin/main` head is `95f33f398bbdebf2084bf360a498fea3de89fc30`, which carries the landed `Batch 50b` topology-prerequisite bridge packet
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation remains accepted through landed `Batch 50a`; `Milestone M1` is complete
-  on that reviewed surface
+- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`, which carries landed `Batch 54` on top of landed `Batch 50` through `Batch 53` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, and `0f623d65e7e933d464deef3da4ea02efaf57a535`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 54`, while `Milestone M1` remains complete only on the accepted reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` canonical configure/build/test packet passed at job `5305579`
@@ -123,39 +122,28 @@ exit gate. The current live state must always be read from `docs/implementation-
   under retained artifact root
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and that evidence is now recorded in the durable docs
-- current local `Batch 50` worktree packet now does implement a first supported Branch/Loop
-  selector slice over the current single-top-sector squared-linear-momentum subset: local
-  configure/build/ctest and `./build/amflow-tests` all passed; second-pass rereview then found no
-  material issues, and final clean-candidate job `6265957` passed for candidate
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50-final-clean-candidate-20260417T191228Z-2a59f577`
-  under retained artifact root
-  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50-final-clean-candidate-20260417T191228Z-2a59f577`
-- current local `Batch 51` worktree packet now adds ordered multi-invariant
+- landed `Batch 50` on current `main` now implements the first supported `Branch` / `Loop`
+  selector slice on the single-top-sector squared-linear-momentum subset; the retained
+  clean-candidate packet remains the one recorded at job `6265957`, and broader topology/component
+  parity remains deferred
+- landed `Batch 51` on current `main` now adds ordered multi-invariant
   `BuildInvariantGeneratedDESystemList(...)` and `SolveInvariantGeneratedSeriesList(...)` wrappers
-  over the reviewed one-invariant automatic invariant-generated path: local configure/build/ctest
-  and `./build/amflow-tests` all passed, and second-pass rereview found no material runtime issues
-  after tightening order-preservation, invalid-name, and artifact-isolation coverage
-- current local `Batch 52` worktree packet now widens `BuildInvariantDerivativeSeed(...)` to
-  accept invariant-independent identifier or rational-constant propagator masses on the bootstrap
-  subset: local configure/build/ctest and `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 52` packet found no concrete issues after tightening
-  the accepted mass surface to exact identifiers or nonzero-denominator rational constants
-- current local `Batch 53` worktree packet now adds the first multiple-top-sector Kira target
-  orchestration slice over the accepted preparation/execution seams: local
-  configure/build/ctest and `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 53` packet found no material findings after
-  hardening prep-side sector validation and invalid-configuration coverage
-- current local `Batch 54` worktree packet now adds precision-budget preflight plus an internal
-  retry controller on generated-solver handoffs; direct `SolveDifferentialEquation(...)` is still
-  passthrough. Local configure/build/ctest and `./build/amflow-tests` all passed
-- second-pass rereview on that local `Batch 54` packet found no material findings after the
-  hard-cap fix and direct insufficient-precision regressions
-- the active independent roadmap-owned implementation lane remains `Batch 54`, because
-  standalone `SolveDifferentialEquation(...)` integration is still passthrough; retry tests still
-  helper-based; cancellation/truncation, typed failure codes, cache/restart, `SkipReduction`, and
-  option wiring remain open. The current local `Batch 54` packet still lacks clean-candidate and
-  landing evidence, and the earlier `Batch 53` / `Batch 52` / `Batch 51` / `Batch 50` packets
-  still lack their pending bookkeeping
+  over the reviewed one-invariant automatic path
+- landed `Batch 52` on current `main` now widens `BuildInvariantDerivativeSeed(...)` to accept
+  invariant-independent identifier or rational-constant propagator masses on the bootstrap subset
+- landed `Batch 53` on current `main` now adds the first multiple-top-sector Kira target
+  orchestration slice over the accepted preparation/execution seams
+- landed `Batch 54` on current `main` now adds precision-budget preflight plus an internal retry
+  controller on generated-solver handoffs; direct `SolveDifferentialEquation(...)` remains
+  passthrough by design
+- current local `Batch 55` worktree packet now hardens typed diagnostics on top of that landed
+  surface: DE-construction master-basis drift in the generated wrappers returns
+  `failure_code = "master_set_instability"`, exhausted monotone retry progress returns
+  `failure_code = "continuation_budget_exhausted"`, and local
+  `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
+  and `./build/amflow-tests` all passed
+- the active independent roadmap-owned implementation lane is now `Batch 55`; the standing
+  parallel lane remains `M0b`, and truthful `M3` / later parity closure still waits on `M0b`
 
 ## Current State At R0
 
@@ -171,9 +159,10 @@ exit gate. The current live state must always be read from `docs/implementation-
   consumption, and solver handoff wrappers
 - invariant derivative generation, one-invariant automatic seed construction on a bootstrap subset,
   invariant-generated reduction preparation/execution, `DESystem` consumption, and solver handoff
-  wrappers, plus current local ordered multi-invariant `DESystem` / solver list wrappers that
-  iterate those one-invariant seams without widening solver behavior, and current local
-  invariant-independent identifier/rational-constant mass support in `BuildInvariantDerivativeSeed(...)`
+  wrappers, plus landed ordered multi-invariant `DESystem` / solver list wrappers that iterate
+  those one-invariant seams without widening solver behavior, and landed
+  invariant-independent identifier/rational-constant mass support in
+  `BuildInvariantDerivativeSeed(...)`
 - builtin eta-mode planning wrappers through caller-supplied names and `AmfOptions::amf_modes`
 - mixed builtin/user-defined eta-mode solver wrappers through single-name, ordered-list, and
   `AmfOptions` entrypoints
@@ -199,24 +188,22 @@ exit gate. The current live state must always be read from `docs/implementation-
   literals. Landed `Batch 50a` adds only internal eta-topology preflight blocker telemetry for
   `Branch` / `Loop`, and the landed `Batch 50b` commit on current `main` adds only an internal
   topology-prerequisite bridge/prereq snapshot with explicit availability and missing-field
-  reporting. The current local `Batch 50` worktree now adds a first supported selector slice over
-  the single-top-sector squared-linear-momentum subset, but broader gaps remain explicit: no
-  multi-top-sector support, no broader propagator grammar, no linear-propagator path, no full
-  upstream `AnalyzeTopSector` / component-factorization / vacuum-fallback parity, and no broader
-  prescription interpretation
+  reporting. Landed `Batch 50` adds a first supported selector slice over the single-top-sector
+  squared-linear-momentum subset, but broader gaps remain explicit: no multi-top-sector support,
+  no broader propagator grammar, no linear-propagator path, no full upstream `AnalyzeTopSector` /
+  component-factorization / vacuum-fallback parity, and no broader prescription interpretation
 - accepted manual-vs-automatic boundary equivalence is still narrow: only the supported simple
   Euclidean massless sample subset is covered, and only for builtin `Tradition` plus one exact
   user-defined singleton `<family>::eta->infinity`
 - solver/provider coupling, automatic boundary execution, and `BoundaryCondition` generation from
   builtin/planned `eta -> infinity` requests remain deferred
 - `BuildInvariantDerivativeSeed(...)` is still limited to a narrow bootstrap symbolic subset: the
-  current local `Batch 52` worktree widens only the mass field to invariant-independent
-  identifiers or rational constants, while broader symbolic mass grammar and other symbolic
-  widening remain missing
-- there is still no landed multi-invariant orchestration on `main`: the current local `Batch 51`
-  worktree adds only the first ordered invariant-list wrappers over the reviewed one-invariant
-  path, while multiple top-sector orchestration and the loop-core reduction-span parity gate
-  remain missing
+  landed `Batch 52` packet widens only the mass field to invariant-independent identifiers or
+  rational constants, while broader symbolic mass grammar and other symbolic widening remain
+  missing
+- multi-invariant orchestration on `main` remains narrow: landed `Batch 51` adds only the first
+  ordered invariant-list wrappers over the reviewed one-invariant path, while broader list-surface
+  widening and the loop-core reduction-span parity gate remain missing
 - a narrow internal retry controller exists on generated-solver handoffs at
   `src/solver/series_solver.cpp:1904-1928`, but there are still no cache/restart semantics and no
   live `SkipReduction` runtime path
@@ -309,14 +296,17 @@ Missing:
 Primary output:
 - explicit stability management and honest runtime policy rather than stored-but-ignored options
 
-Current local status:
-- `Batch 54` now contributes precision-budget preflight plus a narrow internal retry controller on
-  generated-solver handoffs: `EvaluatePrecisionBudget(...)` treats `max_working_precision` as a
-  hard cap, the exact standalone solver now returns `failure_code = "insufficient_precision"` when
-  `requested_digits` exceed that configured ceiling, and `SolveInvariantGeneratedSeries(...)` /
-  `SolveEtaGeneratedSeries(...)` route solver calls through `SolveWithPrecisionRetry(...)`
-- direct `SolveDifferentialEquation(...)` is still passthrough, helper-only retry tests still
-  remain in place, and cancellation/truncation detection, the remaining failure codes,
+Current status:
+- landed `Batch 54` contributes precision-budget preflight plus a narrow internal retry controller
+  on generated-solver handoffs: `EvaluatePrecisionBudget(...)` treats
+  `max_working_precision` as a hard cap, the exact standalone solver returns
+  `failure_code = "insufficient_precision"` when `requested_digits` exceed that configured
+  ceiling, and `SolveInvariantGeneratedSeries(...)` / `SolveEtaGeneratedSeries(...)` route solver
+  calls through `SolveWithPrecisionRetry(...)`
+- current local `Batch 55` adds the first typed diagnostics on top of that retry surface:
+  generated-wrapper master-basis drift is classified as `master_set_instability`, exhausted
+  monotone retry progress is classified as `continuation_budget_exhausted`, direct
+  `SolveDifferentialEquation(...)` remains passthrough, and cancellation/truncation detection,
   cache/restart, `SkipReduction`, and the rest of Track E remain open
 
 ### Track F: Feature-Surface Parity
@@ -548,8 +538,8 @@ dependency change.
 
 | Batch | Scope | Depends On |
 | --- | --- | --- |
-| `Batch 54` | internal retry controller + precision-budget preflight on generated-solver handoffs already present locally; remaining scope: extend or explicitly scope standalone DE wrapper, replace helper-only retry tests with wrapper-path coverage, and update public contract | `Milestone M2`, `Milestone M3` |
-| `Batch 55` | diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
+| `Batch 54` | landed on `main`: precision-budget preflight plus an internal retry controller on generated-solver handoffs, while direct `SolveDifferentialEquation(...)` remains passthrough | `Milestone M2` |
+| `Batch 55` | active local packet: diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
 | `Batch 56` | patch/cache artifact model plus `UseCache` replay and invalidation semantics for solved paths | `Batch 55` |
 | `Batch 57` | `SkipReduction` runtime path over cached or caller-provided `DESystem` inputs | `Batch 56` |
 | `Batch 58` | live wiring of `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, `RationalizePre`, and `RunLength` into solver policy | `Batch 57` |

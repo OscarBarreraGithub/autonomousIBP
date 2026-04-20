@@ -8946,6 +8946,90 @@ void BuildInvariantDerivativeSeedMatchesWholePropagatorFactorTest() {
          "decomposing derivative factors");
 }
 
+void BuildInvariantDerivativeSeedAllowsInvariantIndependentMassPropagatorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "msq";
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::InvariantDerivativeSeed seed =
+      amflow::BuildInvariantDerivativeSeed(spec, "s");
+
+  Expect(seed.propagator_derivatives.size() == 3,
+         "automatic invariant seed construction should preserve propagator-table arity when "
+         "masses are invariant-independent");
+  Expect(seed.propagator_derivatives[0].terms.empty(),
+         "automatic invariant seed construction should preserve zero-derivative propagator slots "
+         "with invariant-independent masses");
+  Expect(seed.propagator_derivatives[1].terms.size() == 1 &&
+             seed.propagator_derivatives[1].terms[0].coefficient == "1" &&
+             seed.propagator_derivatives[1].terms[0].factor_indices ==
+                 std::vector<int>({0, 0, 0}),
+         "automatic invariant seed construction should keep invariant-independent-mass constant "
+         "derivative terms unchanged");
+  Expect(seed.propagator_derivatives[2].terms.size() == 1 &&
+             seed.propagator_derivatives[2].terms[0].coefficient == "-1" &&
+             seed.propagator_derivatives[2].terms[0].factor_indices ==
+                 std::vector<int>({-1, 0, 0}),
+         "automatic invariant seed construction should keep invariant-independent-mass "
+         "representable factor matches unchanged");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "automatic invariant seed construction should not mutate invariant-independent mass "
+         "inputs");
+}
+
+void BuildInvariantDerivativeSeedCompositionWithInvariantIndependentMassTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "msq";
+  const amflow::InvariantDerivativeSeed seed =
+      amflow::BuildInvariantDerivativeSeed(spec, "s");
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateInvariantDerivativeVariable(MakeAutoInvariantHappyMasterBasis(), seed);
+
+  Expect(generated_variable.rows.size() == 2,
+         "automatic invariant seed construction should still compose with invariant generation "
+         "when masses are invariant-independent");
+  Expect(generated_variable.rows[0].terms.size() == 2 &&
+             generated_variable.rows[0].terms[0].target.Label() == "toy_auto_family[1,2,1]" &&
+             generated_variable.rows[0].terms[0].coefficient == "-1" &&
+             generated_variable.rows[0].terms[1].target.Label() == "toy_auto_family[0,1,2]" &&
+             generated_variable.rows[0].terms[1].coefficient == "(-1)*(-1)",
+         "automatic invariant seed construction should preserve row-0 generated targets with "
+         "invariant-independent masses");
+  Expect(generated_variable.rows[1].terms.size() == 2 &&
+             generated_variable.rows[1].terms[0].target.Label() == "toy_auto_family[0,0,2]" &&
+             generated_variable.rows[1].terms[0].coefficient == "1" &&
+             generated_variable.rows[1].terms[1].target.Label() == "toy_auto_family[-1,-1,3]" &&
+             generated_variable.rows[1].terms[1].coefficient == "(-2)*(-1)",
+         "automatic invariant seed construction should preserve row-1 generated targets with "
+         "invariant-independent masses");
+  Expect(generated_variable.reduction_targets.size() == 4 &&
+             generated_variable.reduction_targets[0].Label() == "toy_auto_family[1,2,1]" &&
+             generated_variable.reduction_targets[1].Label() == "toy_auto_family[0,1,2]" &&
+             generated_variable.reduction_targets[2].Label() == "toy_auto_family[0,0,2]" &&
+             generated_variable.reduction_targets[3].Label() == "toy_auto_family[-1,-1,3]",
+         "automatic invariant seed construction should preserve reduction-target order with "
+         "invariant-independent masses");
+}
+
+void BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagatorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "1/2";
+
+  const amflow::InvariantDerivativeSeed seed =
+      amflow::BuildInvariantDerivativeSeed(spec, "s");
+
+  Expect(seed.propagator_derivatives[1].terms.size() == 1 &&
+             seed.propagator_derivatives[1].terms[0].coefficient == "1" &&
+             seed.propagator_derivatives[1].terms[0].factor_indices ==
+                 std::vector<int>({0, 0, 0}) &&
+             seed.propagator_derivatives[2].terms.size() == 1 &&
+             seed.propagator_derivatives[2].terms[0].coefficient == "-1" &&
+             seed.propagator_derivatives[2].terms[0].factor_indices ==
+                 std::vector<int>({-1, 0, 0}),
+         "automatic invariant seed construction should preserve the reviewed derivative surface "
+         "for invariant-independent rational propagator masses");
+}
+
 void BuildInvariantDerivativeSeedRejectsEmptyInvariantNameTest() {
   ExpectRuntimeError(
       []() {
@@ -9025,7 +9109,7 @@ void BuildInvariantDerivativeSeedRejectsUnsupportedPropagatorKindTest() {
       "automatic invariant seed construction should reject unsupported propagator kinds");
 }
 
-void BuildInvariantDerivativeSeedRejectsNonzeroMassPropagatorTest() {
+void BuildInvariantDerivativeSeedRejectsInvariantDependentMassPropagatorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   spec.family.propagators[0].mass = "s";
 
@@ -9033,9 +9117,35 @@ void BuildInvariantDerivativeSeedRejectsNonzeroMassPropagatorTest() {
       [&spec]() {
         static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
       },
-      "mass == \"0\"",
-      "automatic invariant seed construction should reject nonzero or invariant-dependent "
-      "propagator masses in the bootstrap subset");
+      "masses independent of declared invariants",
+      "automatic invariant seed construction should reject invariant-dependent propagator masses "
+      "in the bootstrap subset");
+}
+
+void BuildInvariantDerivativeSeedRejectsUnsupportedInvariantIndependentMassGrammarTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "msq + 1";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
+      },
+      "supports only propagator mass entries",
+      "automatic invariant seed construction should reject unsupported invariant-independent "
+      "mass grammar in the bootstrap subset");
+}
+
+void BuildInvariantDerivativeSeedRejectsZeroDenominatorMassRationalTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "1/0";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
+      },
+      "supports only propagator mass entries",
+      "automatic invariant seed construction should reject malformed rational mass entries in the "
+      "bootstrap subset");
 }
 
 void BuildInvariantDerivativeSeedRejectsNonRepresentableDerivativeTermsTest() {
@@ -9452,7 +9562,7 @@ void PrepareInvariantGeneratedReductionAutomaticRejectsUnsupportedScalarRuleGram
       "scalar-product-rule grammar diagnostic");
 }
 
-void PrepareInvariantGeneratedReductionAutomaticRejectsNonzeroMassPropagatorTest() {
+void PrepareInvariantGeneratedReductionAutomaticRejectsInvariantDependentMassPropagatorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   spec.family.propagators[0].mass = "s";
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -9467,9 +9577,29 @@ void PrepareInvariantGeneratedReductionAutomaticRejectsNonzeroMassPropagatorTest
             MakeKiraReductionOptions(),
             layout));
       },
-      "mass == \"0\"",
-      "automatic invariant-generated preparation should preserve the seed-builder nonzero-mass "
-      "diagnostic");
+      "masses independent of declared invariants",
+      "automatic invariant-generated preparation should preserve the seed-builder "
+      "invariant-dependent-mass diagnostic");
+}
+
+void PrepareInvariantGeneratedReductionAutomaticRejectsUnsupportedInvariantIndependentMassGrammarTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "msq + 1";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-mass-grammar"));
+
+  ExpectRuntimeError(
+      [&spec, &layout]() {
+        static_cast<void>(amflow::PrepareInvariantGeneratedReduction(
+            spec,
+            MakeAutoInvariantHappyMasterBasis(),
+            "s",
+            MakeKiraReductionOptions(),
+            layout));
+      },
+      "supports only propagator mass entries",
+      "automatic invariant-generated preparation should preserve the seed-builder unsupported "
+      "mass-grammar diagnostic");
 }
 
 void PrepareInvariantGeneratedReductionAutomaticRejectsMasterBasisFamilyMismatchTest() {
@@ -15544,6 +15674,9 @@ int main() {
     BuildInvariantDerivativeSeedCompositionTest();
     BuildInvariantDerivativeSeedAllZeroCaseTest();
     BuildInvariantDerivativeSeedMatchesWholePropagatorFactorTest();
+    BuildInvariantDerivativeSeedAllowsInvariantIndependentMassPropagatorTest();
+    BuildInvariantDerivativeSeedCompositionWithInvariantIndependentMassTest();
+    BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagatorTest();
     BuildInvariantDerivativeSeedRejectsEmptyInvariantNameTest();
     BuildInvariantDerivativeSeedRejectsEtaInvariantNameTest();
     BuildInvariantDerivativeSeedRejectsUnknownInvariantNameTest();
@@ -15551,7 +15684,9 @@ int main() {
     BuildInvariantDerivativeSeedRejectsUnknownMomentumSymbolTest();
     BuildInvariantDerivativeSeedRejectsUnsupportedScalarRuleGrammarTest();
     BuildInvariantDerivativeSeedRejectsUnsupportedPropagatorKindTest();
-    BuildInvariantDerivativeSeedRejectsNonzeroMassPropagatorTest();
+    BuildInvariantDerivativeSeedRejectsInvariantDependentMassPropagatorTest();
+    BuildInvariantDerivativeSeedRejectsUnsupportedInvariantIndependentMassGrammarTest();
+    BuildInvariantDerivativeSeedRejectsZeroDenominatorMassRationalTest();
     BuildInvariantDerivativeSeedRejectsNonRepresentableDerivativeTermsTest();
     BuildInvariantDerivativeSeedRejectsNormalizedDuplicatePropagatorsTest();
     GeneratedDerivativeAssemblyHappyPathTest();
@@ -15568,7 +15703,8 @@ int main() {
     PrepareInvariantGeneratedReductionAutomaticRejectsEtaInvariantNameTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsUnknownInvariantNameTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsUnsupportedScalarRuleGrammarTest();
-    PrepareInvariantGeneratedReductionAutomaticRejectsNonzeroMassPropagatorTest();
+    PrepareInvariantGeneratedReductionAutomaticRejectsInvariantDependentMassPropagatorTest();
+    PrepareInvariantGeneratedReductionAutomaticRejectsUnsupportedInvariantIndependentMassGrammarTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsMasterBasisFamilyMismatchTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsMasterBasisArityMismatchTest();
     PrepareInvariantGeneratedReductionAutomaticFakeExecutionSmokeTest();

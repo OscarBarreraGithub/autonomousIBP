@@ -375,6 +375,101 @@ std::vector<Token> Tokenize(const std::string& input) {
   return tokens;
 }
 
+bool ContainsInvariantIdentifier(const std::string& expression,
+                                 const std::set<std::string>& invariant_symbols) {
+  for (std::size_t index = 0; index < expression.size();) {
+    const unsigned char ch = static_cast<unsigned char>(expression[index]);
+    if (std::isalpha(ch) == 0 && expression[index] != '_') {
+      ++index;
+      continue;
+    }
+    std::size_t end = index + 1;
+    while (end < expression.size()) {
+      const unsigned char next = static_cast<unsigned char>(expression[end]);
+      if (std::isalnum(next) == 0 && expression[end] != '_') {
+        break;
+      }
+      ++end;
+    }
+    if (invariant_symbols.count(expression.substr(index, end - index)) > 0) {
+      return true;
+    }
+    index = end;
+  }
+  return false;
+}
+
+std::string TrimWhitespace(const std::string& value) {
+  std::size_t begin = 0;
+  while (begin < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[begin])) != 0) {
+    ++begin;
+  }
+  std::size_t end = value.size();
+  while (end > begin &&
+         std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+    --end;
+  }
+  return value.substr(begin, end - begin);
+}
+
+bool IsIdentifierLiteral(const std::string& value) {
+  if (value.empty()) {
+    return false;
+  }
+  const unsigned char first = static_cast<unsigned char>(value.front());
+  if (std::isalpha(first) == 0 && value.front() != '_') {
+    return false;
+  }
+  for (std::size_t index = 1; index < value.size(); ++index) {
+    const unsigned char current = static_cast<unsigned char>(value[index]);
+    if (std::isalnum(current) == 0 && value[index] != '_') {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsRationalLiteral(const std::string& value) {
+  if (value.empty()) {
+    return false;
+  }
+  std::size_t index = 0;
+  if (value[index] == '+' || value[index] == '-') {
+    ++index;
+  }
+  const std::size_t numerator_begin = index;
+  while (index < value.size() &&
+         std::isdigit(static_cast<unsigned char>(value[index])) != 0) {
+    ++index;
+  }
+  if (index == numerator_begin) {
+    return false;
+  }
+  if (index == value.size()) {
+    return true;
+  }
+  if (value[index] != '/') {
+    return false;
+  }
+  ++index;
+  const std::size_t denominator_begin = index;
+  while (index < value.size() &&
+         std::isdigit(static_cast<unsigned char>(value[index])) != 0) {
+    ++index;
+  }
+  if (denominator_begin == index || index != value.size()) {
+    return false;
+  }
+  return std::any_of(value.begin() + static_cast<std::ptrdiff_t>(denominator_begin),
+                     value.end(),
+                     [](const char ch) { return ch != '0'; });
+}
+
+bool IsSupportedBootstrapMassLiteral(const std::string& mass) {
+  return mass == "0" || IsIdentifierLiteral(mass) || IsRationalLiteral(mass);
+}
+
 std::optional<std::map<std::string, int>> ExtractLinearMomentum(const Expr& expr);
 
 class ExprParser {
@@ -1034,9 +1129,15 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
       throw std::runtime_error("automatic invariant seed construction supports Standard "
                                "propagators only");
     }
-    if (propagator.mass != "0") {
-      throw std::runtime_error("automatic invariant seed construction requires propagator mass "
-                               "== \"0\" in the bootstrap subset");
+    const std::string trimmed_mass = TrimWhitespace(propagator.mass);
+    if (ContainsInvariantIdentifier(trimmed_mass, invariant_symbols)) {
+      throw std::runtime_error("automatic invariant seed construction requires propagator masses "
+                               "independent of declared invariants in the bootstrap subset");
+    }
+    if (!IsSupportedBootstrapMassLiteral(trimmed_mass)) {
+      throw std::runtime_error("automatic invariant seed construction supports only propagator "
+                               "mass entries \"0\", invariant-independent identifiers, or "
+                               "rational constants in the bootstrap subset");
     }
     Expr expression = ExprParser(propagator.expression).Parse();
     ValidateExpressionSymbols(expression, invariant_symbols);

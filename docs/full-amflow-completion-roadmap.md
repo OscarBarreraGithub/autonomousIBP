@@ -148,21 +148,29 @@ exit gate. The current live state must always be read from `docs/implementation-
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - truthful `Milestone M3` closure review was reconsidered after `M0b`; the repo now has a first
-  explicit in-repo prefactor/sign-convention surface and tests, and current worktree `Batch 58d`
-  now adds ROLE B coverage over the locked prefactor evidence packet: `tests/amflow_tests.cpp`
+  explicit in-repo prefactor/sign-convention surface and tests, and current `main` through
+  `899ad7f` now includes `Batch 58d` ROLE B coverage over the locked prefactor evidence packet:
+  `tests/amflow_tests.cpp`
   cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while the retained phase-0 README still backs the
   `+i0` loop prefactor and cut prefactor, the explicit `-i0` loop-prefactor note remains
   repo-snapshot backed only, and retained `AMFlow.m` is cited only for prescription polarity.
   `M3` still remains open because the first mandatory-family reduction-span parity evidence is
   still missing
-- truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
-  the current docs/tests surface
-- the current blocker lane is therefore `Batch 58d`:
-  ROLE B coverage now locks `references/snapshots/amflow/prefactor_convention_lock.md` against
-  `specs/amflow-prefactor-reference.yaml` for the existing helper surface without widening
-  runtime behavior; reducer `insert_prefactors` wiring, first-family reduction-span parity, and
-  broader parity claims remain deferred
+- truthful `Milestone M4` closure was reconsidered after `Batch 58`, and current worktree
+  `Batch 58e` now narrows the remaining docs/tests lane to resolved/user-defined plain
+  `UseCache` replay coverage on `SolveAmfOptionsEtaModeSeries(...)`; `M4` still remains open
+  because direct precision-monotonicity evidence is still missing
+- the current `M4`-enabling docs/tests lane is therefore `Batch 58e`:
+  `tests/amflow_tests.cpp` now seeds one successful resolved/user-defined
+  `SolveAmfOptionsEtaModeSeries(...)` run, checks that the solved-path manifest records the
+  resolved solve kind truthfully, and then verifies that a matching plain `UseCache` replay
+  returns the cached `SolverDiagnostics` without invoking the live solver. This is solved-path
+  diagnostic replay coverage only: it does not widen runtime behavior, broaden cache/restart
+  semantics, or claim standalone `SolveDifferentialEquation(...)` runtime-policy parity. The next
+  truthful lane after `58e` remains direct precision-monotonicity evidence for `Milestone M4`
+  closure, while `Milestone M3` still turns on first-family reduction-span parity rather than
+  further prefactor evidence locking
 
 ## Current State At R0
 
@@ -346,14 +354,16 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
-- current worktree `Batch 58d` adds ROLE B coverage around the existing helper surface:
-  `tests/amflow_tests.cpp` now locks
-  `references/snapshots/amflow/prefactor_convention_lock.md` against
-  `specs/amflow-prefactor-reference.yaml`, while the retained phase-0 README still backs the
-  `+i0` loop prefactor and cut prefactor, the explicit `-i0` loop-prefactor note remains
-  repo-snapshot backed only, and retained `AMFlow.m` remains a prescription-polarity-only
-  citation. `BuildOverallAmflowPrefactor(...)` stays deterministic and non-mutating, but Kira
-  `insert_prefactors` wiring and first-family reduction-span parity still remain open
+- current worktree `Batch 58e` narrows the remaining docs/tests lane to resolved/user-defined
+  plain `UseCache` replay coverage on `SolveAmfOptionsEtaModeSeries(...)`:
+  `tests/amflow_tests.cpp` seeds one successful resolved/user-defined run, checks that the
+  solved-path manifest records the resolved solve kind and request fingerprint truthfully, and
+  then verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics`
+  without invoking the live solver. This is solved-path diagnostic replay coverage only: it does
+  not widen runtime behavior, broader cache/restart semantics, or standalone
+  `SolveDifferentialEquation(...)` runtime-policy parity. Direct precision-monotonicity evidence
+  is still missing, so `Milestone M4` remains open; first-family reduction-span parity and Kira
+  `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
 
 ### Track F: Feature-Surface Parity
 

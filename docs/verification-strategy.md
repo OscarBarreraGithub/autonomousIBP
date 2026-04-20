@@ -93,15 +93,15 @@ The migration is phase-gated. Every phase must pass:
   policy on those same two overloads. Solved-path input/request fingerprinting and
   `skip_reduction` replay validation now treat those fields as live inputs there, while public
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
-- current worktree `Batch 58d` adds `T1` structural self-consistency coverage around the existing
-  helper surface: `tests/amflow_tests.cpp` locks
-  `references/snapshots/amflow/prefactor_convention_lock.md` against
-  `specs/amflow-prefactor-reference.yaml` while leaving the retained `+i0` / cut backing, the
-  snapshot-only explicit `-i0` note, and the prescription-polarity-only `AMFlow.m` citation
-  unchanged. Local verification passed for this staging slice:
-  `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1 && ./build/amflow-tests`.
-  First-family reduction-span parity evidence is still missing, so `Milestone M3` remains open;
-  `Milestone M4` also remains open
+- current worktree `Batch 58e` adds `T2/T5`-style solved-path replay coverage for the
+  resolved/user-defined plain `UseCache` path on `SolveAmfOptionsEtaModeSeries(...)`:
+  `tests/amflow_tests.cpp` seeds one successful solved-path run, checks that the solved-path
+  manifest records the resolved `solve_kind` and request fingerprint truthfully, and then
+  verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics` without
+  invoking the live solver. This slice does not widen runtime behavior or broader
+  cache/restart semantics. Direct precision-monotonicity evidence on the supported subset is
+  still missing, so `Milestone M4` remains open; first-family reduction-span parity is still
+  missing, so `Milestone M3` remains open
 
 ## Test Taxonomy
 

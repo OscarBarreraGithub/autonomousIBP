@@ -18130,6 +18130,107 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallba
          "construction fails after mixed selection");
 }
 
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheReplaysMatchingSolvedPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"CustomMode"});
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-cache-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded resolved solved-path cache replay baseline";
+
+  const amflow::SolverDiagnostics seed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           {seed_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           seed_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           precision_policy,
+                                           103,
+                                           "rho");
+
+  Expect(seed_custom_mode->call_count() == 1 && seed_solver.call_count() == 1,
+         "resolved UseCache replay should seed one live planning pass and one live solve");
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache replay should persist a solved-path cache manifest after a successful "
+      "live solve");
+  const std::string manifest_yaml = ReadFile(manifest_path);
+  Expect(manifest_yaml.find("manifest_kind: \"solved-path-cache\"\n") != std::string::npos,
+         "resolved UseCache replay should write the solved-path cache manifest kind");
+  Expect(manifest_yaml.find("solve_kind: \"amf-options-resolved-eta-mode-series\"\n") !=
+             std::string::npos,
+         "resolved UseCache replay should record the resolved AmfOptions solve kind");
+  Expect(manifest_yaml.find("success: true\n") != std::string::npos,
+         "resolved UseCache replay should mark successful cache entries truthfully");
+  Expect(ExtractYamlScalarValue(manifest_yaml, "request_fingerprint") != "\"\"",
+         "resolved UseCache replay should record a non-empty request fingerprint");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved solved-path "
+                               "replay"));
+
+  const auto replay_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary = "unexpected resolved live replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           {replay_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           precision_policy,
+                                           103,
+                                           "rho");
+
+  Expect(replay_custom_mode->call_count() == 1,
+         "resolved UseCache replay should still plan the configured user-defined mode once");
+  Expect(replay_solver.call_count() == 0,
+         "resolved UseCache replay should not call the solver when the solved-path manifest "
+         "still matches the AmfOptions mixed solve inputs");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seed_diagnostics),
+         "resolved UseCache replay should return the cached solver diagnostics verbatim on a "
+         "matching AmfOptions mixed solve");
+}
+
 void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedSolveInputsTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -19780,6 +19881,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsUnknownNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheReplaysMatchingSolvedPathTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedSolveInputsTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionReplaysMatchingReductionStateTest();

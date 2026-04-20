@@ -114,14 +114,16 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   coverage, broader propagator grammar support, linear-propagator support, full upstream
   `AnalyzeTopSector` / component-factorization parity, or `Propagator::prescription`
   interpretation
-- current worktree `Batch 58d` adds ROLE B coverage around that existing helper surface:
-  `tests/amflow_tests.cpp` now locks the human-readable mirror
-  `references/snapshots/amflow/prefactor_convention_lock.md` against
-  `specs/amflow-prefactor-reference.yaml`, while retained phase-0 README backing for the `+i0`
-  loop prefactor and cut prefactor, the snapshot-backed-only explicit `-i0` note, and the
-  prescription-polarity-only `AMFlow.m` citation all remain unchanged. The helper remains
-  groundwork only; it still does not wire Kira `insert_prefactors`, prove first-family
-  reduction-span parity, or accept `Milestone M3`
+- current worktree `Batch 58e` adds only a narrow docs/tests packet on the resolved/user-defined
+  plain `UseCache` replay path for `SolveAmfOptionsEtaModeSeries(...)`:
+  `tests/amflow_tests.cpp` seeds one successful solved-path run, checks that the solved-path
+  manifest records the resolved `solve_kind` and request fingerprint truthfully, and then
+  verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics` without
+  invoking the live solver. This does not widen runtime behavior, broader cache/restart
+  semantics, or standalone `SolveDifferentialEquation(...)` / runtime-policy parity. The
+  prefactor groundwork through landed `Batch 58d` remains history only; Kira
+  `insert_prefactors` wiring and first-family reduction-span parity still remain open before
+  `Milestone M3`
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

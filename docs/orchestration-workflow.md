@@ -92,21 +92,27 @@ The workflow is optimized for the current repo shape:
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - `M0b` is accepted; the repo already had a first explicit in-repo prefactor/sign-convention
-  surface from `Batch 58b`, and current worktree `Batch 58d` now adds ROLE B coverage over the
-  locked prefactor evidence packet. `tests/amflow_tests.cpp` cross-checks
+  surface from `Batch 58b`, and current `main` through `899ad7f` now includes landed `Batch 58d`
+  prefactor mirror lock coverage over the locked evidence packet. `tests/amflow_tests.cpp`
+  cross-checks
   `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while retained `+i0` / cut backing and the
   snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure still remains open
-  until the first mandatory-family reduction-span evidence exists
+  until the first mandatory-family reduction-span evidence exists and Kira `insert_prefactors`
+  wiring is in place
 - truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
-  the current docs/tests surface
-- the current blocker lane is `Batch 58d`:
-  `tests/amflow_tests.cpp` now locks
-  `references/snapshots/amflow/prefactor_convention_lock.md` against
-  `specs/amflow-prefactor-reference.yaml` for the existing
-  `AmflowPrefactorConvention` / `BuildOverallAmflowPrefactor(...)` helper surface, while the
-  explicit `-i0` note remains snapshot-backed only, retained `AMFlow.m` stays
-  prescription-polarity-only, and Kira `insert_prefactors` wiring stays deferred
+  the current docs/tests surface because direct precision-monotonicity evidence is still missing
+  on the supported subset
+- the current `M4`-enabling docs/tests lane is `Batch 58e`:
+  `tests/amflow_tests.cpp` now seeds one successful resolved/user-defined
+  `SolveAmfOptionsEtaModeSeries(...)` run, checks that the solved-path manifest records the
+  resolved solve kind and request fingerprint truthfully, and then verifies that a matching
+  plain `UseCache` replay returns cached `SolverDiagnostics` without invoking the live solver.
+  This is solved-path replay coverage only: it does not widen runtime behavior, broader
+  cache/restart semantics, or standalone `SolveDifferentialEquation(...)` runtime-policy parity.
+  `Milestone M4` remains open pending direct precision-monotonicity evidence, while
+  `Milestone M3` still turns on first mandatory-family reduction-span evidence plus Kira
+  `insert_prefactors`
 
 ## Mandatory Read Set Before Planning
 

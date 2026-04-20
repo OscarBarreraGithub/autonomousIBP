@@ -157,20 +157,30 @@ exit gate. The current live state must always be read from `docs/implementation-
   repo-snapshot backed only, and retained `AMFlow.m` is cited only for prescription polarity.
   `M3` still remains open because the first mandatory-family reduction-span parity evidence is
   still missing
-- truthful `Milestone M4` closure was reconsidered after `Batch 58`, and current worktree
-  `Batch 58e` now narrows the remaining docs/tests lane to resolved/user-defined plain
-  `UseCache` replay coverage on `SolveAmfOptionsEtaModeSeries(...)`; `M4` still remains open
-  because direct precision-monotonicity evidence is still missing
-- the current `M4`-enabling docs/tests lane is therefore `Batch 58e`:
-  `tests/amflow_tests.cpp` now seeds one successful resolved/user-defined
-  `SolveAmfOptionsEtaModeSeries(...)` run, checks that the solved-path manifest records the
-  resolved solve kind truthfully, and then verifies that a matching plain `UseCache` replay
-  returns the cached `SolverDiagnostics` without invoking the live solver. This is solved-path
-  diagnostic replay coverage only: it does not widen runtime behavior, broaden cache/restart
-  semantics, or claim standalone `SolveDifferentialEquation(...)` runtime-policy parity. The next
-  truthful lane after `58e` remains direct precision-monotonicity evidence for `Milestone M4`
-  closure, while `Milestone M3` still turns on first-family reduction-span parity rather than
-  further prefactor evidence locking
+- truthful `Milestone M4` closure was reconsidered after `Batch 58`, and current local
+  `Batch 58f` now records the remaining direct precision-monotonicity gap as closed on the
+  current reviewed exact subset only
+- the current `M4`-closing docs-only lane is therefore `Batch 58f`:
+  `tests/amflow_tests.cpp` already includes
+  `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
+  `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both driven by
+  `ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(...)` over the under-cap
+  requested-digits ladder `{11, 73, 145, 290}` on the reviewed exact scalar, exact
+  upper-triangular, mixed scalar, mixed upper-triangular diagonal, and mixed upper-triangular
+  zero-forcing-resonance cases. This is under-cap diagnostic invariance on the direct exact
+  `BootstrapSeriesSolver` subset plus one representative `SolveDifferentialEquation(...)`
+  passthrough over the same reviewed cases. Because that implemented exact path ignores
+  precision fields except for hard-ceiling rejection, this evidence is limited to under-cap
+  diagnostic invariance plus the existing hard-ceiling threshold failure already covered by
+  `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
+  `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. Together with landed
+  `Batch 54` through `Batch 58` plus current-worktree `Batch 58e` explicit failure-code, cache,
+  `UseCache`, and `SkipReduction` coverage, that closes `Milestone M4` narrowly on the
+  implemented exact subset only. This is
+  docs/tests only: it does not widen runtime behavior, broader cache/restart semantics, broader
+  monotone digit refinement, standalone `SolveDifferentialEquation(...)` / solver-policy parity
+  beyond that reviewed exact subset, or `Milestone M3`, which still turns on first-family
+  reduction-span parity plus Kira `insert_prefactors` wiring rather than further `M4` work
 
 ## Current State At R0
 
@@ -354,16 +364,19 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
-- current worktree `Batch 58e` narrows the remaining docs/tests lane to resolved/user-defined
-  plain `UseCache` replay coverage on `SolveAmfOptionsEtaModeSeries(...)`:
-  `tests/amflow_tests.cpp` seeds one successful resolved/user-defined run, checks that the
-  solved-path manifest records the resolved solve kind and request fingerprint truthfully, and
-  then verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics`
-  without invoking the live solver. This is solved-path diagnostic replay coverage only: it does
-  not widen runtime behavior, broader cache/restart semantics, or standalone
-  `SolveDifferentialEquation(...)` runtime-policy parity. Direct precision-monotonicity evidence
-  is still missing, so `Milestone M4` remains open; first-family reduction-span parity and Kira
-  `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
+- current local `Batch 58f` records the remaining direct precision-monotonicity gap as closed on
+  the current reviewed exact subset only: `tests/amflow_tests.cpp` already carries
+  `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
+  `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()` for under-cap
+  diagnostic invariance on the direct exact `BootstrapSeriesSolver` subset plus one
+  representative `SolveDifferentialEquation(...)` passthrough, while
+  `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
+  `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()` keep the hard-ceiling
+  threshold behavior explicit. This is enough to close `Milestone M4` narrowly on that
+  implemented exact subset, but it does not widen runtime behavior, broader cache/restart
+  semantics, broader monotone digit refinement, or standalone
+  `SolveDifferentialEquation(...)` runtime-policy parity. First-family reduction-span parity and
+  Kira `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
 
 ### Track F: Feature-Surface Parity
 
@@ -600,7 +613,7 @@ dependency change.
 | `Batch 56` | solved-path cache manifest plus `UseCache` replay and invalidation of successful solved-path diagnostics | `Batch 55` |
 | `Batch 57` | wrapper-only `skip_reduction` reuse on the two `SolveAmfOptionsEtaModeSeries(...)` overloads over matching prepared eta-generated state | `Batch 56` |
 | `Batch 58` | wrapper-owned live wiring of `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, `RationalizePre`, and `RunLength` on the two `SolveAmfOptionsEtaModeSeries(...)` overloads, with direct non-`AmfOptions` entry points unchanged | `Batch 57` |
-| `Milestone M4` | robustness gate: precision monotonicity, explicit failure codes, cache/restart, `UseCache`, and `SkipReduction` all pass T2/T5 coverage | `Batch 54` through `Batch 58` |
+| `Milestone M4` | robustness gate: narrow exact-subset requested-digits evidence plus explicit failure codes, solved-path cache/`UseCache`, and `SkipReduction` all pass the reviewed T2/T5 coverage slice | `Batch 54` through `Batch 58f` |
 
 ### Phase F: Full Feature-Surface Parity
 
@@ -658,7 +671,7 @@ dependency change.
 
 ### Phase E Gate
 
-- precision monotonicity is demonstrated on the supported benchmark subset
+- precision monotonicity is demonstrated only on the reviewed exact subset
 - all required failure codes from `specs/parity-matrix.yaml` are live and tested
 - cache/restart, `UseCache`, and `SkipReduction` are explicit, deterministic, and do not hide
   stale data

@@ -1949,6 +1949,89 @@ amflow::DESystem MakeMatrixRegularPointSeriesSystem(
   return system;
 }
 
+struct ExactPrecisionMonotonicityCase {
+  std::string label;
+  amflow::SolveRequest request;
+};
+
+std::vector<ExactPrecisionMonotonicityCase> MakeReviewedExactPrecisionMonotonicityCases() {
+  return {
+      {"scalar one-hop",
+       MakeManualStartBoundarySolveRequest(
+           MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"})},
+      {"upper-triangular one-hop",
+       MakeManualStartBoundarySolveRequest(
+           MakeMatrixRegularPointSeriesSystem({{"0", "1"}, {"0", "0"}}),
+           "eta",
+           "eta=0",
+           "eta=1",
+           {"2/3", "5/7"})},
+      {"mixed scalar",
+       MakeManualStartBoundarySolveRequest(
+           MakeScalarRegularPointSeriesSystem("1/eta"), "eta", "eta=1", "eta=0", {"7/11"})},
+      {"mixed upper-triangular diagonal",
+       MakeManualStartBoundarySolveRequest(
+           MakeMatrixRegularPointSeriesSystem({{"1/eta", "0"}, {"0", "0"}}),
+           "eta",
+           "eta=1",
+           "eta=0",
+           {"2/3", "5/7"})},
+      {"mixed upper-triangular zero-forcing resonance",
+       MakeManualStartBoundarySolveRequest(
+           MakeMatrixRegularPointSeriesSystem({{"1/eta", "eta"}, {"0", "0"}}),
+           "eta",
+           "eta=1",
+           "eta=0",
+           {"2/3", "5/7"})},
+  };
+}
+
+template <typename SolveCallable>
+void ExpectRequestedDigitsMonotonicity(
+    const amflow::SolveRequest& baseline_request,
+    const std::vector<int>& requested_digits_ladder,
+    SolveCallable&& solve,
+    const std::string& context) {
+  amflow::SolveRequest previous_request = baseline_request;
+  previous_request.requested_digits = requested_digits_ladder.front();
+  amflow::SolverDiagnostics previous_diagnostics = solve(previous_request);
+
+  Expect(previous_diagnostics.success,
+         context + " should succeed at requested_digits=" +
+             std::to_string(previous_request.requested_digits));
+
+  for (std::size_t index = 1; index < requested_digits_ladder.size(); ++index) {
+    amflow::SolveRequest request = baseline_request;
+    request.requested_digits = requested_digits_ladder[index];
+    const amflow::SolverDiagnostics diagnostics = solve(request);
+
+    Expect(diagnostics.success,
+           context + " should stay successful at requested_digits=" +
+               std::to_string(request.requested_digits));
+    Expect(SameSolverDiagnostics(diagnostics, previous_diagnostics),
+           context + " should preserve exact diagnostics when requested_digits increases from " +
+               std::to_string(previous_request.requested_digits) + " to " +
+               std::to_string(request.requested_digits));
+
+    previous_request = request;
+    previous_diagnostics = diagnostics;
+  }
+}
+
+template <typename SolveCallable>
+void ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(
+    SolveCallable&& solve,
+    const std::string& context) {
+  const std::vector<int> requested_digits_ladder = {11, 73, 145, 290};
+
+  for (const auto& monotonicity_case : MakeReviewedExactPrecisionMonotonicityCases()) {
+    ExpectRequestedDigitsMonotonicity(monotonicity_case.request,
+                                      requested_digits_ladder,
+                                      solve,
+                                      context + " on " + monotonicity_case.label);
+  }
+}
+
 amflow::ParsedMasterList MakeInvariantGenerationHappyMasterBasis() {
   amflow::ParsedMasterList master_basis;
   master_basis.family = "toy_family";
@@ -7178,6 +7261,68 @@ void BootstrapSeriesSolverExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest(
          "exact one-hop path");
 }
 
+void BootstrapSeriesSolverRegularExactRequestedDigitsMonotonicityTest() {
+  amflow::BootstrapSeriesSolver solver;
+  const amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+
+  ExpectRequestedDigitsMonotonicity(request,
+                                    {11, 73, 145, 290},
+                                    [&solver](const amflow::SolveRequest& solve_request) {
+                                      return solver.Solve(solve_request);
+                                    },
+                                    "bootstrap solver regular exact path");
+}
+
+void BootstrapSeriesSolverMixedExactRequestedDigitsMonotonicityTest() {
+  amflow::BootstrapSeriesSolver solver;
+  const amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/eta"), "eta", "eta=1", "eta=0", {"7/11"});
+
+  ExpectRequestedDigitsMonotonicity(request,
+                                    {11, 73, 145, 290},
+                                    [&solver](const amflow::SolveRequest& solve_request) {
+                                      return solver.Solve(solve_request);
+                                    },
+                                    "bootstrap solver mixed exact path");
+}
+
+void BootstrapSeriesSolverExactRequestedDigitsCeilingThresholdTest() {
+  amflow::BootstrapSeriesSolver solver;
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  amflow::SolveRequest ceiling_request = baseline_request;
+  ceiling_request.requested_digits = baseline_request.precision_policy.max_working_precision;
+  amflow::SolveRequest over_ceiling_request = baseline_request;
+  over_ceiling_request.requested_digits =
+      baseline_request.precision_policy.max_working_precision + 1;
+
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics ceiling = solver.Solve(ceiling_request);
+  const amflow::SolverDiagnostics over_ceiling = solver.Solve(over_ceiling_request);
+
+  Expect(baseline.success && ceiling.success,
+         "bootstrap solver should keep the reviewed regular exact path successful through the "
+         "configured requested_digits ceiling");
+  Expect(SameSolverDiagnostics(ceiling, baseline),
+         "bootstrap solver should preserve the reviewed regular exact diagnostics at the "
+         "configured requested_digits ceiling");
+  Expect(!over_ceiling.success && over_ceiling.failure_code == "insufficient_precision",
+         "bootstrap solver should switch to insufficient_precision immediately above the "
+         "configured requested_digits ceiling on the reviewed regular exact path");
+  Expect(over_ceiling.summary.find("configured precision ceiling") != std::string::npos,
+         "bootstrap solver should preserve the configured precision ceiling diagnostic when "
+         "requested_digits crosses the reviewed exact threshold");
+}
+
+void BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest() {
+  amflow::BootstrapSeriesSolver solver;
+
+  ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(
+      [&solver](const amflow::SolveRequest& request) { return solver.Solve(request); },
+      "bootstrap solver");
+}
+
 void EvaluatePrecisionEscalatesOnUnstableObservationTest() {
   const amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
   const amflow::PrecisionObservation observation = {
@@ -7515,6 +7660,38 @@ void SolveDifferentialEquationExactPathIgnoresPrecisionPolicyAndRequestedDigitsT
   Expect(SameSolverDiagnostics(actual, expected),
          "standalone DE solver wrapper should keep precision_policy and requested_digits as "
          "no-ops on the reviewed exact path");
+}
+
+void SolveDifferentialEquationExactRequestedDigitsPassthroughTest() {
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  amflow::SolveRequest ceiling_request = baseline_request;
+  ceiling_request.requested_digits = baseline_request.precision_policy.max_working_precision;
+  amflow::SolveRequest over_ceiling_request = baseline_request;
+  over_ceiling_request.requested_digits =
+      baseline_request.precision_policy.max_working_precision + 1;
+
+  const amflow::SolverDiagnostics expected_ceiling =
+      amflow::BootstrapSeriesSolver().Solve(ceiling_request);
+  const amflow::SolverDiagnostics actual_ceiling =
+      amflow::SolveDifferentialEquation(ceiling_request);
+  const amflow::SolverDiagnostics expected_over_ceiling =
+      amflow::BootstrapSeriesSolver().Solve(over_ceiling_request);
+  const amflow::SolverDiagnostics actual_over_ceiling =
+      amflow::SolveDifferentialEquation(over_ceiling_request);
+
+  Expect(SameSolverDiagnostics(actual_ceiling, expected_ceiling) &&
+             SameSolverDiagnostics(actual_over_ceiling, expected_over_ceiling),
+         "standalone DE solver wrapper should preserve representative exact requested_digits "
+         "ceiling passthrough diagnostics");
+}
+
+void SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest() {
+  ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(
+      [](const amflow::SolveRequest& request) {
+        return amflow::SolveDifferentialEquation(request);
+      },
+      "standalone DE solver wrapper");
 }
 
 void SolveDifferentialEquationDoesNotMutateRequestTest() {
@@ -19557,6 +19734,10 @@ int main() {
     BootstrapSeriesSolverRejectsInexactMixedPathTest();
     BootstrapSeriesSolverRejectsLowerTriangularSystemTest();
     BootstrapSeriesSolverExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest();
+    BootstrapSeriesSolverRegularExactRequestedDigitsMonotonicityTest();
+    BootstrapSeriesSolverMixedExactRequestedDigitsMonotonicityTest();
+    BootstrapSeriesSolverExactRequestedDigitsCeilingThresholdTest();
+    BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest();
     EvaluatePrecisionEscalatesOnUnstableObservationTest();
     PrecisionRetryControllerEscalatesThenSucceedsTest();
     PrecisionRetryControllerStopsOnCeilingExhaustedInsufficientPrecisionTest();
@@ -19576,6 +19757,8 @@ int main() {
     SolveDifferentialEquationMixedUnsupportedSolverPathPassthroughTest();
     SolveDifferentialEquationRejectsMalformedBoundaryValueExpressionLikeBootstrapSolverTest();
     SolveDifferentialEquationExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest();
+    SolveDifferentialEquationExactRequestedDigitsPassthroughTest();
+    SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest();
     SolveDifferentialEquationDoesNotMutateRequestTest();
     EvaluateCoefficientMatrixSampleSMatrixTest();
     EvaluateCoefficientMatrixSampleEtaMatrixTest();

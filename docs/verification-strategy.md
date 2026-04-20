@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `a5d627f906dfb2c5829bda88dce2407bfa67f043`
+- the starting `main` / `origin/main` head for this packet was local `2f2538b` after `Batch 58e`
 - last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 58`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
@@ -93,15 +93,24 @@ The migration is phase-gated. Every phase must pass:
   policy on those same two overloads. Solved-path input/request fingerprinting and
   `skip_reduction` replay validation now treat those fields as live inputs there, while public
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
-- current worktree `Batch 58e` adds `T2/T5`-style solved-path replay coverage for the
-  resolved/user-defined plain `UseCache` path on `SolveAmfOptionsEtaModeSeries(...)`:
-  `tests/amflow_tests.cpp` seeds one successful solved-path run, checks that the solved-path
-  manifest records the resolved `solve_kind` and request fingerprint truthfully, and then
-  verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics` without
-  invoking the live solver. This slice does not widen runtime behavior or broader
-  cache/restart semantics. Direct precision-monotonicity evidence on the supported subset is
-  still missing, so `Milestone M4` remains open; first-family reduction-span parity is still
-  missing, so `Milestone M3` remains open
+- current local `Batch 58f` is docs-only and records the remaining direct precision-monotonicity
+  evidence already present on the current reviewed exact subset:
+  `tests/amflow_tests.cpp` includes
+  `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
+  `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both driven by
+  `ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(...)` over the under-cap
+  requested-digits ladder `{11, 73, 145, 290}` on the reviewed exact scalar, exact
+  upper-triangular, mixed scalar, mixed upper-triangular diagonal, and mixed upper-triangular
+  zero-forcing-resonance cases. This is under-cap diagnostic invariance on the direct exact
+  `BootstrapSeriesSolver` subset plus one representative `SolveDifferentialEquation(...)`
+  passthrough over the same reviewed cases. Combined with the existing hard-ceiling rejection
+  coverage from
+  `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
+  `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`, this closes `Milestone M4`
+  narrowly on that implemented exact subset only. This packet does not widen runtime behavior,
+  broader cache/restart semantics, broader monotone digit refinement, standalone solver-policy
+  parity beyond the reviewed exact subset, or `Milestone M3`; first-family reduction-span parity
+  and Kira `insert_prefactors` wiring still remain open
 
 ## Test Taxonomy
 

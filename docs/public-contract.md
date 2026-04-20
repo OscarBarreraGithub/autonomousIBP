@@ -31,12 +31,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - the starting `main` state for this packet additionally carried landed `Batch 50b` through
-  `Batch 58` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
+  `Batch 58` plus local `Batch 58e` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
   `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
   `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
   `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
-  `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, and
-  `a5d627f906dfb2c5829bda88dce2407bfa67f043`;
+  `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`,
+  and `2f2538b`;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -124,6 +124,24 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   prefactor groundwork through landed `Batch 58d` remains history only; Kira
   `insert_prefactors` wiring and first-family reduction-span parity still remain open before
   `Milestone M3`
+- current local `Batch 58f` is docs-only and records the remaining direct precision-monotonicity
+  gap as closed on the current reviewed exact subset only:
+  `tests/amflow_tests.cpp` already includes
+  `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
+  `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both using
+  `ExpectRequestedDigitsMonotonicityOnReviewedExactSubset(...)` to check under-cap invariance on
+  the requested-digits ladder `{11, 73, 145, 290}` over the reviewed exact scalar, exact
+  upper-triangular, mixed scalar, mixed upper-triangular diagonal, and mixed upper-triangular
+  zero-forcing-resonance paths. This is under-cap diagnostic invariance on the direct exact
+  `BootstrapSeriesSolver` subset plus one representative `SolveDifferentialEquation(...)`
+  passthrough over the same reviewed cases. The exact path still ignores precision fields under
+  that cap, so this is not a broader monotone digit-refinement claim; the matching hard-ceiling
+  threshold failure remains covered by `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
+  `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. With landed `Batch 54`
+  through `Batch 58` plus current-worktree `Batch 58e` failure-code, cache, `UseCache`, and
+  `SkipReduction` coverage, this closes `Milestone M4` narrowly on that implemented exact subset
+  only. It does not widen runtime
+  behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

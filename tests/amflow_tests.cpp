@@ -3621,6 +3621,100 @@ void KiraPrepareForTargetsHappyPathTest() {
          "explicit-target Kira preparation should preserve override-target order exactly");
 }
 
+void KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.top_level_sectors = {1, 7};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-explicit-targets-multi-sector"));
+  const std::vector<amflow::TargetIntegral> targets = {
+      {"toy_auto_family", {1, 1, 1}},
+      {"toy_auto_family", {0, -1, 2}},
+  };
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, targets);
+
+  Expect(preparation.validation_messages.empty(),
+         "multi-top-sector explicit-target Kira preparation should validate for a well-formed "
+         "override list");
+  Expect(preparation.generated_files.at("config/integralfamilies.yaml")
+                 .find("top_level_sectors: [1, 7]\n") != std::string::npos,
+         "multi-top-sector Kira preparation should preserve every declared top-level sector in "
+         "family YAML");
+  Expect(preparation.generated_files.at("jobs.yaml")
+                 .find("sectors: [1], r: 1, s: 3, d: 0}\n") != std::string::npos &&
+             preparation.generated_files.at("jobs.yaml")
+                     .find("sectors: [7], r: 3, s: 3, d: 0}\n") != std::string::npos &&
+             preparation.generated_files.at("jobs.yaml").find("sectors: [1, 7], r: 3") ==
+                 std::string::npos,
+         "multi-top-sector Kira preparation should emit one reduce entry per top-level sector "
+         "with the per-sector reduction span");
+  Expect(preparation.generated_files.at("target") ==
+             "toy_auto_family[1,1,1]\n"
+             "toy_auto_family[0,-1,2]\n",
+         "multi-top-sector Kira preparation should preserve explicit-target order exactly");
+}
+
+void KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.top_level_sectors = {0, 7};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-explicit-targets-nonpositive"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, "#!/bin/sh\nexit 0\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(ContainsSubstring(preparation.validation_messages,
+                           "top-level sectors to be positive bitmasks"),
+         "multi-top-sector Kira preparation should reject non-positive top-level sector values");
+
+  const amflow::CommandExecutionResult result =
+      backend.ExecutePrepared(preparation, layout, kira_path, fermat_path);
+  Expect(result.status == amflow::CommandExecutionStatus::InvalidConfiguration,
+         "multi-top-sector Kira execution should stop before launching Kira for non-positive "
+         "top-level sectors");
+  Expect(result.error_message.find("top-level sectors to be positive bitmasks") !=
+             std::string::npos,
+         "multi-top-sector Kira execution should preserve the non-positive-sector diagnostic");
+}
+
+void KiraPrepareForTargetsRejectsTopLevelSectorMaskOverflowTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.top_level_sectors = {1 << static_cast<int>(spec.family.propagators.size()), 7};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-explicit-targets-mask-overflow"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, "#!/bin/sh\nexit 0\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(ContainsSubstring(preparation.validation_messages,
+                           "top-level sector bitmasks to fit family propagator count"),
+         "multi-top-sector Kira preparation should reject top-level sector masks that exceed the "
+         "family propagator count");
+
+  const amflow::CommandExecutionResult result =
+      backend.ExecutePrepared(preparation, layout, kira_path, fermat_path);
+  Expect(result.status == amflow::CommandExecutionStatus::InvalidConfiguration,
+         "multi-top-sector Kira execution should stop before launching Kira for oversized "
+         "top-level sector masks");
+  Expect(result.error_message.find("top-level sector bitmasks to fit family propagator count") !=
+             std::string::npos,
+         "multi-top-sector Kira execution should preserve the oversized-mask diagnostic");
+}
+
 void KiraPrepareStillUsesProblemSpecTargetsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::ArtifactLayout layout =
@@ -10386,6 +10480,55 @@ void RunInvariantGeneratedReductionAutomaticHappyPathTest() {
          "entries");
 }
 
+void RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.top_level_sectors = {1, 7};
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-wrapper-multi-sector"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::InvariantGeneratedReductionExecution execution =
+      amflow::RunInvariantGeneratedReduction(spec,
+                                             master_basis,
+                                             "s",
+                                             MakeKiraReductionOptions(),
+                                             layout,
+                                             kira_path,
+                                             fermat_path);
+
+  Expect(execution.execution_result.Succeeded(),
+         "automatic invariant-generated wrapper should still execute successfully on a "
+         "multi-top-sector preparation surface");
+  Expect(execution.parsed_reduction_result.has_value() && execution.assembled_system.has_value(),
+         "automatic invariant-generated wrapper should still parse and assemble successfully on "
+         "a multi-top-sector preparation surface");
+  Expect(execution.preparation.backend_preparation.generated_files.at("config/integralfamilies.yaml")
+                 .find("top_level_sectors: [1, 7]\n") != std::string::npos,
+         "automatic invariant-generated wrapper should preserve every declared top-level sector "
+         "in emitted family YAML");
+  Expect(execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
+                 .find("sectors: [1], r: 1, s: 3, d: 0}\n") != std::string::npos &&
+             execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
+                     .find("sectors: [7], r: 3, s: 3, d: 0}\n") != std::string::npos &&
+             execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
+                     .find("sectors: [1, 7], r: 3") == std::string::npos,
+         "automatic invariant-generated wrapper should preserve per-sector reduction-span "
+         "orchestration on multi-top-sector inputs");
+  Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
+             "toy_auto_family[1,2,1]\n"
+             "toy_auto_family[0,1,2]\n"
+             "toy_auto_family[0,0,2]\n"
+             "toy_auto_family[-1,-1,3]\n",
+         "automatic invariant-generated wrapper should preserve generated-target order on the "
+         "multi-top-sector preparation surface");
+}
+
 void RunInvariantGeneratedReductionAutomaticExecutionFailureTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-generated-wrapper-exec-failure"));
@@ -15408,6 +15551,9 @@ int main() {
     KiraPreparationFromFileSpecTest();
     K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();
+    KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest();
+    KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest();
+    KiraPrepareForTargetsRejectsTopLevelSectorMaskOverflowTest();
     KiraPrepareStillUsesProblemSpecTargetsTest();
     KiraPrepareForTargetsRejectsEmptyTargetListTest();
     KiraPrepareForTargetsRejectsDuplicateTargetsTest();
@@ -15725,6 +15871,7 @@ int main() {
     RunInvariantGeneratedReductionRejectsIdentityFallbackResultsTest();
     RunInvariantGeneratedReductionRejectsMissingExplicitRuleForMasterTargetTest();
     RunInvariantGeneratedReductionAutomaticHappyPathTest();
+    RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest();
     RunInvariantGeneratedReductionAutomaticExecutionFailureTest();
     RunInvariantGeneratedReductionAutomaticRejectsEmptyInvariantNameTest();
     RunInvariantGeneratedReductionAutomaticRejectsUnsupportedScalarRuleGrammarTest();

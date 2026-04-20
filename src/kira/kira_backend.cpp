@@ -1156,13 +1156,26 @@ std::size_t ActiveSectorLineCount(const int sector, const std::size_t propagator
   return active_lines;
 }
 
-int ReductionRank(const ProblemSpec& spec, const ReductionOptions& options) {
-  std::size_t active_lines = 0;
-  for (const int sector : spec.family.top_level_sectors) {
-    active_lines = std::max(active_lines,
-                            ActiveSectorLineCount(sector, spec.family.propagators.size()));
+bool TopLevelSectorFitsPropagatorMask(const int sector, const std::size_t propagator_count) {
+  if (sector <= 0) {
+    return false;
   }
-  return static_cast<int>(active_lines) + options.black_box_dot;
+
+  const unsigned long long mask = static_cast<unsigned long long>(sector);
+  const std::size_t max_supported_bits = sizeof(mask) * 8;
+  for (std::size_t index = propagator_count; index < max_supported_bits; ++index) {
+    if ((mask & (1ULL << index)) != 0ULL) {
+      return false;
+    }
+  }
+  return true;
+}
+
+int ReductionRankForSector(const ProblemSpec& spec,
+                           const ReductionOptions& options,
+                           const int sector) {
+  return static_cast<int>(ActiveSectorLineCount(sector, spec.family.propagators.size())) +
+         options.black_box_dot;
 }
 
 std::string ReadTextFileOrThrow(const std::filesystem::path& path,
@@ -1445,6 +1458,18 @@ std::vector<std::string> KiraBackend::Validate(const ProblemSpec& spec,
   if (spec.family.top_level_sectors.empty()) {
     messages.emplace_back("KiraBackend requires at least one top-level sector");
   }
+  for (const int sector : spec.family.top_level_sectors) {
+    if (sector <= 0) {
+      messages.emplace_back("KiraBackend requires top-level sectors to be positive bitmasks: " +
+                            std::to_string(sector));
+      continue;
+    }
+    if (!TopLevelSectorFitsPropagatorMask(sector, spec.family.propagators.size())) {
+      messages.emplace_back("KiraBackend requires top-level sector bitmasks to fit family "
+                            "propagator count: " +
+                            std::to_string(sector));
+    }
+  }
   return messages;
 }
 
@@ -1502,10 +1527,11 @@ KiraJobFiles KiraBackend::EmitJobFilesForTargets(
   jobs_yaml << "jobs:\n";
   jobs_yaml << "  - reduce_sectors:\n";
   jobs_yaml << "      reduce:\n";
-  jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
-           << SectorList(spec.family.top_level_sectors) << "], r: "
-           << ReductionRank(spec, options) << ", s: " << options.black_box_rank
-           << ", d: " << options.black_box_dot << "}\n";
+  for (const int sector : spec.family.top_level_sectors) {
+    jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
+             << sector << "], r: " << ReductionRankForSector(spec, options, sector)
+             << ", s: " << options.black_box_rank << ", d: " << options.black_box_dot << "}\n";
+  }
   jobs_yaml << "      select_integrals:\n";
   jobs_yaml << "        select_mandatory_list:\n";
   jobs_yaml << "          - [" << Quote(spec.family.name) << ", " << target_file << "]\n";

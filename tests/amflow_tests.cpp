@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -157,10 +158,9 @@ void ExpectBranchLoopBootstrapBlockerMessage(const std::string& message,
                                              const std::string& context) {
   const std::vector<std::string> expected_substrings = {
       "eta mode " + mode_name + " is blocked in bootstrap",
-      "internal eta-topology preflight snapshot collected the current family/kinematics surface",
-      "topology-analysis/candidate-analysis for Branch/Loop selectors is not implemented yet",
+      "internal eta-topology prereq snapshot collected the current family/kinematics surface",
+      "Branch/Loop candidate analysis is unavailable for this input",
       "topology_prereq_bridge={",
-      "u0:<missing>",
       "loopnum=",
       "cutvar=",
       "pres=",
@@ -174,6 +174,22 @@ void ExpectBranchLoopBootstrapBlockerMessage(const std::string& message,
          context + ": blocker should not overclaim nontrivial prescription classification");
   Expect(message.find("nontrivial_prescriptions_present=") == std::string::npos,
          context + ": blocker should not advertise interpreted prescription availability");
+}
+
+void ExpectBranchLoopBootstrapReason(const amflow::ProblemSpec& spec,
+                                     const std::string& reason,
+                                     const std::string& context) {
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&mode, &spec]() {
+          static_cast<void>(mode->Plan(spec));
+        },
+        context);
+    ExpectBranchLoopBootstrapBlockerMessage(message, mode_name, context);
+    Expect(message.find(reason) != std::string::npos,
+           context + ": missing blocker reason: " + reason);
+  }
 }
 
 std::string ReadFile(const std::filesystem::path& path) {
@@ -833,6 +849,61 @@ amflow::ProblemSpec MakeBuiltinAllAuxiliarySpec() {
   for (auto& propagator : spec.family.propagators) {
     propagator.kind = amflow::PropagatorKind::Auxiliary;
   }
+  return spec;
+}
+
+amflow::ProblemSpec MakeUnsupportedBranchLoopGrammarSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].expression = "s*((k1)^2)";
+  return spec;
+}
+
+amflow::ProblemSpec MakeRepeatedSignBranchLoopGrammarSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[5].expression = "(k1--k2)^2";
+  return spec;
+}
+
+amflow::ProblemSpec MakeTooManyPropagatorsForTopSectorMaskSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  while (spec.family.propagators.size() <=
+         static_cast<std::size_t>(std::numeric_limits<int>::digits)) {
+    spec.family.propagators.push_back(spec.family.propagators.front());
+  }
+  spec.family.top_level_sectors = {std::numeric_limits<int>::max()};
+  return spec;
+}
+
+amflow::ProblemSpec MakeBranchLoopMissingTopLevelSectorSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.top_level_sectors.clear();
+  return spec;
+}
+
+amflow::ProblemSpec MakeBranchLoopMultipleTopLevelSectorsSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.top_level_sectors = {127, 3};
+  return spec;
+}
+
+amflow::ProblemSpec MakeBranchLoopInactiveTopLevelSectorSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.top_level_sectors = {1 << static_cast<int>(spec.family.propagators.size())};
+  return spec;
+}
+
+amflow::ProblemSpec MakeBranchLoopAllCutActiveSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.top_level_sectors = {7};
+  for (std::size_t index = 0; index < 3; ++index) {
+    spec.family.propagators[index].kind = amflow::PropagatorKind::Cut;
+  }
+  return spec;
+}
+
+amflow::ProblemSpec MakeBranchLoopEmptyFirstSymanzikSupportSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.top_level_sectors = {1};
   return spec;
 }
 
@@ -2376,20 +2447,134 @@ void MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest() {
          "Mass eta mode should not leak auxiliary propagators into a matching equal-mass group");
 }
 
-void UnsupportedBuiltinEtaModesRejectTest() {
+void BranchEtaModeHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Branch");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.mode_name == "Branch",
+         "Branch eta mode should preserve the builtin mode name");
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>({5, 0, 3}),
+         "Branch eta mode should choose one uncut propagator per derived branch group on the "
+         "supported sample topology");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>({"(k1-k2)^2", "(k1)^2", "(k2)^2"}),
+         "Branch eta mode should preserve the selected propagator expressions in decision order");
+  Expect(decision.explanation.find("Supported Branch selector chose 3 unique uncut propagators "
+                                   "from 3 topology groups") != std::string::npos,
+         "Branch eta mode should describe the supported topology-group selection");
+}
+
+void LoopEtaModeHappyPathTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Loop");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.mode_name == "Loop",
+         "Loop eta mode should preserve the builtin mode name");
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>({0, 3}),
+         "Loop eta mode should choose the deduplicated first representatives of the derived "
+         "loop groups on the supported sample topology");
+  Expect(decision.selected_propagators == std::vector<std::string>({"(k1)^2", "(k2)^2"}),
+         "Loop eta mode should preserve the selected propagator expressions in decision order");
+  Expect(decision.explanation.find("after deduplicating repeated first-choice candidates") !=
+             std::string::npos,
+         "Loop eta mode should report when topology-group first choices collapse onto repeated "
+         "propagators");
+}
+
+void UnsupportedBuiltinEtaModesRejectTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
   for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
     const std::string message = CaptureRuntimeErrorMessage(
         [&mode, &spec]() {
           static_cast<void>(mode->Plan(spec));
         },
-        "remaining unsupported builtin eta modes should fail deterministically in bootstrap");
+        "unsupported Branch/Loop propagator grammar should fail deterministically in bootstrap");
     ExpectBranchLoopBootstrapBlockerMessage(
         message,
         mode_name,
-        "remaining unsupported builtin eta modes should fail deterministically in bootstrap");
+        "unsupported Branch/Loop propagator grammar should fail deterministically in "
+        "bootstrap");
+    Expect(message.find("expected propagator expression of the form "
+                        "\"(linear_momentum_combination)^2\"") != std::string::npos,
+           "unsupported Branch/Loop blocker should surface the grammar reason");
   }
+}
+
+void UnsupportedBuiltinEtaModesRejectRepeatedSignGrammarTest() {
+  const amflow::ProblemSpec spec = MakeRepeatedSignBranchLoopGrammarSpec();
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&mode, &spec]() {
+          static_cast<void>(mode->Plan(spec));
+        },
+        "repeated-sign Branch/Loop grammar should fail deterministically in bootstrap");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "repeated-sign Branch/Loop grammar should fail deterministically in bootstrap");
+    Expect(message.find("encountered repeated sign operator") != std::string::npos,
+           "repeated-sign Branch/Loop blocker should surface the repeated-sign reason");
+  }
+}
+
+void UnsupportedBuiltinEtaModesRejectTooManyTopSectorPropagatorsTest() {
+  const amflow::ProblemSpec spec = MakeTooManyPropagatorsForTopSectorMaskSpec();
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const auto mode = amflow::MakeBuiltinEtaMode(mode_name);
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&mode, &spec]() {
+          static_cast<void>(mode->Plan(spec));
+        },
+        "too-large top-sector masks should fail deterministically in bootstrap");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "too-large top-sector masks should fail deterministically in bootstrap");
+    Expect(message.find("top-level sector bitmask support is limited to " +
+                        std::to_string(std::numeric_limits<int>::digits) + " propagators") !=
+               std::string::npos,
+           "too-large top-sector blocker should surface the representable-mask limit");
+  }
+}
+
+void UnsupportedBuiltinEtaModesRejectMissingTopLevelSectorTest() {
+  ExpectBranchLoopBootstrapReason(MakeBranchLoopMissingTopLevelSectorSpec(),
+                                  "current family definition does not provide a top-level sector",
+                                  "missing top-level sector should fail deterministically in "
+                                  "bootstrap");
+}
+
+void UnsupportedBuiltinEtaModesRejectMultipleTopLevelSectorsTest() {
+  ExpectBranchLoopBootstrapReason(MakeBranchLoopMultipleTopLevelSectorsSpec(),
+                                  "multiple top-level sectors remain deferred to the later "
+                                  "multi-top-sector orchestration lane",
+                                  "multiple top-level sectors should fail deterministically in "
+                                  "bootstrap");
+}
+
+void UnsupportedBuiltinEtaModesRejectInactiveTopLevelSectorMaskTest() {
+  ExpectBranchLoopBootstrapReason(MakeBranchLoopInactiveTopLevelSectorSpec(),
+                                  "top-level sector bitmask selects no active propagators",
+                                  "inactive top-level-sector masks should fail deterministically "
+                                  "in bootstrap");
+}
+
+void UnsupportedBuiltinEtaModesRejectAllCutActiveCandidatesTest() {
+  ExpectBranchLoopBootstrapReason(
+      MakeBranchLoopAllCutActiveSpec(),
+      "all active non-auxiliary propagators are cut-like, leaving no uncut Branch/Loop candidates",
+      "all-cut active Branch/Loop candidates should fail deterministically in bootstrap");
+}
+
+void UnsupportedBuiltinEtaModesRejectEmptyFirstSymanzikSupportTest() {
+  ExpectBranchLoopBootstrapReason(
+      MakeBranchLoopEmptyFirstSymanzikSupportSpec(),
+      "the derived first Symanzik support is empty on the current supported subset",
+      "empty first-Symanzik support should fail deterministically in bootstrap");
 }
 
 void UnsupportedBuiltinEtaModesAllAuxiliaryVarProxyMissingTest() {
@@ -11008,7 +11193,7 @@ void SolveEtaModePlannedSeriesBootstrapSolverPassthroughTest() {
 }
 
 void SolveEtaModePlannedSeriesPlanningFailureTest() {
-  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
   amflow::ParsedMasterList master_basis;
   const amflow::ArtifactLayout layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-mode-plan-failure"));
@@ -11637,7 +11822,7 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
   };
 
   for (const auto& mode_name : unsupported_modes) {
-    const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+    const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
     amflow::ParsedMasterList master_basis;
     const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
         FreshTempDir("amflow-bootstrap-builtin-eta-mode-unsupported-" + mode_name));
@@ -11674,7 +11859,7 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
 }
 
 void SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest() {
-  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
   amflow::ParsedMasterList master_basis;
   for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -12983,7 +13168,7 @@ void SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest() {
 }
 
 void SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest() {
-  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
   amflow::ParsedMasterList master_basis;
   for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({mode_name, "Propagator"});
@@ -13397,7 +13582,7 @@ void SolveResolvedEtaModeListSeriesHappyPathFallbackTest() {
 }
 
 void SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest() {
-  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
   amflow::ParsedMasterList master_basis;
   for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
     const auto custom_mode =
@@ -14576,7 +14761,16 @@ int main() {
     MassEtaModeRejectsAuxiliaryOnlyNonzeroMassSpecTest();
     MassEtaModeDoesNotOverSelectAcrossDistinctMassGroupsTest();
     MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest();
+    BranchEtaModeHappyPathTest();
+    LoopEtaModeHappyPathTest();
     UnsupportedBuiltinEtaModesRejectTest();
+    UnsupportedBuiltinEtaModesRejectRepeatedSignGrammarTest();
+    UnsupportedBuiltinEtaModesRejectTooManyTopSectorPropagatorsTest();
+    UnsupportedBuiltinEtaModesRejectMissingTopLevelSectorTest();
+    UnsupportedBuiltinEtaModesRejectMultipleTopLevelSectorsTest();
+    UnsupportedBuiltinEtaModesRejectInactiveTopLevelSectorMaskTest();
+    UnsupportedBuiltinEtaModesRejectAllCutActiveCandidatesTest();
+    UnsupportedBuiltinEtaModesRejectEmptyFirstSymanzikSupportTest();
     UnsupportedBuiltinEtaModesAllAuxiliaryVarProxyMissingTest();
     ResolveEtaModeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEtaModeResolvesUniqueUserDefinedModeTest();

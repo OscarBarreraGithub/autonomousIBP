@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <limits>
+#include <map>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -299,6 +301,569 @@ std::string DescribeEtaTopologyPrereqSnapshot(const EtaTopologyPrereqSnapshot& s
   return description.str();
 }
 
+std::string RemoveWhitespace(const std::string& value) {
+  std::string compact;
+  compact.reserve(value.size());
+  for (const unsigned char current : value) {
+    if (std::isspace(current) != 0) {
+      continue;
+    }
+    compact.push_back(static_cast<char>(current));
+  }
+  return compact;
+}
+
+bool IsIdentifierStart(const char value) {
+  const unsigned char current = static_cast<unsigned char>(value);
+  return std::isalpha(current) != 0 || current == static_cast<unsigned char>('_');
+}
+
+bool IsIdentifierContinue(const char value) {
+  const unsigned char current = static_cast<unsigned char>(value);
+  return std::isalnum(current) != 0 || current == static_cast<unsigned char>('_');
+}
+
+std::string ParseIdentifier(const std::string& expression, std::size_t& index) {
+  if (index >= expression.size() || !IsIdentifierStart(expression[index])) {
+    throw std::runtime_error("expected momentum identifier in supported squared-linear "
+                             "propagator grammar: " +
+                             expression);
+  }
+  const std::size_t begin = index;
+  ++index;
+  while (index < expression.size() && IsIdentifierContinue(expression[index])) {
+    ++index;
+  }
+  return expression.substr(begin, index - begin);
+}
+
+std::vector<std::string> CollectKnownMomenta(const ProblemSpec& spec) {
+  std::vector<std::string> known;
+  known.reserve(spec.family.loop_momenta.size() + spec.kinematics.incoming_momenta.size() +
+                spec.kinematics.outgoing_momenta.size());
+  known.insert(known.end(), spec.family.loop_momenta.begin(), spec.family.loop_momenta.end());
+  known.insert(known.end(),
+               spec.kinematics.incoming_momenta.begin(),
+               spec.kinematics.incoming_momenta.end());
+  known.insert(known.end(),
+               spec.kinematics.outgoing_momenta.begin(),
+               spec.kinematics.outgoing_momenta.end());
+  std::sort(known.begin(), known.end());
+  known.erase(std::unique(known.begin(), known.end()), known.end());
+  return known;
+}
+
+std::vector<int> ParseSupportedSquaredLinearMomentumCombination(
+    const std::string& expression,
+    const std::vector<std::string>& loop_momenta,
+    const std::vector<std::string>& known_momenta) {
+  const std::string compact = RemoveWhitespace(expression);
+  if (compact.size() < 4 || compact.front() != '(' || compact[compact.size() - 3] != ')' ||
+      compact.substr(compact.size() - 2) != "^2") {
+    throw std::runtime_error("expected propagator expression of the form "
+                             "\"(linear_momentum_combination)^2\", found: " +
+                             expression);
+  }
+
+  const std::string content = compact.substr(1, compact.size() - 4);
+  if (content.empty()) {
+    throw std::runtime_error("encountered empty linear momentum combination in propagator "
+                             "expression: " +
+                             expression);
+  }
+
+  std::vector<int> loop_coefficients(loop_momenta.size(), 0);
+  std::size_t index = 0;
+  int sign = 1;
+  bool expect_term = true;
+  bool consumed_unary_sign = false;
+
+  while (index < content.size()) {
+    const char current = content[index];
+    if (current == '+') {
+      if (expect_term) {
+        if (consumed_unary_sign) {
+          throw std::runtime_error("encountered repeated sign operator in supported squared-"
+                                   "linear propagator grammar: " +
+                                   expression);
+        }
+        consumed_unary_sign = true;
+        ++index;
+        continue;
+      }
+      sign = 1;
+      expect_term = true;
+      consumed_unary_sign = true;
+      ++index;
+      continue;
+    }
+    if (current == '-') {
+      if (expect_term) {
+        if (consumed_unary_sign) {
+          throw std::runtime_error("encountered repeated sign operator in supported squared-"
+                                   "linear propagator grammar: " +
+                                   expression);
+        }
+        consumed_unary_sign = true;
+        sign = -1;
+        ++index;
+        continue;
+      }
+      sign = -1;
+      expect_term = true;
+      consumed_unary_sign = true;
+      ++index;
+      continue;
+    }
+
+    const std::string identifier = ParseIdentifier(content, index);
+    if (std::find(known_momenta.begin(), known_momenta.end(), identifier) == known_momenta.end()) {
+      throw std::runtime_error("encountered unknown momentum identifier \"" + identifier +
+                               "\" in supported squared-linear propagator grammar");
+    }
+    const auto loop_it = std::find(loop_momenta.begin(), loop_momenta.end(), identifier);
+    if (loop_it != loop_momenta.end()) {
+      loop_coefficients[static_cast<std::size_t>(std::distance(loop_momenta.begin(), loop_it))] +=
+          sign;
+    }
+    sign = 1;
+    expect_term = false;
+    consumed_unary_sign = false;
+  }
+
+  if (expect_term) {
+    throw std::runtime_error("encountered malformed linear momentum combination in propagator "
+                             "expression: " +
+                             expression);
+  }
+
+  return loop_coefficients;
+}
+
+std::vector<std::size_t> CollectActiveTopSectorPropagatorIndices(const ProblemSpec& spec) {
+  if (spec.family.top_level_sectors.empty()) {
+    throw std::runtime_error("current family definition does not provide a top-level sector");
+  }
+  if (spec.family.top_level_sectors.size() != 1) {
+    throw std::runtime_error("multiple top-level sectors remain deferred to the later "
+                             "multi-top-sector orchestration lane");
+  }
+
+  const int sector = spec.family.top_level_sectors.front();
+  if (sector <= 0) {
+    throw std::runtime_error("top-level sector must be a positive bitmask");
+  }
+  if (spec.family.propagators.size() > static_cast<std::size_t>(std::numeric_limits<int>::digits)) {
+    throw std::runtime_error("top-level sector bitmask support is limited to " +
+                             std::to_string(std::numeric_limits<int>::digits) +
+                             " propagators in the current Branch/Loop selector bootstrap");
+  }
+
+  const unsigned long long mask = static_cast<unsigned long long>(sector);
+  std::vector<std::size_t> active;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if ((mask & (1ULL << index)) == 0) {
+      continue;
+    }
+    active.push_back(index);
+  }
+  if (active.empty()) {
+    throw std::runtime_error("top-level sector bitmask selects no active propagators");
+  }
+  return active;
+}
+
+using UMonomial = std::vector<std::size_t>;
+using UPolynomial = std::map<UMonomial, long long>;
+using LinearForm = std::vector<std::pair<std::size_t, long long>>;
+
+struct BranchLoopCandidateAnalysis {
+  std::size_t loopnum = 0;
+  std::vector<std::size_t> active_candidate_indices;
+  std::vector<std::size_t> uncut_candidate_indices;
+  UPolynomial u_polynomial;
+};
+
+int PermutationSign(const std::vector<std::size_t>& permutation) {
+  int inversions = 0;
+  for (std::size_t left = 0; left < permutation.size(); ++left) {
+    for (std::size_t right = left + 1; right < permutation.size(); ++right) {
+      if (permutation[left] > permutation[right]) {
+        ++inversions;
+      }
+    }
+  }
+  return (inversions % 2 == 0) ? 1 : -1;
+}
+
+UPolynomial MultiplyByLinearForm(const UPolynomial& polynomial, const LinearForm& linear_form) {
+  UPolynomial product;
+  for (const auto& term : polynomial) {
+    for (const auto& factor : linear_form) {
+      UMonomial monomial = term.first;
+      monomial.push_back(factor.first);
+      std::sort(monomial.begin(), monomial.end());
+      product[monomial] += term.second * factor.second;
+    }
+  }
+  for (auto it = product.begin(); it != product.end();) {
+    if (it->second == 0) {
+      it = product.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  return product;
+}
+
+void AccumulatePolynomial(UPolynomial& destination,
+                          const UPolynomial& source,
+                          const int sign) {
+  for (const auto& term : source) {
+    destination[term.first] += sign * term.second;
+  }
+  for (auto it = destination.begin(); it != destination.end();) {
+    if (it->second == 0) {
+      it = destination.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+UPolynomial BuildFirstSymanzikPolynomial(
+    const std::vector<std::size_t>& candidate_indices,
+    const std::vector<std::vector<int>>& loop_coefficients,
+    const std::size_t loopnum) {
+  if (loopnum == 0) {
+    throw std::runtime_error("loop-momentum list is empty");
+  }
+
+  std::vector<std::vector<LinearForm>> matrix(
+      loopnum, std::vector<LinearForm>(loopnum));
+  for (std::size_t row = 0; row < loopnum; ++row) {
+    for (std::size_t column = 0; column < loopnum; ++column) {
+      LinearForm form;
+      for (std::size_t index = 0; index < candidate_indices.size(); ++index) {
+        const long long coefficient = static_cast<long long>(loop_coefficients[index][row]) *
+                                      static_cast<long long>(loop_coefficients[index][column]);
+        if (coefficient == 0) {
+          continue;
+        }
+        form.push_back({candidate_indices[index], coefficient});
+      }
+      matrix[row][column] = std::move(form);
+    }
+  }
+
+  std::vector<std::size_t> permutation(loopnum);
+  for (std::size_t index = 0; index < loopnum; ++index) {
+    permutation[index] = index;
+  }
+
+  UPolynomial determinant;
+  do {
+    UPolynomial term;
+    term[{}] = 1;
+    bool vanished = false;
+    for (std::size_t row = 0; row < loopnum; ++row) {
+      const LinearForm& linear_form = matrix[row][permutation[row]];
+      if (linear_form.empty()) {
+        vanished = true;
+        break;
+      }
+      term = MultiplyByLinearForm(term, linear_form);
+      if (term.empty()) {
+        vanished = true;
+        break;
+      }
+    }
+    if (!vanished) {
+      AccumulatePolynomial(determinant, term, PermutationSign(permutation));
+    }
+  } while (std::next_permutation(permutation.begin(), permutation.end()));
+
+  return determinant;
+}
+
+bool IsSubsetOf(const std::vector<std::size_t>& subset, const std::vector<std::size_t>& superset) {
+  return std::includes(superset.begin(), superset.end(), subset.begin(), subset.end());
+}
+
+std::vector<std::size_t> IntersectWithSortedIndices(const std::vector<std::size_t>& values,
+                                                    const std::vector<std::size_t>& keep) {
+  std::vector<std::size_t> intersection;
+  std::set_intersection(values.begin(),
+                        values.end(),
+                        keep.begin(),
+                        keep.end(),
+                        std::back_inserter(intersection));
+  return intersection;
+}
+
+bool CompareIndexGroups(const std::vector<std::size_t>& left,
+                        const std::vector<std::size_t>& right) {
+  if (left.size() != right.size()) {
+    return left.size() < right.size();
+  }
+  return left < right;
+}
+
+std::vector<std::vector<std::size_t>> SortAndDeduplicateGroups(
+    std::vector<std::vector<std::size_t>> groups) {
+  std::sort(groups.begin(), groups.end(), CompareIndexGroups);
+  groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
+  return groups;
+}
+
+std::vector<std::size_t> DeduplicateSelectionOrder(const std::vector<std::size_t>& values) {
+  std::vector<std::size_t> unique_values;
+  std::set<std::size_t> seen;
+  for (const std::size_t value : values) {
+    if (!seen.insert(value).second) {
+      continue;
+    }
+    unique_values.push_back(value);
+  }
+  return unique_values;
+}
+
+[[noreturn]] void ThrowBranchLoopBootstrapBlocker(const ProblemSpec& spec,
+                                                  const std::string& mode_name,
+                                                  const std::string& reason) {
+  const EtaTopologyPrereqSnapshot topology_snapshot = BuildEtaTopologyPrereqSnapshot(spec);
+  throw std::runtime_error("eta mode " + mode_name +
+                           " is blocked in bootstrap: internal eta-topology prereq snapshot "
+                           "collected the current family/kinematics surface, but Branch/Loop "
+                           "candidate analysis is unavailable for this input (" +
+                           reason + "; " + DescribeEtaTopologySummary(topology_snapshot.surface) +
+                           "; " + DescribeEtaTopologyPrereqSnapshot(topology_snapshot) + ")");
+}
+
+BranchLoopCandidateAnalysis AnalyzeBranchLoopCandidateSurface(const ProblemSpec& spec,
+                                                              const std::string& mode_name) {
+  BranchLoopCandidateAnalysis analysis;
+  analysis.loopnum = spec.family.loop_momenta.size();
+  if (analysis.loopnum == 0) {
+    ThrowBranchLoopBootstrapBlocker(spec,
+                                    mode_name,
+                                    "loop-momentum list is empty on the current family surface");
+  }
+
+  std::vector<std::size_t> active_indices;
+  try {
+    active_indices = CollectActiveTopSectorPropagatorIndices(spec);
+  } catch (const std::runtime_error& error) {
+    ThrowBranchLoopBootstrapBlocker(spec, mode_name, error.what());
+  }
+  const std::vector<std::string> known_momenta = CollectKnownMomenta(spec);
+  std::vector<std::vector<int>> loop_coefficients;
+
+  for (const std::size_t index : active_indices) {
+    const auto& propagator = spec.family.propagators[index];
+    if (propagator.kind == PropagatorKind::Auxiliary) {
+      continue;
+    }
+    if (propagator.kind == PropagatorKind::Linear) {
+      ThrowBranchLoopBootstrapBlocker(
+          spec,
+          mode_name,
+          "linear propagators remain outside the current Branch/Loop selector subset");
+    }
+
+    try {
+      loop_coefficients.push_back(ParseSupportedSquaredLinearMomentumCombination(
+          propagator.expression, spec.family.loop_momenta, known_momenta));
+    } catch (const std::runtime_error& error) {
+      ThrowBranchLoopBootstrapBlocker(spec, mode_name, error.what());
+    }
+    analysis.active_candidate_indices.push_back(index);
+    if (propagator.kind != PropagatorKind::Cut) {
+      analysis.uncut_candidate_indices.push_back(index);
+    }
+  }
+
+  if (analysis.active_candidate_indices.empty()) {
+    ThrowBranchLoopBootstrapBlocker(
+        spec,
+        mode_name,
+        "no active non-auxiliary propagators remain inside the current top-level sector");
+  }
+  if (analysis.uncut_candidate_indices.empty()) {
+    ThrowBranchLoopBootstrapBlocker(
+        spec,
+        mode_name,
+        "all active non-auxiliary propagators are cut-like, leaving no uncut Branch/Loop "
+        "candidates");
+  }
+
+  analysis.u_polynomial = BuildFirstSymanzikPolynomial(
+      analysis.active_candidate_indices, loop_coefficients, analysis.loopnum);
+  if (analysis.u_polynomial.empty()) {
+    ThrowBranchLoopBootstrapBlocker(spec,
+                                    mode_name,
+                                    "the derived first Symanzik support is empty on the current "
+                                    "supported subset");
+  }
+
+  for (const auto& term : analysis.u_polynomial) {
+    if (term.first.size() != analysis.loopnum) {
+      ThrowBranchLoopBootstrapBlocker(
+          spec,
+          mode_name,
+          "the derived first Symanzik support is not homogeneous of degree loopnum");
+    }
+    if (std::adjacent_find(term.first.begin(), term.first.end()) != term.first.end()) {
+      ThrowBranchLoopBootstrapBlocker(
+          spec,
+          mode_name,
+          "the derived first Symanzik support is not squarefree on the current subset");
+    }
+  }
+
+  std::sort(analysis.active_candidate_indices.begin(), analysis.active_candidate_indices.end());
+  std::sort(analysis.uncut_candidate_indices.begin(), analysis.uncut_candidate_indices.end());
+  return analysis;
+}
+
+std::vector<std::vector<std::size_t>> BuildBranchGroups(
+    const BranchLoopCandidateAnalysis& analysis) {
+  std::vector<std::vector<std::size_t>> groups;
+  for (const std::size_t variable : analysis.active_candidate_indices) {
+    std::vector<std::size_t> coefficient_variables;
+    for (const auto& term : analysis.u_polynomial) {
+      if (!std::binary_search(term.first.begin(), term.first.end(), variable)) {
+        continue;
+      }
+      for (const std::size_t factor : term.first) {
+        if (factor == variable) {
+          continue;
+        }
+        coefficient_variables.push_back(factor);
+      }
+    }
+    std::sort(coefficient_variables.begin(), coefficient_variables.end());
+    coefficient_variables.erase(
+        std::unique(coefficient_variables.begin(), coefficient_variables.end()),
+        coefficient_variables.end());
+
+    std::vector<std::size_t> branch;
+    std::set_difference(analysis.active_candidate_indices.begin(),
+                        analysis.active_candidate_indices.end(),
+                        coefficient_variables.begin(),
+                        coefficient_variables.end(),
+                        std::back_inserter(branch));
+    branch = IntersectWithSortedIndices(branch, analysis.uncut_candidate_indices);
+    if (!branch.empty()) {
+      groups.push_back(std::move(branch));
+    }
+  }
+  return SortAndDeduplicateGroups(std::move(groups));
+}
+
+void BuildSubsetCombinations(const std::vector<std::size_t>& values,
+                             const std::size_t subset_size,
+                             const std::size_t next_index,
+                             std::vector<std::size_t>& current,
+                             std::vector<std::vector<std::size_t>>& all) {
+  if (current.size() == subset_size) {
+    all.push_back(current);
+    return;
+  }
+  for (std::size_t index = next_index; index < values.size(); ++index) {
+    current.push_back(values[index]);
+    BuildSubsetCombinations(values, subset_size, index + 1, current, all);
+    current.pop_back();
+  }
+}
+
+std::vector<std::vector<std::size_t>> BuildLoopGroups(
+    const BranchLoopCandidateAnalysis& analysis) {
+  const std::size_t subset_size = analysis.loopnum - 1;
+  std::vector<std::vector<std::size_t>> subsets;
+  if (subset_size == 0) {
+    subsets.push_back({});
+  } else {
+    std::vector<std::size_t> current;
+    BuildSubsetCombinations(analysis.active_candidate_indices,
+                            subset_size,
+                            0,
+                            current,
+                            subsets);
+  }
+
+  std::vector<std::vector<std::size_t>> groups;
+  for (const auto& subset : subsets) {
+    std::vector<std::size_t> group;
+    for (const auto& term : analysis.u_polynomial) {
+      if (!IsSubsetOf(subset, term.first)) {
+        continue;
+      }
+      for (const std::size_t factor : term.first) {
+        if (std::binary_search(subset.begin(), subset.end(), factor)) {
+          continue;
+        }
+        group.push_back(factor);
+      }
+    }
+    std::sort(group.begin(), group.end());
+    group.erase(std::unique(group.begin(), group.end()), group.end());
+    group = IntersectWithSortedIndices(group, analysis.uncut_candidate_indices);
+    if (!group.empty()) {
+      groups.push_back(std::move(group));
+    }
+  }
+  return SortAndDeduplicateGroups(std::move(groups));
+}
+
+EtaInsertionDecision PlanBranchOrLoopEtaMode(const ProblemSpec& spec,
+                                             const std::string& mode_name) {
+  const BranchLoopCandidateAnalysis analysis = AnalyzeBranchLoopCandidateSurface(spec, mode_name);
+  std::vector<std::vector<std::size_t>> groups =
+      (mode_name == "Branch") ? BuildBranchGroups(analysis) : BuildLoopGroups(analysis);
+  if (groups.empty()) {
+    ThrowBranchLoopBootstrapBlocker(
+        spec,
+        mode_name,
+        "the derived first Symanzik support produced no non-empty uncut " + mode_name +
+            " groups");
+  }
+
+  std::vector<std::size_t> selected_indices;
+  selected_indices.reserve(groups.size());
+  for (const auto& group : groups) {
+    selected_indices.push_back(group.front());
+  }
+  const std::size_t raw_selection_count = selected_indices.size();
+  selected_indices = DeduplicateSelectionOrder(selected_indices);
+  if (selected_indices.empty()) {
+    ThrowBranchLoopBootstrapBlocker(
+        spec,
+        mode_name,
+        "the derived " + mode_name +
+            " groups collapsed to an empty unique propagator selection");
+  }
+
+  EtaInsertionDecision decision;
+  decision.mode_name = mode_name;
+  decision.selected_propagator_indices = selected_indices;
+  for (const std::size_t index : selected_indices) {
+    decision.selected_propagators.push_back(spec.family.propagators[index].expression);
+  }
+
+  std::ostringstream explanation;
+  explanation << "Supported " << mode_name << " selector chose "
+              << decision.selected_propagator_indices.size()
+              << " unique uncut propagators from " << groups.size()
+              << " topology groups on the current single-top-sector squared-linear-momentum "
+                 "subset";
+  if (raw_selection_count != decision.selected_propagator_indices.size()) {
+    explanation << " after deduplicating repeated first-choice candidates";
+  }
+  decision.explanation = explanation.str();
+  return decision;
+}
+
 bool IsSingleIdentifier(const std::string& expression) {
   if (expression.empty()) {
     return false;
@@ -491,14 +1056,7 @@ class BuiltinEtaMode final : public EtaMode {
     }
 
     if (name_ == "Branch" || name_ == "Loop") {
-      const EtaTopologyPrereqSnapshot topology_snapshot = BuildEtaTopologyPrereqSnapshot(spec);
-      throw std::runtime_error("eta mode " + name_ +
-                               " is blocked in bootstrap: internal eta-topology preflight "
-                               "snapshot collected the current family/kinematics surface, but "
-                               "topology-analysis/candidate-analysis for Branch/Loop selectors "
-                               "is not implemented yet (" +
-                               DescribeEtaTopologySummary(topology_snapshot.surface) + "; " +
-                               DescribeEtaTopologyPrereqSnapshot(topology_snapshot) + ")");
+      return PlanBranchOrLoopEtaMode(spec, name_);
     }
 
     if (name_ == "Mass") {

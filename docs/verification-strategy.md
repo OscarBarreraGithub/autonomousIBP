@@ -8,7 +8,7 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local tracking `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed
+- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local tracking `origin/main` remains stale at `899ad7f`
 - last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58g`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root

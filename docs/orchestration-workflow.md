@@ -25,7 +25,7 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local tracking `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed
+- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local tracking `origin/main` remains stale at `899ad7f`
 - landed `Batch 56` through `Batch 58g` are now present in actual `main` history at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, on top of landed `Batch 50` through `Batch 55`
 - last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58g`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only

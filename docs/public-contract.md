@@ -36,8 +36,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
   `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
   `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`,
-  `2f2538b`, `7d3806a`, and `53ec6a4`; local tracking `origin/main` remains stale at `899ad7f`
-  because the configured HTTPS remote has not refreshed;
+  `2f2538b`, `7d3806a`, and `53ec6a4`; local tracking `origin/main` remains stale at `899ad7f`;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`

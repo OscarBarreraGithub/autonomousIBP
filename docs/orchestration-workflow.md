@@ -25,9 +25,9 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- landed `Batch 50` through `Batch 55` are now present on `main` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 55`; `Milestone M1` is complete
+- the starting `main` / `origin/main` head for this packet was `a5d627f906dfb2c5829bda88dce2407bfa67f043`
+- landed `Batch 56` through `Batch 58` are now present on `main` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, and `a5d627f906dfb2c5829bda88dce2407bfa67f043`, on top of landed `Batch 50` through `Batch 55`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 58`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -91,14 +91,15 @@ The workflow is optimized for the current repo shape:
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- `M0b` is accepted, but truthful `Milestone M3` closure review is still blocked in the current
-  repo because the phase-1 gate does not yet have any explicit in-repo prefactor surface/tests
-- the current roadmap-owned worktree lane is `Batch 58`: the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads keep the landed solved-path cache plus the
-  wrapper-only `amf_options.skip_reduction == true` reuse and now also build a live
-  wrapper-owned solve policy from `AmfOptions`, while the public eta-reduction helpers and direct
-  eta/standalone solver entry points remain unchanged; the next roadmap gate after review is
-  `Milestone M4`, and `Batch 59` remains blocked on that gate
+- `M0b` is accepted; the repo now has a first explicit in-repo prefactor/sign-convention surface
+  and tests, but truthful `Milestone M3` closure still remains open until those conventions are
+  locked against retained references and the first mandatory-family reduction span
+- truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
+  the current docs/tests surface
+- the current blocker lane is `Batch 58b`: `BuildOverallAmflowPrefactor(...)` now makes the
+  prefactor/sign-convention seam explicit and testable over declared loop count plus cut
+  propagator count, while Kira `insert_prefactors` wiring and broader parity claims remain
+  deferred
 
 ## Mandatory Read Set Before Planning
 

@@ -60,7 +60,30 @@ struct ProblemSpec {
   std::string notes;
 };
 
+enum class AmflowLoopPrefactorSign {
+  PlusI0,
+  MinusI0
+};
+
+std::string ToString(AmflowLoopPrefactorSign sign);
+
+struct AmflowPrefactorConvention {
+  AmflowPrefactorConvention()
+      : plus_i0_loop_prefactor("1/(I*pi^(D/2))"),
+        minus_i0_loop_prefactor("-1/(I*pi^(D/2))"),
+        cut_prefactor("delta_+(p^2-m^2)/(2*pi)^(D-1)"),
+        loop_sign(AmflowLoopPrefactorSign::PlusI0) {}
+
+  std::string plus_i0_loop_prefactor;
+  std::string minus_i0_loop_prefactor;
+  std::string cut_prefactor;
+  AmflowLoopPrefactorSign loop_sign;
+};
+
 std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec);
 std::string SerializeProblemSpecYaml(const ProblemSpec& spec);
+std::string BuildOverallAmflowPrefactor(
+    const ProblemSpec& spec,
+    const AmflowPrefactorConvention& convention = AmflowPrefactorConvention{});
 
 }  // namespace amflow

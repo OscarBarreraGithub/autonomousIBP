@@ -68,8 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, which carries landed `Batch 55` on top of landed `Batch 50` through `Batch 54` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 55`, while `Milestone M1` remains complete only on the accepted reviewed surface
+- the starting `main` / `origin/main` head for this packet was `a5d627f906dfb2c5829bda88dce2407bfa67f043`, which carries landed `Batch 58` on top of landed `Batch 56` through `Batch 57` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98` and `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, plus landed `Batch 50` through `Batch 55` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 58`, while `Milestone M1` remains complete only on the accepted reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set only: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -147,15 +147,16 @@ exit gate. The current live state must always be read from `docs/implementation-
   `failure_code = "continuation_budget_exhausted"`, and local
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- truthful `Milestone M3` closure review was reconsidered after `M0b`, but it is still blocked in
-  the current repo because the phase-1 gate does not yet have any explicit in-repo prefactor
-  surface/tests
-- the current roadmap-owned worktree lane is therefore `Batch 58`: on top of the landed wrapper
-  cache plus wrapper-only `skip_reduction` reuse, the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads now also build a live wrapper-owned solve policy
-  from `AmfOptions`, thread the newly live fields through `SolveRequest` plus solved-path
-  fingerprinting, and keep the public eta-reduction helpers plus direct non-`AmfOptions`
-  entry points unchanged
+- truthful `Milestone M3` closure review was reconsidered after `M0b`; the repo now has a first
+  explicit in-repo prefactor/sign-convention surface and tests, but `M3` still remains open until
+  those conventions are locked against retained references and carried through the first
+  mandatory-family reduction-span parity evidence
+- truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
+  the current docs/tests surface
+- the current blocker lane is therefore `Batch 58b`: `AmflowLoopPrefactorSign`,
+  `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)` add the first explicit
+  in-repo prefactor surface/tests over declared loop count plus cut propagator count while
+  keeping reducer `insert_prefactors` wiring and broader parity claims deferred
 
 ## Current State At R0
 
@@ -325,10 +326,10 @@ Current status:
   monotone retry progress is classified as `continuation_budget_exhausted`, direct
   `SolveDifferentialEquation(...)` remains passthrough, and cancellation/truncation detection,
   broader cache/restart, `SkipReduction`, and the rest of Track E remain open
-- the current `Batch 58` worktree slice keeps that narrow solved-path cache manifest plus the
-  wrapper-owned `amf_options.skip_reduction == true` reuse on the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads and now also wires the listed `AmfOptions`
-  runtime fields into a live wrapper-owned solve policy: after wrapper-owned eta-mode selection,
+- landed `Batch 58` keeps that narrow solved-path cache manifest plus the wrapper-owned
+  `amf_options.skip_reduction == true` reuse on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads and wires the listed `AmfOptions` runtime fields
+  into a live wrapper-owned solve policy: after wrapper-owned eta-mode selection,
   `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` rebuild the live `PrecisionPolicy`,
   while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are carried through a narrow
   typed request-side runtime-policy carrier. Matching `UseCache` requests and
@@ -339,6 +340,12 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
+- current worktree `Batch 58b` adds the first explicit in-repo prefactor/sign-convention helper
+  surface: `BuildOverallAmflowPrefactor(...)` counts declared loop momenta plus cut propagators
+  and renders a deterministic textual overall factor from `AmflowPrefactorConvention` without
+  mutating `ProblemSpec`. That lowers the old “no prefactor surface/tests” blocker, but locking
+  those conventions against retained references and threading them through reduction-span parity
+  still remain open
 
 ### Track F: Feature-Surface Parity
 

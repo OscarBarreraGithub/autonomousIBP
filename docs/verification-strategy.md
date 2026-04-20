@@ -8,8 +8,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- the starting `main` / `origin/main` head for this packet was `a5d627f906dfb2c5829bda88dce2407bfa67f043`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 58`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -84,18 +84,23 @@ The migration is phase-gated. Every phase must pass:
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed before the
   landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- current worktree `Batch 56` staging adds a narrow solved-path cache manifest plus `UseCache`
-  replay of successful solved-path diagnostics on the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads only; the repaired `Batch 57` staging keeps that
-  cache slice and adds wrapper-only `amf_options.skip_reduction == true` reuse over
-  already-prepared matching eta-generated state on those same two overloads; and the current
-  `Batch 58` staging keeps both of those seams while wiring the listed `AmfOptions` runtime
-  fields into a live wrapper-owned solve policy on those same two overloads. Solved-path
-  input/request fingerprinting and `skip_reduction` replay validation now treat those fields as
-  live inputs there, while public eta-reduction helpers plus direct eta/standalone solver entry
-  points remain unchanged. Local `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1`
-  passed for the current staging slice, and truthful `Milestone M3` closure review remains
-  blocked by the missing in-repo prefactor surface/tests
+- landed `Batch 56` adds a narrow solved-path cache manifest plus `UseCache` replay of
+  successful solved-path diagnostics on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads only; the repaired `Batch 57` keeps that cache
+  slice and adds wrapper-only `amf_options.skip_reduction == true` reuse over already-prepared
+  matching eta-generated state on those same two overloads; and landed `Batch 58` keeps both of
+  those seams while wiring the listed `AmfOptions` runtime fields into a live wrapper-owned solve
+  policy on those same two overloads. Solved-path input/request fingerprinting and
+  `skip_reduction` replay validation now treat those fields as live inputs there, while public
+  eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
+- current worktree `Batch 58b` adds the first explicit in-repo prefactor/sign-convention
+  surface/tests: `BuildOverallAmflowPrefactor(...)` counts declared loop momenta plus cut
+  propagators and renders a deterministic textual overall factor from
+  `AmflowPrefactorConvention` without mutating `ProblemSpec`. Local
+  `module load cmake/4.2.3-fasrc01 && rm -rf build && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel 1 && ctest --test-dir build --output-on-failure && ./build/amflow-tests`
+  passed for this staging slice. `Milestone M3` therefore no longer lacks an in-repo prefactor
+  surface/tests, but it still remains open until those conventions are locked against retained
+  references and carried through the first mandatory-family reduction-span parity evidence
 
 ## Test Taxonomy
 

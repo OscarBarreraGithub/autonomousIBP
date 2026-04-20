@@ -2429,6 +2429,70 @@ void ProblemSpecRoundTripTest() {
          "problem spec should round-trip through file-backed YAML");
 }
 
+void BuildOverallAmflowPrefactorUsesLoopCountAndDefaultConventionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+
+  Expect(amflow::BuildOverallAmflowPrefactor(spec) ==
+             "(1/(I*pi^(D/2))) * (1/(I*pi^(D/2)))",
+         "overall AMFlow prefactor should repeat the default loop factor once per loop momentum");
+}
+
+void BuildOverallAmflowPrefactorUsesMinusI0AndCutCountTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Cut;
+
+  amflow::AmflowPrefactorConvention convention;
+  convention.loop_sign = amflow::AmflowLoopPrefactorSign::MinusI0;
+
+  Expect(amflow::BuildOverallAmflowPrefactor(spec, convention) ==
+             "(-1/(I*pi^(D/2))) * (-1/(I*pi^(D/2))) * "
+             "(delta_+(p^2-m^2)/(2*pi)^(D-1)) * (delta_+(p^2-m^2)/(2*pi)^(D-1))",
+         "overall AMFlow prefactor should switch to the -i0 loop factor and repeat the cut "
+         "factor once per cut propagator");
+}
+
+void BuildOverallAmflowPrefactorRejectsEmptySelectedLoopFactorTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmflowPrefactorConvention convention;
+  convention.loop_sign = amflow::AmflowLoopPrefactorSign::MinusI0;
+  convention.minus_i0_loop_prefactor.clear();
+
+  ExpectInvalidArgument(
+      [&spec, &convention]() {
+        static_cast<void>(amflow::BuildOverallAmflowPrefactor(spec, convention));
+      },
+      "selected loop prefactor",
+      "overall AMFlow prefactor should reject an empty loop factor for the chosen sign "
+      "convention");
+}
+
+void BuildOverallAmflowPrefactorRejectsEmptyCutFactorWhenCutsPresentTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Cut;
+
+  amflow::AmflowPrefactorConvention convention;
+  convention.cut_prefactor.clear();
+
+  ExpectInvalidArgument(
+      [&spec, &convention]() {
+        static_cast<void>(amflow::BuildOverallAmflowPrefactor(spec, convention));
+      },
+      "cut_prefactor",
+      "overall AMFlow prefactor should reject an empty cut factor when cut propagators are "
+      "present");
+}
+
+void BuildOverallAmflowPrefactorDoesNotMutateProblemSpecTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  static_cast<void>(amflow::BuildOverallAmflowPrefactor(spec));
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "overall AMFlow prefactor builder should not mutate the input problem spec");
+}
+
 void ProblemSpecExampleFileTest() {
   const std::filesystem::path path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.example.yaml";
@@ -18922,6 +18986,11 @@ int main() {
   try {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
+    BuildOverallAmflowPrefactorUsesLoopCountAndDefaultConventionTest();
+    BuildOverallAmflowPrefactorUsesMinusI0AndCutCountTest();
+    BuildOverallAmflowPrefactorRejectsEmptySelectedLoopFactorTest();
+    BuildOverallAmflowPrefactorRejectsEmptyCutFactorWhenCutsPresentTest();
+    BuildOverallAmflowPrefactorDoesNotMutateProblemSpecTest();
     ProblemSpecExampleFileTest();
     K0SmokeProblemSpecFileTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();

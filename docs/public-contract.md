@@ -31,10 +31,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - the starting `main` state for this packet additionally carried landed `Batch 50b` through
-  `Batch 54` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
+  `Batch 58` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
   `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
-  `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and
-  `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`;
+  `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
+  `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
+  `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, and
+  `a5d627f906dfb2c5829bda88dce2407bfa67f043`;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -45,8 +47,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   to invariant-independent identifier or rational-constant masses on the bootstrap subset,
   `Batch 53` adds first multiple-top-sector Kira target orchestration, `Batch 54` adds
   precision-budget preflight plus a generated-wrapper retry controller while direct
-  `SolveDifferentialEquation(...)` remains passthrough, and landed `Batch 55` adds typed
-  generated-wrapper `master_set_instability` plus `continuation_budget_exhausted` diagnostics
+  `SolveDifferentialEquation(...)` remains passthrough, landed `Batch 55` adds typed
+  generated-wrapper `master_set_instability` plus `continuation_budget_exhausted` diagnostics,
+  landed `Batch 56` adds solved-path cache replay, landed `Batch 57` adds wrapper-only
+  `SkipReduction` reuse, and landed `Batch 58` wires the live `AmfOptions` solver-policy fields
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -110,6 +114,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   coverage, broader propagator grammar support, linear-propagator support, full upstream
   `AnalyzeTopSector` / component-factorization parity, or `Propagator::prescription`
   interpretation
+- current worktree `Batch 58b` adds only the first explicit prefactor/sign-convention helper
+  surface: `BuildOverallAmflowPrefactor(...)` counts declared loop momenta plus cut propagators
+  and renders a deterministic textual overall factor from caller-supplied
+  `AmflowPrefactorConvention` strings. This is groundwork only; it does not yet lock the
+  convention against retained references, wire Kira `insert_prefactors`, or accept
+  `Milestone M3`
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,
@@ -127,6 +137,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 ## Core Types
 
 - `ProblemSpec`: family definition, propagators, cuts, conservation rules, invariants, prescriptions, targets, numeric substitutions, dimensional settings
+- `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`
 - `AmfOptions`: AMFlow runtime controls
 - `ReductionOptions`: backend and reducer controls
 - `DESystem`: ordered masters, differentiation variables, exact coefficient matrices, singular-point annotations

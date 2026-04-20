@@ -1,5 +1,6 @@
 #include "amflow/core/problem_spec.hpp"
 
+#include <stdexcept>
 #include <sstream>
 
 namespace amflow {
@@ -39,6 +40,16 @@ std::string ToString(PropagatorKind kind) {
       return "auxiliary";
   }
   return "standard";
+}
+
+std::string ToString(AmflowLoopPrefactorSign sign) {
+  switch (sign) {
+    case AmflowLoopPrefactorSign::PlusI0:
+      return "plus_i0";
+    case AmflowLoopPrefactorSign::MinusI0:
+      return "minus_i0";
+  }
+  return "plus_i0";
 }
 
 std::string TargetIntegral::Label() const {
@@ -147,6 +158,53 @@ std::string SerializeProblemSpecYaml(const ProblemSpec& spec) {
     out << "notes: " << Quote(spec.notes) << "\n";
   }
 
+  return out.str();
+}
+
+std::string BuildOverallAmflowPrefactor(const ProblemSpec& spec,
+                                        const AmflowPrefactorConvention& convention) {
+  if (spec.family.loop_momenta.empty()) {
+    throw std::invalid_argument(
+        "BuildOverallAmflowPrefactor requires at least one loop momentum");
+  }
+
+  const std::string& loop_prefactor =
+      convention.loop_sign == AmflowLoopPrefactorSign::PlusI0
+          ? convention.plus_i0_loop_prefactor
+          : convention.minus_i0_loop_prefactor;
+  if (loop_prefactor.empty()) {
+    throw std::invalid_argument(
+        "BuildOverallAmflowPrefactor requires a non-empty selected loop prefactor");
+  }
+
+  std::size_t cut_count = 0;
+  for (const auto& propagator : spec.family.propagators) {
+    if (propagator.kind == PropagatorKind::Cut) {
+      ++cut_count;
+    }
+  }
+  if (cut_count > 0 && convention.cut_prefactor.empty()) {
+    throw std::invalid_argument(
+        "BuildOverallAmflowPrefactor requires a non-empty cut_prefactor when cut propagators "
+        "are present");
+  }
+
+  std::vector<std::string> factors;
+  factors.reserve(spec.family.loop_momenta.size() + cut_count);
+  for (std::size_t index = 0; index < spec.family.loop_momenta.size(); ++index) {
+    factors.push_back("(" + loop_prefactor + ")");
+  }
+  for (std::size_t index = 0; index < cut_count; ++index) {
+    factors.push_back("(" + convention.cut_prefactor + ")");
+  }
+
+  std::ostringstream out;
+  for (std::size_t index = 0; index < factors.size(); ++index) {
+    if (index > 0) {
+      out << " * ";
+    }
+    out << factors[index];
+  }
   return out.str();
 }
 

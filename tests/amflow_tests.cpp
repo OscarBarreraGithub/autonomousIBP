@@ -1840,6 +1840,7 @@ amflow::ParsedMasterList MakeAutoInvariantMixedZeroMasterBasis() {
   master_basis.family = "toy_auto_mixed_zero_family";
   master_basis.masters = {
       {"toy_auto_mixed_zero_family", {1, 1, 1}},
+      {"toy_auto_mixed_zero_family", {0, -1, 2}},
   };
   return master_basis;
 }
@@ -1975,7 +1976,14 @@ std::string MakeAutoInvariantWholeFactorSRuleFile() {
 
 std::string MakeAutoInvariantMixedZeroSRuleFile() {
   return "{\n"
-         "  toy_auto_mixed_zero_family[1,0,2] -> 2*toy_auto_mixed_zero_family[1,1,1]\n"
+         "  toy_auto_mixed_zero_family[1,2,1] -> 2*toy_auto_mixed_zero_family[1,1,1] + "
+         "3*toy_auto_mixed_zero_family[0,-1,2],\n"
+         "  toy_auto_mixed_zero_family[0,1,2] -> 5*toy_auto_mixed_zero_family[1,1,1] + "
+         "7*toy_auto_mixed_zero_family[0,-1,2],\n"
+         "  toy_auto_mixed_zero_family[0,0,2] -> 19*toy_auto_mixed_zero_family[1,1,1] + "
+         "11*toy_auto_mixed_zero_family[0,-1,2],\n"
+         "  toy_auto_mixed_zero_family[-1,-1,3] -> 13*toy_auto_mixed_zero_family[1,1,1] + "
+         "17*toy_auto_mixed_zero_family[0,-1,2]\n"
          "}\n";
 }
 
@@ -2052,6 +2060,7 @@ std::string MakeAutoInvariantMixedZeroResultScript(const std::string& rule_file_
   script << "mkdir -p \"$dest\"\n";
   script << "cat > \"$dest/masters\" <<'EOF'\n";
   script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+  script << "toy_auto_mixed_zero_family[0,-1,2] 0\n";
   script << "EOF\n";
   script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
   script << rule_file_contents;
@@ -2114,6 +2123,7 @@ std::string MakeAutoInvariantMixedZeroListResultScript() {
   script << "mkdir -p \"$dest\"\n";
   script << "cat > \"$dest/masters\" <<'EOF'\n";
   script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+  script << "toy_auto_mixed_zero_family[0,-1,2] 0\n";
   script << "EOF\n";
   script << "layout_name=\"$(basename \"$(dirname \"$PWD\")\")\"\n";
   script << "case \"$layout_name\" in\n";
@@ -11855,6 +11865,60 @@ void TestPrecisionRetryWrapper_CeilingStopTest() {
          "terminal solver diagnostic text");
 }
 
+void TestPrecisionRetryWrapper_StopsWhenWorkingPrecisionStallsTest() {
+  const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
+      "amflow-bootstrap-invariant-auto-solver-retry-wrapper-working-precision-stall");
+  amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  precision_policy.working_precision = 90;
+  precision_policy.escalation_step = 0;
+  precision_policy.max_working_precision = 160;
+  precision_policy.x_order = 28;
+  precision_policy.x_order_step = 6;
+  const int requested_digits = 120;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      MakeInsufficientPrecisionRetryDiagnostic(
+          "wrapper retry path observed unchanged working precision despite x-order headroom",
+          0.75,
+          0.5),
+  };
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(harness.spec,
+                                            harness.master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            harness.layout,
+                                            harness.kira_path,
+                                            harness.fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "retry wrapper should stop immediately when the real wrapper path cannot advance "
+         "working precision");
+  const amflow::SolveRequest& request = solver.seen_requests().front();
+  Expect(request.precision_policy.working_precision == precision_policy.working_precision &&
+             request.precision_policy.x_order == precision_policy.x_order &&
+             request.requested_digits == requested_digits,
+         "retry wrapper working-precision stall should preserve the original request on the "
+         "only solver call");
+  Expect(!diagnostics.success && diagnostics.failure_code == "continuation_budget_exhausted",
+         "retry wrapper working-precision stall should return continuation_budget_exhausted "
+         "instead of retrying");
+  Expect(diagnostics.summary.find("continuation_budget_exhausted:") == 0 &&
+             diagnostics.summary.find("could not advance working precision") !=
+                 std::string::npos &&
+             diagnostics.summary.find(solver.returned_diagnostics.front().summary) !=
+                 std::string::npos,
+         "retry wrapper working-precision stall should preserve both the no-progress reason "
+         "and the terminal solver diagnostic text");
+}
+
 void TestPrecisionRetryWrapper_DiagnosticsMatchTest() {
   const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
       "amflow-bootstrap-invariant-auto-solver-retry-wrapper-diagnostics-match");
@@ -17081,6 +17145,7 @@ int main() {
     TestPrecisionRetryWrapper_PassAfterBumpTest();
     TestPrecisionRetryWrapper_NoRetryOnOtherFailureTest();
     TestPrecisionRetryWrapper_CeilingStopTest();
+    TestPrecisionRetryWrapper_StopsWhenWorkingPrecisionStallsTest();
     TestPrecisionRetryWrapper_DiagnosticsMatchTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsEmptyInvariantNameTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();

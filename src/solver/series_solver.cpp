@@ -1942,11 +1942,15 @@ SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveReque
     if (decision.status != PrecisionStatus::Escalate) {
       return MakeContinuationBudgetExhaustedDiagnostics(diagnostics, decision.reason);
     }
-    if (decision.suggested_working_precision <= request.precision_policy.working_precision &&
-        decision.suggested_x_order <= request.precision_policy.x_order) {
+    if (decision.suggested_working_precision <= request.precision_policy.working_precision) {
       return MakeContinuationBudgetExhaustedDiagnostics(
           diagnostics,
-          "precision retry controller could not advance working precision or truncation order");
+          "precision retry controller could not advance working precision");
+    }
+    if (decision.suggested_x_order <= request.precision_policy.x_order) {
+      return MakeContinuationBudgetExhaustedDiagnostics(
+          diagnostics,
+          "precision retry controller could not advance truncation order");
     }
 
     request.precision_policy.working_precision = decision.suggested_working_precision;

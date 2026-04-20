@@ -294,6 +294,13 @@ bool SamePrecisionPolicy(const amflow::PrecisionPolicy& lhs, const amflow::Preci
          lhs.x_order == rhs.x_order && lhs.x_order_step == rhs.x_order_step;
 }
 
+bool SameAmfSolveRuntimePolicy(const amflow::AmfSolveRuntimePolicy& lhs,
+                               const amflow::AmfSolveRuntimePolicy& rhs) {
+  return lhs.extra_x_order == rhs.extra_x_order &&
+         lhs.learn_x_order == rhs.learn_x_order &&
+         lhs.test_x_order == rhs.test_x_order && lhs.run_length == rhs.run_length;
+}
+
 bool SameSolveRequest(const amflow::SolveRequest& lhs, const amflow::SolveRequest& rhs) {
   if (!SameDESystem(lhs.system, rhs.system) ||
       lhs.boundary_requests.size() != rhs.boundary_requests.size() ||
@@ -301,6 +308,9 @@ bool SameSolveRequest(const amflow::SolveRequest& lhs, const amflow::SolveReques
       lhs.start_location != rhs.start_location ||
       lhs.target_location != rhs.target_location ||
       !SamePrecisionPolicy(lhs.precision_policy, rhs.precision_policy) ||
+      lhs.amf_runtime_policy.has_value() != rhs.amf_runtime_policy.has_value() ||
+      (lhs.amf_runtime_policy.has_value() &&
+       !SameAmfSolveRuntimePolicy(*lhs.amf_runtime_policy, *rhs.amf_runtime_policy)) ||
       lhs.requested_digits != rhs.requested_digits) {
     return false;
   }
@@ -747,6 +757,60 @@ amflow::PrecisionPolicy MakeDistinctPrecisionPolicy() {
   policy.x_order = 77;
   policy.x_order_step = 9;
   return policy;
+}
+
+amflow::PrecisionPolicy MakeExpectedAmfOptionsLivePrecisionPolicy(
+    const amflow::PrecisionPolicy& base_policy,
+    const amflow::AmfOptions& amf_options) {
+  amflow::PrecisionPolicy live_policy = base_policy;
+  live_policy.working_precision = amf_options.working_precision;
+  live_policy.chop_precision = amf_options.chop_precision;
+  live_policy.x_order = amf_options.x_order;
+  live_policy.rationalize_precision = amf_options.rationalize_precision;
+  return live_policy;
+}
+
+amflow::AmfSolveRuntimePolicy MakeExpectedAmfSolveRuntimePolicy(
+    const amflow::AmfOptions& amf_options) {
+  amflow::AmfSolveRuntimePolicy live_policy;
+  live_policy.extra_x_order = amf_options.extra_x_order;
+  live_policy.learn_x_order = amf_options.learn_x_order;
+  live_policy.test_x_order = amf_options.test_x_order;
+  live_policy.run_length = amf_options.run_length;
+  return live_policy;
+}
+
+void ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
+    const amflow::SolveRequest& request,
+    const amflow::PrecisionPolicy& caller_policy,
+    const amflow::AmfOptions& amf_options,
+    const std::string& context) {
+  Expect(request.precision_policy.working_precision == amf_options.working_precision,
+         context + " should route WorkingPre through the live PrecisionPolicy");
+  Expect(request.precision_policy.chop_precision == amf_options.chop_precision,
+         context + " should route ChopPre through the live PrecisionPolicy");
+  Expect(request.precision_policy.x_order == amf_options.x_order,
+         context + " should route XOrder through the live PrecisionPolicy");
+  Expect(request.precision_policy.rationalize_precision == amf_options.rationalize_precision,
+         context + " should route RationalizePre through the live PrecisionPolicy");
+  Expect(request.precision_policy.escalation_step == caller_policy.escalation_step &&
+             request.precision_policy.max_working_precision ==
+                 caller_policy.max_working_precision &&
+             request.precision_policy.x_order_step == caller_policy.x_order_step,
+         context + " should preserve non-wrapper PrecisionPolicy fields from the caller");
+  Expect(request.amf_runtime_policy.has_value(),
+         context + " should attach the live AMF runtime-policy carrier");
+  if (!request.amf_runtime_policy.has_value()) {
+    return;
+  }
+  Expect(request.amf_runtime_policy->extra_x_order == amf_options.extra_x_order,
+         context + " should route ExtraXOrder through the AMF runtime-policy carrier");
+  Expect(request.amf_runtime_policy->learn_x_order == amf_options.learn_x_order,
+         context + " should route LearnXOrder through the AMF runtime-policy carrier");
+  Expect(request.amf_runtime_policy->test_x_order == amf_options.test_x_order,
+         context + " should route TestXOrder through the AMF runtime-policy carrier");
+  Expect(request.amf_runtime_policy->run_length == amf_options.run_length,
+         context + " should route RunLength through the AMF runtime-policy carrier");
 }
 
 amflow::SolverDiagnostics MakeRequestDrivenEquivalenceHarnessDiagnostics(
@@ -14945,6 +15009,10 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
   const int requested_digits = 83;
@@ -15043,9 +15111,23 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
   Expect(request.target_location == baseline_request.target_location &&
              request.target_location == target_location,
          "AmfOptions eta-mode solver handoff should preserve the target location unchanged");
-  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
-             SamePrecisionPolicy(request.precision_policy, precision_policy),
-         "AmfOptions eta-mode solver handoff should preserve every precision-policy field");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "direct builtin-list eta baseline should keep the explicit caller policy unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions eta-mode solver handoff should override the wrapper-owned precision policy "
+         "with live AmfOptions fields");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions eta-mode solver handoff should attach the live AMF runtime policy to the "
+         "solver request");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(request,
+                                                   precision_policy,
+                                                   amf_options,
+                                                   "AmfOptions eta-mode solver handoff");
   Expect(request.requested_digits == baseline_request.requested_digits &&
              request.requested_digits == requested_digits,
          "AmfOptions eta-mode solver handoff should preserve requested_digits unchanged");
@@ -15064,6 +15146,10 @@ void SolveAmfOptionsEtaModeSeriesMassShortCircuitTest() {
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Mass", "Propagator"});
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
   const int requested_digits = 83;
@@ -15157,9 +15243,19 @@ void SolveAmfOptionsEtaModeSeriesMassShortCircuitTest() {
   Expect(request.target_location == baseline_request.target_location &&
              request.target_location == target_location,
          "AmfOptions Mass short-circuit should preserve the target location unchanged");
-  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
-             SamePrecisionPolicy(request.precision_policy, precision_policy),
-         "AmfOptions Mass short-circuit should preserve every precision-policy field");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "direct builtin-list Mass baseline should keep the explicit caller policy unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions Mass short-circuit should override the wrapper-owned precision policy with "
+         "live AmfOptions fields");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions Mass short-circuit should attach the live AMF runtime policy to the solver "
+         "request");
   Expect(request.requested_digits == baseline_request.requested_digits &&
              request.requested_digits == requested_digits,
          "AmfOptions Mass short-circuit should preserve requested_digits unchanged");
@@ -15249,6 +15345,10 @@ void SolveAmfOptionsEtaModeSeriesUsesDefaultAmfModeListTest() {
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::AmfOptions amf_options;
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
   const int requested_digits = 83;
@@ -15332,9 +15432,20 @@ void SolveAmfOptionsEtaModeSeriesUsesDefaultAmfModeListTest() {
   Expect(request.target_location == baseline_request.target_location &&
              request.target_location == target_location,
          "AmfOptions eta-mode solver handoff should preserve the target location unchanged");
-  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
-             SamePrecisionPolicy(request.precision_policy, precision_policy),
-         "AmfOptions eta-mode solver handoff should preserve every precision-policy field");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "direct builtin-list default-mode baseline should keep the explicit caller policy "
+         "unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions eta-mode solver handoff should apply the default live AmfOptions precision "
+         "policy instead of the explicit caller policy");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions eta-mode solver handoff should attach the default AMF runtime policy to the "
+         "solver request");
   Expect(request.requested_digits == baseline_request.requested_digits &&
              request.requested_digits == requested_digits,
          "AmfOptions eta-mode solver handoff should preserve requested_digits unchanged");
@@ -15605,11 +15716,12 @@ void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
-  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  invalidated_amf_options.run_length += 11;
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "rho=4/9";
-  const std::string cached_target_location = "rho=25/27";
-  const std::string invalidated_target_location = "rho=29/31";
+  const std::string target_location = "rho=25/27";
   const int requested_digits = 83;
   const std::string eta_symbol = "rho";
 
@@ -15630,24 +15742,27 @@ void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
 
   static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
                                                          master_basis,
-                                                         amf_options,
+                                                         cached_amf_options,
                                                          MakeKiraReductionOptions(),
                                                          layout,
                                                          kira_path,
                                                          fermat_path,
                                                          cached_solver,
                                                          start_location,
-                                                         cached_target_location,
+                                                         target_location,
                                                          precision_policy,
                                                          requested_digits,
                                                          eta_symbol));
 
   const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
       layout,
-      "UseCache invalidation should seed one solved-path cache manifest before mutating inputs");
+      "UseCache invalidation should seed one solved-path cache manifest before mutating the "
+      "live AMF runtime policy");
   const std::string stale_manifest_yaml = ReadFile(manifest_path);
   const std::string stale_input_fingerprint =
       ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
 
   RecordingSeriesSolver live_solver;
   live_solver.returned_diagnostics.success = true;
@@ -15659,34 +15774,44 @@ void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
   const amflow::SolverDiagnostics live_diagnostics =
       amflow::SolveAmfOptionsEtaModeSeries(spec,
                                            master_basis,
-                                           amf_options,
+                                           invalidated_amf_options,
                                            MakeKiraReductionOptions(),
                                            layout,
                                            kira_path,
                                            fermat_path,
                                            live_solver,
                                            start_location,
-                                           invalidated_target_location,
+                                           target_location,
                                            precision_policy,
                                            requested_digits,
                                            eta_symbol);
 
   Expect(live_solver.call_count() == 1,
-         "UseCache invalidation should fall back to a live solve when the solved-path input "
-         "fingerprint no longer matches");
+         "UseCache invalidation should fall back to a live solve when the live AMF runtime "
+         "policy no longer matches the solved-path manifest");
   Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
          "UseCache invalidation should return the new live solver diagnostics after rejecting a "
-         "stale manifest");
+         "stale solved-path manifest");
+  Expect(live_solver.last_request().amf_runtime_policy.has_value() &&
+             live_solver.last_request().amf_runtime_policy->run_length ==
+                 invalidated_amf_options.run_length,
+         "UseCache invalidation should rebuild the live solve request with the changed AMF "
+         "runtime policy");
 
   const std::string refreshed_manifest_yaml = ReadFile(manifest_path);
   Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
              stale_input_fingerprint,
          "UseCache invalidation should refresh the solved-path input fingerprint after a live "
          "fallback");
-  Expect(refreshed_manifest_yaml.find("target=" + invalidated_target_location) !=
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "UseCache invalidation should refresh the solved-path request fingerprint after the "
+         "wrapper-owned AMF runtime policy changes");
+  Expect(refreshed_manifest_yaml.find("run_length=" +
+                                      std::to_string(invalidated_amf_options.run_length)) !=
              std::string::npos,
-         "UseCache invalidation should refresh the cached request summary to the new target "
-         "location");
+         "UseCache invalidation should refresh the cached request summary to the new live AMF "
+         "runtime policy");
   Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
                                       "\"\n") != std::string::npos,
          "UseCache invalidation should overwrite the manifest summary with the fresh live "
@@ -17197,6 +17322,10 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesHappyPathTest() {
   const amflow::AmfOptions amf_options =
       MakePoisonedAmfOptions({"RetryMode", "CustomMode"});
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
   const std::string start_location = "rho=9/14";
   const std::string target_location = "rho=41/43";
   const int requested_digits = 103;
@@ -17296,10 +17425,23 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesHappyPathTest() {
              request.target_location == baseline_request.target_location &&
              request.target_location == target_location,
          "AmfOptions resolved eta-mode solver handoff should preserve solver locations");
-  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
-             SamePrecisionPolicy(request.precision_policy, precision_policy),
-         "AmfOptions resolved eta-mode solver handoff should preserve every precision-policy "
-         "field");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "direct mixed-list eta baseline should keep the explicit caller policy unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions resolved eta-mode solver handoff should override the wrapper-owned "
+         "precision policy with live AmfOptions fields");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions resolved eta-mode solver handoff should attach the live AMF runtime policy "
+         "to the solver request");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(request,
+                                                   precision_policy,
+                                                   amf_options,
+                                                   "AmfOptions resolved eta-mode solver handoff");
   Expect(request.requested_digits == baseline_request.requested_digits &&
              request.requested_digits == requested_digits,
          "AmfOptions resolved eta-mode solver handoff should preserve requested_digits "
@@ -17402,6 +17544,10 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUsesDefaultAmfModeListTest(
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::AmfOptions amf_options;
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
   const int requested_digits = 83;
@@ -17498,10 +17644,20 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUsesDefaultAmfModeListTest(
              request.target_location == target_location,
          "AmfOptions resolved eta-mode solver handoff should preserve the target location "
          "unchanged");
-  Expect(SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy) &&
-             SamePrecisionPolicy(request.precision_policy, precision_policy),
-         "AmfOptions resolved eta-mode solver handoff should preserve every precision-policy "
-         "field");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "direct mixed-list default-mode baseline should keep the explicit caller policy "
+         "unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions resolved eta-mode solver handoff should apply the default live AmfOptions "
+         "precision policy instead of the explicit caller policy");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions resolved eta-mode solver handoff should attach the default AMF runtime "
+         "policy to the solver request");
   Expect(request.requested_digits == baseline_request.requested_digits &&
              request.requested_digits == requested_digits,
          "AmfOptions resolved eta-mode solver handoff should preserve requested_digits "
@@ -17641,6 +17797,126 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallba
   Expect(solver.call_count() == 0,
          "AmfOptions resolved eta-mode solver handoff should not call the solver when eta DE "
          "construction fails after mixed selection");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedSolveInputsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  cached_amf_options.use_cache = true;
+  amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  invalidated_amf_options.learn_x_order += 5;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-cache-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary =
+      "recorded resolved solved-path cache invalidation baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         cached_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         precision_policy,
+                                                         103,
+                                                         "rho"));
+
+  Expect(seed_custom_mode->call_count() == 1 && cached_solver.call_count() == 1,
+         "resolved UseCache invalidation should seed one live planning pass and one live solve "
+         "before mutating the AMF runtime policy");
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache invalidation should seed one solved-path cache manifest before "
+      "mutating the live AMF runtime policy");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  const auto live_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.00006103515625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.0001220703125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary =
+      "recorded resolved solved-path cache invalidation live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           invalidated_amf_options,
+                                           {live_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           live_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           precision_policy,
+                                           103,
+                                           "rho");
+
+  Expect(live_custom_mode->call_count() == 1,
+         "resolved UseCache invalidation should still plan the configured user-defined mode "
+         "before rejecting the stale solved-path manifest");
+  Expect(live_solver.call_count() == 1,
+         "resolved UseCache invalidation should fall back to a live solve when the live AMF "
+         "runtime policy no longer matches the solved-path manifest");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "resolved UseCache invalidation should return the new live solver diagnostics after "
+         "rejecting a stale solved-path manifest");
+  Expect(live_solver.last_request().amf_runtime_policy.has_value() &&
+             live_solver.last_request().amf_runtime_policy->learn_x_order ==
+                 invalidated_amf_options.learn_x_order,
+         "resolved UseCache invalidation should rebuild the live solve request with the changed "
+         "AMF runtime policy");
+
+  const std::string refreshed_manifest_yaml = ReadFile(manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "resolved UseCache invalidation should refresh the solved-path input fingerprint after "
+         "a live fallback");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "resolved UseCache invalidation should refresh the solved-path request fingerprint "
+         "after the wrapper-owned AMF runtime policy changes");
+  Expect(refreshed_manifest_yaml.find("learn_x_order=" +
+                                      std::to_string(invalidated_amf_options.learn_x_order)) !=
+             std::string::npos,
+         "resolved UseCache invalidation should refresh the cached request summary to the new "
+         "live AMF runtime policy");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "resolved UseCache invalidation should overwrite the manifest summary with the fresh "
+         "live diagnostics");
 }
 
 void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest() {
@@ -19165,6 +19441,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsUnknownNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedSolveInputsTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionReplaysMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMissingReductionStateTest();

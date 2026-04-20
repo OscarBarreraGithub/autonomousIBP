@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -75,6 +76,7 @@ struct SolveRequest {
   std::string start_location;
   std::string target_location;
   PrecisionPolicy precision_policy;
+  std::optional<AmfSolveRuntimePolicy> amf_runtime_policy;
   int requested_digits = 50;
 };
 

@@ -93,11 +93,12 @@ The workflow is optimized for the current repo shape:
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - `M0b` is accepted, but truthful `Milestone M3` closure review is still blocked in the current
   repo because the phase-1 gate does not yet have any explicit in-repo prefactor surface/tests
-- the current roadmap-owned worktree lane is `Batch 57`: the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads now own narrow
-  `amf_options.skip_reduction == true` reuse over already-prepared matching eta-generated state,
-  while the public eta-reduction helpers and direct eta/standalone solver entry points remain
-  unchanged; the next independent lane after review is `Batch 58` for live runtime-policy wiring
+- the current roadmap-owned worktree lane is `Batch 58`: the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads keep the landed solved-path cache plus the
+  wrapper-only `amf_options.skip_reduction == true` reuse and now also build a live
+  wrapper-owned solve policy from `AmfOptions`, while the public eta-reduction helpers and direct
+  eta/standalone solver entry points remain unchanged; the next roadmap gate after review is
+  `Milestone M4`, and `Batch 59` remains blocked on that gate
 
 ## Mandatory Read Set Before Planning
 

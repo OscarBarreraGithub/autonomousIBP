@@ -140,8 +140,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `UpperTriangularMatrixFrobeniusSeriesPatch` plus `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)`: the first upper-triangular matrix regular-singular / Frobenius local propagator seam over one selected reviewed `DESystem` variable on the diagonal-residue, no-log subset
 - `ScalarSeriesPatchOverlapDiagnostics`, `EvaluateScalarSeriesPatchResidual(...)`, and `MatchScalarSeriesPatches(...)`: exact scalar patch residual and overlap diagnostics over already-generated regular patches
 - `UpperTriangularMatrixSeriesPatchOverlapDiagnostics`, `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)`, and `MatchUpperTriangularMatrixSeriesPatches(...)`: exact upper-triangular matrix patch residual and overlap diagnostics over already-generated regular patches
-- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset
+- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`
 - `PrecisionPolicy`: precision and stability controls
+- `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
 - `SolvedPathCacheManifest`: deterministic solved-path cache metadata for the reviewed `UseCache` replay slice on the `AmfOptions` eta solve wrappers
 - `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary
@@ -240,15 +241,17 @@ The solved-path cache surface is also intentionally narrow:
 - the manifest records an input fingerprint over the actual wrapper-owned solve inputs:
   `ProblemSpec`, the ordered parsed master basis, the selected `EtaInsertionDecision`,
   `ReductionOptions`, the concrete supplied `SeriesSolver` type used for replay, start and target
-  locations, `requested_digits`, and the full `PrecisionPolicy`; it also records a post-build
-  `SolveRequest` fingerprint plus a short request summary for audit/debug use
+  locations, `requested_digits`, the full live `PrecisionPolicy`, and the optional live
+  `AmfSolveRuntimePolicy`; it also records a post-build `SolveRequest` fingerprint plus a short
+  request summary for audit/debug use
 - `amf_options.use_cache == true` enables replay only on those two `AmfOptions` eta wrappers:
   matching successful manifests replay the stored `SolverDiagnostics` without invoking the
   supplied solver
 - when `amf_options.skip_reduction == true` is also set on those wrappers, replay is still gated
   on rebuilding and validating the current wrapper-owned prepared state first, so missing or
   mismatched prepared reducer inputs or reduction artifacts fail explicitly instead of replaying
-  stale solved-path output
+  stale solved-path output; the replay validation request fingerprint includes the same live
+  wrapper-owned `PrecisionPolicy` and `AmfSolveRuntimePolicy` inputs
 - stale, malformed, version-mismatched, or unsuccessful cache manifests are rejected explicitly by
   falling back to live execution; incompatible artifacts are never replayed
 - this is not an interruption-resume or reducer-state restart surface: it replays only previously
@@ -449,9 +452,12 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
 
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
+- after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
 - this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
-- non-`amf_modes` / non-`use_cache` / non-`skip_reduction` `AmfOptions` fields still do not affect selection, diagnostics, solver invocation, or result shape at this seam
+- the live `PrecisionPolicy` plus `AmfSolveRuntimePolicy` now participate in solved-path input/request fingerprinting and in `skip_reduction` replay validation on this wrapper
+- the current bootstrap solver still does not implement the broader upstream algorithmic effects of `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, or `RunLength`; on the reviewed subset those fields are carried and fingerprinted rather than given broader standalone semantics
+- direct `SolveEtaGeneratedSeries(...)`, direct `SolveBuiltinEtaModeListSeries(...)`, public eta-helper surfaces, and direct `SolveDifferentialEquation(...)` remain unchanged
 - this batch still does not add interruption-resume behavior, user-defined mode registration, mixed builtin/user-defined fallback, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening
 
 The first mixed eta-mode single-name solver wrapper is also bootstrap-only:
@@ -478,9 +484,12 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for mixed eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered mixed-list semantics, keeps selected-mode planning single-shot, keeps empty-list rejection, resolver-stop behavior, ordered planning fallback, preserved final planning failure, and no downstream fallback widening unchanged
+- after mixed planning succeeds, the wrapper rebuilds the same live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
 - this wrapper now also reads `amf_options.use_cache` as the same narrow solved-path diagnostic replay flag: after mixed planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as the same narrow wrapper-owned reducer-reuse flag: after mixed planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
-- non-`amf_modes` / non-`use_cache` / non-`skip_reduction` `AmfOptions` fields still do not affect mixed selection, diagnostics, solver invocation, or result shape at this seam
+- the live `PrecisionPolicy` plus `AmfSolveRuntimePolicy` now participate in solved-path input/request fingerprinting and in `skip_reduction` replay validation on this wrapper
+- the current bootstrap solver still does not implement the broader upstream algorithmic effects of `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, or `RunLength`; on the reviewed subset those fields are carried and fingerprinted rather than given broader standalone semantics
+- direct `SolveEtaGeneratedSeries(...)`, direct `SolveResolvedEtaModeListSeries(...)`, public eta-helper surfaces, and direct `SolveDifferentialEquation(...)` remain unchanged
 - this batch still does not add interruption-resume behavior, direct `SolveResolvedEtaModeListSeries(...)` cache behavior, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening
 
 The first user-defined eta-mode resolver seam is also bootstrap-only:

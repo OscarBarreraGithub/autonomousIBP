@@ -2059,6 +2059,25 @@ EtaInsertionDecision SelectResolvedEtaModeDecision(
   throw std::runtime_error("failed to select an eta mode");
 }
 
+PrecisionPolicy BuildAmfOptionsPrecisionPolicy(const PrecisionPolicy& base_policy,
+                                               const AmfOptions& amf_options) {
+  PrecisionPolicy live_policy = base_policy;
+  live_policy.working_precision = amf_options.working_precision;
+  live_policy.chop_precision = amf_options.chop_precision;
+  live_policy.x_order = amf_options.x_order;
+  live_policy.rationalize_precision = amf_options.rationalize_precision;
+  return live_policy;
+}
+
+AmfSolveRuntimePolicy BuildAmfOptionsRuntimePolicy(const AmfOptions& amf_options) {
+  AmfSolveRuntimePolicy live_policy;
+  live_policy.extra_x_order = amf_options.extra_x_order;
+  live_policy.learn_x_order = amf_options.learn_x_order;
+  live_policy.test_x_order = amf_options.test_x_order;
+  live_policy.run_length = amf_options.run_length;
+  return live_policy;
+}
+
 const char* ToString(DifferentiationVariableKind kind) {
   switch (kind) {
     case DifferentiationVariableKind::Eta:
@@ -2125,6 +2144,26 @@ std::string SerializePrecisionPolicyForFingerprint(const PrecisionPolicy& policy
   out << "max_working_precision=" << policy.max_working_precision << "\n";
   out << "x_order=" << policy.x_order << "\n";
   out << "x_order_step=" << policy.x_order_step << "\n";
+  return out.str();
+}
+
+std::string SerializeAmfSolveRuntimePolicyForFingerprint(
+    const AmfSolveRuntimePolicy& policy) {
+  std::ostringstream out;
+  out << "extra_x_order=" << policy.extra_x_order << "\n";
+  out << "learn_x_order=" << policy.learn_x_order << "\n";
+  out << "test_x_order=" << policy.test_x_order << "\n";
+  out << "run_length=" << policy.run_length << "\n";
+  return out.str();
+}
+
+std::string SerializeOptionalAmfSolveRuntimePolicyForFingerprint(
+    const std::optional<AmfSolveRuntimePolicy>& policy) {
+  std::ostringstream out;
+  out << "present=" << (policy.has_value() ? "true" : "false") << "\n";
+  if (policy.has_value()) {
+    out << SerializeAmfSolveRuntimePolicyForFingerprint(*policy);
+  }
   return out.str();
 }
 
@@ -2198,6 +2237,8 @@ std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
   out << "target_location=" << request.target_location << "\n";
   out << "requested_digits=" << request.requested_digits << "\n";
   out << "precision_policy:\n" << SerializePrecisionPolicyForFingerprint(request.precision_policy);
+  out << "amf_runtime_policy:\n"
+      << SerializeOptionalAmfSolveRuntimePolicyForFingerprint(request.amf_runtime_policy);
   return out.str();
 }
 
@@ -2220,6 +2261,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
     const std::string& start_location,
     const std::string& target_location,
     const PrecisionPolicy& precision_policy,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
   std::ostringstream out;
@@ -2234,6 +2276,8 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
   out << "requested_digits=" << requested_digits << "\n";
   out << "eta_symbol=" << eta_symbol << "\n";
   out << "precision_policy:\n" << SerializePrecisionPolicyForFingerprint(precision_policy);
+  out << "amf_runtime_policy:\n"
+      << SerializeOptionalAmfSolveRuntimePolicyForFingerprint(amf_runtime_policy);
   return ComputeArtifactFingerprint(out.str());
 }
 
@@ -2337,6 +2381,10 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
                              "; requested_digits=" + std::to_string(request.requested_digits) +
                              "; precision_policy=" +
                              DescribePrecisionPolicy(request.precision_policy);
+  if (request.amf_runtime_policy.has_value()) {
+    manifest.request_summary +=
+        "; amf_runtime_policy=" + DescribeAmfSolveRuntimePolicy(*request.amf_runtime_policy);
+  }
   manifest.cache_root = AbsoluteOrEmpty(manifest_path.parent_path());
   manifest.manifest_path = AbsoluteOrEmpty(manifest_path);
   manifest.success = diagnostics.success;
@@ -2493,6 +2541,20 @@ SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveReque
   }
 }
 
+void PopulateSolveRequestExecutionInputs(
+    SolveRequest& request,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
+    const int requested_digits) {
+  request.start_location = start_location;
+  request.target_location = target_location;
+  request.precision_policy = precision_policy;
+  request.amf_runtime_policy = amf_runtime_policy;
+  request.requested_digits = requested_digits;
+}
+
 SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -2505,6 +2567,7 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const std::string& start_location,
     const std::string& target_location,
     const PrecisionPolicy& precision_policy,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const int requested_digits,
     const std::string& eta_symbol,
     const bool skip_reduction,
@@ -2517,10 +2580,12 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
         master_basis,
         LoadValidatedWrapperEtaGeneratedReductionState(
             spec, master_basis, decision, options, layout, eta_symbol));
-    request.start_location = start_location;
-    request.target_location = target_location;
-    request.precision_policy = precision_policy;
-    request.requested_digits = requested_digits;
+    PopulateSolveRequestExecutionInputs(request,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        amf_runtime_policy,
+                                        requested_digits);
     replay_context.expected_request_fingerprint = ComputeSolveRequestFingerprint(request);
     prepared_skip_reduction_request = std::move(request);
   }
@@ -2549,10 +2614,12 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   if (!prepared_skip_reduction_request.has_value()) {
-    request.start_location = start_location;
-    request.target_location = target_location;
-    request.precision_policy = precision_policy;
-    request.requested_digits = requested_digits;
+    PopulateSolveRequestExecutionInputs(request,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        amf_runtime_policy,
+                                        requested_digits);
   }
 
   const SolverDiagnostics diagnostics = SolveWithPrecisionRetry(solver, request);
@@ -3526,6 +3593,10 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
   const std::string selected_eta_mode_name = SelectBuiltinEtaModeName(spec, amf_options.amf_modes);
   const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(selected_eta_mode_name);
   const EtaInsertionDecision decision = eta_mode->Plan(spec);
+  const PrecisionPolicy live_precision_policy =
+      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
+  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
+      BuildAmfOptionsRuntimePolicy(amf_options);
 
   SolvedPathCacheContext cache_context;
   cache_context.replay_enabled = amf_options.use_cache;
@@ -3541,7 +3612,8 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                             solver,
                                             start_location,
                                             target_location,
-                                            precision_policy,
+                                            live_precision_policy,
+                                            live_amf_runtime_policy,
                                             requested_digits,
                                             eta_symbol);
 
@@ -3555,7 +3627,8 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                                     solver,
                                                     start_location,
                                                     target_location,
-                                                    precision_policy,
+                                                    live_precision_policy,
+                                                    live_amf_runtime_policy,
                                                     requested_digits,
                                                     eta_symbol,
                                                     amf_options.skip_reduction,
@@ -3642,6 +3715,10 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const std::string& eta_symbol) {
   const EtaInsertionDecision decision =
       SelectResolvedEtaModeDecision(spec, amf_options.amf_modes, user_defined_modes);
+  const PrecisionPolicy live_precision_policy =
+      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
+  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
+      BuildAmfOptionsRuntimePolicy(amf_options);
 
   SolvedPathCacheContext cache_context;
   cache_context.replay_enabled = amf_options.use_cache;
@@ -3657,7 +3734,8 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                             solver,
                                             start_location,
                                             target_location,
-                                            precision_policy,
+                                            live_precision_policy,
+                                            live_amf_runtime_policy,
                                             requested_digits,
                                             eta_symbol);
 
@@ -3671,7 +3749,8 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                                     solver,
                                                     start_location,
                                                     target_location,
-                                                    precision_policy,
+                                                    live_precision_policy,
+                                                    live_amf_runtime_policy,
                                                     requested_digits,
                                                     eta_symbol,
                                                     amf_options.skip_reduction,

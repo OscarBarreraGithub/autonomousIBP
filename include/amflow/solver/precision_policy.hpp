@@ -35,10 +35,18 @@ struct PrecisionPolicy {
   int x_order_step = 20;
 };
 
+struct AmfSolveRuntimePolicy {
+  int extra_x_order = 20;
+  int learn_x_order = -1;
+  int test_x_order = 5;
+  int run_length = 1000;
+};
+
 PrecisionDecision EvaluatePrecision(const PrecisionPolicy& policy,
                                     const PrecisionObservation& observation);
 PrecisionDecision EvaluatePrecisionBudget(const PrecisionPolicy& policy,
                                           int requested_digits);
 std::string DescribePrecisionPolicy(const PrecisionPolicy& policy);
+std::string DescribeAmfSolveRuntimePolicy(const AmfSolveRuntimePolicy& policy);
 
 }  // namespace amflow

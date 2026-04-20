@@ -74,4 +74,13 @@ std::string DescribePrecisionPolicy(const PrecisionPolicy& policy) {
   return out.str();
 }
 
+std::string DescribeAmfSolveRuntimePolicy(const AmfSolveRuntimePolicy& policy) {
+  std::ostringstream out;
+  out << "extra_x_order=" << policy.extra_x_order
+      << ", learn_x_order=" << policy.learn_x_order
+      << ", test_x_order=" << policy.test_x_order
+      << ", run_length=" << policy.run_length;
+  return out.str();
+}
+
 }  // namespace amflow

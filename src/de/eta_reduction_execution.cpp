@@ -23,6 +23,35 @@ std::string StatusToString(const CommandExecutionStatus status) {
   return "unknown";
 }
 
+std::string VariableContext(const GeneratedDerivativeVariable& generated_variable,
+                            const std::size_t index) {
+  if (!generated_variable.variable.name.empty()) {
+    return "variable \"" + generated_variable.variable.name + "\"";
+  }
+  return "variable[" + std::to_string(index) + "]";
+}
+
+void ThrowIfParsedMasterSetDrift(const ParsedMasterList& master_basis,
+                                 const ParsedReductionResult& reduction_result,
+                                 const std::string& context) {
+  const ParsedMasterList& reduced_master_basis = reduction_result.master_list;
+  if (reduced_master_basis.masters.size() != master_basis.masters.size()) {
+    throw MasterSetInstabilityError(context +
+                                    " reduction master basis size does not match assembly "
+                                    "master basis");
+  }
+
+  for (std::size_t index = 0; index < master_basis.masters.size(); ++index) {
+    const std::string expected_label = master_basis.masters[index].Label();
+    const std::string actual_label = reduced_master_basis.masters[index].Label();
+    if (actual_label != expected_label) {
+      throw MasterSetInstabilityError(
+          context + " reduction master basis does not match assembly master basis at position " +
+          std::to_string(index) + ": expected " + expected_label + ", found " + actual_label);
+    }
+  }
+}
+
 }  // namespace
 
 DESystem BuildEtaGeneratedDESystem(
@@ -92,12 +121,14 @@ EtaGeneratedReductionExecution RunEtaGeneratedReduction(
       backend.ParseReductionResult(execution.execution_result.working_directory,
                                    execution.preparation.auxiliary_family.transformed_spec.family
                                        .name);
+  ThrowIfParsedMasterSetDrift(master_basis,
+                              *execution.parsed_reduction_result,
+                              VariableContext(execution.preparation.generated_variable, 0));
 
   GeneratedDerivativeVariableReductionInput variable_input;
   variable_input.generated_variable = execution.preparation.generated_variable;
   variable_input.reduction_result = *execution.parsed_reduction_result;
-  execution.assembled_system =
-      AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  execution.assembled_system = AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
   return execution;
 }
 

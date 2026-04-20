@@ -1880,6 +1880,33 @@ std::string MakeFixtureCopyScript(const std::filesystem::path& fixture_root,
   return script.str();
 }
 
+std::string MakeFixtureCopyScriptWithReversedMasters(const std::filesystem::path& fixture_root,
+                                                     const bool write_stdout = true,
+                                                     const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/planar_double_box\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "planar_double_box[1,1,1,1,1,1,0] 0\n";
+  script << "planar_double_box[1,1,1,1,1,1,1] 0\n";
+  script << "EOF\n";
+  const std::filesystem::path rule_path =
+      fixture_root / "results/planar_double_box/kira_target.m";
+  if (std::filesystem::exists(rule_path)) {
+    script << "cp " << std::filesystem::absolute(rule_path).string()
+           << " \"$dest/kira_target.m\"\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"fixture:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::filesystem::path WritePropagatorHappyFixture(const std::string& label) {
   const std::filesystem::path root = FreshTempDir(label);
   const std::filesystem::path results_root = root / "results" / "planar_double_box";
@@ -2029,6 +2056,28 @@ std::string MakeAutoInvariantResultScript(const bool write_rule_file,
   return script.str();
 }
 
+std::string MakeAutoInvariantReversedMasterResultScript(const std::string& rule_file_contents,
+                                                        const bool write_stdout = true,
+                                                        const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_family[0,-1,2] 0\n";
+  script << "toy_auto_family[1,1,1] 0\n";
+  script << "EOF\n";
+  script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << rule_file_contents;
+  script << "EOF\n";
+  if (write_stdout) {
+    script << "echo \"auto-invariant:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::string MakeAutoInvariantWholeFactorResultScript(const std::string& rule_file_contents,
                                                      const bool write_stdout = true,
                                                      const int exit_code = 0) {
@@ -2115,15 +2164,20 @@ std::string MakeAutoInvariantWholeFactorListResultScript(const bool fail_second_
   return script.str();
 }
 
-std::string MakeAutoInvariantMixedZeroListResultScript() {
+std::string MakeAutoInvariantMixedZeroListResultScript(const bool reverse_masters = false) {
   std::ostringstream script;
   script << "#!/bin/sh\n";
   script << "set -eu\n";
   script << "dest=\"$PWD/results/toy_auto_mixed_zero_family\"\n";
   script << "mkdir -p \"$dest\"\n";
   script << "cat > \"$dest/masters\" <<'EOF'\n";
-  script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
-  script << "toy_auto_mixed_zero_family[0,-1,2] 0\n";
+  if (reverse_masters) {
+    script << "toy_auto_mixed_zero_family[0,-1,2] 0\n";
+    script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+  } else {
+    script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+    script << "toy_auto_mixed_zero_family[0,-1,2] 0\n";
+  }
   script << "EOF\n";
   script << "layout_name=\"$(basename \"$(dirname \"$PWD\")\")\"\n";
   script << "case \"$layout_name\" in\n";
@@ -11586,17 +11640,53 @@ void SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest() {
          "construction fails");
 }
 
-void SolveInvariantGeneratedSeriesAutomaticClassifiesMasterSetInstabilityTest() {
+void SolveInvariantGeneratedSeriesAutomaticPropagatesMasterBasisFamilyMismatchTest() {
   amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
   master_basis.family = "wrong_auto_family";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-family-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-family.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&master_basis, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeries(MakeAutoInvariantHappyProblemSpec(),
+                                                                master_basis,
+                                                                "s",
+                                                                MakeKiraReductionOptions(),
+                                                                layout,
+                                                                kira_path,
+                                                                fermat_path,
+                                                                solver,
+                                                                "s=0",
+                                                                "s=1",
+                                                                MakeDistinctPrecisionPolicy(),
+                                                                55));
+      },
+      "ParsedMasterList.family",
+      "automatic invariant solver handoff should preserve plain ParsedMasterList family "
+      "mismatches as runtime validation errors");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff should not call the solver when ParsedMasterList "
+         "family validation fails");
+}
+
+void SolveInvariantGeneratedSeriesAutomaticClassifiesReducerMasterSetDriftTest() {
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-solver-master-set-instability"));
   const std::filesystem::path kira_path =
       layout.root / "bin" / "fake-kira-auto-master-set-instability.sh";
   const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
   std::filesystem::create_directories(kira_path.parent_path());
-  WriteExecutableScript(kira_path,
-                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(kira_path, MakeAutoInvariantReversedMasterResultScript(
+                                       MakeAutoInvariantHappyRuleFile()));
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
   RecordingSeriesSolver solver;
@@ -11616,12 +11706,13 @@ void SolveInvariantGeneratedSeriesAutomaticClassifiesMasterSetInstabilityTest() 
                                             55);
 
   Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
-         "automatic invariant solver handoff should classify master-basis drift as "
+         "automatic invariant solver handoff should classify reducer-output master-set drift as "
          "master_set_instability");
   Expect(diagnostics.summary.find("master_set_instability:") == 0 &&
-             diagnostics.summary.find("ParsedMasterList.family") != std::string::npos,
-         "automatic invariant solver handoff should preserve the underlying parsed-master-list "
-         "family diagnostic text when classifying master_set_instability");
+             diagnostics.summary.find("reduction master basis does not match assembly master "
+                                      "basis") != std::string::npos,
+         "automatic invariant solver handoff should preserve the assembly drift diagnostic text "
+         "when classifying reducer-output master_set_instability");
   Expect(solver.call_count() == 0,
          "automatic invariant solver handoff should not call the solver when master-set "
          "instability blocks DE construction");
@@ -11853,15 +11944,15 @@ void TestPrecisionRetryWrapper_CeilingStopTest() {
   Expect(first_request.requested_digits == requested_digits &&
              second_request.requested_digits == requested_digits,
          "retry wrapper ceiling-stop should preserve requested_digits on every attempted call");
-  Expect(!diagnostics.success && diagnostics.failure_code == "continuation_budget_exhausted",
-         "retry wrapper ceiling-stop should return continuation_budget_exhausted "
-         "deterministically");
-  Expect(diagnostics.summary.find("continuation_budget_exhausted:") == 0 &&
+  Expect(!diagnostics.success && diagnostics.failure_code == "insufficient_precision",
+         "retry wrapper ceiling-stop should return insufficient_precision deterministically "
+         "when the hard precision ceiling is exhausted");
+  Expect(diagnostics.summary.find("insufficient_precision:") == 0 &&
              diagnostics.summary.find("precision ceiling reached before satisfying the stability "
                                       "checks") != std::string::npos &&
              diagnostics.summary.find(solver.returned_diagnostics[1].summary) !=
                  std::string::npos,
-         "retry wrapper ceiling-stop should preserve both the exhausted-budget reason and the "
+         "retry wrapper ceiling-stop should preserve both the ceiling-stop reason and the "
          "terminal solver diagnostic text");
 }
 
@@ -12647,6 +12738,83 @@ void SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTes
          "roots on joint reducer failure");
 }
 
+void SolveInvariantGeneratedSeriesListAutomaticPropagatesMasterBasisFamilyMismatchTest() {
+  amflow::ParsedMasterList master_basis = MakeAutoInvariantMixedZeroMasterBasis();
+  master_basis.family = "wrong_auto_mixed_zero_family";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-family-mismatch"));
+  RecordingSeriesSolverSequence solver;
+
+  ExpectRuntimeError(
+      [&master_basis, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(
+            MakeAutoInvariantMixedZeroProblemSpec(),
+            master_basis,
+            {"t", "s"},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "s=0",
+            "s=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "ParsedMasterList.family",
+      "automatic invariant solver list wrapper should preserve plain ParsedMasterList family "
+      "mismatches as runtime validation errors");
+
+  Expect(solver.call_count() == 0 && solver.seen_requests().empty(),
+         "automatic invariant solver list wrapper should not call the solver when "
+         "ParsedMasterList family validation fails");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticClassifiesReducerMasterSetDriftTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-master-set-instability"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-mixed-zero-list-reversed.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantMixedZeroListResultScript(true));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {true, 0.0, 0.0, "", "unexpected mixed-zero invariant list solve"},
+  };
+
+  const auto result = amflow::SolveInvariantGeneratedSeriesList(MakeAutoInvariantMixedZeroProblemSpec(),
+                                                                MakeAutoInvariantMixedZeroMasterBasis(),
+                                                                {"t", "s"},
+                                                                MakeKiraReductionOptions(),
+                                                                layout,
+                                                                kira_path,
+                                                                fermat_path,
+                                                                solver,
+                                                                "s=0",
+                                                                "s=1",
+                                                                MakeDistinctPrecisionPolicy(),
+                                                                55);
+  const amflow::SolverDiagnostics& diagnostics = RequireJointInvariantSolverDiagnosticsResult(
+      result,
+      "automatic invariant solver list wrapper should collapse reducer-output master-set drift "
+      "into one joint diagnostic");
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
+         "automatic invariant solver list wrapper should classify reducer-output master-set drift "
+         "as master_set_instability");
+  Expect(diagnostics.summary.find("master_set_instability:") == 0 &&
+             diagnostics.summary.find("reduction master basis does not match assembly master "
+                                      "basis") != std::string::npos,
+         "automatic invariant solver list wrapper should preserve the assembly drift diagnostic "
+         "text when classifying master_set_instability");
+  Expect(solver.call_count() == 0 && solver.seen_requests().empty(),
+         "automatic invariant solver list wrapper should not call the solver when "
+         "master-set instability blocks DE construction");
+}
+
 void SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-empty"));
@@ -12907,18 +13075,56 @@ void SolveEtaGeneratedSeriesExecutionFailureTest() {
          "eta solver handoff should not call the solver when eta DE construction fails");
 }
 
-void SolveEtaGeneratedSeriesClassifiesMasterSetInstabilityTest() {
+void SolveEtaGeneratedSeriesPropagatesMasterBasisFamilyMismatchTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
   amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   master_basis.family = "wrong_eta_family";
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
-      FreshTempDir("amflow-bootstrap-eta-solver-master-set-instability"));
+      FreshTempDir("amflow-bootstrap-eta-solver-family-mismatch"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
   const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
   std::filesystem::create_directories(kira_path.parent_path());
   WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&master_basis, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(amflow::MakeSampleProblemSpec(),
+                                                          master_basis,
+                                                          MakeEtaGeneratedHappyDecision(),
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          kira_path,
+                                                          fermat_path,
+                                                          solver,
+                                                          "eta=0",
+                                                          "eta=1",
+                                                          MakeDistinctPrecisionPolicy(),
+                                                          55));
+      },
+      "ParsedMasterList.family",
+      "eta solver handoff should preserve plain ParsedMasterList family mismatches as runtime "
+      "validation errors");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when ParsedMasterList family validation "
+         "fails");
+}
+
+void SolveEtaGeneratedSeriesClassifiesReducerMasterSetDriftTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-master-set-instability"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScriptWithReversedMasters(fixture_root));
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
   RecordingSeriesSolver solver;
@@ -12938,11 +13144,13 @@ void SolveEtaGeneratedSeriesClassifiesMasterSetInstabilityTest() {
                                       55);
 
   Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
-         "eta solver handoff should classify master-basis drift as master_set_instability");
+         "eta solver handoff should classify reducer-output master-set drift as "
+         "master_set_instability");
   Expect(diagnostics.summary.find("master_set_instability:") == 0 &&
-             diagnostics.summary.find("ParsedMasterList.family") != std::string::npos,
-         "eta solver handoff should preserve the underlying parsed-master-list family "
-         "diagnostic text when classifying master_set_instability");
+             diagnostics.summary.find("reduction master basis does not match assembly master "
+                                      "basis") != std::string::npos,
+         "eta solver handoff should preserve the assembly drift diagnostic text when "
+         "classifying master_set_instability");
   Expect(solver.call_count() == 0,
          "eta solver handoff should not call the solver when master-set instability blocks DE "
          "construction");
@@ -17140,7 +17348,8 @@ int main() {
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
-    SolveInvariantGeneratedSeriesAutomaticClassifiesMasterSetInstabilityTest();
+    SolveInvariantGeneratedSeriesAutomaticPropagatesMasterBasisFamilyMismatchTest();
+    SolveInvariantGeneratedSeriesAutomaticClassifiesReducerMasterSetDriftTest();
     SolveInvariantGeneratedSeriesAutomaticPropagatesInsufficientPrecisionDiagnosticTest();
     TestPrecisionRetryWrapper_PassAfterBumpTest();
     TestPrecisionRetryWrapper_NoRetryOnOtherFailureTest();
@@ -17158,12 +17367,15 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticAllowsZeroDerivativeVariableTest();
     SolveInvariantGeneratedSeriesListAutomaticAllowsAllZeroInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest();
+    SolveInvariantGeneratedSeriesListAutomaticPropagatesMasterBasisFamilyMismatchTest();
+    SolveInvariantGeneratedSeriesListAutomaticClassifiesReducerMasterSetDriftTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesBootstrapSolverPassthroughTest();
     SolveEtaGeneratedSeriesExecutionFailureTest();
-    SolveEtaGeneratedSeriesClassifiesMasterSetInstabilityTest();
+    SolveEtaGeneratedSeriesPropagatesMasterBasisFamilyMismatchTest();
+    SolveEtaGeneratedSeriesClassifiesReducerMasterSetDriftTest();
     SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest();
     SolveEtaGeneratedSeriesRejectsEmptyGeneratedTargetsTest();
     SolveEtaModePlannedSeriesHappyPathTest();

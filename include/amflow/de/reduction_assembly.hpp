@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "amflow/core/de_system.hpp"
@@ -7,6 +9,12 @@
 #include "amflow/kira/kira_backend.hpp"
 
 namespace amflow {
+
+class MasterSetInstabilityError : public std::runtime_error {
+ public:
+  explicit MasterSetInstabilityError(const std::string& message)
+      : std::runtime_error(message) {}
+};
 
 struct ReducedDerivativeRowBinding {
   TargetIntegral source_master;

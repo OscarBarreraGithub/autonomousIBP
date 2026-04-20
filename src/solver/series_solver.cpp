@@ -1871,6 +1871,25 @@ std::string StripFailureCodePrefix(const std::string& summary, const std::string
   return summary;
 }
 
+SolverDiagnostics MakeRetryCeilingInsufficientPrecisionDiagnostics(
+    const SolverDiagnostics& diagnostics,
+    const std::string& reason) {
+  SolverDiagnostics insufficient = diagnostics;
+  insufficient.success = false;
+  insufficient.failure_code = kInsufficientPrecisionCode;
+
+  std::string summary_reason = StripFailureCodePrefix(reason, kInsufficientPrecisionCode);
+  if (summary_reason.empty()) {
+    summary_reason = "precision ceiling reached before satisfying the stability checks";
+  }
+
+  insufficient.summary = std::string(kInsufficientPrecisionCode) + ": " + summary_reason;
+  if (!diagnostics.summary.empty() && diagnostics.summary != insufficient.summary) {
+    insufficient.summary += "; last_solver_diagnostic=" + diagnostics.summary;
+  }
+  return insufficient;
+}
+
 SolverDiagnostics MakeMasterSetInstabilityDiagnostics(const std::string& summary) {
   SolverDiagnostics diagnostics;
   diagnostics.success = false;
@@ -1918,13 +1937,6 @@ bool IsRetryablePrecisionInstability(const SolverDiagnostics& diagnostics) {
   return !diagnostics.success && diagnostics.failure_code == kInsufficientPrecisionCode;
 }
 
-bool IsMasterSetInstabilityMessage(const std::string& message) {
-  return message.find("master basis") != std::string::npos ||
-         message.find("ParsedMasterList.family") != std::string::npos ||
-         message.find("parsed master list") != std::string::npos ||
-         message.find("unexpected master set") != std::string::npos;
-}
-
 SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request) {
   while (true) {
     const SolverDiagnostics diagnostics = solver.Solve(request);
@@ -1939,6 +1951,9 @@ SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveReque
     const PrecisionDecision decision =
         EvaluatePrecision(request.precision_policy,
                           MakePrecisionObservationFromDiagnostics(request, diagnostics));
+    if (decision.status == PrecisionStatus::Rejected) {
+      return MakeRetryCeilingInsufficientPrecisionDiagnostics(diagnostics, decision.reason);
+    }
     if (decision.status != PrecisionStatus::Escalate) {
       return MakeContinuationBudgetExhaustedDiagnostics(diagnostics, decision.reason);
     }
@@ -2736,11 +2751,8 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
                                                      layout,
                                                      kira_executable,
                                                      fermat_executable);
-  } catch (const std::runtime_error& error) {
-    if (IsMasterSetInstabilityMessage(error.what())) {
-      return MakeMasterSetInstabilityDiagnostics(error.what());
-    }
-    throw;
+  } catch (const MasterSetInstabilityError& error) {
+    return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   request.start_location = start_location;
   request.target_location = target_location;
@@ -2776,11 +2788,8 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
                                                          layout,
                                                          kira_executable,
                                                          fermat_executable);
-  } catch (const std::runtime_error& error) {
-    if (IsMasterSetInstabilityMessage(error.what())) {
-      return MakeMasterSetInstabilityDiagnostics(error.what());
-    }
-    throw;
+  } catch (const MasterSetInstabilityError& error) {
+    return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   request.start_location = start_location;
   request.target_location = target_location;
@@ -2813,11 +2822,8 @@ SolverDiagnostics SolveEtaGeneratedSeries(
                                                kira_executable,
                                                fermat_executable,
                                                eta_symbol);
-  } catch (const std::runtime_error& error) {
-    if (IsMasterSetInstabilityMessage(error.what())) {
-      return MakeMasterSetInstabilityDiagnostics(error.what());
-    }
-    throw;
+  } catch (const MasterSetInstabilityError& error) {
+    return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   request.start_location = start_location;
   request.target_location = target_location;

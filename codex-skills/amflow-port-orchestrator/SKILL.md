@@ -11,8 +11,8 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
 
 ## Current Durable Status
 
-- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
-- reviewed implementation is accepted through landed `Batch 50a` on `main`; `Milestone M1` is complete
+- authoritative `main` base is `95f33f398bbdebf2084bf360a498fea3de89fc30`
+- reviewed implementation is accepted through landed `Batch 50b` on `main`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted via the clean-candidate `sapphire` verification packet at
   job `5305579`
@@ -52,14 +52,17 @@ Use this skill when the task is to plan, coordinate, or review the AMFlow C++ po
   seam and truthful early failure for `Branch` / `Loop`; it does not accept real selector
   semantics, `AnalyzeTopSector` parity, graph-polynomial availability, or broader topology
   analysis
-- `Batch 50b` is the current local packet only: an internal topology-prerequisite bridge and
-  prereq-snapshot seam for `Branch` / `Loop`, still blocked, still unaccepted, and still deferring
-  truthful selector semantics to `Batch 50`
-- local module-loaded configure/build/ctest passed for the current `Batch 50b` worktree packet
-- clean-candidate attempt `5480669` is not acceptance evidence: it OOM-killed during configure
-  because the submission omitted an explicit memory request
-- `Batch 50` is now the next roadmap-owned selector-semantics implementation lane after `Batch 50b`
-  while `M0b` remains separately open and still blocks broader parity claims
+- `Batch 50b` is landed on `main` at `95f33f3`: the internal topology-prerequisite bridge and
+  prereq-snapshot seam for `Branch` / `Loop` are now accepted, and the current in-flight local
+  worktree covers `Batch 50` through `Batch 54`
+- local module-loaded configure/build/ctest passed for the landed `Batch 50b` packet; the current
+  in-flight local worktree spans the selector slice, multi-invariant list wrappers, mass widening,
+  multi-top-sector Kira, and precision preflight + retry controller
+- clean-candidate attempt `5480669` is not acceptance evidence for landed `Batch 50b`: it
+  OOM-killed during configure because the submission omitted an explicit memory request
+- local `Batch 50`, `Batch 51`, `Batch 52`, `Batch 53`, and `Batch 54` already exist; the next
+  orchestration task is to land them on `main` in order while `M0b` remains separately open and
+  still blocks broader parity claims
 
 ## Workflow
 

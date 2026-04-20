@@ -36,6 +36,7 @@ constexpr char kMatrixOverlapPrefix[] =
     "upper-triangular matrix series patch overlap diagnostics";
 constexpr char kBootstrapSolverPrefix[] = "bootstrap regular-point continuation solver";
 constexpr char kUnsupportedSolverPathCode[] = "unsupported_solver_path";
+constexpr char kInsufficientPrecisionCode[] = "insufficient_precision";
 constexpr int kBootstrapContinuationOrder = 4;
 
 ExactRational ZeroRational() {
@@ -1872,6 +1873,61 @@ SolverDiagnostics MakeBoundaryUnsolvedDiagnostics(const BoundaryUnsolvedError& e
   return diagnostics;
 }
 
+SolverDiagnostics MakeInsufficientPrecisionDiagnostics(const PrecisionDecision& decision) {
+  SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = kInsufficientPrecisionCode;
+  diagnostics.summary = decision.reason.empty()
+                             ? "insufficient_precision: precision budget was exhausted"
+                             : decision.reason;
+  return diagnostics;
+}
+
+PrecisionObservation MakePrecisionObservationFromDiagnostics(const SolveRequest& request,
+                                                            const SolverDiagnostics& diagnostics) {
+  PrecisionObservation observation;
+  observation.requested_digits = request.requested_digits;
+  observation.stable_digits = 0;
+  observation.residual_estimate = diagnostics.residual_norm;
+  observation.overlap_mismatch = diagnostics.overlap_mismatch;
+  observation.alternative_path_difference =
+      std::max(diagnostics.residual_norm, diagnostics.overlap_mismatch);
+  return observation;
+}
+
+bool IsRetryablePrecisionInstability(const SolverDiagnostics& diagnostics) {
+  return !diagnostics.success && diagnostics.failure_code == kInsufficientPrecisionCode;
+}
+
+SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request) {
+  while (true) {
+    const SolverDiagnostics diagnostics = solver.Solve(request);
+    if (diagnostics.success || !IsRetryablePrecisionInstability(diagnostics)) {
+      return diagnostics;
+    }
+
+    if (request.requested_digits <= request.precision_policy.working_precision) {
+      return diagnostics;
+    }
+
+    const PrecisionDecision decision =
+        EvaluatePrecision(request.precision_policy,
+                          MakePrecisionObservationFromDiagnostics(request, diagnostics));
+    if (decision.status != PrecisionStatus::Escalate) {
+      return diagnostics;
+    }
+    if (decision.suggested_working_precision <= request.precision_policy.working_precision &&
+        decision.suggested_x_order <= request.precision_policy.x_order) {
+      return diagnostics;
+    }
+
+    request.precision_policy.working_precision = decision.suggested_working_precision;
+    request.precision_policy.x_order = decision.suggested_x_order;
+  }
+}
+
 SolverDiagnostics MakeSuccessfulBootstrapSolveDiagnostics() {
   SolverDiagnostics diagnostics;
   diagnostics.success = true;
@@ -2041,6 +2097,12 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
   }
 
   const ExactRationalVector start_boundary_values = ParseBoundaryValuesExactly(*start_boundary);
+  const PrecisionDecision precision_budget =
+      EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
+  if (precision_budget.status == PrecisionStatus::Rejected) {
+    return MakeInsufficientPrecisionDiagnostics(precision_budget);
+  }
+
   const std::string start_expression = MakeResolvedPointExpression(variable_name, start_value);
   const std::string target_expression = MakeResolvedPointExpression(variable_name, target_value);
   const ExactRational match_value = ComputeBootstrapMatchPoint(start_value, target_value);
@@ -2647,7 +2709,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
   request.target_location = target_location;
   request.precision_policy = precision_policy;
   request.requested_digits = requested_digits;
-  return solver.Solve(request);
+  return SolveWithPrecisionRetry(solver, std::move(request));
 }
 
 std::vector<SolverDiagnostics> SolveInvariantGeneratedSeriesList(
@@ -2715,7 +2777,7 @@ SolverDiagnostics SolveEtaGeneratedSeries(
   request.target_location = target_location;
   request.precision_policy = precision_policy;
   request.requested_digits = requested_digits;
-  return solver.Solve(request);
+  return SolveWithPrecisionRetry(solver, std::move(request));
 }
 
 SolverDiagnostics SolveEtaModePlannedSeries(

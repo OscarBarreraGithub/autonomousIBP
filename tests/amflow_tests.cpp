@@ -666,6 +666,38 @@ class RecordingSeriesSolverSequence final : public amflow::SeriesSolver {
   mutable std::vector<amflow::SolveRequest> seen_requests_;
 };
 
+class ScriptedRecordingSeriesSolver final : public amflow::SeriesSolver {
+ public:
+  struct Step {
+    bool use_request_driven_diagnostics = false;
+    amflow::SolverDiagnostics diagnostics;
+  };
+
+  std::vector<Step> steps;
+
+  amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
+    ++call_count_;
+    seen_requests_.push_back(request);
+    if (static_cast<std::size_t>(call_count_) > steps.size()) {
+      throw std::runtime_error("scripted recording series solver has no step for call " +
+                               std::to_string(call_count_));
+    }
+    const Step& step = steps[static_cast<std::size_t>(call_count_ - 1)];
+    if (step.use_request_driven_diagnostics) {
+      return MakeRequestDrivenEquivalenceHarnessDiagnostics(request);
+    }
+    return step.diagnostics;
+  }
+
+  int call_count() const { return call_count_; }
+
+  const std::vector<amflow::SolveRequest>& seen_requests() const { return seen_requests_; }
+
+ private:
+  mutable int call_count_ = 0;
+  mutable std::vector<amflow::SolveRequest> seen_requests_;
+};
+
 class RecordingEtaMode final : public amflow::EtaMode {
  public:
   explicit RecordingEtaMode(const amflow::EtaInsertionDecision& returned_decision,
@@ -6319,6 +6351,200 @@ void BootstrapSeriesSolverExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest(
          "exact one-hop path");
 }
 
+void EvaluatePrecisionEscalatesOnUnstableObservationTest() {
+  const amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionObservation observation = {
+      73,
+      61,
+      1e-6,
+      0.0,
+      0.0,
+  };
+
+  const amflow::PrecisionDecision decision = amflow::EvaluatePrecision(policy, observation);
+
+  Expect(decision.status == amflow::PrecisionStatus::Escalate,
+         "precision controller should request escalation when stability is still insufficient");
+  Expect(decision.suggested_working_precision == policy.working_precision + policy.escalation_step &&
+             decision.suggested_x_order == policy.x_order + policy.x_order_step,
+         "precision controller should advance working precision and x-order by the configured "
+         "step sizes");
+  Expect(decision.reason == "raise working precision and truncation order",
+         "precision controller should preserve the reviewed escalation reason");
+}
+
+void EvaluatePrecisionBudgetAcceptsCoveredDigitsTest() {
+  const amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::PrecisionDecision decision =
+      amflow::EvaluatePrecisionBudget(policy, policy.working_precision - 1);
+
+  Expect(decision.status == amflow::PrecisionStatus::Accepted,
+         "precision budget controller should accept requests already covered by working "
+         "precision");
+  Expect(decision.suggested_working_precision == policy.working_precision &&
+             decision.suggested_x_order == policy.x_order,
+         "precision budget controller should preserve working precision and x-order on "
+         "acceptance");
+}
+
+void EvaluatePrecisionBudgetEscalatesWithinCeilingTest() {
+  const amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
+  const int requested_digits = policy.working_precision + 5;
+
+  const amflow::PrecisionDecision decision =
+      amflow::EvaluatePrecisionBudget(policy, requested_digits);
+
+  Expect(decision.status == amflow::PrecisionStatus::Escalate,
+         "precision budget controller should request escalation when the request exceeds the "
+         "current working precision but remains below the configured ceiling");
+  Expect(decision.suggested_working_precision == policy.working_precision + policy.escalation_step &&
+             decision.suggested_x_order == policy.x_order + policy.x_order_step,
+         "precision budget controller should advance working precision and x-order by the "
+         "configured step sizes when headroom remains");
+  Expect(decision.reason == "raise working precision and truncation order",
+         "precision budget controller should preserve the reviewed escalation reason");
+}
+
+void EvaluatePrecisionBudgetRejectsDigitsAboveConfiguredCeilingTest() {
+  const amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::PrecisionDecision decision =
+      amflow::EvaluatePrecisionBudget(policy, policy.max_working_precision + 1);
+
+  Expect(decision.status == amflow::PrecisionStatus::Rejected,
+         "precision budget controller should reject requests above the configured ceiling");
+  Expect(decision.reason.find("insufficient_precision") != std::string::npos,
+         "precision budget controller should emit the explicit insufficient_precision reason");
+}
+
+void EvaluatePrecisionBudgetTreatsConfiguredCeilingAsHardCapTest() {
+  amflow::PrecisionPolicy policy = MakeDistinctPrecisionPolicy();
+  policy.max_working_precision = 60;
+
+  const amflow::PrecisionDecision decision = amflow::EvaluatePrecisionBudget(policy, 61);
+
+  Expect(decision.status == amflow::PrecisionStatus::Rejected,
+         "precision budget controller should treat max_working_precision as the effective cap "
+         "even when working_precision is misconfigured above it");
+  Expect(decision.reason.find("insufficient_precision") != std::string::npos,
+         "precision budget controller should preserve the insufficient_precision reason on a "
+         "misconfigured working-precision cap");
+}
+
+amflow::SolverDiagnostics RunPrecisionRetryControllerForTest(
+    amflow::SolveRequest request,
+    const amflow::SeriesSolver& solver) {
+  for (int attempt = 0; attempt < 4; ++attempt) {
+    const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+    if (diagnostics.success || diagnostics.failure_code != "insufficient_precision") {
+      return diagnostics;
+    }
+
+    const amflow::PrecisionDecision decision =
+        amflow::EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
+    if (decision.status != amflow::PrecisionStatus::Escalate) {
+      return diagnostics;
+    }
+
+    request.precision_policy.working_precision = decision.suggested_working_precision;
+    request.precision_policy.x_order = decision.suggested_x_order;
+  }
+
+  throw std::runtime_error("precision retry controller exceeded the tested attempt budget");
+}
+
+void BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  request.precision_policy.working_precision = 40;
+  request.precision_policy.max_working_precision = 60;
+  request.requested_digits = 61;
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success,
+         "bootstrap solver should reject requests that exceed the configured precision ceiling");
+  Expect(diagnostics.failure_code == "insufficient_precision",
+         "bootstrap solver should classify precision-budget exhaustion as "
+         "insufficient_precision");
+  Expect(diagnostics.summary.find("configured precision ceiling") != std::string::npos,
+         "bootstrap solver should preserve the configured-ceiling diagnostic text");
+}
+
+void PrecisionRetryControllerEscalatesThenSucceedsTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  const int requested_digits = request.precision_policy.working_precision + 5;
+  request.requested_digits = requested_digits;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {false, 1.0, 1.0, "insufficient_precision",
+       "insufficient_precision: precision budget was exhausted"},
+      {true, 0.03125, 0.0625, "", "controller retry succeeded"},
+  };
+
+  const amflow::SolverDiagnostics diagnostics = RunPrecisionRetryControllerForTest(request, solver);
+
+  Expect(solver.call_count() == 2 && solver.seen_requests().size() == 2,
+         "precision retry controller should retry exactly once after an insufficient_precision "
+         "diagnostic");
+  Expect(solver.seen_requests()[0].precision_policy.working_precision == 130 &&
+             solver.seen_requests()[0].requested_digits == requested_digits &&
+             solver.seen_requests()[1].precision_policy.working_precision == 144 &&
+             solver.seen_requests()[0].precision_policy.x_order == 77 &&
+             solver.seen_requests()[1].precision_policy.x_order == 86 &&
+             solver.seen_requests()[1].requested_digits == requested_digits,
+         "precision retry controller should advance the solver request precision by the "
+         "configured policy step on retry");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics[1]),
+         "precision retry controller should return the successful retry diagnostic unchanged");
+}
+
+void PrecisionRetryControllerStopsOnCeilingExhaustedInsufficientPrecisionTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  request.precision_policy.working_precision = 40;
+  request.precision_policy.max_working_precision = 60;
+  request.requested_digits = 61;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {false, 1.0, 1.0, "insufficient_precision",
+       "insufficient_precision: requested digits exceed the configured precision ceiling"},
+  };
+
+  const amflow::SolverDiagnostics diagnostics = RunPrecisionRetryControllerForTest(request, solver);
+
+  Expect(solver.call_count() == 1,
+         "precision retry controller should stop after the first insufficient_precision "
+         "diagnostic when the ceiling is exhausted");
+  Expect(diagnostics.failure_code == "insufficient_precision" && !diagnostics.success,
+         "precision retry controller should preserve the ceiling-exhausted "
+         "insufficient_precision diagnostic");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "precision retry controller should return the ceiling-exhausted diagnostic unchanged");
+}
+
+void PrecisionRetryControllerPreservesNonRetryableFailureTest() {
+  const amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("2"), "eta", "eta=0", "eta=2", {"7/11"});
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {false, 1.0, 1.0, "unsupported_solver_path", "unsupported solver path"},
+  };
+
+  const amflow::SolverDiagnostics diagnostics = RunPrecisionRetryControllerForTest(request, solver);
+
+  Expect(solver.call_count() == 1,
+         "precision retry controller should not retry non-retryable solver failures");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "precision retry controller should preserve non-retryable solver diagnostics unchanged");
+}
+
 void BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -6385,6 +6611,23 @@ void SolveDifferentialEquationUnsupportedSolverPathPassthroughTest() {
   const amflow::SolverDiagnostics actual = amflow::SolveDifferentialEquation(request);
   Expect(SameSolverDiagnostics(actual, expected),
          "standalone DE solver wrapper should preserve unsupported_solver_path diagnostics");
+}
+
+void SolveDifferentialEquationInsufficientPrecisionPassthroughTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  request.precision_policy.working_precision = 40;
+  request.precision_policy.max_working_precision = 60;
+  request.requested_digits = 61;
+
+  const amflow::SolverDiagnostics expected = amflow::BootstrapSeriesSolver().Solve(request);
+  const amflow::SolverDiagnostics actual = amflow::SolveDifferentialEquation(request);
+
+  Expect(expected.failure_code == "insufficient_precision" && !expected.success,
+         "direct bootstrap solver should surface the insufficient_precision diagnostic on an "
+         "exhausted precision budget");
+  Expect(SameSolverDiagnostics(actual, expected),
+         "standalone DE solver wrapper should preserve insufficient_precision diagnostics");
 }
 
 void SolveDifferentialEquationMixedUnsupportedSolverPathPassthroughTest() {
@@ -11069,6 +11312,313 @@ void SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest() {
          "construction fails");
 }
 
+void SolveInvariantGeneratedSeriesAutomaticPropagatesInsufficientPrecisionDiagnosticTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-insufficient-precision"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-insufficient-precision.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = false;
+  solver.returned_diagnostics.failure_code = "insufficient_precision";
+  solver.returned_diagnostics.summary = "dynamic precision controller requested escalation";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(MakeAutoInvariantHappyProblemSpec(),
+                                            MakeAutoInvariantHappyMasterBasis(),
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(solver.call_count() == 1,
+         "automatic invariant solver handoff should call the solver exactly once on a successful "
+         "preparation/execution seam");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SamePrecisionPolicy(request.precision_policy, MakeDistinctPrecisionPolicy()) &&
+             request.requested_digits == 55,
+         "automatic invariant solver handoff should preserve the precision policy and requested "
+         "digits seen by the downstream solver");
+  Expect(diagnostics.failure_code == "insufficient_precision" && !diagnostics.success,
+         "automatic invariant solver handoff should preserve an explicit insufficient_precision "
+         "diagnostic");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "automatic invariant solver handoff should forward the solver diagnostic unchanged");
+}
+
+struct AutoInvariantRetryWrapperHarness {
+  amflow::ProblemSpec spec;
+  amflow::ParsedMasterList master_basis;
+  amflow::ArtifactLayout layout;
+  std::filesystem::path kira_path;
+  std::filesystem::path fermat_path;
+};
+
+amflow::SolverDiagnostics MakeInsufficientPrecisionRetryDiagnostic(
+    const std::string& summary,
+    const double residual_norm = 1.0,
+    const double overlap_mismatch = 1.0) {
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = residual_norm;
+  diagnostics.overlap_mismatch = overlap_mismatch;
+  diagnostics.failure_code = "insufficient_precision";
+  diagnostics.summary = summary;
+  return diagnostics;
+}
+
+AutoInvariantRetryWrapperHarness MakeAutoInvariantRetryWrapperHarness(
+    const std::string& temp_dir_name) {
+  AutoInvariantRetryWrapperHarness harness;
+  harness.spec = MakeAutoInvariantHappyProblemSpec();
+  harness.master_basis = MakeAutoInvariantHappyMasterBasis();
+  harness.layout = amflow::EnsureArtifactLayout(FreshTempDir(temp_dir_name));
+  harness.kira_path = harness.layout.root / "bin" / "fake-kira-auto-retry.sh";
+  harness.fermat_path = harness.layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(harness.kira_path.parent_path());
+  WriteExecutableScript(harness.kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(harness.fermat_path, "#!/bin/sh\nexit 0\n");
+  return harness;
+}
+
+void TestPrecisionRetryWrapper_PassAfterBumpTest() {
+  const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
+      "amflow-bootstrap-invariant-auto-solver-retry-wrapper-pass-after-bump");
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const int requested_digits =
+      precision_policy.working_precision + 2 * precision_policy.escalation_step + 1;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      MakeInsufficientPrecisionRetryDiagnostic(
+          "wrapper retry path requested a first working-precision bump"),
+      MakeInsufficientPrecisionRetryDiagnostic(
+          "wrapper retry path requested a second working-precision bump",
+          0.5,
+          0.25),
+      {true, 0.03125, 0.0625, "", "wrapper retry path succeeded after two bumps"},
+  };
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(harness.spec,
+                                            harness.master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            harness.layout,
+                                            harness.kira_path,
+                                            harness.fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(solver.call_count() == 3 && solver.seen_requests().size() == 3,
+         "retry wrapper should keep retrying the real invariant-generated wrapper path until "
+         "the injected solver succeeds");
+  const amflow::SolveRequest& first_request = solver.seen_requests()[0];
+  const amflow::SolveRequest& second_request = solver.seen_requests()[1];
+  const amflow::SolveRequest& third_request = solver.seen_requests()[2];
+  Expect(first_request.precision_policy.working_precision < second_request.precision_policy.working_precision &&
+             second_request.precision_policy.working_precision <
+                 third_request.precision_policy.working_precision &&
+             first_request.precision_policy.x_order < second_request.precision_policy.x_order &&
+             second_request.precision_policy.x_order < third_request.precision_policy.x_order,
+         "retry wrapper should bump working precision and x-order monotonically on each retry");
+  Expect(first_request.precision_policy.working_precision ==
+                 precision_policy.working_precision &&
+             second_request.precision_policy.working_precision ==
+                 precision_policy.working_precision + precision_policy.escalation_step &&
+             third_request.precision_policy.working_precision ==
+                 precision_policy.working_precision + 2 * precision_policy.escalation_step &&
+             first_request.precision_policy.x_order == precision_policy.x_order &&
+             second_request.precision_policy.x_order ==
+                 precision_policy.x_order + precision_policy.x_order_step &&
+             third_request.precision_policy.x_order ==
+                 precision_policy.x_order + 2 * precision_policy.x_order_step,
+         "retry wrapper should apply the configured monotone working-precision and x-order "
+         "steps on the real wrapper path");
+  Expect(first_request.requested_digits == requested_digits &&
+             second_request.requested_digits == requested_digits &&
+             third_request.requested_digits == requested_digits,
+         "retry wrapper should preserve requested_digits unchanged across retried wrapper calls");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.back()),
+         "retry wrapper should return the final successful wrapper-path diagnostics unchanged");
+}
+
+void TestPrecisionRetryWrapper_NoRetryOnOtherFailureTest() {
+  const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
+      "amflow-bootstrap-invariant-auto-solver-retry-wrapper-no-retry");
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const int requested_digits = precision_policy.working_precision + 3;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {false, 0.75, 0.5, "unsupported_solver_path", "wrapper retry path hit a non-retryable failure"},
+  };
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(harness.spec,
+                                            harness.master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            harness.layout,
+                                            harness.kira_path,
+                                            harness.fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "retry wrapper should not re-enter the real wrapper path after a non-retryable "
+         "downstream solver failure");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "retry wrapper should propagate the original non-retryable failure immediately");
+}
+
+void TestPrecisionRetryWrapper_CeilingStopTest() {
+  const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
+      "amflow-bootstrap-invariant-auto-solver-retry-wrapper-ceiling-stop");
+  amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  precision_policy.working_precision = 50;
+  precision_policy.escalation_step = 20;
+  precision_policy.max_working_precision = 60;
+  precision_policy.x_order = 40;
+  precision_policy.x_order_step = 8;
+  const int requested_digits = 100;
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      MakeInsufficientPrecisionRetryDiagnostic(
+          "wrapper retry path exhausted the first attempt before the configured cap"),
+      MakeInsufficientPrecisionRetryDiagnostic(
+          "wrapper retry path stopped once the configured ceiling had been hit",
+          0.5,
+          0.25),
+  };
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(harness.spec,
+                                            harness.master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            harness.layout,
+                                            harness.kira_path,
+                                            harness.fermat_path,
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(solver.call_count() == 2 && solver.seen_requests().size() == 2,
+         "retry wrapper should stop deterministically after the real wrapper path reaches the "
+         "configured working-precision ceiling");
+  const amflow::SolveRequest& first_request = solver.seen_requests()[0];
+  const amflow::SolveRequest& second_request = solver.seen_requests()[1];
+  Expect(first_request.precision_policy.working_precision == 50 &&
+             second_request.precision_policy.working_precision == 70 &&
+             first_request.precision_policy.x_order == 40 &&
+             second_request.precision_policy.x_order == 48,
+         "retry wrapper should take exactly one monotone bump before the ceiling stop");
+  Expect(first_request.requested_digits == requested_digits &&
+             second_request.requested_digits == requested_digits,
+         "retry wrapper ceiling-stop should preserve requested_digits on every attempted call");
+  Expect(!diagnostics.success && diagnostics.failure_code == "insufficient_precision",
+         "retry wrapper ceiling-stop should return insufficient_precision deterministically");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics[1]),
+         "retry wrapper ceiling-stop should return the terminal insufficient_precision "
+         "diagnostics from the final real wrapper attempt");
+}
+
+void TestPrecisionRetryWrapper_DiagnosticsMatchTest() {
+  const AutoInvariantRetryWrapperHarness harness = MakeAutoInvariantRetryWrapperHarness(
+      "amflow-bootstrap-invariant-auto-solver-retry-wrapper-diagnostics-match");
+  amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  precision_policy.max_working_precision = 140;
+  const int requested_digits = 145;
+
+  ScriptedRecordingSeriesSolver wrapper_solver;
+  wrapper_solver.steps = {
+      {false,
+       MakeInsufficientPrecisionRetryDiagnostic(
+           "wrapper retry path requested one more attempt before success")},
+      {true, {}},
+  };
+
+  const amflow::SolverDiagnostics wrapper_diagnostics =
+      amflow::SolveInvariantGeneratedSeries(harness.spec,
+                                            harness.master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            harness.layout,
+                                            harness.kira_path,
+                                            harness.fermat_path,
+                                            wrapper_solver,
+                                            "s=0",
+                                            "s=1",
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(wrapper_solver.call_count() == 2 && wrapper_solver.seen_requests().size() == 2,
+         "retry wrapper diagnostics-match coverage should observe a real wrapper retry before "
+         "success");
+  const amflow::SolveRequest& wrapper_retry_request = wrapper_solver.seen_requests().back();
+  const amflow::SolverDiagnostics expected_wrapper_diagnostics =
+      MakeRequestDrivenEquivalenceHarnessDiagnostics(wrapper_retry_request);
+  Expect(SameSolverDiagnostics(wrapper_diagnostics, expected_wrapper_diagnostics),
+         "retry wrapper should propagate the request-driven diagnostics from the real retried "
+         "wrapper request");
+
+  amflow::SolveRequest helper_request;
+  helper_request.system = amflow::BuildInvariantGeneratedDESystem(harness.spec,
+                                                                  harness.master_basis,
+                                                                  "s",
+                                                                  MakeKiraReductionOptions(),
+                                                                  harness.layout,
+                                                                  harness.kira_path,
+                                                                  harness.fermat_path);
+  helper_request.start_location = "s=0";
+  helper_request.target_location = "s=1";
+  helper_request.precision_policy = precision_policy;
+  helper_request.requested_digits = requested_digits;
+
+  ScriptedRecordingSeriesSolver helper_solver;
+  helper_solver.steps = {
+      {false,
+       MakeInsufficientPrecisionRetryDiagnostic(
+           "wrapper retry path requested one more attempt before success")},
+      {true, {}},
+  };
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      RunPrecisionRetryControllerForTest(helper_request, helper_solver);
+
+  Expect(helper_solver.call_count() == 1 && helper_solver.seen_requests().size() == 1,
+         "helper retry controller should stop immediately when requested_digits exceed the "
+         "configured ceiling");
+  Expect(SameSolverDiagnostics(helper_diagnostics, helper_solver.steps.front().diagnostics),
+         "helper retry controller should preserve the first insufficient_precision diagnostic "
+         "on the digits-above-ceiling path");
+  Expect(!SameSolverDiagnostics(wrapper_diagnostics, helper_diagnostics),
+         "retry wrapper diagnostics-match coverage should prove the shipped wrapper path is not "
+         "using the helper-level retry behavior");
+}
+
 void SolveInvariantGeneratedSeriesAutomaticRejectsEmptyInvariantNameTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-solver-empty-name"));
@@ -15666,12 +16216,22 @@ int main() {
     BootstrapSeriesSolverRejectsInexactMixedPathTest();
     BootstrapSeriesSolverRejectsLowerTriangularSystemTest();
     BootstrapSeriesSolverExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest();
+    EvaluatePrecisionEscalatesOnUnstableObservationTest();
+    PrecisionRetryControllerEscalatesThenSucceedsTest();
+    PrecisionRetryControllerStopsOnCeilingExhaustedInsufficientPrecisionTest();
+    PrecisionRetryControllerPreservesNonRetryableFailureTest();
+    EvaluatePrecisionBudgetAcceptsCoveredDigitsTest();
+    EvaluatePrecisionBudgetEscalatesWithinCeilingTest();
+    EvaluatePrecisionBudgetRejectsDigitsAboveConfiguredCeilingTest();
+    EvaluatePrecisionBudgetTreatsConfiguredCeilingAsHardCapTest();
+    BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactUpperTriangularHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactMixedHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationBoundaryUnsolvedPassthroughTest();
     SolveDifferentialEquationUnsupportedSolverPathPassthroughTest();
+    SolveDifferentialEquationInsufficientPrecisionPassthroughTest();
     SolveDifferentialEquationMixedUnsupportedSolverPathPassthroughTest();
     SolveDifferentialEquationRejectsMalformedBoundaryValueExpressionLikeBootstrapSolverTest();
     SolveDifferentialEquationExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest();
@@ -15886,6 +16446,11 @@ int main() {
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
+    SolveInvariantGeneratedSeriesAutomaticPropagatesInsufficientPrecisionDiagnosticTest();
+    TestPrecisionRetryWrapper_PassAfterBumpTest();
+    TestPrecisionRetryWrapper_NoRetryOnOtherFailureTest();
+    TestPrecisionRetryWrapper_CeilingStopTest();
+    TestPrecisionRetryWrapper_DiagnosticsMatchTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsEmptyInvariantNameTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     BuildInvariantGeneratedDESystemListAutomaticHappyPathTest();

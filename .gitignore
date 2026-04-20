@@ -3,3 +3,6 @@ artifacts/
 __pycache__/
 *.pyc
 a.out
+.codex
+tools/*.png
+.claude/scheduled_tasks.lock

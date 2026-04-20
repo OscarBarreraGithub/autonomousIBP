@@ -28,9 +28,21 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 ## Current Durable Status
 
-- the accepted public/runtime surface on the current `main` base is the reviewed `Batch 1`
-  through `Batch 50a` boundary, now carried forward on clean
-  `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
+  boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- current `main@95f33f398bbdebf2084bf360a498fea3de89fc30` additionally carries the landed `Batch 50b`
+  topology-prerequisite bridge packet; durable clean-candidate evidence is now recorded in these
+  docs via job `5482487` for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
+  but that packet remains internal-only and does not widen the last fully accepted public/runtime
+  boundary
+- the current local worktree additionally carries an unlanded `Batch 50` packet: on the current
+  single-top-sector squared-linear-momentum subset, builtin `Branch` and `Loop` now derive
+  supported
+  topology groups from a first-Symanzik support and select unique uncut propagators
+  deterministically; local verification is green, second-pass review is clear, and clean-candidate
+  evidence is now retained via job `6265957`, but the last fully accepted public boundary still
+  does not move until this packet lands
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -78,15 +90,21 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   the minimal eta-generated-path mass-coherence widening; and `Batch 50a` adds only internal
   eta-topology preflight blocker telemetry for still-blocked `Branch` / `Loop` without truthful
   selector semantics
-- the current local unlanded `Batch 50b` packet is narrower still: it keeps `Branch` and `Loop`
-  blocked, adds only an internal topology-prerequisite bridge/prereq snapshot over the current
-  family/kinematics surface, and reports explicit available versus missing fields instead of fake
-  selector behavior
+- the durably evidenced but still-internal `Batch 50b` packet on current `main` is narrower still:
+  it keeps `Branch` and `Loop` blocked, adds only an internal topology-prerequisite bridge/prereq
+  snapshot over the current family/kinematics surface, and reports explicit available versus
+  missing fields instead of fake selector behavior
+- the current local `Batch 50` packet is still narrow even where it succeeds: it is limited to the
+  single-top-sector squared-linear-momentum subset, uses deterministic local size-then-declaration
+  ordering plus repeated-first-choice deduplication, and still does not claim multi-top-sector
+  coverage, broader propagator grammar support, linear-propagator support, full upstream
+  `AnalyzeTopSector` / component-factorization parity, or `Propagator::prescription`
+  interpretation
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,
   `AnalyzeTopSector` parity, and any `Propagator::prescription` metadata interpretation are still
-  outside the accepted public boundary
+  outside the last fully accepted public boundary
 - that landed `Batch 49b` packet is still narrow: it adds only a bootstrap builtin `Mass` seam
   over the reviewed local candidate surface plus the minimal eta-generated-path coherence widening
   needed to keep selected equal-mass reducer-facing literals aligned with planner grouping. The
@@ -127,7 +145,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `BuildEtaGeneratedDESystem(...)`: the first library-only eta-generated `DESystem` consumer over the reviewed eta-generated execution wrapper
 - `InvariantGeneratedReductionExecution` plus `RunInvariantGeneratedReduction(...)`: typed invariant-only orchestration over preparation, execution, parsing, and generated-row assembly, with overloads for either a precomputed `InvariantDerivativeSeed` or one invariant name on a validated bootstrap `ProblemSpec`
 - `BuildInvariantGeneratedDESystem(...)`: the first library-only one-invariant `DESystem` consumer over the reviewed automatic invariant-generated execution wrapper
+- `BuildInvariantGeneratedDESystemList(...)`: the first ordered multi-invariant `DESystem` consumer that iterates the reviewed one-invariant automatic invariant-generated execution wrapper without changing solver behavior
 - `SolveInvariantGeneratedSeries(...)`: the first library-only one-invariant solver handoff from the reviewed automatic invariant-generated `DESystem` consumer into an injected `SeriesSolver`
+- `SolveInvariantGeneratedSeriesList(...)`: the first ordered multi-invariant solver handoff that iterates the reviewed one-invariant automatic invariant-generated solver wrapper without changing solver policy
 - `SolveEtaGeneratedSeries(...)`: the first library-only eta-generated solver handoff from the reviewed eta-generated `DESystem` consumer into an injected `SeriesSolver`
 - `SolveEtaModePlannedSeries(...)`: the first library-only eta-mode-planned solver handoff that composes `EtaMode::Plan(...)` with the reviewed eta-generated solver wrapper
 - `SolveBuiltinEtaModeSeries(...)`: the first builtin eta-mode-name library-only solve wrapper that resolves `MakeBuiltinEtaMode(...)` and reuses the reviewed eta-mode-planned solver handoff
@@ -245,9 +265,9 @@ The first invariant-derivative generation seam is also intentionally narrow:
 The first automatic invariant-seed construction seam is also bootstrap-only:
 
 - `BuildInvariantDerivativeSeed(...)` derives one `InvariantDerivativeSeed` from `ProblemSpec` plus a requested invariant name, then leaves generated-row construction to the existing `GenerateInvariantDerivativeVariable(...)` seam
-- it is one-invariant-at-a-time and supports only a validated bootstrap subset: `Standard` propagators with `mass == "0"`; arithmetic with `+`, `-`, `*`, parentheses, integer or rational constants, invariant symbols, and squared linear momentum combinations such as `(k-p1-p2)^2`; and scalar-product rules whose left side is an external-momentum pair such as `p1*p2` and whose right side is a linear scalar expression in the declared invariants
+- it is one-invariant-at-a-time and supports only a validated bootstrap subset: `Standard` propagators with mass entries `0`, invariant-independent identifiers, or invariant-independent rational constants with nonzero denominators; arithmetic with `+`, `-`, `*`, parentheses, integer or rational constants, invariant symbols, and squared linear momentum combinations such as `(k-p1-p2)^2`; and scalar-product rules whose left side is an external-momentum pair such as `p1*p2` and whose right side is a linear scalar expression in the declared invariants
 - auto-built derivatives are converted only when every differentiated term can be represented as a coefficient times a same-family propagator-factor product on the current propagator table, with bootstrap matching over exact normalized propagator subexpressions
-- the seam rejects empty, unknown, or `eta` invariant names; unsupported propagator kinds; nonzero or invariant-dependent propagator masses; unsupported propagator or scalar-product-rule grammar; unknown momentum symbols; incomplete scalar-product data; normalized duplicate propagator expressions; and derivative terms that cannot be represented on the family propagator table
+- the seam rejects empty, unknown, or `eta` invariant names; unsupported propagator kinds; invariant-dependent propagator masses; broader invariant-independent mass grammar beyond exact identifiers or rational constants with nonzero denominators; unsupported propagator or scalar-product-rule grammar; unknown momentum symbols; incomplete scalar-product data; normalized duplicate propagator expressions; and derivative terms that cannot be represented on the family propagator table
 - the input `ProblemSpec` is not mutated, numeric substitutions are ignored during symbolic seed construction, and all-zero derivative slots remain present as empty propagator entries
 - this batch does not claim the full upstream `LIBPGetDerivatives` / `LIBPComputeDerivatives` symbolic solver; it only covers the bootstrap subset above
 
@@ -304,7 +324,14 @@ The first invariant-generated `DESystem` consumer is also bootstrap-only:
 - `BuildInvariantGeneratedDESystem(...)` is a library-only one-invariant convenience seam over the reviewed automatic `RunInvariantGeneratedReduction(...)` wrapper and returns the assembled `DESystem` directly on success
 - it reuses the existing automatic preparation, reducer execution, parse, and generated-row assembly path instead of reimplementing reducer orchestration locally
 - unsuccessful reducer execution is converted into a deterministic consumer-level failure that preserves the recorded execution status, exit code, and stderr log path in the diagnostic
-- this batch does not add a seed-based consumer overload, solver invocation, CLI, multi-invariant orchestration, `SkipReduction`, or broader symbolic-subset widening
+- this batch does not add a seed-based consumer overload, solver invocation, CLI, `SkipReduction`, or broader symbolic-subset widening
+
+The current local multi-invariant `DESystem` consumer extension is still narrow:
+
+- `BuildInvariantGeneratedDESystemList(...)` takes an ordered list of invariant names and iterates the reviewed `BuildInvariantGeneratedDESystem(...)` path once per item
+- it preserves caller order, isolates each iteration under `layout.root/invariant-000N-<sanitized-name>`, and returns the assembled `DESystem` objects in that same order
+- empty invariant lists fail locally before reducer execution, and any per-invariant hard failure stops iteration without inventing aggregate partial-success semantics
+- this local packet does not add a seed-based list consumer, cross-invariant coupling, CLI, `SkipReduction`, or broader symbolic-subset widening beyond the reviewed one-invariant path
 
 The first eta-generated `DESystem` consumer is also bootstrap-only:
 
@@ -313,24 +340,33 @@ The first eta-generated `DESystem` consumer is also bootstrap-only:
 - unsuccessful reducer execution is converted into a deterministic consumer-level failure that preserves the recorded execution status, exit code, and stderr log path in the diagnostic
 - this batch does not add solver handoff, eta-mode expansion, CLI, multi-variable orchestration, `SkipReduction`, or broader end-to-end eta solving
 
-The first invariant-generated solver handoff is also bootstrap-only:
+The first invariant-generated solver handoff remains narrow:
 
 - `SolveInvariantGeneratedSeries(...)` takes the same one-invariant automatic reduction inputs as `BuildInvariantGeneratedDESystem(...)`, plus an injected `const SeriesSolver&` and solver request fields excluding `DESystem`
-- it is a thin wrapper: it calls `BuildInvariantGeneratedDESystem(...)`, populates `SolveRequest`, invokes `SeriesSolver::Solve(...)`, and returns the resulting `SolverDiagnostics` unchanged
+- after `BuildInvariantGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2687-2712`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
+- on retryable `failure_code == "insufficient_precision"`, that internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildInvariantGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
-- this batch does not add solver-selection policy, a seed-based solver overload, CLI, multi-invariant orchestration, boundary generation, or algorithmic series solving
+- this batch does not add solver-selection policy, a seed-based solver overload, CLI, boundary generation, or algorithmic series solving
 
-The first eta-generated solver handoff is also bootstrap-only:
+The current local multi-invariant solver handoff extension is still narrow:
+
+- `SolveInvariantGeneratedSeriesList(...)` takes an ordered list of invariant names plus the same explicit solver-request fields as `SolveInvariantGeneratedSeries(...)`
+- it iterates `SolveInvariantGeneratedSeries(...)` once per invariant, so each iteration inherits the same internal `insufficient_precision` retry behavior with fixed `requested_digits` while preserving caller order (`src/solver/series_solver.cpp:2715-2750`, `src/solver/series_solver.cpp:1904-1928`)
+- each iteration uses a dedicated child artifact root under `layout.root/invariant-000N-<sanitized-name>`, and any pre-solver hard failure preserves the upstream diagnostic while stopping iteration before later solver calls
+- this local packet does not add solver-selection policy, a seed-based list overload, CLI, boundary generation, cross-invariant coupling, or algorithmic series solving
+
+The first eta-generated solver handoff remains narrow:
 
 - `SolveEtaGeneratedSeries(...)` takes the same eta-generated reduction inputs as `BuildEtaGeneratedDESystem(...)`, plus an injected `const SeriesSolver&`, explicit solver request fields excluding `DESystem`, and an optional trailing `eta_symbol`
-- it is a thin wrapper: it calls `BuildEtaGeneratedDESystem(...)`, populates `SolveRequest`, invokes `SeriesSolver::Solve(...)`, and returns the resulting `SolverDiagnostics` unchanged
+- after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
+- on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
 - this batch does not add solver-selection policy, CLI, eta-mode expansion, multi-variable orchestration, boundary generation, or algorithmic series solving
 
 The first eta-mode-planned solver handoff is also bootstrap-only:
 
 - `SolveEtaModePlannedSeries(...)` takes the same eta-generated solver inputs as `SolveEtaGeneratedSeries(...)`, except `EtaInsertionDecision` is replaced by an injected `const EtaMode&`
-- it is a thin wrapper: it calls `EtaMode::Plan(spec)`, then forwards the resulting `EtaInsertionDecision` directly into `SolveEtaGeneratedSeries(...)`
+- it is a thin wrapper: it calls `EtaMode::Plan(spec)`, then forwards the resulting `EtaInsertionDecision` directly into `SolveEtaGeneratedSeries(...)`, so the same generated-wrapper retry behavior applies downstream
 - planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
 - this batch does not add new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
@@ -547,15 +583,16 @@ The first exact one-hop continuation solver seam is now reviewed through the rev
 - both supported paths use the deterministic `match`/`check` pair for exact acceptance; the regular path requires exact regular residuals plus exact overlap mismatch to vanish, while the mixed path requires the exact start-side regular residual, exact target-side Frobenius residual, and exact regular/Frobenius handoff mismatch to vanish entrywise
 - on success the solver returns `diagnostics.success = true`, `residual_norm = 0.0`, `overlap_mismatch = 0.0`, empty `failure_code`, and a deterministic short success summary, while transported target values and the mixed handoff matrix remain internal and are not exposed on the public surface
 - well-formed but unsupported or inexact one-hop requests return `failure_code = "unsupported_solver_path"`, including singular starts, unsupported matrix shape/support outside the reviewed upper-triangular subset, forced logarithmic resonances, fractional-exponent mixed targets, singular internal one-hop evaluations, and nonzero exact residual or handoff checks
-- `PrecisionPolicy` and `requested_digits` remain accepted on `SolveRequest` but are explicitly unused on the reviewed exact Batch 39 and Batch 43 subsets
-- these batches do not add singular-start boundary semantics, singular-to-regular or singular-to-singular continuation, multi-hop continuation, passive-binding solve inputs, precision-escalation semantics, automatic boundary generation, public Frobenius residual or handoff diagnostics, or public transported-target output
+- `PrecisionPolicy` and `requested_digits` remain accepted on `SolveRequest`; on the current local reviewed `Batch 54` surface, `EvaluatePrecisionBudget(...)` still enforces the hard-cap preflight before patch generation, so requests whose `requested_digits` exceed `max_working_precision` return `failure_code = "insufficient_precision"` immediately (`src/solver/series_solver.cpp:2100-2104`, `src/solver/precision_policy.cpp:40-65`)
+- invariant- and eta-generated solver handoffs layer a narrow internal retry controller on top of that surface: on retryable `insufficient_precision`, `requested_digits` stays fixed and the wrapper retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`; otherwise it stops deterministically and returns the current diagnostic (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`, `src/solver/series_solver.cpp:2687-2712`, `src/solver/series_solver.cpp:2753-2780`)
+- these batches do not add singular-start boundary semantics, singular-to-regular or singular-to-singular continuation, multi-hop continuation, passive-binding solve inputs, standalone `SolveDifferentialEquation(...)` retry integration, automatic boundary generation, public Frobenius residual or handoff diagnostics, or public transported-target output
 
 The first standalone differential-equation solver wrapper seam is now reviewed:
 
 - `SolveDifferentialEquation(const SolveRequest& request)` is a library-only thin wrapper over the reviewed Batch 39 and Batch 43 exact continuation solver surface
-- the wrapper constructs the default solver via `MakeBootstrapSeriesSolver()`, invokes `Solve(request)` once, and returns the resulting `SolverDiagnostics` unchanged
+- unlike the generated handoffs, the wrapper still constructs the default solver via `MakeBootstrapSeriesSolver()`, invokes `Solve(request)` exactly once, and returns the resulting `SolverDiagnostics` unchanged (`src/solver/series_solver.cpp:3000-3002`)
 - it does not add any new request or result type, transported-target output, malformed-input translation, or new well-formed solving semantics; the reviewed Batch 39 and Batch 43 exceptions and diagnostics pass through unchanged
-- this batch does not rewire existing injected solver wrappers, add no-request overloads, or widen into singular-start boundary semantics, broader singular/Frobenius continuation, multi-hop continuation, passive-binding solve inputs, precision-policy semantics, CLI behavior, or examples
+- this batch does not rewire existing injected solver wrappers, add no-request overloads, or widen the standalone wrapper into the generated-handoff retry behavior, singular-start boundary semantics, broader singular/Frobenius continuation, multi-hop continuation, passive-binding solve inputs beyond the current local precision-budget preflight, CLI behavior, or examples
 
 The first auxiliary-family transformation seam is also intentionally narrow:
 
@@ -568,7 +605,19 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
 - builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists
-- builtin modes `Branch` and `Loop` remain explicit bootstrap stubs on accepted `main`: the landed `Batch 50a` runtime carries an internal eta-topology preflight snapshot over the current family/kinematics surface, but the topology-analysis/candidate-analysis needed for real Branch/Loop selector semantics is still deferred. The current local `Batch 50b` packet narrows that internal work into a topology-prerequisite bridge/prereq snapshot with explicit available-versus-missing field reporting over the same current surface. Both states are blockers, not fake selector choices, aliases, or fallbacks, and neither widens the public API
+- builtin modes `Branch` and `Loop` remain explicit bootstrap stubs on the last fully accepted
+  baseline: the landed `Batch 50a` runtime carries an internal eta-topology preflight snapshot over
+  the current family/kinematics surface, but the topology-analysis/candidate-analysis needed for
+  real Branch/Loop selector semantics is still deferred. The landed `Batch 50b` packet on current
+  `main` narrows that internal work into a topology-prerequisite bridge/prereq snapshot with
+  explicit available-versus-missing field reporting over the same current surface. Durable
+  clean-candidate evidence is now recorded for that internal packet. The current local `Batch 50`
+  worktree then adds a first supported selector slice over the single-top-sector
+  squared-linear-momentum subset only: it derives first-Symanzik support from active non-auxiliary
+  propagators, computes Branch/Loop groups, intersects with uncut candidates, and selects unique
+  propagators deterministically before eta insertion. Broader topology parity and boundary claims
+  remain deferred. Neither the landed `50a`/`50b` states nor the current unlanded `Batch 50`
+  packet widens the last fully accepted public API
 - the landed `Batch 49b` packet widens the bootstrap built-in planner seam only to that narrow local `Mass` selector plus the minimal downstream eta-insertion mass coherence needed for the reviewed eta-generated path. It does not claim full upstream topology/component-order `Mass` parity, broader same-priority tie-break parity, broader symbolic mass canonicalization, `Propagator::prescription` metadata interpretation, derivative generation changes, or broader orchestration/parity closure
 
 ## Upgrade Rules

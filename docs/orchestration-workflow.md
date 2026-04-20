@@ -25,8 +25,8 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
-- reviewed code remains accepted through landed `Batch 50a` on `main`; `Milestone M1` is complete
+- current `main` / `origin/main` head is `95f33f398bbdebf2084bf360a498fea3de89fc30`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, and reviewed code remains accepted through landed `Batch 50a`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
@@ -66,14 +66,51 @@ The workflow is optimized for the current repo shape:
   seam and truthful early failure for `Branch` / `Loop`; it does not accept real selector
   semantics, `AnalyzeTopSector` parity, graph-polynomial availability, or broader topology
   analysis
-- `Batch 50b` is the current local packet only: an internal topology-prerequisite bridge and
-  prereq-snapshot seam for `Branch` / `Loop`, still blocked, still unaccepted, and still deferring
-  truthful selector semantics to `Batch 50`
-- local module-loaded configure/build/ctest passed for the current `Batch 50b` worktree packet
-- clean-candidate attempt `5480669` is operational noise rather than acceptance evidence: it
-  OOM-killed during configure because the submission omitted an explicit memory request
-- `Batch 50` is now the next roadmap-owned selector-semantics implementation lane after `Batch 50b`
-  while `M0b` remains separately open and still blocks broader parity claims
+- landed `Batch 50b` on current `main` is the narrow internal topology-prerequisite bridge and
+  prereq-snapshot seam for `Branch` / `Loop`, still blocked, now durably evidenced in the docs,
+  and still deferring truthful selector semantics to `Batch 50`
+- current-thread local module-loaded configure/build/ctest passed again for the landed `Batch 50b`
+  worktree surface, and secondary review found no material findings on the declared narrow scope
+- clean-candidate attempt `5480669` remains operational noise rather than durable evidence: it
+  OOM-killed during configure because the submission omitted an explicit memory request, but the
+  later clean-candidate job `5482487` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`
+  under retained artifact root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`
+- current local `Batch 50` worktree packet now implements a first supported `Branch` / `Loop`
+  selector slice on the current single-top-sector squared-linear-momentum subset; local
+  configure/build/ctest and `./build/amflow-tests` passed in the current thread
+- second-pass rereview on that local `Batch 50` packet found no material issues on the declared
+  narrow scope
+- final clean-candidate job `6265957` now also passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50-final-clean-candidate-20260417T191228Z-2a59f577`
+  under retained artifact root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50-final-clean-candidate-20260417T191228Z-2a59f577`
+- current local `Batch 51` worktree packet now adds the first ordered multi-invariant
+  invariant-generated list wrappers over the reviewed one-invariant path; local
+  configure/build/ctest and `./build/amflow-tests` passed in the current thread
+- second-pass rereview on that local `Batch 51` packet found no material runtime issues after
+  tightening order-preservation, invalid-name, and artifact-isolation coverage
+- current local `Batch 52` worktree packet now widens `BuildInvariantDerivativeSeed(...)` to the
+  first invariant-independent nonzero-mass slice; local configure/build/ctest and
+  `./build/amflow-tests` passed in the current thread
+- second-pass rereview on that local `Batch 52` packet found no concrete issues after tightening
+  the accepted mass surface to exact identifiers or nonzero-denominator rational constants
+- current local `Batch 53` worktree packet now adds the first multiple-top-sector Kira target
+  orchestration slice over the accepted preparation/execution seams: local
+  configure/build/ctest and `./build/amflow-tests` passed in the current thread
+- second-pass rereview on that local `Batch 53` packet found no material findings after
+  hardening prep-side sector validation and invalid-configuration coverage
+- current local `Batch 54` worktree packet now adds precision-budget preflight plus an internal
+  retry controller on generated-solver handoffs; direct `SolveDifferentialEquation(...)` is still
+  passthrough. Local configure/build/ctest and `./build/amflow-tests` passed in the current thread
+- second-pass rereview on that local `Batch 54` packet found no material findings after the
+  hard-cap fix and direct insufficient-precision regressions
+- the active roadmap-owned implementation lane remains `Batch 54`: `Batch 55` remains blocked on
+  closing the standalone wrapper gap and retiring helper-only retry tests in favour of
+  wrapper-path coverage. `Batch 54` clean-candidate/landing bookkeeping and the earlier
+  `Batch 53` / `Batch 52` / `Batch 51` / `Batch 50` bookkeeping still remain pending. `M0b`
+  remains separately open and still blocks broader parity claims
 
 ## Mandatory Read Set Before Planning
 
@@ -481,9 +518,10 @@ Until the solver and reference harness broaden substantially, the default implem
 
 1. read `docs/implementation-ledger.md` and `docs/public-contract.md`
 2. choose the next narrow seam or operational milestone implied by the accepted batch state, the
-   roadmap gates, and the active blocker chain; on the current baseline that means start
-   `Batch 50b`, not reopen `K0b`, `Batch 47`, landed `Batch 48`, landed `Batch 49`, landed
-   `Batch 49b`, or landed `Batch 50a`
+   roadmap gates, and the active blocker chain; on the current baseline that means advance
+   landing/acceptance bookkeeping for the reviewed candidate-clean local `Batch 50` packet, then
+   move to `Batch 51`, and do not reopen `K0b`, `Batch 47`, landed `Batch 48`, landed `Batch 49`,
+   landed `Batch 49b`, or landed `Batch 50a`
 3. run planner, theory, and verification passes
 4. freeze the owned surface
 5. implement narrowly

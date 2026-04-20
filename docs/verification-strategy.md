@@ -8,7 +8,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- authoritative `main` base is `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- current `main` / `origin/main` head is `95f33f398bbdebf2084bf360a498fea3de89fc30`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
@@ -55,15 +56,61 @@ The migration is phase-gated. Every phase must pass:
   seam and truthful early failure for `Branch` / `Loop`; it does not accept real selector
   semantics, `AnalyzeTopSector` parity, graph-polynomial availability, or broader topology
   analysis
-- `Batch 50b` is now the current local packet only: an internal topology-prerequisite bridge and
-  prereq-snapshot seam for `Branch` / `Loop`, still blocked, still unaccepted, and still deferring
-  truthful selector semantics to `Batch 50`
-- local module-loaded `cmake -S . -B build`, `cmake --build build --parallel 1`, and
-  `ctest --test-dir build --output-on-failure` passed for the current `Batch 50b` worktree packet
+- landed `Batch 50b` on current `main` is the internal topology-prerequisite bridge and
+  prereq-snapshot seam for `Branch` / `Loop`, still blocked and still deferring truthful selector
+  semantics to `Batch 50`
+- current-thread local module-loaded `cmake -S . -B build`, `cmake --build build --parallel 1`,
+  and `ctest --test-dir build --output-on-failure` passed again for that landed `Batch 50b`
+  surface, and secondary review found no material findings on the declared narrow scope
 - clean-candidate attempt `5480669` is not acceptance evidence: that submission OOM-killed during
   configure because it omitted an explicit memory request
-- `Batch 50` remains the next roadmap-owned selector-semantics lane after `Batch 50b`, while
-  `M0b` remains separately open and still blocks broader parity claims
+- a later clean-candidate job `5482487` did pass for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`
+  under retained artifact root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
+  and the durable docs now record that evidence
+- the current local `Batch 50` worktree packet now implements a first supported `Branch` / `Loop`
+  selector slice over the single-top-sector squared-linear-momentum subset: local
+  `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build
+  --output-on-failure`, and `./build/amflow-tests` all passed
+- second-pass rereview on that local `Batch 50` packet found no material issues, and final
+  clean-candidate job `6265957` passed for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50-final-clean-candidate-20260417T191228Z-2a59f577`
+  under retained artifact root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50-final-clean-candidate-20260417T191228Z-2a59f577`;
+  the packet is still not landed, so `M0b` remains separately open and broader parity claims stay
+  blocked
+- the current local `Batch 51` worktree packet now adds ordered multi-invariant
+  `BuildInvariantGeneratedDESystemList(...)` / `SolveInvariantGeneratedSeriesList(...)` wrappers
+  over the reviewed one-invariant automatic invariant-generated path: local `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
+  `./build/amflow-tests` all passed
+- second-pass rereview on that local `Batch 51` packet found no material runtime issues after
+  tightening order-preservation, invalid-name, and artifact-isolation coverage; no
+  clean-candidate or landing evidence exists yet, so broader parity and acceptance claims remain
+  blocked
+- the current local `Batch 52` worktree packet now widens `BuildInvariantDerivativeSeed(...)` to
+  accept invariant-independent identifier or rational-constant propagator masses on the bootstrap
+  subset: local `cmake -S . -B build`, `cmake --build build --parallel 1`,
+  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed
+- second-pass rereview on that local `Batch 52` packet found no concrete issues after tightening
+  the accepted mass surface to exact identifiers or nonzero-denominator rational constants
+- the current local `Batch 53` worktree packet now adds the first multiple-top-sector Kira target
+  orchestration slice over the accepted preparation/execution seams: local `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
+  `./build/amflow-tests` all passed
+- second-pass rereview on that local `Batch 53` packet found no material findings after
+  hardening prep-side sector validation and invalid-configuration coverage
+- the current local `Batch 54` worktree packet now adds precision-budget preflight plus an
+  internal retry controller on generated-solver handoffs; direct
+  `SolveDifferentialEquation(...)` is still passthrough. Local `cmake -S . -B build`,
+  `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`, and
+  `./build/amflow-tests` all passed
+- second-pass rereview on that local `Batch 54` packet found no material findings after the
+  hard-cap fix and direct insufficient-precision regressions
+- `Batch 54` still lacks clean-candidate evidence and landing, and `Batch 55` remains blocked on
+  closing the standalone wrapper gap and retiring helper-only retry tests in favour of
+  wrapper-path coverage
 
 ## Test Taxonomy
 
@@ -119,6 +166,13 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50a-final-clean-candidate-20260413T123155Z-1gWbow`;
   final status `COMPLETED` on `holy8a32607` in `00:00:32`, and the landing commit is
   `bbd7b744b69a413bf34e4b706cd737e2b266256a`
+- current `main` additionally carries landed `Batch 50b` at commit
+  `95f33f398bbdebf2084bf360a498fea3de89fc30`; local verification was rerun successfully in the
+  current thread, and the latest recorded clean-candidate gate for that landed packet is job
+  `5482487` for candidate
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`
+  under retained artifact root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
@@ -126,9 +180,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   but they do not support any upstream parity claim
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
   manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, landed `Batch 49`, landed `Batch 49b`,
-  and landed `Batch 50a` are now also satisfied narrowly on the supported sample subset on `main`,
-  while broader Kira smoke, broader reducer parity, `Batch 50b`, `Batch 50`, `M0b`, and later
-  parity milestones remain separate future gates
+  and landed `Batch 50a` are now also satisfied narrowly on the supported sample subset on the last
+  fully accepted baseline, while landed `Batch 50b`, `Batch 50`, broader Kira smoke, broader
+  reducer parity, `M0b`, and later parity milestones remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 

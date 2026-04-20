@@ -37,6 +37,8 @@ struct PrecisionPolicy {
 
 PrecisionDecision EvaluatePrecision(const PrecisionPolicy& policy,
                                     const PrecisionObservation& observation);
+PrecisionDecision EvaluatePrecisionBudget(const PrecisionPolicy& policy,
+                                          int requested_digits);
 std::string DescribePrecisionPolicy(const PrecisionPolicy& policy);
 
 }  // namespace amflow

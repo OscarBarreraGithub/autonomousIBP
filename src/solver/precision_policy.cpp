@@ -1,5 +1,6 @@
 #include "amflow/solver/precision_policy.hpp"
 
+#include <algorithm>
 #include <sstream>
 
 namespace amflow {
@@ -25,7 +26,37 @@ PrecisionDecision EvaluatePrecision(const PrecisionPolicy& policy,
 
   if (policy.working_precision >= policy.max_working_precision) {
     decision.status = PrecisionStatus::Rejected;
-    decision.reason = "precision ceiling reached before satisfying the stability checks";
+    decision.reason =
+        "insufficient_precision: precision ceiling reached before satisfying the stability "
+        "checks";
+    return decision;
+  }
+
+  decision.status = PrecisionStatus::Escalate;
+  decision.reason = "raise working precision and truncation order";
+  return decision;
+}
+
+PrecisionDecision EvaluatePrecisionBudget(const PrecisionPolicy& policy,
+                                          const int requested_digits) {
+  const int effective_working_precision =
+      std::min(policy.working_precision, policy.max_working_precision);
+  PrecisionDecision decision;
+  decision.suggested_working_precision = effective_working_precision + policy.escalation_step;
+  decision.suggested_x_order = policy.x_order + policy.x_order_step;
+
+  if (requested_digits <= effective_working_precision) {
+    decision.status = PrecisionStatus::Accepted;
+    decision.suggested_working_precision = effective_working_precision;
+    decision.suggested_x_order = policy.x_order;
+    decision.reason = "requested digits are already covered by the current working precision";
+    return decision;
+  }
+
+  if (requested_digits > policy.max_working_precision) {
+    decision.status = PrecisionStatus::Rejected;
+    decision.reason =
+        "insufficient_precision: requested digits exceed the configured precision ceiling";
     return decision;
   }
 

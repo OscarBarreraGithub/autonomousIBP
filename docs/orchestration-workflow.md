@@ -25,9 +25,9 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was local `2f2538b` after `Batch 58e`
-- landed `Batch 56` through `Batch 58` are now present on `main` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, and `a5d627f906dfb2c5829bda88dce2407bfa67f043`, on top of landed `Batch 50` through `Batch 55`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 58`; `Milestone M1` is complete
+- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local `main` matches that landed `Batch 58g` tip, while local tracking `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed
+- landed `Batch 56` through `Batch 58g` are now present in actual `main` history at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, on top of landed `Batch 50` through `Batch 55`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58g`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -92,17 +92,17 @@ The workflow is optimized for the current repo shape:
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - `M0b` is accepted; the repo already had a first explicit in-repo prefactor/sign-convention
-  surface from `Batch 58b`, and current `main` through `899ad7f` now includes landed `Batch 58d`
-  prefactor mirror lock coverage over the locked evidence packet. `tests/amflow_tests.cpp`
-  cross-checks
+  surface from `Batch 58b`, and actual `main` through `53ec6a4` now includes landed `Batch 58d`
+  prefactor mirror lock coverage over the locked evidence packet plus landed `Batch 58g` first
+  mandatory-family retained-span evidence. `tests/amflow_tests.cpp` cross-checks
   `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while retained `+i0` / cut backing and the
   snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure still remains open
-  until the first mandatory-family reduction-span evidence exists and Kira `insert_prefactors`
-  wiring is in place
+  until broader mandatory-family reduction-span parity beyond that first landed packet and Kira
+  `insert_prefactors` wiring are in place
 - truthful `Milestone M4` closure is now supported, but only narrowly on the current reviewed
-  exact subset
-- the `M4`-closing docs-only lane is `Batch 58f`:
+  exact subset via landed `Batch 58f`
+- the `M4`-closing landed tests/docs lane is `Batch 58f`:
   `tests/amflow_tests.cpp` already includes
   `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
   `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both using
@@ -116,11 +116,11 @@ The workflow is optimized for the current repo shape:
   diagnostic invariance plus the existing hard-ceiling threshold failure already covered by
   `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. Together with landed
-  `Batch 54` through `Batch 58` plus current-worktree `Batch 58e`, this closes the remaining direct
+  `Batch 54` through `Batch 58e`, this closes the remaining direct
   precision-monotonicity gap on the reviewed exact subset only. This packet does not widen runtime behavior, broader
   cache/restart semantics, broader monotone digit refinement, standalone
   `SolveDifferentialEquation(...)` runtime-policy parity, or `Milestone M3`, which still turns
-  on first mandatory-family reduction-span evidence plus Kira `insert_prefactors`
+  on broader mandatory-family reduction-span parity beyond landed `Batch 58g` plus Kira `insert_prefactors`
 
 ## Mandatory Read Set Before Planning
 

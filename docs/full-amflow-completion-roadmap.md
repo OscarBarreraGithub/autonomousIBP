@@ -68,8 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `a5d627f906dfb2c5829bda88dce2407bfa67f043`, which carries landed `Batch 58` on top of landed `Batch 56` through `Batch 57` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98` and `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, plus landed `Batch 50` through `Batch 55` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 58`, while `Milestone M1` remains complete only on the accepted reviewed surface
+- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`, which carries landed `Batch 58g` on top of landed `Batch 58f` at `7d3806a`, landed `Batch 58e` at `2f2538b`, landed `Batch 58` at `a5d627f906dfb2c5829bda88dce2407bfa67f043`, landed `Batch 56` through `Batch 57` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98` and `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, plus landed `Batch 50` through `Batch 55` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`; local `main` matches that tip while local `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on actual `main` now extends beyond that baseline through landed `Batch 58g`, while `Milestone M1` remains complete only on the accepted reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set only: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -148,19 +148,20 @@ exit gate. The current live state must always be read from `docs/implementation-
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - truthful `Milestone M3` closure review was reconsidered after `M0b`; the repo now has a first
-  explicit in-repo prefactor/sign-convention surface and tests, and current `main` through
-  `899ad7f` now includes `Batch 58d` ROLE B coverage over the locked prefactor evidence packet:
+  explicit in-repo prefactor/sign-convention surface and tests, and actual `main` through
+  `53ec6a4` now includes `Batch 58d` ROLE B coverage over the locked prefactor evidence packet
+  plus landed `Batch 58g` first mandatory-family retained-span evidence:
   `tests/amflow_tests.cpp`
   cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while the retained phase-0 README still backs the
   `+i0` loop prefactor and cut prefactor, the explicit `-i0` loop-prefactor note remains
   repo-snapshot backed only, and retained `AMFlow.m` is cited only for prescription polarity.
-  `M3` still remains open because the first mandatory-family reduction-span parity evidence is
-  still missing
-- truthful `Milestone M4` closure was reconsidered after `Batch 58`, and current local
+  `M3` still remains open because broader mandatory-family reduction-span parity beyond that
+  first landed packet and Kira `insert_prefactors` wiring are still missing
+- truthful `Milestone M4` closure was reconsidered after landed `Batch 58f`, and landed
   `Batch 58f` now records the remaining direct precision-monotonicity gap as closed on the
   current reviewed exact subset only
-- the current `M4`-closing docs-only lane is therefore `Batch 58f`:
+- the current `M4`-closing landed tests/docs lane is therefore `Batch 58f`:
   `tests/amflow_tests.cpp` already includes
   `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
   `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both driven by
@@ -174,13 +175,13 @@ exit gate. The current live state must always be read from `docs/implementation-
   diagnostic invariance plus the existing hard-ceiling threshold failure already covered by
   `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. Together with landed
-  `Batch 54` through `Batch 58` plus current-worktree `Batch 58e` explicit failure-code, cache,
+  `Batch 54` through `Batch 58e` explicit failure-code, cache,
   `UseCache`, and `SkipReduction` coverage, that closes `Milestone M4` narrowly on the
-  implemented exact subset only. This is
-  docs/tests only: it does not widen runtime behavior, broader cache/restart semantics, broader
+  implemented exact subset only. This packet is still narrow: it does not widen runtime behavior, broader cache/restart semantics, broader
   monotone digit refinement, standalone `SolveDifferentialEquation(...)` / solver-policy parity
-  beyond that reviewed exact subset, or `Milestone M3`, which still turns on first-family
-  reduction-span parity plus Kira `insert_prefactors` wiring rather than further `M4` work
+  beyond that reviewed exact subset, or `Milestone M3`, which still turns on broader
+  mandatory-family reduction-span parity beyond the first landed `Batch 58g` packet plus Kira
+  `insert_prefactors` wiring rather than further `M4` work
 
 ## Current State At R0
 
@@ -364,7 +365,12 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
-- current local `Batch 58f` records the remaining direct precision-monotonicity gap as closed on
+- landed `Batch 58g` on actual `main` now widens Kira preparation `r` spans on exact-sector
+  positive-support matches and records the first mandatory-family retained-span evidence packet;
+  broader mandatory-family reduction-span parity beyond that first landed packet and Kira
+  `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
+- landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
+  precision-monotonicity gap as closed on
   the current reviewed exact subset only: `tests/amflow_tests.cpp` already carries
   `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
   `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()` for under-cap
@@ -375,8 +381,9 @@ Current status:
   threshold behavior explicit. This is enough to close `Milestone M4` narrowly on that
   implemented exact subset, but it does not widen runtime behavior, broader cache/restart
   semantics, broader monotone digit refinement, or standalone
-  `SolveDifferentialEquation(...)` runtime-policy parity. First-family reduction-span parity and
-  Kira `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
+  `SolveDifferentialEquation(...)` runtime-policy parity. Broader mandatory-family
+  reduction-span parity beyond the first landed `Batch 58g` packet and Kira
+  `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
 
 ### Track F: Feature-Surface Parity
 

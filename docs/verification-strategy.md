@@ -8,8 +8,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was local `2f2538b` after `Batch 58e`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 58`
+- the actual SSH remote `main` head for this packet is `53ec6a477c950f6242162da6b38e2ed1fab0079f`; local `main` matches that landed `Batch 58g` tip, while local tracking `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58g`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -93,8 +93,12 @@ The migration is phase-gated. Every phase must pass:
   policy on those same two overloads. Solved-path input/request fingerprinting and
   `skip_reduction` replay validation now treat those fields as live inputs there, while public
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
-- current local `Batch 58f` is docs-only and records the remaining direct precision-monotonicity
-  evidence already present on the current reviewed exact subset:
+- landed `Batch 58g` on actual `main` now adds target-aware Kira reduction-span widening on
+  exact-sector positive-support matches plus the first mandatory-family retained-span evidence
+  packet; broader mandatory-family reduction-span parity beyond that first landed packet and Kira
+  `insert_prefactors` wiring still remain open
+- landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
+  precision-monotonicity evidence on the current reviewed exact subset:
   `tests/amflow_tests.cpp` includes
   `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
   `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both driven by
@@ -109,8 +113,9 @@ The migration is phase-gated. Every phase must pass:
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`, this closes `Milestone M4`
   narrowly on that implemented exact subset only. This packet does not widen runtime behavior,
   broader cache/restart semantics, broader monotone digit refinement, standalone solver-policy
-  parity beyond the reviewed exact subset, or `Milestone M3`; first-family reduction-span parity
-  and Kira `insert_prefactors` wiring still remain open
+  parity beyond the reviewed exact subset, or `Milestone M3`; broader mandatory-family
+  reduction-span parity beyond the first landed `Batch 58g` packet and Kira
+  `insert_prefactors` wiring still remain open
 
 ## Test Taxonomy
 

@@ -30,13 +30,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
-- the starting `main` state for this packet additionally carried landed `Batch 50b` through
-  `Batch 58` plus local `Batch 58e` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
+- the actual SSH remote `main` state for this packet carries landed `Batch 50b` through
+  `Batch 58g` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
   `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
   `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
   `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
   `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`,
-  and `2f2538b`;
+  `2f2538b`, `7d3806a`, and `53ec6a4`; local `main` matches that tip while local tracking
+  `origin/main` remains stale at `899ad7f` because the configured HTTPS remote has not refreshed;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -50,7 +51,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `SolveDifferentialEquation(...)` remains passthrough, landed `Batch 55` adds typed
   generated-wrapper `master_set_instability` plus `continuation_budget_exhausted` diagnostics,
   landed `Batch 56` adds solved-path cache replay, landed `Batch 57` adds wrapper-only
-  `SkipReduction` reuse, and landed `Batch 58` wires the live `AmfOptions` solver-policy fields
+  `SkipReduction` reuse, landed `Batch 58` wires the live `AmfOptions` solver-policy fields,
+  and landed `Batch 58g` adds target-aware Kira reduction-span widening on exact-sector
+  positive-support matches plus the first mandatory-family retained-span evidence packet
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
@@ -114,18 +117,19 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   coverage, broader propagator grammar support, linear-propagator support, full upstream
   `AnalyzeTopSector` / component-factorization parity, or `Propagator::prescription`
   interpretation
-- current worktree `Batch 58e` adds only a narrow docs/tests packet on the resolved/user-defined
+- landed `Batch 58e` adds only a narrow tests/docs packet on the resolved/user-defined
   plain `UseCache` replay path for `SolveAmfOptionsEtaModeSeries(...)`:
   `tests/amflow_tests.cpp` seeds one successful solved-path run, checks that the solved-path
   manifest records the resolved `solve_kind` and request fingerprint truthfully, and then
   verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics` without
   invoking the live solver. This does not widen runtime behavior, broader cache/restart
   semantics, or standalone `SolveDifferentialEquation(...)` / runtime-policy parity. The
-  prefactor groundwork through landed `Batch 58d` remains history only; Kira
-  `insert_prefactors` wiring and first-family reduction-span parity still remain open before
+  prefactor groundwork through landed `Batch 58d` remains history only; landed `Batch 58g` now
+  supplies the first mandatory-family retained-span evidence packet, but broader reduction-span
+  parity beyond that first packet and Kira `insert_prefactors` wiring still remain open before
   `Milestone M3`
-- current local `Batch 58f` is docs-only and records the remaining direct precision-monotonicity
-  gap as closed on the current reviewed exact subset only:
+- landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
+  precision-monotonicity gap as closed on the current reviewed exact subset only:
   `tests/amflow_tests.cpp` already includes
   `BootstrapSeriesSolverExactSubsetRequestedDigitsMonotonicityTest()` and
   `SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest()`, both using
@@ -138,10 +142,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   that cap, so this is not a broader monotone digit-refinement claim; the matching hard-ceiling
   threshold failure remains covered by `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. With landed `Batch 54`
-  through `Batch 58` plus current-worktree `Batch 58e` failure-code, cache, `UseCache`, and
+  through `Batch 58e` failure-code, cache, `UseCache`, and
   `SkipReduction` coverage, this closes `Milestone M4` narrowly on that implemented exact subset
   only. It does not widen runtime
-  behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`
+  behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`,
+  which still depends on broader mandatory-family reduction-span parity beyond landed `Batch 58g`
+  plus Kira `insert_prefactors` wiring
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

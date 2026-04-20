@@ -163,7 +163,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     int requested_digits);
 
-std::vector<SolverDiagnostics> SolveInvariantGeneratedSeriesList(
+SolverDiagnostics SolveInvariantGeneratedSeriesList(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
     const std::vector<std::string>& invariant_names,

@@ -26,7 +26,7 @@ DESystem BuildInvariantGeneratedDESystem(
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable);
 
-std::vector<DESystem> BuildInvariantGeneratedDESystemList(
+DESystem BuildInvariantGeneratedDESystemList(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
     const std::vector<std::string>& invariant_names,

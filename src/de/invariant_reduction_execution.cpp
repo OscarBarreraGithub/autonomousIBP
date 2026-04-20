@@ -1,9 +1,9 @@
 #include "amflow/de/invariant_reduction_execution.hpp"
 
-#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace amflow {
 
@@ -23,29 +23,6 @@ std::string StatusToString(const CommandExecutionStatus status) {
       return "signaled";
   }
   return "unknown";
-}
-
-std::string SanitizeInvariantLayoutComponent(const std::string& invariant_name) {
-  std::string sanitized;
-  sanitized.reserve(invariant_name.size());
-  for (const unsigned char current : invariant_name) {
-    const bool safe = (current >= 'a' && current <= 'z') || (current >= 'A' && current <= 'Z') ||
-                      (current >= '0' && current <= '9') || current == '-' || current == '_';
-    sanitized.push_back(safe ? static_cast<char>(current) : '-');
-  }
-  if (sanitized.empty()) {
-    return "invariant";
-  }
-  return sanitized;
-}
-
-ArtifactLayout MakeInvariantIterationLayout(const ArtifactLayout& parent,
-                                            const std::size_t ordinal,
-                                            const std::string& invariant_name) {
-  std::ostringstream label;
-  label << "invariant-" << std::setw(4) << std::setfill('0') << (ordinal + 1) << "-"
-        << SanitizeInvariantLayoutComponent(invariant_name);
-  return EnsureArtifactLayout(parent.root / label.str());
 }
 
 InvariantGeneratedReductionExecution ExecuteInvariantGeneratedReduction(
@@ -81,6 +58,54 @@ InvariantGeneratedReductionExecution ExecuteInvariantGeneratedReduction(
   execution.assembled_system =
       AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
   return execution;
+}
+
+DESystem BuildInvariantGeneratedDESystemFromBatchPreparation(
+    const ParsedMasterList& master_basis,
+    InvariantGeneratedReductionBatchPreparation preparation,
+    const std::string& family_name,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable) {
+  ParsedReductionResult parsed_reduction_result;
+  if (preparation.reduction_result_override.has_value()) {
+    parsed_reduction_result = *preparation.reduction_result_override;
+  } else {
+    KiraBackend backend;
+    const CommandExecutionResult execution_result =
+        backend.ExecutePrepared(preparation.backend_preparation,
+                                layout,
+                                kira_executable,
+                                fermat_executable);
+    if (!execution_result.Succeeded()) {
+      std::ostringstream message;
+      message << "automatic invariant DE construction requires successful reducer execution; "
+              << "status=" << StatusToString(execution_result.status)
+              << "; exit_code=" << execution_result.exit_code
+              << "; stderr_log=" << execution_result.stderr_log_path.string();
+      if (!execution_result.error_message.empty()) {
+        message << "; error=" << execution_result.error_message;
+      }
+      throw std::runtime_error(message.str());
+    }
+    if (execution_result.working_directory.empty()) {
+      throw std::runtime_error("successful invariant-generated reduction execution did not record "
+                               "a working-directory artifact root");
+    }
+    parsed_reduction_result =
+        backend.ParseReductionResult(execution_result.working_directory, family_name);
+  }
+
+  std::vector<GeneratedDerivativeVariableReductionInput> variable_inputs;
+  variable_inputs.reserve(preparation.generated_variables.size());
+  for (auto& generated_variable : preparation.generated_variables) {
+    GeneratedDerivativeVariableReductionInput variable_input;
+    variable_input.generated_variable = std::move(generated_variable);
+    variable_input.reduction_result = parsed_reduction_result;
+    variable_inputs.push_back(std::move(variable_input));
+  }
+
+  return AssembleGeneratedDerivativeDESystem(master_basis, variable_inputs);
 }
 
 }  // namespace
@@ -119,7 +144,7 @@ DESystem BuildInvariantGeneratedDESystem(
   return *execution.assembled_system;
 }
 
-std::vector<DESystem> BuildInvariantGeneratedDESystemList(
+DESystem BuildInvariantGeneratedDESystemList(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
     const std::vector<std::string>& invariant_names,
@@ -132,19 +157,13 @@ std::vector<DESystem> BuildInvariantGeneratedDESystemList(
         "automatic invariant DE construction list requires at least one invariant name");
   }
 
-  std::vector<DESystem> systems;
-  systems.reserve(invariant_names.size());
-  for (std::size_t index = 0; index < invariant_names.size(); ++index) {
-    systems.push_back(BuildInvariantGeneratedDESystem(spec,
-                                                     master_basis,
-                                                     invariant_names[index],
-                                                     options,
-                                                     MakeInvariantIterationLayout(
-                                                         layout, index, invariant_names[index]),
-                                                     kira_executable,
-                                                     fermat_executable));
-  }
-  return systems;
+  return BuildInvariantGeneratedDESystemFromBatchPreparation(
+      master_basis,
+      PrepareInvariantGeneratedReductionList(spec, master_basis, invariant_names, options, layout),
+      spec.family.name,
+      layout,
+      kira_executable,
+      fermat_executable);
 }
 
 InvariantGeneratedReductionExecution RunInvariantGeneratedReduction(

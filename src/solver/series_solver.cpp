@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cctype>
 #include <exception>
-#include <iomanip>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -104,29 +103,6 @@ std::string RemoveWhitespace(const std::string& value) {
     }
   }
   return normalized;
-}
-
-std::string SanitizeInvariantLayoutComponent(const std::string& invariant_name) {
-  std::string sanitized;
-  sanitized.reserve(invariant_name.size());
-  for (const unsigned char current : invariant_name) {
-    const bool safe = (current >= 'a' && current <= 'z') || (current >= 'A' && current <= 'Z') ||
-                      (current >= '0' && current <= '9') || current == '-' || current == '_';
-    sanitized.push_back(safe ? static_cast<char>(current) : '-');
-  }
-  if (sanitized.empty()) {
-    return "invariant";
-  }
-  return sanitized;
-}
-
-ArtifactLayout MakeInvariantIterationLayout(const ArtifactLayout& parent,
-                                            const std::size_t ordinal,
-                                            const std::string& invariant_name) {
-  std::ostringstream label;
-  label << "invariant-" << std::setw(4) << std::setfill('0') << (ordinal + 1) << "-"
-        << SanitizeInvariantLayoutComponent(invariant_name);
-  return EnsureArtifactLayout(parent.root / label.str());
 }
 
 bool HasDeclaredVariable(const DESystem& system, const std::string& variable_name) {
@@ -2769,7 +2745,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
   return SolveWithPrecisionRetry(solver, std::move(request));
 }
 
-std::vector<SolverDiagnostics> SolveInvariantGeneratedSeriesList(
+SolverDiagnostics SolveInvariantGeneratedSeriesList(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
     const std::vector<std::string>& invariant_names,
@@ -2787,24 +2763,26 @@ std::vector<SolverDiagnostics> SolveInvariantGeneratedSeriesList(
         "automatic invariant solver handoff list requires at least one invariant name");
   }
 
-  std::vector<SolverDiagnostics> diagnostics;
-  diagnostics.reserve(invariant_names.size());
-  for (std::size_t index = 0; index < invariant_names.size(); ++index) {
-    diagnostics.push_back(SolveInvariantGeneratedSeries(
-        spec,
-        master_basis,
-        invariant_names[index],
-        options,
-        MakeInvariantIterationLayout(layout, index, invariant_names[index]),
-        kira_executable,
-        fermat_executable,
-        solver,
-        start_location,
-        target_location,
-        precision_policy,
-        requested_digits));
+  SolveRequest request;
+  try {
+    request.system = BuildInvariantGeneratedDESystemList(spec,
+                                                         master_basis,
+                                                         invariant_names,
+                                                         options,
+                                                         layout,
+                                                         kira_executable,
+                                                         fermat_executable);
+  } catch (const std::runtime_error& error) {
+    if (IsMasterSetInstabilityMessage(error.what())) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+    throw;
   }
-  return diagnostics;
+  request.start_location = start_location;
+  request.target_location = target_location;
+  request.precision_policy = precision_policy;
+  request.requested_digits = requested_digits;
+  return SolveWithPrecisionRetry(solver, std::move(request));
 }
 
 SolverDiagnostics SolveEtaGeneratedSeries(

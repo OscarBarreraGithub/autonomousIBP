@@ -324,6 +324,145 @@ bool SameSolverDiagnostics(const amflow::SolverDiagnostics& lhs,
          lhs.failure_code == rhs.failure_code && lhs.summary == rhs.summary;
 }
 
+[[maybe_unused]] const amflow::DESystem& RequireJointInvariantDESystemResult(
+    const amflow::DESystem& system,
+    const std::string&) {
+  return system;
+}
+
+[[maybe_unused]] const amflow::DESystem& RequireJointInvariantDESystemResult(
+    const std::vector<amflow::DESystem>&,
+    const std::string& message) {
+  throw std::runtime_error(message);
+}
+
+[[maybe_unused]] const amflow::SolverDiagnostics& RequireJointInvariantSolverDiagnosticsResult(
+    const amflow::SolverDiagnostics& diagnostics,
+    const std::string&) {
+  return diagnostics;
+}
+
+[[maybe_unused]] const amflow::SolverDiagnostics& RequireJointInvariantSolverDiagnosticsResult(
+    const std::vector<amflow::SolverDiagnostics>&,
+    const std::string& message) {
+  throw std::runtime_error(message);
+}
+
+amflow::DESystem CombineSingleVariableDESystemsInOrder(
+    const std::vector<amflow::DESystem>& systems) {
+  if (systems.empty()) {
+    throw std::runtime_error("combined invariant regression harness requires at least one system");
+  }
+
+  amflow::DESystem combined;
+  combined.masters = systems.front().masters;
+  combined.singular_points = systems.front().singular_points;
+
+  for (const auto& system : systems) {
+    if (system.masters.size() != combined.masters.size()) {
+      throw std::runtime_error("combined invariant regression harness requires a stable master "
+                               "basis across single-invariant systems");
+    }
+    for (std::size_t master_index = 0; master_index < combined.masters.size(); ++master_index) {
+      if (!SameMasterIntegral(system.masters[master_index], combined.masters[master_index])) {
+        throw std::runtime_error("combined invariant regression harness requires matching master "
+                                 "integrals across single-invariant systems");
+      }
+    }
+    if (system.singular_points != combined.singular_points) {
+      throw std::runtime_error("combined invariant regression harness requires matching singular "
+                               "point sets across single-invariant systems");
+    }
+    if (system.variables.size() != 1) {
+      throw std::runtime_error("combined invariant regression harness requires one "
+                               "differentiation variable per source system");
+    }
+
+    const amflow::DifferentiationVariable& variable = system.variables.front();
+    const auto matrix_it = system.coefficient_matrices.find(variable.name);
+    if (matrix_it == system.coefficient_matrices.end()) {
+      throw std::runtime_error("combined invariant regression harness requires the coefficient "
+                               "matrix for the source variable");
+    }
+    if (!combined.coefficient_matrices.emplace(variable.name, matrix_it->second).second) {
+      throw std::runtime_error("combined invariant regression harness encountered a duplicate "
+                               "source variable name: " +
+                               variable.name);
+    }
+    combined.variables.push_back(variable);
+  }
+
+  const std::vector<std::string> validation_messages = amflow::ValidateDESystem(combined);
+  if (!validation_messages.empty()) {
+    throw std::runtime_error("combined invariant regression harness built an invalid DESystem");
+  }
+  return combined;
+}
+
+std::vector<std::vector<std::string>> MakeZeroCoefficientMatrix(const std::size_t dimension) {
+  return std::vector<std::vector<std::string>>(dimension,
+                                               std::vector<std::string>(dimension, "0"));
+}
+
+amflow::DESystem MakeSingleVariableZeroInvariantDESystem(
+    const amflow::ParsedMasterList& master_basis,
+    const std::string& invariant_name) {
+  amflow::DESystem system;
+  system.masters.reserve(master_basis.masters.size());
+  for (const auto& master : master_basis.masters) {
+    system.masters.push_back({master.family, master.indices, master.Label()});
+  }
+  system.variables.push_back({invariant_name, amflow::DifferentiationVariableKind::Invariant});
+  system.coefficient_matrices.emplace(invariant_name,
+                                      MakeZeroCoefficientMatrix(master_basis.masters.size()));
+  const std::vector<std::string> validation_messages = amflow::ValidateDESystem(system);
+  if (!validation_messages.empty()) {
+    throw std::runtime_error("zero invariant regression harness built an invalid DESystem");
+  }
+  return system;
+}
+
+amflow::DESystem MakeExpectedZeroBlockJointInvariantDESystem(
+    const amflow::DESystem& baseline_nonzero_system,
+    const std::string& zero_invariant_name) {
+  if (baseline_nonzero_system.variables.size() != 1) {
+    throw std::runtime_error("zero-block invariant regression harness requires one baseline "
+                             "differentiation variable");
+  }
+
+  amflow::DESystem expected = baseline_nonzero_system;
+  expected.variables.insert(expected.variables.begin(),
+                            {zero_invariant_name,
+                             baseline_nonzero_system.variables.front().kind});
+  expected.coefficient_matrices.emplace(zero_invariant_name,
+                                        MakeZeroCoefficientMatrix(expected.masters.size()));
+
+  const std::vector<std::string> validation_messages = amflow::ValidateDESystem(expected);
+  if (!validation_messages.empty()) {
+    throw std::runtime_error("zero-block invariant regression harness built an invalid "
+                             "DESystem");
+  }
+  return expected;
+}
+
+[[maybe_unused]] amflow::DESystem MakeJointZeroInvariantDESystem(
+    const amflow::ParsedMasterList& master_basis,
+    const std::vector<std::string>& invariant_names) {
+  std::vector<amflow::DESystem> systems;
+  systems.reserve(invariant_names.size());
+  for (const auto& invariant_name : invariant_names) {
+    systems.push_back(MakeSingleVariableZeroInvariantDESystem(master_basis, invariant_name));
+  }
+  return CombineSingleVariableDESystemsInOrder(systems);
+}
+
+[[maybe_unused]] amflow::DESystem MakeExpectedAllZeroTwoVariableInvariantDESystem(
+    const amflow::ParsedMasterList& master_basis) {
+  return CombineSingleVariableDESystemsInOrder(
+      {MakeSingleVariableZeroInvariantDESystem(master_basis, "t"),
+       MakeSingleVariableZeroInvariantDESystem(master_basis, "s")});
+}
+
 bool SameExactRationalMatrix(const amflow::ExactRationalMatrix& lhs,
                              const amflow::ExactRationalMatrix& rhs) {
   if (lhs.size() != rhs.size()) {
@@ -1620,6 +1759,42 @@ amflow::ProblemSpec MakeAutoInvariantAllZeroProblemSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeAutoInvariantMixedZeroProblemSpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_auto_mixed_zero_family";
+  spec.family.loop_momenta = {"k"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(k-p1-p2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k)^2)", "0", amflow::PropagatorKind::Standard, -1},
+  };
+  spec.kinematics.incoming_momenta = {"p1", "p2"};
+  spec.kinematics.outgoing_momenta = {};
+  spec.kinematics.momentum_conservation = "p1 + p2 = 0";
+  spec.kinematics.invariants = {"t", "s"};
+  spec.kinematics.scalar_product_rules = {
+      {"p1*p1", "0"},
+      {"p2*p2", "0"},
+      {"p1*p2", "s/2"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+      {"t", "17"},
+  };
+  spec.targets = {
+      {"toy_auto_mixed_zero_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+  return spec;
+}
+
+amflow::ProblemSpec MakeAutoInvariantAllZeroListProblemSpec() {
+  amflow::ProblemSpec spec = MakeAutoInvariantAllZeroProblemSpec();
+  spec.kinematics.invariants = {"t", "s"};
+  return spec;
+}
+
 amflow::ProblemSpec MakeAutoInvariantWholeFactorProblemSpec() {
   amflow::ProblemSpec spec;
   spec.family.name = "toy_auto_factor_family";
@@ -1656,6 +1831,24 @@ amflow::ParsedMasterList MakeAutoInvariantWholeFactorMasterBasis() {
   master_basis.family = "toy_auto_factor_family";
   master_basis.masters = {
       {"toy_auto_factor_family", {1, 1, 1}},
+  };
+  return master_basis;
+}
+
+amflow::ParsedMasterList MakeAutoInvariantMixedZeroMasterBasis() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_mixed_zero_family";
+  master_basis.masters = {
+      {"toy_auto_mixed_zero_family", {1, 1, 1}},
+  };
+  return master_basis;
+}
+
+amflow::ParsedMasterList MakeAutoInvariantAllZeroMasterBasis() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_zero_family";
+  master_basis.masters = {
+      {"toy_auto_zero_family", {1, 1}},
   };
   return master_basis;
 }
@@ -1780,10 +1973,24 @@ std::string MakeAutoInvariantWholeFactorSRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantMixedZeroSRuleFile() {
+  return "{\n"
+         "  toy_auto_mixed_zero_family[1,0,2] -> 2*toy_auto_mixed_zero_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantWholeFactorTRuleFile() {
   return "{\n"
          "  toy_auto_factor_family[0,2,1] -> 3*toy_auto_factor_family[1,1,1],\n"
          "  toy_auto_factor_family[0,1,2] -> 5*toy_auto_factor_family[1,1,1]\n"
+         "}\n";
+}
+
+std::string MakeAutoInvariantWholeFactorCombinedRuleFile() {
+  return "{\n"
+         "  toy_auto_factor_family[0,2,1] -> 3*toy_auto_factor_family[1,1,1],\n"
+         "  toy_auto_factor_family[0,1,2] -> 5*toy_auto_factor_family[1,1,1],\n"
+         "  toy_auto_factor_family[1,0,2] -> 2*toy_auto_factor_family[1,1,1]\n"
          "}\n";
 }
 
@@ -1835,6 +2042,27 @@ std::string MakeAutoInvariantWholeFactorResultScript(const std::string& rule_fil
   return script.str();
 }
 
+std::string MakeAutoInvariantMixedZeroResultScript(const std::string& rule_file_contents,
+                                                   const bool write_stdout = true,
+                                                   const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_mixed_zero_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+  script << "EOF\n";
+  script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << rule_file_contents;
+  script << "EOF\n";
+  if (write_stdout) {
+    script << "echo \"mixed-zero:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::string MakeAutoInvariantWholeFactorListResultScript(const bool fail_second_t = false) {
   std::ostringstream script;
   script << "#!/bin/sh\n";
@@ -1845,12 +2073,6 @@ std::string MakeAutoInvariantWholeFactorListResultScript(const bool fail_second_
   script << "toy_auto_factor_family[1,1,1] 0\n";
   script << "EOF\n";
   script << "layout_name=\"$(basename \"$(dirname \"$PWD\")\")\"\n";
-  if (fail_second_t) {
-    script << "if [ \"$layout_name\" = \"invariant-0002-t\" ]; then\n";
-    script << "  echo \"expected-auto-invariant-list-failure\" 1>&2\n";
-    script << "  exit 9\n";
-    script << "fi\n";
-  }
   script << "case \"$layout_name\" in\n";
   script << "  *-s)\n";
   script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
@@ -1858,16 +2080,58 @@ std::string MakeAutoInvariantWholeFactorListResultScript(const bool fail_second_
   script << "EOF\n";
   script << "    ;;\n";
   script << "  *-t)\n";
+  if (fail_second_t) {
+    script << "    if [ \"$layout_name\" = \"invariant-0002-t\" ]; then\n";
+    script << "      echo \"expected-auto-invariant-list-failure\" 1>&2\n";
+    script << "      exit 9\n";
+    script << "    fi\n";
+  }
   script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
   script << MakeAutoInvariantWholeFactorTRuleFile();
   script << "EOF\n";
   script << "    ;;\n";
   script << "  *)\n";
-  script << "    echo \"unexpected invariant layout: $layout_name\" 1>&2\n";
-  script << "    exit 7\n";
+  if (fail_second_t) {
+    script << "    echo \"expected-auto-invariant-list-failure\" 1>&2\n";
+    script << "    exit 9\n";
+  } else {
+    script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
+    script << MakeAutoInvariantWholeFactorCombinedRuleFile();
+    script << "EOF\n";
+  }
   script << "    ;;\n";
   script << "esac\n";
   script << "echo \"whole-factor-list:$1\"\n";
+  script << "exit 0\n";
+  return script.str();
+}
+
+std::string MakeAutoInvariantMixedZeroListResultScript() {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_mixed_zero_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_mixed_zero_family[1,1,1] 0\n";
+  script << "EOF\n";
+  script << "layout_name=\"$(basename \"$(dirname \"$PWD\")\")\"\n";
+  script << "case \"$layout_name\" in\n";
+  script << "  *-s)\n";
+  script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << MakeAutoInvariantMixedZeroSRuleFile();
+  script << "EOF\n";
+  script << "    ;;\n";
+  script << "  *-t)\n";
+  script << "    rm -f \"$dest/kira_target.m\"\n";
+  script << "    ;;\n";
+  script << "  *)\n";
+  script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << MakeAutoInvariantMixedZeroSRuleFile();
+  script << "EOF\n";
+  script << "    ;;\n";
+  script << "esac\n";
+  script << "echo \"mixed-zero-list:$1\"\n";
   script << "exit 0\n";
   return script.str();
 }
@@ -11778,6 +12042,8 @@ void BuildInvariantGeneratedDESystemListAutomaticHappyPathTest() {
                                               baseline_t_layout,
                                               baseline_t_kira_path,
                                               baseline_t_fermat_path);
+  const amflow::DESystem expected_system =
+      CombineSingleVariableDESystemsInOrder({baseline_t_system, baseline_s_system});
 
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list"));
@@ -11787,7 +12053,7 @@ void BuildInvariantGeneratedDESystemListAutomaticHappyPathTest() {
   WriteExecutableScript(kira_path, MakeAutoInvariantWholeFactorListResultScript());
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
-  const std::vector<amflow::DESystem> systems =
+  const auto result =
       amflow::BuildInvariantGeneratedDESystemList(spec,
                                                   master_basis,
                                                   invariant_names,
@@ -11795,29 +12061,134 @@ void BuildInvariantGeneratedDESystemListAutomaticHappyPathTest() {
                                                   layout,
                                                   kira_path,
                                                   fermat_path);
+  const amflow::DESystem& system = RequireJointInvariantDESystemResult(
+      result,
+      "automatic invariant DE list wrapper should construct one joint ordered multi-invariant "
+      "DESystem instead of sequential single-invariant wrappers");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_factor_family" / "kira_target.m";
 
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "automatic invariant DE list wrapper should not mutate the input problem spec");
-  Expect(systems.size() == 2,
-         "automatic invariant DE list wrapper should preserve invariant count");
-  Expect(SameDESystem(systems[0], baseline_t_system),
-         "automatic invariant DE list wrapper should preserve the reviewed single-invariant "
-         "system for the first caller-provided invariant");
-  Expect(SameDESystem(systems[1], baseline_s_system),
-         "automatic invariant DE list wrapper should preserve the reviewed single-invariant "
-         "system for the second caller-provided invariant");
-  Expect(systems[0].variables.size() == 1 && systems[0].variables.front().name == "t" &&
-             systems[1].variables.size() == 1 && systems[1].variables.front().name == "s",
-         "automatic invariant DE list wrapper should preserve caller order across invariants");
-  Expect(std::filesystem::exists(layout.root / "invariant-0001-t" / "generated-config" / "results" /
-                                 "toy_auto_factor_family" / "kira_target.m") &&
-             std::filesystem::exists(layout.root / "invariant-0002-s" / "generated-config" / "results" /
-                                     "toy_auto_factor_family" / "kira_target.m"),
-         "automatic invariant DE list wrapper should isolate per-invariant results under child "
-         "artifact roots");
-  Expect(!std::filesystem::exists(layout.root / "results" / "toy_auto_factor_family"),
-         "automatic invariant DE list wrapper should not collapse per-invariant results into the "
+  Expect(SameDESystem(system, expected_system),
+         "automatic invariant DE list wrapper should preserve the reviewed ordered "
+         "multi-invariant DESystem assembled from the caller-provided invariants");
+  Expect(system.variables.size() == 2 && system.variables[0].name == "t" &&
+             system.variables[1].name == "s",
+         "automatic invariant DE list wrapper should preserve caller order inside the joint "
+         "multi-invariant DESystem");
+  Expect(std::filesystem::exists(combined_rule_path),
+         "automatic invariant DE list wrapper should write one combined reducer result under the "
          "parent artifact root");
+  Expect(ReadFile(combined_rule_path) == MakeAutoInvariantWholeFactorCombinedRuleFile(),
+         "automatic invariant DE list wrapper should preserve the joint ordered reducer rule "
+         "file contents");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant DE list wrapper should not create per-invariant child artifact "
+         "roots");
+}
+
+void BuildInvariantGeneratedDESystemListAutomaticAllowsZeroDerivativeVariableTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantMixedZeroProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantMixedZeroMasterBasis();
+  const std::vector<std::string> invariant_names = {"t", "s"};
+
+  const amflow::ArtifactLayout baseline_s_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-mixed-zero-s-baseline"));
+  const std::filesystem::path baseline_s_kira_path =
+      baseline_s_layout.root / "bin" / "fake-kira-auto-mixed-zero-s.sh";
+  const std::filesystem::path baseline_s_fermat_path =
+      baseline_s_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_s_kira_path.parent_path());
+  WriteExecutableScript(baseline_s_kira_path,
+                        MakeAutoInvariantMixedZeroResultScript(
+                            MakeAutoInvariantMixedZeroSRuleFile()));
+  WriteExecutableScript(baseline_s_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_s_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              baseline_s_layout,
+                                              baseline_s_kira_path,
+                                              baseline_s_fermat_path);
+  const amflow::DESystem expected_system =
+      MakeExpectedZeroBlockJointInvariantDESystem(baseline_s_system, "t");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-mixed-zero"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-mixed-zero-list.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantMixedZeroListResultScript());
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto result =
+      amflow::BuildInvariantGeneratedDESystemList(spec,
+                                                  master_basis,
+                                                  invariant_names,
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path);
+  const amflow::DESystem& system = RequireJointInvariantDESystemResult(
+      result,
+      "automatic invariant DE list wrapper should construct one joint mixed zero/nonzero "
+      "DESystem instead of sequential single-invariant wrappers");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_mixed_zero_family" /
+      "kira_target.m";
+
+  Expect(SameDESystem(system, expected_system),
+         "automatic invariant DE list wrapper should preserve the mixed zero/nonzero joint "
+         "DESystem when the first invariant has a zero derivative");
+  Expect(std::filesystem::exists(combined_rule_path),
+         "automatic invariant DE list wrapper should write one parent-root reducer result for a "
+         "mixed zero/nonzero invariant list");
+  Expect(ReadFile(combined_rule_path) == MakeAutoInvariantMixedZeroSRuleFile(),
+         "automatic invariant DE list wrapper should preserve the reviewed parent-root reducer "
+         "rule file for the nonzero invariant");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant DE list wrapper should not create per-invariant child artifact "
+         "roots when the first invariant is all-zero");
+}
+
+void BuildInvariantGeneratedDESystemListAutomaticAllowsAllZeroInvariantListTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantAllZeroListProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantAllZeroMasterBasis();
+  const std::vector<std::string> invariant_names = {"t", "s"};
+  const amflow::DESystem expected_system =
+      MakeExpectedAllZeroTwoVariableInvariantDESystem(master_basis);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-all-zero-allowed"));
+  const auto result =
+      amflow::BuildInvariantGeneratedDESystemList(spec,
+                                                  master_basis,
+                                                  invariant_names,
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  layout.root / "bin" / "unused-kira.sh",
+                                                  layout.root / "bin" / "unused-fermat.sh");
+  const amflow::DESystem& system = RequireJointInvariantDESystemResult(
+      result,
+      "automatic invariant DE list wrapper should construct one joint all-zero DESystem for an "
+      "all-zero invariant list");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_zero_family" / "kira_target.m";
+
+  Expect(SameDESystem(system, expected_system),
+         "automatic invariant DE list wrapper should preserve the requested invariant order for "
+         "an all-zero invariant list");
+  Expect(!std::filesystem::exists(combined_rule_path),
+         "automatic invariant DE list wrapper should not require a reducer result file for an "
+         "all-zero invariant list");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant DE list wrapper should not create per-invariant child artifact "
+         "roots for an all-zero invariant list");
 }
 
 void BuildInvariantGeneratedDESystemListAutomaticRejectsEmptyInvariantListTest() {
@@ -11907,6 +12278,8 @@ void SolveInvariantGeneratedSeriesListAutomaticHappyPathTest() {
                                               baseline_t_layout,
                                               baseline_t_kira_path,
                                               baseline_t_fermat_path);
+  const amflow::DESystem expected_system =
+      CombineSingleVariableDESystemsInOrder({baseline_t_system, baseline_s_system});
 
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-solver-list"));
@@ -11918,11 +12291,10 @@ void SolveInvariantGeneratedSeriesListAutomaticHappyPathTest() {
 
   RecordingSeriesSolverSequence solver;
   solver.returned_diagnostics = {
-      {true, 0.125, 0.25, "", "recorded invariant list solve t"},
-      {true, 0.0625, 0.125, "", "recorded invariant list solve s"},
+      {true, 0.125, 0.25, "", "recorded joint invariant list solve"},
   };
 
-  const std::vector<amflow::SolverDiagnostics> diagnostics =
+  const auto result =
       amflow::SolveInvariantGeneratedSeriesList(spec,
                                                 master_basis,
                                                 invariant_names,
@@ -11935,45 +12307,226 @@ void SolveInvariantGeneratedSeriesListAutomaticHappyPathTest() {
                                                 target_location,
                                                 precision_policy,
                                                 requested_digits);
+  const amflow::SolverDiagnostics& diagnostics = RequireJointInvariantSolverDiagnosticsResult(
+      result,
+      "automatic invariant solver list wrapper should return one joint ordered "
+      "multi-invariant diagnostic instead of per-invariant diagnostics");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_factor_family" / "kira_target.m";
 
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "automatic invariant solver list wrapper should not mutate the input problem spec");
-  Expect(diagnostics.size() == solver.returned_diagnostics.size() &&
-             SameSolverDiagnostics(diagnostics[0], solver.returned_diagnostics[0]) &&
-             SameSolverDiagnostics(diagnostics[1], solver.returned_diagnostics[1]),
-         "automatic invariant solver list wrapper should return diagnostics in caller order");
-  Expect(solver.call_count() == 2 && solver.seen_requests().size() == 2,
-         "automatic invariant solver list wrapper should call the supplied solver once per "
-         "invariant");
-  Expect(SameDESystem(solver.seen_requests()[0].system, baseline_t_system) &&
-             SameDESystem(solver.seen_requests()[1].system, baseline_s_system),
-         "automatic invariant solver list wrapper should preserve the reviewed single-invariant "
-         "DESystems in sequence");
-  Expect(solver.seen_requests()[0].start_location == start_location &&
-             solver.seen_requests()[0].target_location == target_location &&
-             SamePrecisionPolicy(solver.seen_requests()[0].precision_policy, precision_policy) &&
-             solver.seen_requests()[0].requested_digits == requested_digits &&
-             solver.seen_requests()[1].start_location == start_location &&
-             solver.seen_requests()[1].target_location == target_location &&
-             SamePrecisionPolicy(solver.seen_requests()[1].precision_policy, precision_policy) &&
-             solver.seen_requests()[1].requested_digits == requested_digits,
-         "automatic invariant solver list wrapper should preserve shared solver request fields "
-         "for every invariant");
-  Expect(solver.seen_requests()[0].system.variables.size() == 1 &&
-             solver.seen_requests()[0].system.variables.front().name == "t" &&
-             solver.seen_requests()[1].system.variables.size() == 1 &&
-             solver.seen_requests()[1].system.variables.front().name == "s",
-         "automatic invariant solver list wrapper should preserve invariant order through "
-         "SolveRequest generation");
-  Expect(std::filesystem::exists(layout.root / "invariant-0001-t" / "generated-config" / "results" /
-                                 "toy_auto_factor_family" / "kira_target.m") &&
-             std::filesystem::exists(layout.root / "invariant-0002-s" / "generated-config" / "results" /
-                                     "toy_auto_factor_family" / "kira_target.m"),
-         "automatic invariant solver list wrapper should isolate reducer artifacts per "
-         "invariant");
-  Expect(!std::filesystem::exists(layout.root / "results" / "toy_auto_factor_family"),
-         "automatic invariant solver list wrapper should not collapse per-invariant results into "
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "automatic invariant solver list wrapper should return the supplied joint diagnostic "
+         "unchanged");
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "automatic invariant solver list wrapper should call the supplied solver exactly once "
+         "for the joint multi-invariant system");
+  const amflow::SolveRequest& request = solver.seen_requests().front();
+  Expect(SameDESystem(request.system, expected_system),
+         "automatic invariant solver list wrapper should preserve the reviewed ordered "
+         "multi-invariant DESystem in the sole SolveRequest");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "automatic invariant solver list wrapper should preserve the shared solver request "
+         "fields on the sole joint SolveRequest");
+  Expect(request.system.variables.size() == 2 && request.system.variables[0].name == "t" &&
+             request.system.variables[1].name == "s",
+         "automatic invariant solver list wrapper should preserve caller order through the sole "
+         "joint SolveRequest");
+  Expect(std::filesystem::exists(combined_rule_path),
+         "automatic invariant solver list wrapper should write one combined reducer result under "
          "the parent artifact root");
+  Expect(ReadFile(combined_rule_path) == MakeAutoInvariantWholeFactorCombinedRuleFile(),
+         "automatic invariant solver list wrapper should preserve the joint ordered reducer rule "
+         "file contents");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant solver list wrapper should not create per-invariant child artifact "
+         "roots");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticAllowsZeroDerivativeVariableTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantMixedZeroProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantMixedZeroMasterBasis();
+  const std::vector<std::string> invariant_names = {"t", "s"};
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "s=3/8";
+  const std::string target_location = "s=7/9";
+  const int requested_digits = 83;
+
+  const amflow::ArtifactLayout baseline_s_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-mixed-zero-s-baseline"));
+  const std::filesystem::path baseline_s_kira_path =
+      baseline_s_layout.root / "bin" / "fake-kira-auto-mixed-zero-s.sh";
+  const std::filesystem::path baseline_s_fermat_path =
+      baseline_s_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_s_kira_path.parent_path());
+  WriteExecutableScript(baseline_s_kira_path,
+                        MakeAutoInvariantMixedZeroResultScript(
+                            MakeAutoInvariantMixedZeroSRuleFile()));
+  WriteExecutableScript(baseline_s_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_s_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              baseline_s_layout,
+                                              baseline_s_kira_path,
+                                              baseline_s_fermat_path);
+  const amflow::DESystem expected_system =
+      MakeExpectedZeroBlockJointInvariantDESystem(baseline_s_system, "t");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-mixed-zero"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-mixed-zero-list.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantMixedZeroListResultScript());
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {true, 0.0625, 0.125, "", "recorded zero-derivative mixed invariant list solve"},
+  };
+
+  const auto result =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                master_basis,
+                                                invariant_names,
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                kira_path,
+                                                fermat_path,
+                                                solver,
+                                                start_location,
+                                                target_location,
+                                                precision_policy,
+                                                requested_digits);
+  const amflow::SolverDiagnostics& diagnostics = RequireJointInvariantSolverDiagnosticsResult(
+      result,
+      "automatic invariant solver list wrapper should return one joint mixed zero/nonzero "
+      "diagnostic instead of per-invariant diagnostics");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_mixed_zero_family" /
+      "kira_target.m";
+
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "automatic invariant solver list wrapper should return the supplied mixed zero/nonzero "
+         "diagnostic unchanged");
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "automatic invariant solver list wrapper should call the supplied solver exactly once "
+         "for a mixed zero/nonzero invariant list");
+  const amflow::SolveRequest& request = solver.seen_requests().front();
+  Expect(SameDESystem(request.system, expected_system),
+         "automatic invariant solver list wrapper should preserve the mixed zero/nonzero joint "
+         "DESystem in the sole SolveRequest");
+  Expect(request.system.variables.size() == 2 && request.system.variables[0].name == "t" &&
+             request.system.variables[1].name == "s",
+         "automatic invariant solver list wrapper should preserve caller order through the sole "
+         "mixed zero/nonzero SolveRequest");
+  Expect(request.system.coefficient_matrices.at("t") ==
+             MakeZeroCoefficientMatrix(request.system.masters.size()) &&
+             request.system.coefficient_matrices.at("s") ==
+                 baseline_s_system.coefficient_matrices.at("s"),
+         "automatic invariant solver list wrapper should solve the joint DESystem with the mixed "
+         "zero block intact");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "automatic invariant solver list wrapper should preserve the shared solver request "
+         "fields for the mixed zero/nonzero SolveRequest");
+  Expect(std::filesystem::exists(combined_rule_path),
+         "automatic invariant solver list wrapper should write one parent-root reducer result "
+         "for a mixed zero/nonzero invariant list");
+  Expect(ReadFile(combined_rule_path) == MakeAutoInvariantMixedZeroSRuleFile(),
+         "automatic invariant solver list wrapper should preserve the parent-root reducer rule "
+         "file for the nonzero invariant");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant solver list wrapper should not create per-invariant child artifact "
+         "roots when the first invariant is all-zero");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticAllowsAllZeroInvariantListTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantAllZeroListProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantAllZeroMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const std::vector<std::string> invariant_names = {"t", "s"};
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "s=2/5";
+  const std::string target_location = "s=11/13";
+  const int requested_digits = 71;
+  const amflow::DESystem expected_system =
+      MakeExpectedAllZeroTwoVariableInvariantDESystem(master_basis);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-all-zero"));
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {true, 0.0, 0.0, "", "recorded all-zero invariant list solve"},
+  };
+
+  const auto result =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                master_basis,
+                                                invariant_names,
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "missing-kira.sh",
+                                                layout.root / "bin" / "missing-fermat.sh",
+                                                solver,
+                                                start_location,
+                                                target_location,
+                                                precision_policy,
+                                                requested_digits);
+  const amflow::SolverDiagnostics& diagnostics = RequireJointInvariantSolverDiagnosticsResult(
+      result,
+      "automatic invariant solver list wrapper should return one joint all-zero diagnostic "
+      "instead of per-invariant diagnostics");
+  const std::filesystem::path combined_rule_path =
+      layout.root / "generated-config" / "results" / "toy_auto_zero_family" / "kira_target.m";
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant solver list wrapper should not mutate the all-zero list problem "
+         "spec");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics.front()),
+         "automatic invariant solver list wrapper should return the supplied all-zero diagnostic "
+         "unchanged");
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "automatic invariant solver list wrapper should call the supplied solver exactly once "
+         "for an all-zero invariant list");
+  const amflow::SolveRequest& request = solver.seen_requests().front();
+  Expect(SameDESystem(request.system, expected_system),
+         "automatic invariant solver list wrapper should preserve the all-zero joint DESystem in "
+         "the sole SolveRequest");
+  Expect(request.system.variables.size() == 2 && request.system.variables[0].name == "t" &&
+             request.system.variables[1].name == "s",
+         "automatic invariant solver list wrapper should preserve caller order through the sole "
+         "all-zero SolveRequest");
+  Expect(request.system.coefficient_matrices.at("t") ==
+             MakeZeroCoefficientMatrix(request.system.masters.size()) &&
+             request.system.coefficient_matrices.at("s") ==
+                 MakeZeroCoefficientMatrix(request.system.masters.size()),
+         "automatic invariant solver list wrapper should solve the joint all-zero DESystem with "
+         "zero blocks for every invariant");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "automatic invariant solver list wrapper should preserve the shared solver request "
+         "fields for the all-zero SolveRequest");
+  Expect(!std::filesystem::exists(combined_rule_path),
+         "automatic invariant solver list wrapper should not require a reducer result file for "
+         "the all-zero list case");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-s"),
+         "automatic invariant solver list wrapper should not create child artifact roots for the "
+         "all-zero list case");
 }
 
 void SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest() {
@@ -11987,9 +12540,7 @@ void SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTes
 
   RecordingSeriesSolverSequence solver;
   solver.returned_diagnostics = {
-      {true, 0.125, 0.25, "", "recorded invariant list solve s"},
-      {true, 0.0625, 0.125, "", "recorded invariant list solve t"},
-      {true, 0.03125, 0.0625, "", "recorded invariant list solve s-again"},
+      {true, 0.125, 0.25, "", "unexpected joint invariant list solve"},
   };
 
   try {
@@ -12016,28 +12567,20 @@ void SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTes
     Expect(message.find("exit_code=9") != std::string::npos,
            "automatic invariant solver list wrapper should preserve reducer exit code");
     Expect(message.find("stderr_log=") != std::string::npos &&
-               message.find((layout.root / "invariant-0002-t" / "logs").string()) !=
-                   std::string::npos,
-           "automatic invariant solver list wrapper should preserve the failing child artifact "
-           "root");
+               message.find(layout.logs_dir.string()) != std::string::npos &&
+               message.find((layout.root / "invariant-0002-t").string()) == std::string::npos,
+           "automatic invariant solver list wrapper should preserve the failing parent artifact "
+           "root for the joint reducer pass");
   }
 
-  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
-         "automatic invariant solver list wrapper should stop before calling the solver for "
-         "later invariants after a hard reducer failure");
-  Expect(solver.seen_requests().front().system.variables.size() == 1 &&
-             solver.seen_requests().front().system.variables.front().name == "s",
-         "automatic invariant solver list wrapper should only record the successful prefix "
-         "request before stopping");
-  Expect(std::filesystem::exists(layout.root / "invariant-0001-s"),
-         "automatic invariant solver list wrapper should preserve artifacts for completed prefix "
-         "iterations");
-  Expect(std::filesystem::exists(layout.root / "invariant-0002-t"),
-         "automatic invariant solver list wrapper should preserve artifacts for the failing "
-         "iteration");
-  Expect(!std::filesystem::exists(layout.root / "invariant-0003-s"),
-         "automatic invariant solver list wrapper should not start later invariants after a hard "
-         "failure");
+  Expect(solver.call_count() == 0 && solver.seen_requests().empty(),
+         "automatic invariant solver list wrapper should not call the solver when the joint "
+         "multi-invariant reducer pass fails");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0001-s") &&
+             !std::filesystem::exists(layout.root / "invariant-0002-t") &&
+             !std::filesystem::exists(layout.root / "invariant-0003-s"),
+         "automatic invariant solver list wrapper should not create per-invariant child artifact "
+         "roots on joint reducer failure");
 }
 
 void SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest() {
@@ -16542,9 +17085,13 @@ int main() {
     SolveInvariantGeneratedSeriesAutomaticRejectsEmptyInvariantNameTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     BuildInvariantGeneratedDESystemListAutomaticHappyPathTest();
+    BuildInvariantGeneratedDESystemListAutomaticAllowsZeroDerivativeVariableTest();
+    BuildInvariantGeneratedDESystemListAutomaticAllowsAllZeroInvariantListTest();
     BuildInvariantGeneratedDESystemListAutomaticRejectsEmptyInvariantListTest();
     BuildInvariantGeneratedDESystemListAutomaticRejectsUnknownInvariantNameTest();
     SolveInvariantGeneratedSeriesListAutomaticHappyPathTest();
+    SolveInvariantGeneratedSeriesListAutomaticAllowsZeroDerivativeVariableTest();
+    SolveInvariantGeneratedSeriesListAutomaticAllowsAllZeroInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();

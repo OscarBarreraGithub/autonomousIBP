@@ -63,6 +63,7 @@ struct ArtifactLayout {
   std::filesystem::path root;
   std::filesystem::path manifests_dir;
   std::filesystem::path logs_dir;
+  std::filesystem::path cache_dir;
   std::filesystem::path generated_config_dir;
   std::filesystem::path results_dir;
   std::filesystem::path comparisons_dir;
@@ -72,6 +73,23 @@ struct CommandLogPaths {
   std::filesystem::path stdout_path;
   std::filesystem::path stderr_path;
   std::size_t attempt_number = 0;
+};
+
+struct SolvedPathCacheManifest {
+  std::string manifest_kind = "solved-path-cache";
+  int schema_version = 1;
+  std::string solve_kind;
+  std::string slot_name;
+  std::string input_fingerprint;
+  std::string request_fingerprint;
+  std::string request_summary;
+  std::filesystem::path cache_root;
+  std::filesystem::path manifest_path;
+  bool success = false;
+  double residual_norm = 1.0;
+  double overlap_mismatch = 1.0;
+  std::string failure_code;
+  std::string summary;
 };
 
 ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root);
@@ -84,5 +102,12 @@ ArtifactManifest MakeFileBackedKiraRunManifest(const FileBackedKiraRunManifestIn
 std::string SerializeArtifactManifestYaml(const ArtifactManifest& manifest);
 std::filesystem::path WriteArtifactManifest(const ArtifactLayout& layout,
                                            const ArtifactManifest& manifest);
+std::filesystem::path ResolveSolvedPathCacheManifestPath(const ArtifactLayout& layout,
+                                                         const std::string& slot_name);
+std::string SerializeSolvedPathCacheManifestYaml(const SolvedPathCacheManifest& manifest);
+SolvedPathCacheManifest ParseSolvedPathCacheManifestYaml(const std::string& yaml);
+SolvedPathCacheManifest ReadSolvedPathCacheManifest(const std::filesystem::path& path);
+std::filesystem::path WriteSolvedPathCacheManifest(const std::filesystem::path& path,
+                                                   const SolvedPathCacheManifest& manifest);
 
 }  // namespace amflow

@@ -7,12 +7,14 @@
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <typeinfo>
 #include <utility>
 #include <vector>
 
 #include "amflow/core/options.hpp"
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/invariant_reduction_execution.hpp"
+#include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/eta_mode.hpp"
 #include "amflow/solver/singular_point_analysis.hpp"
 
@@ -39,6 +41,7 @@ constexpr char kInsufficientPrecisionCode[] = "insufficient_precision";
 constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
 constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
 constexpr int kBootstrapContinuationOrder = 4;
+constexpr int kSolvedPathCacheSchemaVersion = 1;
 
 ExactRational ZeroRational() {
   return {"0", "1"};
@@ -103,6 +106,10 @@ std::string RemoveWhitespace(const std::string& value) {
     }
   }
   return normalized;
+}
+
+std::filesystem::path AbsoluteOrEmpty(const std::filesystem::path& path) {
+  return path.empty() ? std::filesystem::path{} : std::filesystem::absolute(path);
 }
 
 bool HasDeclaredVariable(const DESystem& system, const std::string& variable_name) {
@@ -1831,6 +1838,292 @@ EtaInsertionDecision SelectResolvedEtaModeDecision(
   throw std::runtime_error("failed to select an eta mode");
 }
 
+const char* ToString(DifferentiationVariableKind kind) {
+  switch (kind) {
+    case DifferentiationVariableKind::Eta:
+      return "eta";
+    case DifferentiationVariableKind::Invariant:
+      return "invariant";
+    case DifferentiationVariableKind::Dimension:
+      return "dimension";
+    case DifferentiationVariableKind::Auxiliary:
+      return "auxiliary";
+  }
+  return "unknown";
+}
+
+std::string SerializeTargetIntegralForFingerprint(const TargetIntegral& integral) {
+  return integral.Label();
+}
+
+std::string SerializeMasterIntegralForFingerprint(const MasterIntegral& integral) {
+  std::ostringstream out;
+  out << "family=" << integral.family << ";label=" << integral.label << ";indices=";
+  for (std::size_t index = 0; index < integral.indices.size(); ++index) {
+    if (index > 0) {
+      out << ",";
+    }
+    out << integral.indices[index];
+  }
+  return out.str();
+}
+
+std::string SerializeParsedMasterListForFingerprint(const ParsedMasterList& master_basis) {
+  std::ostringstream out;
+  out << "family=" << master_basis.family << "\n";
+  out << "masters=" << master_basis.masters.size() << "\n";
+  for (std::size_t index = 0; index < master_basis.masters.size(); ++index) {
+    out << "master[" << index << "]="
+        << SerializeTargetIntegralForFingerprint(master_basis.masters[index]) << "\n";
+  }
+  return out.str();
+}
+
+std::string SerializeEtaInsertionDecisionForFingerprint(const EtaInsertionDecision& decision) {
+  std::ostringstream out;
+  out << "mode_name=" << decision.mode_name << "\n";
+  out << "selected_indices=" << decision.selected_propagator_indices.size() << "\n";
+  for (std::size_t index = 0; index < decision.selected_propagator_indices.size(); ++index) {
+    out << "selected_index[" << index << "]="
+        << decision.selected_propagator_indices[index] << "\n";
+  }
+  out << "selected_propagators=" << decision.selected_propagators.size() << "\n";
+  for (std::size_t index = 0; index < decision.selected_propagators.size(); ++index) {
+    out << "selected_propagator[" << index << "]="
+        << decision.selected_propagators[index] << "\n";
+  }
+  return out.str();
+}
+
+std::string SerializePrecisionPolicyForFingerprint(const PrecisionPolicy& policy) {
+  std::ostringstream out;
+  out << "working_precision=" << policy.working_precision << "\n";
+  out << "chop_precision=" << policy.chop_precision << "\n";
+  out << "rationalize_precision=" << policy.rationalize_precision << "\n";
+  out << "escalation_step=" << policy.escalation_step << "\n";
+  out << "max_working_precision=" << policy.max_working_precision << "\n";
+  out << "x_order=" << policy.x_order << "\n";
+  out << "x_order_step=" << policy.x_order_step << "\n";
+  return out.str();
+}
+
+std::string SerializeDESystemForFingerprint(const DESystem& system) {
+  std::ostringstream out;
+  out << "masters=" << system.masters.size() << "\n";
+  for (std::size_t index = 0; index < system.masters.size(); ++index) {
+    out << "master[" << index << "]="
+        << SerializeMasterIntegralForFingerprint(system.masters[index]) << "\n";
+  }
+
+  out << "variables=" << system.variables.size() << "\n";
+  for (std::size_t index = 0; index < system.variables.size(); ++index) {
+    const DifferentiationVariable& variable = system.variables[index];
+    out << "variable[" << index << "].name=" << variable.name << "\n";
+    out << "variable[" << index << "].kind=" << ToString(variable.kind) << "\n";
+
+    const auto matrix_it = system.coefficient_matrices.find(variable.name);
+    if (matrix_it == system.coefficient_matrices.end()) {
+      out << "variable[" << index << "].matrix=missing\n";
+      continue;
+    }
+
+    const auto& matrix = matrix_it->second;
+    out << "variable[" << index << "].rows=" << matrix.size() << "\n";
+    for (std::size_t row = 0; row < matrix.size(); ++row) {
+      out << "variable[" << index << "].row[" << row << "].cols=" << matrix[row].size()
+          << "\n";
+      for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+        out << "variable[" << index << "].cell[" << row << "][" << column << "]="
+            << matrix[row][column] << "\n";
+      }
+    }
+  }
+
+  out << "singular_points=" << system.singular_points.size() << "\n";
+  for (std::size_t index = 0; index < system.singular_points.size(); ++index) {
+    out << "singular_point[" << index << "]=" << system.singular_points[index] << "\n";
+  }
+  return out.str();
+}
+
+std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
+  std::ostringstream out;
+  out << "system:\n" << SerializeDESystemForFingerprint(request.system);
+  out << "boundary_requests=" << request.boundary_requests.size() << "\n";
+  for (std::size_t index = 0; index < request.boundary_requests.size(); ++index) {
+    const BoundaryRequest& boundary_request = request.boundary_requests[index];
+    out << "boundary_request[" << index << "].variable=" << boundary_request.variable << "\n";
+    out << "boundary_request[" << index << "].location=" << boundary_request.location << "\n";
+    out << "boundary_request[" << index << "].strategy=" << boundary_request.strategy << "\n";
+  }
+  out << "boundary_conditions=" << request.boundary_conditions.size() << "\n";
+  for (std::size_t index = 0; index < request.boundary_conditions.size(); ++index) {
+    const BoundaryCondition& boundary_condition = request.boundary_conditions[index];
+    out << "boundary_condition[" << index << "].variable=" << boundary_condition.variable
+        << "\n";
+    out << "boundary_condition[" << index << "].location=" << boundary_condition.location
+        << "\n";
+    out << "boundary_condition[" << index << "].strategy=" << boundary_condition.strategy
+        << "\n";
+    out << "boundary_condition[" << index << "].values=" << boundary_condition.values.size()
+        << "\n";
+    for (std::size_t value_index = 0; value_index < boundary_condition.values.size();
+         ++value_index) {
+      out << "boundary_condition[" << index << "].value[" << value_index << "]="
+          << boundary_condition.values[value_index] << "\n";
+    }
+  }
+  out << "start_location=" << request.start_location << "\n";
+  out << "target_location=" << request.target_location << "\n";
+  out << "requested_digits=" << request.requested_digits << "\n";
+  out << "precision_policy:\n" << SerializePrecisionPolicyForFingerprint(request.precision_policy);
+  return out.str();
+}
+
+std::string BuildSeriesSolverReplayFingerprint(const SeriesSolver& solver) {
+  return ComputeArtifactFingerprint("series_solver_dynamic_type=" +
+                                    std::string(typeid(solver).name()));
+}
+
+std::string BuildEtaGeneratedSolveInputFingerprint(
+    const std::string& solve_kind,
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol) {
+  std::ostringstream out;
+  out << "solve_kind=" << solve_kind << "\n";
+  out << "spec_yaml:\n" << SerializeProblemSpecYaml(spec) << "\n";
+  out << "master_basis:\n" << SerializeParsedMasterListForFingerprint(master_basis);
+  out << "eta_decision:\n" << SerializeEtaInsertionDecisionForFingerprint(decision);
+  out << "reduction_options:\n" << SerializeReductionOptionsYaml(options) << "\n";
+  out << "solver_replay_fingerprint=" << BuildSeriesSolverReplayFingerprint(solver) << "\n";
+  out << "start_location=" << start_location << "\n";
+  out << "target_location=" << target_location << "\n";
+  out << "requested_digits=" << requested_digits << "\n";
+  out << "eta_symbol=" << eta_symbol << "\n";
+  out << "precision_policy:\n" << SerializePrecisionPolicyForFingerprint(precision_policy);
+  return ComputeArtifactFingerprint(out.str());
+}
+
+std::string SanitizeCacheSlotComponent(const std::string& value) {
+  std::string sanitized;
+  sanitized.reserve(value.size());
+  for (const char character : value) {
+    const bool safe = (character >= 'a' && character <= 'z') ||
+                      (character >= 'A' && character <= 'Z') ||
+                      (character >= '0' && character <= '9') || character == '-' ||
+                      character == '_' || character == '.';
+    sanitized.push_back(safe ? character : '-');
+  }
+  return sanitized.empty() ? "unnamed" : sanitized;
+}
+
+std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
+                                        const ProblemSpec& spec,
+                                        const EtaInsertionDecision& decision,
+                                        const std::string& eta_symbol) {
+  return solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) + "-" +
+         SanitizeCacheSlotComponent(decision.mode_name) + "-" +
+         SanitizeCacheSlotComponent(eta_symbol);
+}
+
+struct SolvedPathCacheContext {
+  bool replay_enabled = false;
+  std::string solve_kind;
+  std::string slot_name;
+  std::string input_fingerprint;
+};
+
+enum class SolvedPathCacheReplayStatus {
+  Miss,
+  Rejected,
+  Hit,
+};
+
+struct SolvedPathCacheReplayResult {
+  SolvedPathCacheReplayStatus status = SolvedPathCacheReplayStatus::Miss;
+  std::optional<SolverDiagnostics> diagnostics;
+};
+
+SolvedPathCacheReplayResult TryReplaySolvedPathCache(const ArtifactLayout& layout,
+                                                     const SolvedPathCacheContext& cache_context) {
+  if (!cache_context.replay_enabled) {
+    return {};
+  }
+
+  const std::filesystem::path manifest_path =
+      ResolveSolvedPathCacheManifestPath(layout, cache_context.slot_name);
+  if (!std::filesystem::exists(manifest_path)) {
+    return {};
+  }
+
+  try {
+    const SolvedPathCacheManifest manifest = ReadSolvedPathCacheManifest(manifest_path);
+    if (manifest.manifest_kind != "solved-path-cache" ||
+        manifest.schema_version != kSolvedPathCacheSchemaVersion ||
+        manifest.solve_kind != cache_context.solve_kind ||
+        manifest.slot_name != cache_context.slot_name ||
+        manifest.input_fingerprint != cache_context.input_fingerprint ||
+        manifest.request_fingerprint.empty() || !manifest.success) {
+      return {SolvedPathCacheReplayStatus::Rejected, std::nullopt};
+    }
+
+    SolverDiagnostics diagnostics;
+    diagnostics.success = manifest.success;
+    diagnostics.residual_norm = manifest.residual_norm;
+    diagnostics.overlap_mismatch = manifest.overlap_mismatch;
+    diagnostics.failure_code = manifest.failure_code;
+    diagnostics.summary = manifest.summary;
+    return {SolvedPathCacheReplayStatus::Hit, diagnostics};
+  } catch (const std::exception&) {
+    return {SolvedPathCacheReplayStatus::Rejected, std::nullopt};
+  }
+}
+
+void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
+                                    const SolvedPathCacheContext& cache_context,
+                                    const SolveRequest& request,
+                                    const SolverDiagnostics& diagnostics) {
+  if (!diagnostics.success) {
+    return;
+  }
+
+  const std::filesystem::path manifest_path =
+      ResolveSolvedPathCacheManifestPath(layout, cache_context.slot_name);
+
+  SolvedPathCacheManifest manifest;
+  manifest.schema_version = kSolvedPathCacheSchemaVersion;
+  manifest.solve_kind = cache_context.solve_kind;
+  manifest.slot_name = cache_context.slot_name;
+  manifest.input_fingerprint = cache_context.input_fingerprint;
+  manifest.request_fingerprint =
+      ComputeArtifactFingerprint(SerializeSolveRequestForFingerprint(request));
+  manifest.request_summary = DescribeDESystem(request.system) + "; start=" + request.start_location +
+                             "; target=" + request.target_location +
+                             "; requested_digits=" + std::to_string(request.requested_digits) +
+                             "; precision_policy=" +
+                             DescribePrecisionPolicy(request.precision_policy);
+  manifest.cache_root = AbsoluteOrEmpty(manifest_path.parent_path());
+  manifest.manifest_path = AbsoluteOrEmpty(manifest_path);
+  manifest.success = diagnostics.success;
+  manifest.residual_norm = diagnostics.residual_norm;
+  manifest.overlap_mismatch = diagnostics.overlap_mismatch;
+  manifest.failure_code = diagnostics.failure_code;
+  manifest.summary = diagnostics.summary;
+
+  try {
+    WriteSolvedPathCacheManifest(manifest_path, manifest);
+  } catch (const std::exception&) {
+  }
+}
+
 SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summary) {
   SolverDiagnostics diagnostics;
   diagnostics.success = false;
@@ -1971,6 +2264,49 @@ SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveReque
     request.precision_policy.working_precision = decision.suggested_working_precision;
     request.precision_policy.x_order = decision.suggested_x_order;
   }
+}
+
+SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const SolvedPathCacheContext& cache_context) {
+  const SolvedPathCacheReplayResult replay = TryReplaySolvedPathCache(layout, cache_context);
+  if (replay.status == SolvedPathCacheReplayStatus::Hit) {
+    return *replay.diagnostics;
+  }
+
+  SolveRequest request;
+  try {
+    request.system = BuildEtaGeneratedDESystem(spec,
+                                               master_basis,
+                                               decision,
+                                               options,
+                                               layout,
+                                               kira_executable,
+                                               fermat_executable,
+                                               eta_symbol);
+  } catch (const MasterSetInstabilityError& error) {
+    return MakeMasterSetInstabilityDiagnostics(error.what());
+  }
+  request.start_location = start_location;
+  request.target_location = target_location;
+  request.precision_policy = precision_policy;
+  request.requested_digits = requested_digits;
+
+  const SolverDiagnostics diagnostics = SolveWithPrecisionRetry(solver, request);
+  PersistSolvedPathCacheManifest(layout, cache_context, request, diagnostics);
+  return diagnostics;
 }
 
 SolverDiagnostics MakeSuccessfulBootstrapSolveDiagnostics() {
@@ -2936,19 +3272,42 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
-  return SolveBuiltinEtaModeListSeries(spec,
-                                       master_basis,
-                                       amf_options.amf_modes,
-                                       options,
-                                       layout,
-                                       kira_executable,
-                                       fermat_executable,
-                                       solver,
-                                       start_location,
-                                       target_location,
-                                       precision_policy,
-                                       requested_digits,
-                                       eta_symbol);
+  const std::string selected_eta_mode_name = SelectBuiltinEtaModeName(spec, amf_options.amf_modes);
+  const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(selected_eta_mode_name);
+  const EtaInsertionDecision decision = eta_mode->Plan(spec);
+
+  SolvedPathCacheContext cache_context;
+  cache_context.replay_enabled = amf_options.use_cache;
+  cache_context.solve_kind = "amf-options-builtin-eta-mode-series";
+  cache_context.slot_name =
+      MakeSolvedPathCacheSlotName(cache_context.solve_kind, spec, decision, eta_symbol);
+  cache_context.input_fingerprint =
+      BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
+                                            spec,
+                                            master_basis,
+                                            decision,
+                                            options,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits,
+                                            eta_symbol);
+
+  return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
+                                                    master_basis,
+                                                    decision,
+                                                    options,
+                                                    layout,
+                                                    kira_executable,
+                                                    fermat_executable,
+                                                    solver,
+                                                    start_location,
+                                                    target_location,
+                                                    precision_policy,
+                                                    requested_digits,
+                                                    eta_symbol,
+                                                    cache_context);
 }
 
 SolverDiagnostics SolveResolvedEtaModeSeries(
@@ -3029,20 +3388,41 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
-  return SolveResolvedEtaModeListSeries(spec,
-                                        master_basis,
-                                        amf_options.amf_modes,
-                                        user_defined_modes,
-                                        options,
-                                        layout,
-                                        kira_executable,
-                                        fermat_executable,
-                                        solver,
-                                        start_location,
-                                        target_location,
-                                        precision_policy,
-                                        requested_digits,
-                                        eta_symbol);
+  const EtaInsertionDecision decision =
+      SelectResolvedEtaModeDecision(spec, amf_options.amf_modes, user_defined_modes);
+
+  SolvedPathCacheContext cache_context;
+  cache_context.replay_enabled = amf_options.use_cache;
+  cache_context.solve_kind = "amf-options-resolved-eta-mode-series";
+  cache_context.slot_name =
+      MakeSolvedPathCacheSlotName(cache_context.solve_kind, spec, decision, eta_symbol);
+  cache_context.input_fingerprint =
+      BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
+                                            spec,
+                                            master_basis,
+                                            decision,
+                                            options,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits,
+                                            eta_symbol);
+
+  return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
+                                                    master_basis,
+                                                    decision,
+                                                    options,
+                                                    layout,
+                                                    kira_executable,
+                                                    fermat_executable,
+                                                    solver,
+                                                    start_location,
+                                                    target_location,
+                                                    precision_policy,
+                                                    requested_digits,
+                                                    eta_symbol,
+                                                    cache_context);
 }
 
 std::unique_ptr<SeriesSolver> MakeBootstrapSeriesSolver() {

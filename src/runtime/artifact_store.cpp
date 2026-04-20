@@ -1,8 +1,10 @@
 #include "amflow/runtime/artifact_store.hpp"
 
+#include <cctype>
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 
 namespace amflow {
 
@@ -56,8 +58,26 @@ std::string FormatAttemptSuffix(const std::size_t attempt_number) {
   return out.str();
 }
 
+std::filesystem::path AtomicTempPathFor(const std::filesystem::path& path) {
+  return path.parent_path() / (path.filename().string() + ".tmp");
+}
+
 std::string ToPortableString(const std::filesystem::path& path) {
   return path.empty() ? std::string() : path.lexically_normal().string();
+}
+
+std::string Trim(const std::string& value) {
+  std::size_t start = 0;
+  while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
+    ++start;
+  }
+
+  std::size_t end = value.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    --end;
+  }
+
+  return value.substr(start, end - start);
 }
 
 void WriteQuotedLine(std::ostringstream& out,
@@ -80,6 +100,22 @@ void WriteQuotedPathLine(std::ostringstream& out,
 
 void WriteIntegerLine(std::ostringstream& out, const std::string& key, const int value, const int indent = 0) {
   out << std::string(static_cast<std::size_t>(indent), ' ') << key << ": " << value << "\n";
+}
+
+void WriteBoolLine(std::ostringstream& out,
+                   const std::string& key,
+                   const bool value,
+                   const int indent = 0) {
+  out << std::string(static_cast<std::size_t>(indent), ' ') << key << ": "
+      << (value ? "true" : "false") << "\n";
+}
+
+void WriteDoubleLine(std::ostringstream& out,
+                     const std::string& key,
+                     const double value,
+                     const int indent = 0) {
+  out << std::string(static_cast<std::size_t>(indent), ' ') << key << ": "
+      << std::setprecision(17) << value << "\n";
 }
 
 void WriteSizeLine(std::ostringstream& out,
@@ -141,6 +177,110 @@ void WriteStringMap(std::ostringstream& out,
   }
 }
 
+std::filesystem::path CacheRootFromLayout(const ArtifactLayout& layout) {
+  return layout.cache_dir.empty() ? layout.root / "cache" : layout.cache_dir;
+}
+
+std::string UnescapeDoubleQuotedYaml(const std::string& value) {
+  if (value.size() < 2 || value.front() != '"' || value.back() != '"') {
+    throw std::invalid_argument("expected a double-quoted YAML scalar");
+  }
+
+  std::string unescaped;
+  unescaped.reserve(value.size() - 2);
+  for (std::size_t index = 1; index + 1 < value.size(); ++index) {
+    const char character = value[index];
+    if (character != '\\') {
+      unescaped.push_back(character);
+      continue;
+    }
+
+    if (index + 1 >= value.size() - 1) {
+      throw std::invalid_argument("unterminated YAML escape sequence");
+    }
+
+    const char escaped = value[++index];
+    switch (escaped) {
+      case '\\':
+        unescaped.push_back('\\');
+        break;
+      case '"':
+        unescaped.push_back('"');
+        break;
+      case 'n':
+        unescaped.push_back('\n');
+        break;
+      default:
+        throw std::invalid_argument("unsupported YAML escape sequence");
+    }
+  }
+  return unescaped;
+}
+
+std::map<std::string, std::string> ParseFlatScalarYaml(const std::string& yaml) {
+  std::map<std::string, std::string> values;
+  std::istringstream input(yaml);
+  std::string line;
+  while (std::getline(input, line)) {
+    const std::string trimmed = Trim(line);
+    if (trimmed.empty()) {
+      continue;
+    }
+
+    const std::size_t separator = trimmed.find(':');
+    if (separator == std::string::npos) {
+      throw std::invalid_argument("expected key/value YAML line");
+    }
+
+    const std::string key = Trim(trimmed.substr(0, separator));
+    const std::string value = Trim(trimmed.substr(separator + 1));
+    if (key.empty() || value.empty()) {
+      throw std::invalid_argument("expected non-empty YAML scalar");
+    }
+    if (!values.emplace(key, value).second) {
+      throw std::invalid_argument("duplicate YAML scalar key: " + key);
+    }
+  }
+  return values;
+}
+
+const std::string& RequireScalar(const std::map<std::string, std::string>& values,
+                                 const std::string& key) {
+  const auto it = values.find(key);
+  if (it == values.end()) {
+    throw std::invalid_argument("missing YAML scalar key: " + key);
+  }
+  return it->second;
+}
+
+bool ParseBoolScalar(const std::string& value) {
+  if (value == "true") {
+    return true;
+  }
+  if (value == "false") {
+    return false;
+  }
+  throw std::invalid_argument("expected YAML bool scalar");
+}
+
+int ParseIntScalar(const std::string& value) {
+  std::size_t consumed = 0;
+  const int parsed = std::stoi(value, &consumed);
+  if (consumed != value.size()) {
+    throw std::invalid_argument("expected YAML integer scalar");
+  }
+  return parsed;
+}
+
+double ParseDoubleScalar(const std::string& value) {
+  std::size_t consumed = 0;
+  const double parsed = std::stod(value, &consumed);
+  if (consumed != value.size()) {
+    throw std::invalid_argument("expected YAML floating-point scalar");
+  }
+  return parsed;
+}
+
 }  // namespace
 
 ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root) {
@@ -148,12 +288,14 @@ ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root) {
   layout.root = root;
   layout.manifests_dir = root / "manifests";
   layout.logs_dir = root / "logs";
+  layout.cache_dir = root / "cache";
   layout.generated_config_dir = root / "generated-config";
   layout.results_dir = root / "results";
   layout.comparisons_dir = root / "comparisons";
 
   std::filesystem::create_directories(layout.manifests_dir);
   std::filesystem::create_directories(layout.logs_dir);
+  std::filesystem::create_directories(layout.cache_dir);
   std::filesystem::create_directories(layout.generated_config_dir);
   std::filesystem::create_directories(layout.results_dir);
   std::filesystem::create_directories(layout.comparisons_dir);
@@ -291,6 +433,103 @@ std::filesystem::path WriteArtifactManifest(const ArtifactLayout& layout,
   const std::filesystem::path path = layout.manifests_dir / (manifest.run_id + ".yaml");
   std::ofstream stream(path);
   stream << SerializeArtifactManifestYaml(manifest);
+  return path;
+}
+
+std::filesystem::path ResolveSolvedPathCacheManifestPath(const ArtifactLayout& layout,
+                                                         const std::string& slot_name) {
+  return CacheRootFromLayout(layout) / "solved-paths" /
+         (SanitizeCommandName(slot_name) + ".yaml");
+}
+
+std::string SerializeSolvedPathCacheManifestYaml(const SolvedPathCacheManifest& manifest) {
+  std::ostringstream out;
+  out << "manifest_kind: " << Quote(manifest.manifest_kind) << "\n";
+  WriteIntegerLine(out, "schema_version", manifest.schema_version);
+  out << "solve_kind: " << Quote(manifest.solve_kind) << "\n";
+  out << "slot_name: " << Quote(manifest.slot_name) << "\n";
+  out << "input_fingerprint: " << Quote(manifest.input_fingerprint) << "\n";
+  out << "request_fingerprint: " << Quote(manifest.request_fingerprint) << "\n";
+  out << "request_summary: " << Quote(manifest.request_summary) << "\n";
+  out << "cache_root: " << Quote(ToPortableString(manifest.cache_root)) << "\n";
+  out << "manifest_path: " << Quote(ToPortableString(manifest.manifest_path)) << "\n";
+  WriteBoolLine(out, "success", manifest.success);
+  WriteDoubleLine(out, "residual_norm", manifest.residual_norm);
+  WriteDoubleLine(out, "overlap_mismatch", manifest.overlap_mismatch);
+  out << "failure_code: " << Quote(manifest.failure_code) << "\n";
+  out << "summary: " << Quote(manifest.summary) << "\n";
+  return out.str();
+}
+
+SolvedPathCacheManifest ParseSolvedPathCacheManifestYaml(const std::string& yaml) {
+  const std::map<std::string, std::string> values = ParseFlatScalarYaml(yaml);
+
+  SolvedPathCacheManifest manifest;
+  manifest.manifest_kind =
+      UnescapeDoubleQuotedYaml(RequireScalar(values, "manifest_kind"));
+  manifest.schema_version = ParseIntScalar(RequireScalar(values, "schema_version"));
+  manifest.solve_kind = UnescapeDoubleQuotedYaml(RequireScalar(values, "solve_kind"));
+  manifest.slot_name = UnescapeDoubleQuotedYaml(RequireScalar(values, "slot_name"));
+  manifest.input_fingerprint =
+      UnescapeDoubleQuotedYaml(RequireScalar(values, "input_fingerprint"));
+  manifest.request_fingerprint =
+      UnescapeDoubleQuotedYaml(RequireScalar(values, "request_fingerprint"));
+  manifest.request_summary =
+      UnescapeDoubleQuotedYaml(RequireScalar(values, "request_summary"));
+  manifest.cache_root =
+      std::filesystem::path(UnescapeDoubleQuotedYaml(RequireScalar(values, "cache_root")));
+  manifest.manifest_path =
+      std::filesystem::path(UnescapeDoubleQuotedYaml(RequireScalar(values, "manifest_path")));
+  manifest.success = ParseBoolScalar(RequireScalar(values, "success"));
+  manifest.residual_norm = ParseDoubleScalar(RequireScalar(values, "residual_norm"));
+  manifest.overlap_mismatch = ParseDoubleScalar(RequireScalar(values, "overlap_mismatch"));
+  manifest.failure_code =
+      UnescapeDoubleQuotedYaml(RequireScalar(values, "failure_code"));
+  manifest.summary = UnescapeDoubleQuotedYaml(RequireScalar(values, "summary"));
+  return manifest;
+}
+
+SolvedPathCacheManifest ReadSolvedPathCacheManifest(const std::filesystem::path& path) {
+  std::ifstream stream(path);
+  if (!stream) {
+    throw std::runtime_error("failed to open solved-path cache manifest: " + path.string());
+  }
+
+  std::ostringstream content;
+  content << stream.rdbuf();
+  return ParseSolvedPathCacheManifestYaml(content.str());
+}
+
+std::filesystem::path WriteSolvedPathCacheManifest(const std::filesystem::path& path,
+                                                   const SolvedPathCacheManifest& manifest) {
+  std::filesystem::create_directories(path.parent_path());
+  const std::filesystem::path temp_path = AtomicTempPathFor(path);
+  const std::string serialized = SerializeSolvedPathCacheManifestYaml(manifest);
+
+  {
+    std::ofstream stream(temp_path, std::ios::trunc);
+    if (!stream) {
+      throw std::runtime_error("failed to open solved-path cache manifest for writing: " +
+                               temp_path.string());
+    }
+
+    stream << serialized;
+    stream.flush();
+    if (!stream) {
+      std::error_code cleanup_error;
+      std::filesystem::remove(temp_path, cleanup_error);
+      throw std::runtime_error("failed to write solved-path cache manifest: " +
+                               temp_path.string());
+    }
+  }
+
+  try {
+    std::filesystem::rename(temp_path, path);
+  } catch (...) {
+    std::error_code cleanup_error;
+    std::filesystem::remove(temp_path, cleanup_error);
+    throw;
+  }
   return path;
 }
 

@@ -147,8 +147,12 @@ exit gate. The current live state must always be read from `docs/implementation-
   `failure_code = "continuation_budget_exhausted"`, and local
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- the next independent roadmap-owned lane is truthful `Milestone M3` closure review: `M0b` is
-  accepted and no longer blocks it
+- truthful `Milestone M3` closure review was reconsidered after `M0b`, but it is still blocked in
+  the current repo because the phase-1 gate does not yet have any explicit in-repo prefactor
+  surface/tests
+- the next independent roadmap-owned lane is therefore `Batch 56`: narrow solved-path cache
+  manifest plus `UseCache` replay/invalidation of successful solved-path diagnostics, with
+  `SkipReduction` still deferred to `Batch 57`
 
 ## Current State At R0
 
@@ -209,9 +213,11 @@ exit gate. The current live state must always be read from `docs/implementation-
 - multi-invariant orchestration on `main` remains narrow: landed `Batch 51` adds only the first
   ordered invariant-list wrappers over the reviewed one-invariant path, while broader list-surface
   widening and the loop-core reduction-span parity gate remain missing
-- a narrow internal retry controller exists on generated-solver handoffs at
-  `src/solver/series_solver.cpp:1904-1928`, but there are still no cache/restart semantics and no
-  live `SkipReduction` runtime path
+- a narrow internal retry controller exists on generated-solver handoffs, and the current
+  `Batch 56` worktree slice adds only a solved-path cache manifest plus `UseCache` replay of
+  successful solved-path diagnostics on the two `AmfOptions` eta solve wrappers; broader
+  cache/replay or interruption-resume coverage, direct-wrapper cache use, and all
+  `SkipReduction` runtime paths remain open
 - feature parity is still missing for complex kinematics, arbitrary `D0`, fixed-`eps`, linear
   propagators, phase-space integration, standalone DE solving at parity quality, and full
   user-defined eta/ending execution paths
@@ -295,7 +301,7 @@ Missing:
   `src/solver/series_solver.cpp:1904-1928`
 - cancellation/truncation detection
 - remaining required failure codes from `specs/parity-matrix.yaml`
-- cache/restart artifact model
+- broader cache/restart artifact coverage beyond the current solved-path `UseCache` slice
 - `SkipReduction` semantics
 - live wiring for `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`,
   `TestXOrder`, `RationalizePre`, and `RunLength`
@@ -314,7 +320,15 @@ Current status:
   generated-wrapper master-basis drift is classified as `master_set_instability`, exhausted
   monotone retry progress is classified as `continuation_budget_exhausted`, direct
   `SolveDifferentialEquation(...)` remains passthrough, and cancellation/truncation detection,
-  cache/restart, `SkipReduction`, and the rest of Track E remain open
+  broader cache/restart, `SkipReduction`, and the rest of Track E remain open
+- the current `Batch 56` worktree slice adds only a narrow solved-path cache manifest on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads: successful live solves persist one deterministic
+  cache manifest under `layout.root/cache/solved-paths/`, matching `UseCache` requests replay the
+  stored `SolverDiagnostics` without rebuilding the DE or invoking the supplied solver, and stale
+  or malformed artifacts are rejected in favor of live execution. This is not upstream-style
+  interruption-resume behavior. Direct `SolveEtaGeneratedSeries(...)`, invariant-generated
+  wrappers, direct `SolveDifferentialEquation(...)`, and all `SkipReduction` behavior remain
+  unchanged
 
 ### Track F: Feature-Surface Parity
 
@@ -548,7 +562,7 @@ dependency change.
 | --- | --- | --- |
 | `Batch 54` | landed on `main`: precision-budget preflight plus an internal retry controller on generated-solver handoffs, while direct `SolveDifferentialEquation(...)` remains passthrough | `Milestone M2` |
 | `Batch 55` | landed on `main`: diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
-| `Batch 56` | patch/cache artifact model plus `UseCache` replay and invalidation semantics for solved paths | `Batch 55` |
+| `Batch 56` | solved-path cache manifest plus `UseCache` replay and invalidation of successful solved-path diagnostics | `Batch 55` |
 | `Batch 57` | `SkipReduction` runtime path over cached or caller-provided `DESystem` inputs | `Batch 56` |
 | `Batch 58` | live wiring of `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, `RationalizePre`, and `RunLength` into solver policy | `Batch 57` |
 | `Milestone M4` | robustness gate: precision monotonicity, explicit failure codes, cache/restart, `UseCache`, and `SkipReduction` all pass T2/T5 coverage | `Batch 54` through `Batch 58` |
@@ -633,8 +647,8 @@ These items are intentionally deferred until the phase gates above say otherwise
 
 - no in-house IBP reducer or finite-field reconstruction engine in v1
 - no performance tuning before the solver passes T2 self-consistency and T3 parity checks
-- no cache/restart or `SkipReduction` semantics before there is a real solver and patch-artifact
-  model
+- no broader cache/restart claims beyond the reviewed solved-path artifact slice, and no
+  `SkipReduction` semantics, before there is a real solver and patch-artifact model
 - no broad CLI widening before the library solver and boundary surfaces are frozen
 - no assumption that canonical bases always exist
 - no claim of full elliptic or non-canonical-sector support before the regular/regular-singular

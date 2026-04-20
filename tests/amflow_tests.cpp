@@ -2235,6 +2235,50 @@ void WriteExecutableScript(const std::filesystem::path& path, const std::string&
       std::filesystem::perm_options::replace);
 }
 
+std::filesystem::path SolvedPathCacheDir(const amflow::ArtifactLayout& layout) {
+  return layout.root / "cache" / "solved-paths";
+}
+
+std::filesystem::path RequireOnlySolvedPathCacheManifestPath(
+    const amflow::ArtifactLayout& layout,
+    const std::string& message) {
+  const std::filesystem::path cache_dir = SolvedPathCacheDir(layout);
+  std::vector<std::filesystem::path> manifests;
+  if (std::filesystem::exists(cache_dir)) {
+    for (const auto& entry : std::filesystem::directory_iterator(cache_dir)) {
+      if (entry.is_regular_file()) {
+        manifests.push_back(entry.path());
+      }
+    }
+  }
+
+  Expect(manifests.size() == 1,
+         message + "; expected exactly one solved-path cache manifest but found " +
+             std::to_string(manifests.size()));
+  return manifests.front();
+}
+
+std::string ExtractYamlScalarValue(const std::string& yaml, const std::string& key) {
+  const std::string prefix = key + ": ";
+  std::istringstream input(yaml);
+  std::string line;
+  while (std::getline(input, line)) {
+    if (line.rfind(prefix, 0) == 0) {
+      return line.substr(prefix.size());
+    }
+  }
+  throw std::runtime_error("failed to find YAML scalar key: " + key);
+}
+
+std::string MakeReducerFailureScript(const std::string& stderr_marker,
+                                     const int exit_code = 9) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "echo " << ShellSingleQuote(stderr_marker) << " 1>&2\n";
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 void SampleProblemValidationTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const auto messages = amflow::ValidateProblemSpec(spec);
@@ -15399,6 +15443,370 @@ void SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest() {
   }
 }
 
+void SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root =
+      WritePropagatorHappyFixture("amflow-bootstrap-amf-options-eta-mode-cache-replay-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver initial_solver;
+  initial_solver.returned_diagnostics.success = true;
+  initial_solver.returned_diagnostics.residual_norm = 0.001953125;
+  initial_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  initial_solver.returned_diagnostics.failure_code.clear();
+  initial_solver.returned_diagnostics.summary = "recorded solved-path cache replay baseline";
+
+  const amflow::SolverDiagnostics initial_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           initial_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(initial_solver.call_count() == 1,
+         "UseCache replay should seed the solved-path manifest from one live solver call");
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache replay should persist a solved-path cache manifest after a successful live solve");
+  const std::string manifest_yaml = ReadFile(manifest_path);
+  Expect(manifest_yaml.find("manifest_kind: \"solved-path-cache\"\n") != std::string::npos,
+         "UseCache replay should write the solved-path cache manifest kind");
+  Expect(manifest_yaml.find("solve_kind: \"amf-options-builtin-eta-mode-series\"\n") !=
+             std::string::npos,
+         "UseCache replay should record the builtin AmfOptions solve kind");
+  Expect(manifest_yaml.find("success: true\n") != std::string::npos,
+         "UseCache replay should mark successful cache entries truthfully");
+  Expect(ExtractYamlScalarValue(manifest_yaml, "request_fingerprint") != "\"\"",
+         "UseCache replay should record a non-empty request fingerprint");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during solved-path replay"));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary = "unexpected live replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(replay_solver.call_count() == 0,
+         "UseCache replay should not call the solver when the solved-path manifest still "
+         "matches the AmfOptions eta solve inputs");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, initial_diagnostics),
+         "UseCache replay should return the cached solver diagnostics verbatim on a matching "
+         "AmfOptions eta solve");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-cache-invalidation-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string cached_target_location = "rho=25/27";
+  const std::string invalidated_target_location = "rho=29/31";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary = "recorded solved-path cache invalidation baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         start_location,
+                                                         cached_target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache invalidation should seed one solved-path cache manifest before mutating inputs");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary = "recorded solved-path cache invalidation live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           live_solver,
+                                           start_location,
+                                           invalidated_target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(live_solver.call_count() == 1,
+         "UseCache invalidation should fall back to a live solve when the solved-path input "
+         "fingerprint no longer matches");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "UseCache invalidation should return the new live solver diagnostics after rejecting a "
+         "stale manifest");
+
+  const std::string refreshed_manifest_yaml = ReadFile(manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "UseCache invalidation should refresh the solved-path input fingerprint after a live "
+         "fallback");
+  Expect(refreshed_manifest_yaml.find("target=" + invalidated_target_location) !=
+             std::string::npos,
+         "UseCache invalidation should refresh the cached request summary to the new target "
+         "location");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "UseCache invalidation should overwrite the manifest summary with the fresh live "
+         "diagnostics");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStaysDeferredTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-cache-disabled-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amflow::AmfOptions live_amf_options = cached_amf_options;
+  live_amf_options.use_cache = false;
+  live_amf_options.skip_reduction = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-false"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary = "recorded solved-path cache disabled baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         cached_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache=false coverage should start from a persisted solved-path cache manifest"));
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected cache replay or SkipReduction shortcut with UseCache=false"));
+
+  RecordingSeriesSolver solver;
+  try {
+    static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                           master_basis,
+                                                           live_amf_options,
+                                                           MakeKiraReductionOptions(),
+                                                           layout,
+                                                           kira_path,
+                                                           fermat_path,
+                                                           solver,
+                                                           start_location,
+                                                           target_location,
+                                                           precision_policy,
+                                                           requested_digits,
+                                                           eta_symbol));
+    throw std::runtime_error("UseCache=false should not replay cached diagnostics or invent "
+                             "SkipReduction semantics");
+  } catch (const std::runtime_error& error) {
+    const std::string message = error.what();
+    Expect(message.find("eta-generated DE construction requires successful reducer execution") !=
+               std::string::npos,
+           "UseCache=false should still run the live reducer path");
+    Expect(message.find("exit_code=9") != std::string::npos,
+           "UseCache=false should preserve the real live reducer exit code");
+    Expect(message.find("stderr_log=") != std::string::npos &&
+               message.find(layout.logs_dir.string()) != std::string::npos,
+           "UseCache=false should preserve live reducer log diagnostics");
+  }
+
+  Expect(solver.call_count() == 0,
+         "UseCache=false should fail during live eta DE construction before any solver replay "
+         "or direct solver call");
+}
+
+void SolveBuiltinEtaModeListSeriesDoesNotReplaySolvedPathCacheManifestTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-builtin-eta-mode-list-cache-scope-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-no-cache-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary = "recorded direct builtin no-cache baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "direct builtin eta-mode-list coverage should start from an AmfOptions solved-path cache "
+      "manifest"));
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected direct builtin solved-path cache replay"));
+
+  RecordingSeriesSolver solver;
+  try {
+    static_cast<void>(amflow::SolveBuiltinEtaModeListSeries(spec,
+                                                            master_basis,
+                                                            amf_options.amf_modes,
+                                                            MakeKiraReductionOptions(),
+                                                            layout,
+                                                            kira_path,
+                                                            fermat_path,
+                                                            solver,
+                                                            start_location,
+                                                            target_location,
+                                                            precision_policy,
+                                                            requested_digits,
+                                                            eta_symbol));
+    throw std::runtime_error("direct builtin eta-mode list should not claim AmfOptions solved-"
+                             "path cache replay");
+  } catch (const std::runtime_error& error) {
+    const std::string message = error.what();
+    Expect(message.find("eta-generated DE construction requires successful reducer execution") !=
+               std::string::npos,
+           "direct builtin eta-mode list should still execute the live reducer path");
+    Expect(message.find("exit_code=9") != std::string::npos,
+           "direct builtin eta-mode list should preserve the live reducer exit code");
+    Expect(message.find("stderr_log=") != std::string::npos &&
+               message.find(layout.logs_dir.string()) != std::string::npos,
+           "direct builtin eta-mode list should preserve live reducer log diagnostics");
+  }
+
+  Expect(solver.call_count() == 0,
+         "direct builtin eta-mode list should not reach the solver when the live reducer fails "
+         "instead of replaying an AmfOptions cache manifest");
+}
+
 void SolveResolvedEtaModeSeriesBuiltinHappyPathTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -17413,6 +17821,10 @@ int main() {
     SolveAmfOptionsEtaModeSeriesRejectsUnknownBuiltinNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest();
     SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStaysDeferredTest();
+    SolveBuiltinEtaModeListSeriesDoesNotReplaySolvedPathCacheManifestTest();
     SolveResolvedEtaModeSeriesBuiltinHappyPathTest();
     SolveResolvedEtaModeSeriesUserDefinedHappyPathTest();
     SolveResolvedEtaModeSeriesRejectsUnknownNameWithUserDefinedRegistryTest();

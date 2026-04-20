@@ -84,6 +84,13 @@ The migration is phase-gated. Every phase must pass:
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed before the
   landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- current worktree `Batch 56` staging now adds a narrow solved-path cache manifest plus
+  `UseCache` replay of successful solved-path diagnostics on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads only; local
+  `cmake -S . -B build`, `cmake --build build --parallel 1`,
+  `ctest --test-dir build --output-on-failure`, `./build/amflow-tests`, and a solved-path
+  manifest round-trip smoke all passed, while `SkipReduction` remains deferred and truthful
+  `Milestone M3` closure review remains blocked by the missing in-repo prefactor surface/tests
 
 ## Test Taxonomy
 
@@ -166,6 +173,8 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - public-contract and default-option tests
 - Kira config emission tests
 - artifact manifest tests
+- solved-path cache manifest and solved-path diagnostic replay/invalidation tests for the
+  `AmfOptions` eta solve wrappers
 - placeholder CLI smoke tests
 - reference-harness manifest shape and pinned-input recording
 - placeholder golden layout and benchmark index generation without Mathematica

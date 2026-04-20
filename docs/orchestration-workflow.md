@@ -91,8 +91,11 @@ The workflow is optimized for the current repo shape:
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- the next roadmap-owned implementation lane is truthful `Milestone M3` closure review: `M0b` is
-  accepted and no longer blocks it
+- `M0b` is accepted, but truthful `Milestone M3` closure review is still blocked in the current
+  repo because the phase-1 gate does not yet have any explicit in-repo prefactor surface/tests
+- the next roadmap-owned implementation lane is therefore `Batch 56`: narrow cache/restart
+  artifact model plus `UseCache` replay/invalidation for solved paths, with `SkipReduction`
+  still deferred to `Batch 57`
 
 ## Mandatory Read Set Before Planning
 

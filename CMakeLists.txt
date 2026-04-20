@@ -23,6 +23,7 @@ add_library(amflow
   src/io/problem_spec_io.cpp
   src/io/sample_data.cpp
   src/kira/kira_backend.cpp
+  src/kira/kira_insert_prefactors.cpp
   src/runtime/artifact_store.cpp
   src/runtime/auxiliary_family.cpp
   src/runtime/boundary_generation.cpp

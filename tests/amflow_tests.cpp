@@ -21,6 +21,7 @@
 #include "amflow/io/problem_spec_io.hpp"
 #include "amflow/io/sample_data.hpp"
 #include "amflow/kira/kira_backend.hpp"
+#include "amflow/kira/kira_insert_prefactors.hpp"
 #include "amflow/runtime/auxiliary_family.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/boundary_generation.hpp"
@@ -57,6 +58,16 @@ std::string TrimAsciiWhitespace(const std::string& value) {
 bool ContainsSubstring(const std::vector<std::string>& values, const std::string& needle) {
   for (const auto& value : values) {
     if (value.find(needle) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ContainsAnySubstring(const std::vector<std::string>& values,
+                          const std::vector<std::string>& needles) {
+  for (const auto& needle : needles) {
+    if (ContainsSubstring(values, needle)) {
       return true;
     }
   }
@@ -4516,6 +4527,197 @@ void KiraPreparationLocksPlanarDoubleBoxReductionSpanOnSharedSampleSurfaceTest()
   Expect(file_files.jobs_yaml == builtin_files.jobs_yaml,
          "file-backed planar_double_box Kira jobs.yaml should stay locked to "
          "MakeSampleProblemSpec on the reviewed shared sample surface");
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusRoot() {
+  return std::filesystem::path(AMFLOW_SOURCE_DIR) /
+         "references/snapshots/kira";
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusXintsPath() {
+  return KiraInsertPrefactorsCorpusRoot() / "xints";
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusJobsPath() {
+  return KiraInsertPrefactorsCorpusRoot() / "jobs.yaml";
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusJobOptionsSummaryPath() {
+  return KiraInsertPrefactorsCorpusRoot() / "job_options_summary.txt";
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusLockPath() {
+  return KiraInsertPrefactorsCorpusRoot() / "insert_prefactors_surface_lock.md";
+}
+
+std::filesystem::path KiraInsertPrefactorsCorpusGlobalPreferredPath() {
+  return std::filesystem::path(
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+      "phase0-reference-captured-20260419-required-set/generated-config/phase0/"
+      "automatic_vs_manual/primary/cache/tt_amflow/10/globalpreferred");
+}
+
+amflow::TargetIntegral ParseKiraInsertPrefactorIntegral(const std::string& integral_text) {
+  const std::size_t open_bracket = integral_text.find('[');
+  const std::size_t close_bracket = integral_text.rfind(']');
+  Expect(open_bracket != std::string::npos && close_bracket != std::string::npos &&
+             close_bracket > open_bracket,
+         "failed to parse Kira insert_prefactors integral label: " + integral_text);
+
+  amflow::TargetIntegral integral;
+  integral.family = integral_text.substr(0, open_bracket);
+
+  const std::string indices_text =
+      integral_text.substr(open_bracket + 1, close_bracket - open_bracket - 1);
+  std::istringstream indices_stream(indices_text);
+  for (std::string token; std::getline(indices_stream, token, ',');) {
+    const std::string trimmed = TrimAsciiWhitespace(token);
+    Expect(!trimmed.empty(),
+           "failed to parse Kira insert_prefactors integral index from: " + integral_text);
+    integral.indices.push_back(std::stoi(trimmed));
+  }
+
+  return integral;
+}
+
+amflow::KiraInsertPrefactorsSurface ParseKiraInsertPrefactorsSurface(
+    const std::string& contents) {
+  amflow::KiraInsertPrefactorsSurface surface;
+  std::istringstream stream(contents);
+  for (std::string line; std::getline(stream, line);) {
+    if (line.empty()) {
+      continue;
+    }
+
+    const std::size_t separator = line.find("*1/(");
+    Expect(separator != std::string::npos && !line.empty() && line.back() == ')',
+           "failed to parse Kira insert_prefactors corpus line: " + line);
+
+    const std::string integral_text = line.substr(0, separator);
+    const std::string denominator = line.substr(separator + 4, line.size() - separator - 5);
+    surface.entries.push_back(amflow::KiraInsertPrefactorEntry{
+        ParseKiraInsertPrefactorIntegral(integral_text), denominator});
+  }
+
+  return surface;
+}
+
+void KiraInsertPrefactorsCorpusDocsStayLockedToXintsExampleShapeTest() {
+  const std::string job_options_summary = ReadFile(KiraInsertPrefactorsCorpusJobOptionsSummaryPath());
+  const std::string lock_markdown = ReadFile(KiraInsertPrefactorsCorpusLockPath());
+  const std::string globalpreferred = ReadFile(KiraInsertPrefactorsCorpusGlobalPreferredPath());
+
+  const std::vector<std::string> expected_summary_fragments = {
+      "### insert_prefactors",
+      "Only available for 'run_firefly'.",
+      "Imports a file with factors for master integral coefficients.",
+      "First integral denotes an integral which is supposed to be reduced with coefficient 1.",
+      "All other integrals are master integrals and contain coefficients, which are rational "
+      "functions.",
+      "Kira will use these coefficients to divide them out during 'run_firefly' and restore "
+      "them in the final result.",
+  };
+  for (const auto& fragment : expected_summary_fragments) {
+    ExpectContains(job_options_summary,
+                   fragment,
+                   "insert_prefactors job-options summary should stay locked to the xints example "
+                   "shape: " + fragment);
+  }
+
+  ExpectContains(lock_markdown,
+                 "`insert_prefactors: [xints]`",
+                 "locked Kira example surface note should keep the reviewed xints claim");
+  ExpectContains(lock_markdown,
+                 "<integral>*1/(<denominator>)",
+                 "locked Kira example surface note should preserve the xints line shape");
+  ExpectContains(lock_markdown,
+                 "no Kira `insert_prefactors` wiring is claimed here",
+                 "locked Kira example surface note should retain the explicit non-claim");
+
+  ExpectContains(globalpreferred,
+                 "Gamma[2 - 2*eps]",
+                 "upstream distinction-only globalpreferred source should preserve the retained "
+                 "AMFlow rational prefactor evidence");
+  ExpectContains(globalpreferred,
+                 "Identity",
+                 "upstream distinction-only globalpreferred source should preserve the retained "
+                 "AMFlow identity fallback");
+  Expect(globalpreferred.find("insert_prefactors") == std::string::npos,
+         "upstream distinction-only globalpreferred source should not claim Kira "
+         "insert_prefactors wiring");
+}
+
+void KiraInsertPrefactorsSerializerMatchesLockedXintsSampleTest() {
+  const amflow::KiraInsertPrefactorsSurface surface{
+      {amflow::KiraInsertPrefactorEntry{
+          amflow::TargetIntegral{"doublebox", {1, 1, 1, 1, 1, 1, 1, 1, -2, 0, 0}},
+          "1"}}};
+
+  Expect(amflow::SerializeKiraInsertPrefactorsSurface(surface) ==
+             "doublebox[1,1,1,1,1,1,1,1,-2,0,0]*1/(1)\n",
+         "Kira insert_prefactors serializer should match the locked xints-style sample exactly");
+}
+
+void KiraInsertPrefactorsValidationRejectsBadSurfacesTest() {
+  const amflow::KiraInsertPrefactorsSurface surface{
+      {amflow::KiraInsertPrefactorEntry{
+           amflow::TargetIntegral{"doublebox", {1, 1, 1, 1, 1, 1, 1, 1, -2, 0, 0}},
+           "1"},
+       amflow::KiraInsertPrefactorEntry{
+           amflow::TargetIntegral{"doublebox", {0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0}},
+           "2"}}};
+  Expect(amflow::ValidateKiraInsertPrefactorsSurface(surface).empty(),
+         "locked xints insert_prefactors surface should validate cleanly");
+
+  const amflow::KiraInsertPrefactorsSurface empty_surface;
+  const std::vector<std::string> empty_surface_messages =
+      amflow::ValidateKiraInsertPrefactorsSurface(empty_surface);
+  Expect(ContainsAnySubstring(empty_surface_messages, {"empty", "must not be empty"}),
+         "empty insert_prefactors surface should be rejected");
+
+  amflow::KiraInsertPrefactorsSurface empty_denominator = surface;
+  empty_denominator.entries[0].denominator.clear();
+  const std::vector<std::string> empty_denominator_messages =
+      amflow::ValidateKiraInsertPrefactorsSurface(empty_denominator);
+  Expect(ContainsSubstring(empty_denominator_messages, "denominator") &&
+             ContainsAnySubstring(empty_denominator_messages, {"empty", "blank", "missing"}),
+         "empty insert_prefactors denominator should be rejected");
+
+  amflow::KiraInsertPrefactorsSurface newline_denominator = surface;
+  newline_denominator.entries[0].denominator = "1\n2";
+  const std::vector<std::string> newline_denominator_messages =
+      amflow::ValidateKiraInsertPrefactorsSurface(newline_denominator);
+  Expect(ContainsSubstring(newline_denominator_messages, "denominator") &&
+             ContainsAnySubstring(newline_denominator_messages,
+                                 {"newline", "line break", "linebreak"}),
+         "newline-containing insert_prefactors denominator should be rejected");
+
+  amflow::KiraInsertPrefactorsSurface first_denominator_is_not_one = surface;
+  first_denominator_is_not_one.entries[0].denominator = "2";
+  const std::vector<std::string> first_denominator_messages =
+      amflow::ValidateKiraInsertPrefactorsSurface(first_denominator_is_not_one);
+  Expect(ContainsAnySubstring(first_denominator_messages,
+                              {"exact \"1\"", "coefficient 1", "\"1\"", "not 1"}) &&
+             ContainsAnySubstring(first_denominator_messages,
+                                 {"first", "first denominator", "first entry"}),
+         "first insert_prefactors denominator should stay locked to coefficient 1");
+
+  amflow::KiraInsertPrefactorsSurface family_mismatch = surface;
+  family_mismatch.entries[1].integral.family = "other_family";
+  const std::vector<std::string> family_mismatch_messages =
+      amflow::ValidateKiraInsertPrefactorsSurface(family_mismatch);
+  Expect(ContainsSubstring(family_mismatch_messages, "family") &&
+             ContainsAnySubstring(family_mismatch_messages, {"mismatch", "does not match"}),
+         "family-mismatched insert_prefactors surface should be rejected");
+}
+
+void KiraPreparationStillDoesNotClaimInsertPrefactorsWiringTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::KiraBackend backend;
+  const amflow::KiraJobFiles files = backend.EmitJobFiles(spec, MakeKiraReductionOptions());
+
+  Expect(files.jobs_yaml.find("insert_prefactors") == std::string::npos,
+         "sample Kira job emission should not claim insert_prefactors wiring");
 }
 
 void KiraPreparationFromFileSpecTest() {
@@ -19728,6 +19930,10 @@ int main() {
     KiraPreparationTest();
     KiraPreparationEmitsKira31CompatibleYamlFragmentsTest();
     KiraPreparationLocksPlanarDoubleBoxReductionSpanOnSharedSampleSurfaceTest();
+    KiraInsertPrefactorsCorpusDocsStayLockedToXintsExampleShapeTest();
+    KiraInsertPrefactorsSerializerMatchesLockedXintsSampleTest();
+    KiraInsertPrefactorsValidationRejectsBadSurfacesTest();
+    KiraPreparationStillDoesNotClaimInsertPrefactorsWiringTest();
     KiraPreparationFromFileSpecTest();
     K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();

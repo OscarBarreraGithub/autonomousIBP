@@ -1,0 +1,22 @@
+version: "kira-insert-prefactors-surface-v1"
+reference_lock:
+  source_note: "references/snapshots/kira/insert_prefactors_surface_lock.md"
+  retained_example_xints: "references/snapshots/kira/xints"
+  retained_example_jobs: "references/snapshots/kira/jobs.yaml"
+  retained_option_summary: "references/snapshots/kira/job_options_summary.txt:77"
+serializer:
+  line_shape: "<integral.Label()>*1/(<denominator>)\\n"
+  first_entry_denominator: "1"
+validation:
+  - "entries must not be empty"
+  - "each entry family must not be empty"
+  - "all entry families must match the first entry family"
+  - "each denominator must not be empty"
+  - "each denominator must not contain CR or LF newlines"
+  - "the first entry denominator must be the exact string 1"
+notes:
+  - "This is a repo-local prerequisite surface for later Kira insert_prefactors wiring only."
+  - "The retained xints snapshot is intentionally narrow and normalized to the serializer line shape rather than a verbatim full upstream example copy."
+  - "It is intentionally separate from BuildOverallAmflowPrefactor(...) and does not reuse that overall loop-prefactor helper."
+  - "It does not claim any current KiraBackend emission or jobs.yaml insert_prefactors behavior."
+  - "It does not claim retained AMFlow globalpreferred is already a Kira insert_prefactors file."

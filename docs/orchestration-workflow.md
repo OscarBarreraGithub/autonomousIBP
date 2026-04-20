@@ -25,10 +25,14 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`
-- landed `Batch 50` through `Batch 54` are now present on `main` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 54`; `Milestone M1` is complete
+- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- landed `Batch 50` through `Batch 55` are now present on `main` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on `main` now extends beyond that baseline through landed `Batch 55`; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
+- `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
+  initial packet job `6721330` completed the `automatic_vs_manual` primary before walltime, and
+  resumed packet job `6732338` completed the packet via `--resume-existing`
 - `Operational Gate B0/G1` is accepted; the clean-candidate `sapphire` verification packet passed
   at job `5305579`
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
@@ -78,16 +82,17 @@ The workflow is optimized for the current repo shape:
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`
   under retained artifact root
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`
-- landed `Batch 50` through `Batch 54` are no longer local-only bookkeeping items; future
+- landed `Batch 50` through `Batch 55` are no longer local-only bookkeeping items; future
   orchestration must treat them as dependency-satisfied `main` history rather than open local
   packets
-- the current local `Batch 55` packet hardens typed diagnostics on top of landed `Batch 54`:
-  generated-wrapper DE-construction master-basis drift now returns `master_set_instability`,
-  exhausted monotone retry progress now returns `continuation_budget_exhausted`, and the mandatory
-  local gate `cmake -S . -B build`, `cmake --build build --parallel 1`,
-  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed in this thread
-- the active roadmap-owned implementation lane is now `Batch 55`; the standing parallel lane
-  remains `M0b`, and truthful `M3` closure still waits on `M0b`
+- landed `Batch 55` hardens typed diagnostics on top of landed `Batch 54`: generated-wrapper
+  DE-construction master-basis drift now returns `master_set_instability`, exhausted monotone
+  retry progress now returns `continuation_budget_exhausted`, and the mandatory local gate
+  `cmake -S . -B build`, `cmake --build build --parallel 1`,
+  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
+  commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- the next roadmap-owned implementation lane is truthful `Milestone M3` closure review: `M0b` is
+  accepted and no longer blocks it
 
 ## Mandatory Read Set Before Planning
 

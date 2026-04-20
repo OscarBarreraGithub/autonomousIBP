@@ -33,7 +33,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the starting `main` state for this packet additionally carried landed `Batch 50b` through
   `Batch 54` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
   `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
-  `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`;
+  `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and
+  `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -42,16 +43,18 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   squared-linear-momentum subset, `Batch 51` adds ordered multi-invariant list wrappers over the
   reviewed one-invariant automatic path, `Batch 52` widens invariant-generated seed construction
   to invariant-independent identifier or rational-constant masses on the bootstrap subset,
-  `Batch 53` adds first multiple-top-sector Kira target orchestration, and `Batch 54` adds
+  `Batch 53` adds first multiple-top-sector Kira target orchestration, `Batch 54` adds
   precision-budget preflight plus a generated-wrapper retry controller while direct
-  `SolveDifferentialEquation(...)` remains passthrough
-- the current local worktree additionally carries `Batch 55`: generated-wrapper DE-construction
-  master-basis drift now returns `failure_code = "master_set_instability"`, exhausted monotone
-  retry progress returns `failure_code = "continuation_budget_exhausted"`, and local verification
-  is green
+  `SolveDifferentialEquation(...)` remains passthrough, and landed `Batch 55` adds typed
+  generated-wrapper `master_set_instability` plus `continuation_budget_exhausted` diagnostics
 - `Milestone M1` is complete on that reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only; it does not
   imply captured reference outputs, completed benchmark comparisons, or upstream parity claims
+- `Milestone M0b` is accepted on the required phase-0 benchmark set only: retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
+  initial packet job `6721330` completed the `automatic_vs_manual` primary before walltime,
+  resumed packet job `6732338` completed the packet via `--resume-existing`, and both required
+  benchmark comparison summaries now pass
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
@@ -93,9 +96,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   than a new public surface; `Batch 48` adds only the narrow bootstrap `Prescription` alias over
   reviewed `All`; `Batch 49` adds only the narrow builtin `Propagator` structural selector over
   the reviewed local candidate surface; `Batch 49b` adds only the narrow local `Mass` selector plus
-  the minimal eta-generated-path mass-coherence widening; and `Batch 50a` adds only internal
+  the minimal eta-generated-path mass-coherence widening; `Batch 50a` adds only internal
   eta-topology preflight blocker telemetry for still-blocked `Branch` / `Loop` without truthful
-  selector semantics
+  selector semantics; and `M0b` now supplies retained upstream goldens for the required phase-0
+  benchmark set without widening the C++ runtime/API surface or accepting later parity milestones
 - the durably evidenced but still-internal `Batch 50b` packet on current `main` is narrower still:
   it keeps `Branch` and `Loop` blocked, adds only an internal topology-prerequisite bridge/prereq
   snapshot over the current family/kinematics surface, and reports explicit available versus
@@ -596,7 +600,7 @@ The first exact one-hop continuation solver seam is now reviewed through the rev
 - invariant- and eta-generated solver handoffs layer a narrow internal retry controller on top of
   that surface: on retryable `insufficient_precision`, `requested_digits` stays fixed and the
   wrapper retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or
-  `x_order`; on the current local `Batch 55` surface, generated-wrapper master-basis drift during
+  `x_order`; on the landed `Batch 55` surface, generated-wrapper master-basis drift during
   DE construction returns `failure_code = "master_set_instability"` and exhausted monotone retry
   progress returns `failure_code = "continuation_budget_exhausted"` instead of falling back to the
   raw terminal retry diagnostic

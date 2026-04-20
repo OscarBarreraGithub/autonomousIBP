@@ -59,7 +59,10 @@
   "phase0": {
     "benchmark_catalog": "",
     "golden_index": "",
-    "placeholder_goldens_frozen": false
+    "placeholder_goldens_frozen": false,
+    "capture_state": "bootstrap-only",
+    "capture_summary": "",
+    "captured_benchmarks": []
   },
   "notes": [
     "Fill all pinned inputs before collecting real goldens.",

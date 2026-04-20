@@ -11,11 +11,19 @@
     "benchmark_catalog": ""
   },
   "expected_outputs": {
+    "result_manifest": "",
     "replacement_rules": "",
     "coefficient_table": "",
     "wolfram_log": "",
     "kira_log": "",
     "generated_config_dir": ""
+  },
+  "captured_outputs": {
+    "golden_manifest": "",
+    "golden_output_dir": "",
+    "primary_run_manifest": "",
+    "rerun_run_manifest": "",
+    "comparison_summary": ""
   },
   "notes": [
     "Populate from the pinned upstream AMFlow reference harness once a licensed Wolfram environment is available."

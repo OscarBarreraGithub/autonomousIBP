@@ -140,6 +140,9 @@ def freeze_phase0_placeholders(
         golden_metadata["oracle"]["kind"] = benchmark["oracle"]
         golden_metadata["oracle"]["manifest"] = str(manifest_path) if manifest_path else ""
         golden_metadata["oracle"]["benchmark_catalog"] = str(benchmark_catalog)
+        golden_metadata["expected_outputs"]["result_manifest"] = str(
+            benchmark_results_root / "result-manifest.json"
+        )
         golden_metadata["expected_outputs"]["replacement_rules"] = str(
             benchmark_results_root / "replacement-rules.json"
         )
@@ -168,9 +171,7 @@ def freeze_phase0_placeholders(
         comparison_summary = copy.deepcopy(comparison_template)
         comparison_summary["benchmark_id"] = benchmark_id
         comparison_summary["reference_golden"] = str(golden_metadata_path)
-        comparison_summary["latest_run_result"] = str(
-            benchmark_results_root / "replacement-rules.json"
-        )
+        comparison_summary["latest_run_result"] = str(benchmark_results_root / "result-manifest.json")
 
         metadata_refresh = should_refresh_placeholder(golden_metadata_path, force)
         coefficient_refresh = should_refresh_placeholder(coefficient_placeholder_path, force)

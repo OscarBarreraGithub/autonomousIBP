@@ -49,6 +49,11 @@ phase0:
   benchmark_catalog: "/path/to/harness-root/templates/phase0-benchmarks.json"
   golden_index: "/path/to/harness-root/goldens/phase0/index.json"
   placeholder_goldens_frozen: true
+  capture_state: "bootstrap-only"
+  capture_summary: "/path/to/harness-root/state/phase0-reference.capture.json"
+  captured_benchmarks:
+    - "automatic_loop"
+    - "automatic_vs_manual"
 
 # Semantics:
 # - when source.kind is "git" and source.path points at inputs/upstream/amflow, status "ready"
@@ -56,3 +61,5 @@ phase0:
 #   resolved_commit was pinned.
 # - phase-0 placeholder refresh rewrites missing or placeholder-status files by default and keeps
 #   promoted real artifacts unless an explicit force refresh is requested.
+# - phase0.capture_state is "bootstrap-only" until the required phase-0 benchmark set has retained
+#   real outputs plus a rerun reproducibility summary; then it advances to "reference-captured".

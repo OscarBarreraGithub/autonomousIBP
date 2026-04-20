@@ -68,9 +68,14 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`, which carries landed `Batch 54` on top of landed `Batch 50` through `Batch 53` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, and `0f623d65e7e933d464deef3da4ea02efaf57a535`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 54`, while `Milestone M1` remains complete only on the accepted reviewed surface
+- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, which carries landed `Batch 55` on top of landed `Batch 50` through `Batch 54` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, and `23b64404680fe0c5425d2261f6e776bd1f197794`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on `main` now extends beyond that baseline through landed `Batch 55`, while `Milestone M1` remains complete only on the accepted reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
+- `Milestone M0b` is accepted on the required phase-0 benchmark set only: retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
+  initial packet job `6721330` completed the `automatic_vs_manual` primary before walltime,
+  resumed packet job `6732338` completed the packet via `--resume-existing`, and both required
+  benchmark comparison summaries now pass
 - `Operational Gate B0/G1` is accepted: GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` canonical configure/build/test packet passed at job `5305579`
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;
@@ -136,14 +141,14 @@ exit gate. The current live state must always be read from `docs/implementation-
 - landed `Batch 54` on current `main` now adds precision-budget preflight plus an internal retry
   controller on generated-solver handoffs; direct `SolveDifferentialEquation(...)` remains
   passthrough by design
-- current local `Batch 55` worktree packet now hardens typed diagnostics on top of that landed
-  surface: DE-construction master-basis drift in the generated wrappers returns
+- landed `Batch 55` now hardens typed diagnostics on top of that landed surface:
+  DE-construction master-basis drift in the generated wrappers returns
   `failure_code = "master_set_instability"`, exhausted monotone retry progress returns
   `failure_code = "continuation_budget_exhausted"`, and local
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
-  and `./build/amflow-tests` all passed
-- the active independent roadmap-owned implementation lane is now `Batch 55`; the standing
-  parallel lane remains `M0b`, and truthful `M3` / later parity closure still waits on `M0b`
+  and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
+- the next independent roadmap-owned lane is truthful `Milestone M3` closure review: `M0b` is
+  accepted and no longer blocks it
 
 ## Current State At R0
 
@@ -210,8 +215,10 @@ exit gate. The current live state must always be read from `docs/implementation-
 - feature parity is still missing for complex kinematics, arbitrary `D0`, fixed-`eps`, linear
   propagators, phase-space integration, standalone DE solving at parity quality, and full
   user-defined eta/ending execution paths
-- the reference harness is still `bootstrap-only`; `M0a` is accepted, but `M0b` is still open and
-  no real upstream AMFlow goldens have been captured yet
+- the reference harness is now `reference-captured` on the required phase-0 benchmark set:
+  `automatic_vs_manual` and `automatic_loop` both have promoted goldens, result manifests, and
+  passed bundled-backup plus rerun reproducibility summaries under the retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`
 
 ## Missing Workstreams Grouped Into Major Tracks
 
@@ -303,7 +310,7 @@ Current status:
   `failure_code = "insufficient_precision"` when `requested_digits` exceed that configured
   ceiling, and `SolveInvariantGeneratedSeries(...)` / `SolveEtaGeneratedSeries(...)` route solver
   calls through `SolveWithPrecisionRetry(...)`
-- current local `Batch 55` adds the first typed diagnostics on top of that retry surface:
+- landed `Batch 55` adds the first typed diagnostics on top of that retry surface:
   generated-wrapper master-basis drift is classified as `master_set_instability`, exhausted
   monotone retry progress is classified as `continuation_budget_exhausted`, direct
   `SolveDifferentialEquation(...)` remains passthrough, and cancellation/truncation detection,
@@ -367,8 +374,9 @@ Dependencies:
 Delivers:
 - `M0a`: a reference-ready cluster lane with pinned manifests, placeholder/golden layout, and
   dependency sanity checks
-- `M0b`: rolling real captured evidence for the frozen example classes, mandatory benchmark
-  families, and frozen upstream regression surfaces before later phases claim "matches reference"
+- `M0b`: retained real captured evidence for the required phase-0 benchmark set first, then the
+  same rolling harness/tools widened to the remaining frozen example classes, benchmark families,
+  and upstream regression surfaces before later phases claim "matches reference"
 
 Reason for order:
 - parity gates that mention upstream reference behavior must not outrun the reference harness
@@ -489,7 +497,7 @@ dependency change.
 | Batch | Scope | Depends On |
 | --- | --- | --- |
 | `Milestone M0a` | cluster-first reference-harness bootstrap: pinned Linux manifests, placeholder/golden layout, dependency sanity checks, Wolfram smoke evidence, and stable artifact paths for AMFlow/CPC/Kira/Fermat/Wolfram inputs | existing Batch-2 harness state |
-| `Milestone M0b` | rolling real-golden capture and reproducibility evidence for the frozen example classes, mandatory benchmark families, and upstream regression families | `Milestone M0a` |
+| `Milestone M0b` | retained real-golden capture and rerun reproducibility evidence for the required phase-0 benchmark set, with the rolling harness lane/tools in place for the remaining frozen example classes and later benchmark/regression families | `Milestone M0a` |
 
 ### Phase B: Solver MVP
 
@@ -539,7 +547,7 @@ dependency change.
 | Batch | Scope | Depends On |
 | --- | --- | --- |
 | `Batch 54` | landed on `main`: precision-budget preflight plus an internal retry controller on generated-solver handoffs, while direct `SolveDifferentialEquation(...)` remains passthrough | `Milestone M2` |
-| `Batch 55` | active local packet: diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
+| `Batch 55` | landed on `main`: diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
 | `Batch 56` | patch/cache artifact model plus `UseCache` replay and invalidation semantics for solved paths | `Batch 55` |
 | `Batch 57` | `SkipReduction` runtime path over cached or caller-provided `DESystem` inputs | `Batch 56` |
 | `Batch 58` | live wiring of `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, `RationalizePre`, and `RunLength` into solver policy | `Batch 57` |

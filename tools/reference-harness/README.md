@@ -2,6 +2,12 @@
 
 This directory is the phase-0 bootstrap for standing up the upstream AMFlow validation environment. It can now materialize a real harness layout, record pinned inputs, optionally clone or refresh the public AMFlow checkout after verifying its remote, optionally download and extract the CPC archive into a clean directory, and freeze placeholder golden metadata without requiring Mathematica.
 
+Once the bootstrap exists, `capture_phase0_reference.py` promotes the required phase-0 benchmark
+set from placeholders to retained real outputs: it stages an isolated AMFlow work tree, patches the
+Kira/Fermat install hook to the pinned toolchain, runs each selected example twice, retains the raw
+Mathematica outputs as goldens, canonicalizes rule-list ordering for truthful comparisons, and
+emits machine-readable backup-match plus rerun-reproducibility summaries.
+
 ## Quick Start
 
 ```bash
@@ -73,15 +79,37 @@ python3 tools/reference-harness/scripts/freeze_phase0_goldens.py \
 
 Benchmark IDs in the phase-0 catalog must be path-safe ASCII tokens such as `automatic_vs_manual`. By default the freezer refreshes only missing or placeholder-status files and leaves promoted real artifacts alone. Use `--force` only if you intentionally want to overwrite existing non-placeholder files.
 
+To promote the required phase-0 benchmark set into retained real goldens:
+
+```bash
+python3 tools/reference-harness/scripts/capture_phase0_reference.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --required-only
+```
+
+Add `--resume-existing` to reuse any already-retained `primary` or `rerun` run manifests after a
+walltime kill instead of replaying completed labels.
+
+The capture script writes:
+
+- `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
+  two pinned executions, plus canonicalized sidecars and per-run manifests
+- `goldens/phase0/<benchmark>/captured/`: the promoted primary-run golden outputs
+- `comparisons/phase0/<benchmark>.summary.json`: bundled-`kira_*` backup agreement plus rerun
+  reproducibility checks after canonicalization
+- `state/phase0-reference.capture.json`: packet-wide capture summary, which also advances
+  `phase0.capture_state` in the main manifest to `reference-captured` once every required
+  benchmark passes
+
 ## Output Layout
 
 - `manifests/`: pinned environment manifests
 - `inputs/`: optional cloned/downloaded upstream AMFlow and CPC inputs
 - `logs/`: Wolfram and Kira logs
 - `generated-config/`: emitted reducer/job config
-- `results/`: captured replacement rules and coefficient tables
-- `comparisons/`: parity reports vs frozen goldens
-- `goldens/`: phase-0 golden metadata, placeholder coefficient tables, and index files
+- `results/`: captured benchmark outputs, run manifests, and canonical sidecars
+- `comparisons/`: parity and reproducibility reports vs retained goldens
+- `goldens/`: phase-0 golden metadata, promoted output manifests, and index files
 - `templates/`: copied manifest, environment, Wolfram, and phase-0 benchmark templates
 - `state/`: bootstrap/fetch summaries for automation and audit trails
 
@@ -96,6 +124,12 @@ Benchmark IDs in the phase-0 catalog must be path-safe ASCII tokens such as `aut
 ## Notes
 
 - The phase-0 bootstrap does not require Mathematica to run. It freezes the expected benchmark, output, and comparison paths so later parity tooling can bind to stable locations before real reference data is captured.
-- Real goldens are still produced only after the pinned upstream AMFlow environment is run under a licensed Wolfram kernel.
+- Real goldens are produced only after the pinned upstream AMFlow environment is run under a licensed Wolfram kernel.
+- The capture script compares Mathematica outputs after canonicalizing rule-list ordering, because
+  upstream examples can rewrite the same rule set in a different textual order across runs even
+  when the mathematical result is unchanged.
 - The templates here are designed to match the repo-level docs in `docs/reference-harness.md` and the manifest shape in `specs/reference-harness-manifest.yaml`.
 - The fetch helper `--self-check` now also verifies the tar extraction policy against rejected symlink, hardlink, device, absolute-path, and escaping entries.
+- `capture_phase0_reference.py --self-check` exercises the retained-golden promotion flow end to
+  end against a synthetic benchmark without requiring Kira or Fermat, including reuse of retained
+  per-run manifests through `--resume-existing`.

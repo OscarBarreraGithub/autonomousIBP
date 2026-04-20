@@ -3,20 +3,26 @@
 The upstream AMFlow harness is separate from the C++ runtime and exists only to capture goldens and
 parity signals. Batch 2 turned the harness from a dry-run sketch into a concrete phase-0 bootstrap
 that can materialize its layout, record pinned inputs, optionally fetch upstream assets, and
-freeze placeholder golden metadata before Mathematica is available. `Milestone M0a` is now
-accepted on top of that bootstrap as cluster/reference-harness readiness only; it does not imply
-captured goldens or completed upstream comparisons.
+freeze placeholder golden metadata before Mathematica is available. The follow-on retained-capture
+path now stages an isolated AMFlow work tree, patches the pinned Kira/Fermat install hook, runs
+selected examples twice, promotes the primary run to retained goldens, and writes canonicalized
+backup-match plus rerun-reproducibility summaries. `Milestone M0a` remains the bootstrap-only
+readiness seam; `Milestone M0b` closes only once the required phase-0 benchmark set has real
+retained outputs and rerun evidence.
 
 ## Current Durable Status
 
+- starting `main` / `origin/main` head for this closeout packet: `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - accepted harness/bootstrap milestone: `M0a`
-- authoritative repo baseline for that status: `fdbceea3cb94ee2e811573ad446e5777917c1bb0`
+- accepted retained-capture milestone: `M0b`
 - accepted Slurm lane for the retained `M0a` packets: `sapphire`
 - retained acceptance jobs:
   - phase-0 bootstrap rerun: `5276851`
   - shared Linux toolchain manifest: `5296876`
   - dependency sanity: `5297205`
   - Wolfram smoke: `5297206`
+  - retained required-benchmark capture, initial packet: `6721330` (`automatic_vs_manual` primary completed before walltime)
+  - retained required-benchmark capture, resumed packet: `6732338`
 - accepted retained artifact roots:
   - shared Linux toolchain manifest:
     `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/toolchain/linux-toolchain-manifest.json`
@@ -28,6 +34,13 @@ captured goldens or completed upstream comparisons.
     `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/m0a-dependency-sanity/`
   - Wolfram smoke packet:
     `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/m0a-wolfram-smoke/`
+  - retained required-benchmark capture root:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/`
+  - retained required-benchmark capture summary:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/state/phase0-reference.capture.json`
+  - retained required-benchmark comparison summaries:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/comparisons/phase0/automatic_vs_manual.summary.json`
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/comparisons/phase0/automatic_loop.summary.json`
 - accepted pinned upstream AMFlow source for the bootstrap lane:
   `https://gitlab.com/multiloop-pku/amflow.git` at ref `1.1`, with annotated tag object
   `a29fbdfe330ab172fe5ccdafcac2d6ec9211800e` and materialized checkout commit
@@ -55,8 +68,12 @@ captured goldens or completed upstream comparisons.
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/k0/reducer-smoke` is coherent and complete
 - `K0` and `K0b` are therefore accepted only for that frozen repo-local smoke subset, and none of
   this widens `M0a` beyond bootstrap readiness or implies any broader parity claim
-- `M0a` remains bootstrap-only: the phase-0 root still carries placeholder goldens and pending
-  comparison summaries, so `M0b` remains open and no upstream parity claim is available yet
+- `M0a` remains the bootstrap precursor: placeholder goldens and pending comparison summaries are
+  sufficient there for path stability only
+- `M0b` is now accepted on the required phase-0 benchmark set only: the retained root above has
+  promoted goldens plus passed bundled-backup and rerun-reproducibility summaries for
+  `automatic_vs_manual` and `automatic_loop`, while the remaining frozen examples and later
+  regression families stay on the rolling future-capture lane
 
 ## Canonical Baseline
 
@@ -83,8 +100,9 @@ captured goldens or completed upstream comparisons.
 - Kira logs
 - generated `config/*.yaml`
 - `jobs.yaml`
-- final replacement rules / coefficient tables
-- comparison summary against pinned goldens
+- final raw Mathematica outputs and canonicalized sidecars
+- promoted golden-output manifests and result manifests
+- comparison summaries against bundled `kira_*` backups and rerun reproducibility
 - placeholder golden metadata and comparison index before real goldens are captured
 
 ## Repo-Local Layout
@@ -93,9 +111,9 @@ captured goldens or completed upstream comparisons.
 - `inputs/`: optional cloned upstream AMFlow checkout, downloaded CPC archive, extracted CPC tree
 - `logs/`: benchmark-specific Wolfram and Kira logs
 - `generated-config/`: generated Kira and harness configuration files
-- `results/`: benchmark-specific replacement rules and coefficient tables
+- `results/`: benchmark-specific raw outputs, run manifests, and canonicalized sidecars
 - `comparisons/`: placeholder and later real comparison summaries
-- `goldens/phase0/`: per-benchmark placeholder golden metadata plus an index file
+- `goldens/phase0/`: per-benchmark placeholder golden metadata, promoted golden-output manifests, and an index file
 - `templates/`: copied benchmark, manifest, env, Wolfram, and placeholder templates
 - `state/`: bootstrap and fetch summaries for automation and audit trails
 
@@ -110,14 +128,18 @@ captured goldens or completed upstream comparisons.
 6. Freeze or refresh the placeholder phase-0 golden layout with `freeze_phase0_goldens.py`, creating stable metadata, coefficient-table, comparison, log, config, and result paths for each benchmark. Benchmark IDs are path-safe only. By default the script refreshes missing or placeholder-status files and preserves promoted real artifacts unless `--force` is supplied.
 7. Verify the Wolfram kernel is usable in non-interactive mode once the licensed environment is ready.
 8. Run dependency sanity checks in the pinned environment.
-9. Reproduce `automatic_vs_manual` and `automatic_loop` first, then any available complex, phase-space, linear-propagator, arbitrary-`D0`, and custom-mode examples.
-10. Replace placeholder golden files with real reference outputs, then rerun the pinned environment to prove reproducibility.
+9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any available complex, phase-space, linear-propagator, arbitrary-`D0`, and custom-mode examples.
+10. Promote the primary retained outputs to goldens, canonicalize the Mathematica output files for truthful comparison, and rerun the pinned environment to prove reproducibility.
 
 ## Current Batch-2 Scripts
 
 - `tools/reference-harness/scripts/bootstrap_reference_harness.py`: phase-0 coordinator for layout creation, template copying, manifest writing, optional upstream fetch, and optional placeholder golden freeze.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
+- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels.
 
-The scripts under `tools/reference-harness/` now implement a real repo-local bootstrap and can be wired to a licensed environment later for actual golden capture.
-The two focused helpers also expose `--self-check` modes so the repo can rerun the Batch-2 regression scenarios without external network access, including tar-policy rejection cases for unsafe archive members.
+The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
+the retained-golden promotion path. All four helpers expose `--self-check` modes so the repo can
+rerun the bootstrap and retained-capture regression scenarios without needing a full benchmark
+packet, and the retained-capture helper now also self-checks the restart-safe `--resume-existing`
+path.

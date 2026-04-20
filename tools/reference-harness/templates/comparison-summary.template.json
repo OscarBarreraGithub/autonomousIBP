@@ -4,17 +4,23 @@
   "status": "pending-reference-capture",
   "reference_golden": "",
   "latest_run_result": "",
+  "bundled_kira_backup": "",
+  "runs": [],
   "checks": [
     {
       "name": "reference_run_present",
       "status": "pending"
     },
     {
-      "name": "replacement_rules_exported",
+      "name": "required_outputs_present",
       "status": "pending"
     },
     {
-      "name": "coefficient_table_frozen",
+      "name": "bundled_kira_backup_match",
+      "status": "pending"
+    },
+    {
+      "name": "rerun_reproducible",
       "status": "pending"
     }
   ]

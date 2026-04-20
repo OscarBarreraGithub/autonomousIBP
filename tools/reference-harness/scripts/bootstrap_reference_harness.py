@@ -110,6 +110,9 @@ def build_manifest(
     manifest["phase0"]["benchmark_catalog"] = str(benchmark_catalog_path)
     manifest["phase0"]["golden_index"] = str(golden_index_path)
     manifest["phase0"]["placeholder_goldens_frozen"] = bool(args.freeze_placeholders)
+    manifest["phase0"]["capture_state"] = "bootstrap-only"
+    manifest["phase0"]["capture_summary"] = ""
+    manifest["phase0"]["captured_benchmarks"] = []
     return manifest
 
 

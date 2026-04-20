@@ -8,9 +8,15 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the starting `main` / `origin/main` head for this packet was `23b64404680fe0c5425d2261f6e776bd1f197794`
+- the starting `main` / `origin/main` head for this packet was `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
+- `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
+  initial packet job `6721330` reached the completed `automatic_vs_manual` primary before
+  walltime, resumed job `6732338` completed the packet via `--resume-existing`, and the manifest
+  now records `phase0.capture_state = "reference-captured"` with both required benchmarks
+  captured
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
   `ctest --test-dir build --output-on-failure`
@@ -69,12 +75,15 @@ The migration is phase-gated. Every phase must pass:
   under retained artifact root
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/jobs/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and the durable docs now record that evidence
-- landed `Batch 50` through `Batch 54` are now dependency-satisfied `main` history for future
-  verification planning; broader parity claims still remain blocked because `M0b` is still open
-- the current local `Batch 55` packet now adds typed `master_set_instability` and
+- landed `Batch 50` through `Batch 55` are now dependency-satisfied `main` history for future
+  verification planning; `M0b` is now accepted as retained phase-0 reference capture for the
+  required benchmark set, so later parity milestones may consume those goldens but still require
+  their own reviewed gates
+- landed `Batch 55` on current `main` now adds typed `master_set_instability` and
   `continuation_budget_exhausted` failures on top of the landed retry surface; local
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
-  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed
+  `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` all passed before the
+  landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 
 ## Test Taxonomy
 
@@ -95,8 +104,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Phase-0 Harness States
 
-- `bootstrap-only`: the harness layout, manifest, pinned inputs, and placeholder benchmark metadata exist, but no real Wolfram reference outputs have been captured yet
-- `reference-captured`: the pinned upstream AMFlow environment has populated the placeholder benchmark paths with real replacement rules, coefficient tables, and comparison summaries
+- `bootstrap-only`: the harness layout, manifest, pinned inputs, and placeholder benchmark metadata exist, but the required phase-0 benchmark set has not yet been retained as real Wolfram outputs
+- `reference-captured`: the pinned upstream AMFlow environment has populated the required phase-0 benchmark paths with retained raw outputs, promoted goldens, result manifests, and comparison summaries
 
 The bootstrap-only state is allowed for repository setup and interface work. It is not sufficient to claim `Phase 0` parity is passing.
 
@@ -140,13 +149,17 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - current accepted reference-harness bootstrap evidence for `M0a` is the combination of the
   shared Linux toolchain manifest, the phase-0 bootstrap root, the dependency-sanity packet, and
   the Wolfram smoke packet described in `docs/reference-harness.md`
-- `M0a` remains bootstrap-only: placeholder goldens and pending comparisons are acceptable there,
-  but they do not support any upstream parity claim
+- current accepted retained-capture evidence for `M0b` is the same pinned root at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
+  where `automatic_vs_manual` and `automatic_loop` both have promoted goldens, result manifests,
+  and passed bundled-backup plus rerun reproducibility summaries
+- `M0a` remains the bootstrap precursor only; `M0b` now supplies the accepted
+  `reference-captured` state for the required phase-0 benchmark set
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap
   manifest; `Batch 47` / `Milestone M2`, landed `Batch 48`, landed `Batch 49`, landed `Batch 49b`,
   and landed `Batch 50a` are now also satisfied narrowly on the supported sample subset on the last
   fully accepted baseline, while landed `Batch 50b`, `Batch 50`, broader Kira smoke, broader
-  reducer parity, `M0b`, and later parity milestones remain separate future gates
+  reducer parity, and later parity milestones remain separate future gates
 
 ## Immediate Enforcement In This Bootstrap
 
@@ -156,16 +169,17 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - placeholder CLI smoke tests
 - reference-harness manifest shape and pinned-input recording
 - placeholder golden layout and benchmark index generation without Mathematica
+- retained-golden promotion with canonicalized Mathematica output comparison and rerun reproducibility summaries
 - verified AMFlow remote/origin matching before pinning an existing checkout
 - clean CPC extraction on reruns so stale archive contents cannot survive
 - path-safe benchmark catalog IDs and placeholder-only refresh semantics
-- local `--self-check` coverage in the fetch and placeholder-freeze helpers for the Batch-2 regression cases
+- local `--self-check` coverage in the fetch, placeholder-freeze, and retained-capture helpers for the Batch-2/M0b regression cases
 
 ## Batch-2 Reviewable Artifacts
 
 - `specs/reference-harness-manifest.yaml` defines the manifest shape that the bootstrap writes as JSON.
 - `tools/reference-harness/templates/phase0-benchmarks.json` freezes the initial phase-0 benchmark catalog.
-- `tools/reference-harness/templates/phase0-golden.template.json` and `comparison-summary.template.json` define the placeholder golden and comparison contracts.
+- `tools/reference-harness/templates/phase0-golden.template.json` and `comparison-summary.template.json` define the placeholder and promoted comparison contracts.
 - `docs/implementation-ledger.md` tracks which implementation batches have been reviewed and what verification was run.
 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification suite as the solver is implemented.

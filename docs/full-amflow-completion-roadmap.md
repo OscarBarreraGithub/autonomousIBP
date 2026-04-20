@@ -148,15 +148,19 @@ exit gate. The current live state must always be read from `docs/implementation-
   `cmake -S . -B build`, `cmake --build build --parallel 1`, `ctest --test-dir build --output-on-failure`,
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - truthful `Milestone M3` closure review was reconsidered after `M0b`; the repo now has a first
-  explicit in-repo prefactor/sign-convention surface and tests, but `M3` still remains open until
-  those conventions are locked against retained references and carried through the first
-  mandatory-family reduction-span parity evidence
+  explicit in-repo prefactor/sign-convention surface and tests, and current worktree `Batch 58c`
+  now freezes prefactor reference evidence only in `specs/amflow-prefactor-reference.yaml`: the
+  retained phase-0 README backs the `+i0` loop prefactor and cut prefactor, while the explicit
+  `-i0` loop-prefactor note remains repo-snapshot backed only, and retained `AMFlow.m` is cited
+  only for prescription polarity. `M3` still remains open because the first mandatory-family
+  reduction-span parity evidence is still missing
 - truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
   the current docs/tests surface
-- the current blocker lane is therefore `Batch 58b`: `AmflowLoopPrefactorSign`,
-  `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)` add the first explicit
-  in-repo prefactor surface/tests over declared loop count plus cut propagator count while
-  keeping reducer `insert_prefactors` wiring and broader parity claims deferred
+- the current blocker lane is therefore `Batch 58c`:
+  `specs/amflow-prefactor-reference.yaml` plus the updated durable docs freeze that narrow
+  prefactor reference evidence packet for retained `+i0` and cut conventions while keeping the
+  explicit `-i0` note snapshot-backed only; reducer `insert_prefactors` wiring, first-family
+  reduction-span parity, and broader parity claims remain deferred
 
 ## Current State At R0
 
@@ -340,12 +344,13 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
-- current worktree `Batch 58b` adds the first explicit in-repo prefactor/sign-convention helper
-  surface: `BuildOverallAmflowPrefactor(...)` counts declared loop momenta plus cut propagators
-  and renders a deterministic textual overall factor from `AmflowPrefactorConvention` without
-  mutating `ProblemSpec`. That lowers the old “no prefactor surface/tests” blocker, but locking
-  those conventions against retained references and threading them through reduction-span parity
-  still remain open
+- current worktree `Batch 58c` freezes prefactor reference evidence only around the existing
+  helper surface: `specs/amflow-prefactor-reference.yaml` preserves retained phase-0 README
+  backing for the `+i0` loop prefactor and cut prefactor, and separately records that the
+  explicit `-i0` loop-prefactor note is repo-snapshot backed only while retained `AMFlow.m`
+  remains a prescription-polarity-only citation. `BuildOverallAmflowPrefactor(...)` stays
+  deterministic and non-mutating, but Kira `insert_prefactors` wiring and first-family
+  reduction-span parity still remain open
 
 ### Track F: Feature-Surface Parity
 

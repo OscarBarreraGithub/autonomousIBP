@@ -67,6 +67,12 @@ enum class AmflowLoopPrefactorSign {
 
 std::string ToString(AmflowLoopPrefactorSign sign);
 
+// Default literals are frozen by the Batch 58c evidence packet:
+// specs/amflow-prefactor-reference.yaml is the structured lock, and
+// references/snapshots/amflow/prefactor_convention_lock.md is the
+// human-readable mirror. The retained phase-0 README backs the +i0 loop and
+// cut factors; the explicit -i0 loop factor remains backed only by the
+// repo-local AMFlow snapshot README.
 struct AmflowPrefactorConvention {
   AmflowPrefactorConvention()
       : plus_i0_loop_prefactor("1/(I*pi^(D/2))"),

@@ -39,6 +39,21 @@ void Expect(bool condition, const std::string& message) {
   }
 }
 
+void ExpectContains(const std::string& value,
+                    const std::string& needle,
+                    const std::string& message) {
+  Expect(value.find(needle) != std::string::npos, message);
+}
+
+std::string TrimAsciiWhitespace(const std::string& value) {
+  const std::size_t first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) {
+    return "";
+  }
+  const std::size_t last = value.find_last_not_of(" \t\r\n");
+  return value.substr(first, last - first + 1);
+}
+
 bool ContainsSubstring(const std::vector<std::string>& values, const std::string& needle) {
   for (const auto& value : values) {
     if (value.find(needle) != std::string::npos) {
@@ -232,6 +247,147 @@ int RunShellCommand(const std::string& command) {
 
 std::filesystem::path TestDataRoot() {
   return std::filesystem::path(AMFLOW_SOURCE_DIR) / "tests/data";
+}
+
+std::filesystem::path AmflowPrefactorReferenceSpecPath() {
+  return std::filesystem::path(AMFLOW_SOURCE_DIR) /
+         "specs/amflow-prefactor-reference.yaml";
+}
+
+constexpr char kExpectedPlusI0LoopPrefactor[] = "1/(I*pi^(D/2))";
+constexpr char kExpectedCutPrefactor[] = "delta_+(p^2-m^2)/(2*pi)^(D-1)";
+constexpr char kExpectedMinusI0LoopPrefactor[] = "-1/(I*pi^(D/2))";
+constexpr char kExpectedPrefactorReferenceVersion[] = "version: \"batch-58c-r2\"";
+constexpr char kExpectedRetainedPhase0Key[] = "retained_phase0:";
+constexpr char kExpectedRetainedPhase0SourceReadme[] =
+    "  source_readme: "
+    "\"/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+    "phase0-reference-captured-20260419-required-set/inputs/upstream/amflow/README.md:73\"";
+constexpr char kExpectedRetainedPhase0PrescriptionPolaritySource[] =
+    "  source_amflow_m_prescription_polarity: "
+    "\"/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+    "phase0-reference-captured-20260419-required-set/inputs/upstream/amflow/AMFlow.m:223\"";
+constexpr char kExpectedPlusI0LoopPrefactorLine[] =
+    "  plus_i0_loop_prefactor: \"1/(I*pi^(D/2))\"";
+constexpr char kExpectedCutPrefactorLine[] =
+    "  cut_prefactor: \"delta_+(p^2-m^2)/(2*pi)^(D-1)\"";
+constexpr char kExpectedRepoSnapshotKey[] = "repo_snapshot:";
+constexpr char kExpectedRepoSnapshotSourceReadme[] =
+    "  source_readme: \"references/snapshots/amflow/README.md:91\"";
+constexpr char kExpectedMinusI0LoopPrefactorLine[] =
+    "  minus_i0_loop_prefactor: \"-1/(I*pi^(D/2))\"";
+constexpr char kExpectedRetainedPhase0ProvenanceNote[] =
+    "  - \"Retained phase-0 README line 73 is the frozen source for "
+    "plus_i0_loop_prefactor and cut_prefactor.\"";
+constexpr char kExpectedRepoSnapshotProvenanceNote[] =
+    "  - \"Repo snapshot README line 91 is the frozen source for "
+    "minus_i0_loop_prefactor.\"";
+constexpr char kExpectedBatch58cAtomicityNote[] =
+    "  - \"Batch 58c freezes prefactor reference evidence only.\"";
+constexpr char kExpectedPrescriptionOnlyNote[] =
+    "  - \"Retained phase-0 AMFlow.m is not a direct source for overall loop-prefactor wording.\"";
+constexpr char kExpectedMilestoneM3OpenNote[] =
+    "  - \"First-family reduction-span parity evidence is still missing; Milestone M3 remains "
+    "open.\"";
+constexpr char kExpectedMilestoneM4OpenNote[] =
+    "  - \"Milestone M4 remains open.\"";
+
+void ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(const std::string& yaml) {
+  const std::vector<std::string> required_fragments = {
+      kExpectedPrefactorReferenceVersion,
+      kExpectedRetainedPhase0Key,
+      kExpectedRetainedPhase0SourceReadme,
+      kExpectedRetainedPhase0PrescriptionPolaritySource,
+      kExpectedPlusI0LoopPrefactorLine,
+      kExpectedCutPrefactorLine,
+      kExpectedRepoSnapshotKey,
+      kExpectedRepoSnapshotSourceReadme,
+      kExpectedMinusI0LoopPrefactorLine,
+      "notes:",
+      kExpectedBatch58cAtomicityNote,
+      kExpectedRetainedPhase0ProvenanceNote,
+      kExpectedRepoSnapshotProvenanceNote,
+      kExpectedPrescriptionOnlyNote,
+      kExpectedMilestoneM3OpenNote,
+      kExpectedMilestoneM4OpenNote,
+  };
+
+  for (const auto& fragment : required_fragments) {
+    ExpectContains(yaml,
+                   fragment,
+                   "prefactor reference spec should contain locked fragment: " + fragment);
+  }
+}
+
+struct AmflowPrefactorReferenceEvidence {
+  std::string plus_i0_loop_prefactor;
+  std::string cut_prefactor;
+  std::string minus_i0_loop_prefactor;
+};
+
+std::string ExtractQuotedYamlScalar(const std::string& yaml,
+                                    const std::string& line_prefix,
+                                    const std::string& message) {
+  std::istringstream stream(yaml);
+  for (std::string line; std::getline(stream, line);) {
+    if (line.rfind(line_prefix, 0) != 0) {
+      continue;
+    }
+
+    const std::string value = TrimAsciiWhitespace(line.substr(line_prefix.size()));
+    Expect(value.size() >= 2 && value.front() == '"' && value.back() == '"',
+           message + ": expected quoted scalar");
+    return value.substr(1, value.size() - 2);
+  }
+
+  throw std::runtime_error(message + ": missing line with prefix " + line_prefix);
+}
+
+AmflowPrefactorReferenceEvidence ParseAmflowPrefactorReferenceEvidence(const std::string& yaml) {
+  return {
+      ExtractQuotedYamlScalar(yaml,
+                              "  plus_i0_loop_prefactor: ",
+                              "prefactor reference spec should declare plus_i0_loop_prefactor"),
+      ExtractQuotedYamlScalar(yaml,
+                              "  cut_prefactor: ",
+                              "prefactor reference spec should declare cut_prefactor"),
+      ExtractQuotedYamlScalar(
+          yaml,
+          "  minus_i0_loop_prefactor: ",
+          "prefactor reference spec should declare minus_i0_loop_prefactor"),
+  };
+}
+
+std::size_t CountCutPropagators(const amflow::ProblemSpec& spec) {
+  return static_cast<std::size_t>(
+      std::count_if(spec.family.propagators.begin(),
+                    spec.family.propagators.end(),
+                    [](const amflow::Propagator& propagator) {
+                      return propagator.kind == amflow::PropagatorKind::Cut;
+                    }));
+}
+
+std::string BuildLockedOverallAmflowPrefactor(std::size_t loop_count,
+                                              const std::string& loop_prefactor,
+                                              std::size_t cut_count,
+                                              const std::string& cut_prefactor) {
+  std::vector<std::string> factors;
+  factors.reserve(loop_count + cut_count);
+  for (std::size_t index = 0; index < loop_count; ++index) {
+    factors.push_back("(" + loop_prefactor + ")");
+  }
+  for (std::size_t index = 0; index < cut_count; ++index) {
+    factors.push_back("(" + cut_prefactor + ")");
+  }
+
+  std::ostringstream stream;
+  for (std::size_t index = 0; index < factors.size(); ++index) {
+    if (index > 0) {
+      stream << " * ";
+    }
+    stream << factors[index];
+  }
+  return stream.str();
 }
 
 amflow::ReductionOptions MakeKiraReductionOptions() {
@@ -2429,27 +2585,55 @@ void ProblemSpecRoundTripTest() {
          "problem spec should round-trip through file-backed YAML");
 }
 
-void BuildOverallAmflowPrefactorUsesLoopCountAndDefaultConventionTest() {
-  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
-
-  Expect(amflow::BuildOverallAmflowPrefactor(spec) ==
-             "(1/(I*pi^(D/2))) * (1/(I*pi^(D/2)))",
-         "overall AMFlow prefactor should repeat the default loop factor once per loop momentum");
+void AmflowPrefactorReferenceSpecContainsLockedEvidenceTest() {
+  const std::string yaml = ReadFile(AmflowPrefactorReferenceSpecPath());
+  ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(yaml);
 }
 
-void BuildOverallAmflowPrefactorUsesMinusI0AndCutCountTest() {
+void DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest() {
+  const AmflowPrefactorReferenceEvidence evidence =
+      ParseAmflowPrefactorReferenceEvidence(ReadFile(AmflowPrefactorReferenceSpecPath()));
+  const amflow::AmflowPrefactorConvention convention;
+
+  Expect(convention.plus_i0_loop_prefactor == evidence.plus_i0_loop_prefactor,
+         "default +i0 loop prefactor should match the YAML reference spec");
+  Expect(convention.cut_prefactor == evidence.cut_prefactor,
+         "default cut prefactor should match the YAML reference spec");
+  Expect(convention.minus_i0_loop_prefactor == evidence.minus_i0_loop_prefactor,
+         "default -i0 loop prefactor should match the YAML reference spec");
+}
+
+void BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecPlusI0AndCutEvidenceTest() {
+  const AmflowPrefactorReferenceEvidence evidence =
+      ParseAmflowPrefactorReferenceEvidence(ReadFile(AmflowPrefactorReferenceSpecPath()));
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string expected = BuildLockedOverallAmflowPrefactor(
+      spec.family.loop_momenta.size(),
+      evidence.plus_i0_loop_prefactor,
+      CountCutPropagators(spec),
+      evidence.cut_prefactor);
+  Expect(amflow::BuildOverallAmflowPrefactor(spec) == expected,
+         "overall AMFlow prefactor should render the sample problem from the YAML +i0 and cut "
+         "evidence");
+}
+
+void BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecMinusI0AndCutEvidenceTest() {
+  const AmflowPrefactorReferenceEvidence evidence =
+      ParseAmflowPrefactorReferenceEvidence(ReadFile(AmflowPrefactorReferenceSpecPath()));
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
   spec.family.propagators[5].kind = amflow::PropagatorKind::Cut;
 
   amflow::AmflowPrefactorConvention convention;
   convention.loop_sign = amflow::AmflowLoopPrefactorSign::MinusI0;
-
-  Expect(amflow::BuildOverallAmflowPrefactor(spec, convention) ==
-             "(-1/(I*pi^(D/2))) * (-1/(I*pi^(D/2))) * "
-             "(delta_+(p^2-m^2)/(2*pi)^(D-1)) * (delta_+(p^2-m^2)/(2*pi)^(D-1))",
-         "overall AMFlow prefactor should switch to the -i0 loop factor and repeat the cut "
-         "factor once per cut propagator");
+  const std::string expected = BuildLockedOverallAmflowPrefactor(
+      spec.family.loop_momenta.size(),
+      evidence.minus_i0_loop_prefactor,
+      CountCutPropagators(spec),
+      evidence.cut_prefactor);
+  Expect(amflow::BuildOverallAmflowPrefactor(spec, convention) == expected,
+         "overall AMFlow prefactor should render the sample problem from the YAML -i0 and cut "
+         "evidence");
 }
 
 void BuildOverallAmflowPrefactorRejectsEmptySelectedLoopFactorTest() {
@@ -18986,8 +19170,10 @@ int main() {
   try {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
-    BuildOverallAmflowPrefactorUsesLoopCountAndDefaultConventionTest();
-    BuildOverallAmflowPrefactorUsesMinusI0AndCutCountTest();
+    AmflowPrefactorReferenceSpecContainsLockedEvidenceTest();
+    DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest();
+    BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecPlusI0AndCutEvidenceTest();
+    BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecMinusI0AndCutEvidenceTest();
     BuildOverallAmflowPrefactorRejectsEmptySelectedLoopFactorTest();
     BuildOverallAmflowPrefactorRejectsEmptyCutFactorWhenCutsPresentTest();
     BuildOverallAmflowPrefactorDoesNotMutateProblemSpecTest();

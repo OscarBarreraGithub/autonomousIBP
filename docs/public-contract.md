@@ -114,12 +114,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   coverage, broader propagator grammar support, linear-propagator support, full upstream
   `AnalyzeTopSector` / component-factorization parity, or `Propagator::prescription`
   interpretation
-- current worktree `Batch 58b` adds only the first explicit prefactor/sign-convention helper
-  surface: `BuildOverallAmflowPrefactor(...)` counts declared loop momenta plus cut propagators
-  and renders a deterministic textual overall factor from caller-supplied
-  `AmflowPrefactorConvention` strings. This is groundwork only; it does not yet lock the
-  convention against retained references, wire Kira `insert_prefactors`, or accept
-  `Milestone M3`
+- current worktree `Batch 58c` only freezes prefactor reference evidence around that existing
+  helper surface: `specs/amflow-prefactor-reference.yaml` records retained phase-0 README backing
+  for the `+i0` loop prefactor and cut prefactor, and separately records that the explicit
+  `-i0` loop-prefactor note is repo-snapshot backed only; retained `AMFlow.m` is cited there only
+  for prescription polarity. The helper remains groundwork only; it still does not wire Kira
+  `insert_prefactors`, prove first-family reduction-span parity, or accept `Milestone M3`
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,
@@ -137,7 +137,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 ## Core Types
 
 - `ProblemSpec`: family definition, propagators, cuts, conservation rules, invariants, prescriptions, targets, numeric substitutions, dimensional settings
-- `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`
+- `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `AmfOptions`: AMFlow runtime controls
 - `ReductionOptions`: backend and reducer controls
 - `DESystem`: ordered masters, differentiation variables, exact coefficient matrices, singular-point annotations

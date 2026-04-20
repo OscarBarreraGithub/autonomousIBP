@@ -91,15 +91,17 @@ The workflow is optimized for the current repo shape:
   `cmake -S . -B build`, `cmake --build build --parallel 1`,
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
-- `M0b` is accepted; the repo now has a first explicit in-repo prefactor/sign-convention surface
-  and tests, but truthful `Milestone M3` closure still remains open until those conventions are
-  locked against retained references and the first mandatory-family reduction span
+- `M0b` is accepted; the repo already had a first explicit in-repo prefactor/sign-convention
+  surface from `Batch 58b`, and current worktree `Batch 58c` now freezes prefactor reference
+  evidence only around that surface. Truthful `Milestone M3` closure still remains open until
+  the first mandatory-family reduction-span evidence exists
 - truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
   the current docs/tests surface
-- the current blocker lane is `Batch 58b`: `BuildOverallAmflowPrefactor(...)` now makes the
-  prefactor/sign-convention seam explicit and testable over declared loop count plus cut
-  propagator count, while Kira `insert_prefactors` wiring and broader parity claims remain
-  deferred
+- the current blocker lane is `Batch 58c`:
+  `specs/amflow-prefactor-reference.yaml` and the updated durable docs lock
+  `AmflowPrefactorConvention` / `BuildOverallAmflowPrefactor(...)` to retained `+i0` and cut
+  evidence, while the explicit `-i0` note remains snapshot-backed only, retained `AMFlow.m`
+  stays prescription-polarity-only, and Kira `insert_prefactors` wiring stays deferred
 
 ## Mandatory Read Set Before Planning
 
@@ -118,6 +120,7 @@ The orchestrator then loads the seam-specific corpus for the planned batch.
 For current AMFlow reducer-interface work, this usually means:
 
 - `references/snapshots/amflow/kira-interface.m`
+- `specs/amflow-prefactor-reference.yaml`
 - `references/snapshots/amflow/options_summary.txt`
 - `references/snapshots/amflow/README.md`
 - `references/snapshots/amflow/CHANGELOG.md`

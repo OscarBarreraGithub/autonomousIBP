@@ -93,14 +93,15 @@ The migration is phase-gated. Every phase must pass:
   policy on those same two overloads. Solved-path input/request fingerprinting and
   `skip_reduction` replay validation now treat those fields as live inputs there, while public
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
-- current worktree `Batch 58c` freezes prefactor reference evidence only around the existing
-  helper surface: `specs/amflow-prefactor-reference.yaml` records retained phase-0 README backing
-  for the `+i0` loop prefactor and cut prefactor, and records the explicit `-i0`
-  loop-prefactor note as repo-snapshot backed only; retained `AMFlow.m` is cited there only for
-  prescription polarity. Local
-  `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1` passed for this staging
-  slice. First-family reduction-span parity evidence is still missing, so `Milestone M3`
-  remains open; `Milestone M4` also remains open
+- current worktree `Batch 58d` adds `T1` structural self-consistency coverage around the existing
+  helper surface: `tests/amflow_tests.cpp` locks
+  `references/snapshots/amflow/prefactor_convention_lock.md` against
+  `specs/amflow-prefactor-reference.yaml` while leaving the retained `+i0` / cut backing, the
+  snapshot-only explicit `-i0` note, and the prescription-polarity-only `AMFlow.m` citation
+  unchanged. Local verification passed for this staging slice:
+  `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1 && ./build/amflow-tests`.
+  First-family reduction-span parity evidence is still missing, so `Milestone M3` remains open;
+  `Milestone M4` also remains open
 
 ## Test Taxonomy
 

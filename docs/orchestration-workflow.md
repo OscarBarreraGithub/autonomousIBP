@@ -92,16 +92,21 @@ The workflow is optimized for the current repo shape:
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - `M0b` is accepted; the repo already had a first explicit in-repo prefactor/sign-convention
-  surface from `Batch 58b`, and current worktree `Batch 58c` now freezes prefactor reference
-  evidence only around that surface. Truthful `Milestone M3` closure still remains open until
-  the first mandatory-family reduction-span evidence exists
+  surface from `Batch 58b`, and current worktree `Batch 58d` now adds ROLE B coverage over the
+  locked prefactor evidence packet. `tests/amflow_tests.cpp` cross-checks
+  `references/snapshots/amflow/prefactor_convention_lock.md` against
+  `specs/amflow-prefactor-reference.yaml`, while retained `+i0` / cut backing and the
+  snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure still remains open
+  until the first mandatory-family reduction-span evidence exists
 - truthful `Milestone M4` closure was reconsidered after `Batch 58`, but it also remains open on
   the current docs/tests surface
-- the current blocker lane is `Batch 58c`:
-  `specs/amflow-prefactor-reference.yaml` and the updated durable docs lock
-  `AmflowPrefactorConvention` / `BuildOverallAmflowPrefactor(...)` to retained `+i0` and cut
-  evidence, while the explicit `-i0` note remains snapshot-backed only, retained `AMFlow.m`
-  stays prescription-polarity-only, and Kira `insert_prefactors` wiring stays deferred
+- the current blocker lane is `Batch 58d`:
+  `tests/amflow_tests.cpp` now locks
+  `references/snapshots/amflow/prefactor_convention_lock.md` against
+  `specs/amflow-prefactor-reference.yaml` for the existing
+  `AmflowPrefactorConvention` / `BuildOverallAmflowPrefactor(...)` helper surface, while the
+  explicit `-i0` note remains snapshot-backed only, retained `AMFlow.m` stays
+  prescription-polarity-only, and Kira `insert_prefactors` wiring stays deferred
 
 ## Mandatory Read Set Before Planning
 
@@ -121,6 +126,7 @@ For current AMFlow reducer-interface work, this usually means:
 
 - `references/snapshots/amflow/kira-interface.m`
 - `specs/amflow-prefactor-reference.yaml`
+- `references/snapshots/amflow/prefactor_convention_lock.md`
 - `references/snapshots/amflow/options_summary.txt`
 - `references/snapshots/amflow/README.md`
 - `references/snapshots/amflow/CHANGELOG.md`

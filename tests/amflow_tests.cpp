@@ -254,6 +254,11 @@ std::filesystem::path AmflowPrefactorReferenceSpecPath() {
          "specs/amflow-prefactor-reference.yaml";
 }
 
+std::filesystem::path AmflowPrefactorReferenceMirrorPath() {
+  return std::filesystem::path(AMFLOW_SOURCE_DIR) /
+         "references/snapshots/amflow/prefactor_convention_lock.md";
+}
+
 constexpr char kExpectedPlusI0LoopPrefactor[] = "1/(I*pi^(D/2))";
 constexpr char kExpectedCutPrefactor[] = "delta_+(p^2-m^2)/(2*pi)^(D-1)";
 constexpr char kExpectedMinusI0LoopPrefactor[] = "-1/(I*pi^(D/2))";
@@ -291,6 +296,19 @@ constexpr char kExpectedMilestoneM3OpenNote[] =
     "open.\"";
 constexpr char kExpectedMilestoneM4OpenNote[] =
     "  - \"Milestone M4 remains open.\"";
+constexpr char kExpectedPrefactorMirrorHeading[] = "# AMFlow Prefactor Convention Lock";
+constexpr char kExpectedPrefactorMirrorStructuredArtifactPath[] =
+    "`specs/amflow-prefactor-reference.yaml`";
+constexpr char kExpectedPrefactorMirrorPrescriptionVocabulary[] =
+    "`1 means +i0`, `-1 means -i0`, and `0 means no prescription at all`.";
+constexpr char kExpectedPrefactorMirrorMinusI0NonClaim[] =
+    "- no retained-root proof is claimed here for the `-i0` loop-prefactor sign";
+constexpr char kExpectedPrefactorMirrorInsertPrefactorsNonClaim[] =
+    "- no Kira `insert_prefactors` wiring is claimed here";
+constexpr char kExpectedPrefactorMirrorReductionSpanNonClaim[] =
+    "- no first-family reduction-span parity is claimed here";
+constexpr char kExpectedPrefactorMirrorMilestoneClosureNonClaim[] =
+    "- no `Milestone M3` or `Milestone M4` closure is claimed here";
 
 void ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(const std::string& yaml) {
   const std::vector<std::string> required_fragments = {
@@ -320,8 +338,11 @@ void ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(const std::string&
 }
 
 struct AmflowPrefactorReferenceEvidence {
+  std::string retained_phase0_source_readme;
+  std::string retained_phase0_prescription_polarity_source;
   std::string plus_i0_loop_prefactor;
   std::string cut_prefactor;
+  std::string repo_snapshot_source_readme;
   std::string minus_i0_loop_prefactor;
 };
 
@@ -343,19 +364,74 @@ std::string ExtractQuotedYamlScalar(const std::string& yaml,
   throw std::runtime_error(message + ": missing line with prefix " + line_prefix);
 }
 
+std::string ExtractQuotedYamlScalarAfterAnchor(const std::string& yaml,
+                                               const std::string& anchor,
+                                               const std::string& line_prefix,
+                                               const std::string& message) {
+  const std::size_t anchor_position = yaml.find(anchor);
+  Expect(anchor_position != std::string::npos, message + ": missing anchor " + anchor);
+  return ExtractQuotedYamlScalar(yaml.substr(anchor_position), line_prefix, message);
+}
+
 AmflowPrefactorReferenceEvidence ParseAmflowPrefactorReferenceEvidence(const std::string& yaml) {
   return {
+      ExtractQuotedYamlScalarAfterAnchor(
+          yaml,
+          kExpectedRetainedPhase0Key,
+          "  source_readme: ",
+          "prefactor reference spec should declare retained phase-0 README provenance"),
+      ExtractQuotedYamlScalarAfterAnchor(
+          yaml,
+          kExpectedRetainedPhase0Key,
+          "  source_amflow_m_prescription_polarity: ",
+          "prefactor reference spec should declare retained phase-0 AMFlow.m provenance"),
       ExtractQuotedYamlScalar(yaml,
                               "  plus_i0_loop_prefactor: ",
                               "prefactor reference spec should declare plus_i0_loop_prefactor"),
       ExtractQuotedYamlScalar(yaml,
                               "  cut_prefactor: ",
                               "prefactor reference spec should declare cut_prefactor"),
+      ExtractQuotedYamlScalarAfterAnchor(
+          yaml,
+          kExpectedRepoSnapshotKey,
+          "  source_readme: ",
+          "prefactor reference spec should declare repo snapshot provenance"),
       ExtractQuotedYamlScalar(
           yaml,
           "  minus_i0_loop_prefactor: ",
           "prefactor reference spec should declare minus_i0_loop_prefactor"),
   };
+}
+
+std::string MarkdownBulletWithInlineCode(const std::string& value) {
+  return "- `" + value + "`";
+}
+
+void ExpectAmflowPrefactorReferenceMirrorContainsLockedEvidence(
+    const std::string& markdown,
+    const AmflowPrefactorReferenceEvidence& evidence) {
+  const std::vector<std::string> required_fragments = {
+      kExpectedPrefactorMirrorHeading,
+      kExpectedPrefactorMirrorStructuredArtifactPath,
+      MarkdownBulletWithInlineCode(evidence.retained_phase0_source_readme),
+      MarkdownBulletWithInlineCode(evidence.retained_phase0_prescription_polarity_source),
+      MarkdownBulletWithInlineCode(evidence.repo_snapshot_source_readme),
+      "- retained-root lock: `plus_i0_loop_prefactor = " + evidence.plus_i0_loop_prefactor + "`",
+      "- retained-root lock: `cut_prefactor = " + evidence.cut_prefactor + "`",
+      "- snapshot-backed only: `minus_i0_loop_prefactor = " + evidence.minus_i0_loop_prefactor +
+          "`",
+      kExpectedPrefactorMirrorPrescriptionVocabulary,
+      kExpectedPrefactorMirrorMinusI0NonClaim,
+      kExpectedPrefactorMirrorInsertPrefactorsNonClaim,
+      kExpectedPrefactorMirrorReductionSpanNonClaim,
+      kExpectedPrefactorMirrorMilestoneClosureNonClaim,
+  };
+
+  for (const auto& fragment : required_fragments) {
+    ExpectContains(markdown,
+                   fragment,
+                   "prefactor reference mirror should contain locked fragment: " + fragment);
+  }
 }
 
 std::size_t CountCutPropagators(const amflow::ProblemSpec& spec) {
@@ -2588,6 +2664,13 @@ void ProblemSpecRoundTripTest() {
 void AmflowPrefactorReferenceSpecContainsLockedEvidenceTest() {
   const std::string yaml = ReadFile(AmflowPrefactorReferenceSpecPath());
   ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(yaml);
+}
+
+void AmflowPrefactorReferenceMirrorMatchesPrefactorReferenceSpecTest() {
+  const AmflowPrefactorReferenceEvidence evidence =
+      ParseAmflowPrefactorReferenceEvidence(ReadFile(AmflowPrefactorReferenceSpecPath()));
+  const std::string markdown = ReadFile(AmflowPrefactorReferenceMirrorPath());
+  ExpectAmflowPrefactorReferenceMirrorContainsLockedEvidence(markdown, evidence);
 }
 
 void DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest() {
@@ -19171,6 +19254,7 @@ int main() {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
     AmflowPrefactorReferenceSpecContainsLockedEvidenceTest();
+    AmflowPrefactorReferenceMirrorMatchesPrefactorReferenceSpecTest();
     DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest();
     BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecPlusI0AndCutEvidenceTest();
     BuildOverallAmflowPrefactorUsesPrefactorReferenceSpecMinusI0AndCutEvidenceTest();

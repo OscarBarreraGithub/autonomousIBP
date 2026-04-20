@@ -1156,6 +1156,31 @@ std::size_t ActiveSectorLineCount(const int sector, const std::size_t propagator
   return active_lines;
 }
 
+unsigned long long PositiveSupportSectorMask(const TargetIntegral& target,
+                                             const std::size_t propagator_count) {
+  unsigned long long mask = 0;
+  const std::size_t max_supported_bits = sizeof(mask) * 8;
+  const std::size_t limit =
+      std::min(target.indices.size(), std::min(propagator_count, max_supported_bits));
+  for (std::size_t index = 0; index < limit; ++index) {
+    if (target.indices[index] > 0) {
+      mask |= (1ULL << index);
+    }
+  }
+  return mask;
+}
+
+int PositiveIndexSum(const TargetIntegral& target, const std::size_t propagator_count) {
+  const std::size_t limit = std::min(target.indices.size(), propagator_count);
+  int sum = 0;
+  for (std::size_t index = 0; index < limit; ++index) {
+    if (target.indices[index] > 0) {
+      sum += target.indices[index];
+    }
+  }
+  return sum;
+}
+
 bool TopLevelSectorFitsPropagatorMask(const int sector, const std::size_t propagator_count) {
   if (sector <= 0) {
     return false;
@@ -1173,9 +1198,20 @@ bool TopLevelSectorFitsPropagatorMask(const int sector, const std::size_t propag
 
 int ReductionRankForSector(const ProblemSpec& spec,
                            const ReductionOptions& options,
+                           const std::vector<TargetIntegral>& targets,
                            const int sector) {
-  return static_cast<int>(ActiveSectorLineCount(sector, spec.family.propagators.size())) +
-         options.black_box_dot;
+  int rank = static_cast<int>(ActiveSectorLineCount(sector, spec.family.propagators.size()));
+  const unsigned long long sector_mask = static_cast<unsigned long long>(sector);
+  for (const auto& target : targets) {
+    if (target.family != spec.family.name) {
+      continue;
+    }
+    if (PositiveSupportSectorMask(target, spec.family.propagators.size()) != sector_mask) {
+      continue;
+    }
+    rank = std::max(rank, PositiveIndexSum(target, spec.family.propagators.size()));
+  }
+  return rank + options.black_box_dot;
 }
 
 std::string ReadTextFileOrThrow(const std::filesystem::path& path,
@@ -1529,7 +1565,7 @@ KiraJobFiles KiraBackend::EmitJobFilesForTargets(
   jobs_yaml << "      reduce:\n";
   for (const int sector : spec.family.top_level_sectors) {
     jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
-             << sector << "], r: " << ReductionRankForSector(spec, options, sector)
+             << sector << "], r: " << ReductionRankForSector(spec, options, targets, sector)
              << ", s: " << options.black_box_rank << ", d: " << options.black_box_dot << "}\n";
   }
   jobs_yaml << "      select_integrals:\n";

@@ -1245,6 +1245,47 @@ amflow::EtaInsertionDecision MakeEtaGeneratedHappyDecision() {
   return decision;
 }
 
+// Retained phase-0 automatic_vs_manual capture:
+// generated-config/phase0/automatic_vs_manual/primary/cache/tt_amflow/28/diffeqsetup
+// records sector [7] with dotted mandatory targets and reduction span r = 4.
+amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParitySpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "tt";
+  spec.family.loop_momenta = {"l1", "l2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.preferred_masters = {"tt[1,1,1,0,0,0,0,0,0]"};
+  spec.family.propagators = {
+      {"l1", "1"},
+      {"l2", "eta"},
+      {"l2 - p1 - p2", "0"},
+      {"l1 + l2", "0"},
+      {"l1 + p1", "0"},
+      {"l1 + p2", "0"},
+      {"l1 + p3", "0"},
+      {"l2 + p1", "0"},
+      {"l2 + p3", "0"},
+  };
+  spec.kinematics.incoming_momenta = {"p1", "p2", "p3", "ttAuxLeg"};
+  spec.kinematics.outgoing_momenta = {};
+  spec.kinematics.momentum_conservation = "p1 + p2 + p3 + ttAuxLeg = 0";
+  spec.kinematics.invariants = {"eta"};
+  spec.kinematics.scalar_product_rules = {
+      {"p1*p1", "0"},
+      {"p1*p2", "15"},
+      {"p1*p3", "-13/6"},
+      {"p2*p2", "0"},
+      {"p2*p3", "-77/6"},
+      {"p3*p3", "1"},
+  };
+  spec.targets = {
+      {"tt", {1, 2, 1, 0, 0, 0, 0, 0, 0}},
+      {"tt", {1, 2, 0, 0, 0, 0, 0, 0, 0}},
+  };
+  spec.notes =
+      "Retained automatic_vs_manual tt diffeqsetup reduction-span parity seam.";
+  return spec;
+}
+
 amflow::ProblemSpec MakeBuiltinAllEtaHappySpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   for (std::size_t index = 1; index <= 5; ++index) {
@@ -4435,6 +4476,48 @@ void KiraPreparationEmitsKira31CompatibleYamlFragmentsTest() {
          "Kira sample emission should preserve the reviewed preferred-master list");
 }
 
+void KiraPreparationLocksPlanarDoubleBoxReductionSpanOnSharedSampleSurfaceTest() {
+  const amflow::ProblemSpec builtin_spec = amflow::MakeSampleProblemSpec();
+  const std::filesystem::path path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.example.yaml";
+  const amflow::ProblemSpec file_spec = amflow::LoadProblemSpecFile(path);
+  const auto count_substring = [](const std::string& haystack, const std::string& needle) {
+    std::size_t count = 0;
+    std::size_t offset = 0;
+    while ((offset = haystack.find(needle, offset)) != std::string::npos) {
+      ++count;
+      offset += needle.size();
+    }
+    return count;
+  };
+
+  amflow::KiraBackend backend;
+  const amflow::KiraJobFiles builtin_files =
+      backend.EmitJobFiles(builtin_spec, MakeKiraReductionOptions());
+  const amflow::KiraJobFiles file_files =
+      backend.EmitJobFiles(file_spec, MakeKiraReductionOptions());
+  const std::string expected_reduce_entry =
+      "        - {topologies: [\"planar_double_box\"], sectors: [127], r: 7, s: 3, d: 0}\n";
+
+  Expect(builtin_files.jobs_yaml.find(expected_reduce_entry) != std::string::npos,
+         "MakeSampleProblemSpec Kira jobs.yaml should preserve the reviewed planar_double_box "
+         "reduction span");
+  Expect(file_files.jobs_yaml.find(expected_reduce_entry) != std::string::npos,
+         "file-backed planar_double_box Kira jobs.yaml should preserve the same reviewed "
+         "reduction span");
+  Expect(count_substring(builtin_files.jobs_yaml, "        - {topologies: [") == 1 &&
+             count_substring(file_files.jobs_yaml, "        - {topologies: [") == 1,
+         "shared-sample planar_double_box Kira jobs.yaml should keep the reviewed reduction "
+         "claim to a single family-sector span");
+  Expect(builtin_files.jobs_yaml.find("insert_prefactors") == std::string::npos &&
+             file_files.jobs_yaml.find("insert_prefactors") == std::string::npos,
+         "shared-sample planar_double_box Kira jobs.yaml should not claim unsupported "
+         "insert_prefactors wiring");
+  Expect(file_files.jobs_yaml == builtin_files.jobs_yaml,
+         "file-backed planar_double_box Kira jobs.yaml should stay locked to "
+         "MakeSampleProblemSpec on the reviewed shared sample surface");
+}
+
 void KiraPreparationFromFileSpecTest() {
   const std::filesystem::path path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.example.yaml";
@@ -4561,6 +4644,34 @@ void KiraPrepareForTargetsHappyPathTest() {
   Expect(target_it->second == "planar_double_box[1,1,1,1,1,1,0]\n"
                               "planar_double_box[2,1,1,1,1,1,1]\n",
          "explicit-target Kira preparation should preserve override-target order exactly");
+}
+
+void KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest() {
+  const amflow::ProblemSpec spec = MakeAutomaticVsManualTtReductionSpanParitySpec();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-mandatory-family-reduction-span"));
+  const std::string expected_target_file = "tt[1,2,1,0,0,0,0,0,0]\n"
+                                           "tt[1,2,0,0,0,0,0,0,0]\n";
+  const std::string expected_reduction_entry =
+      "        - {topologies: [\"tt\"], sectors: [7], r: 4, s: 3, d: 0}\n";
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(preparation.validation_messages.empty(),
+         "retained automatic_vs_manual mandatory-family reduction-span fixture should validate "
+         "cleanly for Kira");
+  Expect(preparation.generated_files.at("target") == expected_target_file,
+         "retained automatic_vs_manual mandatory-family reduction-span fixture should preserve "
+         "the dotted mandatory target order from diffeqsetup");
+  Expect(preparation.generated_files.at("jobs.yaml").find(expected_reduction_entry) !=
+                 std::string::npos &&
+             preparation.generated_files.at("jobs.yaml")
+                     .find("        - {topologies: [\"tt\"], sectors: [7], r: 3, s: 3, d: 0}\n") ==
+                 std::string::npos,
+         "retained automatic_vs_manual mandatory-family reduction-span evidence should emit the "
+         "sector-[7] Kira span with r = 4 and not regress to r = 3");
 }
 
 void KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest() {
@@ -11762,11 +11873,11 @@ void RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest
   Expect(execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
                  .find("sectors: [1], r: 1, s: 3, d: 0}\n") != std::string::npos &&
              execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
-                     .find("sectors: [7], r: 3, s: 3, d: 0}\n") != std::string::npos &&
+                     .find("sectors: [7], r: 4, s: 3, d: 0}\n") != std::string::npos &&
              execution.preparation.backend_preparation.generated_files.at("jobs.yaml")
                      .find("sectors: [1, 7], r: 3") == std::string::npos,
          "automatic invariant-generated wrapper should preserve per-sector reduction-span "
-         "orchestration on multi-top-sector inputs");
+         "orchestration on multi-top-sector inputs after target-aware widening");
   Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
              "toy_auto_family[1,2,1]\n"
              "toy_auto_family[0,1,2]\n"
@@ -19616,9 +19727,11 @@ int main() {
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();
     KiraPreparationTest();
     KiraPreparationEmitsKira31CompatibleYamlFragmentsTest();
+    KiraPreparationLocksPlanarDoubleBoxReductionSpanOnSharedSampleSurfaceTest();
     KiraPreparationFromFileSpecTest();
     K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();
+    KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest();
     KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest();
     KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest();
     KiraPrepareForTargetsRejectsTopLevelSectorMaskOverflowTest();

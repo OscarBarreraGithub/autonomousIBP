@@ -163,6 +163,20 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     int requested_digits);
 
+std::vector<SolverDiagnostics> SolveInvariantGeneratedSeriesList(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::vector<std::string>& invariant_names,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits);
+
 SolverDiagnostics SolveEtaGeneratedSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

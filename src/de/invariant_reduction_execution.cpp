@@ -1,5 +1,6 @@
 #include "amflow/de/invariant_reduction_execution.hpp"
 
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -22,6 +23,29 @@ std::string StatusToString(const CommandExecutionStatus status) {
       return "signaled";
   }
   return "unknown";
+}
+
+std::string SanitizeInvariantLayoutComponent(const std::string& invariant_name) {
+  std::string sanitized;
+  sanitized.reserve(invariant_name.size());
+  for (const unsigned char current : invariant_name) {
+    const bool safe = (current >= 'a' && current <= 'z') || (current >= 'A' && current <= 'Z') ||
+                      (current >= '0' && current <= '9') || current == '-' || current == '_';
+    sanitized.push_back(safe ? static_cast<char>(current) : '-');
+  }
+  if (sanitized.empty()) {
+    return "invariant";
+  }
+  return sanitized;
+}
+
+ArtifactLayout MakeInvariantIterationLayout(const ArtifactLayout& parent,
+                                            const std::size_t ordinal,
+                                            const std::string& invariant_name) {
+  std::ostringstream label;
+  label << "invariant-" << std::setw(4) << std::setfill('0') << (ordinal + 1) << "-"
+        << SanitizeInvariantLayoutComponent(invariant_name);
+  return EnsureArtifactLayout(parent.root / label.str());
 }
 
 InvariantGeneratedReductionExecution ExecuteInvariantGeneratedReduction(
@@ -93,6 +117,34 @@ DESystem BuildInvariantGeneratedDESystem(
         "automatic invariant DE construction completed without an assembled DESystem");
   }
   return *execution.assembled_system;
+}
+
+std::vector<DESystem> BuildInvariantGeneratedDESystemList(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::vector<std::string>& invariant_names,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable) {
+  if (invariant_names.empty()) {
+    throw std::runtime_error(
+        "automatic invariant DE construction list requires at least one invariant name");
+  }
+
+  std::vector<DESystem> systems;
+  systems.reserve(invariant_names.size());
+  for (std::size_t index = 0; index < invariant_names.size(); ++index) {
+    systems.push_back(BuildInvariantGeneratedDESystem(spec,
+                                                     master_basis,
+                                                     invariant_names[index],
+                                                     options,
+                                                     MakeInvariantIterationLayout(
+                                                         layout, index, invariant_names[index]),
+                                                     kira_executable,
+                                                     fermat_executable));
+  }
+  return systems;
 }
 
 InvariantGeneratedReductionExecution RunInvariantGeneratedReduction(

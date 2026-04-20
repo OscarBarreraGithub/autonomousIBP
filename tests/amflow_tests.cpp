@@ -643,6 +643,29 @@ class RecordingSeriesSolver final : public amflow::SeriesSolver {
   mutable amflow::SolveRequest last_request_;
 };
 
+class RecordingSeriesSolverSequence final : public amflow::SeriesSolver {
+ public:
+  std::vector<amflow::SolverDiagnostics> returned_diagnostics;
+
+  amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
+    ++call_count_;
+    seen_requests_.push_back(request);
+    if (static_cast<std::size_t>(call_count_) > returned_diagnostics.size()) {
+      throw std::runtime_error("recording series solver sequence has no diagnostic for call " +
+                               std::to_string(call_count_));
+    }
+    return returned_diagnostics[static_cast<std::size_t>(call_count_ - 1)];
+  }
+
+  int call_count() const { return call_count_; }
+
+  const std::vector<amflow::SolveRequest>& seen_requests() const { return seen_requests_; }
+
+ private:
+ mutable int call_count_ = 0;
+  mutable std::vector<amflow::SolveRequest> seen_requests_;
+};
+
 class RecordingEtaMode final : public amflow::EtaMode {
  public:
   explicit RecordingEtaMode(const amflow::EtaInsertionDecision& returned_decision,
@@ -1596,6 +1619,15 @@ amflow::ParsedMasterList MakeAutoInvariantHappyMasterBasis() {
   return master_basis;
 }
 
+amflow::ParsedMasterList MakeAutoInvariantWholeFactorMasterBasis() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_factor_family";
+  master_basis.masters = {
+      {"toy_auto_factor_family", {1, 1, 1}},
+  };
+  return master_basis;
+}
+
 std::string MakeFixtureCopyScript(const std::filesystem::path& fixture_root,
                                   const bool write_stdout = true,
                                   const int exit_code = 0) {
@@ -1710,6 +1742,19 @@ std::string MakeAutoInvariantMissingGeneratedTargetRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantWholeFactorSRuleFile() {
+  return "{\n"
+         "  toy_auto_factor_family[1,0,2] -> 2*toy_auto_factor_family[1,1,1]\n"
+         "}\n";
+}
+
+std::string MakeAutoInvariantWholeFactorTRuleFile() {
+  return "{\n"
+         "  toy_auto_factor_family[0,2,1] -> 3*toy_auto_factor_family[1,1,1],\n"
+         "  toy_auto_factor_family[0,1,2] -> 5*toy_auto_factor_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantResultScript(const bool write_rule_file,
                                           const std::string& rule_file_contents,
                                           const bool write_stdout = true,
@@ -1734,6 +1779,64 @@ std::string MakeAutoInvariantResultScript(const bool write_rule_file,
     script << "echo \"auto-invariant:$1\"\n";
   }
   script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeAutoInvariantWholeFactorResultScript(const std::string& rule_file_contents,
+                                                     const bool write_stdout = true,
+                                                     const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_factor_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_factor_family[1,1,1] 0\n";
+  script << "EOF\n";
+  script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << rule_file_contents;
+  script << "EOF\n";
+  if (write_stdout) {
+    script << "echo \"whole-factor:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeAutoInvariantWholeFactorListResultScript(const bool fail_second_t = false) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_factor_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_factor_family[1,1,1] 0\n";
+  script << "EOF\n";
+  script << "layout_name=\"$(basename \"$(dirname \"$PWD\")\")\"\n";
+  if (fail_second_t) {
+    script << "if [ \"$layout_name\" = \"invariant-0002-t\" ]; then\n";
+    script << "  echo \"expected-auto-invariant-list-failure\" 1>&2\n";
+    script << "  exit 9\n";
+    script << "fi\n";
+  }
+  script << "case \"$layout_name\" in\n";
+  script << "  *-s)\n";
+  script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << MakeAutoInvariantWholeFactorSRuleFile();
+  script << "EOF\n";
+  script << "    ;;\n";
+  script << "  *-t)\n";
+  script << "    cat > \"$dest/kira_target.m\" <<'EOF'\n";
+  script << MakeAutoInvariantWholeFactorTRuleFile();
+  script << "EOF\n";
+  script << "    ;;\n";
+  script << "  *)\n";
+  script << "    echo \"unexpected invariant layout: $layout_name\" 1>&2\n";
+  script << "    exit 7\n";
+  script << "    ;;\n";
+  script << "esac\n";
+  script << "echo \"whole-factor-list:$1\"\n";
+  script << "exit 0\n";
   return script.str();
 }
 
@@ -10761,6 +10864,371 @@ void SolveInvariantGeneratedSeriesAutomaticRejectsMissingExplicitRuleForGenerate
          "assembly fails");
 }
 
+void BuildInvariantGeneratedDESystemListAutomaticHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantWholeFactorProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantWholeFactorMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const std::vector<std::string> invariant_names = {"t", "s"};
+
+  const amflow::ArtifactLayout baseline_s_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-s-baseline"));
+  const std::filesystem::path baseline_s_kira_path =
+      baseline_s_layout.root / "bin" / "fake-kira-auto-factor-s.sh";
+  const std::filesystem::path baseline_s_fermat_path =
+      baseline_s_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_s_kira_path.parent_path());
+  WriteExecutableScript(baseline_s_kira_path,
+                        MakeAutoInvariantWholeFactorResultScript(
+                            MakeAutoInvariantWholeFactorSRuleFile()));
+  WriteExecutableScript(baseline_s_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_s_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              baseline_s_layout,
+                                              baseline_s_kira_path,
+                                              baseline_s_fermat_path);
+
+  const amflow::ArtifactLayout baseline_t_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-t-baseline"));
+  const std::filesystem::path baseline_t_kira_path =
+      baseline_t_layout.root / "bin" / "fake-kira-auto-factor-t.sh";
+  const std::filesystem::path baseline_t_fermat_path =
+      baseline_t_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_t_kira_path.parent_path());
+  WriteExecutableScript(baseline_t_kira_path,
+                        MakeAutoInvariantWholeFactorResultScript(
+                            MakeAutoInvariantWholeFactorTRuleFile()));
+  WriteExecutableScript(baseline_t_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_t_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "t",
+                                              MakeKiraReductionOptions(),
+                                              baseline_t_layout,
+                                              baseline_t_kira_path,
+                                              baseline_t_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-factor-list.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantWholeFactorListResultScript());
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::vector<amflow::DESystem> systems =
+      amflow::BuildInvariantGeneratedDESystemList(spec,
+                                                  master_basis,
+                                                  invariant_names,
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant DE list wrapper should not mutate the input problem spec");
+  Expect(systems.size() == 2,
+         "automatic invariant DE list wrapper should preserve invariant count");
+  Expect(SameDESystem(systems[0], baseline_t_system),
+         "automatic invariant DE list wrapper should preserve the reviewed single-invariant "
+         "system for the first caller-provided invariant");
+  Expect(SameDESystem(systems[1], baseline_s_system),
+         "automatic invariant DE list wrapper should preserve the reviewed single-invariant "
+         "system for the second caller-provided invariant");
+  Expect(systems[0].variables.size() == 1 && systems[0].variables.front().name == "t" &&
+             systems[1].variables.size() == 1 && systems[1].variables.front().name == "s",
+         "automatic invariant DE list wrapper should preserve caller order across invariants");
+  Expect(std::filesystem::exists(layout.root / "invariant-0001-t" / "generated-config" / "results" /
+                                 "toy_auto_factor_family" / "kira_target.m") &&
+             std::filesystem::exists(layout.root / "invariant-0002-s" / "generated-config" / "results" /
+                                     "toy_auto_factor_family" / "kira_target.m"),
+         "automatic invariant DE list wrapper should isolate per-invariant results under child "
+         "artifact roots");
+  Expect(!std::filesystem::exists(layout.root / "results" / "toy_auto_factor_family"),
+         "automatic invariant DE list wrapper should not collapse per-invariant results into the "
+         "parent artifact root");
+}
+
+void BuildInvariantGeneratedDESystemListAutomaticRejectsEmptyInvariantListTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-empty"));
+
+  ExpectRuntimeError(
+      [&layout]() {
+        static_cast<void>(amflow::BuildInvariantGeneratedDESystemList(
+            MakeAutoInvariantWholeFactorProblemSpec(),
+            MakeAutoInvariantWholeFactorMasterBasis(),
+            {},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh"));
+      },
+      "automatic invariant DE construction list requires at least one invariant name",
+      "automatic invariant DE list wrapper should reject empty invariant lists");
+}
+
+void BuildInvariantGeneratedDESystemListAutomaticRejectsUnknownInvariantNameTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-list-unknown"));
+
+  ExpectRuntimeError(
+      [&layout]() {
+        static_cast<void>(amflow::BuildInvariantGeneratedDESystemList(
+            MakeAutoInvariantWholeFactorProblemSpec(),
+            MakeAutoInvariantWholeFactorMasterBasis(),
+            {"u"},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh"));
+      },
+      "requires invariant",
+      "automatic invariant DE list wrapper should preserve unknown-invariant diagnostics");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantWholeFactorProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantWholeFactorMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const std::vector<std::string> invariant_names = {"t", "s"};
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "s=2/7";
+  const std::string target_location = "s=5/11";
+  const int requested_digits = 89;
+
+  const amflow::ArtifactLayout baseline_s_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-s-baseline"));
+  const std::filesystem::path baseline_s_kira_path =
+      baseline_s_layout.root / "bin" / "fake-kira-auto-factor-s.sh";
+  const std::filesystem::path baseline_s_fermat_path =
+      baseline_s_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_s_kira_path.parent_path());
+  WriteExecutableScript(baseline_s_kira_path,
+                        MakeAutoInvariantWholeFactorResultScript(
+                            MakeAutoInvariantWholeFactorSRuleFile()));
+  WriteExecutableScript(baseline_s_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_s_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              baseline_s_layout,
+                                              baseline_s_kira_path,
+                                              baseline_s_fermat_path);
+
+  const amflow::ArtifactLayout baseline_t_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-t-baseline"));
+  const std::filesystem::path baseline_t_kira_path =
+      baseline_t_layout.root / "bin" / "fake-kira-auto-factor-t.sh";
+  const std::filesystem::path baseline_t_fermat_path =
+      baseline_t_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_t_kira_path.parent_path());
+  WriteExecutableScript(baseline_t_kira_path,
+                        MakeAutoInvariantWholeFactorResultScript(
+                            MakeAutoInvariantWholeFactorTRuleFile()));
+  WriteExecutableScript(baseline_t_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_t_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "t",
+                                              MakeKiraReductionOptions(),
+                                              baseline_t_layout,
+                                              baseline_t_kira_path,
+                                              baseline_t_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-factor-list.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantWholeFactorListResultScript());
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {true, 0.125, 0.25, "", "recorded invariant list solve t"},
+      {true, 0.0625, 0.125, "", "recorded invariant list solve s"},
+  };
+
+  const std::vector<amflow::SolverDiagnostics> diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                master_basis,
+                                                invariant_names,
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                kira_path,
+                                                fermat_path,
+                                                solver,
+                                                start_location,
+                                                target_location,
+                                                precision_policy,
+                                                requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant solver list wrapper should not mutate the input problem spec");
+  Expect(diagnostics.size() == solver.returned_diagnostics.size() &&
+             SameSolverDiagnostics(diagnostics[0], solver.returned_diagnostics[0]) &&
+             SameSolverDiagnostics(diagnostics[1], solver.returned_diagnostics[1]),
+         "automatic invariant solver list wrapper should return diagnostics in caller order");
+  Expect(solver.call_count() == 2 && solver.seen_requests().size() == 2,
+         "automatic invariant solver list wrapper should call the supplied solver once per "
+         "invariant");
+  Expect(SameDESystem(solver.seen_requests()[0].system, baseline_t_system) &&
+             SameDESystem(solver.seen_requests()[1].system, baseline_s_system),
+         "automatic invariant solver list wrapper should preserve the reviewed single-invariant "
+         "DESystems in sequence");
+  Expect(solver.seen_requests()[0].start_location == start_location &&
+             solver.seen_requests()[0].target_location == target_location &&
+             SamePrecisionPolicy(solver.seen_requests()[0].precision_policy, precision_policy) &&
+             solver.seen_requests()[0].requested_digits == requested_digits &&
+             solver.seen_requests()[1].start_location == start_location &&
+             solver.seen_requests()[1].target_location == target_location &&
+             SamePrecisionPolicy(solver.seen_requests()[1].precision_policy, precision_policy) &&
+             solver.seen_requests()[1].requested_digits == requested_digits,
+         "automatic invariant solver list wrapper should preserve shared solver request fields "
+         "for every invariant");
+  Expect(solver.seen_requests()[0].system.variables.size() == 1 &&
+             solver.seen_requests()[0].system.variables.front().name == "t" &&
+             solver.seen_requests()[1].system.variables.size() == 1 &&
+             solver.seen_requests()[1].system.variables.front().name == "s",
+         "automatic invariant solver list wrapper should preserve invariant order through "
+         "SolveRequest generation");
+  Expect(std::filesystem::exists(layout.root / "invariant-0001-t" / "generated-config" / "results" /
+                                 "toy_auto_factor_family" / "kira_target.m") &&
+             std::filesystem::exists(layout.root / "invariant-0002-s" / "generated-config" / "results" /
+                                     "toy_auto_factor_family" / "kira_target.m"),
+         "automatic invariant solver list wrapper should isolate reducer artifacts per "
+         "invariant");
+  Expect(!std::filesystem::exists(layout.root / "results" / "toy_auto_factor_family"),
+         "automatic invariant solver list wrapper should not collapse per-invariant results into "
+         "the parent artifact root");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-failure"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-factor-list.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantWholeFactorListResultScript(true));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolverSequence solver;
+  solver.returned_diagnostics = {
+      {true, 0.125, 0.25, "", "recorded invariant list solve s"},
+      {true, 0.0625, 0.125, "", "recorded invariant list solve t"},
+      {true, 0.03125, 0.0625, "", "recorded invariant list solve s-again"},
+  };
+
+  try {
+    static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(
+        MakeAutoInvariantWholeFactorProblemSpec(),
+        MakeAutoInvariantWholeFactorMasterBasis(),
+        {"s", "t", "s"},
+        MakeKiraReductionOptions(),
+        layout,
+        kira_path,
+        fermat_path,
+        solver,
+        "s=0",
+        "s=1",
+        MakeDistinctPrecisionPolicy(),
+        55));
+    throw std::runtime_error("automatic invariant solver list wrapper should stop on invariant "
+                             "reducer failure");
+  } catch (const std::runtime_error& error) {
+    const std::string message = error.what();
+    Expect(message.find("automatic invariant DE construction requires successful reducer "
+                        "execution") != std::string::npos,
+           "automatic invariant solver list wrapper should preserve reducer failure text");
+    Expect(message.find("exit_code=9") != std::string::npos,
+           "automatic invariant solver list wrapper should preserve reducer exit code");
+    Expect(message.find("stderr_log=") != std::string::npos &&
+               message.find((layout.root / "invariant-0002-t" / "logs").string()) !=
+                   std::string::npos,
+           "automatic invariant solver list wrapper should preserve the failing child artifact "
+           "root");
+  }
+
+  Expect(solver.call_count() == 1 && solver.seen_requests().size() == 1,
+         "automatic invariant solver list wrapper should stop before calling the solver for "
+         "later invariants after a hard reducer failure");
+  Expect(solver.seen_requests().front().system.variables.size() == 1 &&
+             solver.seen_requests().front().system.variables.front().name == "s",
+         "automatic invariant solver list wrapper should only record the successful prefix "
+         "request before stopping");
+  Expect(std::filesystem::exists(layout.root / "invariant-0001-s"),
+         "automatic invariant solver list wrapper should preserve artifacts for completed prefix "
+         "iterations");
+  Expect(std::filesystem::exists(layout.root / "invariant-0002-t"),
+         "automatic invariant solver list wrapper should preserve artifacts for the failing "
+         "iteration");
+  Expect(!std::filesystem::exists(layout.root / "invariant-0003-s"),
+         "automatic invariant solver list wrapper should not start later invariants after a hard "
+         "failure");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-empty"));
+  RecordingSeriesSolverSequence solver;
+
+  ExpectRuntimeError(
+      [&layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(
+            MakeAutoInvariantWholeFactorProblemSpec(),
+            MakeAutoInvariantWholeFactorMasterBasis(),
+            {},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "s=0",
+            "s=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "automatic invariant solver handoff list requires at least one invariant name",
+      "automatic invariant solver list wrapper should reject empty invariant lists");
+
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver list wrapper should not call the solver when invariant-list "
+         "validation fails");
+}
+
+void SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-list-unknown"));
+  RecordingSeriesSolverSequence solver;
+
+  ExpectRuntimeError(
+      [&layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(
+            MakeAutoInvariantWholeFactorProblemSpec(),
+            MakeAutoInvariantWholeFactorMasterBasis(),
+            {"u"},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "s=0",
+            "s=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "requires invariant",
+      "automatic invariant solver list wrapper should preserve unknown-invariant diagnostics");
+
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver list wrapper should not call the solver when invariant-name "
+         "validation fails");
+}
+
 void SolveEtaGeneratedSeriesHappyPathTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -15137,6 +15605,13 @@ int main() {
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsEmptyInvariantNameTest();
     SolveInvariantGeneratedSeriesAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
+    BuildInvariantGeneratedDESystemListAutomaticHappyPathTest();
+    BuildInvariantGeneratedDESystemListAutomaticRejectsEmptyInvariantListTest();
+    BuildInvariantGeneratedDESystemListAutomaticRejectsUnknownInvariantNameTest();
+    SolveInvariantGeneratedSeriesListAutomaticHappyPathTest();
+    SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest();
+    SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
+    SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesBootstrapSolverPassthroughTest();
     SolveEtaGeneratedSeriesExecutionFailureTest();

@@ -86,11 +86,16 @@ The migration is phase-gated. Every phase must pass:
   landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - current worktree `Batch 56` staging now adds a narrow solved-path cache manifest plus
   `UseCache` replay of successful solved-path diagnostics on the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads only; local
-  `cmake -S . -B build`, `cmake --build build --parallel 1`,
-  `ctest --test-dir build --output-on-failure`, `./build/amflow-tests`, and a solved-path
-  manifest round-trip smoke all passed, while `SkipReduction` remains deferred and truthful
-  `Milestone M3` closure review remains blocked by the missing in-repo prefactor surface/tests
+  `SolveAmfOptionsEtaModeSeries(...)` overloads only; the repaired current worktree `Batch 57`
+  staging keeps that cache slice and adds wrapper-only
+  `amf_options.skip_reduction == true` reuse over already-prepared matching eta-generated state
+  on those same two overloads, with the current prepared eta-generated DE still being rebuilt and
+  validated before any `skip_reduction` cache hit can succeed, while public eta-reduction helpers
+  plus direct
+  eta/standalone solver entry points remain unchanged. Local
+  `module load cmake/4.2.3-fasrc01 && cmake --build build --parallel 1 && ctest --test-dir build --output-on-failure && ./build/amflow-tests`
+  passed, and truthful `Milestone M3` closure review remains blocked by the missing in-repo
+  prefactor surface/tests
 
 ## Test Taxonomy
 

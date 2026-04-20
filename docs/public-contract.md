@@ -243,8 +243,12 @@ The solved-path cache surface is also intentionally narrow:
   locations, `requested_digits`, and the full `PrecisionPolicy`; it also records a post-build
   `SolveRequest` fingerprint plus a short request summary for audit/debug use
 - `amf_options.use_cache == true` enables replay only on those two `AmfOptions` eta wrappers:
-  matching successful manifests replay the stored `SolverDiagnostics` without rebuilding the DE or
-  invoking the supplied solver
+  matching successful manifests replay the stored `SolverDiagnostics` without invoking the
+  supplied solver
+- when `amf_options.skip_reduction == true` is also set on those wrappers, replay is still gated
+  on rebuilding and validating the current wrapper-owned prepared state first, so missing or
+  mismatched prepared reducer inputs or reduction artifacts fail explicitly instead of replaying
+  stale solved-path output
 - stale, malformed, version-mismatched, or unsuccessful cache manifests are rejected explicitly by
   falling back to live execution; incompatible artifacts are never replayed
 - this is not an interruption-resume or reducer-state restart surface: it replays only previously
@@ -253,8 +257,23 @@ The solved-path cache surface is also intentionally narrow:
   later matching `amf_options.use_cache == true` call may reuse that solved-path diagnostic
   artifact; publication is atomic and best-effort, so refresh failures leave any previously
   published manifest untouched
-- direct `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
-  `SolveDifferentialEquation(...)`, and all `SkipReduction` behavior remain unchanged
+
+The current `SkipReduction` reuse surface is also intentionally narrow:
+
+- `amf_options.skip_reduction == true` is honored only on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads
+- after wrapper-owned eta-mode selection succeeds, the wrapper rebuilds the current
+  eta-generated preparation, requires matching prepared reducer inputs under the current
+  `ArtifactLayout`, parses already-present matching reduction artifacts from that layout, and then
+  continues through the normal solver handoff without launching the reducer
+- when `amf_options.use_cache == true` is also set, that same rebuild-and-validate step still
+  runs before any solved-path cache hit is returned
+- missing, malformed, identity-fallback, or otherwise mismatched prepared state is rejected
+  explicitly with `skip_reduction requested but no matching eta-generated reduction state is available`
+- direct `RunEtaGeneratedReduction(...)`, `BuildEtaGeneratedDESystem(...)`,
+  `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
+  `SolveDifferentialEquation(...)`, and other non-wrapper entry points do not gain new
+  `skip_reduction` semantics
 
 The bootstrap also exposes a deterministic parsed-result surface for Kira artifacts:
 
@@ -430,9 +449,10 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
 
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
-- this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, and refreshes the slot after any successful live solve
-- non-`amf_modes` / non-`use_cache` `AmfOptions` fields still do not affect selection, diagnostics, solver invocation, or result shape at this seam
-- this batch still does not add interruption-resume behavior, user-defined mode registration, mixed builtin/user-defined fallback, direct-wrapper cache behavior, `SkipReduction`, reducer skipping, CLI behavior, or broader orchestration widening
+- this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
+- this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
+- non-`amf_modes` / non-`use_cache` / non-`skip_reduction` `AmfOptions` fields still do not affect selection, diagnostics, solver invocation, or result shape at this seam
+- this batch still does not add interruption-resume behavior, user-defined mode registration, mixed builtin/user-defined fallback, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening
 
 The first mixed eta-mode single-name solver wrapper is also bootstrap-only:
 
@@ -458,9 +478,10 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for mixed eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered mixed-list semantics, keeps selected-mode planning single-shot, keeps empty-list rejection, resolver-stop behavior, ordered planning fallback, preserved final planning failure, and no downstream fallback widening unchanged
-- this wrapper now also reads `amf_options.use_cache` as the same narrow solved-path diagnostic replay flag: after mixed planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, and refreshes the slot after any successful live solve
-- non-`amf_modes` / non-`use_cache` `AmfOptions` fields still do not affect mixed selection, diagnostics, solver invocation, or result shape at this seam
-- this batch still does not add interruption-resume behavior, direct `SolveResolvedEtaModeListSeries(...)` cache behavior, CLI behavior, `SkipReduction`, reducer skipping, or broader orchestration widening
+- this wrapper now also reads `amf_options.use_cache` as the same narrow solved-path diagnostic replay flag: after mixed planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
+- this wrapper now also reads `amf_options.skip_reduction` as the same narrow wrapper-owned reducer-reuse flag: after mixed planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
+- non-`amf_modes` / non-`use_cache` / non-`skip_reduction` `AmfOptions` fields still do not affect mixed selection, diagnostics, solver invocation, or result shape at this seam
+- this batch still does not add interruption-resume behavior, direct `SolveResolvedEtaModeListSeries(...)` cache behavior, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening
 
 The first user-defined eta-mode resolver seam is also bootstrap-only:
 

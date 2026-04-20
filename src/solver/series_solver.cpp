@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <exception>
+#include <fstream>
 #include <map>
 #include <optional>
 #include <sstream>
@@ -40,6 +41,8 @@ constexpr char kUnsupportedSolverPathCode[] = "unsupported_solver_path";
 constexpr char kInsufficientPrecisionCode[] = "insufficient_precision";
 constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
 constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
+constexpr char kSkipReductionUnavailablePrefix[] =
+    "skip_reduction requested but no matching eta-generated reduction state is available";
 constexpr int kBootstrapContinuationOrder = 4;
 constexpr int kSolvedPathCacheSchemaVersion = 1;
 
@@ -110,6 +113,224 @@ std::string RemoveWhitespace(const std::string& value) {
 
 std::filesystem::path AbsoluteOrEmpty(const std::filesystem::path& path) {
   return path.empty() ? std::filesystem::path{} : std::filesystem::absolute(path);
+}
+
+std::string JoinMessages(const std::vector<std::string>& messages) {
+  std::ostringstream out;
+  for (std::size_t index = 0; index < messages.size(); ++index) {
+    if (index > 0) {
+      out << "; ";
+    }
+    out << messages[index];
+  }
+  return out.str();
+}
+
+[[noreturn]] void ThrowSkipReductionUnavailable(const std::string& detail) {
+  throw std::runtime_error(std::string(kSkipReductionUnavailablePrefix) + ": " + detail);
+}
+
+std::string ReadPreparedFile(const std::filesystem::path& path) {
+  std::ifstream stream(path, std::ios::in | std::ios::binary);
+  if (!stream.is_open()) {
+    throw std::runtime_error("failed to open prepared Kira file: " + path.string());
+  }
+
+  std::ostringstream content;
+  content << stream.rdbuf();
+  if (!stream.good() && !stream.eof()) {
+    throw std::runtime_error("failed to read prepared Kira file: " + path.string());
+  }
+  return content.str();
+}
+
+std::vector<std::string> ValidatePreparedFilesAgainstLayout(
+    const BackendPreparation& preparation,
+    const ArtifactLayout& layout) {
+  std::vector<std::string> messages;
+  if (!preparation.validation_messages.empty()) {
+    messages.emplace_back("current eta-generated preparation is invalid: " +
+                          JoinMessages(preparation.validation_messages));
+  }
+
+  for (const auto& [relative_path, expected_content] : preparation.generated_files) {
+    const std::filesystem::path prepared_file_path = layout.generated_config_dir / relative_path;
+    if (!std::filesystem::exists(prepared_file_path)) {
+      messages.emplace_back("prepared Kira file is missing: " + prepared_file_path.string());
+      continue;
+    }
+    if (!std::filesystem::is_regular_file(prepared_file_path)) {
+      messages.emplace_back("prepared Kira file is not a regular file: " +
+                            prepared_file_path.string());
+      continue;
+    }
+
+    try {
+      const std::string actual_content = ReadPreparedFile(prepared_file_path);
+      if (actual_content != expected_content) {
+        messages.emplace_back("prepared Kira file content does not match current eta-generated "
+                              "preparation: " +
+                              prepared_file_path.string());
+      }
+    } catch (const std::exception& error) {
+      messages.emplace_back(error.what());
+    }
+  }
+
+  return messages;
+}
+
+std::filesystem::path BuildFamilyResultsShadowRoot(const ArtifactLayout& layout,
+                                                   const std::string& family,
+                                                   const std::filesystem::path& masters_source_path,
+                                                   const std::filesystem::path& rules_source_path) {
+  const std::filesystem::path shadow_root =
+      layout.cache_dir / "skip-reduction-wrapper-owned-results-shadow";
+  const std::filesystem::path shadow_family_results_dir = shadow_root / "results" / family;
+
+  std::filesystem::remove_all(shadow_root);
+  std::filesystem::create_directories(shadow_family_results_dir);
+
+  if (!masters_source_path.empty() && std::filesystem::exists(masters_source_path)) {
+    std::filesystem::copy_file(masters_source_path,
+                               shadow_family_results_dir / "masters",
+                               std::filesystem::copy_options::overwrite_existing);
+  }
+  if (!rules_source_path.empty() && std::filesystem::exists(rules_source_path)) {
+    std::filesystem::copy_file(rules_source_path,
+                               shadow_family_results_dir / "kira_target.m",
+                               std::filesystem::copy_options::overwrite_existing);
+  }
+
+  return shadow_root;
+}
+
+ParsedReductionResult ParseWrapperOwnedReductionResult(const ArtifactLayout& layout,
+                                                       const std::string& family) {
+  const std::filesystem::path generated_family_results_dir =
+      layout.generated_config_dir / "results" / family;
+  const std::filesystem::path direct_family_results_dir = layout.results_dir / family;
+  const std::filesystem::path direct_masters_path = direct_family_results_dir / "masters";
+  const std::filesystem::path generated_masters_path =
+      generated_family_results_dir / "masters";
+  const std::filesystem::path direct_rules_path = direct_family_results_dir / "kira_target.m";
+  const std::filesystem::path generated_rules_path =
+      generated_family_results_dir / "kira_target.m";
+
+  KiraBackend backend;
+  if (std::filesystem::exists(direct_masters_path) || std::filesystem::exists(direct_rules_path)) {
+    const std::filesystem::path masters_source_path =
+        std::filesystem::exists(direct_masters_path) ? direct_masters_path : generated_masters_path;
+    const std::filesystem::path rules_source_path =
+        std::filesystem::exists(direct_rules_path) ? direct_rules_path : generated_rules_path;
+    return backend.ParseReductionResult(
+        BuildFamilyResultsShadowRoot(layout, family, masters_source_path, rules_source_path),
+        family);
+  }
+  return backend.ParseReductionResult(layout.root, family);
+}
+
+std::string VariableContext(const GeneratedDerivativeVariable& generated_variable,
+                            const std::size_t index) {
+  if (!generated_variable.variable.name.empty()) {
+    return "variable \"" + generated_variable.variable.name + "\"";
+  }
+  return "variable[" + std::to_string(index) + "]";
+}
+
+void ThrowIfParsedMasterSetDrift(const ParsedMasterList& master_basis,
+                                 const ParsedReductionResult& reduction_result,
+                                 const std::string& context) {
+  const ParsedMasterList& reduced_master_basis = reduction_result.master_list;
+  if (reduced_master_basis.masters.size() != master_basis.masters.size()) {
+    throw MasterSetInstabilityError(context +
+                                    " reduction master basis size does not match assembly "
+                                    "master basis");
+  }
+
+  for (std::size_t index = 0; index < master_basis.masters.size(); ++index) {
+    const std::string expected_label = master_basis.masters[index].Label();
+    const std::string actual_label = reduced_master_basis.masters[index].Label();
+    if (actual_label != expected_label) {
+      throw MasterSetInstabilityError(
+          context + " reduction master basis does not match assembly master basis at position " +
+          std::to_string(index) + ": expected " + expected_label + ", found " + actual_label);
+    }
+  }
+}
+
+struct ValidatedWrapperEtaGeneratedReductionState {
+  GeneratedDerivativeVariable generated_variable;
+  ParsedReductionResult reduction_result;
+};
+
+ValidatedWrapperEtaGeneratedReductionState LoadValidatedWrapperEtaGeneratedReductionState(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::string& eta_symbol) {
+  const EtaGeneratedReductionPreparation preparation =
+      PrepareEtaGeneratedReduction(spec, master_basis, decision, options, layout, eta_symbol);
+  const std::vector<std::string> prepared_file_messages =
+      ValidatePreparedFilesAgainstLayout(preparation.backend_preparation, layout);
+  if (!prepared_file_messages.empty()) {
+    ThrowSkipReductionUnavailable(JoinMessages(prepared_file_messages));
+  }
+
+  ParsedReductionResult reduction_result;
+  try {
+    reduction_result = ParseWrapperOwnedReductionResult(
+        layout, preparation.auxiliary_family.transformed_spec.family.name);
+    ThrowIfParsedMasterSetDrift(master_basis,
+                                reduction_result,
+                                VariableContext(preparation.generated_variable, 0));
+  } catch (const std::exception& error) {
+    ThrowSkipReductionUnavailable(error.what());
+  }
+
+  return {preparation.generated_variable, reduction_result};
+}
+
+DESystem AssembleWrapperEtaGeneratedDESystem(
+    const ParsedMasterList& master_basis,
+    const ValidatedWrapperEtaGeneratedReductionState& prepared_state) {
+  try {
+    GeneratedDerivativeVariableReductionInput variable_input;
+    variable_input.generated_variable = prepared_state.generated_variable;
+    variable_input.reduction_result = prepared_state.reduction_result;
+    return AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  } catch (const std::exception& error) {
+    ThrowSkipReductionUnavailable(error.what());
+  }
+}
+
+DESystem BuildWrapperEtaGeneratedDESystem(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& eta_symbol,
+    const bool skip_reduction) {
+  if (!skip_reduction) {
+    return BuildEtaGeneratedDESystem(spec,
+                                     master_basis,
+                                     decision,
+                                     options,
+                                     layout,
+                                     kira_executable,
+                                     fermat_executable,
+                                     eta_symbol);
+  }
+
+  return AssembleWrapperEtaGeneratedDESystem(
+      master_basis,
+      LoadValidatedWrapperEtaGeneratedReductionState(
+          spec, master_basis, decision, options, layout, eta_symbol));
 }
 
 bool HasDeclaredVariable(const DESystem& system, const std::string& variable_name) {
@@ -1980,6 +2201,10 @@ std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
   return out.str();
 }
 
+std::string ComputeSolveRequestFingerprint(const SolveRequest& request) {
+  return ComputeArtifactFingerprint(SerializeSolveRequestForFingerprint(request));
+}
+
 std::string BuildSeriesSolverReplayFingerprint(const SeriesSolver& solver) {
   return ComputeArtifactFingerprint("series_solver_dynamic_type=" +
                                     std::string(typeid(solver).name()));
@@ -2039,6 +2264,7 @@ struct SolvedPathCacheContext {
   std::string solve_kind;
   std::string slot_name;
   std::string input_fingerprint;
+  std::optional<std::string> expected_request_fingerprint;
 };
 
 enum class SolvedPathCacheReplayStatus {
@@ -2071,6 +2297,8 @@ SolvedPathCacheReplayResult TryReplaySolvedPathCache(const ArtifactLayout& layou
         manifest.solve_kind != cache_context.solve_kind ||
         manifest.slot_name != cache_context.slot_name ||
         manifest.input_fingerprint != cache_context.input_fingerprint ||
+        (cache_context.expected_request_fingerprint.has_value() &&
+         manifest.request_fingerprint != *cache_context.expected_request_fingerprint) ||
         manifest.request_fingerprint.empty() || !manifest.success) {
       return {SolvedPathCacheReplayStatus::Rejected, std::nullopt};
     }
@@ -2103,8 +2331,7 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
   manifest.solve_kind = cache_context.solve_kind;
   manifest.slot_name = cache_context.slot_name;
   manifest.input_fingerprint = cache_context.input_fingerprint;
-  manifest.request_fingerprint =
-      ComputeArtifactFingerprint(SerializeSolveRequestForFingerprint(request));
+  manifest.request_fingerprint = ComputeSolveRequestFingerprint(request);
   manifest.request_summary = DescribeDESystem(request.system) + "; start=" + request.start_location +
                              "; target=" + request.target_location +
                              "; requested_digits=" + std::to_string(request.requested_digits) +
@@ -2280,29 +2507,53 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol,
+    const bool skip_reduction,
     const SolvedPathCacheContext& cache_context) {
-  const SolvedPathCacheReplayResult replay = TryReplaySolvedPathCache(layout, cache_context);
+  SolvedPathCacheContext replay_context = cache_context;
+  std::optional<SolveRequest> prepared_skip_reduction_request;
+  if (skip_reduction) {
+    SolveRequest request;
+    request.system = AssembleWrapperEtaGeneratedDESystem(
+        master_basis,
+        LoadValidatedWrapperEtaGeneratedReductionState(
+            spec, master_basis, decision, options, layout, eta_symbol));
+    request.start_location = start_location;
+    request.target_location = target_location;
+    request.precision_policy = precision_policy;
+    request.requested_digits = requested_digits;
+    replay_context.expected_request_fingerprint = ComputeSolveRequestFingerprint(request);
+    prepared_skip_reduction_request = std::move(request);
+  }
+
+  const SolvedPathCacheReplayResult replay = TryReplaySolvedPathCache(layout, replay_context);
   if (replay.status == SolvedPathCacheReplayStatus::Hit) {
     return *replay.diagnostics;
   }
 
   SolveRequest request;
   try {
-    request.system = BuildEtaGeneratedDESystem(spec,
-                                               master_basis,
-                                               decision,
-                                               options,
-                                               layout,
-                                               kira_executable,
-                                               fermat_executable,
-                                               eta_symbol);
+    if (prepared_skip_reduction_request.has_value()) {
+      request = *prepared_skip_reduction_request;
+    } else {
+      request.system = BuildWrapperEtaGeneratedDESystem(spec,
+                                                        master_basis,
+                                                        decision,
+                                                        options,
+                                                        layout,
+                                                        kira_executable,
+                                                        fermat_executable,
+                                                        eta_symbol,
+                                                        false);
+    }
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
-  request.start_location = start_location;
-  request.target_location = target_location;
-  request.precision_policy = precision_policy;
-  request.requested_digits = requested_digits;
+  if (!prepared_skip_reduction_request.has_value()) {
+    request.start_location = start_location;
+    request.target_location = target_location;
+    request.precision_policy = precision_policy;
+    request.requested_digits = requested_digits;
+  }
 
   const SolverDiagnostics diagnostics = SolveWithPrecisionRetry(solver, request);
   PersistSolvedPathCacheManifest(layout, cache_context, request, diagnostics);
@@ -3307,6 +3558,7 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                                     precision_policy,
                                                     requested_digits,
                                                     eta_symbol,
+                                                    amf_options.skip_reduction,
                                                     cache_context);
 }
 
@@ -3422,6 +3674,7 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                                     precision_policy,
                                                     requested_digits,
                                                     eta_symbol,
+                                                    amf_options.skip_reduction,
                                                     cache_context);
 }
 

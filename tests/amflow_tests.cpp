@@ -1117,7 +1117,7 @@ amflow::AmfOptions MakePoisonedAmfOptions(
   options.rationalize_precision = 29;
   options.run_length = 31;
   options.use_cache = true;
-  options.skip_reduction = true;
+  options.skip_reduction = false;
   return options;
 }
 
@@ -2277,6 +2277,66 @@ std::string MakeReducerFailureScript(const std::string& stderr_marker,
   script << "echo " << ShellSingleQuote(stderr_marker) << " 1>&2\n";
   script << "exit " << exit_code << "\n";
   return script.str();
+}
+
+std::string MakeSemanticDriftedReductionRules(std::string contents) {
+  if (contents.find("2*planar_double_box[1,0,1,0,0,0,1]") != std::string::npos) {
+    ReplaceFirst(contents,
+                 "2*planar_double_box[1,0,1,0,0,0,1]",
+                 "17*planar_double_box[1,0,1,0,0,0,1]");
+    return contents;
+  }
+
+  if (contents.find("2*planar_double_box[1,1,1,1,1,1,1]") != std::string::npos) {
+    ReplaceFirst(contents,
+                 "2*planar_double_box[1,1,1,1,1,1,1]",
+                 "17*planar_double_box[1,1,1,1,1,1,1]");
+    return contents;
+  }
+
+  throw std::runtime_error("failed to recognize reduction rules for semantic drift mutation");
+}
+
+std::filesystem::path RequirePreparedKiraFilePath(const amflow::ArtifactLayout& layout,
+                                                  const std::filesystem::path& relative_path,
+                                                  const std::string& message) {
+  const std::filesystem::path path = layout.generated_config_dir / relative_path;
+  Expect(std::filesystem::exists(path),
+         message + "; missing prepared Kira file: " + path.string());
+  return path;
+}
+
+void OverwriteTextFile(const std::filesystem::path& path, const std::string& contents) {
+  std::ofstream stream(path, std::ios::out | std::ios::trunc);
+  if (!stream) {
+    throw std::runtime_error("failed to open file for overwrite: " + path.string());
+  }
+  stream << contents;
+  if (!stream) {
+    throw std::runtime_error("failed to overwrite file: " + path.string());
+  }
+}
+
+void MutateReductionRuleFilesForSemanticDrift(const amflow::ArtifactLayout& layout,
+                                              const std::string& message) {
+  std::vector<std::filesystem::path> paths;
+  for (const std::filesystem::path& root :
+       {layout.generated_config_dir / "results", layout.results_dir}) {
+    if (!std::filesystem::exists(root)) {
+      continue;
+    }
+
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
+      if (entry.is_regular_file() && entry.path().filename() == "kira_target.m") {
+        paths.push_back(entry.path());
+      }
+    }
+  }
+
+  Expect(!paths.empty(), message + "; failed to find any eta-generated kira_target.m files");
+  for (const auto& path : paths) {
+    OverwriteTextFile(path, MakeSemanticDriftedReductionRules(ReadFile(path)));
+  }
 }
 
 void SampleProblemValidationTest() {
@@ -15633,17 +15693,328 @@ void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
          "diagnostics");
 }
 
-void SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStaysDeferredTest() {
+void SolveAmfOptionsEtaModeSeriesSkipReductionReusesMatchingReductionStateTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
-      "amflow-bootstrap-amf-options-eta-mode-cache-disabled-fixture");
+      "amflow-bootstrap-amf-options-eta-mode-skip-reduction-reuse-fixture");
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
   const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
-  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
-  amflow::AmfOptions live_amf_options = cached_amf_options;
+  amflow::AmfOptions live_amf_options = MakePoisonedAmfOptions({"Propagator"});
   live_amf_options.use_cache = false;
-  live_amf_options.skip_reduction = true;
+  live_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = live_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+  const std::string reducer_failure_marker =
+      "unexpected live reducer execution during skip_reduction reuse";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-skip-reduction-reuse"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary = "recorded builtin skip_reduction seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         live_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  Expect(seed_solver.call_count() == 1,
+         "skip_reduction reuse should seed matching eta-generated state with one live solve");
+
+  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+
+  RecordingSeriesSolver reuse_solver;
+  reuse_solver.returned_diagnostics.success = true;
+  reuse_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  reuse_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  reuse_solver.returned_diagnostics.failure_code.clear();
+  reuse_solver.returned_diagnostics.summary = "recorded builtin skip_reduction reuse solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           reuse_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(reuse_solver.call_count() == 1,
+         "skip_reduction reuse should call the supplied solver exactly once");
+  Expect(SameSolverDiagnostics(diagnostics, reuse_solver.returned_diagnostics),
+         "skip_reduction reuse should continue through the solver path after reusing matching "
+         "eta-generated state");
+  Expect(diagnostics.summary.find(reducer_failure_marker) == std::string::npos,
+         "skip_reduction reuse should not surface reducer-failure text when matching state is "
+         "available");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionReplaysMatchingReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-replay-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions replay_amf_options = seed_amf_options;
+  replay_amf_options.skip_reduction = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+  const std::string reducer_failure_marker =
+      "unexpected live reducer execution during use_cache skip_reduction replay";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded builtin use_cache skip_reduction replay seed solve";
+
+  const amflow::SolverDiagnostics seed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           seed_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           seed_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache + skip_reduction replay coverage should seed one solved-path cache manifest"));
+
+  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected builtin use_cache skip_reduction replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           replay_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(replay_solver.call_count() == 0,
+         "UseCache + skip_reduction should replay cached diagnostics when the rebuilt request "
+         "fingerprint still matches");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seed_diagnostics),
+         "UseCache + skip_reduction should return the cached seed diagnostics on a matching "
+         "request-fingerprint replay");
+}
+
+void SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMissingReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-skip-reduction-missing-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amf_options.use_cache = false;
+  amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-skip-reduction-missing"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-fail.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeReducerFailureScript(
+                            "unexpected live reducer execution during missing-state rejection"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &amf_options, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               amf_options,
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=4/9",
+                                                               "rho=25/27",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               83,
+                                                               "rho"));
+      },
+      "skip_reduction should reject missing eta-generated state on a fresh builtin layout");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "skip_reduction should reject fresh builtin layouts with the explicit missing-state "
+         "diagnostic");
+  Expect(solver.call_count() == 0,
+         "skip_reduction should not call the solver when no builtin eta-generated state is "
+         "available");
+}
+
+void SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMismatchedReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-skip-reduction-mismatch-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions live_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  live_amf_options.use_cache = false;
+  live_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = live_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  amflow::ReductionOptions seeded_options = MakeKiraReductionOptions();
+  amflow::ReductionOptions mismatched_options = MakeKiraReductionOptions();
+  mismatched_options.permutation_option = 7;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary = "recorded builtin skip_reduction mismatch seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         live_amf_options,
+                                                         seeded_options,
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=4/9",
+                                                         "rho=25/27",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         83,
+                                                         "rho"));
+
+  Expect(seed_solver.call_count() == 1,
+         "skip_reduction mismatch coverage should seed one live builtin eta-generated state");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during mismatch rejection"));
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec,
+       &master_basis,
+       &reuse_amf_options,
+       &mismatched_options,
+       &layout,
+       &kira_path,
+       &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               mismatched_options,
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=4/9",
+                                                               "rho=25/27",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               83,
+                                                               "rho"));
+      },
+      "skip_reduction should reject mismatched builtin eta-generated state");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "skip_reduction should reject builtin eta-generated state when the prepared inputs no "
+         "longer match");
+  Expect(solver.call_count() == 0,
+         "skip_reduction should not call the solver when builtin eta-generated state no longer "
+         "matches the requested inputs");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-deleted-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "rho=4/9";
   const std::string target_location = "rho=25/27";
@@ -15651,28 +16022,29 @@ void SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStays
   const std::string eta_symbol = "rho";
 
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
-      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-false"));
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-deleted"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
   const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
   std::filesystem::create_directories(kira_path.parent_path());
   WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
-  RecordingSeriesSolver cached_solver;
-  cached_solver.returned_diagnostics.success = true;
-  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
-  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
-  cached_solver.returned_diagnostics.failure_code.clear();
-  cached_solver.returned_diagnostics.summary = "recorded solved-path cache disabled baseline";
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded builtin use_cache skip_reduction deleted seed solve";
 
   static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
                                                          master_basis,
-                                                         cached_amf_options,
+                                                         seed_amf_options,
                                                          MakeKiraReductionOptions(),
                                                          layout,
                                                          kira_path,
                                                          fermat_path,
-                                                         cached_solver,
+                                                         seed_solver,
                                                          start_location,
                                                          target_location,
                                                          precision_policy,
@@ -15681,44 +16053,299 @@ void SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStays
 
   static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
       layout,
-      "UseCache=false coverage should start from a persisted solved-path cache manifest"));
+      "UseCache + skip_reduction deleted-state coverage should seed one solved-path cache "
+      "manifest first"));
+  const std::filesystem::path prepared_file_path = RequirePreparedKiraFilePath(
+      layout,
+      "config/integralfamilies.yaml",
+      "UseCache + skip_reduction deleted-state coverage should materialize prepared family YAML");
+  std::filesystem::remove(prepared_file_path);
+  Expect(!std::filesystem::exists(prepared_file_path),
+         "UseCache + skip_reduction deleted-state coverage should delete the prepared family "
+         "YAML before replay");
 
   WriteExecutableScript(
       kira_path,
-      MakeReducerFailureScript("unexpected cache replay or SkipReduction shortcut with UseCache=false"));
+      MakeReducerFailureScript("unexpected live reducer execution during deleted-state rejection"));
 
   RecordingSeriesSolver solver;
-  try {
-    static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
-                                                           master_basis,
-                                                           live_amf_options,
-                                                           MakeKiraReductionOptions(),
-                                                           layout,
-                                                           kira_path,
-                                                           fermat_path,
-                                                           solver,
-                                                           start_location,
-                                                           target_location,
-                                                           precision_policy,
-                                                           requested_digits,
-                                                           eta_symbol));
-    throw std::runtime_error("UseCache=false should not replay cached diagnostics or invent "
-                             "SkipReduction semantics");
-  } catch (const std::runtime_error& error) {
-    const std::string message = error.what();
-    Expect(message.find("eta-generated DE construction requires successful reducer execution") !=
-               std::string::npos,
-           "UseCache=false should still run the live reducer path");
-    Expect(message.find("exit_code=9") != std::string::npos,
-           "UseCache=false should preserve the real live reducer exit code");
-    Expect(message.find("stderr_log=") != std::string::npos &&
-               message.find(layout.logs_dir.string()) != std::string::npos,
-           "UseCache=false should preserve live reducer log diagnostics");
-  }
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &reuse_amf_options, &layout, &kira_path, &fermat_path, &solver,
+       &start_location, &target_location, &precision_policy, requested_digits, &eta_symbol]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               eta_symbol));
+      },
+      "UseCache + skip_reduction should reject deleted prepared builtin state instead of "
+      "replaying a stale solved-path cache hit");
 
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "UseCache + skip_reduction should preserve the explicit missing-state prefix on deleted "
+         "builtin prepared state");
+  Expect(message.find("prepared Kira file is missing") != std::string::npos,
+         "UseCache + skip_reduction should report the deleted prepared builtin file instead of "
+         "replaying stale cache diagnostics");
   Expect(solver.call_count() == 0,
-         "UseCache=false should fail during live eta DE construction before any solver replay "
-         "or direct solver call");
+         "UseCache + skip_reduction should not call the solver when deleted builtin prepared "
+         "state is rejected");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsMismatchedPreparedStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-mismatch-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded builtin use_cache skip_reduction mismatch seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache + skip_reduction mismatch coverage should seed one solved-path cache manifest "
+      "first"));
+  const std::filesystem::path prepared_file_path = RequirePreparedKiraFilePath(
+      layout,
+      "config/integralfamilies.yaml",
+      "UseCache + skip_reduction mismatch coverage should materialize prepared family YAML");
+  OverwriteTextFile(prepared_file_path,
+                    "integralfamilies:\n  - [\"broken propagator\", \"0\"]\n");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during mismatch rejection"));
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &reuse_amf_options, &layout, &kira_path, &fermat_path, &solver,
+       &start_location, &target_location, &precision_policy, requested_digits, &eta_symbol]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               eta_symbol));
+      },
+      "UseCache + skip_reduction should reject mismatched prepared builtin state instead of "
+      "replaying a stale solved-path cache hit");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "UseCache + skip_reduction should preserve the explicit missing-state prefix on "
+         "mismatched builtin prepared state");
+  Expect(message.find("prepared Kira file content does not match current eta-generated "
+                      "preparation") != std::string::npos,
+         "UseCache + skip_reduction should report mismatched builtin prepared inputs instead of "
+         "replaying stale cache diagnostics");
+  Expect(solver.call_count() == 0,
+         "UseCache + skip_reduction should not call the solver when mismatched builtin prepared "
+         "state is rejected");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-semantic-drift-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-amf-options-eta-mode-use-cache-skip-reduction-semantic-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded builtin use_cache skip_reduction semantic-drift seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache + skip_reduction semantic-drift coverage should seed one solved-path cache "
+      "manifest first");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  const std::filesystem::path generated_results_root =
+      layout.generated_config_dir / "results" / "planar_double_box";
+  const std::filesystem::path direct_results_root = layout.results_dir / "planar_double_box";
+  std::filesystem::copy(generated_results_root,
+                        direct_results_root,
+                        std::filesystem::copy_options::recursive |
+                            std::filesystem::copy_options::overwrite_existing);
+  OverwriteTextFile(direct_results_root / "kira_target.m",
+                    MakeSemanticDriftedReductionRules(
+                        ReadFile(direct_results_root / "kira_target.m")));
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during semantic drift "
+                               "invalidation"));
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.5;
+  solver.returned_diagnostics.overlap_mismatch = 0.75;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary =
+      "recorded builtin use_cache skip_reduction semantic-drift live solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(solver.call_count() == 1,
+         "UseCache + skip_reduction should fall back to a live solve when parseable builtin "
+         "reduction output drifts semantically");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "UseCache + skip_reduction semantic-drift invalidation should return the new live "
+         "solver diagnostics instead of replaying the stale cache entry");
+
+  const std::string refreshed_manifest_yaml = ReadFile(manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") ==
+             stale_input_fingerprint,
+         "UseCache + skip_reduction semantic-drift invalidation should preserve the input "
+         "fingerprint when the requested solve inputs are unchanged");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "UseCache + skip_reduction semantic-drift invalidation should refresh the request "
+         "fingerprint after rebuilding a changed wrapper-owned system");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during semantic drift replay"));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.875;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.9375;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected builtin use_cache skip_reduction semantic-drift replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(replay_solver.call_count() == 0,
+         "UseCache + skip_reduction semantic-drift coverage should replay the refreshed manifest "
+         "on a follow-up matching request");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, diagnostics),
+         "UseCache + skip_reduction semantic-drift coverage should serve the refreshed live "
+         "diagnostics on a follow-up matching request");
 }
 
 void SolveBuiltinEtaModeListSeriesDoesNotReplaySolvedPathCacheManifestTest() {
@@ -17016,6 +17643,694 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallba
          "construction fails after mixed selection");
 }
 
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions live_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  live_amf_options.use_cache = false;
+  live_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = live_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  const std::string reducer_failure_marker =
+      "unexpected live reducer execution during resolved skip_reduction reuse";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-skip-reduction-reuse"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary = "recorded resolved skip_reduction seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         live_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         103,
+                                                         "rho"));
+
+  Expect(seed_custom_mode->call_count() == 1 && seed_solver.call_count() == 1,
+         "resolved skip_reduction reuse should seed matching eta-generated state with one live "
+         "planning pass and one live solve");
+
+  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+
+  const auto reuse_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver reuse_solver;
+  reuse_solver.returned_diagnostics.success = true;
+  reuse_solver.returned_diagnostics.residual_norm = 0.00006103515625;
+  reuse_solver.returned_diagnostics.overlap_mismatch = 0.0001220703125;
+  reuse_solver.returned_diagnostics.failure_code.clear();
+  reuse_solver.returned_diagnostics.summary = "recorded resolved skip_reduction reuse solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           {reuse_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           reuse_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           MakeDistinctPrecisionPolicy(),
+                                           103,
+                                           "rho");
+
+  Expect(reuse_custom_mode->call_count() == 1,
+         "resolved skip_reduction reuse should still plan the configured user-defined mode once");
+  Expect(reuse_solver.call_count() == 1,
+         "resolved skip_reduction reuse should call the supplied solver exactly once");
+  Expect(SameSolverDiagnostics(diagnostics, reuse_solver.returned_diagnostics),
+         "resolved skip_reduction reuse should continue through the solver path after reusing "
+         "matching eta-generated state");
+  Expect(diagnostics.summary.find(reducer_failure_marker) == std::string::npos,
+         "resolved skip_reduction reuse should not surface reducer-failure text when matching "
+         "state is available");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionReplaysMatchingReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions replay_amf_options = seed_amf_options;
+  replay_amf_options.skip_reduction = true;
+  const std::string reducer_failure_marker =
+      "unexpected live reducer execution during resolved use_cache skip_reduction replay";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-use-cache-skip-reduction-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded resolved use_cache skip_reduction replay seed solve";
+
+  const amflow::SolverDiagnostics seed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           seed_amf_options,
+                                           {seed_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           seed_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           MakeDistinctPrecisionPolicy(),
+                                           103,
+                                           "rho");
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache + skip_reduction replay coverage should seed one solved-path cache "
+      "manifest"));
+
+  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+
+  const auto replay_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected resolved use_cache skip_reduction replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           replay_amf_options,
+                                           {replay_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           MakeDistinctPrecisionPolicy(),
+                                           103,
+                                           "rho");
+
+  Expect(replay_custom_mode->call_count() == 1,
+         "resolved UseCache + skip_reduction replay should still plan the configured user-"
+         "defined mode once");
+  Expect(replay_solver.call_count() == 0,
+         "resolved UseCache + skip_reduction should replay cached diagnostics when the rebuilt "
+         "request fingerprint still matches");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seed_diagnostics),
+         "resolved UseCache + skip_reduction should return the cached seed diagnostics on a "
+         "matching request-fingerprint replay");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMissingReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  amf_options.use_cache = false;
+  amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-skip-reduction-missing"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-fail.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeReducerFailureScript(
+                            "unexpected live reducer execution during resolved missing-state "
+                            "rejection"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &amf_options, &custom_mode, &layout, &kira_path, &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               amf_options,
+                                                               {custom_mode},
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=9/14",
+                                                               "rho=41/43",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               103,
+                                                               "rho"));
+      },
+      "resolved skip_reduction should reject missing eta-generated state on a fresh layout");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "resolved skip_reduction should reject fresh layouts with the explicit missing-state "
+         "diagnostic");
+  Expect(solver.call_count() == 0,
+         "resolved skip_reduction should not call the solver when no eta-generated state is "
+         "available");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMismatchedReductionStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions live_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  live_amf_options.use_cache = false;
+  live_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = live_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  amflow::ReductionOptions seeded_options = MakeKiraReductionOptions();
+  amflow::ReductionOptions mismatched_options = MakeKiraReductionOptions();
+  mismatched_options.permutation_option = 7;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary = "recorded resolved skip_reduction mismatch seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         live_amf_options,
+                                                         {seed_custom_mode},
+                                                         seeded_options,
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         103,
+                                                         "rho"));
+
+  Expect(seed_custom_mode->call_count() == 1 && seed_solver.call_count() == 1,
+         "resolved skip_reduction mismatch coverage should seed one live planning pass and one "
+         "live solve");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved mismatch "
+                               "rejection"));
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec,
+       &master_basis,
+       &reuse_amf_options,
+       &custom_mode,
+       &mismatched_options,
+       &layout,
+       &kira_path,
+       &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               {custom_mode},
+                                                               mismatched_options,
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=9/14",
+                                                               "rho=41/43",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               103,
+                                                               "rho"));
+      },
+      "resolved skip_reduction should reject mismatched eta-generated state");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "resolved skip_reduction should reject eta-generated state when the prepared inputs no "
+         "longer match");
+  Expect(solver.call_count() == 0,
+         "resolved skip_reduction should not call the solver when eta-generated state no longer "
+         "matches the requested inputs");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsDeletedPreparedStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-use-cache-skip-reduction-deleted"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded resolved use_cache skip_reduction deleted seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         103,
+                                                         "rho"));
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache + skip_reduction deleted-state coverage should seed one solved-path "
+      "cache manifest first"));
+  const std::filesystem::path prepared_file_path = RequirePreparedKiraFilePath(
+      layout,
+      "config/integralfamilies.yaml",
+      "resolved UseCache + skip_reduction deleted-state coverage should materialize prepared "
+      "family YAML");
+  std::filesystem::remove(prepared_file_path);
+  Expect(!std::filesystem::exists(prepared_file_path),
+         "resolved UseCache + skip_reduction deleted-state coverage should delete the prepared "
+         "family YAML before replay");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved deleted-state "
+                               "rejection"));
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &reuse_amf_options, &custom_mode, &layout, &kira_path, &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               {custom_mode},
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=9/14",
+                                                               "rho=41/43",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               103,
+                                                               "rho"));
+      },
+      "resolved UseCache + skip_reduction should reject deleted prepared state instead of "
+      "replaying a stale solved-path cache hit");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "resolved UseCache + skip_reduction should preserve the explicit missing-state prefix on "
+         "deleted prepared state");
+  Expect(message.find("prepared Kira file is missing") != std::string::npos,
+         "resolved UseCache + skip_reduction should report the deleted prepared file instead of "
+         "replaying stale cache diagnostics");
+  Expect(custom_mode->call_count() == 1,
+         "resolved UseCache + skip_reduction should still plan the configured user-defined mode "
+         "before rejecting deleted prepared state");
+  Expect(solver.call_count() == 0,
+         "resolved UseCache + skip_reduction should not call the solver when deleted prepared "
+         "state is rejected");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsMismatchedPreparedStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-use-cache-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded resolved use_cache skip_reduction mismatch seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         103,
+                                                         "rho"));
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache + skip_reduction mismatch coverage should seed one solved-path cache "
+      "manifest first"));
+  const std::filesystem::path prepared_file_path = RequirePreparedKiraFilePath(
+      layout,
+      "config/integralfamilies.yaml",
+      "resolved UseCache + skip_reduction mismatch coverage should materialize prepared family "
+      "YAML");
+  OverwriteTextFile(prepared_file_path,
+                    "integralfamilies:\n  - [\"resolved broken propagator\", \"0\"]\n");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved mismatch "
+                               "rejection"));
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &reuse_amf_options, &custom_mode, &layout, &kira_path, &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               {custom_mode},
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=9/14",
+                                                               "rho=41/43",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               103,
+                                                               "rho"));
+      },
+      "resolved UseCache + skip_reduction should reject mismatched prepared state instead of "
+      "replaying a stale solved-path cache hit");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "resolved UseCache + skip_reduction should preserve the explicit missing-state prefix on "
+         "mismatched prepared state");
+  Expect(message.find("prepared Kira file content does not match current eta-generated "
+                      "preparation") != std::string::npos,
+         "resolved UseCache + skip_reduction should report mismatched prepared inputs instead of "
+         "replaying stale cache diagnostics");
+  Expect(custom_mode->call_count() == 1,
+         "resolved UseCache + skip_reduction should still plan the configured user-defined mode "
+         "before rejecting mismatched prepared state");
+  Expect(solver.call_count() == 0,
+         "resolved UseCache + skip_reduction should not call the solver when mismatched prepared "
+         "state is rejected");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  seed_amf_options.use_cache = true;
+  seed_amf_options.skip_reduction = false;
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-amf-options-resolved-eta-mode-use-cache-skip-reduction-semantic-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded resolved use_cache skip_reduction semantic-drift seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         103,
+                                                         "rho"));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache + skip_reduction semantic-drift coverage should seed one solved-path "
+      "cache manifest first");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  MutateReductionRuleFilesForSemanticDrift(
+      layout,
+      "resolved UseCache + skip_reduction semantic-drift coverage should mutate the live eta-"
+      "generated reduction rules before replay");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved semantic drift "
+                               "invalidation"));
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.25;
+  solver.returned_diagnostics.overlap_mismatch = 0.5;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary =
+      "recorded resolved use_cache skip_reduction semantic-drift live solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           {custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           MakeDistinctPrecisionPolicy(),
+                                           103,
+                                           "rho");
+
+  Expect(custom_mode->call_count() == 1,
+         "resolved UseCache + skip_reduction should still plan the configured user-defined mode "
+         "before invalidating semantic reduction drift");
+  Expect(solver.call_count() == 1,
+         "resolved UseCache + skip_reduction should fall back to a live solve when parseable "
+         "reduction output drifts semantically");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "resolved UseCache + skip_reduction semantic-drift invalidation should return the new "
+         "live solver diagnostics instead of replaying the stale cache entry");
+
+  const std::string refreshed_manifest_yaml = ReadFile(manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") ==
+             stale_input_fingerprint,
+         "resolved UseCache + skip_reduction semantic-drift invalidation should preserve the "
+         "input fingerprint when the requested solve inputs are unchanged");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "resolved UseCache + skip_reduction semantic-drift invalidation should refresh the "
+         "request fingerprint after rebuilding a changed wrapper-owned system");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during resolved semantic drift "
+                               "replay"));
+
+  const auto replay_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.875;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.9375;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected resolved use_cache skip_reduction semantic-drift replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           reuse_amf_options,
+                                           {replay_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           replay_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           MakeDistinctPrecisionPolicy(),
+                                           103,
+                                           "rho");
+
+  Expect(replay_custom_mode->call_count() == 1,
+         "resolved UseCache + skip_reduction semantic-drift coverage should still plan the "
+         "configured user-defined mode on a follow-up replay");
+  Expect(replay_solver.call_count() == 0,
+         "resolved UseCache + skip_reduction semantic-drift coverage should replay the refreshed "
+         "manifest on a follow-up matching request");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, diagnostics),
+         "resolved UseCache + skip_reduction semantic-drift coverage should serve the refreshed "
+         "live diagnostics on a follow-up matching request");
+}
+
 void BootstrapBuiltinSampleManifestTest() {
   const auto layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-sample-manifest-test"));
@@ -17823,7 +19138,13 @@ int main() {
     SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest();
     SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest();
     SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest();
-    SolveAmfOptionsEtaModeSeriesUseCacheFalseDoesNotReplayAndSkipReductionStaysDeferredTest();
+    SolveAmfOptionsEtaModeSeriesSkipReductionReusesMatchingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionReplaysMatchingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMissingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMismatchedReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
     SolveBuiltinEtaModeListSeriesDoesNotReplaySolvedPathCacheManifestTest();
     SolveResolvedEtaModeSeriesBuiltinHappyPathTest();
     SolveResolvedEtaModeSeriesUserDefinedHappyPathTest();
@@ -17844,6 +19165,13 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsUnknownNameImmediatelyTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionReplaysMatchingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMissingReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMismatchedReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
     BootstrapBuiltinSampleManifestTest();
     K0BootstrapManifestSerializationTest();
     RunKiraFromFileRefreshesManifestFromParsedReducerArtifactsTest();

@@ -150,9 +150,11 @@ exit gate. The current live state must always be read from `docs/implementation-
 - truthful `Milestone M3` closure review was reconsidered after `M0b`, but it is still blocked in
   the current repo because the phase-1 gate does not yet have any explicit in-repo prefactor
   surface/tests
-- the next independent roadmap-owned lane is therefore `Batch 56`: narrow solved-path cache
-  manifest plus `UseCache` replay/invalidation of successful solved-path diagnostics, with
-  `SkipReduction` still deferred to `Batch 57`
+- the current roadmap-owned worktree lane is therefore `Batch 57`: the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads own narrow
+  `amf_options.skip_reduction == true` reuse over already-prepared matching eta-generated state,
+  the public eta-reduction helpers stay unchanged, and the next independent lane after review is
+  `Batch 58` for live runtime-policy wiring
 
 ## Current State At R0
 
@@ -214,10 +216,10 @@ exit gate. The current live state must always be read from `docs/implementation-
   ordered invariant-list wrappers over the reviewed one-invariant path, while broader list-surface
   widening and the loop-core reduction-span parity gate remain missing
 - a narrow internal retry controller exists on generated-solver handoffs, and the current
-  `Batch 56` worktree slice adds only a solved-path cache manifest plus `UseCache` replay of
-  successful solved-path diagnostics on the two `AmfOptions` eta solve wrappers; broader
-  cache/replay or interruption-resume coverage, direct-wrapper cache use, and all
-  `SkipReduction` runtime paths remain open
+  `Batch 57` worktree slice now adds solved-path cache replay plus wrapper-owned
+  `amf_options.skip_reduction == true` reuse on the two `AmfOptions` eta solve wrappers only;
+  broader cache/replay or interruption-resume coverage, public/helper `SkipReduction` widening,
+  and later runtime-policy rows remain open
 - feature parity is still missing for complex kinematics, arbitrary `D0`, fixed-`eps`, linear
   propagators, phase-space integration, standalone DE solving at parity quality, and full
   user-defined eta/ending execution paths
@@ -302,7 +304,7 @@ Missing:
 - cancellation/truncation detection
 - remaining required failure codes from `specs/parity-matrix.yaml`
 - broader cache/restart artifact coverage beyond the current solved-path `UseCache` slice
-- `SkipReduction` semantics
+- broader `SkipReduction` semantics beyond the wrapper-only reuse slice
 - live wiring for `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`,
   `TestXOrder`, `RationalizePre`, and `RunLength`
 
@@ -321,14 +323,19 @@ Current status:
   monotone retry progress is classified as `continuation_budget_exhausted`, direct
   `SolveDifferentialEquation(...)` remains passthrough, and cancellation/truncation detection,
   broader cache/restart, `SkipReduction`, and the rest of Track E remain open
-- the current `Batch 56` worktree slice adds only a narrow solved-path cache manifest on the two
-  `SolveAmfOptionsEtaModeSeries(...)` overloads: successful live solves persist one deterministic
-  cache manifest under `layout.root/cache/solved-paths/`, matching `UseCache` requests replay the
-  stored `SolverDiagnostics` without rebuilding the DE or invoking the supplied solver, and stale
-  or malformed artifacts are rejected in favor of live execution. This is not upstream-style
-  interruption-resume behavior. Direct `SolveEtaGeneratedSeries(...)`, invariant-generated
-  wrappers, direct `SolveDifferentialEquation(...)`, and all `SkipReduction` behavior remain
-  unchanged
+- the current `Batch 57` worktree slice keeps that narrow solved-path cache manifest on the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads and adds wrapper-owned
+  `amf_options.skip_reduction == true` reuse over already-prepared matching eta-generated state:
+  matching `UseCache` requests still replay stored `SolverDiagnostics` without invoking the
+  supplied solver, but `skip_reduction` requests first rebuild and validate the current prepared
+  eta-generated DE before any cache hit can succeed; live `skip_reduction` execution rebuilds the
+  current eta preparation, requires matching prepared reducer inputs plus parseable matching
+  reduction artifacts under the current layout, and then continues through the solver handoff
+  without launching the reducer. This is not upstream-style interruption-resume behavior, and
+  direct
+  `RunEtaGeneratedReduction(...)`, `BuildEtaGeneratedDESystem(...)`,
+  `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers, and direct
+  `SolveDifferentialEquation(...)` remain unchanged
 
 ### Track F: Feature-Surface Parity
 
@@ -563,7 +570,7 @@ dependency change.
 | `Batch 54` | landed on `main`: precision-budget preflight plus an internal retry controller on generated-solver handoffs, while direct `SolveDifferentialEquation(...)` remains passthrough | `Milestone M2` |
 | `Batch 55` | landed on `main`: diagnostics hardening for `master_set_instability` and `continuation_budget_exhausted` | `Batch 54` |
 | `Batch 56` | solved-path cache manifest plus `UseCache` replay and invalidation of successful solved-path diagnostics | `Batch 55` |
-| `Batch 57` | `SkipReduction` runtime path over cached or caller-provided `DESystem` inputs | `Batch 56` |
+| `Batch 57` | wrapper-only `skip_reduction` reuse on the two `SolveAmfOptionsEtaModeSeries(...)` overloads over matching prepared eta-generated state | `Batch 56` |
 | `Batch 58` | live wiring of `WorkingPre`, `ChopPre`, `XOrder`, `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, `RationalizePre`, and `RunLength` into solver policy | `Batch 57` |
 | `Milestone M4` | robustness gate: precision monotonicity, explicit failure codes, cache/restart, `UseCache`, and `SkipReduction` all pass T2/T5 coverage | `Batch 54` through `Batch 58` |
 

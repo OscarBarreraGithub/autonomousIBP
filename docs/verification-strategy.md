@@ -95,8 +95,8 @@ The migration is phase-gated. Every phase must pass:
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
 - landed `Batch 58g` on actual `main` now adds target-aware Kira reduction-span widening on
   exact-sector positive-support matches plus the first mandatory-family retained-span evidence
-  packet; the current worktree adds `Batch 58h` as a same-path widening packet derived from the
-  retained `automatic_vs_manual` fixture; broader mandatory-family reduction-span parity beyond
+  packet; the current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
+  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`; broader mandatory-family reduction-span parity beyond
   the current reviewed packets still remains open, while narrow opt-in Kira `insert_prefactors`
   wiring is already present separately
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct

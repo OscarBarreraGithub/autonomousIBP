@@ -153,7 +153,8 @@ exit gate. The current live state must always be read from `docs/implementation-
   packet plus the later landed Kira rational-function prefactor surface and narrow xints
   `insert_prefactors` wiring. Landed `Batch 58g` already supplies the first retained
   mandatory-family reduction-span packet on the same generic Kira span path, and the current
-  worktree adds `Batch 58h` as a same-path widening packet derived from that retained fixture:
+  worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and stage-2
+  diffeqsetup evidence packet in `tests/amflow_tests.cpp`:
   `tests/amflow_tests.cpp`
   cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while the retained phase-0 README still backs the
@@ -371,8 +372,8 @@ Current status:
   and direct `SolveDifferentialEquation(...)` remain unchanged
 - landed `Batch 58g` on actual `main` now widens Kira preparation `r` spans on exact-sector
   positive-support matches and records the first mandatory-family retained-span evidence packet;
-  the current worktree adds `Batch 58h` as a same-path widening packet derived from the retained
-  `automatic_vs_manual` fixture; broader mandatory-family reduction-span parity beyond the current
+  the current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
+  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`; broader mandatory-family reduction-span parity beyond the current
   reviewed packets is still missing, so `Milestone M3` remains open; Kira `insert_prefactors`
   now has a narrow opt-in reviewed wiring
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct

@@ -84,6 +84,52 @@ void ReplaceFirst(std::string& value,
   value.replace(position, needle.size(), replacement);
 }
 
+void ReplaceAll(std::string& value,
+                const std::string& needle,
+                const std::string& replacement) {
+  std::size_t position = 0;
+  while ((position = value.find(needle, position)) != std::string::npos) {
+    value.replace(position, needle.size(), replacement);
+    position += replacement.size();
+  }
+}
+
+std::string NormalizeAutomaticLoopSurfaceLine(const std::string& line) {
+  std::string normalized;
+  normalized.reserve(line.size());
+  for (const char character : line) {
+    if (character == '"' || character == ' ' || character == '\t' || character == '\r') {
+      continue;
+    }
+    normalized.push_back(character);
+  }
+  return normalized;
+}
+
+std::string NormalizeAutomaticLoopSurface(const std::string& value) {
+  std::ostringstream normalized;
+  std::istringstream stream(value);
+  bool first_line = true;
+  for (std::string line; std::getline(stream, line);) {
+    const std::string normalized_line = NormalizeAutomaticLoopSurfaceLine(line);
+    if (normalized_line.empty()) {
+      continue;
+    }
+    if (!first_line) {
+      normalized << '\n';
+    }
+    normalized << normalized_line;
+    first_line = false;
+  }
+  return normalized.str();
+}
+
+std::string NormalizeAutomaticLoopJobsYamlSurface(const std::string& value) {
+  std::string normalized = NormalizeAutomaticLoopSurface(value);
+  ReplaceAll(normalized, ",d:0", "");
+  return normalized;
+}
+
 void InsertBefore(std::string& value,
                   const std::string& needle,
                   const std::string& insertion) {
@@ -1305,6 +1351,124 @@ amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParityWideningSpec() {
   spec.notes = "Synthetic widening check on the retained automatic_vs_manual tt reduction-span "
                "seam.";
   return spec;
+}
+
+std::filesystem::path AutomaticLoopRetainedDiffeqsetupRoot(const std::string& family,
+                                                           int stage) {
+  return std::filesystem::path(
+             "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+             "phase0-reference-captured-20260419-required-set/generated-config/phase0/"
+             "automatic_loop/primary/cache") /
+         (family + "_amflow") / std::to_string(stage) / "diffeqsetup";
+}
+
+amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
+    const std::vector<amflow::TargetIntegral>& targets,
+    const std::vector<std::string>& preferred_masters,
+    const std::vector<int>& top_level_sectors) {
+  amflow::ProblemSpec spec;
+  spec.family.name = "box1";
+  spec.family.loop_momenta = {"l"};
+  spec.family.top_level_sectors = top_level_sectors;
+  spec.family.preferred_masters = preferred_masters;
+  spec.family.propagators = {
+      {"l", "0"},
+      {"l + p1", "0"},
+      {"l + p1 + p2", "0"},
+      {"l - p3", "0"},
+  };
+  spec.kinematics.incoming_momenta = {"p1", "p2", "p3", "box1AuxLeg"};
+  spec.kinematics.outgoing_momenta = {};
+  spec.kinematics.momentum_conservation = "box1AuxLeg = -p1 - p2 - p3";
+  spec.kinematics.invariants = {"eta"};
+  spec.kinematics.scalar_product_rules = {
+      {"p1*p1", "0"},
+      {"p1*p2", "50"},
+      {"p1*p3", "-1/2"},
+      {"p2*p2", "0"},
+      {"p2*p3", "-99/2"},
+      {"p3*p3", "0"},
+  };
+  spec.targets = targets;
+  spec.notes = "Retained automatic_loop box1 diffeqsetup reduction-span parity seam.";
+  return spec;
+}
+
+amflow::ProblemSpec MakeAutomaticLoopBox2DiffeqsetupSpec(
+    const std::vector<amflow::TargetIntegral>& targets,
+    const std::vector<std::string>& preferred_masters,
+    const std::vector<int>& top_level_sectors) {
+  amflow::ProblemSpec spec;
+  spec.family.name = "box2";
+  spec.family.loop_momenta = {"l"};
+  spec.family.top_level_sectors = top_level_sectors;
+  spec.family.preferred_masters = preferred_masters;
+  spec.family.propagators = {
+      {"l", "0"},
+      {"l + p1", "0"},
+      {"l + p1 + p2", "0"},
+      {"l + p1 + p2 + p3", "0"},
+  };
+  spec.kinematics.incoming_momenta = {"p1", "p2", "p3", "box2AuxLeg"};
+  spec.kinematics.outgoing_momenta = {};
+  spec.kinematics.momentum_conservation = "box2AuxLeg = -p1 - p2 - p3";
+  spec.kinematics.invariants = {"eta"};
+  spec.kinematics.scalar_product_rules = {
+      {"p1*p1", "0"},
+      {"p1*p2", "50"},
+      {"p1*p3", "-99/2"},
+      {"p2*p2", "0"},
+      {"p2*p3", "-1/2"},
+      {"p3*p3", "0"},
+  };
+  spec.targets = targets;
+  spec.notes = "Retained automatic_loop box2 diffeqsetup reduction-span parity seam.";
+  return spec;
+}
+
+void ExpectRetainedAutomaticLoopDiffeqsetupPacket(
+    const amflow::ProblemSpec& spec,
+    const std::filesystem::path& retained_root,
+    const std::string& context,
+    int expected_r) {
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-" + spec.family.name + "-" +
+                                                context + "-automatic-loop-diffeqsetup"));
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(preparation.validation_messages.empty(),
+         context + ": retained automatic_loop diffeqsetup packet should validate cleanly for "
+                   "Kira");
+
+  const std::string retained_jobs_yaml = NormalizeAutomaticLoopJobsYamlSurface(
+      ReadFile(retained_root / "jobs.yaml"));
+  const std::string generated_jobs_yaml = NormalizeAutomaticLoopJobsYamlSurface(
+      preparation.generated_files.at("jobs.yaml"));
+  ExpectContains(retained_jobs_yaml,
+                 "r:" + std::to_string(expected_r) + ",s:3",
+                 context + ": retained automatic_loop diffeqsetup jobs.yaml should preserve "
+                           "the captured reduction span");
+  Expect(generated_jobs_yaml == retained_jobs_yaml,
+         context + ": retained automatic_loop diffeqsetup jobs.yaml should match the captured "
+                   "normalized reduction-span surface");
+
+  const std::string retained_target =
+      NormalizeAutomaticLoopSurface(ReadFile(retained_root / "target"));
+  const std::string generated_target =
+      NormalizeAutomaticLoopSurface(preparation.generated_files.at("target"));
+  Expect(generated_target == retained_target,
+         context + ": retained automatic_loop diffeqsetup target should preserve the captured "
+                   "target order on the normalized surface");
+
+  const std::string retained_preferred =
+      NormalizeAutomaticLoopSurface(ReadFile(retained_root / "preferred"));
+  const std::string generated_preferred =
+      NormalizeAutomaticLoopSurface(preparation.generated_files.at("preferred"));
+  Expect(generated_preferred == retained_preferred,
+         context + ": retained automatic_loop diffeqsetup preferred should preserve the "
+                   "captured preferred-master order on the normalized surface");
 }
 
 amflow::ProblemSpec MakeBuiltinAllEtaHappySpec() {
@@ -5197,6 +5361,52 @@ void KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest() {
                  std::string::npos,
          "same-path automatic_vs_manual mandatory-family reduction-span widening check should "
          "emit the sector-[7] Kira span with r = 5 and not regress to r = 4");
+}
+
+void KiraPrepareForTargetsRetainedAutomaticLoopMandatoryFamilyReductionSpanEvidenceTest() {
+  const amflow::ProblemSpec box1_stage1_spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
+      {{"box1", {2, 0, 1, 0}},
+       {"box1", {2, 1, 1, 1}},
+       {"box1", {2, 0, 0, 0}},
+       {"box1", {2, 1, 0, 1}}},
+      {"box1[0,1,0,1]", "box1[1,0,1,0]", "box1[1,1,1,1]"},
+      {15});
+  const amflow::ProblemSpec box1_stage2_spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
+      {{"box1", {2, 0, 1, 0}}, {"box1", {2, 0, 0, 0}}},
+      {"box1[1,0,1,0]"},
+      {5});
+  const amflow::ProblemSpec box2_stage1_spec = MakeAutomaticLoopBox2DiffeqsetupSpec(
+      {{"box2", {2, 0, 1, 0}},
+       {"box2", {2, 1, 1, 1}},
+       {"box2", {2, 0, 0, 0}},
+       {"box2", {2, 1, 0, 1}}},
+      {"box2[1,0,1,0]", "box2[0,1,0,1]", "box2[1,1,1,1]"},
+      {15});
+  const amflow::ProblemSpec box2_stage2_spec = MakeAutomaticLoopBox2DiffeqsetupSpec(
+      {{"box2", {2, 0, 1, 0}}, {"box2", {2, 0, 0, 0}}},
+      {"box2[1,0,1,0]"},
+      {5});
+
+  ExpectRetainedAutomaticLoopDiffeqsetupPacket(
+      box1_stage1_spec,
+      AutomaticLoopRetainedDiffeqsetupRoot("box1", 1),
+      "box1 stage-1",
+      5);
+  ExpectRetainedAutomaticLoopDiffeqsetupPacket(
+      box1_stage2_spec,
+      AutomaticLoopRetainedDiffeqsetupRoot("box1", 2),
+      "box1 stage-2",
+      3);
+  ExpectRetainedAutomaticLoopDiffeqsetupPacket(
+      box2_stage1_spec,
+      AutomaticLoopRetainedDiffeqsetupRoot("box2", 1),
+      "box2 stage-1",
+      5);
+  ExpectRetainedAutomaticLoopDiffeqsetupPacket(
+      box2_stage2_spec,
+      AutomaticLoopRetainedDiffeqsetupRoot("box2", 2),
+      "box2 stage-2",
+      3);
 }
 
 void KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest() {
@@ -20415,6 +20625,7 @@ int main() {
     KiraPrepareForTargetsHappyPathTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest();
+    KiraPrepareForTargetsRetainedAutomaticLoopMandatoryFamilyReductionSpanEvidenceTest();
     KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest();
     KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest();
     KiraPrepareForTargetsRejectsTopLevelSectorMaskOverflowTest();

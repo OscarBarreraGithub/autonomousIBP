@@ -128,8 +128,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   prefactor groundwork through landed `Batch 58d` plus the later landed Kira
   rational-function prefactor surface / xints `insert_prefactors` packets remains history only;
   landed `Batch 58g` supplies the first mandatory-family retained-span evidence packet, and the
-  current worktree adds `Batch 58h` as a same-path widening packet derived from that retained
-  fixture. Broader reduction-span parity beyond the current reviewed packets still remains open before
+  current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
+  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`. Broader reduction-span parity beyond the current reviewed packets still remains open before
   `Milestone M3`
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on the current reviewed exact subset only:

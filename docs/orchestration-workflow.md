@@ -96,8 +96,8 @@ The workflow is optimized for the current repo shape:
   prefactor mirror lock coverage over the locked evidence packet plus the later landed Kira
   rational-function prefactor surface and narrow xints `insert_prefactors` wiring. Landed
   `Batch 58g` already supplies the first retained mandatory-family reduction-span packet on the
-  same generic Kira span path, and the current worktree adds `Batch 58h` as a same-path widening
-  packet derived from that retained fixture. `tests/amflow_tests.cpp`
+  same generic Kira span path, and the current worktree adds `Batch 58h` as the retained `automatic_loop`
+  box1 / box2 stage-1 and stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`. `tests/amflow_tests.cpp`
   cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while retained `+i0` / cut backing and the
   snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure still remains open

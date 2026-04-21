@@ -466,6 +466,7 @@ ExactRational ParsePointValue(const std::string& variable_name,
 
 ExactRational ParseSeriesPatchCenterValue(const std::string& variable_name,
                                           const std::string& center_expression,
+                                          const NumericEvaluationPoint& passive_bindings,
                                           const char* patch_prefix) {
   const std::string trimmed = Trim(center_expression);
   if (trimmed.empty()) {
@@ -494,7 +495,7 @@ ExactRational ParseSeriesPatchCenterValue(const std::string& variable_name,
                                 center_expression + "\"");
   }
 
-  return EvaluateCoefficientExpression(rhs, NumericEvaluationPoint{});
+  return EvaluateCoefficientExpression(rhs, passive_bindings);
 }
 
 bool IsUnsupportedSingularFormError(const std::invalid_argument& error) {
@@ -1640,6 +1641,7 @@ ExactSeries BuildFrobeniusReducedSeries(const LaurentSeries& coefficient_series,
 }
 
 std::vector<ExactRational> NormalizeScalarCoefficients(const SeriesPatch& patch,
+                                                       const NumericEvaluationPoint& passive_bindings,
                                                        const char* patch_prefix) {
   if (patch.order < 0) {
     throw std::invalid_argument(std::string(patch_prefix) +
@@ -1661,13 +1663,14 @@ std::vector<ExactRational> NormalizeScalarCoefficients(const SeriesPatch& patch,
   std::vector<ExactRational> coefficients;
   coefficients.reserve(expected_size);
   for (const std::string& coefficient : patch.coefficients) {
-    coefficients.push_back(EvaluateCoefficientExpression(coefficient, NumericEvaluationPoint{}));
+    coefficients.push_back(EvaluateCoefficientExpression(coefficient, passive_bindings));
   }
   return coefficients;
 }
 
 std::vector<ExactRationalMatrix> NormalizeMatrixPatchCoefficients(
     const UpperTriangularMatrixSeriesPatch& patch,
+    const NumericEvaluationPoint& passive_bindings,
     const char* patch_prefix) {
   if (patch.order < 0) {
     throw std::invalid_argument(std::string(patch_prefix) +
@@ -1705,7 +1708,8 @@ std::vector<ExactRationalMatrix> NormalizeMatrixPatchCoefficients(
                                     " requires square stored matrix coefficients");
       }
       for (std::size_t column = 0; column < dimension; ++column) {
-        normalized_matrix[row][column] = ExactArithmetic(matrix[row][column].ToString());
+        normalized_matrix[row][column] =
+            EvaluateCoefficientExpression(matrix[row][column].ToString(), passive_bindings);
         if (column < row && !normalized_matrix[row][column].IsZero()) {
           throw std::invalid_argument(std::string(patch_prefix) +
                                       " requires stored upper-triangular coefficient matrices");
@@ -1768,7 +1772,7 @@ NormalizedUpperTriangularMatrixFrobeniusPatchData NormalizeMatrixFrobeniusPatchC
 
   NormalizedUpperTriangularMatrixFrobeniusPatchData normalized_patch;
   normalized_patch.coefficient_matrices =
-      NormalizeMatrixPatchCoefficients(regularized_patch, patch_prefix);
+      NormalizeMatrixPatchCoefficients(regularized_patch, {}, patch_prefix);
   const std::size_t dimension = normalized_patch.coefficient_matrices.empty()
                                     ? 0
                                     : normalized_patch.coefficient_matrices.front().size();
@@ -2818,7 +2822,7 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
   const NormalizedUpperTriangularMatrixFrobeniusPatchData normalized_target_patch =
       NormalizeMatrixFrobeniusPatchCoefficients(target_patch, kBootstrapSolverPrefix);
   const std::vector<ExactRationalMatrix> start_coefficients =
-      NormalizeMatrixPatchCoefficients(start_patch, kBootstrapSolverPrefix);
+      NormalizeMatrixPatchCoefficients(start_patch, passive_bindings, kBootstrapSolverPrefix);
   const ExactRationalMatrix start_match =
       EvaluateMatrixPolynomial(start_coefficients, start_value, match_value);
   const ExactRationalMatrix start_check =
@@ -2947,7 +2951,7 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
       }
 
       const std::vector<ExactRationalMatrix> start_coefficients =
-          NormalizeMatrixPatchCoefficients(start_patch, kBootstrapSolverPrefix);
+          NormalizeMatrixPatchCoefficients(start_patch, passive_bindings, kBootstrapSolverPrefix);
       const ExactRationalMatrix transported_fundamental_matrix =
           EvaluateMatrixPolynomial(start_coefficients, start_value, target_value);
       const ExactRationalVector transported_target_values =
@@ -3326,9 +3330,10 @@ ExactRational EvaluateScalarSeriesPatchResidual(
   }
 
   const ExactRational center_value =
-      ParseSeriesPatchCenterValue(variable_name, patch.center, kScalarResidualPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, patch.center, passive_bindings, kScalarResidualPrefix);
   const std::vector<ExactRational> coefficients =
-      NormalizeScalarCoefficients(patch, kScalarResidualPrefix);
+      NormalizeScalarCoefficients(patch, passive_bindings, kScalarResidualPrefix);
   const ExactRational point_value =
       ParsePointValue(variable_name, point_expression, passive_bindings, kScalarResidualPrefix);
 
@@ -3352,13 +3357,15 @@ ScalarSeriesPatchOverlapDiagnostics MatchScalarSeriesPatches(
     const std::string& check_point_expression,
     const NumericEvaluationPoint& passive_bindings) {
   const ExactRational left_center =
-      ParseSeriesPatchCenterValue(variable_name, left_patch.center, kScalarOverlapPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, left_patch.center, passive_bindings, kScalarOverlapPrefix);
   const ExactRational right_center =
-      ParseSeriesPatchCenterValue(variable_name, right_patch.center, kScalarOverlapPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, right_patch.center, passive_bindings, kScalarOverlapPrefix);
   const std::vector<ExactRational> left_coefficients =
-      NormalizeScalarCoefficients(left_patch, kScalarOverlapPrefix);
+      NormalizeScalarCoefficients(left_patch, passive_bindings, kScalarOverlapPrefix);
   const std::vector<ExactRational> right_coefficients =
-      NormalizeScalarCoefficients(right_patch, kScalarOverlapPrefix);
+      NormalizeScalarCoefficients(right_patch, passive_bindings, kScalarOverlapPrefix);
   const ExactRational match_point =
       ParsePointValue(variable_name,
                       match_point_expression,
@@ -3410,9 +3417,10 @@ ExactRationalMatrix EvaluateUpperTriangularMatrixSeriesPatchResidual(
   }
 
   const ExactRational center_value =
-      ParseSeriesPatchCenterValue(variable_name, patch.center, kMatrixResidualPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, patch.center, passive_bindings, kMatrixResidualPrefix);
   const std::vector<ExactRationalMatrix> coefficient_matrices =
-      NormalizeMatrixPatchCoefficients(patch, kMatrixResidualPrefix);
+      NormalizeMatrixPatchCoefficients(patch, passive_bindings, kMatrixResidualPrefix);
   if (coefficient_matrices.front().size() != dimension) {
     throw std::invalid_argument(std::string(kMatrixResidualPrefix) +
                                 " requires matrix patch dimension to match masters.size()");
@@ -3439,13 +3447,15 @@ UpperTriangularMatrixSeriesPatchOverlapDiagnostics MatchUpperTriangularMatrixSer
     const std::string& check_point_expression,
     const NumericEvaluationPoint& passive_bindings) {
   const ExactRational left_center =
-      ParseSeriesPatchCenterValue(variable_name, left_patch.center, kMatrixOverlapPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, left_patch.center, passive_bindings, kMatrixOverlapPrefix);
   const ExactRational right_center =
-      ParseSeriesPatchCenterValue(variable_name, right_patch.center, kMatrixOverlapPrefix);
+      ParseSeriesPatchCenterValue(
+          variable_name, right_patch.center, passive_bindings, kMatrixOverlapPrefix);
   const std::vector<ExactRationalMatrix> left_coefficients =
-      NormalizeMatrixPatchCoefficients(left_patch, kMatrixOverlapPrefix);
+      NormalizeMatrixPatchCoefficients(left_patch, passive_bindings, kMatrixOverlapPrefix);
   const std::vector<ExactRationalMatrix> right_coefficients =
-      NormalizeMatrixPatchCoefficients(right_patch, kMatrixOverlapPrefix);
+      NormalizeMatrixPatchCoefficients(right_patch, passive_bindings, kMatrixOverlapPrefix);
   if (left_coefficients.front().size() != right_coefficients.front().size()) {
     throw std::invalid_argument(std::string(kMatrixOverlapPrefix) +
                                 " requires matrix patches with matching dimensions");

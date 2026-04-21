@@ -11499,6 +11499,34 @@ void ScalarSeriesPatchOverlapRejectsIdenticalResolvedPointsTest() {
       "scalar overlap diagnostics should require distinct points after exact resolution");
 }
 
+void ScalarSeriesPatchOverlapUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest() {
+  amflow::SeriesPatch left;
+  left.center = "eta=s";
+  left.order = 1;
+  left.basis_functions = {"1", "(eta-s)"};
+  left.coefficients = {"1", "u"};
+
+  amflow::SeriesPatch right;
+  right.center = "eta=s";
+  right.order = 1;
+  right.basis_functions = {"1", "(eta-s)"};
+  right.coefficients = {"2", "2*u"};
+
+  const amflow::ScalarSeriesPatchOverlapDiagnostics overlap =
+      amflow::MatchScalarSeriesPatches(
+          "eta", left, right, "eta=s+1", "eta=s+3", {{"s", "2"}, {"u", "5"}});
+  ExpectRationalString(
+      overlap.lambda,
+      "2",
+      "scalar overlap diagnostics should use passive bindings when resolving public patch "
+      "centers and stored coefficients");
+  ExpectRationalString(
+      overlap.mismatch,
+      "0",
+      "scalar overlap diagnostics should preserve zero mismatch when passive bindings "
+      "resolve public patch centers and stored coefficients");
+}
+
 void ScalarSeriesPatchResidualRejectsMalformedPointExpressionTest() {
   const amflow::DESystem system = MakeScalarRegularPointSeriesSystem("2");
   const amflow::SeriesPatch patch =
@@ -11585,6 +11613,24 @@ void ScalarSeriesPatchResidualPropagatesSingularPointDivisionByZeroTest() {
       "division by zero",
       "scalar residual diagnostics should propagate plain division by zero at singular "
       "evaluation points");
+}
+
+void ScalarSeriesPatchResidualUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest() {
+  const amflow::DESystem system = MakeScalarRegularPointSeriesSystem("0");
+  amflow::SeriesPatch patch;
+  patch.center = "eta=s";
+  patch.order = 2;
+  patch.basis_functions = {"1", "(eta-s)", "((eta-s)*(eta-s))"};
+  patch.coefficients = {"0", "u", "1"};
+
+  const amflow::ExactRational residual =
+      amflow::EvaluateScalarSeriesPatchResidual(
+          system, "eta", patch, "eta=s+3", {{"s", "2"}, {"u", "5"}});
+  ExpectRationalString(
+      residual,
+      "11",
+      "scalar residual diagnostics should use passive bindings when resolving public patch "
+      "centers and stored coefficients");
 }
 
 void UpperTriangularMatrixSeriesPatchExactZeroOverlapAndResidualTest() {
@@ -11718,6 +11764,46 @@ void UpperTriangularMatrixSeriesPatchOverlapRejectsDimensionMismatchTest() {
       "upper-triangular matrix overlap diagnostics should reject dimension-mismatched patches");
 }
 
+void UpperTriangularMatrixSeriesPatchOverlapUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest() {
+  amflow::UpperTriangularMatrixSeriesPatch left;
+  left.center = "eta=s";
+  left.order = 1;
+  left.basis_functions = {"1", "(eta-s)"};
+  left.coefficient_matrices = {
+      MakeExactRationalMatrix({{"1", "0"}, {"0", "1"}}),
+      MakeZeroExactRationalMatrix(2),
+  };
+  left.coefficient_matrices[1][0][0] = {"u", "1"};
+  left.coefficient_matrices[1][0][1] = {"1", "1"};
+  left.coefficient_matrices[1][1][1] = {"v", "1"};
+
+  amflow::UpperTriangularMatrixSeriesPatch right;
+  right.center = "eta=s";
+  right.order = 1;
+  right.basis_functions = {"1", "(eta-s)"};
+  right.coefficient_matrices = {
+      MakeExactRationalMatrix({{"2", "3"}, {"0", "5"}}),
+      MakeZeroExactRationalMatrix(2),
+  };
+  right.coefficient_matrices[1][0][0] = {"2*u", "1"};
+  right.coefficient_matrices[1][0][1] = {"2+3*v", "1"};
+  right.coefficient_matrices[1][1][1] = {"5*v", "1"};
+
+  const amflow::UpperTriangularMatrixSeriesPatchOverlapDiagnostics overlap =
+      amflow::MatchUpperTriangularMatrixSeriesPatches(
+          "eta", left, right, "eta=s+1", "eta=s+2", {{"s", "2"}, {"u", "5"}, {"v", "7"}});
+  ExpectExactRationalMatrix(
+      overlap.match_matrix,
+      MakeExactRationalMatrix({{"2", "3"}, {"0", "5"}}),
+      "upper-triangular matrix overlap diagnostics should use passive bindings when "
+      "resolving public patch centers and stored coefficients");
+  ExpectExactRationalMatrix(
+      overlap.mismatch,
+      MakeZeroExactRationalMatrix(2),
+      "upper-triangular matrix overlap diagnostics should preserve zero mismatch when "
+      "passive bindings resolve public patch centers and stored coefficients");
+}
+
 void UpperTriangularMatrixSeriesPatchResidualRejectsNonSquareStoredCoefficientsTest() {
   const amflow::DESystem system =
       MakeMatrixRegularPointSeriesSystem({{"2", "0"}, {"0", "0"}});
@@ -11734,6 +11820,34 @@ void UpperTriangularMatrixSeriesPatchResidualRejectsNonSquareStoredCoefficientsT
       "square stored matrix coefficients",
       "upper-triangular matrix residual diagnostics should reject malformed non-square stored "
       "matrix coefficients");
+}
+
+void UpperTriangularMatrixSeriesPatchResidualUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest() {
+  const amflow::DESystem system =
+      MakeMatrixRegularPointSeriesSystem({{"0", "0"}, {"0", "0"}});
+  amflow::UpperTriangularMatrixSeriesPatch patch;
+  patch.center = "eta=s";
+  patch.order = 2;
+  patch.basis_functions = {"1", "(eta-s)", "((eta-s)*(eta-s))"};
+  patch.coefficient_matrices = {
+      MakeZeroExactRationalMatrix(2),
+      MakeZeroExactRationalMatrix(2),
+      MakeZeroExactRationalMatrix(2),
+  };
+  patch.coefficient_matrices[1][0][0] = {"u", "1"};
+  patch.coefficient_matrices[1][0][1] = {"1", "1"};
+  patch.coefficient_matrices[1][1][1] = {"v", "1"};
+  patch.coefficient_matrices[2][0][0] = {"1", "1"};
+  patch.coefficient_matrices[2][1][1] = {"1", "1"};
+
+  const amflow::ExactRationalMatrix residual =
+      amflow::EvaluateUpperTriangularMatrixSeriesPatchResidual(
+          system, "eta", patch, "eta=s+3", {{"s", "2"}, {"u", "5"}, {"v", "7"}});
+  ExpectExactRationalMatrix(
+      residual,
+      MakeExactRationalMatrix({{"11", "1"}, {"0", "13"}}),
+      "upper-triangular matrix residual diagnostics should use passive bindings when "
+      "resolving public patch centers and stored coefficients");
 }
 
 void EtaDerivativeGenerationHappyPathTest() {
@@ -22531,18 +22645,22 @@ int main() {
     ScalarSeriesPatchTruncationMismatchAndResidualTest();
     ScalarSeriesPatchOverlapRejectsZeroMatchValueTest();
     ScalarSeriesPatchOverlapRejectsIdenticalResolvedPointsTest();
+    ScalarSeriesPatchOverlapUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest();
     ScalarSeriesPatchResidualRejectsMalformedPointExpressionTest();
     ScalarSeriesPatchResidualRejectsMissingPassiveBindingTest();
     ScalarSeriesPatchResidualRejectsUnknownVariableTest();
     ScalarSeriesPatchResidualRejectsMalformedPatchCenterTest();
     ScalarSeriesPatchResidualRejectsBadStorageSizeTest();
     ScalarSeriesPatchResidualPropagatesSingularPointDivisionByZeroTest();
+    ScalarSeriesPatchResidualUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest();
     UpperTriangularMatrixSeriesPatchExactZeroOverlapAndResidualTest();
     UpperTriangularMatrixSeriesPatchTruncationMismatchAndResidualTest();
     UpperTriangularMatrixSeriesPatchCoupledResidualTest();
     UpperTriangularMatrixSeriesPatchOverlapRejectsSingularMatchMatrixTest();
     UpperTriangularMatrixSeriesPatchOverlapRejectsDimensionMismatchTest();
+    UpperTriangularMatrixSeriesPatchOverlapUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest();
     UpperTriangularMatrixSeriesPatchResidualRejectsNonSquareStoredCoefficientsTest();
+    UpperTriangularMatrixSeriesPatchResidualUsesPassiveBindingsForPublicCenterAndStoredCoefficientsTest();
     EtaDerivativeGenerationHappyPathTest();
     EtaDerivativeGenerationNegativeExponentTest();
     EtaDerivativeGenerationRejectsArityMismatchTest();

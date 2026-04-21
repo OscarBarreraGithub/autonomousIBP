@@ -8,8 +8,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `9b619f182850ef1bcef1923ecddc05118050a898`; local tracking `origin/main` matches at `9b619f182850ef1bcef1923ecddc05118050a898`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58h` / `Batch 58i` on top of the earlier Kira rational-function prefactor surface and xints `insert_prefactors` wiring
+- the actual SSH remote `main` head for this packet is `7dee2a0a574f2df991edf917290cc4600c9ae215`; local tracking `origin/main` matches at `7dee2a0a574f2df991edf917290cc4600c9ae215`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58h` / `Batch 58i` plus the landed narrow `Milestone M3` closure packet at `7dee2a0`, on top of the earlier Kira rational-function prefactor surface and xints `insert_prefactors` wiring
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -97,7 +97,7 @@ The migration is phase-gated. Every phase must pass:
   exact-sector positive-support matches plus the retained `tt` span-evidence packet, landed
   `Batch 58h` adds the same-path retained `tt` widening guard at `53a6630`, and landed
   `Batch 58i` adds retained `automatic_loop` `box1` / `box2` stage-1 and stage-2
-  reduction-span/order evidence at `9b619f1`. The current worktree then extends the retained
+  reduction-span/order evidence at `9b619f1`. Landed `main@7dee2a0` then extends the retained
   `tt`, `box1`, and `box2` seams to compare normalized `integralfamilies.yaml` and
   `kinematics.yaml` against capture. Together with landed `Batch 58d` prefactor lock coverage,
   this closes `Milestone M3` narrowly on the first mandatory package families only, while narrow
@@ -118,8 +118,8 @@ The migration is phase-gated. Every phase must pass:
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`, this closes `Milestone M4`
   narrowly on that implemented exact subset only. This packet does not widen runtime behavior,
   broader cache/restart semantics, broader monotone digit refinement, or standalone solver-policy
-  parity beyond the reviewed exact subset. The separate current-worktree `Milestone M3` closure
-  remains limited to the first mandatory package families only, while narrow opt-in Kira
+  parity beyond the reviewed exact subset. The separate landed `Milestone M3` closure on landed
+  `main@7dee2a0` remains limited to the first mandatory package families only, while narrow opt-in Kira
   `insert_prefactors` wiring is already present separately
 
 ## Test Taxonomy

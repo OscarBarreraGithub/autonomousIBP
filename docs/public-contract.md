@@ -31,7 +31,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - the actual SSH remote `main` state for this packet now runs through
-  `main@9b619f182850ef1bcef1923ecddc05118050a898`; that landed history includes `Batch 50b` at
+  `main@7dee2a0a574f2df991edf917290cc4600c9ae215`; that landed history includes `Batch 50b` at
   `95f33f398bbdebf2084bf360a498fea3de89fc30`, `Batch 50` through `Batch 58g` at
   `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`,
   `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`,
@@ -39,7 +39,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`,
   `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, the landed
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
-  packet at `b367daf`, landed `Batch 58h` at `53a6630`, and landed `Batch 58i` at `9b619f1`;
+  packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
+  landed narrow `Milestone M3` closure packet at `7dee2a0`;
   local tracking `origin/main` matches that same head;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
@@ -131,8 +132,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   rational-function prefactor surface / xints `insert_prefactors` packets remains history only;
   landed `Batch 58g` supplies the retained `tt` reduction-span evidence packet, landed
   `Batch 58h` guards the same-path `tt` widening lane, landed `Batch 58i` supplies retained
-  `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order evidence, and the
-  current worktree extends those retained `tt`, `box1`, and `box2` seams to compare normalized
+  `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order evidence, and landed
+  `main@7dee2a0` extends those retained `tt`, `box1`, and `box2` seams to compare normalized
   `integralfamilies.yaml` and `kinematics.yaml` against capture. Together with landed
   `Batch 58d` prefactor lock coverage, this closes `Milestone M3` narrowly on the first
   mandatory package families only
@@ -153,8 +154,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   through `Batch 58e` failure-code, cache, `UseCache`, and
   `SkipReduction` coverage, this closes `Milestone M4` narrowly on that implemented exact subset
   only. It does not widen runtime behavior, broader cache/restart semantics, or broader
-  runtime-policy parity. The separate current-worktree `Milestone M3` closure remains limited to
-  the first mandatory package families only
+  runtime-policy parity. The separate landed `Milestone M3` closure on landed `main@7dee2a0`
+  remains limited to the first mandatory package families only
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

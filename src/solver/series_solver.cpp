@@ -4233,6 +4233,40 @@ SolverDiagnostics SolveResolvedEtaModeListSeries(
                                  eta_symbol);
 }
 
+SolverDiagnostics SolveResolvedEtaModeListSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::vector<std::string>& eta_mode_names,
+    const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
+  const EtaInsertionDecision decision =
+      SelectResolvedEtaModeDecision(spec, eta_mode_names, user_defined_modes);
+  return SolveEtaGeneratedSeries(spec,
+                                 master_basis,
+                                 decision,
+                                 options,
+                                 layout,
+                                 kira_executable,
+                                 fermat_executable,
+                                 solver,
+                                 start_location,
+                                 target_location,
+                                 precision_policy,
+                                 requested_digits,
+                                 eta_symbol,
+                                 exact_dimension_override);
+}
+
 SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

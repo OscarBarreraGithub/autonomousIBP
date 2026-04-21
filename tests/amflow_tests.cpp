@@ -20464,6 +20464,202 @@ void SolveResolvedEtaModeSeriesPlanningFailureTest() {
          "resolved eta-mode solver handoff should not call the solver when planning fails");
 }
 
+void SolveResolvedEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=2/5";
+  const std::string target_location = "rho=7/8";
+  const int requested_digits = 97;
+  const std::string eta_symbol = "rho";
+
+  const auto retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path,
+                                        eta_symbol);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-exact-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=4"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.000244140625;
+  solver.returned_diagnostics.overlap_mismatch = 0.00048828125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded resolved eta-mode list exact-dimension solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveResolvedEtaModeListSeries(spec,
+                                             master_basis,
+                                             {"RetryMode", "CustomMode"},
+                                             {retry_mode, custom_mode},
+                                             MakeKiraReductionOptions(),
+                                             layout,
+                                             kira_path,
+                                             fermat_path,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol,
+                                             std::optional<std::string>{"8/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "resolved eta-mode list exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(retry_mode->call_count() == 1,
+         "resolved eta-mode list exact-dimension override coverage should preserve ordered "
+         "fallback across the failing first mode");
+  Expect(custom_mode->call_count() == 1,
+         "resolved eta-mode list exact-dimension override coverage should plan the selected "
+         "mode exactly once");
+  Expect(custom_mode->last_planned_spec_yaml() == original_yaml,
+         "resolved eta-mode list exact-dimension override coverage should plan against the "
+         "original problem spec");
+  Expect(solver.call_count() == 1,
+         "resolved eta-mode list exact-dimension override coverage should call the supplied "
+         "solver exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "resolved eta-mode list exact-dimension override coverage should preserve the reviewed "
+         "eta DESystem unchanged");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "4",
+         "resolved eta-mode list exact-dimension override coverage should canonicalize the exact "
+         "dimension expression onto SolveRequest.amf_requested_dimension_expression");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "resolved eta-mode list exact-dimension override coverage should preserve the solver "
+         "request execution inputs");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "resolved eta-mode list exact-dimension override coverage should return solver "
+         "diagnostics verbatim");
+}
+
+void SolveResolvedEtaModeListSeriesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout, &kira_path, &fermat_path, &retry_mode, &custom_mode, &solver]() {
+        static_cast<void>(amflow::SolveResolvedEtaModeListSeries(
+            amflow::MakeSampleProblemSpec(),
+            master_basis,
+            {"RetryMode", "CustomMode"},
+            {retry_mode, custom_mode},
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "rho=0",
+            "rho=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "rho",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "exact dimension override",
+      "resolved eta-mode list exact-dimension override coverage should reject symbolic or "
+      "non-exact dimension expressions");
+  Expect(retry_mode->call_count() == 1 && custom_mode->call_count() == 1,
+         "resolved eta-mode list exact-dimension override coverage should preserve ordered "
+         "mode selection before downstream exact-dimension validation fails");
+  Expect(solver.call_count() == 0,
+         "resolved eta-mode list exact-dimension override coverage should not call the solver "
+         "when the exact dimension override is invalid");
+}
+
+void SolveResolvedEtaModeListSeriesExactDimensionOverridePreservesUnknownNameFailureTest() {
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&custom_mode, &solver]() {
+        static_cast<void>(amflow::SolveResolvedEtaModeListSeries(
+            amflow::MakeSampleProblemSpec(),
+            amflow::ParsedMasterList{},
+            {"MissingMode", "CustomMode"},
+            {custom_mode},
+            MakeKiraReductionOptions(),
+            amflow::EnsureArtifactLayout(
+                FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-exact-dimension-missing")),
+            "unused-kira",
+            "unused-fermat",
+            solver,
+            "eta=0",
+            "eta=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "eta",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "unknown eta mode: MissingMode",
+      "resolved eta-mode list exact-dimension override coverage should preserve immediate "
+      "resolution failures ahead of exact-override validation");
+  Expect(custom_mode->call_count() == 0,
+         "resolved eta-mode list exact-dimension override coverage should not plan later modes "
+         "when resolution fails immediately");
+  Expect(solver.call_count() == 0,
+         "resolved eta-mode list exact-dimension override coverage should not call the solver "
+         "when name resolution fails");
+}
+
 void SolveResolvedEtaModeListSeriesHappyPathFallbackTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -24171,6 +24367,9 @@ int main() {
     SolveResolvedEtaModeSeriesRejectsUnknownNameWithUserDefinedRegistryTest();
     SolveResolvedEtaModeSeriesRejectsRegistryValidationFailureTest();
     SolveResolvedEtaModeSeriesPlanningFailureTest();
+    SolveResolvedEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest();
+    SolveResolvedEtaModeListSeriesRejectsNonExactDimensionOverrideTest();
+    SolveResolvedEtaModeListSeriesExactDimensionOverridePreservesUnknownNameFailureTest();
     SolveResolvedEtaModeListSeriesHappyPathFallbackTest();
     SolveResolvedEtaModeListSeriesBootstrapPreflightFailureTest();
     SolveResolvedEtaModeListSeriesBuiltinMassShortCircuitTest();

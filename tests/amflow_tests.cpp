@@ -21168,12 +21168,12 @@ void RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest() {
          "nonzero fake Kira exit should keep the CLI run non-successful");
 
   const std::filesystem::path manifest_path = run_root / "manifests/bootstrap-run.yaml";
-  const std::string yaml = ReadFile(manifest_path);
   const std::filesystem::path expected_results_root =
       run_root / "results/automatic_vs_manual_k0_smoke";
 
   Expect(std::filesystem::exists(manifest_path),
          "nonzero file-backed CLI run should still write the bootstrap manifest");
+  const std::string yaml = ReadFile(manifest_path);
   Expect(yaml.find("status: \"completed\"\n") != std::string::npos &&
              yaml.find("exit_code: 9\n") != std::string::npos,
          "nonzero file-backed CLI run should preserve the real reducer exit status");

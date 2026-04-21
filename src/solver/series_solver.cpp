@@ -16,7 +16,10 @@
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/invariant_reduction_execution.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/boundary_generation.hpp"
+#include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
+#include "amflow/solver/boundary_provider.hpp"
 #include "amflow/solver/singular_point_analysis.hpp"
 
 namespace amflow {
@@ -124,6 +127,82 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
     out << messages[index];
   }
   return out.str();
+}
+
+std::string SupportedEtaInfinityTerminalNode(const ProblemSpec& spec) {
+  return spec.family.name + "::eta->infinity";
+}
+
+void ValidatePlannedEtaInfinityTerminalNodes(const ProblemSpec& spec,
+                                             const EndingDecision& decision) {
+  const std::string supported_terminal_node = SupportedEtaInfinityTerminalNode(spec);
+  const std::size_t supported_count =
+      static_cast<std::size_t>(std::count(decision.terminal_nodes.begin(),
+                                          decision.terminal_nodes.end(),
+                                          supported_terminal_node));
+  if (supported_count > 1) {
+    throw BoundaryUnsolvedError(
+        "planned eta->infinity boundary request requires exactly one supported terminal "
+        "node " +
+        supported_terminal_node + "; duplicate supported terminal node");
+  }
+
+  for (const std::string& terminal_node : decision.terminal_nodes) {
+    if (terminal_node != supported_terminal_node) {
+      throw BoundaryUnsolvedError(
+          "planned eta->infinity boundary request requires exactly one supported terminal "
+          "node " +
+          supported_terminal_node + "; unsupported extra terminal node " + terminal_node);
+    }
+  }
+
+  if (supported_count == 0) {
+    throw BoundaryUnsolvedError(
+        "planned eta->infinity boundary request requires exactly one supported terminal "
+        "node " +
+        supported_terminal_node + "; missing supported terminal node");
+  }
+}
+
+BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const std::string& eta_symbol) {
+  if (amf_options.ending_schemes.empty()) {
+    throw std::invalid_argument("ending-scheme list must not be empty");
+  }
+
+  std::exception_ptr last_failure;
+  for (const std::string& ending_scheme_name : amf_options.ending_schemes) {
+    const std::shared_ptr<EndingScheme> ending_scheme =
+        ResolveEndingScheme(ending_scheme_name, user_defined_schemes);
+
+    EndingDecision decision;
+    try {
+      decision = ending_scheme->Plan(spec);
+    } catch (const std::exception&) {
+      last_failure = std::current_exception();
+      continue;
+    }
+
+    try {
+      ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
+      return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+    } catch (const BoundaryUnsolvedError&) {
+      last_failure = std::current_exception();
+    } catch (const std::runtime_error&) {
+      last_failure = std::current_exception();
+    } catch (const std::invalid_argument&) {
+      throw;
+    }
+  }
+
+  if (!last_failure) {
+    throw std::runtime_error(
+        "AmfOptions eta->infinity ending-scheme selection exhausted without terminal failure");
+  }
+  std::rethrow_exception(last_failure);
 }
 
 [[noreturn]] void ThrowSkipReductionUnavailable(const std::string& detail) {
@@ -3704,6 +3783,28 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
                                                     eta_symbol,
                                                     amf_options.skip_reduction,
                                                     cache_context);
+}
+
+SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(spec,
+                                                               amf_options,
+                                                               user_defined_schemes,
+                                                               eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProvider(solve_request, provider);
+  return solver.Solve(attached_request);
 }
 
 SolverDiagnostics SolveResolvedEtaModeSeries(

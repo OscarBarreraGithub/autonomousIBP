@@ -15,6 +15,8 @@ namespace amflow {
 
 struct AmfOptions;
 struct ArtifactLayout;
+class BoundaryProvider;
+class EndingScheme;
 class EtaMode;
 struct EtaInsertionDecision;
 struct ParsedMasterList;
@@ -304,6 +306,15 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const std::string& target_location,
     const PrecisionPolicy& precision_policy,
     int requested_digits,
+    const std::string& eta_symbol = "eta");
+
+SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
     const std::string& eta_symbol = "eta");
 
 SolverDiagnostics SolveDifferentialEquation(const SolveRequest& request);

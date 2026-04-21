@@ -1297,6 +1297,16 @@ amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParitySpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParityWideningSpec() {
+  amflow::ProblemSpec spec = MakeAutomaticVsManualTtReductionSpanParitySpec();
+  spec.targets = {
+      {"tt", {2, 2, 1, 0, 0, 0, 0, 0, 0}},
+  };
+  spec.notes = "Synthetic widening check on the retained automatic_vs_manual tt reduction-span "
+               "seam.";
+  return spec;
+}
+
 amflow::ProblemSpec MakeBuiltinAllEtaHappySpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   for (std::size_t index = 1; index <= 5; ++index) {
@@ -5160,6 +5170,33 @@ void KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest() {
                  std::string::npos,
          "retained automatic_vs_manual mandatory-family reduction-span evidence should emit the "
          "sector-[7] Kira span with r = 4 and not regress to r = 3");
+}
+
+void KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest() {
+  const amflow::ProblemSpec spec = MakeAutomaticVsManualTtReductionSpanParityWideningSpec();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-mandatory-family-reduction-span-widening"));
+  const std::string expected_target_file = "tt[2,2,1,0,0,0,0,0,0]\n";
+  const std::string expected_reduction_entry =
+      "        - {topologies: [\"tt\"], sectors: [7], r: 5, s: 3, d: 0}\n";
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(preparation.validation_messages.empty(),
+         "same-path automatic_vs_manual mandatory-family reduction-span widening check should "
+         "validate cleanly for Kira");
+  Expect(preparation.generated_files.at("target") == expected_target_file,
+         "same-path automatic_vs_manual mandatory-family reduction-span widening check should "
+         "preserve the synthetic widened mandatory target order");
+  Expect(preparation.generated_files.at("jobs.yaml").find(expected_reduction_entry) !=
+                 std::string::npos &&
+             preparation.generated_files.at("jobs.yaml")
+                     .find("        - {topologies: [\"tt\"], sectors: [7], r: 4, s: 3, d: 0}\n") ==
+                 std::string::npos,
+         "same-path automatic_vs_manual mandatory-family reduction-span widening check should "
+         "emit the sector-[7] Kira span with r = 5 and not regress to r = 4");
 }
 
 void KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest() {
@@ -20377,6 +20414,7 @@ int main() {
     K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest();
+    KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest();
     KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest();
     KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest();
     KiraPrepareForTargetsRejectsTopLevelSectorMaskOverflowTest();

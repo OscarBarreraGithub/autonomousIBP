@@ -36,7 +36,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
   `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
   `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`,
-  `2f2538b`, `7d3806a`, and `53ec6a4`; local tracking `origin/main` remains stale at `899ad7f`;
+  `2f2538b`, `7d3806a`, and `53ec6a4`, plus the later landed Kira rational-function prefactor
+  surface and xints `insert_prefactors` packets at `ab4a311` and `b367daf`; local tracking
+  `origin/main` matches at `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -123,10 +125,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   verifies that a matching plain `UseCache` replay returns cached `SolverDiagnostics` without
   invoking the live solver. This does not widen runtime behavior, broader cache/restart
   semantics, or standalone `SolveDifferentialEquation(...)` / runtime-policy parity. The
-  prefactor groundwork through landed `Batch 58d` remains history only; landed `Batch 58g` now
-  supplies the first mandatory-family retained-span evidence packet, and the repo now also has a
-  narrow opt-in Kira `insert_prefactors` wiring over the reviewed repo-local xints surface.
-  Broader reduction-span parity beyond that first packet still remains open before `Milestone M3`
+  prefactor groundwork through landed `Batch 58d` plus the later landed Kira
+  rational-function prefactor surface / xints `insert_prefactors` packets remains history only;
+  landed `Batch 58g` supplies the first mandatory-family retained-span evidence packet, and the
+  current worktree adds `Batch 58h` as a same-path widening packet derived from that retained
+  fixture. Broader reduction-span parity beyond the current reviewed packets still remains open before
+  `Milestone M3`
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on the current reviewed exact subset only:
   `tests/amflow_tests.cpp` already includes
@@ -145,7 +149,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `SkipReduction` coverage, this closes `Milestone M4` narrowly on that implemented exact subset
   only. It does not widen runtime
   behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`,
-  which still depends on broader mandatory-family reduction-span parity beyond landed `Batch 58g`
+  which still depends on broader mandatory-family reduction-span parity beyond the current
+  reviewed
+  packets
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

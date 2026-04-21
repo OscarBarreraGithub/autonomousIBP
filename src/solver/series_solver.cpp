@@ -46,6 +46,8 @@ constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
 constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
 constexpr char kSkipReductionUnavailablePrefix[] =
     "skip_reduction requested but no matching eta-generated reduction state is available";
+constexpr char kWrapperExactDimensionOverrideStateFile[] =
+    "amflow-wrapper-exact-dimension-override.txt";
 constexpr int kBootstrapContinuationOrder = 4;
 constexpr int kSolvedPathCacheSchemaVersion = 1;
 
@@ -148,6 +150,22 @@ std::filesystem::path AbsoluteOrEmpty(const std::filesystem::path& path) {
   return path.empty() ? std::filesystem::path{} : std::filesystem::absolute(path);
 }
 
+std::string CommandExecutionStatusToString(const CommandExecutionStatus status) {
+  switch (status) {
+    case CommandExecutionStatus::NotRun:
+      return "not-run";
+    case CommandExecutionStatus::Completed:
+      return "completed";
+    case CommandExecutionStatus::FailedToStart:
+      return "failed-to-start";
+    case CommandExecutionStatus::InvalidConfiguration:
+      return "invalid-configuration";
+    case CommandExecutionStatus::Signaled:
+      return "signaled";
+  }
+  return "unknown";
+}
+
 std::string JoinMessages(const std::vector<std::string>& messages) {
   std::ostringstream out;
   for (std::size_t index = 0; index < messages.size(); ++index) {
@@ -161,6 +179,51 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
 
 [[noreturn]] void ThrowSkipReductionUnavailable(const std::string& detail) {
   throw std::runtime_error(std::string(kSkipReductionUnavailablePrefix) + ": " + detail);
+}
+
+std::optional<std::string> ResolveExactDimensionOverride(
+    const std::optional<std::string>& amf_requested_dimension_expression) {
+  if (!amf_requested_dimension_expression.has_value()) {
+    return std::nullopt;
+  }
+
+  try {
+    return EvaluateCoefficientExpression(*amf_requested_dimension_expression,
+                                         NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+std::string SerializeWrapperExactDimensionOverrideState(
+    const std::optional<std::string>& exact_dimension_override) {
+  std::ostringstream out;
+  out << "present=" << (exact_dimension_override.has_value() ? "true" : "false") << "\n";
+  if (exact_dimension_override.has_value()) {
+    out << "value=" << *exact_dimension_override << "\n";
+  }
+  return out.str();
+}
+
+void ApplyWrapperExactDimensionOverride(
+    BackendPreparation& preparation,
+    const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override) {
+  preparation.generated_files[kWrapperExactDimensionOverrideStateFile] =
+      SerializeWrapperExactDimensionOverrideState(exact_dimension_override);
+  preparation.command_arguments.clear();
+  if (exact_dimension_override.has_value()) {
+    preparation.command_arguments.push_back("-sd=" + *exact_dimension_override);
+  }
+
+  std::ostringstream command;
+  command << "FERMATPATH=<fermat-executable> kira";
+  for (const std::string& argument : preparation.command_arguments) {
+    command << " " << argument;
+  }
+  command << " " << (layout.generated_config_dir / "jobs.yaml").string();
+  preparation.commands = {command.str()};
 }
 
 std::string ReadPreparedFile(const std::filesystem::path& path) {
@@ -312,9 +375,12 @@ ValidatedWrapperEtaGeneratedReductionState LoadValidatedWrapperEtaGeneratedReduc
     const EtaInsertionDecision& decision,
     const ReductionOptions& options,
     const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override,
     const std::string& eta_symbol) {
-  const EtaGeneratedReductionPreparation preparation =
+  EtaGeneratedReductionPreparation preparation =
       PrepareEtaGeneratedReduction(spec, master_basis, decision, options, layout, eta_symbol);
+  ApplyWrapperExactDimensionOverride(
+      preparation.backend_preparation, layout, exact_dimension_override);
   const std::vector<std::string> prepared_file_messages =
       ValidatePreparedFilesAgainstLayout(preparation.backend_preparation, layout);
   if (!prepared_file_messages.empty()) {
@@ -333,6 +399,51 @@ ValidatedWrapperEtaGeneratedReductionState LoadValidatedWrapperEtaGeneratedReduc
   }
 
   return {preparation.generated_variable, reduction_result};
+}
+
+EtaGeneratedReductionExecution RunWrapperEtaGeneratedReduction(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::optional<std::string>& exact_dimension_override,
+    const std::string& eta_symbol) {
+  EtaGeneratedReductionExecution execution;
+  execution.preparation =
+      PrepareEtaGeneratedReduction(spec, master_basis, decision, options, layout, eta_symbol);
+  ApplyWrapperExactDimensionOverride(
+      execution.preparation.backend_preparation, layout, exact_dimension_override);
+
+  KiraBackend backend;
+  execution.execution_result = backend.ExecutePrepared(execution.preparation.backend_preparation,
+                                                       layout,
+                                                       kira_executable,
+                                                       fermat_executable);
+  if (!execution.execution_result.Succeeded()) {
+    return execution;
+  }
+
+  if (execution.execution_result.working_directory.empty()) {
+    throw std::runtime_error("successful eta-generated reduction execution did not record a "
+                             "working-directory artifact root");
+  }
+
+  execution.parsed_reduction_result =
+      backend.ParseReductionResult(execution.execution_result.working_directory,
+                                   execution.preparation.auxiliary_family.transformed_spec.family
+                                       .name);
+  ThrowIfParsedMasterSetDrift(master_basis,
+                              *execution.parsed_reduction_result,
+                              VariableContext(execution.preparation.generated_variable, 0));
+
+  GeneratedDerivativeVariableReductionInput variable_input;
+  variable_input.generated_variable = execution.preparation.generated_variable;
+  variable_input.reduction_result = *execution.parsed_reduction_result;
+  execution.assembled_system = AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  return execution;
 }
 
 DESystem AssembleWrapperEtaGeneratedDESystem(
@@ -356,23 +467,42 @@ DESystem BuildWrapperEtaGeneratedDESystem(
     const ArtifactLayout& layout,
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable,
+    const std::optional<std::string>& exact_dimension_override,
     const std::string& eta_symbol,
     const bool skip_reduction) {
   if (!skip_reduction) {
-    return BuildEtaGeneratedDESystem(spec,
-                                     master_basis,
-                                     decision,
-                                     options,
-                                     layout,
-                                     kira_executable,
-                                     fermat_executable,
-                                     eta_symbol);
+    EtaGeneratedReductionExecution execution =
+        RunWrapperEtaGeneratedReduction(spec,
+                                        master_basis,
+                                        decision,
+                                        options,
+                                        layout,
+                                        kira_executable,
+                                        fermat_executable,
+                                        exact_dimension_override,
+                                        eta_symbol);
+    if (!execution.execution_result.Succeeded()) {
+      std::ostringstream message;
+      message << "eta-generated DE construction requires successful reducer execution; "
+              << "status=" << CommandExecutionStatusToString(execution.execution_result.status)
+              << "; exit_code=" << execution.execution_result.exit_code
+              << "; stderr_log=" << execution.execution_result.stderr_log_path.string();
+      if (!execution.execution_result.error_message.empty()) {
+        message << "; error=" << execution.execution_result.error_message;
+      }
+      throw std::runtime_error(message.str());
+    }
+    if (!execution.assembled_system.has_value()) {
+      throw std::runtime_error("eta-generated DE construction completed without an assembled "
+                               "DESystem");
+    }
+    return *execution.assembled_system;
   }
 
   return AssembleWrapperEtaGeneratedDESystem(
       master_basis,
       LoadValidatedWrapperEtaGeneratedReductionState(
-          spec, master_basis, decision, options, layout, eta_symbol));
+          spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
 }
 
 bool HasDeclaredVariable(const DESystem& system, const std::string& variable_name) {
@@ -2705,13 +2835,15 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const bool skip_reduction,
     const SolvedPathCacheContext& cache_context) {
   SolvedPathCacheContext replay_context = cache_context;
+  const std::optional<std::string> exact_dimension_override =
+      ResolveExactDimensionOverride(amf_requested_dimension_expression);
   std::optional<SolveRequest> prepared_skip_reduction_request;
   if (skip_reduction) {
     SolveRequest request;
     request.system = AssembleWrapperEtaGeneratedDESystem(
         master_basis,
         LoadValidatedWrapperEtaGeneratedReductionState(
-            spec, master_basis, decision, options, layout, eta_symbol));
+            spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
     PopulateSolveRequestExecutionInputs(request,
                                         start_location,
                                         target_location,
@@ -2741,6 +2873,7 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
                                                         layout,
                                                         kira_executable,
                                                         fermat_executable,
+                                                        exact_dimension_override,
                                                         eta_symbol,
                                                         false);
     }

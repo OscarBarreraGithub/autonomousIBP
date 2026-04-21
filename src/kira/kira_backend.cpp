@@ -1825,11 +1825,14 @@ BackendPreparation KiraBackend::PrepareForTargets(
 PreparedCommand KiraBackend::MakeExecutionCommand(
     const ArtifactLayout& layout,
     const std::filesystem::path& kira_executable,
-    const std::filesystem::path& fermat_executable) const {
+    const std::filesystem::path& fermat_executable,
+    const std::vector<std::string>& command_arguments) const {
   PreparedCommand command;
   command.label = "kira";
   command.executable = std::filesystem::absolute(kira_executable);
-  command.arguments = {std::filesystem::absolute(layout.generated_config_dir / "jobs.yaml").string()};
+  command.arguments = command_arguments;
+  command.arguments.push_back(
+      std::filesystem::absolute(layout.generated_config_dir / "jobs.yaml").string());
   command.working_directory = layout.generated_config_dir;
   command.environment_overrides = {
       {"FERMATPATH", std::filesystem::absolute(fermat_executable).string()},
@@ -1988,7 +1991,8 @@ CommandExecutionResult KiraBackend::ExecutePrepared(
     const ArtifactLayout& layout,
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable) const {
-  const PreparedCommand command = MakeExecutionCommand(layout, kira_executable, fermat_executable);
+  const PreparedCommand command = MakeExecutionCommand(
+      layout, kira_executable, fermat_executable, preparation.command_arguments);
   CommandLogPaths log_paths = MakeCommandLogPaths(layout, command.label);
 
   if (!preparation.validation_messages.empty()) {

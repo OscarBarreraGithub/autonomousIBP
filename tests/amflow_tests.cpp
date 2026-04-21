@@ -2657,6 +2657,39 @@ std::string MakeFixtureCopyScript(const std::filesystem::path& fixture_root,
   return script.str();
 }
 
+std::string MakeFixtureCopyScriptExpectingLeadingArgument(
+    const std::filesystem::path& fixture_root,
+    const std::string& expected_argument,
+    const bool write_stdout = true,
+    const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "if [ \"$1\" != " << ShellSingleQuote(expected_argument) << " ]; then\n";
+  script << "  echo \"expected-leading-arg:" << expected_argument << "; actual:$1\" 1>&2\n";
+  script << "  exit 13\n";
+  script << "fi\n";
+  script << "shift\n";
+  script << "dest=\"$PWD/results/planar_double_box\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cp "
+         << std::filesystem::absolute(fixture_root / "results/planar_double_box/masters").string()
+         << " \"$dest/masters\"\n";
+  const std::filesystem::path rule_path =
+      fixture_root / "results/planar_double_box/kira_target.m";
+  if (std::filesystem::exists(rule_path)) {
+    script << "cp " << std::filesystem::absolute(rule_path).string()
+           << " \"$dest/kira_target.m\"\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"fixture:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::string MakeFixtureCopyScriptWithReversedMasters(const std::filesystem::path& fixture_root,
                                                      const bool write_stdout = true,
                                                      const int exit_code = 0) {
@@ -21991,7 +22024,8 @@ void SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTe
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
   const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
   std::filesystem::create_directories(kira_path.parent_path());
-  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=4"));
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
   RecordingSeriesSolver solver;
@@ -22038,6 +22072,96 @@ void SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTe
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "planned AmfOptions eta-mode helper fixed_eps coverage should preserve the live solver "
          "diagnostic unchanged");
+}
+
+void SolveAmfOptionsEtaModeSeriesSkipReductionRejectsChangedFixedEpsPreparedStateTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-fixed-eps-skip-reduction-mismatch-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = false;
+  seed_amf_options.skip_reduction = false;
+  seed_amf_options.d0 = "6";
+  seed_amf_options.fixed_eps = "1";
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+  reuse_amf_options.fixed_eps = "2";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-fixed-eps-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded builtin fixed_eps skip_reduction mismatch seed solve";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         seed_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         seed_solver,
+                                                         "rho=4/9",
+                                                         "rho=25/27",
+                                                         MakeDistinctPrecisionPolicy(),
+                                                         83,
+                                                         "rho"));
+
+  Expect(seed_solver.call_count() == 1,
+         "fixed_eps skip_reduction mismatch coverage should seed one live builtin eta-generated "
+         "state");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript(
+          "unexpected live reducer execution during fixed_eps mismatch rejection"));
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec,
+       &master_basis,
+       &reuse_amf_options,
+       &layout,
+       &kira_path,
+       &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                               master_basis,
+                                                               reuse_amf_options,
+                                                               MakeKiraReductionOptions(),
+                                                               layout,
+                                                               kira_path,
+                                                               fermat_path,
+                                                               solver,
+                                                               "rho=4/9",
+                                                               "rho=25/27",
+                                                               MakeDistinctPrecisionPolicy(),
+                                                               83,
+                                                               "rho"));
+      },
+      "fixed_eps skip_reduction should reject prepared eta-generated state from a different exact "
+      "dimension override");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "fixed_eps skip_reduction should reject prepared eta-generated state when the exact "
+         "dimension override changes");
+  Expect(solver.call_count() == 0,
+         "fixed_eps skip_reduction mismatch coverage should not call the solver when the prepared "
+         "eta-generated state was seeded with a different exact dimension override");
 }
 
 void SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedFixedEpsTest() {
@@ -23145,6 +23269,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionReplaysMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMissingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMismatchedReductionStateTest();
+    SolveAmfOptionsEtaModeSeriesSkipReductionRejectsChangedFixedEpsPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();

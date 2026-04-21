@@ -169,7 +169,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a` plus `Batch 59b` plus the first `Batch 60a` seam are still
+- current worktree `Batch 59a` plus `Batch 59b` plus `Batch 60a` through `Batch 60c` are still
   narrow: the two
   `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
   plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
@@ -180,12 +180,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `dimension` binding during coefficient evaluation, center classification, residual checks, and
   explicit boundary-value parsing. On the same reviewed wrapper path, an exact
   `AmfOptions.fixed_eps` may now collapse the derived `D0 - 2*eps` carrier down to an exact
-  numeric dimension expression and participates in solved-path cache identity, but it still does
-  not add explicit passive `eps` binding, generated `DESystem` construction consumption, or
-  broader fixed-`eps` runtime parity. This still falls well short of full `Batch 59` / `Batch 60`:
-  generated `DESystem` construction, Kira preparation artifacts, wrapper-owned symbolic `D0`
-  execution parity, explicit `eps` evaluation-path support, and broader arbitrary-`D0` /
-  fixed-`eps` runtime behavior remain deferred
+  numeric dimension expression and participates in solved-path cache identity; when that derived
+  carrier is itself exact, the same two wrappers now also pass `-sd=<dimension>` into live
+  eta-generated Kira execution and record that exact override in wrapper-owned prepared-state
+  validation so stale `skip_reduction` reuse is rejected across exact-dimension changes.
+  Non-exact or symbolic carriers remain inert, and direct public `RunEtaGeneratedReduction(...)` /
+  `BuildEtaGeneratedDESystem(...)` remain unchanged. This still falls well short of full
+  `Batch 59` / `Batch 60`: direct public generated-`DESystem` construction, broader Kira
+  preparation artifacts, wrapper-owned symbolic `D0` execution parity, and broader arbitrary-`D0`
+  / fixed-`eps` runtime behavior remain deferred
 
 ## Core Types
 
@@ -524,7 +527,7 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
 - after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
-- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains the same metadata-only symbolic wrapper carrier. Generated DE construction and wrapper-owned symbolic `D0` execution still do not consume those fields, but the direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding
+- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains the same metadata-only symbolic wrapper carrier. The direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding, and on these two wrappers only the live eta-generated Kira execution may also prepend `-sd=<dimension>` plus record that same exact override in wrapper-owned prepared-state validation. Non-exact or symbolic carriers remain inert, and direct public generated-DE helpers stay unchanged
 - this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`,
@@ -568,7 +571,7 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 - this helper does not read or rebuild `PrecisionPolicy`, does not attach `AmfSolveRuntimePolicy`, does not touch solved-path cache slotting or fingerprints, does not validate `skip_reduction`, and does not thread `amf_options.d0` into `SolveRequest`
 - `SolvePlannedAmfOptionsEtaModeSeries(...)` takes `(const ProblemSpec&, const ParsedMasterList&, const EtaInsertionDecision&, const AmfOptions&, const std::string& solve_kind, const ReductionOptions&, const ArtifactLayout&, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver&, const std::string& start_location, const std::string& target_location, const PrecisionPolicy&, int requested_digits, const std::string& eta_symbol = "eta")`
 - it is a standalone planned-decision execution helper: after a caller has already selected and planned one eta mode, it rebuilds the same live wrapper-owned solve tail from `AmfOptions` that the reviewed `SolveAmfOptionsEtaModeSeries(...)` overloads already owned, including live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0` metadata plus derived dimension-expression, optional exact `fixed_eps` collapse on that dimension carrier, solved-path cache setup, `use_cache`, and `skip_reduction`
-- this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or planning, does not add explicit passive `eps` binding or generated-DE `fixed_eps` consumption, does not widen `D0` beyond the existing request/cache truthfulness slice plus the exact numeric dimension collapse, and does not change direct `SolveDifferentialEquation(...)` behavior
+- this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or planning, and does not change direct `SolveDifferentialEquation(...)` behavior. Its generated-DE widening stays narrow: only when the derived dimension carrier is itself exact does the live Kira execution prepend `-sd=<dimension>` and include that same exact override in wrapper-owned prepared-state validation, while symbolic or non-exact carriers remain inert and broader symbolic-`D0` / fixed-`eps` runtime parity remains deferred
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - the builtin-only `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for builtin eta-mode selection: it keeps `SelectBuiltinEtaModeName(...)` and the selected builtin `EtaMode::Plan(...)` step local, then delegates the shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved builtin solved-path identity

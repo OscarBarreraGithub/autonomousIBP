@@ -67,7 +67,9 @@ class KiraBackend final : public ReductionBackend {
                                       const std::vector<TargetIntegral>& targets) const;
   PreparedCommand MakeExecutionCommand(const ArtifactLayout& layout,
                                        const std::filesystem::path& kira_executable,
-                                       const std::filesystem::path& fermat_executable) const;
+                                       const std::filesystem::path& fermat_executable,
+                                       const std::vector<std::string>& command_arguments = {})
+      const;
   CommandExecutionResult ExecutePrepared(const BackendPreparation& preparation,
                                          const ArtifactLayout& layout,
                                          const std::filesystem::path& kira_executable,

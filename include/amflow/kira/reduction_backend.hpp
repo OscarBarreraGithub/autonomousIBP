@@ -16,6 +16,7 @@ struct BackendPreparation {
   std::string backend_name;
   std::vector<std::string> validation_messages;
   std::map<std::string, std::string> generated_files;
+  std::vector<std::string> command_arguments;
   std::vector<std::string> commands;
 };
 

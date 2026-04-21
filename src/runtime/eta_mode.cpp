@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <exception>
 #include <limits>
 #include <map>
 #include <memory>
@@ -10,6 +11,8 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
+
+#include "amflow/core/options.hpp"
 
 namespace amflow {
 
@@ -1110,6 +1113,35 @@ std::shared_ptr<EtaMode> ResolveEtaMode(
   }
 
   return MakeBuiltinEtaMode(name);
+}
+
+EtaInsertionDecision PlanAmfOptionsEtaMode(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes) {
+  if (amf_options.amf_modes.empty()) {
+    throw std::invalid_argument("eta-mode list must not be empty");
+  }
+
+  std::exception_ptr last_failure;
+  for (const std::string& eta_mode_name : amf_options.amf_modes) {
+    const std::shared_ptr<EtaMode> eta_mode =
+        ResolveEtaMode(eta_mode_name, user_defined_modes);
+    try {
+      return eta_mode->Plan(spec);
+    } catch (const std::exception&) {
+      last_failure = std::current_exception();
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop") {
+        std::rethrow_exception(last_failure);
+      }
+    }
+  }
+
+  if (!last_failure) {
+    throw std::runtime_error(
+        "AmfOptions eta-mode selection exhausted without planning failure");
+  }
+  std::rethrow_exception(last_failure);
 }
 
 }  // namespace amflow

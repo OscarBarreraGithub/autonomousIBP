@@ -3810,7 +3810,7 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol) {
   const EtaInsertionDecision decision =
-      SelectResolvedEtaModeDecision(spec, amf_options.amf_modes, user_defined_modes);
+      PlanAmfOptionsEtaMode(spec, amf_options, user_defined_modes);
   const PrecisionPolicy live_precision_policy =
       BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
   const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =

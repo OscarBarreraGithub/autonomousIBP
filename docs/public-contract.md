@@ -191,6 +191,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `GenerateBuiltinEtaInfinityBoundaryRequest(...)`: pure builtin boundary-request generation over a validated bootstrap `ProblemSpec` subset, returning one explicit `BoundaryRequest` without boundary values or solver execution
 - `GeneratePlannedEtaInfinityBoundaryRequest(...)`: single-name ending-planned wrapper that accepts only the exact singleton `<family>::eta->infinity` terminal-node decision and then returns the reviewed builtin `eta -> infinity` `BoundaryRequest`
 - `GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(...)`: standalone `AmfOptions::ending_schemes` eta->infinity boundary-request selector that preserves the reviewed ordered fallback semantics without attaching boundary data or invoking the solver
+- `PlanAmfOptionsEtaMode(...)`: standalone `AmfOptions::amf_modes` mixed eta-mode decision helper that performs only reviewed ordered mixed builtin/user-defined selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `ExactRational`, `EvaluateCoefficientExpression(...)`, and `EvaluateCoefficientMatrix(...)`: exact rational evaluation of one coefficient expression or one selected `DESystem` coefficient matrix at one explicit substitution point
 - `SeriesPatch` plus `GenerateScalarRegularPointSeriesPatch(...)`: the first scalar-only regular-point local-series patch seam over one selected reviewed `DESystem` variable
 - `ScalarFrobeniusSeriesPatch` plus `GenerateScalarFrobeniusSeriesPatch(...)`: the first scalar-only regular-singular / Frobenius local-series patch seam over one selected reviewed `DESystem` variable
@@ -546,8 +547,16 @@ The first mixed eta-mode-list solver wrapper is also bootstrap-only:
 
 The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 
+- `PlanAmfOptionsEtaMode(...)` takes `(const ProblemSpec&, const AmfOptions&, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes)` and returns `EtaInsertionDecision`
+- it is a standalone ordered mixed-selection helper: it reads only `amf_options.amf_modes`, resolves one builtin-or-user-defined mode at a time through `ResolveEtaMode(...)`, probes planning in that same order, carries the winning `EtaInsertionDecision` forward without re-planning, and remains strictly pre-policy, pre-cache, pre-`skip_reduction`, and pre-`D0`
+- empty `amf_options.amf_modes` lists fail locally with `invalid_argument("eta-mode list must not be empty")`
+- unknown-name or registry-validation failures from `ResolveEtaMode(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately
+- standard planning failures from `EtaMode::Plan(...)` are treated as ordered fallback misses until the list exhausts
+- builtin `Branch` / `Loop` planning failures remain immediate terminal failures and do not fall through to later entries
+- if the list exhausts, the final recorded planning failure is rethrown unchanged; the defensive exhaustion `runtime_error` remains only for the impossible no-failure path
+- this helper does not read or rebuild `PrecisionPolicy`, does not attach `AmfSolveRuntimePolicy`, does not touch solved-path cache slotting or fingerprints, does not validate `skip_reduction`, and does not thread `amf_options.d0` into `SolveRequest`
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
-- it is still a thin option-feed wrapper for mixed eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered mixed-list semantics, keeps selected-mode planning single-shot, keeps empty-list rejection, resolver-stop behavior, ordered planning fallback, preserved final planning failure, and no downstream fallback widening unchanged
+- it is still a thin option-feed wrapper for mixed eta-mode selection: it now delegates the ordered mixed builtin/user-defined selection step through `PlanAmfOptionsEtaMode(...)`, then keeps the reviewed downstream solver behavior unchanged
 - after mixed planning succeeds, the wrapper rebuilds the same live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
 - after mixed planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; this is request-plumbing only and does not yet change DE construction or solver evaluation semantics
 - this wrapper now also reads `amf_options.use_cache` as the same narrow solved-path diagnostic replay flag: after mixed planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
@@ -567,7 +576,7 @@ The first user-defined eta-mode resolver seam is also bootstrap-only:
 - after registry validation, it is a one-name resolution hook: builtin names still resolve through the accepted builtin table when no user-defined mode claims the same name, while a unique non-builtin user-defined name returns the exact registered `EtaMode` instance unchanged
 - resolution itself is name-only and does not call `EtaMode::Plan(...)`
 - unresolved names preserve the existing `unknown eta mode: <name>` diagnostic surface
-- this seam remains the typed runtime hook under the reviewed mixed solver wrappers and still does not itself add CLI, cache policy, or broader orchestration
+- this seam remains the typed runtime hook under `PlanAmfOptionsEtaMode(...)` and the reviewed mixed solver wrappers and still does not itself add CLI, cache policy, or broader orchestration
 
 The first user-defined ending-scheme resolver seam is also bootstrap-only:
 

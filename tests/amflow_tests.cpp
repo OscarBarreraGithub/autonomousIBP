@@ -4248,6 +4248,200 @@ void ResolveEtaModeRejectsNullRegistryEntriesTest() {
       "eta-mode resolver should reject null user-defined registry entries deterministically");
 }
 
+amflow::EtaInsertionDecision PlanEtaModeListBaseline(
+    const amflow::ProblemSpec& spec,
+    const std::vector<std::string>& eta_mode_names,
+    const std::vector<std::shared_ptr<amflow::EtaMode>>& user_defined_modes) {
+  if (eta_mode_names.empty()) {
+    throw std::invalid_argument("eta-mode list must not be empty");
+  }
+
+  std::exception_ptr last_failure;
+  for (const std::string& eta_mode_name : eta_mode_names) {
+    const std::shared_ptr<amflow::EtaMode> eta_mode =
+        amflow::ResolveEtaMode(eta_mode_name, user_defined_modes);
+    try {
+      return eta_mode->Plan(spec);
+    } catch (const std::exception&) {
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop") {
+        throw;
+      }
+      last_failure = std::current_exception();
+    }
+  }
+
+  if (last_failure) {
+    std::rethrow_exception(last_failure);
+  }
+  throw std::runtime_error("failed to select an eta mode");
+}
+
+void PlanAmfOptionsEtaModeHappyPathTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions poisoned_amf_options =
+      MakePoisonedAmfOptions({"RetryMode", "CustomMode"});
+  amflow::AmfOptions clean_amf_options;
+  clean_amf_options.amf_modes = poisoned_amf_options.amf_modes;
+
+  amflow::EtaInsertionDecision retry_decision;
+  retry_decision.mode_name = "RetryMode";
+  retry_decision.selected_propagator_indices = {1};
+  retry_decision.selected_propagators = {spec.family.propagators[1].expression};
+  const auto baseline_retry_mode = std::make_shared<RecordingEtaMode>(
+      retry_decision,
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+
+  amflow::EtaInsertionDecision custom_decision;
+  custom_decision.mode_name = "CustomMode";
+  custom_decision.selected_propagator_indices = {0, 6};
+  custom_decision.selected_propagators = {
+      spec.family.propagators[0].expression,
+      spec.family.propagators[6].expression,
+  };
+  custom_decision.explanation = "custom user-defined mode";
+  const auto baseline_custom_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+
+  const amflow::EtaInsertionDecision baseline =
+      PlanEtaModeListBaseline(spec,
+                              poisoned_amf_options.amf_modes,
+                              {baseline_retry_mode, baseline_custom_mode});
+
+  const auto retry_mode = std::make_shared<RecordingEtaMode>(
+      retry_decision,
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+  const auto clean_retry_mode = std::make_shared<RecordingEtaMode>(
+      retry_decision,
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto clean_custom_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+
+  const amflow::EtaInsertionDecision decision =
+      amflow::PlanAmfOptionsEtaMode(spec, poisoned_amf_options, {retry_mode, custom_mode});
+  const amflow::EtaInsertionDecision clean_decision = amflow::PlanAmfOptionsEtaMode(
+      spec, clean_amf_options, {clean_retry_mode, clean_custom_mode});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions eta-mode planner should not mutate the input problem spec");
+  Expect(SameEtaInsertionDecision(decision, baseline),
+         "AmfOptions eta-mode planner should return the same winning eta decision as the direct "
+         "mixed list-selection baseline");
+  Expect(SameEtaInsertionDecision(clean_decision, baseline),
+         "AmfOptions eta-mode planner should ignore non-amf_modes fields, including policy, "
+         "cache, and D0 inputs");
+  Expect(retry_mode->call_count() == 1 && custom_mode->call_count() == 1 &&
+             clean_retry_mode->call_count() == 1 && clean_custom_mode->call_count() == 1,
+         "AmfOptions eta-mode planner should preserve ordered mixed fallback with one planning "
+         "probe per configured mode");
+}
+
+void PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest() {
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({});
+
+  ExpectInvalidArgument(
+      [&amf_options]() {
+        static_cast<void>(
+            amflow::PlanAmfOptionsEtaMode(amflow::MakeSampleProblemSpec(), amf_options, {}));
+      },
+      "eta-mode list must not be empty",
+      "AmfOptions eta-mode planner should preserve empty mixed-list diagnostics");
+}
+
+void PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest() {
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"MissingMode", "CustomMode"});
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+
+  ExpectInvalidArgument(
+      [&amf_options, &custom_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), amf_options, {custom_mode}));
+      },
+      "unknown eta mode: MissingMode",
+      "AmfOptions eta-mode planner should preserve unknown-name diagnostics");
+  Expect(custom_mode->call_count() == 0,
+         "AmfOptions eta-mode planner should stop immediately on unknown-name resolution "
+         "failures");
+}
+
+void PlanAmfOptionsEtaModeRejectsRegistryValidationFailureTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::EtaInsertionDecision custom_decision;
+  custom_decision.mode_name = "CustomMode";
+  custom_decision.selected_propagator_indices = {0};
+  custom_decision.selected_propagators = {spec.family.propagators[0].expression};
+  const auto first_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+  const auto second_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"All", "CustomMode"});
+
+  ExpectInvalidArgument(
+      [&amf_options, &first_mode, &second_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), amf_options, {first_mode, second_mode}));
+      },
+      "duplicate user-defined eta mode: CustomMode",
+      "AmfOptions eta-mode planner should preserve registry-validation diagnostics");
+  Expect(first_mode->call_count() == 0 && second_mode->call_count() == 0,
+         "AmfOptions eta-mode planner should stop immediately when registry validation fails");
+}
+
+void PlanAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest() {
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"RetryMode", "LastMode"});
+  const auto retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(), "RetryMode", "retry eta planning failed");
+  const auto last_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(), "LastMode", "last eta planning failed");
+
+  ExpectRuntimeError(
+      [&amf_options, &retry_mode, &last_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), amf_options, {retry_mode, last_mode}));
+      },
+      "last eta planning failed",
+      "AmfOptions eta-mode planner should preserve the final planning diagnostic when the "
+      "configured mixed mode list exhausts");
+  Expect(retry_mode->call_count() == 1 && last_mode->call_count() == 1,
+         "AmfOptions eta-mode planner should fall through ordinary planning failures in caller "
+         "order until the configured mixed mode list exhausts");
+}
+
+void PlanAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
+
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const amflow::AmfOptions amf_options =
+        MakePoisonedAmfOptions({mode_name, "CustomMode"});
+    const auto custom_mode =
+        std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&spec, &amf_options, &custom_mode]() {
+          static_cast<void>(amflow::PlanAmfOptionsEtaMode(spec, amf_options, {custom_mode}));
+        },
+        "AmfOptions eta-mode planner should preserve builtin Branch/Loop blockers");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "AmfOptions eta-mode planner should preserve builtin Branch/Loop blockers");
+    Expect(custom_mode->call_count() == 0,
+           "AmfOptions eta-mode planner should stop immediately on builtin Branch/Loop "
+           "blockers without planning later modes");
+  }
+}
+
 void ResolveEndingSchemeResolvesBuiltinNameWithoutUserDefinedOverrideTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::EndingDecision custom_decision;
@@ -21547,6 +21741,12 @@ int main() {
     ResolveEtaModeRejectsBuiltinNameCollisionsUnrelatedToQueryTest();
     ResolveEtaModeRejectsPrescriptionBuiltinNameCollisionsUnrelatedToQueryTest();
     ResolveEtaModeRejectsNullRegistryEntriesTest();
+    PlanAmfOptionsEtaModeHappyPathTest();
+    PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
+    PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
+    PlanAmfOptionsEtaModeRejectsRegistryValidationFailureTest();
+    PlanAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();
+    PlanAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest();
     ResolveEndingSchemeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEndingSchemeResolvesUniqueUserDefinedSchemeTest();
     ResolveEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();

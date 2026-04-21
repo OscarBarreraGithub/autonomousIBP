@@ -9,6 +9,8 @@
 
 namespace amflow {
 
+struct AmfOptions;
+
 struct EtaInsertionDecision {
   std::string mode_name;
   std::vector<std::size_t> selected_propagator_indices;
@@ -28,6 +30,10 @@ std::vector<std::string> BuiltinEtaModes();
 std::shared_ptr<EtaMode> MakeBuiltinEtaMode(const std::string& name);
 std::shared_ptr<EtaMode> ResolveEtaMode(
     const std::string& name,
+    const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes);
+EtaInsertionDecision PlanAmfOptionsEtaMode(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
     const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes);
 
 }  // namespace amflow

@@ -9,6 +9,7 @@
 
 namespace amflow {
 
+struct AmfOptions;
 class EndingScheme;
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(
@@ -17,6 +18,11 @@ BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(
 BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,
     const std::string& ending_scheme_name,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const std::string& eta_symbol = "eta");
+BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol = "eta");
 

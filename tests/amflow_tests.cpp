@@ -1765,17 +1765,53 @@ amflow::BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequestFromAmfOptionsB
 
   std::exception_ptr last_failure;
   for (const std::string& ending_scheme_name : amf_options.ending_schemes) {
+    const std::shared_ptr<amflow::EndingScheme> ending_scheme =
+        amflow::ResolveEndingScheme(ending_scheme_name, user_defined_schemes);
+
+    amflow::EndingDecision decision;
     try {
-      return amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec,
-                                                               ending_scheme_name,
-                                                               user_defined_schemes,
-                                                               eta_symbol);
-    } catch (const std::invalid_argument&) {
-      throw;
+      decision = ending_scheme->Plan(spec);
+    } catch (const std::exception&) {
+      last_failure = std::current_exception();
+      continue;
+    }
+
+    try {
+      const std::string supported_terminal_node = spec.family.name + "::eta->infinity";
+      const std::size_t supported_count =
+          static_cast<std::size_t>(std::count(decision.terminal_nodes.begin(),
+                                              decision.terminal_nodes.end(),
+                                              supported_terminal_node));
+      if (supported_count > 1) {
+        throw amflow::BoundaryUnsolvedError(
+            "planned eta->infinity boundary request requires exactly one supported terminal "
+            "node " +
+            supported_terminal_node + "; duplicate supported terminal node");
+      }
+
+      for (const std::string& terminal_node : decision.terminal_nodes) {
+        if (terminal_node != supported_terminal_node) {
+          throw amflow::BoundaryUnsolvedError(
+              "planned eta->infinity boundary request requires exactly one supported terminal "
+              "node " +
+              supported_terminal_node + "; unsupported extra terminal node " + terminal_node);
+        }
+      }
+
+      if (supported_count == 0) {
+        throw amflow::BoundaryUnsolvedError(
+            "planned eta->infinity boundary request requires exactly one supported terminal "
+            "node " +
+            supported_terminal_node + "; missing supported terminal node");
+      }
+
+      return amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
     } catch (const amflow::BoundaryUnsolvedError&) {
       last_failure = std::current_exception();
     } catch (const std::runtime_error&) {
       last_failure = std::current_exception();
+    } catch (const std::invalid_argument&) {
+      throw;
     }
   }
 
@@ -7305,6 +7341,162 @@ void GeneratePlannedEtaInfinityBoundaryRequestPreservesEmptyEtaSymbolDiagnosticT
   throw std::runtime_error(
       "planned eta->infinity boundary generation should preserve empty eta_symbol rejection "
       "as an ordinary invalid_argument");
+}
+
+void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestHappyPathEquivalenceTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision, "RetryScheme", "retry ending planning failed");
+  const auto helper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision, "RetryScheme", "retry ending planning failed");
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto helper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  const amflow::BoundaryRequest baseline =
+      GeneratePlannedEtaInfinityBoundaryRequestFromAmfOptionsBaseline(
+          spec, amf_options, {baseline_retry_scheme, baseline_custom_scheme});
+  const amflow::BoundaryRequest request =
+      amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+          spec, amf_options, {helper_retry_scheme, helper_custom_scheme}, "eta");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions eta->infinity boundary generation should not mutate the input ProblemSpec "
+         "on the happy path");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             helper_retry_scheme->call_count() == 1 && helper_custom_scheme->call_count() == 1,
+         "AmfOptions eta->infinity boundary generation should preserve ordered ending fallback "
+         "with one planning probe per configured scheme");
+  Expect(SameBoundaryRequest(request, baseline),
+         "AmfOptions eta->infinity boundary generation should match the manual ordered ending "
+         "baseline on the happy path");
+}
+
+void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestFallsThroughInvalidArgumentPlanningFailureTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto helper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto helper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  const amflow::BoundaryRequest baseline =
+      GeneratePlannedEtaInfinityBoundaryRequestFromAmfOptionsBaseline(
+          spec, amf_options, {baseline_retry_scheme, baseline_custom_scheme});
+  const amflow::BoundaryRequest request =
+      amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+          spec, amf_options, {helper_retry_scheme, helper_custom_scheme}, "eta");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions eta->infinity boundary generation should not mutate the input ProblemSpec "
+         "when falling through an invalid_argument planning failure");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             helper_retry_scheme->call_count() == 1 && helper_custom_scheme->call_count() == 1,
+         "AmfOptions eta->infinity boundary generation should treat planning-time "
+         "invalid_argument as an ordered fallback miss and continue to the next ending scheme");
+  Expect(SameBoundaryRequest(request, baseline),
+         "AmfOptions eta->infinity boundary generation should match the manual ordered ending "
+         "baseline after falling through an invalid_argument planning failure");
+}
+
+void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestPlanningShortCircuitTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme"});
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision, "RetryScheme", "retry ending planning failed");
+  const auto helper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision, "RetryScheme", "retry ending planning failed");
+
+  const std::string baseline_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options, &baseline_retry_scheme]() {
+        static_cast<void>(GeneratePlannedEtaInfinityBoundaryRequestFromAmfOptionsBaseline(
+            spec, amf_options, {baseline_retry_scheme}));
+      },
+      "AmfOptions eta->infinity boundary generation baseline should preserve ending/planning "
+      "failure diagnostics");
+  const std::string helper_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options, &helper_retry_scheme]() {
+        static_cast<void>(amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+            spec, amf_options, {helper_retry_scheme}, "eta"));
+      },
+      "AmfOptions eta->infinity boundary generation should preserve ending/planning failure "
+      "diagnostics");
+
+  Expect(helper_message == baseline_message,
+         "AmfOptions eta->infinity boundary generation should preserve ending/planning "
+         "diagnostics unchanged");
+  Expect(baseline_retry_scheme->call_count() == 1 && helper_retry_scheme->call_count() == 1,
+         "AmfOptions eta->infinity boundary generation should plan the failing configured "
+         "ending exactly once before short-circuiting");
+}
+
+void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestIgnoresInertAmfOptionsFieldsTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions baseline_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"Tradition"});
+  amflow::AmfOptions inert_variant = baseline_options;
+  inert_variant.d0 = "101/37";
+  inert_variant.working_precision = 509;
+  inert_variant.chop_precision = 7;
+  inert_variant.x_order = 41;
+  inert_variant.extra_x_order = 43;
+  inert_variant.learn_x_order = 47;
+  inert_variant.test_x_order = 53;
+  inert_variant.rationalize_precision = 59;
+  inert_variant.run_length = 61;
+  inert_variant.use_cache = false;
+  inert_variant.skip_reduction = true;
+
+  const amflow::BoundaryRequest baseline =
+      amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+          spec, baseline_options, {}, "eta");
+  const amflow::BoundaryRequest inert =
+      amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+          spec, inert_variant, {}, "eta");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions eta->infinity boundary generation should not mutate the input ProblemSpec "
+         "when inert non-ending fields change");
+  Expect(SameBoundaryRequest(inert, baseline),
+         "AmfOptions eta->infinity boundary generation should ignore inert "
+         "non-ending_schemes AmfOptions fields");
 }
 
 void GenerateBuiltinEtaInfinityBoundaryRequestSupportsEtaSymbolOverrideTest() {
@@ -21474,6 +21666,10 @@ int main() {
     GeneratePlannedEtaInfinityBoundaryRequestPreservesPlanningFailureDiagnosticTest();
     GeneratePlannedEtaInfinityBoundaryRequestPropagatesBatch45SubsetDiagnosticTest();
     GeneratePlannedEtaInfinityBoundaryRequestPreservesEmptyEtaSymbolDiagnosticTest();
+    GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestHappyPathEquivalenceTest();
+    GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestFallsThroughInvalidArgumentPlanningFailureTest();
+    GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestPlanningShortCircuitTest();
+    GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestIgnoresInertAmfOptionsFieldsTest();
     GenerateBuiltinEtaInfinityBoundaryRequestSampleSpecHappyPathTest();
     GenerateBuiltinEtaInfinityBoundaryRequestSupportsEtaSymbolOverrideTest();
     GenerateBuiltinEtaInfinityBoundaryRequestIgnoresNonBoundaryProblemSpecFieldsTest();

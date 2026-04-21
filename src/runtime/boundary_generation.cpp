@@ -1,10 +1,12 @@
 #include "amflow/runtime/boundary_generation.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
 
+#include "amflow/core/options.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 
 namespace amflow {
@@ -107,6 +109,47 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
       PlanEndingScheme(spec, ending_scheme_name, user_defined_schemes);
   ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
   return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+}
+
+BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const std::string& eta_symbol) {
+  if (amf_options.ending_schemes.empty()) {
+    throw std::invalid_argument("ending-scheme list must not be empty");
+  }
+
+  std::exception_ptr last_failure;
+  for (const std::string& ending_scheme_name : amf_options.ending_schemes) {
+    const std::shared_ptr<EndingScheme> ending_scheme =
+        ResolveEndingScheme(ending_scheme_name, user_defined_schemes);
+
+    EndingDecision decision;
+    try {
+      decision = ending_scheme->Plan(spec);
+    } catch (const std::exception&) {
+      last_failure = std::current_exception();
+      continue;
+    }
+
+    try {
+      ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
+      return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+    } catch (const BoundaryUnsolvedError&) {
+      last_failure = std::current_exception();
+    } catch (const std::runtime_error&) {
+      last_failure = std::current_exception();
+    } catch (const std::invalid_argument&) {
+      throw;
+    }
+  }
+
+  if (!last_failure) {
+    throw std::runtime_error(
+        "AmfOptions eta->infinity ending-scheme selection exhausted without terminal failure");
+  }
+  std::rethrow_exception(last_failure);
 }
 
 }  // namespace amflow

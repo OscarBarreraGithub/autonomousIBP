@@ -361,6 +361,23 @@ SolverDiagnostics SolveResolvedEtaModeSeries(
     int requested_digits,
     const std::string& eta_symbol = "eta");
 
+SolverDiagnostics SolveResolvedEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::string& eta_mode_name,
+    const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override);
+
 SolverDiagnostics SolveResolvedEtaModeListSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

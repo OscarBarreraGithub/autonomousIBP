@@ -9531,6 +9531,24 @@ void SolveDifferentialEquationDoesNotMutateRequestTest() {
          "standalone DE solver wrapper should not mutate the caller request");
 }
 
+void SolveDifferentialEquationUsesRequestedDimensionExpressionForCoefficientEvaluationTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(dimension-6)/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "6";
+  request.amf_requested_dimension_expression = "6";
+
+  const amflow::SolverDiagnostics diagnostics = amflow::SolveDifferentialEquation(request);
+
+  Expect(diagnostics.success,
+         "standalone DE solver wrapper should use SolveRequest.amf_requested_dimension_expression "
+         "when coefficient evaluation needs the dimension binding; observed failure_code=\"" +
+             diagnostics.failure_code + "\", summary=\"" + diagnostics.summary + "\"");
+}
+
 void EvaluateCoefficientMatrixSampleSMatrixTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::ExactRationalMatrix matrix =
@@ -9582,6 +9600,33 @@ void EvaluateCoefficientMatrixSampleEtaMatrixTest() {
                        "-1/29",
                        "coefficient evaluation should evaluate the sample eta-matrix row-1 col-1 "
                        "exactly");
+}
+
+void EvaluateCoefficientMatrixDimensionBindingChangesResultTest() {
+  const amflow::DESystem system =
+      MakeScalarRegularPointSeriesSystem("(dimension-6)/(eta+1)");
+  const amflow::ExactRationalMatrix dimension_four =
+      amflow::EvaluateCoefficientMatrix(system, "eta", {{"eta", "0"}, {"dimension", "4"}});
+  const amflow::ExactRationalMatrix dimension_six =
+      amflow::EvaluateCoefficientMatrix(system, "eta", {{"eta", "0"}, {"dimension", "6"}});
+
+  Expect(dimension_four.size() == 1 && dimension_four.front().size() == 1 &&
+             dimension_six.size() == 1 && dimension_six.front().size() == 1,
+         "coefficient evaluation dimension-binding coverage should preserve the scalar matrix "
+         "shape");
+  ExpectRationalString(
+      dimension_four.front().front(),
+      "-2",
+      "coefficient evaluation should expose a distinct D=4 matrix entry when the coefficient "
+      "depends on dimension");
+  ExpectRationalString(
+      dimension_six.front().front(),
+      "0",
+      "coefficient evaluation should expose a distinct D=6 matrix entry when the coefficient "
+      "depends on dimension");
+  Expect(dimension_four.front().front() != dimension_six.front().front(),
+         "coefficient evaluation should not collapse distinct numeric dimension bindings onto "
+         "one matrix value");
 }
 
 void EvaluateCoefficientMatrixGeneratedEtaFixtureTest() {
@@ -22372,6 +22417,8 @@ int main() {
     SolveDifferentialEquationExactRequestedDigitsPassthroughTest();
     SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest();
     SolveDifferentialEquationDoesNotMutateRequestTest();
+    EvaluateCoefficientMatrixDimensionBindingChangesResultTest();
+    SolveDifferentialEquationUsesRequestedDimensionExpressionForCoefficientEvaluationTest();
     EvaluateCoefficientMatrixSampleSMatrixTest();
     EvaluateCoefficientMatrixSampleEtaMatrixTest();
     EvaluateCoefficientMatrixGeneratedEtaFixtureTest();

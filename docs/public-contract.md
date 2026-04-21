@@ -169,15 +169,17 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a` is narrower still: the two `SolveAmfOptionsEtaModeSeries(...)`
-  overloads may now carry wrapper-owned `amf_requested_d0` plus derived
-  `amf_requested_dimension_expression` metadata on `SolveRequest`, and solved-path request
-  fingerprints, request summaries, and D0-sensitive cache identity now distinguish that metadata
-  so stale cache replays are rejected when only `AmfOptions::d0` changes. This is only
-  request/cache truthfulness on those `AmfOptions` eta-mode wrappers, not full `Batch 59`:
-  generated `DESystem` construction, Kira preparation artifacts, coefficient evaluation, direct
-  `SolveDifferentialEquation(...)`, and broader arbitrary-`D0` runtime parity remain unchanged.
-  Full arbitrary-`D0` DE construction and evaluation remain next / deferred
+- current worktree `Batch 59a` plus `Batch 59b` are still narrow: the two
+  `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
+  plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
+  request fingerprints, request summaries, and D0-sensitive cache identity now distinguish that
+  metadata so stale cache replays are rejected when only `AmfOptions::d0` changes, and the direct
+  exact `BootstrapSeriesSolver` / `SolveDifferentialEquation(...)` path may additionally consume
+  an exactly numeric `SolveRequest.amf_requested_dimension_expression` as a passive
+  `dimension` binding during coefficient evaluation, center classification, residual checks, and
+  explicit boundary-value parsing. This still falls well short of full `Batch 59`: generated
+  `DESystem` construction, Kira preparation artifacts, wrapper-owned symbolic `D0` execution
+  parity, and broader arbitrary-`D0` runtime behavior remain deferred
 
 ## Core Types
 
@@ -199,7 +201,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `UpperTriangularMatrixFrobeniusSeriesPatch` plus `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)`: the first upper-triangular matrix regular-singular / Frobenius local propagator seam over one selected reviewed `DESystem` variable on the diagonal-residue, no-log subset
 - `ScalarSeriesPatchOverlapDiagnostics`, `EvaluateScalarSeriesPatchResidual(...)`, and `MatchScalarSeriesPatches(...)`: exact scalar patch residual and overlap diagnostics over already-generated regular patches
 - `UpperTriangularMatrixSeriesPatchOverlapDiagnostics`, `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)`, and `MatchUpperTriangularMatrixSeriesPatches(...)`: exact upper-triangular matrix patch residual and overlap diagnostics over already-generated regular patches
-- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, and derived `amf_requested_dimension_expression`. On the current worktree, those extra dimension fields are metadata-only on the reviewed `AmfOptions` eta wrappers: they keep solved-path request fingerprints, request summaries, and cache identity truthful for `D0` changes, but generated DE construction and evaluation still do not consume them
+- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, and derived `amf_requested_dimension_expression`. On the current worktree, those extra dimension fields stay metadata-only on the reviewed `AmfOptions` eta wrappers and generated DE construction path, but the direct exact solver now also consumes an exactly numeric `amf_requested_dimension_expression` as a passive `dimension` binding on coefficient evaluation, center classification, residual checks, and explicit boundary-value parsing
 - `PrecisionPolicy`: precision and stability controls
 - `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
@@ -515,7 +517,7 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
 - after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
-- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; this is request-plumbing only and does not yet change DE construction or solver evaluation semantics
+- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; generated DE construction and wrapper-owned symbolic `D0` execution still do not consume those fields, but the direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding
 - this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, and wrapper-owned requested-`D0`
@@ -727,6 +729,7 @@ The first exact one-hop continuation solver seam is now reviewed through the rev
 
 - `BootstrapSeriesSolver::Solve(...)` keeps the public `SeriesSolver` / `SolveRequest` surface unchanged and supports only two exact one-hop paths on the reviewed upper-triangular subset: the reviewed Batch 39 regular-start to regular-target path and the reviewed Batch 43 regular-start to regular-singular-target mixed path
 - the solver currently requires a well-formed `DESystem` with exactly one declared differentiation variable and one explicit manual start boundary attached through the existing `boundary_requests` plus `boundary_conditions` surface
+- when `SolveRequest.amf_requested_dimension_expression` is itself exactly numeric, the solver binds that exact value to the passive symbol name `dimension` on its reviewed exact path; non-exact or symbolic dimension expressions stay inert
 - `start_location` and `target_location` are parsed exactly through the reviewed coefficient-evaluator grammar; malformed location expressions, malformed explicit boundary values, and unresolved symbols remain deterministic argument errors instead of solver-level failure codes
 - the internal continuation order is fixed at `4`; Batch 39 and Batch 43 both choose `match = (start + target) / 2` and `check = (3*start + target) / 4` deterministically after exact point resolution
 - the reviewed regular path reuses `GenerateUpperTriangularRegularPointSeriesPatch(...)`, `MatchUpperTriangularMatrixSeriesPatches(...)`, and `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)` directly, with scalar systems treated only as the degenerate `1x1` upper-triangular case

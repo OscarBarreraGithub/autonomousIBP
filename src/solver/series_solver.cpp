@@ -69,6 +69,24 @@ ExactRational ExactArithmetic(const std::string& expression) {
   return EvaluateCoefficientExpression(expression, NumericEvaluationPoint{});
 }
 
+NumericEvaluationPoint BuildBootstrapPassiveBindings(const SolveRequest& request) {
+  NumericEvaluationPoint passive_bindings;
+  if (!request.amf_requested_dimension_expression.has_value()) {
+    return passive_bindings;
+  }
+
+  try {
+    passive_bindings.emplace(
+        "dimension",
+        EvaluateCoefficientExpression(*request.amf_requested_dimension_expression,
+                                      NumericEvaluationPoint{})
+            .ToString());
+  } catch (const std::exception&) {
+    // Non-exact dimension expressions stay inert on the reviewed exact solver path.
+  }
+  return passive_bindings;
+}
+
 ExactRational NegateRational(const ExactRational& value) {
   return ExactArithmetic("-" + Parenthesize(value));
 }
@@ -1933,8 +1951,9 @@ ExactRationalMatrix EvaluateUpperTriangularMatrixFrobeniusPatchResidual(
     const std::string& variable_name,
     const ExactRational& center_value,
     const ExactRational& point_value,
-    const NormalizedUpperTriangularMatrixFrobeniusPatchData& patch) {
-  NumericEvaluationPoint evaluation_point;
+    const NormalizedUpperTriangularMatrixFrobeniusPatchData& patch,
+    const NumericEvaluationPoint& passive_bindings) {
+  NumericEvaluationPoint evaluation_point = passive_bindings;
   evaluation_point[variable_name] = point_value.ToString();
   const ExactRationalMatrix coefficient_matrix =
       EvaluateCoefficientMatrix(system, variable_name, evaluation_point);
@@ -2758,11 +2777,12 @@ const BoundaryCondition& ResolveStartBoundaryCondition(const SolveRequest& reque
   return *condition_it;
 }
 
-ExactRationalVector ParseBoundaryValuesExactly(const BoundaryCondition& condition) {
+ExactRationalVector ParseBoundaryValuesExactly(const BoundaryCondition& condition,
+                                               const NumericEvaluationPoint& passive_bindings) {
   ExactRationalVector values;
   values.reserve(condition.values.size());
   for (const std::string& value : condition.values) {
-    values.push_back(EvaluateCoefficientExpression(value, NumericEvaluationPoint{}));
+    values.push_back(EvaluateCoefficientExpression(value, passive_bindings));
   }
   return values;
 }
@@ -2785,7 +2805,8 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
     const ExactRational& match_value,
     const ExactRational& check_value,
     const UpperTriangularMatrixSeriesPatch& start_patch,
-    const ExactRationalVector& start_boundary_values) {
+    const ExactRationalVector& start_boundary_values,
+    const NumericEvaluationPoint& passive_bindings) {
   const std::string target_expression = MakeResolvedPointExpression(variable_name, target_value);
   const std::string check_expression = MakeResolvedPointExpression(variable_name, check_value);
   const UpperTriangularMatrixFrobeniusSeriesPatch target_patch =
@@ -2793,7 +2814,7 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
                                                        variable_name,
                                                        target_expression,
                                                        kBootstrapContinuationOrder,
-                                                       NumericEvaluationPoint{});
+                                                       passive_bindings);
   const NormalizedUpperTriangularMatrixFrobeniusPatchData normalized_target_patch =
       NormalizeMatrixFrobeniusPatchCoefficients(target_patch, kBootstrapSolverPrefix);
   const std::vector<ExactRationalMatrix> start_coefficients =
@@ -2815,13 +2836,14 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
                                                        variable_name,
                                                        start_patch,
                                                        check_expression,
-                                                       NumericEvaluationPoint{});
+                                                       passive_bindings);
   const ExactRationalMatrix target_residual =
       EvaluateUpperTriangularMatrixFrobeniusPatchResidual(request.system,
                                                           variable_name,
                                                           target_value,
                                                           check_value,
-                                                          normalized_target_patch);
+                                                          normalized_target_patch,
+                                                          passive_bindings);
 
   if (!IsZeroMatrix(start_residual) || !IsZeroMatrix(target_residual) ||
       !IsZeroMatrix(mismatch)) {
@@ -2850,10 +2872,17 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
   }
 
   const std::string& variable_name = request.system.variables.front().name;
+  const NumericEvaluationPoint passive_bindings = BuildBootstrapPassiveBindings(request);
   const ExactRational start_value =
-      ParsePointValue(variable_name, request.start_location, NumericEvaluationPoint{}, kBootstrapSolverPrefix);
+      ParsePointValue(variable_name,
+                      request.start_location,
+                      passive_bindings,
+                      kBootstrapSolverPrefix);
   const ExactRational target_value =
-      ParsePointValue(variable_name, request.target_location, NumericEvaluationPoint{}, kBootstrapSolverPrefix);
+      ParsePointValue(variable_name,
+                      request.target_location,
+                      passive_bindings,
+                      kBootstrapSolverPrefix);
 
   const BoundaryCondition* start_boundary = nullptr;
   try {
@@ -2862,7 +2891,8 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
     return MakeBoundaryUnsolvedDiagnostics(error);
   }
 
-  const ExactRationalVector start_boundary_values = ParseBoundaryValuesExactly(*start_boundary);
+  const ExactRationalVector start_boundary_values =
+      ParseBoundaryValuesExactly(*start_boundary, passive_bindings);
   const PrecisionDecision precision_budget =
       EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
   if (precision_budget.status == PrecisionStatus::Rejected) {
@@ -2882,33 +2912,33 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                                                       variable_name,
                                                       start_expression,
                                                       kBootstrapContinuationOrder,
-                                                      NumericEvaluationPoint{});
+                                                      passive_bindings);
     try {
       const UpperTriangularMatrixSeriesPatch target_patch =
           GenerateUpperTriangularRegularPointSeriesPatch(request.system,
                                                         variable_name,
                                                         target_expression,
                                                         kBootstrapContinuationOrder,
-                                                        NumericEvaluationPoint{});
+                                                        passive_bindings);
       const UpperTriangularMatrixSeriesPatchOverlapDiagnostics overlap =
           MatchUpperTriangularMatrixSeriesPatches(variable_name,
                                                   start_patch,
                                                   target_patch,
                                                   match_expression,
                                                   check_expression,
-                                                  NumericEvaluationPoint{});
+                                                  passive_bindings);
       const ExactRationalMatrix start_residual =
           EvaluateUpperTriangularMatrixSeriesPatchResidual(request.system,
                                                           variable_name,
                                                           start_patch,
                                                           check_expression,
-                                                          NumericEvaluationPoint{});
+                                                          passive_bindings);
       const ExactRationalMatrix target_residual =
           EvaluateUpperTriangularMatrixSeriesPatchResidual(request.system,
                                                           variable_name,
                                                           target_patch,
                                                           check_expression,
-                                                          NumericEvaluationPoint{});
+                                                          passive_bindings);
 
       if (!IsZeroMatrix(start_residual) || !IsZeroMatrix(target_residual) ||
           !IsZeroMatrix(overlap.mismatch)) {
@@ -2938,7 +2968,8 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                                                 match_value,
                                                 check_value,
                                                 start_patch,
-                                                start_boundary_values);
+                                                start_boundary_values,
+                                                passive_bindings);
   } catch (const std::invalid_argument& error) {
     if (IsRegularCenterRejection(error)) {
       return MakeUnsupportedSolverPathDiagnostics(

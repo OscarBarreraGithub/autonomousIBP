@@ -169,7 +169,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a` plus `Batch 59b` plus `Batch 60a` through `Batch 60e` are still
+- current worktree `Batch 59a` plus `Batch 59b` plus `Batch 60a` through `Batch 60f` are still
   narrow: the two
   `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
   plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
@@ -193,7 +193,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `SolveEtaModePlannedSeries(...)`: those overloads pass the same live `-sd=<dimension>` exact
   override into eta-generated DE construction and copy the canonical exact value onto
   `SolveRequest.amf_requested_dimension_expression` before solver execution, while the retained
-  overloads without that extra argument stay unchanged. This still falls well short of full
+  overloads without that extra argument stay unchanged. The direct public builtin eta-mode
+  single-name solver wrapper now also exposes a matching exact-only overload on
+  `SolveBuiltinEtaModeSeries(...)`: it resolves the builtin name first, then forwards the same
+  live `-sd=<dimension>` exact override into the reviewed eta-mode-planned exact-override path
+  and copies the canonical exact value onto `SolveRequest.amf_requested_dimension_expression`
+  before solver execution, while the retained overload without that extra argument stays
+  unchanged. This still falls well short of full
   `Batch 59` / `Batch 60`: direct public generated-`DESystem` construction, broader Kira
   preparation artifacts, wrapper-owned symbolic `D0` execution parity, and broader arbitrary-`D0`
   / fixed-`eps` runtime behavior remain deferred
@@ -526,10 +532,12 @@ The first eta-mode-planned solver handoff is also bootstrap-only:
 The first builtin eta-mode-name solver wrapper is also bootstrap-only:
 
 - `SolveBuiltinEtaModeSeries(...)` takes the same eta solver inputs as `SolveEtaModePlannedSeries(...)`, except `const EtaMode&` is replaced by `const std::string& eta_mode_name`
+- a matching overload now also accepts one explicit `exact_dimension_override` after `eta_symbol`, with the same exact-only validation and canonicalization rule as `SolveEtaModePlannedSeries(...)`
 - it is a thin wrapper: it calls `MakeBuiltinEtaMode(eta_mode_name)`, then forwards the resolved builtin mode directly into `SolveEtaModePlannedSeries(...)`
 - builtin-name resolution failures preserve the existing `MakeBuiltinEtaMode(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream builtin planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaModePlannedSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
+- invalid public exact-dimension overrides still fail downstream after builtin-name resolution and still do not invoke the supplied solver
 - this batch does not add `AMFMode` list fallback, user-defined mode registration, new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
 
 The first builtin eta-mode-list solver wrapper is also bootstrap-only:

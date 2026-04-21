@@ -54,6 +54,9 @@ std::string SerializeAmfOptionsYaml(const AmfOptions& options) {
   out << "  AMFMode: [" << Join(options.amf_modes) << "]\n";
   out << "  EndingScheme: [" << Join(options.ending_schemes) << "]\n";
   out << "  D0: " << Quote(options.d0) << "\n";
+  if (options.fixed_eps.has_value()) {
+    out << "  FixedEps: " << Quote(*options.fixed_eps) << "\n";
+  }
   out << "  WorkingPre: " << options.working_precision << "\n";
   out << "  ChopPre: " << options.chop_precision << "\n";
   out << "  XOrder: " << options.x_order << "\n";

@@ -22,6 +22,7 @@ struct AmfOptions {
   std::vector<std::string> amf_modes = {"Prescription", "Mass", "Propagator"};
   std::vector<std::string> ending_schemes = {"Tradition", "Cutkosky", "SingleMass", "Trivial"};
   std::string d0 = "4";
+  std::optional<std::string> fixed_eps;
   int working_precision = 100;
   int chop_precision = 20;
   int x_order = 100;

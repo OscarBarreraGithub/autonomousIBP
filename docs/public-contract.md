@@ -169,7 +169,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a` plus `Batch 59b` are still narrow: the two
+- current worktree `Batch 59a` plus `Batch 59b` plus the first `Batch 60a` seam are still
+  narrow: the two
   `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
   plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
   request fingerprints, request summaries, and D0-sensitive cache identity now distinguish that
@@ -177,16 +178,22 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   exact `BootstrapSeriesSolver` / `SolveDifferentialEquation(...)` path may additionally consume
   an exactly numeric `SolveRequest.amf_requested_dimension_expression` as a passive
   `dimension` binding during coefficient evaluation, center classification, residual checks, and
-  explicit boundary-value parsing. This still falls well short of full `Batch 59`: generated
-  `DESystem` construction, Kira preparation artifacts, wrapper-owned symbolic `D0` execution
-  parity, and broader arbitrary-`D0` runtime behavior remain deferred
+  explicit boundary-value parsing. On the same reviewed wrapper path, an exact
+  `AmfOptions.fixed_eps` may now collapse the derived `D0 - 2*eps` carrier down to an exact
+  numeric dimension expression and participates in solved-path cache identity, but it still does
+  not add explicit passive `eps` binding, generated `DESystem` construction consumption, or
+  broader fixed-`eps` runtime parity. This still falls well short of full `Batch 59` / `Batch 60`:
+  generated `DESystem` construction, Kira preparation artifacts, wrapper-owned symbolic `D0`
+  execution parity, explicit `eps` evaluation-path support, and broader arbitrary-`D0` /
+  fixed-`eps` runtime behavior remain deferred
 
 ## Core Types
 
 - `ProblemSpec`: family definition, propagators, cuts, conservation rules, invariants, prescriptions, targets, numeric substitutions, dimensional settings
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
-- `AmfOptions`: AMFlow runtime controls
+- `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
+  reviewed wrapper-owned `D0 -> dimension` carrier
 - `ReductionOptions`: backend and reducer controls
 - `DESystem`: ordered masters, differentiation variables, exact coefficient matrices, singular-point annotations
 - `BoundaryRequest`, `BoundaryCondition`, `BoundaryUnsolvedError`, `AttachManualBoundaryConditions(...)`, `BoundaryProvider`, and `AttachBoundaryConditionsFromProvider(...)`: typed boundary request, explicit boundary data, failure, manual attachment surface, and caller-supplied provider seam decoupled from `DESystem`-owned boundary storage
@@ -517,10 +524,11 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
 - after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
-- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; generated DE construction and wrapper-owned symbolic `D0` execution still do not consume those fields, but the direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding
+- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains the same metadata-only symbolic wrapper carrier. Generated DE construction and wrapper-owned symbolic `D0` execution still do not consume those fields, but the direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding
 - this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
-- the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, and wrapper-owned requested-`D0`
+- the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`,
+  and exact `fixed_eps`
   metadata now participate in solved-path cache slotting plus request fingerprinting,
   solved-path request-summary truthfulness, and `skip_reduction` replay validation on this
   wrapper
@@ -559,13 +567,14 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 - if the list exhausts, the final recorded planning failure is rethrown unchanged; the defensive exhaustion `runtime_error` remains only for the impossible no-failure path
 - this helper does not read or rebuild `PrecisionPolicy`, does not attach `AmfSolveRuntimePolicy`, does not touch solved-path cache slotting or fingerprints, does not validate `skip_reduction`, and does not thread `amf_options.d0` into `SolveRequest`
 - `SolvePlannedAmfOptionsEtaModeSeries(...)` takes `(const ProblemSpec&, const ParsedMasterList&, const EtaInsertionDecision&, const AmfOptions&, const std::string& solve_kind, const ReductionOptions&, const ArtifactLayout&, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver&, const std::string& start_location, const std::string& target_location, const PrecisionPolicy&, int requested_digits, const std::string& eta_symbol = "eta")`
-- it is a standalone planned-decision execution helper: after a caller has already selected and planned one eta mode, it rebuilds the same live wrapper-owned solve tail from `AmfOptions` that the reviewed `SolveAmfOptionsEtaModeSeries(...)` overloads already owned, including live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0` metadata plus derived dimension-expression, solved-path cache setup, `use_cache`, and `skip_reduction`
-- this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or planning, does not widen `D0` beyond the existing request/cache truthfulness slice, and does not change direct `SolveDifferentialEquation(...)` behavior
+- it is a standalone planned-decision execution helper: after a caller has already selected and planned one eta mode, it rebuilds the same live wrapper-owned solve tail from `AmfOptions` that the reviewed `SolveAmfOptionsEtaModeSeries(...)` overloads already owned, including live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0` metadata plus derived dimension-expression, optional exact `fixed_eps` collapse on that dimension carrier, solved-path cache setup, `use_cache`, and `skip_reduction`
+- this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or planning, does not add explicit passive `eps` binding or generated-DE `fixed_eps` consumption, does not widen `D0` beyond the existing request/cache truthfulness slice plus the exact numeric dimension collapse, and does not change direct `SolveDifferentialEquation(...)` behavior
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - the builtin-only `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for builtin eta-mode selection: it keeps `SelectBuiltinEtaModeName(...)` and the selected builtin `EtaMode::Plan(...)` step local, then delegates the shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved builtin solved-path identity
 - the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity
-- the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, and wrapper-owned requested-`D0`
+- the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`, and exact
+  `fixed_eps`
   metadata now participate in solved-path cache slotting plus request fingerprinting,
   solved-path request-summary truthfulness, and `skip_reduction` replay validation on those
   wrappers through the shared planned-decision execution helper

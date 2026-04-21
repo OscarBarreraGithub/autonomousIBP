@@ -2114,11 +2114,25 @@ AmfSolveRuntimePolicy BuildAmfOptionsRuntimePolicy(const AmfOptions& amf_options
 }
 
 std::optional<std::string> BuildAmfRequestedDimensionExpression(
-    const std::optional<std::string>& amf_requested_d0) {
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<std::string>& fixed_eps) {
   if (!amf_requested_d0.has_value()) {
     return std::nullopt;
   }
-  return "(" + Trim(*amf_requested_d0) + ")-2*eps";
+
+  const std::string d0_expression = "(" + Trim(*amf_requested_d0) + ")";
+  if (!fixed_eps.has_value()) {
+    return d0_expression + "-2*eps";
+  }
+
+  const std::string dimension_expression =
+      d0_expression + "-2*(" + Trim(*fixed_eps) + ")";
+  try {
+    return EvaluateCoefficientExpression(dimension_expression, NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::exception&) {
+    return dimension_expression;
+  }
 }
 
 const char* ToString(DifferentiationVariableKind kind) {
@@ -2231,6 +2245,16 @@ std::string SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
   return out.str();
 }
 
+std::string SerializeOptionalAmfFixedEpsForFingerprint(
+    const std::optional<std::string>& fixed_eps) {
+  std::ostringstream out;
+  out << "present=" << (fixed_eps.has_value() ? "true" : "false") << "\n";
+  if (fixed_eps.has_value()) {
+    out << "value=" << *fixed_eps << "\n";
+  }
+  return out.str();
+}
+
 std::string SerializeDESystemForFingerprint(const DESystem& system) {
   std::ostringstream out;
   out << "masters=" << system.masters.size() << "\n";
@@ -2332,6 +2356,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
     const PrecisionPolicy& precision_policy,
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const std::optional<std::string>& amf_requested_d0,
+    const std::optional<std::string>& fixed_eps,
     const int requested_digits,
     const std::string& eta_symbol) {
   std::ostringstream out;
@@ -2350,6 +2375,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
       << SerializeOptionalAmfSolveRuntimePolicyForFingerprint(amf_runtime_policy);
   out << "amf_requested_d0:\n"
       << SerializeOptionalAmfRequestedD0ForFingerprint(amf_requested_d0);
+  out << "amf_fixed_eps:\n" << SerializeOptionalAmfFixedEpsForFingerprint(fixed_eps);
   return ComputeArtifactFingerprint(out.str());
 }
 
@@ -2370,12 +2396,16 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
                                         const ProblemSpec& spec,
                                         const EtaInsertionDecision& decision,
                                         const std::string& eta_symbol,
-                                        const std::optional<std::string>& amf_requested_d0) {
+                                        const std::optional<std::string>& amf_requested_d0,
+                                        const std::optional<std::string>& fixed_eps) {
   std::string slot_name = solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) + "-" +
                           SanitizeCacheSlotComponent(decision.mode_name) + "-" +
                           SanitizeCacheSlotComponent(eta_symbol);
   if (amf_requested_d0.has_value()) {
     slot_name += "-" + SanitizeCacheSlotComponent(*amf_requested_d0);
+  }
+  if (fixed_eps.has_value()) {
+    slot_name += "-fixed-eps-" + SanitizeCacheSlotComponent(*fixed_eps);
   }
   return slot_name;
 }
@@ -2464,6 +2494,10 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
   }
   if (request.amf_requested_d0.has_value()) {
     manifest.request_summary += "; amf_requested_d0=" + *request.amf_requested_d0;
+  }
+  if (request.amf_requested_dimension_expression.has_value()) {
+    manifest.request_summary +=
+        "; amf_requested_dimension_expression=" + *request.amf_requested_dimension_expression;
   }
   manifest.cache_root = AbsoluteOrEmpty(manifest_path.parent_path());
   manifest.manifest_path = AbsoluteOrEmpty(manifest_path);
@@ -3645,15 +3679,21 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
   const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
       BuildAmfOptionsRuntimePolicy(amf_options);
   const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
+  const std::optional<std::string> live_amf_fixed_eps = amf_options.fixed_eps;
   const std::optional<std::string> live_amf_requested_dimension_expression =
-      BuildAmfRequestedDimensionExpression(live_amf_requested_d0);
+      BuildAmfRequestedDimensionExpression(live_amf_requested_d0, live_amf_fixed_eps);
 
   SolvedPathCacheContext cache_context;
   cache_context.replay_enabled = amf_options.use_cache;
   cache_context.solve_kind = solve_kind;
   cache_context.slot_name =
       MakeSolvedPathCacheSlotName(
-          cache_context.solve_kind, spec, decision, eta_symbol, live_amf_requested_d0);
+          cache_context.solve_kind,
+          spec,
+          decision,
+          eta_symbol,
+          live_amf_requested_d0,
+          live_amf_fixed_eps);
   cache_context.input_fingerprint =
       BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
                                             spec,
@@ -3666,6 +3706,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                             live_precision_policy,
                                             live_amf_runtime_policy,
                                             live_amf_requested_d0,
+                                            live_amf_fixed_eps,
                                             requested_digits,
                                             eta_symbol);
 

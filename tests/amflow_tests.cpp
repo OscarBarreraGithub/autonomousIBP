@@ -1116,6 +1116,24 @@ amflow::AmfSolveRuntimePolicy MakeExpectedAmfSolveRuntimePolicy(
   return live_policy;
 }
 
+std::optional<std::string> BuildExpectedAmfRequestedDimensionExpressionForTest(
+    const amflow::AmfOptions& amf_options) {
+  const std::string d0_expression = "(" + amf_options.d0 + ")";
+  if (!amf_options.fixed_eps.has_value()) {
+    return d0_expression + "-2*eps";
+  }
+
+  const std::string dimension_expression =
+      d0_expression + "-2*(" + *amf_options.fixed_eps + ")";
+  try {
+    return amflow::EvaluateCoefficientExpression(dimension_expression,
+                                                 amflow::NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::exception&) {
+    return dimension_expression;
+  }
+}
+
 void ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
     const amflow::SolveRequest& request,
     const amflow::PrecisionPolicy& caller_policy,
@@ -1136,6 +1154,11 @@ void ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
          context + " should preserve non-wrapper PrecisionPolicy fields from the caller");
   Expect(request.amf_requested_d0.has_value() && *request.amf_requested_d0 == amf_options.d0,
          context + " should route D0 through the SolveRequest dimension-expression carrier");
+  const std::optional<std::string> expected_dimension_expression =
+      BuildExpectedAmfRequestedDimensionExpressionForTest(amf_options);
+  Expect(request.amf_requested_dimension_expression == expected_dimension_expression,
+         context + " should derive the expected SolveRequest dimension expression from D0 and "
+                   "FixedEps");
   Expect(request.amf_runtime_policy.has_value(),
          context + " should attach the live AMF runtime-policy carrier");
   if (!request.amf_runtime_policy.has_value()) {
@@ -21875,6 +21898,224 @@ void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest(
          "unchanged when only inert amf_modes change after planning");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-fixed-eps-dimension-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amf_options.d0 = "6";
+  amf_options.fixed_eps = "1";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=7/10";
+  const std::string target_location = "rho=13/17";
+  const int requested_digits = 73;
+  const std::string eta_symbol = "rho";
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-fixed-eps-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0009765625;
+  solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary =
+      "recorded planned helper fixed_eps exact dimension solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions eta-mode helper fixed_eps coverage should not mutate the input "
+         "problem spec");
+  Expect(solver.call_count() == 1,
+         "planned AmfOptions eta-mode helper fixed_eps coverage should call the solver exactly "
+         "once");
+  const amflow::SolveRequest& request = solver.last_request();
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
+      request,
+      precision_policy,
+      amf_options,
+      "planned AmfOptions eta-mode helper fixed_eps coverage");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "4",
+         "planned AmfOptions eta-mode helper fixed_eps coverage should collapse D0-2*eps to an "
+         "exact numeric dimension expression when FixedEps is exact");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "planned AmfOptions eta-mode helper fixed_eps coverage should preserve the live solver "
+         "diagnostic unchanged");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedFixedEpsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-fixed-eps-cache-invalidation-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  cached_amf_options.d0 = "6";
+  cached_amf_options.fixed_eps = "1";
+  amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  invalidated_amf_options.fixed_eps = "2";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=8/11";
+  const std::string target_location = "rho=29/31";
+  const int requested_digits = 79;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-fixed-eps-cache-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary =
+      "recorded planned helper fixed_eps cache baseline";
+
+  static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+      spec,
+      master_basis,
+      planned_decision,
+      cached_amf_options,
+      "amf-options-builtin-eta-mode-series",
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      cached_solver,
+      start_location,
+      target_location,
+      precision_policy,
+      requested_digits,
+      eta_symbol));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "planned helper fixed_eps invalidation should seed one solved-path cache manifest before "
+      "mutating FixedEps");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary =
+      "recorded planned helper fixed_eps cache live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  invalidated_amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  live_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(live_solver.call_count() == 1,
+         "planned helper fixed_eps invalidation should fall back to a live solve when FixedEps "
+         "changes");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "planned helper fixed_eps invalidation should return the fresh live diagnostics after "
+         "the cache miss");
+  Expect(live_solver.last_request().amf_requested_dimension_expression.has_value() &&
+             *live_solver.last_request().amf_requested_dimension_expression == "2",
+         "planned helper fixed_eps invalidation should rebuild the live solve request with the "
+         "new exact numeric dimension expression");
+
+  std::vector<std::filesystem::path> refreshed_manifest_paths;
+  for (const auto& entry : std::filesystem::directory_iterator(SolvedPathCacheDir(layout))) {
+    if (entry.is_regular_file()) {
+      refreshed_manifest_paths.push_back(entry.path());
+    }
+  }
+  Expect(refreshed_manifest_paths.size() == 2,
+         "planned helper fixed_eps invalidation should keep the seeded manifest and add one "
+         "FixedEps-specific solved-path cache manifest after the live fallback");
+  std::filesystem::path refreshed_manifest_path;
+  for (const auto& candidate : refreshed_manifest_paths) {
+    if (candidate != manifest_path) {
+      refreshed_manifest_path = candidate;
+      break;
+    }
+  }
+  Expect(!refreshed_manifest_path.empty(),
+         "planned helper fixed_eps invalidation should materialize a second solved-path cache "
+         "manifest for the changed FixedEps value");
+  Expect(refreshed_manifest_path.filename().string().find("fixed-eps-2") != std::string::npos,
+         "planned helper fixed_eps invalidation should key the new solved-path cache manifest "
+         "path by the changed FixedEps value");
+
+  const std::string refreshed_manifest_yaml = ReadFile(refreshed_manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "planned helper fixed_eps invalidation should record a distinct solved-path input "
+         "fingerprint in the FixedEps-specific cache entry");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "planned helper fixed_eps invalidation should record a distinct solved-path request "
+         "fingerprint in the FixedEps-specific cache entry");
+  Expect(refreshed_manifest_yaml.find("amf_requested_d0=" + invalidated_amf_options.d0) !=
+             std::string::npos,
+         "planned helper fixed_eps invalidation should preserve the requested D0 in the cached "
+         "request summary");
+  Expect(refreshed_manifest_yaml.find("amf_requested_dimension_expression=2") !=
+             std::string::npos,
+         "planned helper fixed_eps invalidation should record the refreshed exact numeric "
+         "dimension expression in the cached request summary");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "planned helper fixed_eps invalidation should persist the fresh live diagnostics in "
+         "the FixedEps-specific cache entry");
+}
+
 void BootstrapBuiltinSampleManifestTest() {
   const auto layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-sample-manifest-test"));
@@ -22246,12 +22487,23 @@ void OptionDefaultsTest() {
 
   Expect(amf_yaml.find("WorkingPre: 100") != std::string::npos,
          "AMF defaults should expose WorkingPre");
+  Expect(amf_yaml.find("FixedEps: ") == std::string::npos,
+         "AMF defaults should keep FixedEps absent by default");
   Expect(reduction_yaml.find("ReductionMode: \"Kira\"") != std::string::npos,
          "reduction defaults should expose Kira mode");
   Expect(reduction_yaml.find("KiraInsertPrefactors: false") != std::string::npos,
          "reduction defaults should keep Kira insert_prefactors default-disabled");
   Expect(reduction_yaml.find("KiraInsertPrefactorsSurface: |-") == std::string::npos,
          "reduction defaults should not serialize an insert_prefactors surface by default");
+}
+
+void AmfOptionsSerializationIncludesFixedEpsTest() {
+  amflow::AmfOptions options;
+  options.fixed_eps = "1/2";
+  const std::string yaml = amflow::SerializeAmfOptionsYaml(options);
+
+  Expect(yaml.find("FixedEps: \"1/2\"\n") != std::string::npos,
+         "AMF option serialization should include FixedEps when it is explicitly set");
 }
 
 void ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest() {
@@ -22857,6 +23109,8 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
+    SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTest();
+    SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedFixedEpsTest();
     BootstrapBuiltinSampleManifestTest();
     K0BootstrapManifestSerializationTest();
     FileBackedKiraManifestSerializesInsertPrefactorsReductionOptionsTest();
@@ -22865,6 +23119,7 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     OptionDefaultsTest();
+    AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();
     std::cout << "amflow bootstrap tests passed\n";
     return 0;

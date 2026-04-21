@@ -215,6 +215,23 @@ SolverDiagnostics SolveEtaModePlannedSeries(
     int requested_digits,
     const std::string& eta_symbol = "eta");
 
+SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const AmfOptions& amf_options,
+    const std::string& solve_kind,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& eta_symbol = "eta");
+
 SolverDiagnostics SolveBuiltinEtaModeSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

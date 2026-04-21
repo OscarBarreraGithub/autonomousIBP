@@ -3583,6 +3583,71 @@ SolverDiagnostics SolveEtaModePlannedSeries(
                                  eta_symbol);
 }
 
+SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const AmfOptions& amf_options,
+    const std::string& solve_kind,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol) {
+  const PrecisionPolicy live_precision_policy =
+      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
+  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
+      BuildAmfOptionsRuntimePolicy(amf_options);
+  const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
+  const std::optional<std::string> live_amf_requested_dimension_expression =
+      BuildAmfRequestedDimensionExpression(live_amf_requested_d0);
+
+  SolvedPathCacheContext cache_context;
+  cache_context.replay_enabled = amf_options.use_cache;
+  cache_context.solve_kind = solve_kind;
+  cache_context.slot_name =
+      MakeSolvedPathCacheSlotName(
+          cache_context.solve_kind, spec, decision, eta_symbol, live_amf_requested_d0);
+  cache_context.input_fingerprint =
+      BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
+                                            spec,
+                                            master_basis,
+                                            decision,
+                                            options,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            live_precision_policy,
+                                            live_amf_runtime_policy,
+                                            live_amf_requested_d0,
+                                            requested_digits,
+                                            eta_symbol);
+
+  return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
+                                                    master_basis,
+                                                    decision,
+                                                    options,
+                                                    layout,
+                                                    kira_executable,
+                                                    fermat_executable,
+                                                    solver,
+                                                    start_location,
+                                                    target_location,
+                                                    live_precision_policy,
+                                                    live_amf_runtime_policy,
+                                                    live_amf_requested_d0,
+                                                    live_amf_requested_dimension_expression,
+                                                    requested_digits,
+                                                    eta_symbol,
+                                                    amf_options.skip_reduction,
+                                                    cache_context);
+}
+
 SolverDiagnostics SolveBuiltinEtaModeSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -3660,53 +3725,21 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
   const std::string selected_eta_mode_name = SelectBuiltinEtaModeName(spec, amf_options.amf_modes);
   const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(selected_eta_mode_name);
   const EtaInsertionDecision decision = eta_mode->Plan(spec);
-  const PrecisionPolicy live_precision_policy =
-      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
-  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
-      BuildAmfOptionsRuntimePolicy(amf_options);
-  const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
-  const std::optional<std::string> live_amf_requested_dimension_expression =
-      BuildAmfRequestedDimensionExpression(live_amf_requested_d0);
-
-  SolvedPathCacheContext cache_context;
-  cache_context.replay_enabled = amf_options.use_cache;
-  cache_context.solve_kind = "amf-options-builtin-eta-mode-series";
-  cache_context.slot_name =
-      MakeSolvedPathCacheSlotName(
-          cache_context.solve_kind, spec, decision, eta_symbol, live_amf_requested_d0);
-  cache_context.input_fingerprint =
-      BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
-                                            spec,
-                                            master_basis,
-                                            decision,
-                                            options,
-                                            solver,
-                                            start_location,
-                                            target_location,
-                                            live_precision_policy,
-                                            live_amf_runtime_policy,
-                                            live_amf_requested_d0,
-                                            requested_digits,
-                                            eta_symbol);
-
-  return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
-                                                    master_basis,
-                                                    decision,
-                                                    options,
-                                                    layout,
-                                                    kira_executable,
-                                                    fermat_executable,
-                                                    solver,
-                                                    start_location,
-                                                    target_location,
-                                                    live_precision_policy,
-                                                    live_amf_runtime_policy,
-                                                    live_amf_requested_d0,
-                                                    live_amf_requested_dimension_expression,
-                                                    requested_digits,
-                                                    eta_symbol,
-                                                    amf_options.skip_reduction,
-                                                    cache_context);
+  return SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                             master_basis,
+                                             decision,
+                                             amf_options,
+                                             "amf-options-builtin-eta-mode-series",
+                                             options,
+                                             layout,
+                                             kira_executable,
+                                             fermat_executable,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol);
 }
 
 SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
@@ -3811,53 +3844,21 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const std::string& eta_symbol) {
   const EtaInsertionDecision decision =
       PlanAmfOptionsEtaMode(spec, amf_options, user_defined_modes);
-  const PrecisionPolicy live_precision_policy =
-      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
-  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
-      BuildAmfOptionsRuntimePolicy(amf_options);
-  const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
-  const std::optional<std::string> live_amf_requested_dimension_expression =
-      BuildAmfRequestedDimensionExpression(live_amf_requested_d0);
-
-  SolvedPathCacheContext cache_context;
-  cache_context.replay_enabled = amf_options.use_cache;
-  cache_context.solve_kind = "amf-options-resolved-eta-mode-series";
-  cache_context.slot_name =
-      MakeSolvedPathCacheSlotName(
-          cache_context.solve_kind, spec, decision, eta_symbol, live_amf_requested_d0);
-  cache_context.input_fingerprint =
-      BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
-                                            spec,
-                                            master_basis,
-                                            decision,
-                                            options,
-                                            solver,
-                                            start_location,
-                                            target_location,
-                                            live_precision_policy,
-                                            live_amf_runtime_policy,
-                                            live_amf_requested_d0,
-                                            requested_digits,
-                                            eta_symbol);
-
-  return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
-                                                    master_basis,
-                                                    decision,
-                                                    options,
-                                                    layout,
-                                                    kira_executable,
-                                                    fermat_executable,
-                                                    solver,
-                                                    start_location,
-                                                    target_location,
-                                                    live_precision_policy,
-                                                    live_amf_runtime_policy,
-                                                    live_amf_requested_d0,
-                                                    live_amf_requested_dimension_expression,
-                                                    requested_digits,
-                                                    eta_symbol,
-                                                    amf_options.skip_reduction,
-                                                    cache_context);
+  return SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                             master_basis,
+                                             decision,
+                                             amf_options,
+                                             "amf-options-resolved-eta-mode-series",
+                                             options,
+                                             layout,
+                                             kira_executable,
+                                             fermat_executable,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol);
 }
 
 std::unique_ptr<SeriesSolver> MakeBootstrapSeriesSolver() {

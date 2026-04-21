@@ -3024,6 +3024,38 @@ std::string ExtractYamlScalarValue(const std::string& yaml, const std::string& k
   throw std::runtime_error("failed to find YAML scalar key: " + key);
 }
 
+void ExpectSolvedPathCacheManifestMatchesBaseline(const std::string& actual_yaml,
+                                                  const std::string& baseline_yaml,
+                                                  const std::string& expected_solve_kind,
+                                                  const std::string& context) {
+  Expect(actual_yaml.find("manifest_kind: \"solved-path-cache\"\n") != std::string::npos,
+         context + " should write the solved-path cache manifest kind");
+  Expect(actual_yaml.find("solve_kind: \"" + expected_solve_kind + "\"\n") != std::string::npos,
+         context + " should preserve the expected solved-path solve_kind identity");
+  Expect(ExtractYamlScalarValue(actual_yaml, "solve_kind") ==
+             ExtractYamlScalarValue(baseline_yaml, "solve_kind"),
+         context + " should preserve solved-path solve_kind relative to the wrapper baseline");
+  Expect(ExtractYamlScalarValue(actual_yaml, "slot_name") ==
+             ExtractYamlScalarValue(baseline_yaml, "slot_name"),
+         context + " should preserve the solved-path slot name relative to the wrapper baseline");
+  Expect(ExtractYamlScalarValue(actual_yaml, "input_fingerprint") ==
+             ExtractYamlScalarValue(baseline_yaml, "input_fingerprint"),
+         context + " should preserve the solved-path input fingerprint relative to the wrapper "
+                   "baseline");
+  Expect(ExtractYamlScalarValue(actual_yaml, "request_fingerprint") ==
+             ExtractYamlScalarValue(baseline_yaml, "request_fingerprint"),
+         context + " should preserve the solved-path request fingerprint relative to the wrapper "
+                   "baseline");
+  Expect(ExtractYamlScalarValue(actual_yaml, "request_summary") ==
+             ExtractYamlScalarValue(baseline_yaml, "request_summary"),
+         context + " should preserve the solved-path request summary relative to the wrapper "
+                   "baseline");
+  Expect(ExtractYamlScalarValue(actual_yaml, "summary") ==
+             ExtractYamlScalarValue(baseline_yaml, "summary"),
+         context + " should preserve the cached diagnostics summary relative to the wrapper "
+                   "baseline");
+}
+
 std::string MakeReducerFailureScript(const std::string& stderr_marker,
                                      const int exit_code = 9) {
   std::ostringstream script;
@@ -21283,6 +21315,407 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvali
          "live diagnostics on a follow-up matching request");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-builtin-eta-mode-helper-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "rho=7/11";
+  const std::string target_location = "rho=43/47";
+  const int requested_digits = 89;
+  const std::string eta_symbol = "rho";
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-builtin-eta-mode-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout helper_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-builtin-eta-mode-helper"));
+  const std::filesystem::path helper_kira_path =
+      helper_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path helper_fermat_path =
+      helper_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(helper_kira_path.parent_path());
+  WriteExecutableScript(helper_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(helper_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary =
+      "recorded planned builtin AmfOptions eta-mode helper solve";
+  helper_solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           baseline_layout,
+                                           baseline_kira_path,
+                                           baseline_fermat_path,
+                                           baseline_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  helper_layout,
+                                                  helper_kira_path,
+                                                  helper_fermat_path,
+                                                  helper_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned builtin AmfOptions eta-mode helper should not mutate the input problem spec");
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "planned builtin AmfOptions eta-mode helper should match the wrapper baseline with one "
+         "solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& helper_request = helper_solver.last_request();
+  Expect(SameSolveRequest(helper_request, baseline_request),
+         "planned builtin AmfOptions eta-mode helper should forward the same SolveRequest as the "
+         "wrapper baseline");
+  Expect(SamePrecisionPolicy(helper_request.precision_policy, expected_live_precision_policy) &&
+             helper_request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*helper_request.amf_runtime_policy,
+                                       expected_live_runtime_policy),
+         "planned builtin AmfOptions eta-mode helper should preserve the live wrapper-owned "
+         "precision and runtime-policy wiring");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(helper_request,
+                                                   precision_policy,
+                                                   amf_options,
+                                                   "planned builtin AmfOptions eta-mode helper");
+  Expect(SameSolverDiagnostics(helper_diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(helper_diagnostics, helper_solver.returned_diagnostics),
+         "planned builtin AmfOptions eta-mode helper should return the same diagnostics as the "
+         "wrapper baseline");
+
+  const std::string baseline_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      baseline_layout,
+      "planned builtin AmfOptions eta-mode helper baseline should seed one solved-path cache "
+      "manifest"));
+  const std::string helper_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      helper_layout,
+      "planned builtin AmfOptions eta-mode helper should seed one solved-path cache manifest"));
+  ExpectSolvedPathCacheManifestMatchesBaseline(helper_manifest_yaml,
+                                               baseline_manifest_yaml,
+                                               "amf-options-builtin-eta-mode-series",
+                                               "planned builtin AmfOptions eta-mode helper");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"RetryMode", "CustomMode"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "rho=9/13";
+  const std::string target_location = "rho=37/41";
+  const int requested_digits = 101;
+  const std::string eta_symbol = "rho";
+
+  const auto planned_retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto planned_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::PlanAmfOptionsEtaMode(spec, amf_options, {planned_retry_mode, planned_custom_mode});
+
+  const auto baseline_retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto baseline_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-resolved-eta-mode-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout helper_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-resolved-eta-mode-helper"));
+  const std::filesystem::path helper_kira_path =
+      helper_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path helper_fermat_path =
+      helper_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(helper_kira_path.parent_path());
+  WriteExecutableScript(helper_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(helper_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary =
+      "recorded planned resolved AmfOptions eta-mode helper solve";
+  helper_solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           {baseline_retry_mode, baseline_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           baseline_layout,
+                                           baseline_kira_path,
+                                           baseline_fermat_path,
+                                           baseline_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-resolved-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  helper_layout,
+                                                  helper_kira_path,
+                                                  helper_fermat_path,
+                                                  helper_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned resolved AmfOptions eta-mode helper should not mutate the input problem spec");
+  Expect(planned_retry_mode->call_count() == 1 && planned_custom_mode->call_count() == 1 &&
+             baseline_retry_mode->call_count() == 1 && baseline_custom_mode->call_count() == 1,
+         "planned resolved AmfOptions eta-mode helper coverage should plan the ordered mixed "
+         "selection exactly once for the helper input and once for the wrapper baseline");
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "planned resolved AmfOptions eta-mode helper should match the wrapper baseline with one "
+         "solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& helper_request = helper_solver.last_request();
+  Expect(SameSolveRequest(helper_request, baseline_request),
+         "planned resolved AmfOptions eta-mode helper should forward the same SolveRequest as "
+         "the wrapper baseline");
+  Expect(SamePrecisionPolicy(helper_request.precision_policy, expected_live_precision_policy) &&
+             helper_request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*helper_request.amf_runtime_policy,
+                                       expected_live_runtime_policy),
+         "planned resolved AmfOptions eta-mode helper should preserve the live wrapper-owned "
+         "precision and runtime-policy wiring");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(helper_request,
+                                                   precision_policy,
+                                                   amf_options,
+                                                   "planned resolved AmfOptions eta-mode helper");
+  Expect(SameSolverDiagnostics(helper_diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(helper_diagnostics, helper_solver.returned_diagnostics),
+         "planned resolved AmfOptions eta-mode helper should return the same diagnostics as the "
+         "wrapper baseline");
+
+  const std::string baseline_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      baseline_layout,
+      "planned resolved AmfOptions eta-mode helper baseline should seed one solved-path cache "
+      "manifest"));
+  const std::string helper_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      helper_layout,
+      "planned resolved AmfOptions eta-mode helper should seed one solved-path cache manifest"));
+  ExpectSolvedPathCacheManifestMatchesBaseline(helper_manifest_yaml,
+                                               baseline_manifest_yaml,
+                                               "amf-options-resolved-eta-mode-series",
+                                               "planned resolved AmfOptions eta-mode helper");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-eta-mode-ignore-amf-modes-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  const amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amflow::AmfOptions inert_amf_options = seed_amf_options;
+  inert_amf_options.amf_modes.clear();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=5/8";
+  const std::string target_location = "rho=21/25";
+  const int requested_digits = 97;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-eta-mode-ignore-amf-modes"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.00048828125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.0009765625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded planned helper inert amf_modes baseline";
+
+  const amflow::SolverDiagnostics seed_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  seed_amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  seed_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions eta-mode helper inert amf_modes coverage should not mutate the "
+         "input problem spec");
+  Expect(seed_solver.call_count() == 1,
+         "planned AmfOptions eta-mode helper inert amf_modes coverage should seed one live "
+         "solver call");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(seed_solver.last_request(),
+                                                   precision_policy,
+                                                   seed_amf_options,
+                                                   "planned AmfOptions eta-mode helper inert "
+                                                   "amf_modes coverage");
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "planned AmfOptions eta-mode helper inert amf_modes coverage should seed one solved-path "
+      "cache manifest");
+  const std::string seed_manifest_yaml = ReadFile(manifest_path);
+  Expect(seed_manifest_yaml.find("solve_kind: \"amf-options-builtin-eta-mode-series\"\n") !=
+             std::string::npos,
+         "planned AmfOptions eta-mode helper inert amf_modes coverage should preserve the "
+         "builtin solved-path solve_kind");
+  Expect(seed_manifest_yaml.find("run_length=" +
+                                 std::to_string(seed_amf_options.run_length)) !=
+             std::string::npos,
+         "planned AmfOptions eta-mode helper inert amf_modes coverage should carry the live AMF "
+         "runtime policy into the cache request summary");
+  Expect(seed_manifest_yaml.find("amf_requested_d0=" + seed_amf_options.d0) !=
+             std::string::npos,
+         "planned AmfOptions eta-mode helper inert amf_modes coverage should carry the requested "
+         "D0 into the cache request summary");
+  const std::string seed_slot_name = ExtractYamlScalarValue(seed_manifest_yaml, "slot_name");
+  const std::string seed_input_fingerprint =
+      ExtractYamlScalarValue(seed_manifest_yaml, "input_fingerprint");
+  const std::string seed_request_fingerprint =
+      ExtractYamlScalarValue(seed_manifest_yaml, "request_fingerprint");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during planned helper amf_modes "
+                               "replay"));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary = "unexpected live helper amf_modes replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  inert_amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  replay_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol);
+
+  Expect(replay_solver.call_count() == 0,
+         "planned AmfOptions eta-mode helper should ignore amf_modes after planning and replay "
+         "the matching solved-path cache entry even when the list is empty");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seed_diagnostics),
+         "planned AmfOptions eta-mode helper should return the cached diagnostics unchanged when "
+         "only inert amf_modes change after planning");
+
+  const std::string replay_manifest_yaml = ReadFile(manifest_path);
+  Expect(ExtractYamlScalarValue(replay_manifest_yaml, "slot_name") == seed_slot_name,
+         "planned AmfOptions eta-mode helper should keep the solved-path slot identity unchanged "
+         "when only inert amf_modes change after planning");
+  Expect(ExtractYamlScalarValue(replay_manifest_yaml, "input_fingerprint") ==
+             seed_input_fingerprint,
+         "planned AmfOptions eta-mode helper should keep the solved-path input fingerprint "
+         "unchanged when only inert amf_modes change after planning");
+  Expect(ExtractYamlScalarValue(replay_manifest_yaml, "request_fingerprint") ==
+             seed_request_fingerprint,
+         "planned AmfOptions eta-mode helper should keep the solved-path request fingerprint "
+         "unchanged when only inert amf_modes change after planning");
+}
+
 void BootstrapBuiltinSampleManifestTest() {
   const auto layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-sample-manifest-test"));
@@ -22256,6 +22689,9 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
+    SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest();
+    SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
+    SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
     BootstrapBuiltinSampleManifestTest();
     K0BootstrapManifestSerializationTest();
     FileBackedKiraManifestSerializesInsertPrefactorsReductionOptionsTest();

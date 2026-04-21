@@ -13283,6 +13283,7 @@ void RunEtaGeneratedReductionHappyPathTest() {
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::ArtifactLayout layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-generated-wrapper"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
@@ -13292,7 +13293,7 @@ void RunEtaGeneratedReductionHappyPathTest() {
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
   const amflow::EtaGeneratedReductionExecution execution =
-      amflow::RunEtaGeneratedReduction(amflow::MakeSampleProblemSpec(),
+      amflow::RunEtaGeneratedReduction(spec,
                                        master_basis,
                                        MakeEtaGeneratedHappyDecision(),
                                        MakeKiraReductionOptions(),
@@ -13328,6 +13329,55 @@ void RunEtaGeneratedReductionHappyPathTest() {
              matrix_it->second[1][0] == "(-1)*(t)" &&
              matrix_it->second[1][1] == "(-1)*(3)",
          "eta-generated wrapper should preserve the reviewed eta matrix entries");
+}
+
+void RunEtaGeneratedReductionUsesExactDimensionOverrideLeadingArgumentTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-wrapper-exact-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=4"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       MakeEtaGeneratedHappyDecision(),
+                                       MakeKiraReductionOptions(),
+                                       layout,
+                                       kira_path,
+                                       fermat_path,
+                                       "eta",
+                                       std::optional<std::string>{"8/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated wrapper exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(execution.execution_result.Succeeded(),
+         "eta-generated wrapper exact-dimension override coverage should preserve successful "
+         "reducer execution");
+  Expect(execution.preparation.backend_preparation.command_arguments.size() == 1 &&
+             execution.preparation.backend_preparation.command_arguments.front() == "-sd=4",
+         "eta-generated wrapper exact-dimension override coverage should canonicalize the exact "
+         "dimension expression before reducer execution");
+  Expect(!execution.preparation.backend_preparation.commands.empty() &&
+             execution.preparation.backend_preparation.commands.front().find(" -sd=4 ") !=
+                 std::string::npos,
+         "eta-generated wrapper exact-dimension override coverage should render the canonical "
+         "leading -sd argument in the prepared command text");
+  Expect(execution.assembled_system.has_value() &&
+             execution.assembled_system->variables.size() == 1 &&
+             execution.assembled_system->variables.front().name == "eta",
+         "eta-generated wrapper exact-dimension override coverage should still assemble the "
+         "reviewed eta DESystem");
 }
 
 void RunEtaGeneratedReductionExecutionFailureTest() {
@@ -13469,6 +13519,66 @@ void BuildEtaGeneratedDESystemHappyPathTest() {
          "eta-generated DE consumer should return the reviewed eta matrix entries unchanged");
 }
 
+void BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-desystem-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution baseline_execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       MakeEtaGeneratedHappyDecision(),
+                                       MakeKiraReductionOptions(),
+                                       baseline_layout,
+                                       baseline_kira_path,
+                                       baseline_fermat_path);
+  Expect(baseline_execution.assembled_system.has_value(),
+         "eta-generated DE consumer exact-dimension baseline should assemble a DESystem");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-desystem-exact-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=6"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        "eta",
+                                        std::optional<std::string>{"6"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated DE consumer exact-dimension override coverage should not mutate the "
+         "input problem spec");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "eta-generated DE consumer exact-dimension override coverage should return a valid "
+         "DESystem");
+  Expect(SameDESystem(system, *baseline_execution.assembled_system),
+         "eta-generated DE consumer exact-dimension override coverage should preserve the "
+         "reviewed assembled eta DESystem unchanged");
+}
+
 void BuildEtaGeneratedDESystemExecutionFailureTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -13569,6 +13679,34 @@ void BuildEtaGeneratedDESystemRejectsEmptyGeneratedTargetsTest() {
       },
       "requires at least one generated reduction target",
       "eta-generated DE consumer should preserve empty generated-target diagnostics");
+}
+
+void RunEtaGeneratedReductionRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-wrapper-symbolic-dimension-override"));
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout]() {
+        static_cast<void>(amflow::RunEtaGeneratedReduction(amflow::MakeSampleProblemSpec(),
+                                                           master_basis,
+                                                           MakeEtaGeneratedHappyDecision(),
+                                                           MakeKiraReductionOptions(),
+                                                           layout,
+                                                           layout.root / "bin" /
+                                                               "unused-kira.sh",
+                                                           layout.root / "bin" /
+                                                               "unused-fermat.sh",
+                                                           "eta",
+                                                           std::optional<std::string>{
+                                                               "D0-2*eps"}));
+      },
+      "exact dimension override",
+      "eta-generated wrapper exact-dimension override coverage should reject symbolic or "
+      "non-exact override expressions before reducer execution");
 }
 
 void RunInvariantGeneratedReductionHappyPathTest() {
@@ -23171,12 +23309,15 @@ int main() {
     PrepareInvariantGeneratedReductionRejectsSpecSeedArityMismatchTest();
     PrepareInvariantGeneratedReductionFakeExecutionSmokeTest();
     RunEtaGeneratedReductionHappyPathTest();
+    RunEtaGeneratedReductionUsesExactDimensionOverrideLeadingArgumentTest();
     RunEtaGeneratedReductionExecutionFailureTest();
     RunEtaGeneratedReductionRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemHappyPathTest();
+    BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest();
     BuildEtaGeneratedDESystemExecutionFailureTest();
     BuildEtaGeneratedDESystemRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemRejectsEmptyGeneratedTargetsTest();
+    RunEtaGeneratedReductionRejectsNonExactDimensionOverrideTest();
     RunInvariantGeneratedReductionHappyPathTest();
     RunInvariantGeneratedReductionExecutionFailureTest();
     RunInvariantGeneratedReductionRejectsIdentityFallbackResultsTest();

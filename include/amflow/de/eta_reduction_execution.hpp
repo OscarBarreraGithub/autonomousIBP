@@ -26,6 +26,17 @@ DESystem BuildEtaGeneratedDESystem(
     const std::filesystem::path& fermat_executable,
     const std::string& eta_symbol = "eta");
 
+DESystem BuildEtaGeneratedDESystem(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override);
+
 EtaGeneratedReductionExecution RunEtaGeneratedReduction(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -35,5 +46,16 @@ EtaGeneratedReductionExecution RunEtaGeneratedReduction(
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable,
     const std::string& eta_symbol = "eta");
+
+EtaGeneratedReductionExecution RunEtaGeneratedReduction(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override);
 
 }  // namespace amflow

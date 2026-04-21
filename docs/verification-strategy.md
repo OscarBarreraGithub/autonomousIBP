@@ -95,8 +95,8 @@ The migration is phase-gated. Every phase must pass:
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
 - landed `Batch 58g` on actual `main` now adds target-aware Kira reduction-span widening on
   exact-sector positive-support matches plus the first mandatory-family retained-span evidence
-  packet; broader mandatory-family reduction-span parity beyond that first landed packet and Kira
-  `insert_prefactors` wiring still remain open
+  packet; broader mandatory-family reduction-span parity beyond that first landed packet still
+  remains open, while narrow opt-in Kira `insert_prefactors` wiring is now present separately
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity evidence on the current reviewed exact subset:
   `tests/amflow_tests.cpp` includes
@@ -114,8 +114,8 @@ The migration is phase-gated. Every phase must pass:
   narrowly on that implemented exact subset only. This packet does not widen runtime behavior,
   broader cache/restart semantics, broader monotone digit refinement, standalone solver-policy
   parity beyond the reviewed exact subset, or `Milestone M3`; broader mandatory-family
-  reduction-span parity beyond the first landed `Batch 58g` packet and Kira
-  `insert_prefactors` wiring still remain open
+  reduction-span parity beyond the first landed `Batch 58g` packet still remains open, while
+  narrow opt-in Kira `insert_prefactors` wiring is now present separately
 
 ## Test Taxonomy
 

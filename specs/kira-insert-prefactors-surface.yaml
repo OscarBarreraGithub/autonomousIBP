@@ -15,8 +15,11 @@ validation:
   - "each denominator must not contain CR or LF newlines"
   - "the first entry denominator must be the exact string 1"
 notes:
-  - "This is a repo-local prerequisite surface for later Kira insert_prefactors wiring only."
+  - "This is the repo-local Kira insert_prefactors payload surface consumed by the narrow opt-in KiraBackend wiring."
   - "The retained xints snapshot is intentionally narrow and normalized to the serializer line shape rather than a verbatim full upstream example copy."
   - "It is intentionally separate from BuildOverallAmflowPrefactor(...) and does not reuse that overall loop-prefactor helper."
-  - "It does not claim any current KiraBackend emission or jobs.yaml insert_prefactors behavior."
+  - "Current emission is narrow and explicit only: ReductionOptions.kira_insert_prefactors must be true, a KiraInsertPrefactorsSurface must be supplied, and the active Kira ReductionMode must emit run_firefly."
+  - "The current wiring is still conservative: it rejects unsupported cuts, unresolved surfaces, family/arity mismatches, and multi-target preparation batches."
+  - "Explicit public emission calls reject invalid opt-in requests deterministically instead of silently suppressing xints."
+  - "Parsed Kira coefficients normalize prefactor[...] and prefactor(...) wrappers away before evaluator-facing reduction results are assembled."
   - "It does not claim retained AMFlow globalpreferred is already a Kira insert_prefactors file."

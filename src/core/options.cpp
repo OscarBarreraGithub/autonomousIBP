@@ -21,6 +21,15 @@ std::string Join(const std::vector<std::string>& values) {
   return out.str();
 }
 
+std::string IndentBlock(const std::string& value, const std::string& prefix) {
+  std::ostringstream out;
+  std::istringstream stream(value);
+  for (std::string line; std::getline(stream, line);) {
+    out << prefix << line << "\n";
+  }
+  return out.str();
+}
+
 }  // namespace
 
 std::string ToString(ReductionMode mode) {
@@ -69,6 +78,13 @@ std::string SerializeReductionOptionsYaml(const ReductionOptions& options) {
       << (options.delete_black_box_directory ? "true" : "false") << "\n";
   out << "  IntegralOrder: " << options.integral_order << "\n";
   out << "  ReductionMode: " << Quote(ToString(options.reduction_mode)) << "\n";
+  out << "  KiraInsertPrefactors: "
+      << (options.kira_insert_prefactors ? "true" : "false") << "\n";
+  if (options.kira_insert_prefactors_surface.has_value()) {
+    out << "  KiraInsertPrefactorsSurface: |-\n";
+    out << IndentBlock(
+        SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface), "    ");
+  }
   if (options.permutation_option.has_value()) {
     out << "  PermutationOption: " << *options.permutation_option << "\n";
   }

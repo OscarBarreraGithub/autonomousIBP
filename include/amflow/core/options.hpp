@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 
+#include "amflow/kira/kira_insert_prefactors.hpp"
+
 namespace amflow {
 
 enum class ReductionMode {
@@ -40,6 +42,8 @@ struct ReductionOptions {
   bool delete_black_box_directory = false;
   int integral_order = 5;
   ReductionMode reduction_mode = ReductionMode::Kira;
+  bool kira_insert_prefactors = false;
+  std::optional<KiraInsertPrefactorsSurface> kira_insert_prefactors_surface;
   std::optional<int> permutation_option;
   std::optional<int> master_rank;
   std::optional<int> master_dot;

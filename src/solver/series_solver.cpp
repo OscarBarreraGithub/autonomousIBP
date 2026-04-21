@@ -153,6 +153,15 @@ std::vector<std::string> ValidatePreparedFilesAgainstLayout(
                           JoinMessages(preparation.validation_messages));
   }
 
+  const auto jobs_it = preparation.generated_files.find("jobs.yaml");
+  const bool jobs_require_xints =
+      jobs_it != preparation.generated_files.end() &&
+      jobs_it->second.find("insert_prefactors: [xints]") != std::string::npos;
+  if (jobs_require_xints &&
+      preparation.generated_files.find("xints") == preparation.generated_files.end()) {
+    messages.emplace_back("prepared Kira file was not generated: xints");
+  }
+
   for (const auto& [relative_path, expected_content] : preparation.generated_files) {
     const std::filesystem::path prepared_file_path = layout.generated_config_dir / relative_path;
     if (!std::filesystem::exists(prepared_file_path)) {

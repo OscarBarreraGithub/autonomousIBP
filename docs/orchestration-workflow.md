@@ -120,7 +120,8 @@ The workflow is optimized for the current repo shape:
   precision-monotonicity gap on the reviewed exact subset only. This packet does not widen runtime behavior, broader
   cache/restart semantics, broader monotone digit refinement, standalone
   `SolveDifferentialEquation(...)` runtime-policy parity, or `Milestone M3`, which still turns
-  on broader mandatory-family reduction-span parity beyond landed `Batch 58g` plus Kira `insert_prefactors`
+  on broader mandatory-family reduction-span parity beyond landed `Batch 58g`; narrow opt-in
+  Kira `insert_prefactors` wiring is now present separately
 
 ## Mandatory Read Set Before Planning
 

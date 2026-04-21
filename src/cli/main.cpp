@@ -146,6 +146,11 @@ std::map<std::string, std::string> EffectiveReductionOptionsMap(
   values["DeleteBlackBoxDirectory"] = options.delete_black_box_directory ? "true" : "false";
   values["IntegralOrder"] = std::to_string(options.integral_order);
   values["ReductionMode"] = amflow::ToString(options.reduction_mode);
+  values["KiraInsertPrefactors"] = options.kira_insert_prefactors ? "true" : "false";
+  if (options.kira_insert_prefactors_surface.has_value()) {
+    values["KiraInsertPrefactorsSurface"] =
+        amflow::SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface);
+  }
   if (options.permutation_option.has_value()) {
     values["PermutationOption"] = std::to_string(*options.permutation_option);
   }
@@ -183,6 +188,19 @@ std::map<std::string, std::string> NonDefaultReductionOptionsMap(
   }
   if (options.reduction_mode != defaults.reduction_mode) {
     values["ReductionMode"] = amflow::ToString(options.reduction_mode);
+  }
+  if (options.kira_insert_prefactors != defaults.kira_insert_prefactors) {
+    values["KiraInsertPrefactors"] = options.kira_insert_prefactors ? "true" : "false";
+  }
+  const bool has_non_default_insert_prefactors_surface =
+      options.kira_insert_prefactors_surface.has_value() &&
+      (!defaults.kira_insert_prefactors_surface.has_value() ||
+       amflow::SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface) !=
+           amflow::SerializeKiraInsertPrefactorsSurface(
+               *defaults.kira_insert_prefactors_surface));
+  if (has_non_default_insert_prefactors_surface) {
+    values["KiraInsertPrefactorsSurface"] =
+        amflow::SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface);
   }
   if (options.permutation_option != defaults.permutation_option &&
       options.permutation_option.has_value()) {

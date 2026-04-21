@@ -16,6 +16,7 @@ struct KiraJobFiles {
   std::string jobs_yaml;
   std::string preferred_masters;
   std::string target_list;
+  std::string xints;
 };
 
 struct ParsedMasterList {

@@ -4522,8 +4522,8 @@ void KiraPreparationLocksPlanarDoubleBoxReductionSpanOnSharedSampleSurfaceTest()
          "claim to a single family-sector span");
   Expect(builtin_files.jobs_yaml.find("insert_prefactors") == std::string::npos &&
              file_files.jobs_yaml.find("insert_prefactors") == std::string::npos,
-         "shared-sample planar_double_box Kira jobs.yaml should not claim unsupported "
-         "insert_prefactors wiring");
+         "shared-sample planar_double_box Kira jobs.yaml should keep insert_prefactors "
+         "default-disabled");
   Expect(file_files.jobs_yaml == builtin_files.jobs_yaml,
          "file-backed planar_double_box Kira jobs.yaml should stay locked to "
          "MakeSampleProblemSpec on the reviewed shared sample surface");
@@ -4536,10 +4536,6 @@ std::filesystem::path KiraInsertPrefactorsCorpusRoot() {
 
 std::filesystem::path KiraInsertPrefactorsCorpusXintsPath() {
   return KiraInsertPrefactorsCorpusRoot() / "xints";
-}
-
-std::filesystem::path KiraInsertPrefactorsCorpusJobsPath() {
-  return KiraInsertPrefactorsCorpusRoot() / "jobs.yaml";
 }
 
 std::filesystem::path KiraInsertPrefactorsCorpusJobOptionsSummaryPath() {
@@ -4602,6 +4598,45 @@ amflow::KiraInsertPrefactorsSurface ParseKiraInsertPrefactorsSurface(
   return surface;
 }
 
+amflow::KiraInsertPrefactorsSurface LoadLockedKiraInsertPrefactorsSurface() {
+  return ParseKiraInsertPrefactorsSurface(ReadFile(KiraInsertPrefactorsCorpusXintsPath()));
+}
+
+amflow::ProblemSpec MakeLockedKiraInsertPrefactorsReferenceSpec() {
+  const amflow::KiraInsertPrefactorsSurface surface = LoadLockedKiraInsertPrefactorsSurface();
+
+  amflow::ProblemSpec spec;
+  spec.family.name = "doublebox";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {255};
+  for (int index = 0; index < 11; ++index) {
+    spec.family.propagators.push_back({"q" + std::to_string(index + 1), "0"});
+  }
+  spec.kinematics.incoming_momenta = {"p1", "p2"};
+  spec.kinematics.outgoing_momenta = {"p3", "p4"};
+  spec.kinematics.momentum_conservation = "p1 + p2 + p3 + p4 = 0";
+  spec.kinematics.invariants = {"s15", "s23", "s34", "s45"};
+  spec.targets = {surface.entries.front().integral};
+  return spec;
+}
+
+amflow::ReductionOptions MakeKiraInsertPrefactorsReductionOptions(
+    const amflow::KiraInsertPrefactorsSurface& surface) {
+  amflow::ReductionOptions options = MakeKiraReductionOptions();
+  options.reduction_mode = amflow::ReductionMode::FireFly;
+  options.kira_insert_prefactors = true;
+  options.kira_insert_prefactors_surface = surface;
+  return options;
+}
+
+amflow::KiraInsertPrefactorsSurface MakePlanarDoubleBoxInsertPrefactorsSurface() {
+  return amflow::KiraInsertPrefactorsSurface{
+      {amflow::KiraInsertPrefactorEntry{
+           amflow::TargetIntegral{"planar_double_box", {2, 1, 1, 1, 1, 1, 1}}, "1"},
+       amflow::KiraInsertPrefactorEntry{
+           amflow::TargetIntegral{"planar_double_box", {1, 1, 1, 1, 1, 1, 1}}, "s"}}};
+}
+
 void KiraInsertPrefactorsCorpusDocsStayLockedToXintsExampleShapeTest() {
   const std::string job_options_summary = ReadFile(KiraInsertPrefactorsCorpusJobOptionsSummaryPath());
   const std::string lock_markdown = ReadFile(KiraInsertPrefactorsCorpusLockPath());
@@ -4631,8 +4666,11 @@ void KiraInsertPrefactorsCorpusDocsStayLockedToXintsExampleShapeTest() {
                  "<integral>*1/(<denominator>)",
                  "locked Kira example surface note should preserve the xints line shape");
   ExpectContains(lock_markdown,
-                 "no Kira `insert_prefactors` wiring is claimed here",
-                 "locked Kira example surface note should retain the explicit non-claim");
+                 "Narrow opt-in `KiraBackend` wiring now consumes this exact surface",
+                 "locked Kira example surface note should describe the narrow reviewed wiring");
+  ExpectContains(lock_markdown,
+                 "still distinct from `BuildOverallAmflowPrefactor(...)`",
+                 "locked Kira example surface note should preserve the anti-coupling claim");
 
   ExpectContains(globalpreferred,
                  "Gamma[2 - 2*eps]",
@@ -4717,7 +4755,255 @@ void KiraPreparationStillDoesNotClaimInsertPrefactorsWiringTest() {
   const amflow::KiraJobFiles files = backend.EmitJobFiles(spec, MakeKiraReductionOptions());
 
   Expect(files.jobs_yaml.find("insert_prefactors") == std::string::npos,
-         "sample Kira job emission should not claim insert_prefactors wiring");
+         "sample Kira job emission should keep insert_prefactors default-disabled");
+  Expect(files.xints.empty(),
+         "sample Kira job emission should not synthesize an xints companion file by default");
+}
+
+void KiraInsertPrefactorsOptInEmissionUsesOnlyLockedKiraSurfaceTest() {
+  const amflow::KiraInsertPrefactorsSurface surface = LoadLockedKiraInsertPrefactorsSurface();
+  const amflow::ProblemSpec spec = MakeLockedKiraInsertPrefactorsReferenceSpec();
+  const amflow::ReductionOptions options = MakeKiraInsertPrefactorsReductionOptions(surface);
+
+  amflow::KiraBackend backend;
+  const amflow::KiraJobFiles files = backend.EmitJobFiles(spec, options);
+
+  Expect(files.jobs_yaml.find("      insert_prefactors: [xints]\n") != std::string::npos,
+         "opt-in Kira insert_prefactors emission should add the reviewed jobs.yaml xints hook");
+  Expect(files.xints == amflow::SerializeKiraInsertPrefactorsSurface(surface) &&
+             files.xints == ReadFile(KiraInsertPrefactorsCorpusXintsPath()),
+         "opt-in Kira insert_prefactors emission should equal the serializer output with stable "
+         "entry order");
+  Expect(files.xints.find("*1/(") != std::string::npos && files.xints.find("*1\n") == std::string::npos,
+         "opt-in Kira insert_prefactors emission should keep the exact xints line shape");
+  Expect(files.xints.find("pi^(D/2)") == std::string::npos &&
+             files.xints.find("delta_+") == std::string::npos &&
+             files.xints.find("Gamma[") == std::string::npos &&
+             files.xints.find("Identity") == std::string::npos &&
+             files.xints.find("globalpreferred") == std::string::npos,
+         "opt-in Kira insert_prefactors emission should stay decoupled from the rejected "
+         "AMFlow-prefactor and globalpreferred payloads");
+}
+
+void KiraInsertPrefactorsOptInPrepareEmitsCompanionFileOnlyOnRunFireflyPathsTest() {
+  const amflow::KiraInsertPrefactorsSurface surface = LoadLockedKiraInsertPrefactorsSurface();
+  const amflow::ProblemSpec spec = MakeLockedKiraInsertPrefactorsReferenceSpec();
+  const amflow::ArtifactLayout firefly_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-insert-prefactors-firefly"));
+  const amflow::ArtifactLayout mixed_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-insert-prefactors-mixed"));
+  const amflow::ArtifactLayout no_factor_scan_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-insert-prefactors-no-factor-scan"));
+  const amflow::ArtifactLayout kira_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-insert-prefactors-kira-mode"));
+
+  amflow::ReductionOptions firefly_options = MakeKiraInsertPrefactorsReductionOptions(surface);
+  amflow::ReductionOptions mixed_options = firefly_options;
+  mixed_options.reduction_mode = amflow::ReductionMode::Mixed;
+  amflow::ReductionOptions no_factor_scan_options = firefly_options;
+  no_factor_scan_options.reduction_mode = amflow::ReductionMode::NoFactorScan;
+  amflow::ReductionOptions kira_options = firefly_options;
+  kira_options.reduction_mode = amflow::ReductionMode::Kira;
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation firefly_preparation =
+      backend.Prepare(spec, firefly_options, firefly_layout);
+  const amflow::BackendPreparation mixed_preparation =
+      backend.Prepare(spec, mixed_options, mixed_layout);
+  const amflow::BackendPreparation no_factor_scan_preparation =
+      backend.Prepare(spec, no_factor_scan_options, no_factor_scan_layout);
+  const amflow::BackendPreparation kira_preparation =
+      backend.Prepare(spec, kira_options, kira_layout);
+
+  Expect(firefly_preparation.validation_messages.empty(),
+         "run_firefly-mode insert_prefactors preparation should validate on the reviewed happy "
+         "path");
+  Expect(firefly_preparation.generated_files.count("xints") == 1 &&
+             firefly_preparation.generated_files.at("xints") ==
+                 amflow::SerializeKiraInsertPrefactorsSurface(surface) &&
+             firefly_preparation.generated_files.at("jobs.yaml").find(
+                 "      insert_prefactors: [xints]\n") != std::string::npos,
+         "run_firefly-mode insert_prefactors preparation should emit both the companion file "
+         "and matching jobs.yaml hook");
+  Expect(mixed_preparation.validation_messages.empty() &&
+             mixed_preparation.generated_files.count("xints") == 1 &&
+             mixed_preparation.generated_files.at("xints") ==
+                 amflow::SerializeKiraInsertPrefactorsSurface(surface) &&
+             mixed_preparation.generated_files.at("jobs.yaml").find(
+                 "      insert_prefactors: [xints]\n") != std::string::npos,
+         "mixed-mode insert_prefactors preparation should emit both the companion file and "
+         "matching jobs.yaml hook");
+  Expect(no_factor_scan_preparation.validation_messages.empty() &&
+             no_factor_scan_preparation.generated_files.count("xints") == 1 &&
+             no_factor_scan_preparation.generated_files.at("xints") ==
+                 amflow::SerializeKiraInsertPrefactorsSurface(surface) &&
+             no_factor_scan_preparation.generated_files.at("jobs.yaml").find(
+                 "      insert_prefactors: [xints]\n") != std::string::npos,
+         "no-factor-scan insert_prefactors preparation should emit both the companion file and "
+         "matching jobs.yaml hook");
+  Expect(ContainsSubstring(kira_preparation.validation_messages, "run_firefly") &&
+             kira_preparation.generated_files.count("xints") == 0 &&
+             kira_preparation.generated_files.at("jobs.yaml").find("insert_prefactors") ==
+                 std::string::npos,
+         "non-run_firefly Kira preparation should reject insert_prefactors deterministically "
+         "and keep jobs.yaml free of dangling references");
+}
+
+void KiraInsertPrefactorsRejectsUnsupportedConfigurationsTest() {
+  const amflow::KiraInsertPrefactorsSurface surface = LoadLockedKiraInsertPrefactorsSurface();
+  const amflow::ProblemSpec spec = MakeLockedKiraInsertPrefactorsReferenceSpec();
+  amflow::KiraBackend backend;
+
+  amflow::ReductionOptions missing_surface_options = MakeKiraReductionOptions();
+  missing_surface_options.reduction_mode = amflow::ReductionMode::FireFly;
+  missing_surface_options.kira_insert_prefactors = true;
+  const amflow::BackendPreparation missing_surface_preparation =
+      backend.Prepare(spec,
+                      missing_surface_options,
+                      amflow::EnsureArtifactLayout(
+                          FreshTempDir("amflow-bootstrap-kira-insert-prefactors-missing-surface")));
+  Expect(ContainsSubstring(missing_surface_preparation.validation_messages,
+                           "kira_insert_prefactors_surface") &&
+             missing_surface_preparation.generated_files.count("xints") == 0,
+         "insert_prefactors should reject unresolved surfaces deterministically");
+
+  amflow::ReductionOptions family_mismatch_options = MakeKiraInsertPrefactorsReductionOptions(surface);
+  const amflow::BackendPreparation family_mismatch_preparation =
+      backend.Prepare(amflow::MakeSampleProblemSpec(),
+                      family_mismatch_options,
+                      amflow::EnsureArtifactLayout(
+                          FreshTempDir("amflow-bootstrap-kira-insert-prefactors-family-mismatch")));
+  Expect(ContainsSubstring(family_mismatch_preparation.validation_messages, "family does not match") &&
+             family_mismatch_preparation.generated_files.count("xints") == 0,
+         "insert_prefactors should reject surface/spec family mismatches deterministically");
+
+  amflow::KiraInsertPrefactorsSurface arity_mismatch_surface = surface;
+  arity_mismatch_surface.entries.back().integral.indices.pop_back();
+  const amflow::BackendPreparation arity_mismatch_preparation =
+      backend.Prepare(spec,
+                      MakeKiraInsertPrefactorsReductionOptions(arity_mismatch_surface),
+                      amflow::EnsureArtifactLayout(
+                          FreshTempDir("amflow-bootstrap-kira-insert-prefactors-arity-mismatch")));
+  Expect(ContainsSubstring(arity_mismatch_preparation.validation_messages,
+                           "index count must match family.propagators size") &&
+             arity_mismatch_preparation.generated_files.count("xints") == 0,
+         "insert_prefactors should reject surface/spec arity mismatches deterministically");
+
+  amflow::ProblemSpec cut_spec = spec;
+  cut_spec.family.propagators.front().kind = amflow::PropagatorKind::Cut;
+  const amflow::BackendPreparation cut_preparation =
+      backend.Prepare(cut_spec,
+                      MakeKiraInsertPrefactorsReductionOptions(surface),
+                      amflow::EnsureArtifactLayout(
+                          FreshTempDir("amflow-bootstrap-kira-insert-prefactors-cut")));
+  Expect(ContainsSubstring(cut_preparation.validation_messages, "cut propagators") &&
+             cut_preparation.generated_files.count("xints") == 0,
+         "insert_prefactors should reject cut-propagator families deterministically");
+
+  amflow::KiraInsertPrefactorsSurface target_mismatch_surface = surface;
+  target_mismatch_surface.entries.front().integral = target_mismatch_surface.entries.back().integral;
+  const amflow::BackendPreparation target_mismatch_preparation =
+      backend.Prepare(spec,
+                      MakeKiraInsertPrefactorsReductionOptions(target_mismatch_surface),
+                      amflow::EnsureArtifactLayout(
+                          FreshTempDir("amflow-bootstrap-kira-insert-prefactors-target-mismatch")));
+  Expect(ContainsSubstring(target_mismatch_preparation.validation_messages,
+                           "first entry must match the selected target") &&
+             target_mismatch_preparation.generated_files.count("xints") == 0,
+         "insert_prefactors should reject target-anchor mismatches deterministically");
+}
+
+void KiraInsertPrefactorsPublicEmissionRejectsInvalidExplicitRequestsTest() {
+  const amflow::KiraInsertPrefactorsSurface surface = LoadLockedKiraInsertPrefactorsSurface();
+  const amflow::ProblemSpec spec = MakeLockedKiraInsertPrefactorsReferenceSpec();
+  amflow::KiraBackend backend;
+
+  amflow::ReductionOptions missing_surface_options = MakeKiraReductionOptions();
+  missing_surface_options.reduction_mode = amflow::ReductionMode::FireFly;
+  missing_surface_options.kira_insert_prefactors = true;
+  ExpectRuntimeError(
+      [&backend, &spec, &missing_surface_options]() {
+        static_cast<void>(backend.EmitJobFiles(spec, missing_surface_options));
+      },
+      "kira_insert_prefactors_surface",
+      "public Kira job emission should reject unresolved explicit insert_prefactors requests");
+
+  amflow::ReductionOptions kira_mode_options = MakeKiraInsertPrefactorsReductionOptions(surface);
+  kira_mode_options.reduction_mode = amflow::ReductionMode::Kira;
+  ExpectRuntimeError(
+      [&backend, &spec, &kira_mode_options]() {
+        static_cast<void>(backend.EmitJobFiles(spec, kira_mode_options));
+      },
+      "run_firefly",
+      "public Kira job emission should reject non-run_firefly explicit insert_prefactors "
+      "requests");
+
+  ExpectRuntimeError(
+      [&backend, &spec, &surface]() {
+        const std::vector<amflow::TargetIntegral> multi_targets = {
+            surface.entries.front().integral,
+            surface.entries.back().integral,
+        };
+        static_cast<void>(backend.EmitJobFilesForTargets(
+            spec,
+            MakeKiraInsertPrefactorsReductionOptions(surface),
+            multi_targets));
+      },
+      "exactly one selected target integral",
+      "public explicit-target Kira job emission should reject multi-target insert_prefactors "
+      "requests instead of silently suppressing xints");
+}
+
+void PrepareEtaGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-insert-prefactors-multi-target"));
+  amflow::ReductionOptions options =
+      MakeKiraInsertPrefactorsReductionOptions(MakePlanarDoubleBoxInsertPrefactorsSurface());
+
+  const amflow::EtaGeneratedReductionPreparation preparation =
+      amflow::PrepareEtaGeneratedReduction(amflow::MakeSampleProblemSpec(),
+                                           master_basis,
+                                           MakeEtaGeneratedHappyDecision(),
+                                           options,
+                                           layout);
+
+  Expect(ContainsSubstring(preparation.backend_preparation.validation_messages,
+                           "exactly one selected target integral") &&
+             preparation.backend_preparation.generated_files.count("xints") == 0 &&
+             preparation.backend_preparation.generated_files.at("jobs.yaml").find("insert_prefactors") ==
+                 std::string::npos,
+         "eta-generated preparation should keep insert_prefactors disabled on unsupported "
+         "multi-target generated batches");
+}
+
+void PrepareInvariantGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-generated-insert-prefactors-multi-target"));
+  amflow::ReductionOptions options =
+      MakeKiraInsertPrefactorsReductionOptions(MakePlanarDoubleBoxInsertPrefactorsSurface());
+
+  const amflow::InvariantGeneratedReductionPreparation preparation =
+      amflow::PrepareInvariantGeneratedReduction(amflow::MakeSampleProblemSpec(),
+                                                 master_basis,
+                                                 MakeInvariantPreparationHappySeed(),
+                                                 options,
+                                                 layout);
+
+  Expect(ContainsSubstring(preparation.backend_preparation.validation_messages,
+                           "exactly one selected target integral") &&
+             preparation.backend_preparation.generated_files.count("xints") == 0 &&
+             preparation.backend_preparation.generated_files.at("jobs.yaml").find("insert_prefactors") ==
+                 std::string::npos,
+         "invariant-generated preparation should keep insert_prefactors disabled on unsupported "
+         "multi-target generated batches");
 }
 
 void KiraPreparationFromFileSpecTest() {
@@ -5336,6 +5622,32 @@ void KiraExecutionRejectsMissingPreparedFilesTest() {
          "stderr log should capture the missing prepared-file reason");
 }
 
+void KiraExecutionRejectsMissingInsertPrefactorsCompanionFileTest() {
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-kira-missing-xints-file"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, "#!/bin/sh\nexit 0\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ProblemSpec spec = MakeLockedKiraInsertPrefactorsReferenceSpec();
+  const amflow::ReductionOptions options =
+      MakeKiraInsertPrefactorsReductionOptions(LoadLockedKiraInsertPrefactorsSurface());
+
+  amflow::KiraBackend backend;
+  amflow::BackendPreparation preparation = backend.Prepare(spec, options, layout);
+  preparation.generated_files.erase("xints");
+  const amflow::CommandExecutionResult result =
+      backend.ExecutePrepared(preparation, layout, kira_path, fermat_path);
+
+  Expect(result.status == amflow::CommandExecutionStatus::InvalidConfiguration,
+         "missing insert_prefactors companion files should be rejected before Kira execution");
+  Expect(result.error_message.find("prepared Kira file was not generated: xints") !=
+             std::string::npos,
+         "missing insert_prefactors companion-file rejection should identify xints");
+}
+
 void KiraExecutionExecFailureIsFailedToStartTest() {
   const auto layout =
       amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-kira-exec-failure"));
@@ -5425,6 +5737,46 @@ void KiraParsedResultsHappyPathTest() {
          "identity rules should be appended after explicit rules");
   Expect(result.rules[2].terms.size() == 1 && result.rules[2].terms[0].coefficient == "1",
          "identity rules should keep unit coefficients");
+}
+
+void KiraParsedResultsNormalizePrefactorWrappersTest() {
+  const std::filesystem::path root =
+      FreshTempDir("amflow-bootstrap-kira-prefactor-wrapper-normalization");
+  const std::filesystem::path results_root = root / "results" / "planar_double_box";
+  std::filesystem::create_directories(results_root);
+  OverwriteTextFile(results_root / "masters",
+                    "planar_double_box[1,1,1,1,1,1,0] 0\n"
+                    "planar_double_box[1,1,1,1,1,1,1] 0\n");
+  OverwriteTextFile(results_root / "kira_target.m",
+                    "{\n"
+                    "  planar_double_box[2,1,1,1,1,1,1] -> "
+                    "prefactor[s+t]*planar_double_box[1,1,1,1,1,1,1] + "
+                    "prefactor((s-t))*planar_double_box[1,1,1,1,1,1,0]\n"
+                    "}\n");
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(root, "planar_double_box");
+  const auto& rule =
+      FindRuleByTarget(result.rules, "planar_double_box[2,1,1,1,1,1,1]");
+  const std::string first_coefficient =
+      FindTermByMaster(rule, "planar_double_box[1,1,1,1,1,1,1]").coefficient;
+  const std::string second_coefficient =
+      FindTermByMaster(rule, "planar_double_box[1,1,1,1,1,1,0]").coefficient;
+
+  Expect(result.status == amflow::ParsedReductionStatus::ParsedRules,
+         "prefactor-wrapper fixture should still parse explicit Kira rules");
+  Expect(first_coefficient == "s+t" && second_coefficient == "s-t",
+         "prefactor wrappers should normalize away while preserving the inner coefficient "
+         "expressions");
+  Expect(first_coefficient.find("prefactor") == std::string::npos &&
+             second_coefficient.find("prefactor") == std::string::npos,
+         "parsed Kira coefficients should not retain prefactor wrappers");
+  Expect(amflow::EvaluateCoefficientExpression(first_coefficient, {{"s", "3"}, {"t", "5"}}) ==
+             amflow::ExactRational{"8", "1"} &&
+             amflow::EvaluateCoefficientExpression(second_coefficient, {{"s", "11"}, {"t", "4"}}) ==
+                 amflow::ExactRational{"7", "1"},
+         "normalized prefactor-wrapper coefficients should remain evaluator-safe");
 }
 
 void KiraParsedResultsResolveGeneratedConfigReducerRootTest() {
@@ -19645,6 +19997,65 @@ void K0BootstrapManifestSerializationTest() {
          "option");
 }
 
+void FileBackedKiraManifestSerializesInsertPrefactorsReductionOptionsTest() {
+  const std::filesystem::path spec_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
+  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(spec_path);
+  amflow::ReductionOptions options =
+      MakeKiraInsertPrefactorsReductionOptions(LoadLockedKiraInsertPrefactorsSurface());
+
+  const amflow::ArtifactManifest manifest = amflow::MakeFileBackedKiraRunManifest(
+      {spec_path,
+       "repo-local file-backed ProblemSpec",
+       amflow::SerializeProblemSpecYaml(spec),
+       spec.family.name,
+       spec.targets.size(),
+       std::filesystem::path("/tmp/manifest-root"),
+       std::filesystem::path("/tmp/manifest-root/generated-config"),
+       std::filesystem::path("/tmp/fake-kira"),
+       std::filesystem::path("/tmp/fake-fermat"),
+       "fake kira command",
+       "completed",
+       0,
+       std::filesystem::path(AMFLOW_SOURCE_DIR),
+       "ab4a311",
+       "clean",
+       1,
+       {{"IBPReducer", options.ibp_reducer},
+        {"BlackBoxRank", std::to_string(options.black_box_rank)},
+        {"BlackBoxDot", std::to_string(options.black_box_dot)},
+        {"ComplexMode", options.complex_mode ? "true" : "false"},
+        {"DeleteBlackBoxDirectory", options.delete_black_box_directory ? "true" : "false"},
+        {"IntegralOrder", std::to_string(options.integral_order)},
+        {"ReductionMode", amflow::ToString(options.reduction_mode)},
+        {"KiraInsertPrefactors", options.kira_insert_prefactors ? "true" : "false"},
+        {"KiraInsertPrefactorsSurface",
+         amflow::SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface)},
+        {"PermutationOption", std::to_string(*options.permutation_option)}},
+       {{"ReductionMode", amflow::ToString(options.reduction_mode)},
+        {"KiraInsertPrefactors", options.kira_insert_prefactors ? "true" : "false"},
+        {"KiraInsertPrefactorsSurface",
+         amflow::SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface)},
+        {"PermutationOption", std::to_string(*options.permutation_option)}},
+       std::filesystem::path("/tmp/stdout.log"),
+       std::filesystem::path("/tmp/stderr.log")});
+  const std::string yaml = amflow::SerializeArtifactManifestYaml(manifest);
+
+  Expect(yaml.find("effective_reduction_options:\n") != std::string::npos &&
+             yaml.find("  KiraInsertPrefactors: \"true\"\n") != std::string::npos,
+         "file-backed Kira manifest YAML should serialize explicit insert_prefactors enablement "
+         "in effective_reduction_options");
+  Expect(yaml.find("  KiraInsertPrefactorsSurface: \"doublebox[1,1,1,1,1,1,1,1,-2,0,0]*1/(1)\\n") !=
+             std::string::npos,
+         "file-backed Kira manifest YAML should serialize the Kira insert_prefactors surface in "
+         "effective_reduction_options");
+  Expect(yaml.find("non_default_options:\n") != std::string::npos &&
+             yaml.find("  KiraInsertPrefactors: \"true\"\n") != std::string::npos &&
+             yaml.find("  ReductionMode: \"FireFly\"\n") != std::string::npos,
+         "file-backed Kira manifest YAML should preserve non-default insert_prefactors reducer "
+         "knobs");
+}
+
 void RunKiraFromFileRefreshesManifestFromParsedReducerArtifactsTest() {
   const std::filesystem::path spec_path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
@@ -19754,6 +20165,13 @@ void RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest() {
              std::string::npos,
          "nonzero file-backed CLI run should still record the parser-contract default "
          "results-family root");
+  Expect(yaml.find("effective_reduction_options:\n") != std::string::npos &&
+             yaml.find("  KiraInsertPrefactors: \"false\"\n") != std::string::npos,
+         "nonzero file-backed CLI run should record the default Kira insert_prefactors option "
+         "truthfully in effective_reduction_options");
+  Expect(yaml.find("  KiraInsertPrefactorsSurface: ") == std::string::npos,
+         "nonzero file-backed CLI run should not invent an insert_prefactors surface in the "
+         "default manifest options");
   Expect(yaml.find("masters_path: ") == std::string::npos &&
              yaml.find("rule_path: ") == std::string::npos,
          "nonzero file-backed CLI run should not invent result-file paths when no outputs exist");
@@ -19836,6 +20254,23 @@ void OptionDefaultsTest() {
          "AMF defaults should expose WorkingPre");
   Expect(reduction_yaml.find("ReductionMode: \"Kira\"") != std::string::npos,
          "reduction defaults should expose Kira mode");
+  Expect(reduction_yaml.find("KiraInsertPrefactors: false") != std::string::npos,
+         "reduction defaults should keep Kira insert_prefactors default-disabled");
+  Expect(reduction_yaml.find("KiraInsertPrefactorsSurface: |-") == std::string::npos,
+         "reduction defaults should not serialize an insert_prefactors surface by default");
+}
+
+void ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest() {
+  amflow::ReductionOptions options =
+      MakeKiraInsertPrefactorsReductionOptions(LoadLockedKiraInsertPrefactorsSurface());
+  const std::string yaml = amflow::SerializeReductionOptionsYaml(options);
+
+  Expect(yaml.find("KiraInsertPrefactors: true\n") != std::string::npos,
+         "reduction option serialization should expose explicit insert_prefactors enablement");
+  Expect(yaml.find("KiraInsertPrefactorsSurface: |-\n") != std::string::npos &&
+             yaml.find("    doublebox[1,1,1,1,1,1,1,1,-2,0,0]*1/(1)\n") != std::string::npos,
+         "reduction option serialization should include the exact serialized Kira surface for "
+         "fingerprints and manifests");
 }
 
 }  // namespace
@@ -19934,6 +20369,10 @@ int main() {
     KiraInsertPrefactorsSerializerMatchesLockedXintsSampleTest();
     KiraInsertPrefactorsValidationRejectsBadSurfacesTest();
     KiraPreparationStillDoesNotClaimInsertPrefactorsWiringTest();
+    KiraInsertPrefactorsOptInEmissionUsesOnlyLockedKiraSurfaceTest();
+    KiraInsertPrefactorsOptInPrepareEmitsCompanionFileOnlyOnRunFireflyPathsTest();
+    KiraInsertPrefactorsRejectsUnsupportedConfigurationsTest();
+    KiraInsertPrefactorsPublicEmissionRejectsInvalidExplicitRequestsTest();
     KiraPreparationFromFileSpecTest();
     K0SmokeKiraPreparationFromFileSpecTest();
     KiraPrepareForTargetsHappyPathTest();
@@ -19954,8 +20393,10 @@ int main() {
     KiraExecutionRejectsInvalidConfigurationTest();
     KiraExecutionRejectsMissingExecutableWithLogsTest();
     KiraExecutionRejectsMissingPreparedFilesTest();
+    KiraExecutionRejectsMissingInsertPrefactorsCompanionFileTest();
     KiraExecutionExecFailureIsFailedToStartTest();
     KiraParsedResultsHappyPathTest();
+    KiraParsedResultsNormalizePrefactorWrappersTest();
     KiraParsedResultsResolveGeneratedConfigReducerRootTest();
     KiraParsedResultsPreferCompleteGeneratedConfigOverCompleteDirectTest();
     KiraParsedResultsCompleteDirectBeatsGeneratedConfigMastersOnlyTest();
@@ -20244,6 +20685,7 @@ int main() {
     GeneratedDerivativeAssemblyRejectsRowCountMismatchTest();
     GeneratedDerivativeAssemblyRejectsDuplicateVariableNamesTest();
     PrepareEtaGeneratedReductionHappyPathTest();
+    PrepareEtaGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest();
     PrepareEtaGeneratedReductionRejectsEmptyGeneratedTargetsTest();
     PrepareEtaGeneratedReductionFakeExecutionSmokeTest();
     PrepareInvariantGeneratedReductionAutomaticHappyPathTest();
@@ -20258,6 +20700,7 @@ int main() {
     PrepareInvariantGeneratedReductionAutomaticRejectsMasterBasisArityMismatchTest();
     PrepareInvariantGeneratedReductionAutomaticFakeExecutionSmokeTest();
     PrepareInvariantGeneratedReductionHappyPathTest();
+    PrepareInvariantGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest();
     PrepareInvariantGeneratedReductionRejectsEmptyGeneratedTargetsTest();
     PrepareInvariantGeneratedReductionRejectsSpecSeedFamilyMismatchTest();
     PrepareInvariantGeneratedReductionRejectsSpecSeedArityMismatchTest();
@@ -20394,11 +20837,13 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
     BootstrapBuiltinSampleManifestTest();
     K0BootstrapManifestSerializationTest();
+    FileBackedKiraManifestSerializesInsertPrefactorsReductionOptionsTest();
     RunKiraFromFileRefreshesManifestFromParsedReducerArtifactsTest();
     RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest();
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     OptionDefaultsTest();
+    ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();
     std::cout << "amflow bootstrap tests passed\n";
     return 0;
   } catch (const std::exception& error) {

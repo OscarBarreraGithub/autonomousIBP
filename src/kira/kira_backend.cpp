@@ -735,7 +735,61 @@ std::size_t FindTopLevelArrow(const std::string& rule_text, const std::string& c
   return arrow_index;
 }
 
+std::string ExpandPrefactorWrappers(const std::string& expression) {
+  std::string expanded;
+  expanded.reserve(expression.size());
+
+  for (std::size_t index = 0; index < expression.size();) {
+    bool has_prefactor_wrapper = false;
+    char opening_delimiter = '\0';
+    char closing_delimiter = '\0';
+    std::size_t payload_begin = index;
+
+    if ((index == 0 || !IsIdentifierContinuation(expression[index - 1])) &&
+        expression.compare(index, 10, "prefactor[") == 0) {
+      has_prefactor_wrapper = true;
+      opening_delimiter = '[';
+      closing_delimiter = ']';
+      payload_begin = index + 10;
+    } else if ((index == 0 || !IsIdentifierContinuation(expression[index - 1])) &&
+               expression.compare(index, 10, "prefactor(") == 0) {
+      has_prefactor_wrapper = true;
+      opening_delimiter = '(';
+      closing_delimiter = ')';
+      payload_begin = index + 10;
+    }
+
+    if (!has_prefactor_wrapper) {
+      expanded.push_back(expression[index]);
+      ++index;
+      continue;
+    }
+
+    std::size_t payload_end = payload_begin;
+    int delimiter_depth = 1;
+    while (payload_end < expression.size() && delimiter_depth > 0) {
+      if (expression[payload_end] == opening_delimiter) {
+        ++delimiter_depth;
+      } else if (expression[payload_end] == closing_delimiter) {
+        --delimiter_depth;
+      }
+      ++payload_end;
+    }
+    if (delimiter_depth != 0 || payload_end == payload_begin) {
+      throw std::runtime_error("unterminated prefactor wrapper in Kira reduction coefficient");
+    }
+
+    const std::string payload =
+        expression.substr(payload_begin, payload_end - payload_begin - 1);
+    expanded += "(" + ExpandPrefactorWrappers(payload) + ")";
+    index = payload_end;
+  }
+
+  return expanded;
+}
+
 std::string NormalizeCoefficient(std::string coefficient) {
+  coefficient = ExpandPrefactorWrappers(coefficient);
   coefficient = StripOuterParentheses(coefficient);
   coefficient = NormalizeExpression(coefficient);
   if (coefficient.empty() || coefficient == "+" || coefficient == "1" ||
@@ -1257,6 +1311,198 @@ std::vector<std::string> ValidateExplicitTargets(const ProblemSpec& spec,
   return messages;
 }
 
+bool ReductionModeEmitsRunFirefly(const ReductionMode mode) {
+  return mode == ReductionMode::FireFly || mode == ReductionMode::Mixed ||
+         mode == ReductionMode::NoFactorScan;
+}
+
+bool HasCutPropagators(const ProblemSpec& spec) {
+  return std::any_of(spec.family.propagators.begin(),
+                     spec.family.propagators.end(),
+                     [](const Propagator& propagator) {
+                       return propagator.kind == PropagatorKind::Cut;
+                     });
+}
+
+bool JobsYamlRequiresInsertPrefactors(const BackendPreparation& preparation) {
+  const auto jobs_it = preparation.generated_files.find("jobs.yaml");
+  return jobs_it != preparation.generated_files.end() &&
+         jobs_it->second.find("insert_prefactors: [xints]") != std::string::npos;
+}
+
+std::vector<std::string> ValidateInsertPrefactorsConfiguration(
+    const ProblemSpec& spec,
+    const ReductionOptions& options,
+    const std::vector<TargetIntegral>& targets) {
+  std::vector<std::string> messages;
+  if (!options.kira_insert_prefactors) {
+    return messages;
+  }
+
+  if (!ReductionModeEmitsRunFirefly(options.reduction_mode)) {
+    messages.emplace_back(
+        "Kira insert_prefactors requires a ReductionMode that emits run_firefly");
+  }
+  if (!options.kira_insert_prefactors_surface.has_value()) {
+    messages.emplace_back(
+        "Kira insert_prefactors requires ReductionOptions.kira_insert_prefactors_surface");
+    return messages;
+  }
+  if (HasCutPropagators(spec)) {
+    messages.emplace_back("Kira insert_prefactors does not support cut propagators");
+  }
+
+  const KiraInsertPrefactorsSurface& surface = *options.kira_insert_prefactors_surface;
+  const std::vector<std::string> surface_messages =
+      ValidateKiraInsertPrefactorsSurface(surface);
+  messages.insert(messages.end(), surface_messages.begin(), surface_messages.end());
+  if (surface.entries.empty()) {
+    return messages;
+  }
+
+  if (surface.entries.front().integral.family != spec.family.name) {
+    messages.emplace_back("Kira insert_prefactors family does not match family.name: " +
+                          surface.entries.front().integral.family);
+  }
+  for (const auto& entry : surface.entries) {
+    if (entry.integral.indices.size() != spec.family.propagators.size()) {
+      messages.emplace_back("Kira insert_prefactors index count must match family.propagators "
+                            "size: " +
+                            entry.integral.Label());
+    }
+  }
+  if (targets.size() != 1) {
+    messages.emplace_back(
+        "Kira insert_prefactors currently requires exactly one selected target integral");
+    return messages;
+  }
+  if (surface.entries.front().integral.Label() != targets.front().Label()) {
+    messages.emplace_back("Kira insert_prefactors first entry must match the selected target: " +
+                          targets.front().Label());
+  }
+
+  return messages;
+}
+
+void ThrowIfInvalidInsertPrefactorsRequest(const std::vector<std::string>& messages) {
+  if (messages.empty()) {
+    return;
+  }
+  throw std::runtime_error("invalid Kira insert_prefactors request: " + JoinMessages(messages));
+}
+
+KiraJobFiles BuildJobFilesForTargets(const ProblemSpec& spec,
+                                     const ReductionOptions& options,
+                                     const std::vector<TargetIntegral>& targets,
+                                     const bool reject_invalid_insert_prefactors) {
+  const std::vector<std::string> insert_prefactors_messages =
+      ValidateInsertPrefactorsConfiguration(spec, options, targets);
+  if (reject_invalid_insert_prefactors && options.kira_insert_prefactors) {
+    ThrowIfInvalidInsertPrefactorsRequest(insert_prefactors_messages);
+  }
+
+  KiraJobFiles files;
+  const bool emit_insert_prefactors =
+      options.kira_insert_prefactors && insert_prefactors_messages.empty();
+
+  std::ostringstream family_yaml;
+  family_yaml << "integralfamilies:\n";
+  family_yaml << "  - name: " << Quote(spec.family.name) << "\n";
+  family_yaml << "    loop_momenta: [" << Join(spec.family.loop_momenta) << "]\n";
+  family_yaml << "    top_level_sectors: [" << SectorList(spec.family.top_level_sectors) << "]\n";
+  if (options.permutation_option.has_value()) {
+    family_yaml << "    permutation_option: " << *options.permutation_option << "\n";
+  }
+  family_yaml << "    propagators:\n";
+  for (const auto& propagator : spec.family.propagators) {
+    family_yaml << "      - [" << Quote(propagator.expression) << ", "
+                << Quote(propagator.mass) << "]\n";
+  }
+  files.integralfamilies_yaml = family_yaml.str();
+
+  std::ostringstream kinematics_yaml;
+  kinematics_yaml << "kinematics:\n";
+  kinematics_yaml << "  incoming_momenta: [" << Join(spec.kinematics.incoming_momenta) << "]\n";
+  kinematics_yaml << "  outgoing_momenta: [" << Join(spec.kinematics.outgoing_momenta) << "]\n";
+  kinematics_yaml << "  momentum_conservation: ["
+                  << JoinRaw(MomentumConservationTerms(spec.kinematics.momentum_conservation,
+                                                      spec.kinematics.incoming_momenta,
+                                                      spec.kinematics.outgoing_momenta))
+                  << "]\n";
+  kinematics_yaml << "  kinematic_invariants:\n";
+  for (const auto& invariant : spec.kinematics.invariants) {
+    kinematics_yaml << "    - [" << Quote(invariant) << ", 2]\n";
+  }
+  if (!spec.kinematics.scalar_product_rules.empty()) {
+    kinematics_yaml << "  scalarproduct_rules:\n";
+    for (const auto& rule : spec.kinematics.scalar_product_rules) {
+      const auto [left_operand, right_operand] = ScalarProductRuleOperands(rule.left);
+      kinematics_yaml << "    - [[" << left_operand << ", " << right_operand << "], "
+                      << NormalizeKiraExpression(rule.right) << "]\n";
+    }
+  }
+  files.kinematics_yaml = kinematics_yaml.str();
+
+  std::ostringstream jobs_yaml;
+  const std::string target_file = "target";
+  jobs_yaml << "jobs:\n";
+  jobs_yaml << "  - reduce_sectors:\n";
+  jobs_yaml << "      reduce:\n";
+  for (const int sector : spec.family.top_level_sectors) {
+    jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
+             << sector << "], r: " << ReductionRankForSector(spec, options, targets, sector)
+             << ", s: " << options.black_box_rank << ", d: " << options.black_box_dot << "}\n";
+  }
+  jobs_yaml << "      select_integrals:\n";
+  jobs_yaml << "        select_mandatory_list:\n";
+  jobs_yaml << "          - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
+  jobs_yaml << "      preferred_masters: preferred\n";
+  if (emit_insert_prefactors) {
+    jobs_yaml << "      insert_prefactors: [xints]\n";
+  }
+  jobs_yaml << "      integral_ordering: " << options.integral_order << "\n";
+  switch (options.reduction_mode) {
+    case ReductionMode::Kira:
+      jobs_yaml << "      run_initiate: true\n";
+      jobs_yaml << "      run_triangular: true\n";
+      jobs_yaml << "      run_back_substitution: true\n";
+      break;
+    case ReductionMode::FireFly:
+      jobs_yaml << "      run_initiate: true\n";
+      jobs_yaml << "      run_firefly: true\n";
+      break;
+    case ReductionMode::Mixed:
+      jobs_yaml << "      run_initiate: true\n";
+      jobs_yaml << "      run_triangular: true\n";
+      jobs_yaml << "      run_firefly: back\n";
+      break;
+    case ReductionMode::NoFactorScan:
+      jobs_yaml << "      run_initiate: true\n";
+      jobs_yaml << "      run_triangular: true\n";
+      jobs_yaml << "      run_firefly: back\n";
+      jobs_yaml << "      factor_scan: false\n";
+      break;
+    case ReductionMode::Masters:
+      jobs_yaml << "      run_initiate: masters\n";
+      break;
+  }
+  if (options.reduction_mode != ReductionMode::Masters) {
+    jobs_yaml << "  - kira2math:\n";
+    jobs_yaml << "      target:\n";
+    jobs_yaml << "        - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
+  }
+  files.jobs_yaml = jobs_yaml.str();
+
+  files.preferred_masters = PreferredMasters(spec.family.preferred_masters);
+  files.target_list = TargetList(targets);
+  if (emit_insert_prefactors) {
+    files.xints =
+        SerializeKiraInsertPrefactorsSurface(*options.kira_insert_prefactors_surface);
+  }
+
+  return files;
+}
+
 bool IsExecutableFile(const std::filesystem::path& path) {
   return !path.empty() && std::filesystem::exists(path) && ::access(path.c_str(), X_OK) == 0;
 }
@@ -1455,6 +1701,18 @@ std::vector<std::string> ValidatePreparedFiles(const BackendPreparation& prepara
       messages.emplace_back("prepared Kira file is not a regular file: " + path.string());
     }
   }
+  if (JobsYamlRequiresInsertPrefactors(preparation) &&
+      preparation.generated_files.find("xints") == preparation.generated_files.end()) {
+    messages.emplace_back("prepared Kira file was not generated: xints");
+  }
+  if (preparation.generated_files.find("xints") != preparation.generated_files.end()) {
+    const std::filesystem::path path = layout.generated_config_dir / "xints";
+    if (!std::filesystem::exists(path)) {
+      messages.emplace_back("prepared Kira file is missing: " + path.string());
+    } else if (!std::filesystem::is_regular_file(path)) {
+      messages.emplace_back("prepared Kira file is not a regular file: " + path.string());
+    }
+  }
   return messages;
 }
 
@@ -1511,103 +1769,14 @@ std::vector<std::string> KiraBackend::Validate(const ProblemSpec& spec,
 
 KiraJobFiles KiraBackend::EmitJobFiles(const ProblemSpec& spec,
                                        const ReductionOptions& options) const {
-  return EmitJobFilesForTargets(spec, options, spec.targets);
+  return BuildJobFilesForTargets(spec, options, spec.targets, true);
 }
 
 KiraJobFiles KiraBackend::EmitJobFilesForTargets(
     const ProblemSpec& spec,
     const ReductionOptions& options,
     const std::vector<TargetIntegral>& targets) const {
-  KiraJobFiles files;
-
-  std::ostringstream family_yaml;
-  family_yaml << "integralfamilies:\n";
-  family_yaml << "  - name: " << Quote(spec.family.name) << "\n";
-  family_yaml << "    loop_momenta: [" << Join(spec.family.loop_momenta) << "]\n";
-  family_yaml << "    top_level_sectors: [" << SectorList(spec.family.top_level_sectors) << "]\n";
-  if (options.permutation_option.has_value()) {
-    family_yaml << "    permutation_option: " << *options.permutation_option << "\n";
-  }
-  family_yaml << "    propagators:\n";
-  for (const auto& propagator : spec.family.propagators) {
-    family_yaml << "      - [" << Quote(propagator.expression) << ", "
-                << Quote(propagator.mass) << "]\n";
-  }
-  files.integralfamilies_yaml = family_yaml.str();
-
-  std::ostringstream kinematics_yaml;
-  kinematics_yaml << "kinematics:\n";
-  kinematics_yaml << "  incoming_momenta: [" << Join(spec.kinematics.incoming_momenta) << "]\n";
-  kinematics_yaml << "  outgoing_momenta: [" << Join(spec.kinematics.outgoing_momenta) << "]\n";
-  kinematics_yaml << "  momentum_conservation: ["
-                  << JoinRaw(MomentumConservationTerms(spec.kinematics.momentum_conservation,
-                                                      spec.kinematics.incoming_momenta,
-                                                      spec.kinematics.outgoing_momenta))
-                  << "]\n";
-  kinematics_yaml << "  kinematic_invariants:\n";
-  for (const auto& invariant : spec.kinematics.invariants) {
-    kinematics_yaml << "    - [" << Quote(invariant) << ", 2]\n";
-  }
-  if (!spec.kinematics.scalar_product_rules.empty()) {
-    kinematics_yaml << "  scalarproduct_rules:\n";
-    for (const auto& rule : spec.kinematics.scalar_product_rules) {
-      const auto [left_operand, right_operand] = ScalarProductRuleOperands(rule.left);
-      kinematics_yaml << "    - [[" << left_operand << ", " << right_operand << "], "
-                      << NormalizeKiraExpression(rule.right) << "]\n";
-    }
-  }
-  files.kinematics_yaml = kinematics_yaml.str();
-
-  std::ostringstream jobs_yaml;
-  const std::string target_file = "target";
-  jobs_yaml << "jobs:\n";
-  jobs_yaml << "  - reduce_sectors:\n";
-  jobs_yaml << "      reduce:\n";
-  for (const int sector : spec.family.top_level_sectors) {
-    jobs_yaml << "        - {topologies: [" << Quote(spec.family.name) << "], sectors: ["
-             << sector << "], r: " << ReductionRankForSector(spec, options, targets, sector)
-             << ", s: " << options.black_box_rank << ", d: " << options.black_box_dot << "}\n";
-  }
-  jobs_yaml << "      select_integrals:\n";
-  jobs_yaml << "        select_mandatory_list:\n";
-  jobs_yaml << "          - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
-  jobs_yaml << "      preferred_masters: preferred\n";
-  jobs_yaml << "      integral_ordering: " << options.integral_order << "\n";
-  switch (options.reduction_mode) {
-    case ReductionMode::Kira:
-      jobs_yaml << "      run_initiate: true\n";
-      jobs_yaml << "      run_triangular: true\n";
-      jobs_yaml << "      run_back_substitution: true\n";
-      break;
-    case ReductionMode::FireFly:
-      jobs_yaml << "      run_initiate: true\n";
-      jobs_yaml << "      run_firefly: true\n";
-      break;
-    case ReductionMode::Mixed:
-      jobs_yaml << "      run_initiate: true\n";
-      jobs_yaml << "      run_triangular: true\n";
-      jobs_yaml << "      run_firefly: back\n";
-      break;
-    case ReductionMode::NoFactorScan:
-      jobs_yaml << "      run_initiate: true\n";
-      jobs_yaml << "      run_triangular: true\n";
-      jobs_yaml << "      run_firefly: back\n";
-      jobs_yaml << "      factor_scan: false\n";
-      break;
-    case ReductionMode::Masters:
-      jobs_yaml << "      run_initiate: masters\n";
-      break;
-  }
-  if (options.reduction_mode != ReductionMode::Masters) {
-    jobs_yaml << "  - kira2math:\n";
-    jobs_yaml << "      target:\n";
-    jobs_yaml << "        - [" << Quote(spec.family.name) << ", " << target_file << "]\n";
-  }
-  files.jobs_yaml = jobs_yaml.str();
-
-  files.preferred_masters = PreferredMasters(spec.family.preferred_masters);
-  files.target_list = TargetList(targets);
-  return files;
+  return BuildJobFilesForTargets(spec, options, targets, true);
 }
 
 BackendPreparation KiraBackend::Prepare(const ProblemSpec& spec,
@@ -1628,8 +1797,13 @@ BackendPreparation KiraBackend::PrepareForTargets(
   preparation.validation_messages.insert(preparation.validation_messages.end(),
                                          target_messages.begin(),
                                          target_messages.end());
+  const std::vector<std::string> insert_prefactors_messages =
+      ValidateInsertPrefactorsConfiguration(spec, options, targets);
+  preparation.validation_messages.insert(preparation.validation_messages.end(),
+                                         insert_prefactors_messages.begin(),
+                                         insert_prefactors_messages.end());
 
-  const KiraJobFiles files = EmitJobFilesForTargets(spec, options, targets);
+  const KiraJobFiles files = BuildJobFilesForTargets(spec, options, targets, false);
   preparation.generated_files = {
       {"config/integralfamilies.yaml", files.integralfamilies_yaml},
       {"config/kinematics.yaml", files.kinematics_yaml},
@@ -1637,6 +1811,9 @@ BackendPreparation KiraBackend::PrepareForTargets(
       {"preferred", files.preferred_masters},
       {"target", files.target_list},
   };
+  if (!files.xints.empty()) {
+    preparation.generated_files.emplace("xints", files.xints);
+  }
 
   std::ostringstream command;
   command << "FERMATPATH=<fermat-executable> kira "

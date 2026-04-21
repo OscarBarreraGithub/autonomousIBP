@@ -157,7 +157,7 @@ exit gate. The current live state must always be read from `docs/implementation-
   `+i0` loop prefactor and cut prefactor, the explicit `-i0` loop-prefactor note remains
   repo-snapshot backed only, and retained `AMFlow.m` is cited only for prescription polarity.
   `M3` still remains open because broader mandatory-family reduction-span parity beyond that
-  first landed packet and Kira `insert_prefactors` wiring are still missing
+  first landed packet is still missing; narrow opt-in Kira `insert_prefactors` wiring now exists
 - truthful `Milestone M4` closure was reconsidered after landed `Batch 58f`, and landed
   `Batch 58f` now records the remaining direct precision-monotonicity gap as closed on the
   current reviewed exact subset only
@@ -367,8 +367,9 @@ Current status:
   and direct `SolveDifferentialEquation(...)` remain unchanged
 - landed `Batch 58g` on actual `main` now widens Kira preparation `r` spans on exact-sector
   positive-support matches and records the first mandatory-family retained-span evidence packet;
-  broader mandatory-family reduction-span parity beyond that first landed packet and Kira
-  `insert_prefactors` wiring are still missing, so `Milestone M3` remains open
+  broader mandatory-family reduction-span parity beyond that first landed packet is still
+  missing, so `Milestone M3` remains open; Kira `insert_prefactors` now has a narrow opt-in
+  reviewed wiring
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on
   the current reviewed exact subset only: `tests/amflow_tests.cpp` already carries

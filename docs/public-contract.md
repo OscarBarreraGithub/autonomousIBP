@@ -124,9 +124,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   invoking the live solver. This does not widen runtime behavior, broader cache/restart
   semantics, or standalone `SolveDifferentialEquation(...)` / runtime-policy parity. The
   prefactor groundwork through landed `Batch 58d` remains history only; landed `Batch 58g` now
-  supplies the first mandatory-family retained-span evidence packet, but broader reduction-span
-  parity beyond that first packet and Kira `insert_prefactors` wiring still remain open before
-  `Milestone M3`
+  supplies the first mandatory-family retained-span evidence packet, and the repo now also has a
+  narrow opt-in Kira `insert_prefactors` wiring over the reviewed repo-local xints surface.
+  Broader reduction-span parity beyond that first packet still remains open before `Milestone M3`
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on the current reviewed exact subset only:
   `tests/amflow_tests.cpp` already includes
@@ -146,7 +146,6 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   only. It does not widen runtime
   behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`,
   which still depends on broader mandatory-family reduction-span parity beyond landed `Batch 58g`
-  plus Kira `insert_prefactors` wiring
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,
@@ -165,7 +164,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 - `ProblemSpec`: family definition, propagators, cuts, conservation rules, invariants, prescriptions, targets, numeric substitutions, dimensional settings
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
-- `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` prerequisite surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation stays local-only and rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and is not yet wired into `KiraBackend` emission or `jobs.yaml`
+- `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls
 - `ReductionOptions`: backend and reducer controls
 - `DESystem`: ordered masters, differentiation variables, exact coefficient matrices, singular-point annotations
@@ -184,7 +183,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
 - `SolvedPathCacheManifest`: deterministic solved-path cache metadata for the reviewed `UseCache` replay slice on the `AmfOptions` eta solve wrappers
-- `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary
+- `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary; parsed coefficient normalization strips Kira-local `prefactor[...]` and `prefactor(...)` wrappers before the expressions flow into the evaluator-facing reduction result
 - `ReducedDerivativeVariableInput` plus `AssembleReducedDESystem(...)`: the first typed ingestion path from already-reduced derivative targets into a `DESystem`
 - `GeneratedDerivativeVariable` plus `GenerateEtaDerivativeVariable(...)`: typed eta-only unreduced derivative rows built from the accepted auxiliary-family transform
 - `InvariantDerivativeSeed` plus `GenerateInvariantDerivativeVariable(...)`: typed invariant unreduced derivative rows generated from explicit precomputed denominator-derivative expressions

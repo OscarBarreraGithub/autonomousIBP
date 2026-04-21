@@ -196,6 +196,21 @@ std::optional<std::string> ResolveExactDimensionOverride(
   }
 }
 
+std::optional<std::string> NormalizePublicExactDimensionOverride(
+    const std::optional<std::string>& exact_dimension_override) {
+  if (!exact_dimension_override.has_value()) {
+    return std::nullopt;
+  }
+
+  try {
+    return EvaluateCoefficientExpression(*exact_dimension_override, NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::exception&) {
+    throw std::invalid_argument("eta-generated exact dimension override must evaluate exactly "
+                                "without additional symbols");
+  }
+}
+
 std::string SerializeWrapperExactDimensionOverrideState(
     const std::optional<std::string>& exact_dimension_override) {
   std::ostringstream out;
@@ -3753,6 +3768,39 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
+  return SolveEtaGeneratedSeries(spec,
+                                 master_basis,
+                                 decision,
+                                 options,
+                                 layout,
+                                 kira_executable,
+                                 fermat_executable,
+                                 solver,
+                                 start_location,
+                                 target_location,
+                                 precision_policy,
+                                 requested_digits,
+                                 eta_symbol,
+                                 std::nullopt);
+}
+
+SolverDiagnostics SolveEtaGeneratedSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
+  const std::optional<std::string> normalized_exact_dimension_override =
+      NormalizePublicExactDimensionOverride(exact_dimension_override);
   SolveRequest request;
   try {
     request.system = BuildEtaGeneratedDESystem(spec,
@@ -3762,13 +3810,15 @@ SolverDiagnostics SolveEtaGeneratedSeries(
                                                layout,
                                                kira_executable,
                                                fermat_executable,
-                                               eta_symbol);
+                                               eta_symbol,
+                                               normalized_exact_dimension_override);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;
+  request.amf_requested_dimension_expression = normalized_exact_dimension_override;
   request.requested_digits = requested_digits;
   return SolveWithPrecisionRetry(solver, std::move(request));
 }
@@ -3787,6 +3837,37 @@ SolverDiagnostics SolveEtaModePlannedSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
+  return SolveEtaModePlannedSeries(spec,
+                                   master_basis,
+                                   eta_mode,
+                                   options,
+                                   layout,
+                                   kira_executable,
+                                   fermat_executable,
+                                   solver,
+                                   start_location,
+                                   target_location,
+                                   precision_policy,
+                                   requested_digits,
+                                   eta_symbol,
+                                   std::nullopt);
+}
+
+SolverDiagnostics SolveEtaModePlannedSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaMode& eta_mode,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
   const EtaInsertionDecision decision = eta_mode.Plan(spec);
   return SolveEtaGeneratedSeries(spec,
                                  master_basis,
@@ -3800,7 +3881,8 @@ SolverDiagnostics SolveEtaModePlannedSeries(
                                  target_location,
                                  precision_policy,
                                  requested_digits,
-                                 eta_symbol);
+                                 eta_symbol,
+                                 exact_dimension_override);
 }
 
 SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(

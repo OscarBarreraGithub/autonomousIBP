@@ -15883,6 +15883,134 @@ void SolveEtaGeneratedSeriesHappyPathTest() {
          "eta solver handoff should return solver diagnostics verbatim");
 }
 
+void SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=2/9";
+  const std::string target_location = "eta=7/5";
+  const int requested_digits = 71;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-exact-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=4"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0078125;
+  solver.returned_diagnostics.overlap_mismatch = 0.015625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded eta exact-dimension solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits,
+                                      "eta",
+                                      std::optional<std::string>{"8/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta solver exact-dimension override coverage should not mutate the input problem spec");
+  Expect(solver.call_count() == 1,
+         "eta solver exact-dimension override coverage should call the supplied solver exactly "
+         "once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta solver exact-dimension override coverage should preserve the reviewed eta "
+         "DESystem unchanged");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "4",
+         "eta solver exact-dimension override coverage should canonicalize the exact dimension "
+         "expression onto SolveRequest.amf_requested_dimension_expression");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "eta solver exact-dimension override coverage should preserve the solver request "
+         "execution inputs");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta solver exact-dimension override coverage should return solver diagnostics "
+         "verbatim");
+}
+
+void SolveEtaGeneratedSeriesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(amflow::MakeSampleProblemSpec(),
+                                                          master_basis,
+                                                          MakeEtaGeneratedHappyDecision(),
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          kira_path,
+                                                          fermat_path,
+                                                          solver,
+                                                          "eta=0",
+                                                          "eta=1",
+                                                          MakeDistinctPrecisionPolicy(),
+                                                          55,
+                                                          "eta",
+                                                          std::optional<std::string>{
+                                                              "D0-2*eps"}));
+      },
+      "exact dimension override",
+      "eta solver exact-dimension override coverage should reject symbolic or non-exact "
+      "dimension expressions");
+  Expect(solver.call_count() == 0,
+         "eta solver exact-dimension override coverage should not call the solver when the "
+         "exact dimension override is invalid");
+}
+
 void SolveEtaGeneratedSeriesBootstrapSolverPassthroughTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -16240,6 +16368,142 @@ void SolveEtaModePlannedSeriesHappyPathTest() {
          "eta-mode-planned solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "eta-mode-planned solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=3/11";
+  const std::string target_location = "eta=17/19";
+  const int requested_digits = 79;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-exact-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=6"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedHappy");
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00390625;
+  solver.returned_diagnostics.overlap_mismatch = 0.0078125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded planned eta exact-dimension solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits,
+                                        "eta",
+                                        std::optional<std::string>{"6"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned exact-dimension override coverage should plan exactly once");
+  Expect(solver.call_count() == 1,
+         "eta-mode-planned exact-dimension override coverage should call the supplied solver "
+         "exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta-mode-planned exact-dimension override coverage should preserve the reviewed eta "
+         "DESystem unchanged");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "6",
+         "eta-mode-planned exact-dimension override coverage should canonicalize the exact "
+         "dimension expression onto SolveRequest.amf_requested_dimension_expression");
+  Expect(request.start_location == start_location &&
+             request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "eta-mode-planned exact-dimension override coverage should preserve the solver request "
+         "execution inputs");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta-mode-planned exact-dimension override coverage should return solver diagnostics "
+         "verbatim");
+}
+
+void SolveEtaModePlannedSeriesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedHappy");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout, &kira_path, &fermat_path, &eta_mode, &solver]() {
+        static_cast<void>(amflow::SolveEtaModePlannedSeries(amflow::MakeSampleProblemSpec(),
+                                                            master_basis,
+                                                            eta_mode,
+                                                            MakeKiraReductionOptions(),
+                                                            layout,
+                                                            kira_path,
+                                                            fermat_path,
+                                                            solver,
+                                                            "eta=0",
+                                                            "eta=1",
+                                                            MakeDistinctPrecisionPolicy(),
+                                                            55,
+                                                            "eta",
+                                                            std::optional<std::string>{
+                                                                "D0-2*eps"}));
+      },
+      "exact dimension override",
+      "eta-mode-planned exact-dimension override coverage should reject symbolic or non-exact "
+      "dimension expressions");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned exact-dimension override coverage should still plan before the "
+         "downstream exact-dimension validation fails");
+  Expect(solver.call_count() == 0,
+         "eta-mode-planned exact-dimension override coverage should not call the solver when "
+         "the exact dimension override is invalid");
 }
 
 void SolveEtaModePlannedSeriesBootstrapSolverPassthroughTest() {
@@ -23362,6 +23626,8 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
+    SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
+    SolveEtaGeneratedSeriesRejectsNonExactDimensionOverrideTest();
     SolveEtaGeneratedSeriesBootstrapSolverPassthroughTest();
     SolveEtaGeneratedSeriesExecutionFailureTest();
     SolveEtaGeneratedSeriesPropagatesMasterBasisFamilyMismatchTest();
@@ -23369,6 +23635,8 @@ int main() {
     SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest();
     SolveEtaGeneratedSeriesRejectsEmptyGeneratedTargetsTest();
     SolveEtaModePlannedSeriesHappyPathTest();
+    SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest();
+    SolveEtaModePlannedSeriesRejectsNonExactDimensionOverrideTest();
     SolveEtaModePlannedSeriesBootstrapSolverPassthroughTest();
     SolveEtaModePlannedSeriesPlanningFailureTest();
     SolveEtaModePlannedSeriesExecutionFailureTest();

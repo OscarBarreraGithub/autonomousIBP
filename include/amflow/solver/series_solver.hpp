@@ -204,6 +204,22 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     int requested_digits,
     const std::string& eta_symbol = "eta");
 
+SolverDiagnostics SolveEtaGeneratedSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override);
+
 SolverDiagnostics SolveEtaModePlannedSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -218,6 +234,22 @@ SolverDiagnostics SolveEtaModePlannedSeries(
     const PrecisionPolicy& precision_policy,
     int requested_digits,
     const std::string& eta_symbol = "eta");
+
+SolverDiagnostics SolveEtaModePlannedSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaMode& eta_mode,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override);
 
 SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
     const ProblemSpec& spec,

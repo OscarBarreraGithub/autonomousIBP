@@ -169,7 +169,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a` plus `Batch 59b` plus `Batch 60a` through `Batch 60d` are still
+- current worktree `Batch 59a` plus `Batch 59b` plus `Batch 60a` through `Batch 60e` are still
   narrow: the two
   `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
   plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
@@ -188,7 +188,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   take `(eta_symbol, exact_dimension_override)` and prepend the same live `-sd=<dimension>`
   argument only when that explicit override evaluates exactly without additional symbols; symbolic
   or non-exact public overrides fail explicitly, and the existing public overloads without that
-  extra argument stay unchanged. This still falls well short of full
+  extra argument stay unchanged. The direct public eta-generated solver handoffs now also expose
+  matching exact-only overloads on `SolveEtaGeneratedSeries(...)` and
+  `SolveEtaModePlannedSeries(...)`: those overloads pass the same live `-sd=<dimension>` exact
+  override into eta-generated DE construction and copy the canonical exact value onto
+  `SolveRequest.amf_requested_dimension_expression` before solver execution, while the retained
+  overloads without that extra argument stay unchanged. This still falls well short of full
   `Batch 59` / `Batch 60`: direct public generated-`DESystem` construction, broader Kira
   preparation artifacts, wrapper-owned symbolic `D0` execution parity, and broader arbitrary-`D0`
   / fixed-`eps` runtime behavior remain deferred
@@ -234,8 +239,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `BuildInvariantGeneratedDESystemList(...)`: the first ordered multi-invariant `DESystem` consumer that iterates the reviewed one-invariant automatic invariant-generated execution wrapper without changing solver behavior
 - `SolveInvariantGeneratedSeries(...)`: the first library-only one-invariant solver handoff from the reviewed automatic invariant-generated `DESystem` consumer into an injected `SeriesSolver`
 - `SolveInvariantGeneratedSeriesList(...)`: the first ordered multi-invariant solver handoff that iterates the reviewed one-invariant automatic invariant-generated solver wrapper without changing solver policy
-- `SolveEtaGeneratedSeries(...)`: the first library-only eta-generated solver handoff from the reviewed eta-generated `DESystem` consumer into an injected `SeriesSolver`
-- `SolveEtaModePlannedSeries(...)`: the first library-only eta-mode-planned solver handoff that composes `EtaMode::Plan(...)` with the reviewed eta-generated solver wrapper
+- `SolveEtaGeneratedSeries(...)`: the first library-only eta-generated solver handoff from the reviewed eta-generated `DESystem` consumer into an injected `SeriesSolver`, with a matching narrow exact-only public dimension-override overload
+- `SolveEtaModePlannedSeries(...)`: the first library-only eta-mode-planned solver handoff that composes `EtaMode::Plan(...)` with the reviewed eta-generated solver wrapper, with a matching narrow exact-only public dimension-override overload
 - `SolvePlannedAmfOptionsEtaModeSeries(...)`: standalone planned-decision `AmfOptions` eta-mode execution helper over the already-landed wrapper-owned live policy, cache, `skip_reduction`, and requested-`D0` metadata tail
 - `SolveBuiltinEtaModeSeries(...)`: the first builtin eta-mode-name library-only solve wrapper that resolves `MakeBuiltinEtaMode(...)` and reuses the reviewed eta-mode-planned solver handoff
 - `SolveBuiltinEtaModeListSeries(...)`: the first caller-supplied ordered builtin eta-mode-list library-only solve wrapper that selects the first planning-successful builtin and reuses the reviewed single-name builtin solver handoff
@@ -501,17 +506,21 @@ The current local multi-invariant solver handoff extension is still narrow:
 The first eta-generated solver handoff remains narrow:
 
 - `SolveEtaGeneratedSeries(...)` takes the same eta-generated reduction inputs as `BuildEtaGeneratedDESystem(...)`, plus an injected `const SeriesSolver&`, explicit solver request fields excluding `DESystem`, and an optional trailing `eta_symbol`
+- a matching overload now also accepts one explicit `exact_dimension_override` after `eta_symbol`; when present it must evaluate exactly without additional symbols, is canonicalized before DE construction, routes through the reviewed exact `BuildEtaGeneratedDESystem(..., eta_symbol, exact_dimension_override)` path, and copies that same canonical exact value onto `SolveRequest.amf_requested_dimension_expression` before solver execution
 - after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
 - on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
+- symbolic or non-exact public exact-dimension overrides fail explicitly with `invalid_argument`, and the retained overload without that extra argument stays unchanged
 - this batch does not add solver-selection policy, CLI, eta-mode expansion, multi-variable orchestration, boundary generation, or algorithmic series solving
 
 The first eta-mode-planned solver handoff is also bootstrap-only:
 
 - `SolveEtaModePlannedSeries(...)` takes the same eta-generated solver inputs as `SolveEtaGeneratedSeries(...)`, except `EtaInsertionDecision` is replaced by an injected `const EtaMode&`
+- a matching overload now also accepts one explicit `exact_dimension_override` after `eta_symbol`, with the same exact-only validation and canonicalization rule as `SolveEtaGeneratedSeries(...)`
 - it is a thin wrapper: it calls `EtaMode::Plan(spec)`, then forwards the resulting `EtaInsertionDecision` directly into `SolveEtaGeneratedSeries(...)`, so the same generated-wrapper retry behavior applies downstream
 - planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
+- invalid public exact-dimension overrides still fail downstream after exactly one `EtaMode::Plan(spec)` call and still do not invoke the supplied solver
 - this batch does not add new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
 
 The first builtin eta-mode-name solver wrapper is also bootstrap-only:

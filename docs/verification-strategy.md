@@ -8,8 +8,8 @@ The migration is phase-gated. Every phase must pass:
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`; local tracking `origin/main` matches at `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through the landed Kira rational-function prefactor surface and xints `insert_prefactors` wiring
+- the actual SSH remote `main` head for this packet is `9b619f182850ef1bcef1923ecddc05118050a898`; local tracking `origin/main` matches at `9b619f182850ef1bcef1923ecddc05118050a898`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58h` / `Batch 58i` on top of the earlier Kira rational-function prefactor surface and xints `insert_prefactors` wiring
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -93,12 +93,15 @@ The migration is phase-gated. Every phase must pass:
   policy on those same two overloads. Solved-path input/request fingerprinting and
   `skip_reduction` replay validation now treat those fields as live inputs there, while public
   eta-reduction helpers plus direct eta/standalone solver entry points remain unchanged
-- landed `Batch 58g` on actual `main` now adds target-aware Kira reduction-span widening on
-  exact-sector positive-support matches plus the first mandatory-family retained-span evidence
-  packet; the current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
-  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`; broader mandatory-family reduction-span parity beyond
-  the current reviewed packets still remains open, while narrow opt-in Kira `insert_prefactors`
-  wiring is already present separately
+- landed `Batch 58g` on actual `main` adds target-aware Kira reduction-span widening on
+  exact-sector positive-support matches plus the retained `tt` span-evidence packet, landed
+  `Batch 58h` adds the same-path retained `tt` widening guard at `53a6630`, and landed
+  `Batch 58i` adds retained `automatic_loop` `box1` / `box2` stage-1 and stage-2
+  reduction-span/order evidence at `9b619f1`. The current worktree then extends the retained
+  `tt`, `box1`, and `box2` seams to compare normalized `integralfamilies.yaml` and
+  `kinematics.yaml` against capture. Together with landed `Batch 58d` prefactor lock coverage,
+  this closes `Milestone M3` narrowly on the first mandatory package families only, while narrow
+  opt-in Kira `insert_prefactors` wiring remains a separate reviewed path
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity evidence on the current reviewed exact subset:
   `tests/amflow_tests.cpp` includes
@@ -114,10 +117,10 @@ The migration is phase-gated. Every phase must pass:
   `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`, this closes `Milestone M4`
   narrowly on that implemented exact subset only. This packet does not widen runtime behavior,
-  broader cache/restart semantics, broader monotone digit refinement, standalone solver-policy
-  parity beyond the reviewed exact subset, or `Milestone M3`; broader mandatory-family
-  reduction-span parity beyond the current reviewed packets still remains open, while
-  narrow opt-in Kira `insert_prefactors` wiring is already present separately
+  broader cache/restart semantics, broader monotone digit refinement, or standalone solver-policy
+  parity beyond the reviewed exact subset. The separate current-worktree `Milestone M3` closure
+  remains limited to the first mandatory package families only, while narrow opt-in Kira
+  `insert_prefactors` wiring is already present separately
 
 ## Test Taxonomy
 

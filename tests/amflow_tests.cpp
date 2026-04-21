@@ -130,6 +130,25 @@ std::string NormalizeAutomaticLoopJobsYamlSurface(const std::string& value) {
   return normalized;
 }
 
+std::string NormalizeRetainedKiraConfigSurface(const std::string& value) {
+  std::ostringstream normalized;
+  std::istringstream stream(value);
+  bool first_line = true;
+  for (std::string line; std::getline(stream, line);) {
+    const std::string normalized_line = NormalizeAutomaticLoopSurfaceLine(line);
+    if (normalized_line.empty() || normalized_line == "permutation_option:1" ||
+        normalized_line == "cut_propagators:[]") {
+      continue;
+    }
+    if (!first_line) {
+      normalized << '\n';
+    }
+    normalized << normalized_line;
+    first_line = false;
+  }
+  return normalized.str();
+}
+
 void InsertBefore(std::string& value,
                   const std::string& needle,
                   const std::string& insertion) {
@@ -273,6 +292,32 @@ std::string ReadFile(const std::filesystem::path& path) {
                      std::istreambuf_iterator<char>());
 }
 
+void ExpectRetainedKiraConfigSurfaces(const amflow::BackendPreparation& preparation,
+                                      const std::filesystem::path& retained_root,
+                                      const std::string& context) {
+  const auto family_yaml_it = preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.generated_files.end(),
+         context + ": Kira preparation should emit integralfamilies.yaml");
+  const std::string retained_family_yaml =
+      NormalizeRetainedKiraConfigSurface(ReadFile(retained_root / "config/integralfamilies.yaml"));
+  const std::string generated_family_yaml =
+      NormalizeRetainedKiraConfigSurface(family_yaml_it->second);
+  Expect(generated_family_yaml == retained_family_yaml,
+         context + ": retained diffeqsetup integralfamilies.yaml should preserve the captured "
+                   "normalized family-model surface");
+
+  const auto kinematics_yaml_it = preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != preparation.generated_files.end(),
+         context + ": Kira preparation should emit kinematics.yaml");
+  const std::string retained_kinematics_yaml =
+      NormalizeRetainedKiraConfigSurface(ReadFile(retained_root / "config/kinematics.yaml"));
+  const std::string generated_kinematics_yaml =
+      NormalizeRetainedKiraConfigSurface(kinematics_yaml_it->second);
+  Expect(generated_kinematics_yaml == retained_kinematics_yaml,
+         context + ": retained diffeqsetup kinematics.yaml should preserve the captured "
+                   "normalized family-model surface");
+}
+
 std::filesystem::path FreshTempDir(const std::string& label) {
   const std::filesystem::path path = std::filesystem::temp_directory_path() / label;
   std::filesystem::remove_all(path);
@@ -349,10 +394,11 @@ constexpr char kExpectedBatch58cAtomicityNote[] =
 constexpr char kExpectedPrescriptionOnlyNote[] =
     "  - \"Retained phase-0 AMFlow.m is not a direct source for overall loop-prefactor wording.\"";
 constexpr char kExpectedMilestoneM3OpenNote[] =
-    "  - \"First-family reduction-span parity evidence is still missing; Milestone M3 remains "
-    "open.\"";
+    "  - \"This prefactor reference spec does not by itself claim Milestone M3 closure; later "
+    "retained family-model and reduction-span evidence closes that gate separately.\"";
 constexpr char kExpectedMilestoneM4OpenNote[] =
-    "  - \"Milestone M4 remains open.\"";
+    "  - \"This prefactor reference spec does not by itself claim Milestone M4 closure; later "
+    "precision-policy evidence closes that gate separately.\"";
 constexpr char kExpectedPrefactorMirrorHeading[] = "# AMFlow Prefactor Convention Lock";
 constexpr char kExpectedPrefactorMirrorStructuredArtifactPath[] =
     "`specs/amflow-prefactor-reference.yaml`";
@@ -1305,6 +1351,13 @@ amflow::EtaInsertionDecision MakeEtaGeneratedHappyDecision() {
 // Retained phase-0 automatic_vs_manual capture:
 // generated-config/phase0/automatic_vs_manual/primary/cache/tt_amflow/28/diffeqsetup
 // records sector [7] with dotted mandatory targets and reduction span r = 4.
+std::filesystem::path AutomaticVsManualRetainedDiffeqsetupRoot() {
+  return std::filesystem::path(
+             "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+             "phase0-reference-captured-20260419-required-set/generated-config/phase0/"
+             "automatic_vs_manual/primary/cache/tt_amflow/28/diffeqsetup");
+}
+
 amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParitySpec() {
   amflow::ProblemSpec spec;
   spec.family.name = "tt";
@@ -1365,18 +1418,14 @@ std::filesystem::path AutomaticLoopRetainedDiffeqsetupRoot(const std::string& fa
 amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
     const std::vector<amflow::TargetIntegral>& targets,
     const std::vector<std::string>& preferred_masters,
-    const std::vector<int>& top_level_sectors) {
+    const std::vector<int>& top_level_sectors,
+    const std::vector<amflow::Propagator>& propagators) {
   amflow::ProblemSpec spec;
   spec.family.name = "box1";
   spec.family.loop_momenta = {"l"};
   spec.family.top_level_sectors = top_level_sectors;
   spec.family.preferred_masters = preferred_masters;
-  spec.family.propagators = {
-      {"l", "0"},
-      {"l + p1", "0"},
-      {"l + p1 + p2", "0"},
-      {"l - p3", "0"},
-  };
+  spec.family.propagators = propagators;
   spec.kinematics.incoming_momenta = {"p1", "p2", "p3", "box1AuxLeg"};
   spec.kinematics.outgoing_momenta = {};
   spec.kinematics.momentum_conservation = "box1AuxLeg = -p1 - p2 - p3";
@@ -1397,18 +1446,14 @@ amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
 amflow::ProblemSpec MakeAutomaticLoopBox2DiffeqsetupSpec(
     const std::vector<amflow::TargetIntegral>& targets,
     const std::vector<std::string>& preferred_masters,
-    const std::vector<int>& top_level_sectors) {
+    const std::vector<int>& top_level_sectors,
+    const std::vector<amflow::Propagator>& propagators) {
   amflow::ProblemSpec spec;
   spec.family.name = "box2";
   spec.family.loop_momenta = {"l"};
   spec.family.top_level_sectors = top_level_sectors;
   spec.family.preferred_masters = preferred_masters;
-  spec.family.propagators = {
-      {"l", "0"},
-      {"l + p1", "0"},
-      {"l + p1 + p2", "0"},
-      {"l + p1 + p2 + p3", "0"},
-  };
+  spec.family.propagators = propagators;
   spec.kinematics.incoming_momenta = {"p1", "p2", "p3", "box2AuxLeg"};
   spec.kinematics.outgoing_momenta = {};
   spec.kinematics.momentum_conservation = "box2AuxLeg = -p1 - p2 - p3";
@@ -1441,6 +1486,7 @@ void ExpectRetainedAutomaticLoopDiffeqsetupPacket(
   Expect(preparation.validation_messages.empty(),
          context + ": retained automatic_loop diffeqsetup packet should validate cleanly for "
                    "Kira");
+  ExpectRetainedKiraConfigSurfaces(preparation, retained_root, context);
 
   const std::string retained_jobs_yaml = NormalizeAutomaticLoopJobsYamlSurface(
       ReadFile(retained_root / "jobs.yaml"));
@@ -5310,6 +5356,7 @@ void KiraPrepareForTargetsHappyPathTest() {
 
 void KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest() {
   const amflow::ProblemSpec spec = MakeAutomaticVsManualTtReductionSpanParitySpec();
+  const std::filesystem::path retained_root = AutomaticVsManualRetainedDiffeqsetupRoot();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-kira-mandatory-family-reduction-span"));
   const std::string expected_target_file = "tt[1,2,1,0,0,0,0,0,0]\n"
@@ -5324,6 +5371,10 @@ void KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest() {
   Expect(preparation.validation_messages.empty(),
          "retained automatic_vs_manual mandatory-family reduction-span fixture should validate "
          "cleanly for Kira");
+  ExpectRetainedKiraConfigSurfaces(
+      preparation,
+      retained_root,
+      "retained automatic_vs_manual mandatory-family reduction-span fixture");
   Expect(preparation.generated_files.at("target") == expected_target_file,
          "retained automatic_vs_manual mandatory-family reduction-span fixture should preserve "
          "the dotted mandatory target order from diffeqsetup");
@@ -5370,22 +5421,46 @@ void KiraPrepareForTargetsRetainedAutomaticLoopMandatoryFamilyReductionSpanEvide
        {"box1", {2, 0, 0, 0}},
        {"box1", {2, 1, 0, 1}}},
       {"box1[0,1,0,1]", "box1[1,0,1,0]", "box1[1,1,1,1]"},
-      {15});
+      {15},
+      {
+          {"l", "eta"},
+          {"l + p1", "0"},
+          {"l + p1 + p2", "0"},
+          {"l - p3", "0"},
+      });
   const amflow::ProblemSpec box1_stage2_spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
       {{"box1", {2, 0, 1, 0}}, {"box1", {2, 0, 0, 0}}},
       {"box1[1,0,1,0]"},
-      {5});
+      {5},
+      {
+          {"l + p1", "eta"},
+          {"l + p1 + p2", "0"},
+          {"l - p3", "0"},
+          {"l", "0"},
+      });
   const amflow::ProblemSpec box2_stage1_spec = MakeAutomaticLoopBox2DiffeqsetupSpec(
       {{"box2", {2, 0, 1, 0}},
        {"box2", {2, 1, 1, 1}},
        {"box2", {2, 0, 0, 0}},
        {"box2", {2, 1, 0, 1}}},
       {"box2[1,0,1,0]", "box2[0,1,0,1]", "box2[1,1,1,1]"},
-      {15});
+      {15},
+      {
+          {"l", "eta"},
+          {"l + p1", "0"},
+          {"l + p1 + p2", "0"},
+          {"l + p1 + p2 + p3", "0"},
+      });
   const amflow::ProblemSpec box2_stage2_spec = MakeAutomaticLoopBox2DiffeqsetupSpec(
       {{"box2", {2, 0, 1, 0}}, {"box2", {2, 0, 0, 0}}},
       {"box2[1,0,1,0]"},
-      {5});
+      {5},
+      {
+          {"l + p1", "eta"},
+          {"l + p1 + p2", "0"},
+          {"l + p1 + p2 + p3", "0"},
+          {"l", "0"},
+      });
 
   ExpectRetainedAutomaticLoopDiffeqsetupPacket(
       box1_stage1_spec,

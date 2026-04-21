@@ -30,15 +30,17 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
-- the actual SSH remote `main` state for this packet carries landed `Batch 50b` through
-  `Batch 58g` at `95f33f398bbdebf2084bf360a498fea3de89fc30`, `b40b0dccb1d286b287e2fcb45e5e554901223d63`,
-  `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`,
-  `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`,
-  `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`, `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`,
-  `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`,
-  `2f2538b`, `7d3806a`, and `53ec6a4`, plus the later landed Kira rational-function prefactor
-  surface and xints `insert_prefactors` packets at `ab4a311` and `b367daf`; local tracking
-  `origin/main` matches at `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`;
+- the actual SSH remote `main` state for this packet now runs through
+  `main@9b619f182850ef1bcef1923ecddc05118050a898`; that landed history includes `Batch 50b` at
+  `95f33f398bbdebf2084bf360a498fea3de89fc30`, `Batch 50` through `Batch 58g` at
+  `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`,
+  `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`,
+  `23b64404680fe0c5425d2261f6e776bd1f197794`, `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`,
+  `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`,
+  `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, the landed
+  Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
+  packet at `b367daf`, landed `Batch 58h` at `53a6630`, and landed `Batch 58i` at `9b619f1`;
+  local tracking `origin/main` matches that same head;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -127,10 +129,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   semantics, or standalone `SolveDifferentialEquation(...)` / runtime-policy parity. The
   prefactor groundwork through landed `Batch 58d` plus the later landed Kira
   rational-function prefactor surface / xints `insert_prefactors` packets remains history only;
-  landed `Batch 58g` supplies the first mandatory-family retained-span evidence packet, and the
-  current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
-  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`. Broader reduction-span parity beyond the current reviewed packets still remains open before
-  `Milestone M3`
+  landed `Batch 58g` supplies the retained `tt` reduction-span evidence packet, landed
+  `Batch 58h` guards the same-path `tt` widening lane, landed `Batch 58i` supplies retained
+  `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order evidence, and the
+  current worktree extends those retained `tt`, `box1`, and `box2` seams to compare normalized
+  `integralfamilies.yaml` and `kinematics.yaml` against capture. Together with landed
+  `Batch 58d` prefactor lock coverage, this closes `Milestone M3` narrowly on the first
+  mandatory package families only
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on the current reviewed exact subset only:
   `tests/amflow_tests.cpp` already includes
@@ -147,11 +152,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. With landed `Batch 54`
   through `Batch 58e` failure-code, cache, `UseCache`, and
   `SkipReduction` coverage, this closes `Milestone M4` narrowly on that implemented exact subset
-  only. It does not widen runtime
-  behavior, broader cache/restart semantics, broader runtime-policy parity, or `Milestone M3`,
-  which still depends on broader mandatory-family reduction-span parity beyond the current
-  reviewed
-  packets
+  only. It does not widen runtime behavior, broader cache/restart semantics, or broader
+  runtime-policy parity. The separate current-worktree `Milestone M3` closure remains limited to
+  the first mandatory package families only
 - broader automatic boundary execution/provider parity, broader ending semantics, broader Kira
   smoke, upstream `automatic_vs_manual` parity, full upstream topology/component `Mass` parity,
   truthful builtin `Branch` / `Loop` selector semantics, graph-polynomial availability,

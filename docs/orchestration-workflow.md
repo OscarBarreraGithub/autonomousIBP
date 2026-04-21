@@ -25,9 +25,9 @@ The workflow is optimized for the current repo shape:
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`; local tracking `origin/main` matches at `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`
-- landed `Batch 56` through `Batch 58g` are present in actual `main` history at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, and the later landed Kira rational-function prefactor surface / xints `insert_prefactors` packets are at `ab4a311` and `b367daf`, on top of landed `Batch 50` through `Batch 55`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through the landed Kira rational-function prefactor surface and xints `insert_prefactors` wiring; `Milestone M1` is complete
+- the actual SSH remote `main` head for this packet is `9b619f182850ef1bcef1923ecddc05118050a898`; local tracking `origin/main` matches at `9b619f182850ef1bcef1923ecddc05118050a898`
+- landed `Batch 56` through `Batch 58i` are present in actual `main` history at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98`, `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, `53ec6a4`, `53a6630`, and `9b619f1`, with the earlier landed Kira rational-function prefactor surface / xints `insert_prefactors` packets at `ab4a311` and `b367daf`, on top of landed `Batch 50` through `Batch 55`
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`, while reviewed code on actual `main` now extends beyond that baseline through landed `Batch 58h` / `Batch 58i` on top of the earlier Kira rational-function prefactor surface and xints `insert_prefactors` wiring; `Milestone M1` is complete
 - `Milestone M0a` is accepted as reference-harness/bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -92,18 +92,20 @@ The workflow is optimized for the current repo shape:
   `ctest --test-dir build --output-on-failure`, and `./build/amflow-tests` passed before landing
   commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - `M0b` is accepted; the repo already had a first explicit in-repo prefactor/sign-convention
-  surface from `Batch 58b`, and actual `main` through `b367daf` now includes landed `Batch 58d`
-  prefactor mirror lock coverage over the locked evidence packet plus the later landed Kira
+  surface from `Batch 58b`, and actual `main` through `9b619f1` now includes landed `Batch 58d`
+  prefactor mirror lock coverage over the locked evidence packet plus the earlier landed Kira
   rational-function prefactor surface and narrow xints `insert_prefactors` wiring. Landed
-  `Batch 58g` already supplies the first retained mandatory-family reduction-span packet on the
-  same generic Kira span path, and the current worktree adds `Batch 58h` as the retained `automatic_loop`
-  box1 / box2 stage-1 and stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`. `tests/amflow_tests.cpp`
-  cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
+  `Batch 58g` supplies the retained `tt` reduction-span packet on the generic Kira span path,
+  landed `Batch 58h` guards the same-path retained `tt` widening lane, and landed `Batch 58i`
+  supplies retained `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order
+  evidence. The current worktree then extends the retained `tt`, `box1`, and `box2` seams to
+  compare normalized `integralfamilies.yaml` and `kinematics.yaml` against capture.
+  `tests/amflow_tests.cpp` still cross-checks
+  `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while retained `+i0` / cut backing and the
-  snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure still remains open
-  until broader mandatory-family reduction-span parity beyond the current reviewed packets is in
-  place;
-  the narrow opt-in Kira `insert_prefactors` wiring is already present separately
+  snapshot-only `-i0` note remain unchanged. Truthful `Milestone M3` closure is therefore now
+  supported, but only narrowly on the first mandatory package families; the narrow opt-in Kira
+  `insert_prefactors` wiring remains separate
 - truthful `Milestone M4` closure is now supported, but only narrowly on the current reviewed
   exact subset via landed `Batch 58f`
 - the `M4`-closing landed tests/docs lane is `Batch 58f`:
@@ -121,11 +123,11 @@ The workflow is optimized for the current repo shape:
   `BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest()` and
   `SolveDifferentialEquationInsufficientPrecisionPassthroughTest()`. Together with landed
   `Batch 54` through `Batch 58e`, this closes the remaining direct
-  precision-monotonicity gap on the reviewed exact subset only. This packet does not widen runtime behavior, broader
-  cache/restart semantics, broader monotone digit refinement, standalone
-  `SolveDifferentialEquation(...)` runtime-policy parity, or `Milestone M3`, which still turns
-  on broader mandatory-family reduction-span parity beyond the current reviewed packets; narrow opt-in
-  Kira `insert_prefactors` wiring is already present separately
+  precision-monotonicity gap on the reviewed exact subset only. This packet does not widen
+  runtime behavior, broader cache/restart semantics, broader monotone digit refinement, or
+  standalone `SolveDifferentialEquation(...)` runtime-policy parity. The separate current-worktree
+  `Milestone M3` closure remains limited to the first mandatory package families only; narrow
+  opt-in Kira `insert_prefactors` wiring is already present separately
 
 ## Mandatory Read Set Before Planning
 

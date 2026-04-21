@@ -13,5 +13,5 @@ notes:
   - "Repo snapshot README line 91 is the frozen source for minus_i0_loop_prefactor."
   - "Retained phase-0 AMFlow.m line 223 may be cited only for prescription polarity semantics: 1 => +i0, -1 => -i0, 0 => no prescription."
   - "Retained phase-0 AMFlow.m is not a direct source for overall loop-prefactor wording."
-  - "First-family reduction-span parity evidence is still missing; Milestone M3 remains open."
-  - "Milestone M4 remains open."
+  - "This prefactor reference spec does not by itself claim Milestone M3 closure; later retained family-model and reduction-span evidence closes that gate separately."
+  - "This prefactor reference spec does not by itself claim Milestone M4 closure; later precision-policy evidence closes that gate separately."

@@ -68,8 +68,8 @@ exit gate. The current live state must always be read from `docs/implementation-
 
 ## Current Durable Status
 
-- the actual SSH remote `main` head for this packet is `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`; local tracking `origin/main` matches at `b367daf85cf9af8b3fadcda4a0745f7d462ab02f`. That landed head carries `Batch 58g` at `53ec6a4`, the later Kira rational-function prefactor surface at `ab4a311`, and the later xints `insert_prefactors` wiring at `b367daf`, on top of landed `Batch 58f` at `7d3806a`, landed `Batch 58e` at `2f2538b`, landed `Batch 58` at `a5d627f906dfb2c5829bda88dce2407bfa67f043`, landed `Batch 56` through `Batch 57` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98` and `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, plus landed `Batch 50` through `Batch 55` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`; landed-history references below key to that upstream head while the current worktree adds `Batch 58h`
-- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on actual `main` now extends beyond that baseline through the landed Kira rational-function prefactor surface and xints `insert_prefactors` wiring, while `Milestone M1` remains complete only on the accepted reviewed surface
+- the actual SSH remote `main` head for this packet is `9b619f182850ef1bcef1923ecddc05118050a898`; local tracking `origin/main` matches at `9b619f182850ef1bcef1923ecddc05118050a898`. That landed head carries `Batch 58h` at `53a6630` and `Batch 58i` at `9b619f1`, on top of the earlier landed Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors` wiring at `b367daf`, landed `Batch 58g` at `53ec6a4`, landed `Batch 58f` at `7d3806a`, landed `Batch 58e` at `2f2538b`, landed `Batch 58` at `a5d627f906dfb2c5829bda88dce2407bfa67f043`, landed `Batch 56` through `Batch 57` at `56e4f96d03b0b54f541122c0d59b2ed0cefc2b98` and `48686b6590df1f1c52f760913129f1bf0ad3ad0b`, plus landed `Batch 50` through `Batch 55` at `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`, `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`, `23b64404680fe0c5425d2261f6e776bd1f197794`, and `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`; landed-history references below key to that upstream head, while the current worktree adds only the unlanded retained family-model parity packet
+- last fully accepted release baseline remains `bbd7b744b69a413bf34e4b706cd737e2b266256a`; reviewed implementation on actual `main` now extends beyond that baseline through landed `Batch 58h` / `Batch 58i` on top of the earlier Kira rational-function prefactor surface and xints `insert_prefactors` wiring, while `Milestone M1` remains complete only on the accepted reviewed surface
 - `Milestone M0a` is accepted as cluster/reference-harness bootstrap readiness only
 - `Milestone M0b` is accepted on the required phase-0 benchmark set only: retained root
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
@@ -149,20 +149,23 @@ exit gate. The current live state must always be read from `docs/implementation-
   and `./build/amflow-tests` all passed before landing commit `4dcb17f6a4fd9d2ebf28e72922e74c06fb461d82`
 - truthful `Milestone M3` closure review was reconsidered after `M0b`; the repo now has a first
   explicit in-repo prefactor/sign-convention surface and tests, and actual `main` through
-  `b367daf` now carries landed `Batch 58d` ROLE B coverage over the locked prefactor evidence
-  packet plus the later landed Kira rational-function prefactor surface and narrow xints
-  `insert_prefactors` wiring. Landed `Batch 58g` already supplies the first retained
-  mandatory-family reduction-span packet on the same generic Kira span path, and the current
-  worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and stage-2
-  diffeqsetup evidence packet in `tests/amflow_tests.cpp`:
+  `9b619f1` now carries landed `Batch 58d` ROLE B coverage over the locked prefactor evidence
+  packet plus the earlier landed Kira rational-function prefactor surface and narrow xints
+  `insert_prefactors` wiring. Landed `Batch 58g` supplies the retained `tt`
+  mandatory-family reduction-span packet on the same generic Kira span path, landed `Batch 58h`
+  guards the same-path retained `tt` widening lane, landed `Batch 58i` supplies retained
+  `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order evidence, and the
+  current worktree adds retained family-model parity locks on those same first mandatory-package
+  seams in `tests/amflow_tests.cpp`:
   `tests/amflow_tests.cpp`
   cross-checks `references/snapshots/amflow/prefactor_convention_lock.md` against
   `specs/amflow-prefactor-reference.yaml`, while the retained phase-0 README still backs the
   `+i0` loop prefactor and cut prefactor, the explicit `-i0` loop-prefactor note remains
   repo-snapshot backed only, and retained `AMFlow.m` is cited only for prescription polarity.
-  `M3` still remains open because broader mandatory-family reduction-span parity beyond the
-  current reviewed packets is still missing; narrow opt-in Kira `insert_prefactors` wiring now
-  exists
+  The current worktree now compares normalized `integralfamilies.yaml` and `kinematics.yaml`
+  against the retained `automatic_vs_manual` `tt` and retained `automatic_loop` `box1` / `box2`
+  stage-1 and stage-2 captures. That closes `Milestone M3` narrowly on the first mandatory
+  package families only; narrow opt-in Kira `insert_prefactors` wiring still exists separately
 - truthful `Milestone M4` closure was reconsidered after landed `Batch 58f`, and landed
   `Batch 58f` now records the remaining direct precision-monotonicity gap as closed on the
   current reviewed exact subset only
@@ -184,9 +187,9 @@ exit gate. The current live state must always be read from `docs/implementation-
   `UseCache`, and `SkipReduction` coverage, that closes `Milestone M4` narrowly on the
   implemented exact subset only. This packet is still narrow: it does not widen runtime behavior, broader cache/restart semantics, broader
   monotone digit refinement, standalone `SolveDifferentialEquation(...)` / solver-policy parity
-  beyond that reviewed exact subset, or `Milestone M3`, which still turns on broader
-  mandatory-family reduction-span parity beyond the current reviewed packets rather than further `M4`
-  work; narrow opt-in Kira `insert_prefactors` wiring is already present separately
+  beyond that reviewed exact subset, or the separate current-worktree `Milestone M3` closure,
+  which is itself limited to the first mandatory package families rather than broader parity
+  widening; narrow opt-in Kira `insert_prefactors` wiring is already present separately
 
 ## Current State At R0
 
@@ -370,12 +373,15 @@ Current status:
   than given broader standalone semantics. Direct `RunEtaGeneratedReduction(...)`,
   `BuildEtaGeneratedDESystem(...)`, `SolveEtaGeneratedSeries(...)`, invariant-generated wrappers,
   and direct `SolveDifferentialEquation(...)` remain unchanged
-- landed `Batch 58g` on actual `main` now widens Kira preparation `r` spans on exact-sector
-  positive-support matches and records the first mandatory-family retained-span evidence packet;
-  the current worktree adds `Batch 58h` as the retained `automatic_loop` box1 / box2 stage-1 and
-  stage-2 diffeqsetup evidence packet in `tests/amflow_tests.cpp`; broader mandatory-family reduction-span parity beyond the current
-  reviewed packets is still missing, so `Milestone M3` remains open; Kira `insert_prefactors`
-  now has a narrow opt-in reviewed wiring
+- landed `Batch 58g` on actual `main` widens Kira preparation `r` spans on exact-sector
+  positive-support matches and records the retained `tt` span-evidence packet, landed
+  `Batch 58h` guards the same-path retained `tt` widening lane, and landed `Batch 58i` adds
+  retained `automatic_loop` `box1` / `box2` stage-1 and stage-2 reduction-span/order evidence.
+  The current worktree then extends the retained `tt`, `box1`, and `box2` seams to compare
+  normalized `integralfamilies.yaml` and `kinematics.yaml` against capture. Together with landed
+  `Batch 58d` prefactor lock coverage, that closes `Milestone M3` narrowly on the first
+  mandatory package families only; Kira `insert_prefactors` now has a separate narrow opt-in
+  reviewed wiring
 - landed `Batch 58f` adds exact-subset tests plus mirrored docs and records the remaining direct
   precision-monotonicity gap as closed on
   the current reviewed exact subset only: `tests/amflow_tests.cpp` already carries
@@ -388,9 +394,8 @@ Current status:
   threshold behavior explicit. This is enough to close `Milestone M4` narrowly on that
   implemented exact subset, but it does not widen runtime behavior, broader cache/restart
   semantics, broader monotone digit refinement, or standalone
-  `SolveDifferentialEquation(...)` runtime-policy parity. Broader mandatory-family
-  reduction-span parity beyond the current reviewed packets remains missing, so `Milestone M3`
-  remains open
+  `SolveDifferentialEquation(...)` runtime-policy parity. The separate current-worktree
+  `Milestone M3` closure remains limited to the first mandatory package families only
 
 ### Track F: Feature-Surface Parity
 

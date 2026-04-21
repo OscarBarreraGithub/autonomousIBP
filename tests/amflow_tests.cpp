@@ -1133,6 +1133,8 @@ void ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
                  caller_policy.max_working_precision &&
              request.precision_policy.x_order_step == caller_policy.x_order_step,
          context + " should preserve non-wrapper PrecisionPolicy fields from the caller");
+  Expect(request.amf_requested_d0.has_value() && *request.amf_requested_d0 == amf_options.d0,
+         context + " should route D0 through the SolveRequest dimension-expression carrier");
   Expect(request.amf_runtime_policy.has_value(),
          context + " should attach the live AMF runtime-policy carrier");
   if (!request.amf_runtime_policy.has_value()) {
@@ -16607,7 +16609,8 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
              request.target_location == target_location,
          "AmfOptions eta-mode solver handoff should preserve the target location unchanged");
   Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
-             !baseline_request.amf_runtime_policy.has_value(),
+             !baseline_request.amf_runtime_policy.has_value() &&
+             !baseline_request.amf_requested_d0.has_value(),
          "direct builtin-list eta baseline should keep the explicit caller policy unchanged");
   Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
              !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
@@ -17311,6 +17314,136 @@ void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest() {
                                       "\"\n") != std::string::npos,
          "UseCache invalidation should overwrite the manifest summary with the fresh live "
          "diagnostics");
+}
+
+void SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedD0Test() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-eta-mode-d0-cache-invalidation-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  invalidated_amf_options.d0 = "17/5";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=4/9";
+  const std::string target_location = "rho=25/27";
+  const int requested_digits = 83;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-use-cache-d0-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary =
+      "recorded solved-path D0 cache invalidation baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         cached_amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "UseCache D0 invalidation should seed one solved-path cache manifest before mutating D0");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary =
+      "recorded solved-path D0 cache invalidation live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           invalidated_amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           live_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol);
+
+  Expect(live_solver.call_count() == 1,
+         "UseCache D0 invalidation should fall back to a live solve when D0 changes");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "UseCache D0 invalidation should return the new live solver diagnostics while "
+         "recording the D0-specific solved-path cache entry");
+  Expect(live_solver.last_request().amf_requested_d0.has_value() &&
+             *live_solver.last_request().amf_requested_d0 == invalidated_amf_options.d0,
+         "UseCache D0 invalidation should rebuild the live solve request with the changed D0 "
+         "expression");
+
+  std::vector<std::filesystem::path> refreshed_manifest_paths;
+  for (const auto& entry : std::filesystem::directory_iterator(SolvedPathCacheDir(layout))) {
+    if (entry.is_regular_file()) {
+      refreshed_manifest_paths.push_back(entry.path());
+    }
+  }
+  Expect(refreshed_manifest_paths.size() == 2,
+         "UseCache D0 invalidation should keep the seeded manifest and add one D0-specific "
+         "solved-path cache manifest after the live fallback");
+  std::filesystem::path refreshed_manifest_path;
+  for (const auto& candidate : refreshed_manifest_paths) {
+    if (candidate != manifest_path) {
+      refreshed_manifest_path = candidate;
+      break;
+    }
+  }
+  Expect(!refreshed_manifest_path.empty(),
+         "UseCache D0 invalidation should materialize a second solved-path cache manifest for "
+         "the changed D0 expression");
+  Expect(refreshed_manifest_path.filename().string().find("17-5") != std::string::npos,
+         "UseCache D0 invalidation should key the new solved-path cache manifest path by the "
+         "changed D0 expression");
+
+  const std::string refreshed_manifest_yaml = ReadFile(refreshed_manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "UseCache D0 invalidation should record a distinct solved-path input fingerprint in the "
+         "D0-specific cache entry");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "UseCache D0 invalidation should record a distinct solved-path request fingerprint in "
+         "the D0-specific cache entry");
+  Expect(refreshed_manifest_yaml.find("amf_requested_d0=" + invalidated_amf_options.d0) !=
+             std::string::npos,
+         "UseCache D0 invalidation should record the new D0 expression in the cached request "
+         "summary");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "UseCache D0 invalidation should persist the fresh live diagnostics in the D0-specific "
+         "cache entry");
 }
 
 void SolveAmfOptionsEtaModeSeriesSkipReductionReusesMatchingReductionStateTest() {
@@ -18921,7 +19054,8 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesHappyPathTest() {
              request.target_location == target_location,
          "AmfOptions resolved eta-mode solver handoff should preserve solver locations");
   Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
-             !baseline_request.amf_runtime_policy.has_value(),
+             !baseline_request.amf_runtime_policy.has_value() &&
+             !baseline_request.amf_requested_d0.has_value(),
          "direct mixed-list eta baseline should keep the explicit caller policy unchanged");
   Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
              !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
@@ -19513,6 +19647,146 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedS
                                       "\"\n") != std::string::npos,
          "resolved UseCache invalidation should overwrite the manifest summary with the fresh "
          "live diagnostics");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedD0Test() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"CustomMode"});
+  cached_amf_options.use_cache = true;
+  amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  invalidated_amf_options.d0 = "17/5";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-eta-mode-d0-cache-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto seed_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary =
+      "recorded resolved solved-path D0 cache invalidation baseline";
+
+  static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         cached_amf_options,
+                                                         {seed_custom_mode},
+                                                         MakeKiraReductionOptions(),
+                                                         layout,
+                                                         kira_path,
+                                                         fermat_path,
+                                                         cached_solver,
+                                                         "rho=9/14",
+                                                         "rho=41/43",
+                                                         precision_policy,
+                                                         103,
+                                                         "rho"));
+
+  Expect(seed_custom_mode->call_count() == 1 && cached_solver.call_count() == 1,
+         "resolved UseCache D0 invalidation should seed one live planning pass and one live "
+         "solve before mutating D0");
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "resolved UseCache D0 invalidation should seed one solved-path cache manifest before "
+      "mutating D0");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  const auto live_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.00006103515625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.0001220703125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary =
+      "recorded resolved solved-path D0 cache invalidation live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           invalidated_amf_options,
+                                           {live_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           live_solver,
+                                           "rho=9/14",
+                                           "rho=41/43",
+                                           precision_policy,
+                                           103,
+                                           "rho");
+
+  Expect(live_custom_mode->call_count() == 1,
+         "resolved UseCache D0 invalidation should still plan the configured user-defined mode "
+         "before rejecting the stale solved-path manifest");
+  Expect(live_solver.call_count() == 1,
+         "resolved UseCache D0 invalidation should fall back to a live solve when D0 changes");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "resolved UseCache D0 invalidation should return the new live solver diagnostics while "
+         "recording the D0-specific solved-path cache entry");
+  Expect(live_solver.last_request().amf_requested_d0.has_value() &&
+             *live_solver.last_request().amf_requested_d0 == invalidated_amf_options.d0,
+         "resolved UseCache D0 invalidation should rebuild the live solve request with the "
+         "changed D0 expression");
+
+  std::vector<std::filesystem::path> refreshed_manifest_paths;
+  for (const auto& entry : std::filesystem::directory_iterator(SolvedPathCacheDir(layout))) {
+    if (entry.is_regular_file()) {
+      refreshed_manifest_paths.push_back(entry.path());
+    }
+  }
+  Expect(refreshed_manifest_paths.size() == 2,
+         "resolved UseCache D0 invalidation should keep the seeded manifest and add one "
+         "D0-specific solved-path cache manifest after the live fallback");
+  std::filesystem::path refreshed_manifest_path;
+  for (const auto& candidate : refreshed_manifest_paths) {
+    if (candidate != manifest_path) {
+      refreshed_manifest_path = candidate;
+      break;
+    }
+  }
+  Expect(!refreshed_manifest_path.empty(),
+         "resolved UseCache D0 invalidation should materialize a second solved-path cache "
+         "manifest for the changed D0 expression");
+  Expect(refreshed_manifest_path.filename().string().find("17-5") != std::string::npos,
+         "resolved UseCache D0 invalidation should key the new solved-path cache manifest path "
+         "by the changed D0 expression");
+
+  const std::string refreshed_manifest_yaml = ReadFile(refreshed_manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "resolved UseCache D0 invalidation should record a distinct solved-path input "
+         "fingerprint in the D0-specific cache entry");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "resolved UseCache D0 invalidation should record a distinct solved-path request "
+         "fingerprint in the D0-specific cache entry");
+  Expect(refreshed_manifest_yaml.find("amf_requested_d0=" + invalidated_amf_options.d0) !=
+             std::string::npos,
+         "resolved UseCache D0 invalidation should record the new D0 expression in the cached "
+         "request summary");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "resolved UseCache D0 invalidation should persist the fresh live diagnostics in the "
+         "D0-specific cache entry");
 }
 
 void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest() {
@@ -21123,6 +21397,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest();
     SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest();
     SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSolveInputsTest();
+    SolveAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedD0Test();
     SolveAmfOptionsEtaModeSeriesSkipReductionReusesMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionReplaysMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesSkipReductionRejectsMissingReductionStateTest();
@@ -21152,6 +21427,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExecutionFailureAfterFallbackTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheReplaysMatchingSolvedPathTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedSolveInputsTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheInvalidatesChangedD0Test();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionReplaysMatchingReductionStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionRejectsMissingReductionStateTest();

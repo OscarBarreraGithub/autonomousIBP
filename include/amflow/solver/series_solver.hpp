@@ -77,6 +77,10 @@ struct SolveRequest {
   std::string target_location;
   PrecisionPolicy precision_policy;
   std::optional<AmfSolveRuntimePolicy> amf_runtime_policy;
+  // Wrapper-owned AMFlow D0 intent; current DE construction and the bootstrap
+  // solver do not interpret these fields yet.
+  std::optional<std::string> amf_requested_d0;
+  std::optional<std::string> amf_requested_dimension_expression;
   int requested_digits = 50;
 };
 

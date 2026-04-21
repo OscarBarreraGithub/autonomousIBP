@@ -9554,6 +9554,75 @@ void SolveDifferentialEquationDoesNotMutateRequestTest() {
          "standalone DE solver wrapper should not mutate the caller request");
 }
 
+void BootstrapSeriesSolverUsesRequestedD0AndDimensionExpressionToBindExactEpsTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(2*eps-1)/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "6";
+  request.amf_requested_dimension_expression = "5";
+
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("0"), "eta", "eta=0", "eta=2", {"1"});
+
+  const amflow::SolverDiagnostics expected = amflow::BootstrapSeriesSolver().Solve(baseline_request);
+  const amflow::SolverDiagnostics actual = amflow::BootstrapSeriesSolver().Solve(request);
+
+  Expect(SameSolverDiagnostics(actual, expected),
+         "bootstrap solver should derive an exact eps binding from SolveRequest.amf_requested_d0 "
+         "and SolveRequest.amf_requested_dimension_expression when coefficient evaluation uses "
+         "eps directly; observed failure_code=\"" +
+             actual.failure_code + "\", summary=\"" + actual.summary + "\"");
+}
+
+void SolveDifferentialEquationUsesRequestedD0AndDimensionExpressionToBindExactEpsTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(2*eps-1)/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "6";
+  request.amf_requested_dimension_expression = "5";
+
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("0"), "eta", "eta=0", "eta=2", {"1"});
+
+  const amflow::SolverDiagnostics expected = amflow::BootstrapSeriesSolver().Solve(baseline_request);
+  const amflow::SolverDiagnostics actual = amflow::SolveDifferentialEquation(request);
+
+  Expect(SameSolverDiagnostics(actual, expected),
+         "standalone DE solver wrapper should derive an exact eps binding from "
+         "SolveRequest.amf_requested_d0 and SolveRequest.amf_requested_dimension_expression "
+         "when coefficient evaluation uses eps directly; observed failure_code=\"" +
+             actual.failure_code + "\", summary=\"" + actual.summary + "\"");
+}
+
+void SolveDifferentialEquationKeepsExactEpsUnboundWhenRequestedD0IsSymbolicTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(2*eps-1)/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "6+delta";
+  request.amf_requested_dimension_expression = "5";
+
+  const amflow::SolverDiagnostics diagnostics = amflow::SolveDifferentialEquation(request);
+
+  Expect(!diagnostics.success,
+         "standalone DE solver wrapper should keep eps unbound when "
+         "SolveRequest.amf_requested_d0 is symbolic");
+  Expect(diagnostics.failure_code == "unsupported_solver_path",
+         "standalone DE solver wrapper should preserve unsupported_solver_path when exact eps "
+         "cannot be derived from a symbolic D0");
+  Expect(diagnostics.summary.find("numeric binding for symbol \"eps\"") != std::string::npos,
+         "standalone DE solver wrapper should preserve the missing-eps binding failure when "
+         "SolveRequest.amf_requested_d0 is symbolic");
+}
+
 void SolveDifferentialEquationUsesRequestedDimensionExpressionForCoefficientEvaluationTest() {
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
       MakeScalarRegularPointSeriesSystem("(dimension-6)/(eta+1)"),
@@ -22783,6 +22852,9 @@ int main() {
     SolveDifferentialEquationExactRequestedDigitsPassthroughTest();
     SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest();
     SolveDifferentialEquationDoesNotMutateRequestTest();
+    BootstrapSeriesSolverUsesRequestedD0AndDimensionExpressionToBindExactEpsTest();
+    SolveDifferentialEquationUsesRequestedD0AndDimensionExpressionToBindExactEpsTest();
+    SolveDifferentialEquationKeepsExactEpsUnboundWhenRequestedD0IsSymbolicTest();
     EvaluateCoefficientMatrixDimensionBindingChangesResultTest();
     SolveDifferentialEquationUsesRequestedDimensionExpressionForCoefficientEvaluationTest();
     EvaluateCoefficientMatrixSampleSMatrixTest();

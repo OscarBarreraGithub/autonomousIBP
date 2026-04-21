@@ -82,7 +82,9 @@ struct SolveRequest {
   // Wrapper-owned AMFlow D0 intent; generated DE construction still does not
   // interpret these fields. The standalone exact solver may consume an exactly
   // numeric amf_requested_dimension_expression as a passive "dimension"
-  // binding, while symbolic wrapper-owned D0 parity remains deferred.
+  // binding and may derive a passive exact "eps" binding only when both D0 and
+  // the dimension expression evaluate exactly, while symbolic wrapper-owned D0
+  // parity remains deferred.
   std::optional<std::string> amf_requested_d0;
   std::optional<std::string> amf_requested_dimension_expression;
   int requested_digits = 50;

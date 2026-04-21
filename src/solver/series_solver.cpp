@@ -71,18 +71,30 @@ ExactRational ExactArithmetic(const std::string& expression) {
 
 NumericEvaluationPoint BuildBootstrapPassiveBindings(const SolveRequest& request) {
   NumericEvaluationPoint passive_bindings;
-  if (!request.amf_requested_dimension_expression.has_value()) {
+  std::optional<ExactRational> exact_dimension;
+  if (request.amf_requested_dimension_expression.has_value()) {
+    try {
+      exact_dimension = EvaluateCoefficientExpression(*request.amf_requested_dimension_expression,
+                                                      NumericEvaluationPoint{});
+      passive_bindings.emplace("dimension", exact_dimension->ToString());
+    } catch (const std::exception&) {
+      // Non-exact dimension expressions stay inert on the reviewed exact solver path.
+    }
+  }
+
+  if (!request.amf_requested_d0.has_value() || !exact_dimension.has_value()) {
     return passive_bindings;
   }
 
   try {
-    passive_bindings.emplace(
-        "dimension",
-        EvaluateCoefficientExpression(*request.amf_requested_dimension_expression,
-                                      NumericEvaluationPoint{})
-            .ToString());
+    const ExactRational exact_d0 =
+        EvaluateCoefficientExpression(*request.amf_requested_d0, NumericEvaluationPoint{});
+    const ExactRational exact_eps = EvaluateCoefficientExpression(
+        "((" + exact_d0.ToString() + ")-(" + exact_dimension->ToString() + "))/2",
+        NumericEvaluationPoint{});
+    passive_bindings.emplace("eps", exact_eps.ToString());
   } catch (const std::exception&) {
-    // Non-exact dimension expressions stay inert on the reviewed exact solver path.
+    // Non-exact D0 expressions keep eps inert on the reviewed exact solver path.
   }
   return passive_bindings;
 }

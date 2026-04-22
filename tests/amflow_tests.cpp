@@ -29,6 +29,7 @@
 #include "amflow/runtime/boundary_generation.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
+#include "amflow/runtime/physical_kinematics_guardrails.hpp"
 #include "amflow/solver/boundary_provider.hpp"
 #include "amflow/solver/coefficient_evaluator.hpp"
 #include "amflow/solver/singular_point_analysis.hpp"
@@ -3509,10 +3510,29 @@ void ProblemSpecExampleFileTest() {
          "example problem spec should preserve the reviewed target label");
 }
 
-void K0SmokeProblemSpecFileTest() {
+amflow::ProblemSpec LoadK0SmokeProblemSpecForTests() {
   const std::filesystem::path path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "specs/problem-spec.k0-smoke.yaml";
-  const amflow::ProblemSpec spec = amflow::LoadProblemSpecFile(path);
+  return amflow::LoadProblemSpecFile(path);
+}
+
+amflow::ProblemSpec MakeUnsupportedK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.kinematics.scalar_product_rules.pop_back();
+  return spec;
+}
+
+amflow::ProblemSpec MakeComplexK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.complex_mode = true;
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I/7"},
+  };
+  return spec;
+}
+
+void K0SmokeProblemSpecFileTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const auto messages = amflow::ValidateProblemSpec(spec);
 
   Expect(messages.empty(), "K0 smoke spec should validate cleanly");
@@ -3543,6 +3563,57 @@ void K0SmokeProblemSpecFileTest() {
              spec.targets[2].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,-1,-2]" &&
              spec.targets[3].Label() == "automatic_vs_manual_k0_smoke[1,1,1,1,1,1,1,0,-3]",
          "K0 smoke spec should preserve the repo-local frozen target order");
+}
+
+void DescribeReviewedPhysicalKinematicsSubsetTest() {
+  Expect(amflow::DescribeReviewedPhysicalKinematicsSubset() == "k0_one_mass_2to2_real_v1",
+         "Batch 62a should freeze the reviewed physical-kinematics subset identifier");
+}
+
+void AssessPhysicalKinematicsForBatch62RecognizesK0SmokeSurfaceTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62a should recognize the frozen K0 smoke surface as the reviewed subset");
+}
+
+void AssessPhysicalKinematicsForBatch62IgnoresLegacyBootstrapSurfaceTest() {
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(amflow::MakeSampleProblemSpec());
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::NotApplicable &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62a should ignore the existing bootstrap sample surface instead of rejecting it");
+}
+
+void AssessPhysicalKinematicsForBatch62RejectsLookalikeFamilySurfaceTest() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.family.propagators[8].expression = "(k2+p2)^2";
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62a should fail closed on K0-like families outside the frozen reviewed surface");
+}
+
+void AssessPhysicalKinematicsForBatch62RejectsComplexSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62a should fail closed on complex physical-kinematics surfaces");
 }
 
 void LoadedSpecValidationRejectsMalformedTargetsTest() {
@@ -15281,6 +15352,40 @@ void SolveInvariantGeneratedSeriesAutomaticHappyPathTest() {
          "automatic invariant solver handoff should return solver diagnostics verbatim");
 }
 
+void SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            amflow::ParsedMasterList{},
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            layout.root / "bin" / "unused-kira.sh",
+                                            layout.root / "bin" / "unused-fermat.sh",
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "automatic invariant solver handoff should classify unsupported physical kinematics "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "Batch 62 only reviews subset " + amflow::DescribeReviewedPhysicalKinematicsSubset(),
+      "automatic invariant solver handoff should report the frozen reviewed subset in the "
+      "unsupported physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff should not call the solver when physical "
+         "kinematics are unsupported");
+}
+
 void SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
@@ -15344,6 +15449,40 @@ void SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest() {
   Expect(SameSolverDiagnostics(diagnostics, expected),
          "automatic invariant solver handoff should preserve the baseline bootstrap solver "
          "diagnostics exactly");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "s=0",
+                                                "s=1",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "automatic invariant solver handoff list should classify unsupported physical "
+         "kinematics before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "Batch 62 only reviews subset " + amflow::DescribeReviewedPhysicalKinematicsSubset(),
+      "automatic invariant solver handoff list should report the frozen reviewed subset in the "
+      "unsupported physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff list should not call the solver when physical "
+         "kinematics are unsupported");
 }
 
 void SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest() {
@@ -16712,6 +16851,107 @@ void SolveEtaGeneratedSeriesHappyPathTest() {
          "eta solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "eta solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "eta=0",
+                                      "eta=1",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "eta solver handoff should classify unsupported physical kinematics before DE "
+         "construction");
+  ExpectContains(diagnostics.summary,
+                 "Batch 62 only reviews subset " +
+                     amflow::DescribeReviewedPhysicalKinematicsSubset(),
+                 "eta solver handoff should report the frozen reviewed subset in the unsupported "
+                 "physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when physical kinematics are "
+         "unsupported");
+}
+
+void SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "eta=0",
+                                      "eta=1",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "eta solver handoff should classify complex physical kinematics before DE "
+         "construction");
+  ExpectContains(diagnostics.summary,
+                 "Batch 62 only reviews subset " +
+                     amflow::DescribeReviewedPhysicalKinematicsSubset(),
+                 "eta solver handoff should report the frozen reviewed subset when complex "
+                 "physical kinematics are unsupported");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when complex physical kinematics are "
+         "unsupported");
+}
+
+void SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-k0-physical-surface"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &decision, &layout, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(spec,
+                                                          amflow::ParsedMasterList{},
+                                                          decision,
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          layout.root / "bin" / "unused-kira.sh",
+                                                          layout.root / "bin" /
+                                                              "unused-fermat.sh",
+                                                          solver,
+                                                          "eta=0",
+                                                          "eta=1",
+                                                          MakeDistinctPrecisionPolicy(),
+                                                          55));
+      },
+      "ParsedMasterList.family",
+      "the reviewed K0 smoke surface should reach the next eta-generated validation layer "
+      "instead of being rejected by the Batch 62a physical-kinematics preflight");
+  Expect(solver.call_count() == 0,
+         "the reviewed K0 smoke surface should still fail before the downstream solver when "
+         "master-basis validation blocks eta-generated DE construction");
 }
 
 void SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest() {
@@ -26320,6 +26560,11 @@ int main() {
     BuildOverallAmflowPrefactorDoesNotMutateProblemSpecTest();
     ProblemSpecExampleFileTest();
     K0SmokeProblemSpecFileTest();
+    DescribeReviewedPhysicalKinematicsSubsetTest();
+    AssessPhysicalKinematicsForBatch62RecognizesK0SmokeSurfaceTest();
+    AssessPhysicalKinematicsForBatch62IgnoresLegacyBootstrapSurfaceTest();
+    AssessPhysicalKinematicsForBatch62RejectsLookalikeFamilySurfaceTest();
+    AssessPhysicalKinematicsForBatch62RejectsComplexSurfaceTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();
@@ -26810,6 +27055,7 @@ int main() {
     BuildInvariantGeneratedDESystemAutomaticRejectsEmptyInvariantNameTest();
     BuildInvariantGeneratedDESystemAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
+    SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
     SolveInvariantGeneratedSeriesAutomaticPropagatesMasterBasisFamilyMismatchTest();
@@ -26833,9 +27079,13 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticExecutionFailureStopsIterationTest();
     SolveInvariantGeneratedSeriesListAutomaticPropagatesMasterBasisFamilyMismatchTest();
     SolveInvariantGeneratedSeriesListAutomaticClassifiesReducerMasterSetDriftTest();
+    SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
+    SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();
     SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveEtaGeneratedSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveEtaGeneratedSeriesRejectsDivisionByZeroDimensionExpressionTest();

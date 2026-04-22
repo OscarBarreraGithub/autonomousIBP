@@ -19,6 +19,7 @@
 #include "amflow/runtime/boundary_generation.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
+#include "amflow/runtime/physical_kinematics_guardrails.hpp"
 #include "amflow/solver/boundary_provider.hpp"
 #include "amflow/solver/singular_point_analysis.hpp"
 
@@ -41,6 +42,8 @@ constexpr char kMatrixOverlapPrefix[] =
     "upper-triangular matrix series patch overlap diagnostics";
 constexpr char kBootstrapSolverPrefix[] = "bootstrap regular-point continuation solver";
 constexpr char kUnsupportedSolverPathCode[] = "unsupported_solver_path";
+constexpr char kPhysicalKinematicsNotSupportedCode[] =
+    "physical_kinematics_not_supported";
 constexpr char kInsufficientPrecisionCode[] = "insufficient_precision";
 constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
 constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
@@ -2819,6 +2822,20 @@ SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summar
   return diagnostics;
 }
 
+SolverDiagnostics MakePhysicalKinematicsNotSupportedDiagnostics(
+    const PhysicalKinematicsGuardrailAssessment& assessment) {
+  SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = kPhysicalKinematicsNotSupportedCode;
+  diagnostics.summary =
+      std::string(kPhysicalKinematicsNotSupportedCode) +
+      ": Batch 62 only reviews subset " + assessment.reviewed_subset +
+      "; current ProblemSpec cannot be certified on that surface";
+  return diagnostics;
+}
+
 SolverDiagnostics MakeBoundaryUnsolvedDiagnostics(const BoundaryUnsolvedError& error) {
   SolverDiagnostics diagnostics;
   diagnostics.success = false;
@@ -2913,6 +2930,21 @@ PrecisionObservation MakePrecisionObservationFromDiagnostics(const SolveRequest&
 
 bool IsRetryablePrecisionInstability(const SolverDiagnostics& diagnostics) {
   return !diagnostics.success && diagnostics.failure_code == kInsufficientPrecisionCode;
+}
+
+std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
+    const ProblemSpec& spec) {
+  const PhysicalKinematicsGuardrailAssessment assessment =
+      AssessPhysicalKinematicsForBatch62(spec);
+  switch (assessment.verdict) {
+    case PhysicalKinematicsGuardrailVerdict::NotApplicable:
+    case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
+      return std::nullopt;
+    case PhysicalKinematicsGuardrailVerdict::UnsupportedSurface:
+      return MakePhysicalKinematicsNotSupportedDiagnostics(assessment);
+  }
+
+  return std::nullopt;
 }
 
 SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request) {
@@ -3837,6 +3869,12 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const std::string& target_location,
     const PrecisionPolicy& precision_policy,
     const int requested_digits) {
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          AssessGeneratedSolvePhysicalKinematics(spec);
+      diagnostics.has_value()) {
+    return *diagnostics;
+  }
+
   SolveRequest request;
   try {
     request.system = BuildInvariantGeneratedDESystem(spec,
@@ -3872,6 +3910,11 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   if (invariant_names.empty()) {
     throw std::runtime_error(
         "automatic invariant solver handoff list requires at least one invariant name");
+  }
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          AssessGeneratedSolvePhysicalKinematics(spec);
+      diagnostics.has_value()) {
+    return *diagnostics;
   }
 
   SolveRequest request;
@@ -3942,6 +3985,12 @@ SolverDiagnostics SolveEtaGeneratedSeries(
       NormalizePublicDimensionExpression(exact_dimension_override);
   const std::optional<std::string> normalized_exact_dimension_override =
       ResolveExactDimensionOverride(normalized_dimension_expression);
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          AssessGeneratedSolvePhysicalKinematics(spec);
+      diagnostics.has_value()) {
+    return *diagnostics;
+  }
+
   SolveRequest request;
   try {
     request.system = BuildEtaGeneratedDESystem(spec,

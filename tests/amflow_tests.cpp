@@ -3973,6 +3973,24 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsAmbiguous
       "Batch 62f should tell callers how to disambiguate raw reviewed s locations");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedRawMultiInvariantLocationsTest() {
+  const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "foo", "bar", false);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62f should fail closed on malformed unlabeled locations when s appears in a "
+         "reviewed multi-invariant request");
+  ExpectContains(
+      assessment.detail,
+      "spell the reviewed s segment explicitly as s=...",
+      "Batch 62f should keep the explicit s disambiguation guidance for malformed raw "
+      "multi-invariant locations");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
 
@@ -17088,6 +17106,40 @@ void SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocations
          "ambiguous unlabeled raw continuation location");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-raw-multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "foo",
+                                                "bar",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62f should fail closed on malformed unlabeled locations for reviewed "
+         "multi-invariant requests before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed s segment explicitly as s=...",
+      "Batch 62f should keep the explicit s disambiguation guidance on malformed raw invariant "
+      "list requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62f should not call the solver when the invariant list wrapper receives "
+         "malformed unlabeled raw continuation locations");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -29667,6 +29719,7 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsAmbiguousRawMultiInvariantLocationsTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedRawMultiInvariantLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsThresholdClearSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeSegmentSupportedTest();
@@ -30223,6 +30276,7 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

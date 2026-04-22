@@ -324,28 +324,17 @@ std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
   return segment;
 }
 
-std::optional<ExactRational> ParseUnlabeledReviewedSLocationExpression(
-    const std::string& location,
-    const ReviewedK0ExactSubstitutions& substitutions) {
+bool IsUnlabeledLocationWithoutAssignment(const std::string& location) {
   const std::string trimmed = Trim(location);
-  if (trimmed.empty() || trimmed.find('=') != std::string::npos) {
-    return std::nullopt;
-  }
-
-  try {
-    return EvaluateCoefficientExpression(
-        trimmed, BuildReviewedSegmentPassiveBindings(substitutions, "s"));
-  } catch (const std::exception&) {
-    return std::nullopt;
-  }
+  return !trimmed.empty() && trimmed.find('=') == std::string::npos;
 }
 
 bool HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(
     const std::string& start_location,
     const std::string& target_location,
-    const ReviewedK0ExactSubstitutions& substitutions) {
-  return ParseUnlabeledReviewedSLocationExpression(start_location, substitutions).has_value() ||
-         ParseUnlabeledReviewedSLocationExpression(target_location, substitutions).has_value();
+    const ReviewedK0ExactSubstitutions&) {
+  return IsUnlabeledLocationWithoutAssignment(start_location) ||
+         IsUnlabeledLocationWithoutAssignment(target_location);
 }
 
 std::optional<ExactRational> ComputeReviewedEndpointSingularS(

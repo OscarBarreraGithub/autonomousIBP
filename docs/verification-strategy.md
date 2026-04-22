@@ -243,6 +243,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   helpers for the Batch-2/M0b regression cases, including qualification scaffold/catalog
   coherence against the frozen parity sources and repo-local `amflow-tests` wiring for those
   helper checks
+- qualification-readiness validation across the retained `required-set`, `de-d0-pair`, and
+  `user-hook-pair` phase-0 packet roots so the first M6 groundwork helper can audit which frozen
+  example classes already have captured goldens without claiming a full qualification pass
 
 ## Batch-2 Reviewable Artifacts
 
@@ -252,6 +255,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - `tools/reference-harness/templates/qualification-benchmarks.json` freezes the current
   qualification scaffold: parity-matrix benchmark families, digit-threshold profiles, required
   failure codes, and known regression families.
+- `tools/reference-harness/scripts/validate_qualification_scaffold.py` audits retained phase-0
+  packet roots against that scaffold and reports benchmark-level readiness while keeping packet-
+  level `bootstrap-only` versus `reference-captured` truthfulness explicit.
 - `docs/implementation-ledger.md` tracks which implementation batches have been reviewed and what verification was run.
 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification

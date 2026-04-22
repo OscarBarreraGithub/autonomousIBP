@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
+All five harness scripts also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61k` / `b62k` / `b63h` / `b64h`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
@@ -80,11 +80,16 @@ python3 tools/reference-harness/scripts/freeze_phase0_goldens.py \
 python3 tools/reference-harness/scripts/capture_phase0_reference.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
+
+python3 tools/reference-harness/scripts/validate_qualification_scaffold.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --self-check
 ```
 
-`amflow-tests` now exercises all four helper self-checks through the configured
-`Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze, and
-retained-capture regression paths without needing a real benchmark packet.
+`amflow-tests` now exercises all five helper self-checks through the configured
+`Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
+retained-capture, and qualification-readiness regression paths without needing a real benchmark
+packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -126,6 +131,20 @@ selection is therefore the preferred path when the catalog already groups a read
 such as the retained `de-d0-pair` or retained `user-hook-pair`.
 If the required phase-0 pair is absent, the packet summary truthfully stays `bootstrap-only` even
 when the selected optional examples become `reference-captured`.
+
+To audit the current qualification scaffold against the retained packet split without running any
+qualification numerics:
+
+```bash
+python3 tools/reference-harness/scripts/validate_qualification_scaffold.py \
+  --root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set \
+  --root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair \
+  --root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair
+```
+
+The validator keeps the accepted `required-set` packet distinct from the narrower `de-d0-pair`
+and `user-hook-pair` packets whose manifests truthfully remain `bootstrap-only`, while still
+crediting their benchmark-level retained goldens in the readiness report.
 
 The capture script writes:
 
@@ -174,6 +193,11 @@ The capture script writes:
   that belong in the retained `de-d0-pair` or retained `user-hook-pair` packets. Those hints
   stay aligned with the current theory frontier while still anchoring against the recorded
   predecessor slices `b61h` / `b62j` / `b63f` / `b64g`.
+- `validate_qualification_scaffold.py` is the first narrow M6 evidence-audit helper: it validates
+  retained packet manifests, comparison summaries, and promoted goldens against the scaffold and
+  reports which phase-0 example classes are already covered by the current `required-set`,
+  `de-d0-pair`, and `user-hook-pair` packet split without claiming any new parity or `Milestone M6`
+  closure.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`

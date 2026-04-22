@@ -177,6 +177,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
 - `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` selects every matching ready benchmark in that same frozen order, at most one explicit selection mode may be used at a time, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
+- `tools/reference-harness/scripts/validate_qualification_scaffold.py`: the first narrow M6 readiness helper. It consumes one or more retained phase-0 packet roots, validates their manifests / capture summaries / promoted comparison surfaces against the current qualification scaffold, and reports which frozen phase-0 example classes already have retained goldens across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` packet split. This is an evidence-audit helper only: it does not run any qualification numerics and does not claim case-study parity or `Milestone M6` closure.
 
 ## Qualification Scaffold
 
@@ -191,6 +192,11 @@ retained outputs and rerun evidence.
   `b61h` / `b62j` / `b63f` / `b64g`. Ready optional examples may
   instead carry `optional_capture_packet` so future capture threads keep the retained `de-d0-pair`
   and retained `user-hook-pair` grouped without re-planning that packet shape.
+- `tools/reference-harness/scripts/validate_qualification_scaffold.py` is the first live consumer
+  of that scaffold on actual retained artifacts. It keeps the required `reference-captured`
+  `required-set` packet distinct from the narrower optional packets whose manifests truthfully stay
+  `bootstrap-only`, while still crediting their benchmark-level retained goldens on the reviewed
+  `de-d0-pair` and `user-hook-pair` surfaces.
 - The scaffold is planning metadata only. Adding or editing it does not claim any new
   `reference-captured` benchmark, any new runtime parity, or any reviewed solver widening.
 - Future optional-capture lanes should pair the scaffold with
@@ -198,10 +204,11 @@ retained outputs and rerun evidence.
   (`feynman_prescription` included) and later qualification thresholds stay synchronized.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All four helpers expose `--self-check` modes so the repo can
-rerun the bootstrap, catalog/scaffold coherence, and retained-capture regression scenarios without
-needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
-placeholder-freeze, and retained-capture self-checks through the configured repo-local Python
-interpreter, and the retained-capture helper also self-checks the restart-safe
-`--resume-existing` path plus the explicit benchmark-id, optional-packet, and `--required-only`
-selection contract, including direct `optional_capture_packet` selection.
+the retained-golden promotion path. All five helpers expose `--self-check` modes so the repo can
+rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, and the
+new qualification-readiness audit without needing a full benchmark packet. `amflow-tests` now
+drives those bootstrap, fetch, placeholder-freeze, retained-capture, and qualification-readiness
+self-checks through the configured repo-local Python interpreter, and the retained-capture helper
+also self-checks the restart-safe `--resume-existing` path plus the explicit benchmark-id,
+optional-packet, and `--required-only` selection contract, including direct
+`optional_capture_packet` selection.

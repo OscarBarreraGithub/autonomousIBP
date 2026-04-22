@@ -4094,6 +4094,35 @@ void EtaInsertionKiraEmissionTest() {
          "Kira emission should include eta in the invariant list");
 }
 
+void EtaInsertionKiraEmissionPreservesPhaseSpaceCutPropagatorOrdinalsTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("Prescription")->Plan(spec);
+  const amflow::ProblemSpec transformed =
+      amflow::ApplyEtaInsertion(spec, decision).transformed_spec;
+
+  amflow::ReductionOptions options;
+  options.ibp_reducer = "Kira";
+  options.permutation_option = 1;
+
+  const auto layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-kira-phase-space-cut-propagators"));
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(transformed, options, layout);
+
+  Expect(preparation.validation_messages.empty(),
+         "Kira preparation should accept the reviewed phase-space auxiliary family");
+  const auto family_yaml_it = preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.generated_files.end(),
+         "Kira preparation should emit family YAML for the reviewed phase-space path");
+  Expect(family_yaml_it->second.find("cut_propagators: [2, 6]\n") != std::string::npos,
+         "Kira family YAML should emit 1-based cut propagator ordinals for the reviewed "
+         "phase-space subset");
+  Expect(family_yaml_it->second.find("cut_propagators: [1, 2, 6]\n") == std::string::npos &&
+             family_yaml_it->second.find("cut_propagators: [2, 3, 6]\n") == std::string::npos,
+         "Kira family YAML should keep uncut standard and linear propagators out of the "
+         "reviewed phase-space cut list");
+}
+
 void EtaInsertionTrimsSelectedMassLiteralsForCoherentMassSurfaceTest() {
   const amflow::ProblemSpec spec = MakeBuiltinMassTrimEqualitySpec();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("Mass")->Plan(spec);
@@ -5769,6 +5798,9 @@ void KiraPreparationEmitsKira31CompatibleYamlFragmentsTest() {
              files.integralfamilies_yaml.find("[\"(k2-p1-p2)^2\", \"0\"]") !=
                  std::string::npos,
          "Kira family YAML should preserve the reviewed shared-sample topology");
+  Expect(files.integralfamilies_yaml.find("cut_propagators: []\n") != std::string::npos,
+         "Kira family YAML should emit an explicit empty cut_propagators list on the reviewed "
+         "loop-only surface");
 
   Expect(files.kinematics_yaml.find("momentum_conservation: [p4, -p1-p2-p3]\n") !=
              std::string::npos,
@@ -28014,6 +28046,7 @@ int main() {
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();
     EtaInsertionKiraEmissionTest();
+    EtaInsertionKiraEmissionPreservesPhaseSpaceCutPropagatorOrdinalsTest();
     EtaInsertionTrimsSelectedMassLiteralsForCoherentMassSurfaceTest();
     EtaInsertionKiraEmissionTrimsSelectedMassLiteralsTest();
     EtaInsertionRejectsDuplicateIndicesTest();

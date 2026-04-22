@@ -94,6 +94,28 @@ std::string PreferredMasters(const std::vector<std::string>& preferred) {
   return out.str();
 }
 
+std::string OrdinalList(const std::vector<std::size_t>& ordinals) {
+  std::ostringstream out;
+  for (std::size_t index = 0; index < ordinals.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << ordinals[index];
+  }
+  return out.str();
+}
+
+std::vector<std::size_t> CutPropagatorOrdinals(const ProblemSpec& spec) {
+  std::vector<std::size_t> ordinals;
+  ordinals.reserve(spec.family.propagators.size());
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if (spec.family.propagators[index].kind == PropagatorKind::Cut) {
+      ordinals.push_back(index + 1);
+    }
+  }
+  return ordinals;
+}
+
 std::string ShellQuote(const std::string& value) {
   std::string quoted = "'";
   for (const char character : value) {
@@ -1454,6 +1476,7 @@ KiraJobFiles BuildJobFilesForTargets(const ProblemSpec& spec,
     family_yaml << "      - [" << Quote(propagator.expression) << ", "
                 << Quote(propagator.mass) << "]\n";
   }
+  family_yaml << "    cut_propagators: [" << OrdinalList(CutPropagatorOrdinals(spec)) << "]\n";
   files.integralfamilies_yaml = family_yaml.str();
 
   std::ostringstream kinematics_yaml;

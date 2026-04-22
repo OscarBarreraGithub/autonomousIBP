@@ -246,6 +246,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - qualification-readiness validation across the retained `required-set`, `de-d0-pair`, and
   `user-hook-pair` phase-0 packet roots so the first M6 groundwork helper can audit which frozen
   example classes already have captured goldens without claiming a full qualification pass
+- frozen `docs/release-signoff-checklist.md` planning scaffold so future
+  release-sign-off packets have one checklist for candidate metadata,
+  prerequisite gates, diagnostics/performance review, docs/parity review, and
+  final dispositions without claiming that qualification or release is complete
 
 ## Batch-2 Reviewable Artifacts
 

@@ -550,6 +550,11 @@ Delivers:
 - qualification-corpus pass over captured goldens and benchmark families
 - release sign-off with diagnostics, performance, and parity evidence reviewed
 
+First groundwork:
+- `docs/release-signoff-checklist.md` freezes the first `Milestone M7`
+  evidence buckets, reviewer roles, and mandatory sign-off questions without
+  claiming that `Milestone M6` or release readiness has been achieved
+
 Reason for order:
 - qualification and release claims belong after implementation, capture, and verification all
   exist in stable form
@@ -655,6 +660,12 @@ dependency change.
 | `Milestone M6` | qualification corpus over the parity-matrix benchmarks and upstream regression families, using already captured upstream goldens | `Milestone M5`, `Milestone M0b` |
 | `Milestone M7` | release gate: performance review, diagnostic review, docs completion, and parity sign-off | `Milestone M6` |
 
+The first `Milestone M7` groundwork packet is documentation-only:
+`docs/release-signoff-checklist.md` records the exact evidence buckets,
+mandatory release-note prompts, and reviewer dispositions that a future release
+packet must fill in. It does not claim that the qualification corpus passes or
+that release sign-off is complete.
+
 ## Acceptance Gates Per Phase
 
 ### Phase A Gate
@@ -707,6 +718,8 @@ dependency change.
 
 - the qualification corpus passes against already captured goldens
 - diagnostics and performance have been reviewed on the mandatory benchmark set
+- the release packet records docs/parity sign-off against the frozen checklist
+  in `docs/release-signoff-checklist.md`
 
 ## Explicit Non-Goals And Defers For Early Solver Phases
 

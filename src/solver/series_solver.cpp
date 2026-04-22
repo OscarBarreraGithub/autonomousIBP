@@ -2743,6 +2743,17 @@ std::string BuildSeriesSolverReplayFingerprint(const SeriesSolver& solver) {
                                     std::string(typeid(solver).name()));
 }
 
+std::string BuildExecutableReplayFingerprint(const std::filesystem::path& executable) {
+  std::ostringstream out;
+  try {
+    out << "content_fingerprint=" << ComputeArtifactFingerprint(ReadPreparedFile(executable))
+        << "\n";
+  } catch (const std::exception& error) {
+    out << "content_read_error=" << error.what() << "\n";
+  }
+  return ComputeArtifactFingerprint(out.str());
+}
+
 std::string BuildEtaGeneratedSolveInputFingerprint(
     const std::string& solve_kind,
     const ProblemSpec& spec,
@@ -2984,12 +2995,21 @@ std::filesystem::path BuildComplexEtaContinuationManifestPath(
 
 SolverDiagnostics MakeComplexEtaContinuationDeferredDiagnostics(
     const EtaContinuationPlan& plan,
-    const std::filesystem::path& manifest_path) {
-  return MakeUnsupportedSolverPathDiagnostics(
+    const std::filesystem::path& manifest_path,
+    const std::optional<std::string>& kira_executable_replay_fingerprint = std::nullopt,
+    const std::optional<std::string>& fermat_executable_replay_fingerprint = std::nullopt) {
+  std::string summary =
       "complex eta continuation currently stops after planning one reviewed upper-half-plane "
       "contour; contour_fingerprint=" +
-      plan.contour_fingerprint + "; continuation_plan_manifest=" + manifest_path.string() +
-      "; live complex contour execution remains deferred");
+      plan.contour_fingerprint + "; continuation_plan_manifest=" + manifest_path.string();
+  if (kira_executable_replay_fingerprint.has_value()) {
+    summary += "; kira_executable_replay_fingerprint=" + *kira_executable_replay_fingerprint;
+  }
+  if (fermat_executable_replay_fingerprint.has_value()) {
+    summary += "; fermat_executable_replay_fingerprint=" + *fermat_executable_replay_fingerprint;
+  }
+  summary += "; live complex contour execution remains deferred";
+  return MakeUnsupportedSolverPathDiagnostics(summary);
 }
 
 SolverDiagnostics MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
@@ -3002,44 +3022,6 @@ SolverDiagnostics MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
       manifest_path.string() + "; contour_fingerprint=" + plan.contour_fingerprint +
       "; continuation_plan_manifest_write_failed=" + std::string(error.what()) +
       "; live complex contour execution remains deferred");
-}
-
-SolverDiagnostics DeferComplexEtaGeneratedContinuation(const DESystem& system,
-                                                       const ProblemSpec& spec,
-                                                       const ArtifactLayout& layout,
-                                                       const std::string& eta_symbol,
-                                                       const std::string& start_location,
-                                                       const std::string& target_location) {
-  const EtaContinuationPlan plan = PlanEtaContinuationContour(system,
-                                                             spec,
-                                                             eta_symbol,
-                                                             start_location,
-                                                             target_location,
-                                                             EtaContourHalfPlane::Upper);
-  const EtaContinuationPlanManifest manifest =
-      MakeEtaContinuationPlanManifest(plan, BuildComplexEtaContinuationManifestRunId(plan));
-  const std::filesystem::path manifest_path = BuildComplexEtaContinuationManifestPath(layout, plan);
-  try {
-    static_cast<void>(WriteEtaContinuationPlanManifest(layout, manifest));
-  } catch (const std::exception& error) {
-    return MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
-        plan, manifest_path, error);
-  }
-  return MakeComplexEtaContinuationDeferredDiagnostics(plan, manifest_path);
-}
-
-std::optional<SolverDiagnostics> MaybeDeferComplexEtaGeneratedContinuation(
-    const ProblemSpec& spec,
-    const DESystem& system,
-    const ArtifactLayout& layout,
-    const std::string& eta_symbol,
-    const std::string& start_location,
-    const std::string& target_location) {
-  if (spec.kinematics.complex_numeric_substitutions.empty()) {
-    return std::nullopt;
-  }
-  return DeferComplexEtaGeneratedContinuation(
-      system, spec, layout, eta_symbol, start_location, target_location);
 }
 
 std::optional<std::filesystem::path>
@@ -3086,6 +3068,44 @@ ExtractContinuationPlanContourFingerprintFromDeferredComplexEtaContinuationDiagn
   return fingerprint;
 }
 
+std::optional<std::string> ExtractDeferredComplexEtaContinuationToken(
+    const SolverDiagnostics& diagnostics,
+    const std::string& token) {
+  if (!IsReplayableDeferredComplexEtaContinuationDiagnostics(diagnostics)) {
+    return std::nullopt;
+  }
+  const std::size_t begin = diagnostics.summary.find(token);
+  if (begin == std::string::npos) {
+    return std::nullopt;
+  }
+  const std::size_t value_begin = begin + token.size();
+  const std::size_t end = diagnostics.summary.find(';', value_begin);
+  const std::string value =
+      diagnostics.summary.substr(value_begin,
+                                 end == std::string::npos ? std::string::npos
+                                                          : end - value_begin);
+  if (value.empty()) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+bool DeferredComplexEtaContinuationExecutableFingerprintsMatchDiagnostics(
+    const SolverDiagnostics& diagnostics,
+    const std::string& kira_executable_replay_fingerprint,
+    const std::string& fermat_executable_replay_fingerprint) {
+  const std::optional<std::string> cached_kira_executable_replay_fingerprint =
+      ExtractDeferredComplexEtaContinuationToken(diagnostics,
+                                                "kira_executable_replay_fingerprint=");
+  const std::optional<std::string> cached_fermat_executable_replay_fingerprint =
+      ExtractDeferredComplexEtaContinuationToken(diagnostics,
+                                                "fermat_executable_replay_fingerprint=");
+  return cached_kira_executable_replay_fingerprint.has_value() &&
+         cached_fermat_executable_replay_fingerprint.has_value() &&
+         *cached_kira_executable_replay_fingerprint == kira_executable_replay_fingerprint &&
+         *cached_fermat_executable_replay_fingerprint == fermat_executable_replay_fingerprint;
+}
+
 bool DeferredComplexEtaContinuationManifestMatchesDiagnostics(
     const SolverDiagnostics& diagnostics,
     const std::optional<std::filesystem::path>& expected_manifest_path = std::nullopt,
@@ -3128,9 +3148,17 @@ bool DeferredComplexEtaContinuationManifestMatchesDiagnostics(
 std::optional<SolverDiagnostics>
 MaybeReplayDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
     const ArtifactLayout& layout,
-    const SolvedPathCacheContext& cache_context) {
+    const SolvedPathCacheContext& cache_context,
+    const std::string& kira_executable_replay_fingerprint,
+    const std::string& fermat_executable_replay_fingerprint) {
   const SolvedPathCacheReplayResult replay = TryReplaySolvedPathCache(layout, cache_context);
   if (replay.status != SolvedPathCacheReplayStatus::Hit) {
+    return std::nullopt;
+  }
+  if (!DeferredComplexEtaContinuationExecutableFingerprintsMatchDiagnostics(
+          *replay.diagnostics,
+          kira_executable_replay_fingerprint,
+          fermat_executable_replay_fingerprint)) {
     return std::nullopt;
   }
   if (!DeferredComplexEtaContinuationManifestMatchesDiagnostics(*replay.diagnostics,
@@ -3147,6 +3175,8 @@ MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
     const ProblemSpec& spec,
     const ArtifactLayout& layout,
     const std::string& eta_symbol,
+    const std::optional<std::string>& kira_executable_replay_fingerprint,
+    const std::optional<std::string>& fermat_executable_replay_fingerprint,
     const SolveRequest& request,
     const SolvedPathCacheContext& cache_context,
     const bool allow_postbuild_replay) {
@@ -3188,7 +3218,10 @@ MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
   }
 
   const SolverDiagnostics diagnostics =
-      MakeComplexEtaContinuationDeferredDiagnostics(plan, manifest_path);
+      MakeComplexEtaContinuationDeferredDiagnostics(plan,
+                                                   manifest_path,
+                                                   kira_executable_replay_fingerprint,
+                                                   fermat_executable_replay_fingerprint);
   PersistSolvedPathCacheManifest(layout, complex_cache_context, request, diagnostics);
   return diagnostics;
 }
@@ -3480,6 +3513,12 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
   const bool has_complex_request =
       spec.complex_mode || !spec.kinematics.complex_numeric_substitutions.empty();
   if (has_complex_request) {
+    const std::optional<std::string> kira_executable_replay_fingerprint =
+        skip_reduction ? std::nullopt
+                       : std::make_optional(BuildExecutableReplayFingerprint(kira_executable));
+    const std::optional<std::string> fermat_executable_replay_fingerprint =
+        skip_reduction ? std::nullopt
+                       : std::make_optional(BuildExecutableReplayFingerprint(fermat_executable));
     ValidateComplexEtaGeneratedWrapperBindings(spec);
     if (const std::optional<SolverDiagnostics> diagnostics =
             AssessGeneratedSolvePhysicalKinematics(spec);
@@ -3489,7 +3528,10 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     if (!skip_reduction) {
       if (const std::optional<SolverDiagnostics> diagnostics =
               MaybeReplayDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
-                  layout, cache_context);
+                  layout,
+                  cache_context,
+                  *kira_executable_replay_fingerprint,
+                  *fermat_executable_replay_fingerprint);
           diagnostics.has_value()) {
         return *diagnostics;
       }
@@ -3530,7 +3572,14 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
                                         requested_digits);
     const std::optional<SolverDiagnostics> diagnostics =
         MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
-            spec, layout, eta_symbol, request, cache_context, skip_reduction);
+            spec,
+            layout,
+            eta_symbol,
+            kira_executable_replay_fingerprint,
+            fermat_executable_replay_fingerprint,
+            request,
+            cache_context,
+            skip_reduction);
     if (diagnostics.has_value()) {
       return *diagnostics;
     }
@@ -4540,6 +4589,88 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     return *diagnostics;
   }
 
+  SolvedPathCacheContext cache_context;
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    const std::string kira_executable_replay_fingerprint =
+        BuildExecutableReplayFingerprint(kira_executable);
+    const std::string fermat_executable_replay_fingerprint =
+        BuildExecutableReplayFingerprint(fermat_executable);
+    cache_context.replay_enabled = true;
+    cache_context.solve_kind = "eta-generated-series";
+    cache_context.slot_name =
+        MakeSolvedPathCacheSlotName(cache_context.solve_kind,
+                                    spec,
+                                    decision,
+                                    eta_symbol,
+                                    std::nullopt,
+                                    std::nullopt,
+                                    normalized_dimension_expression,
+                                    normalized_dimension_expression) +
+        "-" + std::string(kComplexContinuationDeferredCacheEpoch);
+    cache_context.input_fingerprint =
+        BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
+                                              spec,
+                                              master_basis,
+                                              decision,
+                                              options,
+                                              solver,
+                                              start_location,
+                                              target_location,
+                                              precision_policy,
+                                              std::nullopt,
+                                              std::nullopt,
+                                              std::nullopt,
+                                              normalized_dimension_expression,
+                                              normalized_dimension_expression,
+                                              requested_digits,
+                                              eta_symbol);
+    if (const std::optional<SolverDiagnostics> diagnostics =
+            MaybeReplayDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(layout,
+                                                                                 cache_context,
+                                                                                 kira_executable_replay_fingerprint,
+                                                                                 fermat_executable_replay_fingerprint);
+        diagnostics.has_value()) {
+      return *diagnostics;
+    }
+
+    SolveRequest request;
+    try {
+      request.system = BuildEtaGeneratedDESystem(spec,
+                                                 master_basis,
+                                                 decision,
+                                                 options,
+                                                 layout,
+                                                 kira_executable,
+                                                 fermat_executable,
+                                                 eta_symbol,
+                                                 normalized_exact_dimension_override);
+      ApplySymbolicDimensionExpression(request.system,
+                                       normalized_dimension_expression,
+                                       normalized_exact_dimension_override);
+    } catch (const MasterSetInstabilityError& error) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+    request.start_location = start_location;
+    request.target_location = target_location;
+    request.precision_policy = precision_policy;
+    request.amf_requested_dimension_expression = normalized_dimension_expression;
+    request.requested_digits = requested_digits;
+    if (const std::optional<SolverDiagnostics> diagnostics =
+            MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
+                spec,
+                layout,
+                eta_symbol,
+                std::make_optional(kira_executable_replay_fingerprint),
+                std::make_optional(fermat_executable_replay_fingerprint),
+                request,
+                cache_context,
+                false);
+        diagnostics.has_value()) {
+      return *diagnostics;
+    }
+    return SolveWithPrecisionRetry(solver, std::move(request));
+  }
+
   SolveRequest request;
   try {
     request.system = BuildEtaGeneratedDESystem(spec,
@@ -4556,16 +4687,6 @@ SolverDiagnostics SolveEtaGeneratedSeries(
                                      normalized_exact_dimension_override);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
-  }
-  if (const std::optional<SolverDiagnostics> diagnostics =
-          MaybeDeferComplexEtaGeneratedContinuation(spec,
-                                                   request.system,
-                                                   layout,
-                                                   eta_symbol,
-                                                   start_location,
-                                                   target_location);
-      diagnostics.has_value()) {
-    return *diagnostics;
   }
   request.start_location = start_location;
   request.target_location = target_location;

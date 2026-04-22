@@ -20455,9 +20455,558 @@ void SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWr
                  "continuation_plan_manifest_write_failed=",
                  "eta solver complex continuation coverage should report explicit manifest-write "
                  "failure context");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta solver complex continuation coverage should not write solved-path cache artifacts "
+         "when manifest persistence fails");
   Expect(solver.call_count() == 0,
          "eta solver complex continuation coverage should not call the exact solver when "
          "manifest persistence fails");
+}
+
+void SolveEtaGeneratedSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 89;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00048828125;
+  solver.returned_diagnostics.overlap_mismatch = 0.0009765625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "unexpected eta solver complex continuation solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta solver complex continuation cache coverage should persist exactly one continuation-"
+      "plan manifest");
+  const std::filesystem::path cache_manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "eta solver complex continuation cache coverage should persist exactly one solved-path "
+      "cache manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+  const std::string cache_manifest_yaml = ReadFile(cache_manifest_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta solver complex continuation cache coverage should not mutate the input problem "
+         "spec");
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "eta solver complex continuation cache coverage should stop on an explicit unsupported "
+         "solver diagnostic");
+  ExpectContains(diagnostics.summary,
+                 expected_plan.contour_fingerprint,
+                 "eta solver complex continuation cache coverage should report the planned "
+                 "contour fingerprint");
+  ExpectContains(diagnostics.summary,
+                 manifest_path.string(),
+                 "eta solver complex continuation cache coverage should report the persisted "
+                 "manifest path");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta solver complex continuation cache coverage should persist the reviewed "
+         "continuation-plan payload verbatim");
+  Expect(cache_manifest_path.filename().string().find("complex-continuation-deferred-v1") !=
+             std::string::npos,
+         "eta solver complex continuation cache coverage should key the solved-path cache "
+         "artifact on the deferred complex continuation cache epoch");
+  Expect(cache_manifest_yaml.find("solve_kind: \"eta-generated-series\"\n") !=
+             std::string::npos,
+         "eta solver complex continuation cache coverage should record the direct eta-generated "
+         "solve kind in the solved-path cache manifest");
+  Expect(cache_manifest_yaml.find("success: false\n") != std::string::npos,
+         "eta solver complex continuation cache coverage should cache the reviewed deferred "
+         "diagnostic as an unsuccessful solved-path entry");
+  Expect(cache_manifest_yaml.find("failure_code: \"unsupported_solver_path\"\n") !=
+             std::string::npos,
+         "eta solver complex continuation cache coverage should record the explicit deferred "
+         "unsupported-solver failure code in the solved-path cache manifest");
+  Expect(cache_manifest_yaml.find("summary: \"" + diagnostics.summary + "\"\n") !=
+             std::string::npos,
+         "eta solver complex continuation cache coverage should persist the deferred complex "
+         "continuation diagnostic verbatim in the solved-path cache manifest");
+  Expect(cache_manifest_yaml.find(expected_plan.contour_fingerprint) != std::string::npos,
+         "eta solver complex continuation cache coverage should bind the solved-path cache entry "
+         "to the planned contour fingerprint");
+  Expect(cache_manifest_yaml.find(manifest_path.string()) != std::string::npos,
+         "eta solver complex continuation cache coverage should record the persisted "
+         "continuation-plan manifest path in the solved-path cache entry");
+  Expect(solver.call_count() == 0,
+         "eta solver complex continuation cache coverage should not call the exact solver once "
+         "the wrapper has switched onto contour-plan deferral");
+}
+
+void SolveEtaGeneratedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 97;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-replay-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.000244140625;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00048828125;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      seed_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta solver complex continuation cache replay coverage should seed exactly one "
+      "continuation-plan manifest");
+  const std::filesystem::path cache_manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "eta solver complex continuation cache replay coverage should seed exactly one solved-path "
+      "cache manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+  const std::string seeded_manifest_yaml = ReadFile(cache_manifest_path);
+
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta solver complex continuation cache replay coverage should seed the reviewed "
+         "continuation-plan manifest before the replay attempt");
+
+  std::filesystem::permissions(
+      kira_path,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+          std::filesystem::perms::group_read | std::filesystem::perms::others_read,
+      std::filesystem::perm_options::replace);
+  std::filesystem::permissions(
+      layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      replay_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seeded_diagnostics),
+         "eta solver complex continuation cache replay coverage should replay the seeded "
+         "deferred diagnostics when the matching continuation-plan manifest remains available");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta solver complex continuation cache replay coverage should keep the continuation-"
+         "plan manifest unchanged on replay");
+  Expect(ReadFile(cache_manifest_path) == seeded_manifest_yaml,
+         "eta solver complex continuation cache replay coverage should keep the seeded solved-"
+         "path cache manifest unchanged on replay");
+  Expect(replay_solver.call_count() == 0,
+         "eta solver complex continuation cache replay coverage should not call the exact solver "
+         "on the cached deferred path");
+}
+
+void SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache drift seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      seed_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      71);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta solver complex continuation cache drift coverage should seed exactly one "
+      "continuation-plan manifest");
+  OverwriteTextFile(manifest_path,
+                    "manifest_kind: \"eta-continuation-plan\"\n"
+                    "contour_fingerprint: \"corrupted-fingerprint\"\n");
+  std::filesystem::permissions(
+      layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache drift replay";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      replay_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      71);
+
+  Expect(diagnostics.summary != seeded_diagnostics.summary,
+         "eta solver complex continuation cache drift coverage should reject replay when the "
+         "persisted continuation-plan manifest fingerprint no longer matches");
+  ExpectContains(
+      diagnostics.summary,
+      "continuation_plan_manifest_write_failed=",
+      "eta solver complex continuation cache drift coverage should fall through to a fresh "
+      "manifest-write attempt once replay is rejected");
+  Expect(replay_solver.call_count() == 0,
+         "eta solver complex continuation cache drift coverage should still stop before the "
+         "exact solver even after rejecting the stale replay");
+}
+
+void SolveEtaGeneratedSeriesRejectsDeferredComplexReplayFromDifferentManifestRootTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout seed_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-root-seed"));
+  const std::filesystem::path seed_kira_path = seed_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path seed_fermat_path = seed_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(seed_kira_path.parent_path());
+  WriteExecutableScript(seed_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(seed_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.00006103515625;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.0001220703125;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache-root seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      seed_layout,
+                                      seed_kira_path,
+                                      seed_fermat_path,
+                                      seed_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      67);
+
+  const std::filesystem::path seed_cache_manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      seed_layout,
+      "eta solver complex continuation cache-root coverage should seed exactly one solved-path "
+      "cache manifest");
+
+  const amflow::ArtifactLayout replay_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-root-replay"));
+  const std::filesystem::path replay_kira_path = replay_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path replay_fermat_path =
+      replay_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(replay_kira_path.parent_path());
+  WriteExecutableScript(replay_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(replay_fermat_path, "#!/bin/sh\nexit 0\n");
+  std::filesystem::create_directories(SolvedPathCacheDir(replay_layout));
+  std::filesystem::copy_file(seed_cache_manifest_path,
+                             SolvedPathCacheDir(replay_layout) /
+                                 seed_cache_manifest_path.filename(),
+                             std::filesystem::copy_options::overwrite_existing);
+  std::filesystem::permissions(
+      replay_layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation cache-root replay";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      replay_layout,
+                                      replay_kira_path,
+                                      replay_fermat_path,
+                                      replay_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      67);
+
+  Expect(diagnostics.summary != seeded_diagnostics.summary,
+         "eta solver complex continuation cache-root coverage should reject a copied stale "
+         "cache entry whose continuation-plan manifest lives under another layout");
+  ExpectContains(
+      diagnostics.summary,
+      "continuation_plan_manifest_write_failed=",
+      "eta solver complex continuation cache-root coverage should fall through to a fresh "
+      "manifest-write attempt after rejecting the stale cross-layout replay");
+  ExpectContains(
+      diagnostics.summary,
+      replay_layout.manifests_dir.string(),
+      "eta solver complex continuation cache-root coverage should report the current layout "
+      "manifest root after rejecting the stale replay");
+  Expect(replay_solver.call_count() == 0,
+         "eta solver complex continuation cache-root coverage should still stop before the "
+         "exact solver after rejecting the stale cross-layout replay");
+}
+
+void SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 73;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-cache-executable-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.000244140625;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00048828125;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation executable-drift seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      seed_solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "eta solver complex continuation executable-drift coverage should seed exactly one solved-"
+      "path cache manifest"));
+
+  WriteExecutableScript(kira_path,
+                        MakeReducerFailureScript(
+                            "unexpected-direct-complex-cache-executable-drift-live-reduction",
+                            17));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta solver complex continuation executable-drift replay";
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(spec,
+                                                          master_basis,
+                                                          MakeEtaGeneratedHappyDecision(),
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          kira_path,
+                                                          fermat_path,
+                                                          replay_solver,
+                                                          start_location,
+                                                          target_location,
+                                                          precision_policy,
+                                                          requested_digits));
+      },
+      "eta solver complex continuation executable-drift coverage should reject stale deferred "
+      "replay after reducer executable content changes");
+
+  Expect(message.find("eta-generated DE construction requires successful reducer execution") !=
+             std::string::npos,
+         "eta solver complex continuation executable-drift coverage should fall through to live "
+         "reduction once the cached reducer executable content no longer matches");
+  Expect(message.find("exit_code=17") != std::string::npos,
+         "eta solver complex continuation executable-drift coverage should preserve the live "
+         "reducer exit code after rejecting stale replay");
+  Expect(message.find(seeded_diagnostics.summary) == std::string::npos,
+         "eta solver complex continuation executable-drift coverage should not return the stale "
+         "seeded deferred diagnostic after reducer executable content changes");
+  Expect(replay_solver.call_count() == 0,
+         "eta solver complex continuation executable-drift coverage should not reach the exact "
+         "solver when the live reducer fails after stale replay rejection");
 }
 
 void SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest() {
@@ -21527,9 +22076,387 @@ void SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenContinuationManifest
                  "continuation_plan_manifest_write_failed=",
                  "eta-mode-planned complex continuation coverage should report explicit "
                  "manifest-write failure context");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta-mode-planned complex continuation coverage should not write solved-path cache "
+         "artifacts when manifest persistence fails");
   Expect(solver.call_count() == 0,
          "eta-mode-planned complex continuation coverage should not call the exact solver when "
          "manifest persistence fails");
+}
+
+void SolveEtaModePlannedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 101;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-complex-continuation-cache-replay-"
+                   "baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-complex-continuation-cache-replay"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode seed_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        seed_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        seed_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta-mode-planned complex continuation cache replay coverage should seed exactly one "
+      "continuation-plan manifest");
+  const std::filesystem::path cache_manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "eta-mode-planned complex continuation cache replay coverage should seed exactly one "
+      "solved-path cache manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+  const std::string seeded_manifest_yaml = ReadFile(cache_manifest_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned complex continuation cache replay coverage should not mutate the "
+         "input problem spec");
+  Expect(seed_eta_mode.call_count() == 1,
+         "eta-mode-planned complex continuation cache replay coverage should plan exactly once "
+         "when seeding the deferred cache entry");
+  Expect(seed_eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned complex continuation cache replay coverage should plan against the "
+         "original problem spec when seeding the deferred cache entry");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta-mode-planned complex continuation cache replay coverage should seed the reviewed "
+         "continuation-plan manifest before the replay attempt");
+  Expect(ReadFile(cache_manifest_path).find("solve_kind: \"eta-generated-series\"\n") !=
+             std::string::npos,
+         "eta-mode-planned complex continuation cache replay coverage should reuse the direct "
+         "eta-generated cache identity after planning");
+
+  std::filesystem::permissions(
+      kira_path,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+          std::filesystem::perms::group_read | std::filesystem::perms::others_read,
+      std::filesystem::perm_options::replace);
+  std::filesystem::permissions(
+      layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingEtaMode replay_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache replay miss";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        replay_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        replay_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seeded_diagnostics),
+         "eta-mode-planned complex continuation cache replay coverage should replay the seeded "
+         "deferred diagnostics when the matching continuation-plan manifest remains available");
+  Expect(replay_eta_mode.call_count() == 1,
+         "eta-mode-planned complex continuation cache replay coverage should still plan exactly "
+         "once before direct replay short-circuits the live reduction");
+  Expect(replay_eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned complex continuation cache replay coverage should preserve the "
+         "original planning input on replay");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta-mode-planned complex continuation cache replay coverage should keep the "
+         "continuation-plan manifest unchanged on replay");
+  Expect(ReadFile(cache_manifest_path) == seeded_manifest_yaml,
+         "eta-mode-planned complex continuation cache replay coverage should keep the seeded "
+         "solved-path cache manifest unchanged on replay");
+  Expect(replay_solver.call_count() == 0,
+         "eta-mode-planned complex continuation cache replay coverage should not call the exact "
+         "solver on the cached deferred path");
+}
+
+void SolveEtaModePlannedSeriesRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-complex-continuation-cache-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode seed_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.00006103515625;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.0001220703125;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache drift seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        seed_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        seed_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        73);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta-mode-planned complex continuation cache drift coverage should seed exactly one "
+      "continuation-plan manifest");
+  OverwriteTextFile(manifest_path,
+                    "manifest_kind: \"eta-continuation-plan\"\n"
+                    "contour_fingerprint: \"corrupted-fingerprint\"\n");
+  std::filesystem::permissions(
+      layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingEtaMode replay_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.25;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.5;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache drift replay";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        replay_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        replay_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        73);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned complex continuation cache drift coverage should not mutate the "
+         "input problem spec");
+  Expect(replay_eta_mode.call_count() == 1,
+         "eta-mode-planned complex continuation cache drift coverage should still plan exactly "
+         "once before rejecting the stale replay");
+  Expect(replay_eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned complex continuation cache drift coverage should plan against the "
+         "original problem spec when rejecting the stale replay");
+  Expect(diagnostics.summary != seeded_diagnostics.summary,
+         "eta-mode-planned complex continuation cache drift coverage should reject replay when "
+         "the persisted continuation-plan manifest fingerprint no longer matches");
+  ExpectContains(
+      diagnostics.summary,
+      "continuation_plan_manifest_write_failed=",
+      "eta-mode-planned complex continuation cache drift coverage should fall through to a "
+      "fresh manifest-write attempt once replay is rejected");
+  Expect(replay_solver.call_count() == 0,
+         "eta-mode-planned complex continuation cache drift coverage should still stop before "
+         "the exact solver even after rejecting the stale replay");
+}
+
+void SolveEtaModePlannedSeriesRejectsDeferredComplexReplayFromDifferentManifestRootTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout seed_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-complex-continuation-cache-root-seed"));
+  const std::filesystem::path seed_kira_path = seed_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path seed_fermat_path = seed_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(seed_kira_path.parent_path());
+  WriteExecutableScript(seed_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(seed_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode seed_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.000030517578125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00006103515625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache-root seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        seed_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        seed_layout,
+                                        seed_kira_path,
+                                        seed_fermat_path,
+                                        seed_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        67);
+
+  const std::filesystem::path seed_cache_manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      seed_layout,
+      "eta-mode-planned complex continuation cache-root coverage should seed exactly one "
+      "solved-path cache manifest");
+
+  const amflow::ArtifactLayout replay_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-complex-continuation-cache-root-replay"));
+  const std::filesystem::path replay_kira_path =
+      replay_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path replay_fermat_path =
+      replay_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(replay_kira_path.parent_path());
+  WriteExecutableScript(replay_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(replay_fermat_path, "#!/bin/sh\nexit 0\n");
+  std::filesystem::create_directories(SolvedPathCacheDir(replay_layout));
+  std::filesystem::copy_file(seed_cache_manifest_path,
+                             SolvedPathCacheDir(replay_layout) /
+                                 seed_cache_manifest_path.filename(),
+                             std::filesystem::copy_options::overwrite_existing);
+  std::filesystem::permissions(
+      replay_layout.manifests_dir,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
+          std::filesystem::perms::group_read | std::filesystem::perms::group_exec |
+          std::filesystem::perms::others_read | std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
+
+  RecordingEtaMode replay_eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuation");
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected eta-mode-planned complex continuation cache-root replay";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        replay_eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        replay_layout,
+                                        replay_kira_path,
+                                        replay_fermat_path,
+                                        replay_solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        67);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned complex continuation cache-root coverage should not mutate the input "
+         "problem spec");
+  Expect(replay_eta_mode.call_count() == 1,
+         "eta-mode-planned complex continuation cache-root coverage should still plan exactly "
+         "once before rejecting the stale replay");
+  Expect(replay_eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned complex continuation cache-root coverage should plan against the "
+         "original problem spec when rejecting the stale cross-layout replay");
+  Expect(diagnostics.summary != seeded_diagnostics.summary,
+         "eta-mode-planned complex continuation cache-root coverage should reject a copied "
+         "stale cache entry whose continuation-plan manifest lives under another layout");
+  ExpectContains(
+      diagnostics.summary,
+      "continuation_plan_manifest_write_failed=",
+      "eta-mode-planned complex continuation cache-root coverage should fall through to a "
+      "fresh manifest-write attempt after rejecting the stale cross-layout replay");
+  ExpectContains(
+      diagnostics.summary,
+      replay_layout.manifests_dir.string(),
+      "eta-mode-planned complex continuation cache-root coverage should report the current "
+      "layout manifest root after rejecting the stale replay");
+  Expect(replay_solver.call_count() == 0,
+         "eta-mode-planned complex continuation cache-root coverage should still stop before "
+         "the exact solver after rejecting the stale cross-layout replay");
 }
 
 void SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest() {
@@ -24356,10 +25283,6 @@ void SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest() {
   Expect(ExtractYamlScalarValue(manifest_yaml, "request_fingerprint") != "\"\"",
          "UseCache replay should record a non-empty request fingerprint");
 
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during solved-path replay"));
-
   RecordingSeriesSolver replay_solver;
   replay_solver.returned_diagnostics.success = true;
   replay_solver.returned_diagnostics.residual_norm = 0.25;
@@ -24681,7 +25604,11 @@ void SolveAmfOptionsEtaModeSeriesSkipReductionReusesMatchingReductionStateTest()
   Expect(seed_solver.call_count() == 1,
          "skip_reduction reuse should seed matching eta-generated state with one live solve");
 
-  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+  std::filesystem::permissions(
+      kira_path,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+          std::filesystem::perms::group_read | std::filesystem::perms::others_read,
+      std::filesystem::perm_options::replace);
 
   RecordingSeriesSolver reuse_solver;
   reuse_solver.returned_diagnostics.success = true;
@@ -25204,11 +26131,6 @@ void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReducti
                     MakeSemanticDriftedReductionRules(
                         ReadFile(direct_results_root / "kira_target.m")));
 
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during semantic drift "
-                               "invalidation"));
-
   RecordingSeriesSolver solver;
   solver.returned_diagnostics.success = true;
   solver.returned_diagnostics.residual_norm = 0.5;
@@ -25248,10 +26170,6 @@ void SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReducti
              stale_request_fingerprint,
          "UseCache + skip_reduction semantic-drift invalidation should refresh the request "
          "fingerprint after rebuilding a changed wrapper-owned system");
-
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during semantic drift replay"));
 
   RecordingSeriesSolver replay_solver;
   replay_solver.returned_diagnostics.success = true;
@@ -27200,11 +28118,6 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheReplaysMatchingSolv
   Expect(ExtractYamlScalarValue(manifest_yaml, "request_fingerprint") != "\"\"",
          "resolved UseCache replay should record a non-empty request fingerprint");
 
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during resolved solved-path "
-                               "replay"));
-
   const auto replay_custom_mode =
       std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
   RecordingSeriesSolver replay_solver;
@@ -27550,7 +28463,11 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesSkipReductionReusesMatching
          "resolved skip_reduction reuse should seed matching eta-generated state with one live "
          "planning pass and one live solve");
 
-  WriteExecutableScript(kira_path, MakeReducerFailureScript(reducer_failure_marker));
+  std::filesystem::permissions(
+      kira_path,
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+          std::filesystem::perms::group_read | std::filesystem::perms::others_read,
+      std::filesystem::perm_options::replace);
 
   const auto reuse_custom_mode =
       std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
@@ -28095,11 +29012,6 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvali
       "resolved UseCache + skip_reduction semantic-drift coverage should mutate the live eta-"
       "generated reduction rules before replay");
 
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during resolved semantic drift "
-                               "invalidation"));
-
   const auto custom_mode =
       std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
   RecordingSeriesSolver solver;
@@ -28145,11 +29057,6 @@ void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvali
              stale_request_fingerprint,
          "resolved UseCache + skip_reduction semantic-drift invalidation should refresh the "
          "request fingerprint after rebuilding a changed wrapper-owned system");
-
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during resolved semantic drift "
-                               "replay"));
 
   const auto replay_custom_mode =
       std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
@@ -28539,11 +29446,6 @@ void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest(
   const std::string seed_request_fingerprint =
       ExtractYamlScalarValue(seed_manifest_yaml, "request_fingerprint");
 
-  WriteExecutableScript(
-      kira_path,
-      MakeReducerFailureScript("unexpected live reducer execution during planned helper amf_modes "
-                               "replay"));
-
   RecordingSeriesSolver replay_solver;
   replay_solver.returned_diagnostics.success = true;
   replay_solver.returned_diagnostics.residual_norm = 0.25;
@@ -28807,12 +29709,11 @@ void SolvePlannedAmfOptionsEtaModeSeriesUseCacheReplaysDeferredComplexContinuati
          "planned AmfOptions complex continuation cache replay coverage should seed the reviewed "
          "continuation-plan manifest before the replay attempt");
 
-  WriteExecutableScript(
+  std::filesystem::permissions(
       kira_path,
-      "#!/bin/sh\n"
-      "echo \"unexpected-complex-cache-replay-live-reduction\" 1>&2\n"
-      "exit 17\n");
-
+      std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+          std::filesystem::perms::group_read | std::filesystem::perms::others_read,
+      std::filesystem::perm_options::replace);
   std::filesystem::permissions(
       layout.manifests_dir,
       std::filesystem::perms::owner_read | std::filesystem::perms::owner_exec |
@@ -29071,6 +29972,109 @@ void SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayFrom
   Expect(replay_solver.call_count() == 0,
          "planned AmfOptions complex continuation cache-root coverage should still stop before "
          "the exact solver after rejecting the stale cross-layout replay");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 73;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-planned-amf-options-complex-continuation-cache-executable-drift"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "unexpected planned helper complex continuation executable-drift seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  MakeEtaGeneratedHappyDecision(),
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  seed_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  "eta");
+
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "planned AmfOptions complex continuation executable-drift coverage should seed exactly one "
+      "solved-path cache manifest"));
+
+  WriteExecutableScript(kira_path,
+                        MakeReducerFailureScript(
+                            "unexpected-planned-helper-complex-cache-executable-drift-live-"
+                            "reduction",
+                            19));
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.residual_norm = 0.5;
+  replay_solver.returned_diagnostics.overlap_mismatch = 0.75;
+  replay_solver.returned_diagnostics.failure_code.clear();
+  replay_solver.returned_diagnostics.summary =
+      "unexpected planned helper complex continuation executable-drift replay";
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            MakeEtaGeneratedHappyDecision(),
+            amf_options,
+            "amf-options-builtin-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            replay_solver,
+            start_location,
+            target_location,
+            precision_policy,
+            requested_digits,
+            "eta"));
+      },
+      "planned AmfOptions complex continuation executable-drift coverage should reject stale "
+      "deferred replay after reducer executable content changes");
+
+  Expect(message.find("eta-generated DE construction requires successful reducer execution") !=
+             std::string::npos,
+         "planned AmfOptions complex continuation executable-drift coverage should fall through "
+         "to live reduction once the cached reducer executable content no longer matches");
+  Expect(message.find("exit_code=19") != std::string::npos,
+         "planned AmfOptions complex continuation executable-drift coverage should preserve the "
+         "live reducer exit code after rejecting stale replay");
+  Expect(message.find(seeded_diagnostics.summary) == std::string::npos,
+         "planned AmfOptions complex continuation executable-drift coverage should not return "
+         "the stale seeded deferred diagnostic after reducer executable content changes");
+  Expect(replay_solver.call_count() == 0,
+         "planned AmfOptions complex continuation executable-drift coverage should not reach "
+         "the exact solver when the live reducer fails after stale replay rejection");
 }
 
 void SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCacheOrSolverTest() {
@@ -32319,6 +33323,11 @@ int main() {
     SolveEtaGeneratedSeriesPlansComplexContinuationManifestBeforeExactSolverTest();
     SolveEtaGeneratedSeriesPreservesComplexContinuationPlanningInputErrorsTest();
     SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
+    SolveEtaGeneratedSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();
+    SolveEtaGeneratedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest();
+    SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest();
+    SolveEtaGeneratedSeriesRejectsDeferredComplexReplayFromDifferentManifestRootTest();
+    SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();
     SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
@@ -32337,6 +33346,9 @@ int main() {
     SolveEtaModePlannedSeriesPlansComplexContinuationManifestAfterPlanningTest();
     SolveEtaModePlannedSeriesPreservesComplexContinuationPlanningInputErrorsTest();
     SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
+    SolveEtaModePlannedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest();
+    SolveEtaModePlannedSeriesRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest();
+    SolveEtaModePlannedSeriesRejectsDeferredComplexReplayFromDifferentManifestRootTest();
     SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveEtaModePlannedSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveEtaModePlannedSeriesBootstrapSolverPassthroughTest();
@@ -32441,6 +33453,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheReplaysDeferredComplexContinuationDiagnosticsTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayFromDifferentManifestRootTest();
+    SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesPreservesComplexContinuationPlanningInputErrorsTest();
     SolvePlannedAmfOptionsEtaModeSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();

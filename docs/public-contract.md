@@ -268,7 +268,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `PrecisionPolicy`: precision and stability controls
 - `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
-- `SolvedPathCacheManifest`: deterministic solved-path cache metadata for the reviewed `UseCache` replay slice on the `AmfOptions` eta solve wrappers, including the current-worktree replayable deferred complex-continuation diagnostic on the planned helper path only
+- `SolvedPathCacheManifest`: deterministic solved-path cache metadata for the reviewed `UseCache` replay slice on the `AmfOptions` eta solve wrappers, including the current-worktree replayable deferred complex-continuation diagnostics on the planned helper path and the direct eta-generated handoff path
 - `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary; parsed coefficient normalization strips Kira-local `prefactor[...]` and `prefactor(...)` wrappers before the expressions flow into the evaluator-facing reduction result
 - `ReducedDerivativeVariableInput` plus `AssembleReducedDESystem(...)`: the first typed ingestion path from already-reduced derivative targets into a `DESystem`
 - `GeneratedDerivativeVariable` plus `GenerateEtaDerivativeVariable(...)`: typed eta-only unreduced derivative rows built from the accepted auxiliary-family transform
@@ -379,8 +379,9 @@ The solved-path cache surface is also intentionally narrow:
 
 - successful live solves through the two `SolveAmfOptionsEtaModeSeries(...)` overloads persist one
   `SolvedPathCacheManifest` under `layout.root/cache/solved-paths/<slot>.yaml`; on the current
-  worktree, the shared planned helper also persists one reviewed deferred complex-continuation
-  diagnostic there on a distinct complex-only slot
+  worktree, the shared planned helper and the direct eta-generated complex deferral path also
+  persist one reviewed deferred complex-continuation diagnostic there on distinct complex-only
+  slots
 - the slot is deterministic from the wrapper kind, `spec.family.name`, the selected
   `EtaInsertionDecision.mode_name`, `eta_symbol`, and optional wrapper-owned
   `amf_requested_d0`, so D0-only changes do not alias the same solved-path cache slot; the
@@ -404,7 +405,10 @@ The solved-path cache surface is also intentionally narrow:
   cached contour fingerprint. On the non-`skip_reduction` deferred-complex path, that replay
   happens before rebuilding the live reduced `DESystem`, so the dedicated
   `complex-continuation-deferred-v1` cache epoch is the version fence for later replay-affecting
-  contour-planning or eta-generated-system changes on that path
+  contour-planning or eta-generated-system changes on that path. The direct
+  `SolveEtaGeneratedSeries(...)` complex-deferral path now reuses the same deferred-diagnostic
+  replay shape unconditionally on matching complex-only cache artifacts because that direct public
+  handoff has no separate cache-control flag
 - when `amf_options.skip_reduction == true` is also set on those wrappers, replay is still gated
   on rebuilding and validating the current wrapper-owned prepared state first, so missing or
   mismatched prepared reducer inputs or reduction artifacts fail explicitly instead of replaying
@@ -628,6 +632,11 @@ The first eta-generated solver handoff remains narrow:
 - if reviewed contour planning succeeds but manifest persistence fails, the wrapper still returns
   explicit `unsupported_solver_path` diagnostics that report the contour fingerprint, intended
   manifest path, and artifact-store failure without invoking the supplied solver
+- on the current-worktree reviewed deferred-complex replay surface only, the direct
+  `SolveEtaGeneratedSeries(...)` pre-build replay gate additionally checks content fingerprints of
+  the concrete supplied `kira_executable` and `fermat_executable` that were recorded in the
+  cached deferred diagnostic, so changed reducer executable content does not replay stale
+  deferred complex diagnostics on that fast path
 - otherwise, after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the
   solve through `SolveWithPrecisionRetry(...)` rather than a raw single
   `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at
@@ -825,11 +834,14 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   path instead of invoking the supplied solver
 - on that deferred complex subset, `amf_options.use_cache == true` now enables replay only for
   that one reviewed deferred diagnostic shape. On the non-`skip_reduction` path, replay now
-  happens before rebuilding the live reduced `DESystem`; on the `skip_reduction` path it still
-  runs only after the existing prepared-state validation rebuilds the cached `SolveRequest`
-  fingerprint. In both cases the matching continuation-plan manifest must still exist and still
-  match the cached contour fingerprint, while bare `complex_mode` requests without explicit
-  complex substitutions and manifest-write failures remain uncached for replay purposes
+  happens before rebuilding the live reduced `DESystem`, and that fast replay also requires the
+  reducer executable content fingerprints recorded in the cached deferred diagnostic to still
+  match the current `kira_executable` / `fermat_executable`; on the `skip_reduction` path replay
+  stays reducer-independent and still runs only after the existing prepared-state validation
+  rebuilds the cached `SolveRequest` fingerprint. In both cases the matching continuation-plan
+  manifest must still exist and still match the cached contour fingerprint, while bare
+  `complex_mode` requests without explicit complex substitutions and manifest-write failures
+  remain uncached for replay purposes
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes matching public dimension-expression overloads
   on both its builtin-only and mixed entrypoints; each takes one explicit
@@ -843,9 +855,10 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
 - the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity; on the explicit-dimension overload, that same ordered selection still happens before downstream dimension-expression normalization runs
 - both outer `SolveAmfOptionsEtaModeSeries(...)` overloads therefore inherit the current-worktree
   complex-continuation deferral seam after their retained local planning step only: reviewed
-  complex candidates now persist one continuation-plan manifest plus the reviewed complex-specific
-  solved-path cache artifact and return explicit `unsupported_solver_path` diagnostics without
-  live contour execution or eta-to-zero branch handling
+  complex candidates now return explicit `unsupported_solver_path` diagnostics without live
+  contour execution or eta-to-zero branch handling; when continuation-plan manifest persistence
+  succeeds on that reviewed subset, they also persist one continuation-plan manifest plus the
+  reviewed complex-specific solved-path cache artifact
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`, and exact
   `fixed_eps`
   metadata now participate in solved-path cache slotting plus request fingerprinting,
@@ -855,10 +868,21 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   participates in those same identities instead of the helper's otherwise derived live dimension
   carrier
 - the current bootstrap solver still does not implement the broader upstream algorithmic effects of `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, or `RunLength`; on the reviewed subset those fields are carried and fingerprinted rather than given broader standalone semantics
-- direct `SolveEtaGeneratedSeries(...)`, public eta-helper surfaces, and direct
-  `SolveDifferentialEquation(...)` remain unchanged, while direct
-  `SolveResolvedEtaModeListSeries(...)` still has no cache behavior and now only adds its
-  separate public dimension-expression overload
+- direct `SolveEtaGeneratedSeries(...)` now also persists and replays the same reviewed deferred
+  complex-continuation diagnostic on a direct `eta-generated-series` solved-path identity only:
+  after the existing complex-binding preflight and reviewed Batch 62 guardrails pass, replay on
+  that complex-only direct cache slot happens before rebuilding the live reduced `DESystem`,
+  while a miss still rebuilds the live `DESystem`, applies any reviewed symbolic-dimension
+  rewrite, persists one continuation-plan manifest plus one direct solved-path cache artifact,
+  and stops on the same explicit deferred diagnostic instead of invoking the supplied solver
+- direct `SolveEtaModePlannedSeries(...)` inherits that same direct deferred-complex cache
+  surface only after exactly one retained `EtaMode::Plan(spec)` call, so its replay still
+  preserves the original planning input and short-circuits only the downstream live reduction /
+  exact-solver path
+- public eta-helper surfaces other than those two direct solver handoffs, direct
+  `SolveDifferentialEquation(...)`, and direct `SolveResolvedEtaModeListSeries(...)` remain
+  unchanged, while direct `SolveResolvedEtaModeListSeries(...)` still has no cache behavior and
+  now only adds its separate public dimension-expression overload
 - this batch still does not add interruption-resume behavior, direct `SolveResolvedEtaModeListSeries(...)` cache behavior, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening
 
 The first user-defined eta-mode resolver seam is also bootstrap-only:

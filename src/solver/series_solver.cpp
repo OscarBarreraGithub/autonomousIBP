@@ -200,6 +200,11 @@ std::optional<std::string> ResolveReviewedInvariantListSegmentName(
   if (std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end()) {
     return std::string("s");
   }
+  if (!start_variable.has_value() && !target_variable.has_value() &&
+      std::find(invariant_names.begin(), invariant_names.end(), "t") !=
+          invariant_names.end()) {
+    return std::string("t");
+  }
   return std::nullopt;
 }
 

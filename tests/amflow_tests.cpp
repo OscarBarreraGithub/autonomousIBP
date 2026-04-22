@@ -4293,6 +4293,41 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformed
       "multi-invariant locations");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsNonExplicitRawMultiInvariantTLocationsTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "t", "-1", "0", false);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62m should fail closed on non-explicit raw locations when t anchors a reviewed "
+         "multi-invariant request without s");
+  ExpectContains(
+      assessment.detail,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62m should tell callers how to disambiguate raw reviewed t locations");
+}
+
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedNonExplicitRawMultiInvariantTLocationsTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "t", "foo", "bar", false);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62m should fail closed on malformed non-explicit raw locations when t anchors "
+         "a reviewed multi-invariant request without s");
+  ExpectContains(
+      assessment.detail,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62m should keep the explicit t disambiguation guidance for malformed raw "
+      "multi-invariant locations");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
 
@@ -19529,6 +19564,74 @@ void SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocations
   Expect(solver.call_count() == 0,
          "Batch 62f should not call the solver when the invariant list wrapper receives "
          "malformed unlabeled raw continuation locations");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-raw-t-multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "-1",
+                                                "0",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62m should fail closed on non-explicit raw t locations for reviewed "
+         "multi-invariant requests before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62m should report how to disambiguate raw reviewed t locations on the invariant "
+      "list wrapper");
+  Expect(solver.call_count() == 0,
+         "Batch 62m should not call the solver when the invariant list wrapper receives "
+         "non-explicit raw t continuation locations");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-raw-t-multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "foo",
+                                                "bar",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62m should fail closed on malformed non-explicit raw t locations for reviewed "
+         "multi-invariant requests before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62m should keep the explicit t disambiguation guidance on malformed raw invariant "
+      "list requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62m should not call the solver when the invariant list wrapper receives "
+         "malformed non-explicit raw t continuation locations");
 }
 
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
@@ -35051,6 +35154,8 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsAmbiguousRawMultiInvariantLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedRawMultiInvariantLocationsTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsNonExplicitRawMultiInvariantTLocationsTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedNonExplicitRawMultiInvariantTLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsThresholdClearSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeSegmentSupportedTest();
@@ -35670,6 +35775,8 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

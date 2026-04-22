@@ -144,25 +144,25 @@ def load_recorded_batch_ids(path: Path) -> set[str]:
 
 
 THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
+    "automatic_phasespace": "b63k",
+    "complex_kinematics": "b61n",
+    "feynman_prescription": "b63k",
+    "linear_propagator": "b64k",
+}
+
+THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
+    "one-singular-endpoint-case": "b62n",
+}
+
+LANDED_PHASE0_RUNTIME_PREDECESSORS = {
     "automatic_phasespace": "b63j",
-    "complex_kinematics": "b61m",
+    "complex_kinematics": "b61j",
     "feynman_prescription": "b63j",
     "linear_propagator": "b64j",
 }
 
-THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
-    "one-singular-endpoint-case": "b62m",
-}
-
-LANDED_PHASE0_RUNTIME_PREDECESSORS = {
-    "automatic_phasespace": "b63g",
-    "complex_kinematics": "b61i",
-    "feynman_prescription": "b63g",
-    "linear_propagator": "b64i",
-}
-
 LANDED_CASE_STUDY_RUNTIME_PREDECESSORS = {
-    "one-singular-endpoint-case": "b62l",
+    "one-singular-endpoint-case": "b62m",
 }
 
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {

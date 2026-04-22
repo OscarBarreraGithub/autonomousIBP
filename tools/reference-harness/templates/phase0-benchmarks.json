@@ -22,8 +22,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b61m",
-      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61m`) lands."
+      "next_runtime_lane": "b61n",
+      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61n`) lands."
     },
     {
       "id": "differential_equation_solver",
@@ -40,8 +40,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63j",
-      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63j`) lands."
+      "next_runtime_lane": "b63k",
+      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63k`) lands."
     },
     {
       "id": "automatic_phasespace",
@@ -49,8 +49,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63j",
-      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63j`) lands."
+      "next_runtime_lane": "b63k",
+      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63k`) lands."
     },
     {
       "id": "linear_propagator",
@@ -58,8 +58,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b64j",
-      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64j`) lands."
+      "next_runtime_lane": "b64k",
+      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64k`) lands."
     },
     {
       "id": "spacetime_dimension",

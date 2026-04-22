@@ -37202,6 +37202,123 @@ void Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest() {
                  "failure-code profile from the qualification scaffold");
 }
 
+void Phase0FailureCodePacketSetAuditSelfCheckAggregatesRetainedPacketRootsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-failure-code-audit-packet-set-self-check",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      {"--self-check"},
+      "phase-0 failure-code packet-set audit self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 failure-code packet-set audit self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"matching_packet_set_reports_required_failure_codes\": true",
+                 "phase-0 failure-code packet-set audit self-check should keep a matching "
+                 "candidate packet set on the required-failure-code pass path");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 failure-code packet-set audit self-check should keep the required "
+                 "retained packet visible");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 failure-code packet-set audit self-check should surface scaffold "
+                 "threshold, failure-code, and regression metadata");
+  ExpectContains(result.stdout_json, "\"unexpected_failure_codes_reported\": true",
+                 "phase-0 failure-code packet-set audit self-check should surface unexpected "
+                 "extra failure codes without dropping the required-code pass verdict");
+  ExpectContains(result.stdout_json, "\"missing_failure_code_audit_reported\": true",
+                 "phase-0 failure-code packet-set audit self-check should report missing "
+                 "per-benchmark audit artifacts explicitly on the packet-set path");
+  ExpectContains(result.stdout_json, "\"incomplete_failure_code_audit_reported\": true",
+                 "phase-0 failure-code packet-set audit self-check should fail closed when one "
+                 "packet benchmark omits required failure codes");
+  ExpectContains(result.stdout_json, "\"missing_packet_rejected\": true",
+                 "phase-0 failure-code packet-set audit self-check should fail closed when one "
+                 "captured packet is omitted");
+  ExpectContains(result.stdout_json, "\"placeholder_directories_ignored\": true",
+                 "phase-0 failure-code packet-set audit self-check should ignore uncaptured "
+                 "placeholder benchmark directories that do not publish result manifests");
+  ExpectContains(result.stdout_json, "\"extra_candidate_benchmark_rejected\": true",
+                 "phase-0 failure-code packet-set audit self-check should fail closed when one "
+                 "candidate packet publishes benchmarks outside its packet summary");
+  ExpectContains(result.stdout_json, "\"duplicate_packet_label_rejected\": true",
+                 "phase-0 failure-code packet-set audit self-check should reject duplicate "
+                 "candidate packet labels across packet roots");
+  ExpectContains(result.stdout_json, "\"missing_candidate_root_rejected\": true",
+                 "phase-0 failure-code packet-set audit self-check should reject omitting "
+                 "--candidate-root outside the synthetic path");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 failure-code packet-set audit self-check should write the synthetic "
+                 "summary output");
+}
+
+void Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest() {
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-failure-code-audit-packet-set-retained") / "summary.json";
+  std::vector<std::string> script_args = {"--summary-path", summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    script_args.push_back("--candidate-root");
+    script_args.push_back(root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-failure-code-audit-packet-set-retained",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      script_args,
+      "phase-0 failure-code packet-set audit report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 failure-code packet-set audit report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 failure-code packet-set audit report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"candidate_packet_count\": 3",
+                 "phase-0 failure-code packet-set audit report should record the retained "
+                 "packet split");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 failure-code packet-set audit report should keep the required "
+                 "retained packet visible");
+  ExpectContains(result.stdout_json,
+                 "\"candidate_packet_labels_match_scaffold_reference_captured\": true",
+                 "phase-0 failure-code packet-set audit report should keep retained packet "
+                 "labels aligned with the scaffold's captured packet split");
+  ExpectContains(result.stdout_json,
+                 "\"audited_phase0_ids_match_scaffold_reference_captured\": true",
+                 "phase-0 failure-code packet-set audit report should keep the audited phase-0 "
+                 "benchmark ids aligned with the scaffold's captured set");
+  ExpectContains(result.stdout_json,
+                 "\"candidate_packet_benchmark_sets_match_packet_summaries\": true",
+                 "phase-0 failure-code packet-set audit report should require each candidate "
+                 "packet to publish exactly the packet-summary benchmark split");
+  ExpectContains(result.stdout_json,
+                 "\"all_compared_benchmarks_publish_failure_code_audits\": false",
+                 "phase-0 failure-code packet-set audit report should truthfully keep the "
+                 "retained packet split short of a published candidate failure-code audit");
+  ExpectContains(result.stdout_json,
+                 "\"all_compared_benchmarks_report_required_failure_codes\": false",
+                 "phase-0 failure-code packet-set audit report should keep required failure-"
+                 "code coverage blocked without explicit candidate audit artifacts");
+  ExpectContains(result.stdout_json, "\"required-set\"",
+                 "phase-0 failure-code packet-set audit report should include the retained "
+                 "required-set packet label");
+  ExpectContains(result.stdout_json, "\"de-d0-pair\"",
+                 "phase-0 failure-code packet-set audit report should include the retained D0 "
+                 "packet label");
+  ExpectContains(result.stdout_json, "\"user-hook-pair\"",
+                 "phase-0 failure-code packet-set audit report should include the retained "
+                 "user-hook packet label");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 failure-code packet-set audit report should include automatic_vs_manual");
+  ExpectContains(result.stdout_json, "\"differential_equation_solver\"",
+                 "phase-0 failure-code packet-set audit report should include the retained "
+                 "differential-equation benchmark");
+  ExpectContains(result.stdout_json, "\"user_defined_amfmode\"",
+                 "phase-0 failure-code packet-set audit report should include the retained "
+                 "user-defined AMF-mode benchmark");
+  ExpectContains(result.stdout_json, "\"status\": \"failure-code-audit-missing\"",
+                 "phase-0 failure-code packet-set audit report should keep retained benchmarks "
+                 "without published audit sidecars on the missing-audit path");
+  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": false") ==
+             6,
+         "phase-0 failure-code packet-set audit report should show every retained benchmark "
+         "missing explicit audit sidecars");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -38253,6 +38370,8 @@ int main() {
     Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest();
     Phase0FailureCodeAuditSelfCheckCoversMissingAndIncompleteAuditsTest();
     Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest();
+    Phase0FailureCodePacketSetAuditSelfCheckAggregatesRetainedPacketRootsTest();
+    Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();

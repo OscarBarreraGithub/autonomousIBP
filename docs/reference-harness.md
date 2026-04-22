@@ -185,6 +185,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py`: first multi-packet M6 phase-0 comparator. It consumes one or more `--packet-root-pair <reference_root>::<candidate_root>` mappings, composes the retained packet comparator across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique reference packet label per pair, requires each candidate packet root to publish exactly the retained benchmark split for that packet through `result-manifest.json` entries while ignoring uncaptured placeholder directories without manifests, and fails closed unless the compared benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py`: first multi-packet M6 correct-digit aggregator. It consumes one or more `--packet-root-pair <reference_root>::<candidate_root>` mappings, composes the reviewed packet-level correct-digit scorer across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique reference packet label per pair, requires each candidate packet root to publish exactly the retained benchmark split for that packet, and fails closed unless the scored benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still score-aggregation plumbing only: it does not launch the C++ runtime, does not inspect candidate failure-code behavior, does not compare case-study numerics, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/audit_phase0_failure_codes.py`: first packet-level M6 candidate failure-code audit. It consumes one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema plus one optional `results/phase0/<benchmark>/failure-code-audit.json` sidecar per benchmark, surfaces the frozen required failure-code profile from the qualification scaffold, and reports which required codes are still missing or unexpectedly extra on the published candidate audit path. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, and does not claim `Milestone M6` is passing.
+- `tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py`: first packet-set M6 candidate failure-code audit. It consumes one or more `--candidate-root` packet roots, composes the reviewed packet-level failure-code audit across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique candidate packet label per root, requires each candidate packet root to publish exactly the packet-summary benchmark split for that packet, and fails closed unless the audited benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, does not compare case-study numerics, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not review performance or diagnostics, and does not claim release readiness.
 
 ## Qualification Scaffold
@@ -259,6 +260,14 @@ retained outputs and rerun evidence.
   failure-code profile for each selected benchmark, and reports which required codes are still
   missing or unexpectedly extra on the published audit path, but it still does not compare
   canonical outputs, does not score correct digits, and does not claim `Milestone M6` is passing.
+- The first packet-set M6 candidate failure-code audit is
+  `tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py`. It composes that
+  reviewed packet-level audit across the retained `required-set`, `de-d0-pair`, and
+  `user-hook-pair` split, requires one unique candidate packet label per root, requires each
+  candidate packet root to publish exactly the packet-summary benchmark split for that packet, and
+  requires the audited benchmark ids to match the scaffold's full current `reference-captured`
+  phase-0 set exactly, but it still does not compare canonical outputs, does not score correct
+  digits, does not compare case-study numerics, and does not claim `Milestone M6` is passing.
 
 ## Release Sign-Off Scaffold
 
@@ -283,16 +292,16 @@ retained outputs and rerun evidence.
   and does not claim release readiness.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All thirteen helpers expose `--self-check` modes so the repo
+the retained-golden promotion path. All fourteen helpers expose `--self-check` modes so the repo
 can rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios,
 scaffold validation, qualification-readiness, case-study-family readiness, blocked
-release-readiness, the packet-level candidate failure-code audit, and the single-packet plus
-packet-set retained-reference comparators and correct-digit scorers without needing a full
-benchmark packet. `amflow-tests` now drives those bootstrap, fetch, placeholder-freeze,
+release-readiness, the packet-level and packet-set candidate failure-code audits, and the
+single-packet plus packet-set retained-reference comparators and correct-digit scorers without
+needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness,
 blocked release-readiness, the retained single-packet comparator, packet-level correct-digit
-scorer, packet-level failure-code audit, packet-set comparator, and packet-set correct-digit
-scorer self-checks through the configured repo-local Python interpreter, and the retained-capture
-helper also self-checks the restart-safe `--resume-existing` path plus the explicit benchmark-id,
-optional-packet, and `--required-only` selection contract, including direct
-`optional_capture_packet` selection.
+scorer, packet-level failure-code audit, packet-set failure-code audit, packet-set comparator,
+and packet-set correct-digit scorer self-checks through the configured repo-local Python
+interpreter, and the retained-capture helper also self-checks the restart-safe
+`--resume-existing` path plus the explicit benchmark-id, optional-packet, and `--required-only`
+selection contract, including direct `optional_capture_packet` selection.

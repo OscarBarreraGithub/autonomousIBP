@@ -280,6 +280,13 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   manifest/run schema plus optional `failure-code-audit.json` sidecars, surfaces the frozen
   required failure-code profile for each selected benchmark, and reports which required codes are
   still missing or unexpectedly extra on the published candidate audit path.
+- `tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py` is the first
+  packet-set M6 candidate failure-code audit: it composes the reviewed packet-level audit across
+  the retained `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique
+  candidate packet label per root, requires each candidate packet root to publish exactly the
+  packet-summary benchmark split for that packet, and keeps the audited benchmark ids
+  synchronized with the scaffold's current `reference-captured` phase-0 set without overclaiming
+  qualification closure.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
   audits the checklist source/docs targets, and writes one blocked release-readiness summary that
@@ -293,10 +300,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification
 suite as the solver is implemented. The qualification scaffold is planning metadata only: it does
 not by itself claim any new captured benchmark evidence or solver parity. The packet-level
-correct-digit scorer, the packet-set correct-digit aggregator, and the packet-level candidate
-failure-code audit all remain narrower than qualification closure: the scorers compare retained
-numerics but do not audit candidate failure-code behavior, the new failure-code audit checks only
-the published candidate audit sidecars against the frozen scaffold, and none of them compare
+correct-digit scorer, the packet-set correct-digit aggregator, and the packet-level plus packet-set
+candidate failure-code audits all remain narrower than qualification closure: the scorers compare
+retained numerics but do not audit candidate failure-code behavior, the failure-code audits check
+only the published candidate audit sidecars against the frozen scaffold, and none of them compare
 case-study numerics or claim that `Milestone M6` is passing.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification

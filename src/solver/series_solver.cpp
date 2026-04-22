@@ -4965,6 +4965,28 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
   return solver.Solve(attached_request);
 }
 
+SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(spec,
+                                                                      amf_options,
+                                                                      user_defined_schemes,
+                                                                      eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProvider(solve_request, provider);
+  return solver.Solve(attached_request);
+}
+
 SolverDiagnostics SolveResolvedEtaModeSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

@@ -1924,6 +1924,34 @@ amflow::SolveRequest MakeEtaInfinitySolveTemplateRequest() {
   return solve_request;
 }
 
+amflow::SolveRequest MakeCutkoskyPhaseSpaceSolveTemplateRequest() {
+  amflow::SolveRequest solve_request;
+  solve_request.system = amflow::MakeSampleDESystem();
+  solve_request.start_location = "cutkosky-phase-space";
+  solve_request.target_location = "eta=0";
+  solve_request.precision_policy = MakeDistinctPrecisionPolicy();
+  solve_request.requested_digits = 61;
+  return solve_request;
+}
+
+amflow::SolveRequest MakeCutkoskyPhaseSpaceSolveTemplateRequestWithEtaSymbol(
+    const std::string& eta_symbol) {
+  amflow::SolveRequest solve_request = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  if (eta_symbol == "eta") {
+    return solve_request;
+  }
+
+  const auto matrix = solve_request.system.coefficient_matrices.at("eta");
+  const amflow::DifferentiationVariableKind variable_kind =
+      solve_request.system.variables.front().kind;
+  solve_request.system.variables = {{eta_symbol, variable_kind}};
+  solve_request.system.coefficient_matrices.clear();
+  solve_request.system.coefficient_matrices[eta_symbol] = matrix;
+  solve_request.system.singular_points = {eta_symbol + "=0"};
+  solve_request.target_location = eta_symbol + "=0";
+  return solve_request;
+}
+
 amflow::BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequestFromAmfOptionsBaseline(
     const amflow::ProblemSpec& spec,
     const amflow::AmfOptions& amf_options,
@@ -2005,6 +2033,28 @@ amflow::SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeriesManualBase
                                                                       amf_options,
                                                                       user_defined_schemes,
                                                                       eta_symbol);
+
+  amflow::SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {request};
+
+  const amflow::SolveRequest attached =
+      amflow::AttachBoundaryConditionsFromProvider(solve_request, provider);
+  return solver.Solve(attached);
+}
+
+amflow::SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+    const amflow::ProblemSpec& spec,
+    const amflow::AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<amflow::EndingScheme>>& user_defined_schemes,
+    const amflow::SolveRequest& request_template,
+    const amflow::BoundaryProvider& provider,
+    const amflow::SeriesSolver& solver,
+    const std::string& eta_symbol = "eta") {
+  const amflow::BoundaryRequest request =
+      amflow::GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(spec,
+                                                                              amf_options,
+                                                                              user_defined_schemes,
+                                                                              eta_symbol);
 
   amflow::SolveRequest solve_request = request_template;
   solve_request.boundary_requests = {request};
@@ -10615,6 +10665,402 @@ void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest()
   Expect(SameSolverDiagnostics(inert_diagnostics, baseline_diagnostics),
          "Batch 65a AmfOptions ending-scheme wrapper should preserve solver diagnostics when "
          "only inert non-ending_schemes AmfOptions fields change");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+  const auto wrapper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto wrapper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                                    {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingStaticBoundaryProvider wrapper_provider("builtin::cutkosky-phase-space",
+                                                   {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+          spec,
+          amf_options,
+          {baseline_retry_scheme, baseline_custom_scheme},
+          request_template,
+          baseline_provider,
+          baseline_solver);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {wrapper_retry_scheme, wrapper_custom_scheme},
+          request_template,
+          wrapper_provider,
+          wrapper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 63f Cutkosky wrapper should not mutate the shared input ProblemSpec on the "
+         "happy path");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 63f Cutkosky wrapper should not mutate the caller-owned solve request template "
+         "on the happy path");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             wrapper_retry_scheme->call_count() == 1 && wrapper_custom_scheme->call_count() == 1,
+         "Batch 63f Cutkosky wrapper should preserve ordered ending fallback with one planning "
+         "probe per configured scheme");
+  Expect(baseline_provider.strategy_call_count() == 1 && baseline_provider.provide_call_count() == 1 &&
+             wrapper_provider.strategy_call_count() == 1 &&
+             wrapper_provider.provide_call_count() == 1,
+         "Batch 63f Cutkosky wrapper should consult the provider exactly once after the "
+         "selected singleton phase-space plan succeeds");
+  Expect(baseline_solver.call_count() == 1 && wrapper_solver.call_count() == 1,
+         "Batch 63f Cutkosky wrapper should make exactly one solver call on the happy path");
+  Expect(baseline_provider.seen_requests().size() == 1 && wrapper_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 63f Cutkosky wrapper should feed the same planned phase-space boundary request "
+         "into the provider seam as the manual composition baseline");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63f Cutkosky wrapper should feed the same attached SolveRequest into the solver "
+         "as the manual composition baseline");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63f Cutkosky wrapper should preserve downstream solver diagnostics relative to "
+         "the manual composition baseline");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto wrapper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto wrapper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                                    {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingStaticBoundaryProvider wrapper_provider("builtin::cutkosky-phase-space",
+                                                   {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+          spec,
+          amf_options,
+          {baseline_retry_scheme, baseline_custom_scheme},
+          request_template,
+          baseline_provider,
+          baseline_solver);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {wrapper_retry_scheme, wrapper_custom_scheme},
+          request_template,
+          wrapper_provider,
+          wrapper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 63f Cutkosky wrapper should not mutate the shared input ProblemSpec when "
+         "falling through an invalid_argument planning failure");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 63f Cutkosky wrapper should not mutate the caller-owned solve request template "
+         "when falling through an invalid_argument planning failure");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             wrapper_retry_scheme->call_count() == 1 && wrapper_custom_scheme->call_count() == 1,
+         "Batch 63f Cutkosky wrapper should treat planning-time invalid_argument as a fallback "
+         "candidate failure and continue to the next ending scheme");
+  Expect(baseline_provider.strategy_call_count() == 1 && baseline_provider.provide_call_count() == 1 &&
+             wrapper_provider.strategy_call_count() == 1 &&
+             wrapper_provider.provide_call_count() == 1,
+         "Batch 63f Cutkosky wrapper should call the provider exactly once after falling "
+         "through an invalid_argument planning failure");
+  Expect(baseline_solver.call_count() == 1 && wrapper_solver.call_count() == 1,
+         "Batch 63f Cutkosky wrapper should call the solver exactly once after falling through "
+         "an invalid_argument planning failure");
+  Expect(baseline_provider.seen_requests().size() == 1 && wrapper_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 63f Cutkosky wrapper should feed the same boundary request through the "
+         "provider seam as the ordered-ending baseline");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63f Cutkosky wrapper should feed the same attached SolveRequest into the solver "
+         "as the ordered-ending baseline");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63f Cutkosky wrapper should preserve solver diagnostics when falling through an "
+         "invalid_argument planning failure");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+  const auto wrapper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+
+  RecordingStaticBoundaryProvider provider("builtin::cutkosky-phase-space",
+                                           {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options, &baseline_retry_scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+            spec,
+            amf_options,
+            {baseline_retry_scheme},
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63f manual baseline should preserve ending/planning failures before provider "
+      "attachment");
+  const std::string composed_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options, &wrapper_retry_scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {wrapper_retry_scheme},
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63f wrapper should preserve ending/planning failures before provider attachment");
+
+  Expect(composed_message == baseline_message,
+         "Batch 63f Cutkosky wrapper should preserve ending/planning diagnostics unchanged");
+  Expect(wrapper_retry_scheme->call_count() == 1,
+         "Batch 63f Cutkosky wrapper should plan the failing configured ending exactly once "
+         "before short-circuiting");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63f Cutkosky wrapper should not reach the provider after ending/planning "
+         "failure");
+  Expect(solver.call_count() == 0,
+         "Batch 63f Cutkosky wrapper should not call the solver after ending/planning failure");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceProviderFailureShortCircuitTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  ThrowingBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                             "provider could not resolve eta @ cutkosky-phase-space");
+  ThrowingBoundaryProvider wrapper_provider("builtin::cutkosky-phase-space",
+                                            "provider could not resolve eta @ cutkosky-phase-space");
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &request_template, &baseline_provider, &solver]() {
+        static_cast<void>(SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            baseline_provider,
+            solver));
+      },
+      "Batch 63f manual baseline should preserve provider boundary_unsolved before solver "
+      "execution");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &request_template, &wrapper_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            wrapper_provider,
+            solver));
+      },
+      "Batch 63f wrapper should preserve provider boundary_unsolved before solver execution");
+
+  Expect(composed_message == baseline_message,
+         "Batch 63f Cutkosky wrapper should preserve provider boundary_unsolved diagnostics "
+         "unchanged");
+  Expect(wrapper_provider.strategy_call_count() == 1 && wrapper_provider.provide_call_count() == 1,
+         "Batch 63f Cutkosky wrapper should reach the provider exactly once before propagating "
+         "provider failure");
+  Expect(solver.call_count() == 0,
+         "Batch 63f Cutkosky wrapper should not call the solver after provider failure");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceIgnoresInertAmfOptionsFieldsTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const amflow::AmfOptions baseline_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  amflow::AmfOptions inert_variant = baseline_options;
+  inert_variant.d0 = "101/37";
+  inert_variant.working_precision = 509;
+  inert_variant.chop_precision = 7;
+  inert_variant.x_order = 41;
+  inert_variant.extra_x_order = 43;
+  inert_variant.learn_x_order = 47;
+  inert_variant.test_x_order = 53;
+  inert_variant.rationalize_precision = 59;
+  inert_variant.run_length = 61;
+  inert_variant.use_cache = false;
+  inert_variant.skip_reduction = true;
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                                    {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingStaticBoundaryProvider inert_provider("builtin::cutkosky-phase-space",
+                                                 {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver inert_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  inert_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
+                                                                  baseline_options,
+                                                                  {},
+                                                                  request_template,
+                                                                  baseline_provider,
+                                                                  baseline_solver);
+  const amflow::SolverDiagnostics inert_diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
+                                                                  inert_variant,
+                                                                  {},
+                                                                  request_template,
+                                                                  inert_provider,
+                                                                  inert_solver);
+
+  Expect(baseline_provider.strategy_call_count() == 1 &&
+             baseline_provider.provide_call_count() == 1 &&
+             inert_provider.strategy_call_count() == 1 &&
+             inert_provider.provide_call_count() == 1,
+         "Batch 63f Cutkosky wrapper should preserve identical provider usage when only inert "
+         "non-ending_schemes AmfOptions fields change");
+  Expect(baseline_solver.call_count() == 1 && inert_solver.call_count() == 1,
+         "Batch 63f Cutkosky wrapper should preserve exactly one solver call when only inert "
+         "non-ending_schemes AmfOptions fields change");
+  Expect(baseline_provider.seen_requests().size() == 1 && inert_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(inert_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 63f Cutkosky wrapper should preserve the generated provider request when only "
+         "inert non-ending_schemes AmfOptions fields change");
+  Expect(SameSolveRequest(inert_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63f Cutkosky wrapper should preserve the attached SolveRequest when only inert "
+         "non-ending_schemes AmfOptions fields change");
+  Expect(SameSolverDiagnostics(inert_diagnostics, baseline_diagnostics),
+         "Batch 63f Cutkosky wrapper should preserve solver diagnostics when only inert "
+         "non-ending_schemes AmfOptions fields change");
+}
+
+void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  const amflow::SolveRequest request_template =
+      MakeCutkoskyPhaseSpaceSolveTemplateRequestWithEtaSymbol("eta_aux");
+  const amflow::BoundaryCondition explicit_boundary = {
+      "eta_aux",
+      "cutkosky-phase-space",
+      {"B1", "B2"},
+      "builtin::cutkosky-phase-space",
+  };
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                                    {explicit_boundary});
+  RecordingStaticBoundaryProvider wrapper_provider("builtin::cutkosky-phase-space",
+                                                   {explicit_boundary});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeriesManualBaseline(
+          spec,
+          amf_options,
+          {},
+          request_template,
+          baseline_provider,
+          baseline_solver,
+          "eta_aux");
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
+                                                                  amf_options,
+                                                                  {},
+                                                                  request_template,
+                                                                  wrapper_provider,
+                                                                  wrapper_solver,
+                                                                  "eta_aux");
+
+  Expect(baseline_provider.seen_requests().size() == 1 &&
+             baseline_provider.seen_requests().front().variable == "eta_aux" &&
+             wrapper_provider.seen_requests().size() == 1 &&
+             wrapper_provider.seen_requests().front().variable == "eta_aux",
+         "Batch 63f Cutkosky wrapper should preserve a caller-supplied eta symbol in the "
+         "generated boundary request");
+  Expect(baseline_solver.last_request().boundary_requests.size() == 1 &&
+             baseline_solver.last_request().boundary_requests.front().variable == "eta_aux" &&
+             wrapper_solver.last_request().boundary_requests.size() == 1 &&
+             wrapper_solver.last_request().boundary_requests.front().variable == "eta_aux",
+         "Batch 63f Cutkosky wrapper should preserve a caller-supplied eta symbol in the "
+         "attached SolveRequest");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63f Cutkosky wrapper should preserve the full attached SolveRequest when a "
+         "caller-supplied eta symbol is used");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63f Cutkosky wrapper should preserve downstream solver diagnostics when a "
+         "caller-supplied eta symbol is used");
 }
 
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
@@ -31055,6 +31501,12 @@ int main() {
     Batch65aAmfOptionsEndingSchemeEtaInfinityPlanningShortCircuitTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityProviderFailureShortCircuitTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceProviderFailureShortCircuitTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceIgnoresInertAmfOptionsFieldsTest();
+    Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

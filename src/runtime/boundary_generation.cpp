@@ -24,6 +24,8 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
   return out.str();
 }
 
+constexpr char kBuiltinCutkoskyPhaseSpaceStrategy[] = "builtin::cutkosky-phase-space";
+
 void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const Propagator& propagator = spec.family.propagators[index];
@@ -64,6 +66,76 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
         "builtin Cutkosky phase-space boundary request generation requires at least one cut "
         "propagator on the current reviewed phase-space subset");
   }
+}
+
+std::string CutkoskyPhaseSpaceProviderStrategyForPrescription(
+    const FeynmanPrescription prescription) {
+  switch (prescription) {
+    case FeynmanPrescription::PlusI0:
+      return std::string(kBuiltinCutkoskyPhaseSpaceStrategy) + "::plus_i0";
+    case FeynmanPrescription::MinusI0:
+      return std::string(kBuiltinCutkoskyPhaseSpaceStrategy) + "::minus_i0";
+    case FeynmanPrescription::None:
+      return std::string(kBuiltinCutkoskyPhaseSpaceStrategy) + "::none";
+  }
+  return kBuiltinCutkoskyPhaseSpaceStrategy;
+}
+
+std::string ResolveBuiltinCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
+  if (spec.family.loop_prescriptions.empty()) {
+    return kBuiltinCutkoskyPhaseSpaceStrategy;
+  }
+
+  std::optional<FeynmanPrescription> selected_cut_prescription;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    const std::optional<FeynmanPrescription> derived_prescription =
+        DerivePropagatorPrescriptionFromLoopPrescriptions(spec.family, propagator);
+    if (!derived_prescription.has_value()) {
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation could not derive a "
+          "loop-prescription-backed provider strategy for cut propagator " +
+          std::to_string(index) + " from family.loop_prescriptions");
+    }
+
+    const std::optional<FeynmanPrescription> raw_prescription =
+        ParseFeynmanPrescription(propagator.prescription);
+    if (!raw_prescription.has_value()) {
+      throw std::invalid_argument("family.propagators[" + std::to_string(index) +
+                                  "].prescription must be one of -1 (-i0), 0 (none), or 1 "
+                                  "(+i0)");
+    }
+
+    if (*derived_prescription != *raw_prescription) {
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
+          std::to_string(index) +
+          " raw prescription to match family.loop_prescriptions on the current reviewed "
+          "provider-selection subset");
+    }
+
+    if (!selected_cut_prescription.has_value()) {
+      selected_cut_prescription = *derived_prescription;
+      continue;
+    }
+
+    if (*selected_cut_prescription != *derived_prescription) {
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires all cut "
+          "propagators to resolve to the same loop-prescription-backed provider strategy on "
+          "the current reviewed provider-selection subset");
+    }
+  }
+
+  if (!selected_cut_prescription.has_value()) {
+    return kBuiltinCutkoskyPhaseSpaceStrategy;
+  }
+
+  return CutkoskyPhaseSpaceProviderStrategyForPrescription(*selected_cut_prescription);
 }
 
 std::string SupportedEtaInfinityTerminalNode(const ProblemSpec& spec) {
@@ -176,7 +248,7 @@ BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(const ProblemSp
   BoundaryRequest request;
   request.variable = eta_symbol;
   request.location = "cutkosky-phase-space";
-  request.strategy = "builtin::cutkosky-phase-space";
+  request.strategy = ResolveBuiltinCutkoskyPhaseSpaceStrategy(spec);
   return request;
 }
 

@@ -1872,6 +1872,35 @@ amflow::ProblemSpec MakeReviewedCutkoskyPhaseSpaceSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+    const amflow::FeynmanPrescription cut_prescription) {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.loop_prescriptions = {cut_prescription, amflow::FeynmanPrescription::None};
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[0].prescription = static_cast<int>(cut_prescription);
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[1].prescription = static_cast<int>(cut_prescription);
+  return spec;
+}
+
+amflow::ProblemSpec MakeMixedLoopPrescriptionAwareCutkoskyPhaseSpaceSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.loop_prescriptions = {amflow::FeynmanPrescription::PlusI0,
+                                    amflow::FeynmanPrescription::None};
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[0].prescription = 1;
+  spec.family.propagators[3].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[3].prescription = 0;
+  return spec;
+}
+
+amflow::ProblemSpec MakeLoopPrescriptionMismatchCutkoskyPhaseSpaceSpec() {
+  amflow::ProblemSpec spec = MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+      amflow::FeynmanPrescription::PlusI0);
+  spec.family.propagators[1].prescription = -1;
+  return spec;
+}
+
 amflow::FamilyDefinition MakeAutomaticPhaseSpaceLoopPrescriptionFamily() {
   amflow::FamilyDefinition family;
   family.name = "phase";
@@ -9327,6 +9356,37 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest() {
          "phase-space request");
 }
 
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest() {
+  const amflow::BoundaryRequest plus_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+              amflow::FeynmanPrescription::PlusI0));
+  const amflow::BoundaryRequest minus_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+              amflow::FeynmanPrescription::MinusI0));
+  const amflow::BoundaryRequest none_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+              amflow::FeynmanPrescription::None));
+
+  Expect(SameBoundaryRequest(
+             plus_request,
+             {"eta", "cutkosky-phase-space", "builtin::cutkosky-phase-space::plus_i0"}),
+         "builtin Cutkosky phase-space boundary generation should surface a +i0 provider "
+         "strategy when every cut propagator derives matching +i0 loop metadata");
+  Expect(SameBoundaryRequest(
+             minus_request,
+             {"eta", "cutkosky-phase-space", "builtin::cutkosky-phase-space::minus_i0"}),
+         "builtin Cutkosky phase-space boundary generation should surface a -i0 provider "
+         "strategy when every cut propagator derives matching -i0 loop metadata");
+  Expect(SameBoundaryRequest(
+             none_request,
+             {"eta", "cutkosky-phase-space", "builtin::cutkosky-phase-space::none"}),
+         "builtin Cutkosky phase-space boundary generation should surface a no-prescription "
+         "provider strategy when every cut propagator derives matching zero loop metadata");
+}
+
 void GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -10309,8 +10369,33 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsUnsupportedPropagato
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
       "only supports standard/cut propagators",
-      "well-formed unsupported propagator kinds should fail as boundary_unsolved on the "
-      "builtin Cutkosky phase-space boundary path");
+         "well-formed unsupported propagator kinds should fail as boundary_unsolved on the "
+         "builtin Cutkosky phase-space boundary path");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptionProviderStrategiesTest() {
+  const amflow::ProblemSpec spec = MakeMixedLoopPrescriptionAwareCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "requires all cut propagators to resolve to the same loop-prescription-backed provider "
+      "strategy",
+      "builtin Cutkosky phase-space boundary generation should fail closed when the cut surface "
+      "would require multiple loop-prescription-backed provider strategies");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeLoopPrescriptionMismatchCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "raw prescription to match family.loop_prescriptions",
+      "builtin Cutkosky phase-space boundary generation should fail closed when loop-derived and "
+      "raw cut prescriptions disagree on the reviewed provider-selection subset");
 }
 
 void GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest() {
@@ -11835,6 +11920,80 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest() {
   Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
          "Batch 63g Cutkosky registry wrapper should preserve downstream solver diagnostics "
          "relative to the reviewed single-provider wrapper baseline");
+}
+
+void Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptionAwareProviderStrategyTest() {
+  const amflow::ProblemSpec spec = MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+      amflow::FeynmanPrescription::PlusI0);
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options;
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  auto baseline_cutkosky_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::plus_i0",
+      std::vector<amflow::BoundaryCondition>{
+          MakeCutkoskyPhaseSpaceBoundaryCondition("builtin::cutkosky-phase-space::plus_i0")});
+  auto wrapper_legacy_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto wrapper_cutkosky_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::plus_i0",
+      std::vector<amflow::BoundaryCondition>{
+          MakeCutkoskyPhaseSpaceBoundaryCondition("builtin::cutkosky-phase-space::plus_i0")});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {},
+          request_template,
+          *baseline_cutkosky_provider,
+          baseline_solver);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {},
+          request_template,
+          std::vector<std::shared_ptr<amflow::BoundaryProvider>>{wrapper_legacy_provider,
+                                                                 wrapper_cutkosky_provider},
+          wrapper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 63k Cutkosky registry wrapper should not mutate the shared input ProblemSpec on "
+         "the loop-prescription-aware happy path");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 63k Cutkosky registry wrapper should not mutate the caller-owned solve request "
+         "template on the loop-prescription-aware happy path");
+  Expect(baseline_cutkosky_provider->strategy_call_count() == 1 &&
+             baseline_cutkosky_provider->provide_call_count() == 1 &&
+             wrapper_legacy_provider->strategy_call_count() == 1 &&
+             wrapper_legacy_provider->provide_call_count() == 0 &&
+             wrapper_cutkosky_provider->strategy_call_count() == 1 &&
+             wrapper_cutkosky_provider->provide_call_count() == 1,
+         "Batch 63k Cutkosky registry wrapper should select only the loop-prescription-matched "
+         "phase-space provider from the registry");
+  Expect(baseline_solver.call_count() == 1 && wrapper_solver.call_count() == 1,
+         "Batch 63k Cutkosky registry wrapper should make exactly one solver call on the "
+         "loop-prescription-aware happy path");
+  Expect(baseline_cutkosky_provider->seen_requests().size() == 1 &&
+             wrapper_cutkosky_provider->seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_cutkosky_provider->seen_requests().front(),
+                                baseline_cutkosky_provider->seen_requests().front()),
+         "Batch 63k Cutkosky registry wrapper should feed the same loop-prescription-aware "
+         "phase-space request into the matched provider as the single-provider baseline");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63k Cutkosky registry wrapper should feed the same attached SolveRequest into "
+         "the solver as the single-provider baseline on the loop-prescription-aware path");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63k Cutkosky registry wrapper should preserve downstream solver diagnostics on "
+         "the loop-prescription-aware provider-selection path");
 }
 
 void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest() {
@@ -36292,6 +36451,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryPropagatesProviderBoundaryUnsolvedTest();
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();
     GeneratePlannedCutkoskyPhaseSpaceBoundaryRequestBuiltinHappyPathTest();
     GeneratePlannedEtaInfinityBoundaryRequestRejectsCutkoskyPhaseSpaceTerminalNodeTest();
@@ -36336,6 +36496,8 @@ int main() {
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonStandardPropagatorsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopOnlySubsetTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsUnsupportedPropagatorKindsTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptionProviderStrategiesTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAttachesThroughProviderSeamTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAttachesThroughProviderSeamTest();
@@ -36365,6 +36527,7 @@ int main() {
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceIgnoresInertAmfOptionsFieldsTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest();
+    Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptionAwareProviderStrategyTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();

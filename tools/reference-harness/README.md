@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All five harness scripts also expose a local `--self-check` mode for the regression cases fixed in
+All six harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61k` / `b62k` / `b63h` / `b64h`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained

@@ -3004,6 +3004,20 @@ SolverDiagnostics DeferComplexEtaGeneratedContinuation(const DESystem& system,
   return MakeComplexEtaContinuationDeferredDiagnostics(plan, manifest_path);
 }
 
+std::optional<SolverDiagnostics> MaybeDeferComplexEtaGeneratedContinuation(
+    const ProblemSpec& spec,
+    const DESystem& system,
+    const ArtifactLayout& layout,
+    const std::string& eta_symbol,
+    const std::string& start_location,
+    const std::string& target_location) {
+  if (spec.kinematics.complex_numeric_substitutions.empty()) {
+    return std::nullopt;
+  }
+  return DeferComplexEtaGeneratedContinuation(
+      system, spec, layout, eta_symbol, start_location, target_location);
+}
+
 void ValidateComplexEtaGeneratedWrapperBindings(const ProblemSpec& spec) {
   if (spec.kinematics.complex_numeric_substitutions.empty()) {
     return;
@@ -3286,6 +3300,53 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
   SolvedPathCacheContext replay_context = cache_context;
   const std::optional<std::string> exact_dimension_override =
       ResolveExactDimensionOverride(amf_requested_dimension_expression);
+  const bool has_complex_request =
+      spec.complex_mode || !spec.kinematics.complex_numeric_substitutions.empty();
+  if (has_complex_request) {
+    ValidateComplexEtaGeneratedWrapperBindings(spec);
+    if (const std::optional<SolverDiagnostics> diagnostics =
+            AssessGeneratedSolvePhysicalKinematics(spec);
+        diagnostics.has_value()) {
+      return *diagnostics;
+    }
+
+    SolveRequest request;
+    try {
+      if (skip_reduction) {
+        request.system = AssembleWrapperEtaGeneratedDESystem(
+            master_basis,
+            LoadValidatedWrapperEtaGeneratedReductionState(
+                spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
+      } else {
+        request.system = BuildWrapperEtaGeneratedDESystem(spec,
+                                                          master_basis,
+                                                          decision,
+                                                          options,
+                                                          layout,
+                                                          kira_executable,
+                                                          fermat_executable,
+                                                          exact_dimension_override,
+                                                          eta_symbol,
+                                                          false);
+      }
+      ApplySymbolicDimensionExpression(
+          request.system, amf_requested_dimension_expression, exact_dimension_override);
+    } catch (const MasterSetInstabilityError& error) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+
+    const std::optional<SolverDiagnostics> diagnostics =
+        MaybeDeferComplexEtaGeneratedContinuation(spec,
+                                                 request.system,
+                                                 layout,
+                                                 eta_symbol,
+                                                 start_location,
+                                                 target_location);
+    if (diagnostics.has_value()) {
+      return *diagnostics;
+    }
+  }
+
   std::optional<SolveRequest> prepared_skip_reduction_request;
   if (skip_reduction) {
     SolveRequest request;
@@ -4293,13 +4354,15 @@ SolverDiagnostics SolveEtaGeneratedSeries(
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
-  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
-    return DeferComplexEtaGeneratedContinuation(request.system,
-                                                spec,
-                                                layout,
-                                                eta_symbol,
-                                                start_location,
-                                                target_location);
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          MaybeDeferComplexEtaGeneratedContinuation(spec,
+                                                   request.system,
+                                                   layout,
+                                                   eta_symbol,
+                                                   start_location,
+                                                   target_location);
+      diagnostics.has_value()) {
+    return *diagnostics;
   }
   request.start_location = start_location;
   request.target_location = target_location;

@@ -754,6 +754,20 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   `fixed_eps`, the same solved-path cache epoch now participates in slot naming and input
   fingerprinting so stale pre-`Batch 59h` artifacts fall back to live execution rather than
   replaying across the old metadata-only derived-carrier behavior
+- any `ProblemSpec` complex-mode request now hits the existing complex-binding preflight plus the
+  reviewed Batch 62 physical guardrails before solved-path cache replay or solver execution on
+  this helper; bare `complex_mode` requests without explicit complex substitutions therefore stay
+  on the reviewed `physical_kinematics_not_supported` rejection path
+- when `ProblemSpec.kinematics.complex_numeric_substitutions` is non-empty, this helper also
+  carries the reviewed complex-continuation deferral seam on the current worktree: after that
+  shared complex preflight passes, it builds or `skip_reduction`-assembles the wrapper-owned
+  eta-generated `DESystem`, applies the existing wrapper-owned symbolic-dimension rewrite, then
+  plans and persists one reviewed upper-half-plane continuation contour under
+  `layout.manifests_dir/` and stops with explicit `unsupported_solver_path` diagnostics that
+  report the contour fingerprint plus manifest path instead of consulting solved-path cache or
+  invoking the supplied solver
+- on that deferred complex subset, solved-path cache replay/persistence is intentionally bypassed:
+  complex solved-path identity and replay semantics remain deferred until a later dedicated packet
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes matching public dimension-expression overloads
   on both its builtin-only and mixed entrypoints; each takes one explicit
@@ -765,6 +779,11 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   solved-path identity; on the explicit-dimension overload, that same wrapper-local selection
   still happens before downstream dimension-expression normalization runs
 - the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity; on the explicit-dimension overload, that same ordered selection still happens before downstream dimension-expression normalization runs
+- both outer `SolveAmfOptionsEtaModeSeries(...)` overloads therefore inherit the current-worktree
+  complex-continuation deferral seam after their retained local planning step only: reviewed
+  complex candidates now persist one continuation-plan manifest and return explicit
+  `unsupported_solver_path` diagnostics without live contour execution, eta-to-zero branch
+  handling, or complex solved-path cache replay
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`, and exact
   `fixed_eps`
   metadata now participate in solved-path cache slotting plus request fingerprinting,

@@ -3319,6 +3319,18 @@ std::filesystem::path SolvedPathCacheDir(const amflow::ArtifactLayout& layout) {
   return layout.root / "cache" / "solved-paths";
 }
 
+std::size_t CountRegularFilesInDirectory(const std::filesystem::path& directory) {
+  std::size_t count = 0;
+  if (std::filesystem::exists(directory)) {
+    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+      if (entry.is_regular_file()) {
+        ++count;
+      }
+    }
+  }
+  return count;
+}
+
 std::filesystem::path RequireOnlySolvedPathCacheManifestPath(
     const amflow::ArtifactLayout& layout,
     const std::string& message) {
@@ -26916,6 +26928,317 @@ void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest(
          "unchanged when only inert amf_modes change after planning");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesPlansComplexContinuationManifestBeforeSolvedPathCacheOrSolverTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 83;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-complex-continuation-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-complex-continuation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00048828125;
+  solver.returned_diagnostics.overlap_mismatch = 0.0009765625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "unexpected planned AmfOptions complex continuation solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  MakeEtaGeneratedHappyDecision(),
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  "eta");
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "planned AmfOptions complex continuation coverage should persist exactly one "
+      "continuation-plan manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions complex continuation coverage should not mutate the input problem "
+         "spec");
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "planned AmfOptions complex continuation coverage should stop on an explicit "
+         "unsupported solver diagnostic");
+  ExpectContains(diagnostics.summary,
+                 expected_plan.contour_fingerprint,
+                 "planned AmfOptions complex continuation coverage should report the planned "
+                 "contour fingerprint");
+  ExpectContains(diagnostics.summary,
+                 manifest_path.string(),
+                 "planned AmfOptions complex continuation coverage should report the persisted "
+                 "manifest path");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "planned AmfOptions complex continuation coverage should persist the reviewed "
+         "continuation-plan payload verbatim");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "planned AmfOptions complex continuation coverage should bypass solved-path cache "
+         "replay and persistence on the deferred complex subset");
+  Expect(solver.call_count() == 0,
+         "planned AmfOptions complex continuation coverage should not call the exact solver "
+         "once the wrapper has switched onto contour-plan deferral");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCacheOrSolverTest() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.complex_mode = true;
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-bare-complex-mode"));
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.25;
+  solver.returned_diagnostics.overlap_mismatch = 0.5;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "unexpected bare complex-mode solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  amflow::ParsedMasterList{},
+                                                  decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  layout.root / "bin" / "unused-kira.sh",
+                                                  layout.root / "bin" / "unused-fermat.sh",
+                                                  solver,
+                                                  "eta=0",
+                                                  "eta=1",
+                                                  MakeDistinctPrecisionPolicy(),
+                                                  79,
+                                                  "eta");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions bare complex_mode coverage should not mutate the input problem "
+         "spec");
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "planned AmfOptions bare complex_mode coverage should reject reviewed unsupported "
+         "complex-mode requests before cache replay or solver execution");
+  ExpectContains(diagnostics.summary,
+                 "Batch 62 only reviews subset " +
+                     amflow::DescribeReviewedPhysicalKinematicsSubset(),
+                 "planned AmfOptions bare complex_mode coverage should report the frozen "
+                 "reviewed physical-kinematics subset");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "planned AmfOptions bare complex_mode coverage should not persist continuation-plan "
+         "manifests when explicit complex substitutions are absent");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "planned AmfOptions bare complex_mode coverage should not create solved-path cache "
+         "artifacts on reviewed unsupported complex-mode requests");
+  Expect(solver.call_count() == 0,
+         "planned AmfOptions bare complex_mode coverage should not call the exact solver on "
+         "reviewed unsupported complex-mode requests");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesPreservesComplexContinuationPlanningInputErrorsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-complex-continuation-input-error"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            MakeEtaGeneratedHappyDecision(),
+            amf_options,
+            "amf-options-builtin-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "eta=I/5",
+            "eta=2",
+            MakeDistinctPrecisionPolicy(),
+            79,
+            "eta"));
+      },
+      "currently supports only finite start and target points on one horizontal line",
+      "planned AmfOptions complex continuation coverage should preserve reviewed contour-planning "
+      "input errors");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions complex continuation coverage should not mutate the input problem "
+         "spec when contour planning rejects the caller inputs");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "planned AmfOptions complex continuation coverage should not create solved-path cache "
+         "artifacts when reviewed contour planning rejects the caller inputs");
+  Expect(solver.call_count() == 0,
+         "planned AmfOptions complex continuation coverage should not call the exact solver "
+         "when reviewed contour planning rejects the caller inputs");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-complex-continuation-write-failure-"
+                   "baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-complex-continuation-write-failure"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+  std::filesystem::remove_all(layout.manifests_dir);
+  OverwriteTextFile(layout.manifests_dir, "blocking file\n");
+
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  MakeEtaGeneratedHappyDecision(),
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  89,
+                                                  "eta");
+
+  const std::filesystem::path expected_manifest_path =
+      ExpectedComplexEtaContinuationManifestPathForTests(layout, expected_plan);
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions complex continuation coverage should not mutate the input problem "
+         "spec when manifest persistence fails");
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "planned AmfOptions complex continuation coverage should keep manifest-write failures "
+         "on the explicit unsupported solver diagnostic path");
+  ExpectContains(diagnostics.summary,
+                 expected_plan.contour_fingerprint,
+                 "planned AmfOptions complex continuation coverage should report the planned "
+                 "contour fingerprint when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 expected_manifest_path.string(),
+                 "planned AmfOptions complex continuation coverage should report the intended "
+                 "manifest path when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 "continuation_plan_manifest_write_failed=",
+                 "planned AmfOptions complex continuation coverage should report explicit "
+                 "manifest-write failure context");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "planned AmfOptions complex continuation coverage should not write solved-path cache "
+         "artifacts when manifest persistence fails");
+  Expect(solver.call_count() == 0,
+         "planned AmfOptions complex continuation coverage should not call the exact solver "
+         "when manifest persistence fails");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -29976,6 +30299,10 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
+    SolvePlannedAmfOptionsEtaModeSeriesPlansComplexContinuationManifestBeforeSolvedPathCacheOrSolverTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCacheOrSolverTest();
+    SolvePlannedAmfOptionsEtaModeSeriesPreservesComplexContinuationPlanningInputErrorsTest();
+    SolvePlannedAmfOptionsEtaModeSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
     SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesExactDimensionOverrideBuildsExactDimensionExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();

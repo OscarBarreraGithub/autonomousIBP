@@ -25,4 +25,10 @@ std::string DescribeReviewedPhysicalKinematicsSubset();
 PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
     const ProblemSpec& spec);
 
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& start_location,
+    const std::string& target_location);
+
 }  // namespace amflow

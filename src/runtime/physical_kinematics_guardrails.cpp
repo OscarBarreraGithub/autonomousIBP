@@ -22,6 +22,29 @@ struct ReviewedK0ExactSubstitutions {
   ExactRational msq;
 };
 
+struct ExplicitLocationAssignment {
+  std::string variable;
+  std::string expression;
+};
+
+struct ReviewedInvariantSegment {
+  ExactRational start;
+  ExactRational target;
+};
+
+std::string Trim(const std::string& value) {
+  std::size_t start = 0;
+  while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
+    ++start;
+  }
+
+  std::size_t end = value.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+    --end;
+  }
+  return value.substr(start, end - start);
+}
+
 std::string RemoveWhitespace(const std::string& value) {
   std::string normalized;
   normalized.reserve(value.size());
@@ -57,12 +80,54 @@ ExactRational MultiplyRational(const ExactRational& lhs, const ExactRational& rh
   return EvaluateExactArithmetic(Parenthesize(lhs) + "*" + Parenthesize(rhs));
 }
 
+ExactRational DivideRational(const ExactRational& lhs, const ExactRational& rhs) {
+  return EvaluateExactArithmetic(Parenthesize(lhs) + "/" + Parenthesize(rhs));
+}
+
 bool IsNegative(const ExactRational& value) {
   return !value.IsZero() && !value.numerator.empty() && value.numerator.front() == '-';
 }
 
 bool IsPositive(const ExactRational& value) {
   return !value.IsZero() && !IsNegative(value);
+}
+
+bool IsLessThan(const ExactRational& lhs, const ExactRational& rhs) {
+  return IsNegative(SubtractRational(lhs, rhs));
+}
+
+bool IsLessThanOrEqual(const ExactRational& lhs, const ExactRational& rhs) {
+  return !IsPositive(SubtractRational(lhs, rhs));
+}
+
+bool LiesOnClosedSegment(const ExactRational& point,
+                         const ExactRational& start,
+                         const ExactRational& target) {
+  const ExactRational& lower = IsLessThan(start, target) ? start : target;
+  const ExactRational& upper = IsLessThan(start, target) ? target : start;
+  return IsLessThanOrEqual(lower, point) && IsLessThanOrEqual(point, upper);
+}
+
+std::optional<ExplicitLocationAssignment> ParseExplicitLocationAssignment(
+    const std::string& location) {
+  const std::string trimmed = Trim(location);
+  if (trimmed.empty()) {
+    return std::nullopt;
+  }
+
+  const std::size_t separator = trimmed.find('=');
+  if (separator == std::string::npos ||
+      trimmed.find('=', separator + 1) != std::string::npos) {
+    return std::nullopt;
+  }
+
+  ExplicitLocationAssignment assignment;
+  assignment.variable = Trim(trimmed.substr(0, separator));
+  assignment.expression = Trim(trimmed.substr(separator + 1));
+  if (assignment.variable.empty() || assignment.expression.empty()) {
+    return std::nullopt;
+  }
+  return assignment;
 }
 
 bool MatchesExpectedMomentumLists(const ProblemSpec& spec) {
@@ -176,6 +241,70 @@ ExactRational ComputeReviewedEndpointPolynomial(const ReviewedK0ExactSubstitutio
       mass_squared);
 }
 
+NumericEvaluationPoint BuildReviewedSegmentPassiveBindings(
+    const ReviewedK0ExactSubstitutions& substitutions,
+    const std::string& active_variable) {
+  NumericEvaluationPoint passive_bindings;
+  if (active_variable != "s") {
+    passive_bindings.emplace("s", substitutions.s.ToString());
+  }
+  if (active_variable != "t") {
+    passive_bindings.emplace("t", substitutions.t.ToString());
+  }
+  if (active_variable != "msq") {
+    passive_bindings.emplace("msq", substitutions.msq.ToString());
+  }
+  return passive_bindings;
+}
+
+std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
+    const std::string& start_location,
+    const std::string& target_location,
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  const std::optional<ExplicitLocationAssignment> start_assignment =
+      ParseExplicitLocationAssignment(start_location);
+  const std::optional<ExplicitLocationAssignment> target_assignment =
+      ParseExplicitLocationAssignment(target_location);
+  if (!start_assignment.has_value() || !target_assignment.has_value() ||
+      start_assignment->variable != "s" || target_assignment->variable != "s") {
+    return std::nullopt;
+  }
+
+  const NumericEvaluationPoint passive_bindings =
+      BuildReviewedSegmentPassiveBindings(substitutions, "s");
+  ReviewedInvariantSegment segment;
+  try {
+    segment.start =
+        EvaluateCoefficientExpression(start_assignment->expression, passive_bindings);
+    segment.target =
+        EvaluateCoefficientExpression(target_assignment->expression, passive_bindings);
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+  return segment;
+}
+
+std::optional<ExactRational> ComputeReviewedEndpointSingularS(
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  if (substitutions.t.IsZero()) {
+    return std::nullopt;
+  }
+
+  const ExactRational t_squared =
+      MultiplyRational(substitutions.t, substitutions.t);
+  const ExactRational mass_squared =
+      MultiplyRational(substitutions.msq, substitutions.msq);
+  return SubtractRational(
+      MultiplyRational(IntegerRational(2), substitutions.msq),
+      DivideRational(AddRational(t_squared, mass_squared), substitutions.t));
+}
+
+std::string DescribeReviewedClosedRealSSegment(const ExactRational& start,
+                                               const ExactRational& target) {
+  return "requested closed real s segment [" + start.ToString() + ", " +
+         target.ToString() + "]";
+}
+
 }  // namespace
 
 std::string DescribeReviewedPhysicalKinematicsSubset() {
@@ -251,6 +380,55 @@ PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
   }
 
   assessment.verdict = PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset;
+  return assessment;
+}
+
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& start_location,
+    const std::string& target_location) {
+  PhysicalKinematicsGuardrailAssessment assessment =
+      AssessPhysicalKinematicsForBatch62(spec);
+  if (assessment.verdict !=
+      PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset) {
+    return assessment;
+  }
+
+  const std::optional<ReviewedK0ExactSubstitutions> exact_substitutions =
+      LoadReviewedExactNumericSubstitutions(spec.kinematics.numeric_substitutions);
+  if (!exact_substitutions.has_value()) {
+    return assessment;
+  }
+
+  const std::optional<ReviewedInvariantSegment> segment =
+      ParseReviewedSInvariantSegment(start_location,
+                                    target_location,
+                                    *exact_substitutions);
+  if (!segment.has_value()) {
+    return assessment;
+  }
+
+  const ExactRational threshold_s =
+      MultiplyRational(IntegerRational(4), exact_substitutions->msq);
+  if (LiesOnClosedSegment(threshold_s, segment->start, segment->target)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+    assessment.detail =
+        DescribeReviewedClosedRealSSegment(segment->start, segment->target) +
+        " crosses the reviewed pair-production threshold s = 4*msq";
+    return assessment;
+  }
+
+  const std::optional<ExactRational> endpoint_s =
+      ComputeReviewedEndpointSingularS(*exact_substitutions);
+  if (endpoint_s.has_value() &&
+      LiesOnClosedSegment(*endpoint_s, segment->start, segment->target)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+    assessment.detail =
+        DescribeReviewedClosedRealSSegment(segment->start, segment->target) +
+        " crosses the reviewed 2->2 endpoint polynomial "
+        "t^2 - (2*msq - s)*t + msq^2 = 0";
+  }
   return assessment;
 }
 

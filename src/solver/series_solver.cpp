@@ -2917,7 +2917,7 @@ SolverDiagnostics MakePhysicalKinematicsSingularDiagnostics(
   diagnostics.summary =
       std::string(kPhysicalKinematicsSingularCode) +
       ": Batch 62 only reviews subset " + assessment.reviewed_subset +
-      "; current ProblemSpec lies on a reviewed singular surface";
+      "; current ProblemSpec or requested continuation segment hits a reviewed singular surface";
   if (!assessment.detail.empty()) {
     diagnostics.summary += "; " + assessment.detail;
   }
@@ -3024,6 +3024,30 @@ std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
     const ProblemSpec& spec) {
   const PhysicalKinematicsGuardrailAssessment assessment =
       AssessPhysicalKinematicsForBatch62(spec);
+  switch (assessment.verdict) {
+    case PhysicalKinematicsGuardrailVerdict::NotApplicable:
+    case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
+      return std::nullopt;
+    case PhysicalKinematicsGuardrailVerdict::SingularSurface:
+      return MakePhysicalKinematicsSingularDiagnostics(assessment);
+    case PhysicalKinematicsGuardrailVerdict::UnsupportedSurface:
+      return MakePhysicalKinematicsNotSupportedDiagnostics(assessment);
+  }
+
+  return std::nullopt;
+}
+
+std::optional<SolverDiagnostics> AssessInvariantGeneratedSolvePhysicalKinematics(
+    const ProblemSpec& spec,
+    const bool allow_reviewed_s_segment,
+    const std::string& start_location,
+    const std::string& target_location) {
+  const PhysicalKinematicsGuardrailAssessment assessment =
+      allow_reviewed_s_segment
+          ? AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(spec,
+                                                                       start_location,
+                                                                       target_location)
+          : AssessPhysicalKinematicsForBatch62(spec);
   switch (assessment.verdict) {
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
     case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
@@ -3965,7 +3989,8 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits) {
   if (const std::optional<SolverDiagnostics> diagnostics =
-          AssessGeneratedSolvePhysicalKinematics(spec);
+          AssessInvariantGeneratedSolvePhysicalKinematics(
+              spec, invariant_name == "s", start_location, target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }
@@ -4006,8 +4031,11 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
     throw std::runtime_error(
         "automatic invariant solver handoff list requires at least one invariant name");
   }
+  const bool allow_reviewed_s_segment =
+      std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end();
   if (const std::optional<SolverDiagnostics> diagnostics =
-          AssessGeneratedSolvePhysicalKinematics(spec);
+          AssessInvariantGeneratedSolvePhysicalKinematics(
+              spec, allow_reviewed_s_segment, start_location, target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }

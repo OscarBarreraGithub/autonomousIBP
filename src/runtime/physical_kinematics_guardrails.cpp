@@ -302,7 +302,7 @@ std::optional<ReviewedInvariantSegment> ParseReviewedInvariantSegment(
     }
 
     if (!allow_unlabeled_reviewed_raw_expressions ||
-        (active_variable != "s" && active_variable != "t")) {
+        (active_variable != "s" && active_variable != "t" && active_variable != "msq")) {
       return std::nullopt;
     }
 

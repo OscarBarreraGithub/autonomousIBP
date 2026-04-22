@@ -4447,7 +4447,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
           ? std::optional<std::string>(invariant_name)
           : std::nullopt;
   const bool allow_unlabeled_reviewed_raw_expressions =
-      invariant_name == "s" || invariant_name == "t";
+      invariant_name == "s" || invariant_name == "t" || invariant_name == "msq";
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(spec,
                                                           reviewed_segment_invariant_name,
@@ -4505,7 +4505,8 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   }
   const bool allow_unlabeled_reviewed_raw_expressions =
       invariant_names.size() == 1 &&
-      (invariant_names.front() == "s" || invariant_names.front() == "t");
+      (invariant_names.front() == "s" || invariant_names.front() == "t" ||
+       invariant_names.front() == "msq");
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(
               spec,

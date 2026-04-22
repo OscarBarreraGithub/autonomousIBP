@@ -4130,6 +4130,23 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSeg
       "Batch 62h should report the reviewed endpoint locus for msq-segment crossings");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawMsqSegmentThresholdCrossingTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "msq", "7", "8", true);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::SingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62j should classify raw reviewed msq segments that cross the threshold as "
+         "singular");
+  ExpectContains(
+      assessment.detail,
+      "s = 4*msq",
+      "Batch 62j should report the reviewed threshold locus for raw msq-segment crossings");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdNearMarginTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
 
@@ -4289,6 +4306,19 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeMsqSegm
              amflow::PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset &&
              assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
          "Batch 62h should keep reviewed threshold-clear msq segments supported");
+}
+
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawMsqSegmentSupportedTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "msq", "1", "2", true);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62j should keep raw reviewed threshold-clear msq segments supported");
 }
 
 void LoadedSpecValidationRejectsMalformedTargetsTest() {
@@ -18427,6 +18457,39 @@ void SolveInvariantGeneratedSeriesRejectsMsqSegmentThresholdCrossingBeforeDECons
          "singular segment");
 }
 
+void SolveInvariantGeneratedSeriesRejectsRawMsqSegmentThresholdCrossingBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-raw-crossing-msq-threshold-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            amflow::ParsedMasterList{},
+                                            "msq",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            layout.root / "bin" / "unused-kira.sh",
+                                            layout.root / "bin" / "unused-fermat.sh",
+                                            solver,
+                                            "7",
+                                            "8",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62j should reject raw reviewed msq segments that cross the threshold before DE "
+         "construction");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62j should report the threshold locus when raw msq continuation crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62j should not call the solver when raw msq continuation crosses a reviewed "
+         "singular segment");
+}
+
 void SolveInvariantGeneratedSeriesRejectsThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -18728,6 +18791,41 @@ void SolveInvariantGeneratedSeriesListRejectsMsqSegmentEndpointCrossingBeforeDEC
       "crosses it");
   Expect(solver.call_count() == 0,
          "Batch 62h should not call the solver when the single-invariant msq list wrapper "
+         "crosses a reviewed singular segment");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsRawMsqSegmentEndpointCrossingBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-raw-crossing-msq-endpoint-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "6",
+                                                "7",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62j should reject raw reviewed endpoint-crossing msq segments on the single-"
+         "invariant list wrapper before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62j should report the endpoint locus when the single-invariant raw msq list "
+      "wrapper crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62j should not call the solver when the single-invariant raw msq list wrapper "
          "crosses a reviewed singular segment");
 }
 
@@ -33159,6 +33257,7 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawTSegmentEndpointCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSegmentThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSegmentEndpointCrossingTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawMsqSegmentThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsAmbiguousRawMultiInvariantLocationsTest();
@@ -33169,6 +33268,7 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeTSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawTSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeMsqSegmentSupportedTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawMsqSegmentSupportedTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();
@@ -33732,6 +33832,7 @@ int main() {
     SolveInvariantGeneratedSeriesRejectsTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsMsqSegmentThresholdCrossingBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesRejectsRawMsqSegmentThresholdCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesK0SmokeSafePhysicalSegmentReachesNextLayerTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
@@ -33762,6 +33863,7 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMsqSegmentEndpointCrossingBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsRawMsqSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();

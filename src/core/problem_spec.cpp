@@ -83,6 +83,16 @@ std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec) {
   if (spec.targets.empty()) {
     messages.emplace_back("targets must not be empty");
   }
+  if (!spec.kinematics.complex_numeric_substitutions.empty() && !spec.complex_mode) {
+    messages.emplace_back("kinematics.complex_numeric_substitutions require complex_mode: true");
+  }
+  for (const auto& [name, _] : spec.kinematics.complex_numeric_substitutions) {
+    if (spec.kinematics.numeric_substitutions.find(name) !=
+        spec.kinematics.numeric_substitutions.end()) {
+      messages.emplace_back("kinematics.complex_numeric_substitutions entry for \"" + name +
+                            "\" must not also appear in kinematics.numeric_substitutions");
+    }
+  }
 
   for (const auto& target : spec.targets) {
     if (target.family != spec.family.name) {
@@ -135,6 +145,12 @@ std::string SerializeProblemSpecYaml(const ProblemSpec& spec) {
   if (!spec.kinematics.numeric_substitutions.empty()) {
     out << Indent(1) << "numeric_substitutions:\n";
     for (const auto& [name, value] : spec.kinematics.numeric_substitutions) {
+      out << Indent(2) << name << ": " << Quote(value) << "\n";
+    }
+  }
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    out << Indent(1) << "complex_numeric_substitutions:\n";
+    for (const auto& [name, value] : spec.kinematics.complex_numeric_substitutions) {
       out << Indent(2) << name << ": " << Quote(value) << "\n";
     }
   }

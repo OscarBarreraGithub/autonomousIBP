@@ -561,6 +561,14 @@ Kinematics ParseKinematics(const std::vector<ParsedLine>& lines, std::size_t& in
       kinematics.numeric_substitutions = ParseStringMap(lines, index, line.indent);
       continue;
     }
+    if (key == "complex_numeric_substitutions") {
+      if (!value.empty()) {
+        Fail(line.number, "complex_numeric_substitutions must use mapping syntax");
+      }
+      ++index;
+      kinematics.complex_numeric_substitutions = ParseStringMap(lines, index, line.indent);
+      continue;
+    }
     SkipIndentedBlock(lines, index, line.indent);
   }
   return kinematics;

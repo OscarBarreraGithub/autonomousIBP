@@ -3303,6 +3303,25 @@ void ProblemSpecRoundTripTest() {
          "problem spec should round-trip through file-backed YAML");
 }
 
+void ProblemSpecRoundTripPreservesComplexNumericSubstitutionsTest() {
+  amflow::ProblemSpec original = amflow::MakeSampleProblemSpec();
+  original.complex_mode = true;
+  original.kinematics.numeric_substitutions.erase("s");
+  original.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I/7"},
+  };
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "amflow-bootstrap-complex-problem-spec.yaml";
+  {
+    std::ofstream stream(path);
+    stream << amflow::SerializeProblemSpecYaml(original);
+  }
+
+  const amflow::ProblemSpec loaded = amflow::LoadProblemSpecFile(path);
+  Expect(amflow::SerializeProblemSpecYaml(loaded) == amflow::SerializeProblemSpecYaml(original),
+         "problem spec round-trip should preserve complex numeric substitutions");
+}
+
 void AmflowPrefactorReferenceSpecContainsLockedEvidenceTest() {
   const std::string yaml = ReadFile(AmflowPrefactorReferenceSpecPath());
   ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(yaml);
@@ -3530,6 +3549,43 @@ void DuplicateKeysAreRejectedTest() {
   InsertBefore(duplicate_map_yaml, "    t: \"-10/3\"\n", "    s: \"31\"\n");
   ExpectParseFailure(duplicate_map_yaml, "duplicate mapping entry: s",
                      "duplicate numeric_substitutions entries should be rejected");
+
+  std::string complex_yaml = canonical_yaml;
+  ReplaceFirst(complex_yaml,
+               "targets:\n",
+               "  complex_numeric_substitutions:\n"
+               "    s: \"30 + I/7\"\n"
+               "    s: \"31 + I/9\"\n"
+               "targets:\n");
+  ExpectParseFailure(complex_yaml, "duplicate mapping entry: s",
+                     "duplicate complex_numeric_substitutions entries should be rejected");
+}
+
+void ValidateProblemSpecRejectsComplexNumericSubstitutionsWithoutComplexModeTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I/7"},
+  };
+
+  const auto messages = amflow::ValidateProblemSpec(spec);
+  Expect(ContainsSubstring(messages,
+                           "kinematics.complex_numeric_substitutions require complex_mode: true"),
+         "complex numeric substitutions should require complex_mode to be enabled");
+}
+
+void ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I/7"},
+  };
+
+  const auto messages = amflow::ValidateProblemSpec(spec);
+  Expect(ContainsSubstring(messages,
+                           "kinematics.complex_numeric_substitutions entry for \"s\" must not "
+                           "also appear in kinematics.numeric_substitutions"),
+         "the same invariant should not be accepted in both exact and complex substitution maps");
 }
 
 void EtaInsertionHappyPathTest() {
@@ -8050,6 +8106,13 @@ void GenerateBuiltinEtaInfinityBoundaryRequestIgnoresNonBoundaryProblemSpecField
   amflow::ProblemSpec complex_mode_variant = spec;
   complex_mode_variant.complex_mode = true;
 
+  amflow::ProblemSpec complex_numeric_variant = spec;
+  complex_numeric_variant.complex_mode = true;
+  complex_numeric_variant.kinematics.numeric_substitutions.erase("s");
+  complex_numeric_variant.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I/7"},
+  };
+
   Expect(SameBoundaryRequest(amflow::GenerateBuiltinEtaInfinityBoundaryRequest(numeric_variant),
                              expected),
          "numeric substitutions should not affect builtin eta->infinity boundary requests on "
@@ -8063,6 +8126,11 @@ void GenerateBuiltinEtaInfinityBoundaryRequestIgnoresNonBoundaryProblemSpecField
              expected),
          "complex_mode should not affect builtin eta->infinity boundary requests on the "
          "supported subset");
+  Expect(SameBoundaryRequest(
+             amflow::GenerateBuiltinEtaInfinityBoundaryRequest(complex_numeric_variant),
+             expected),
+         "complex numeric substitutions should not affect builtin eta->infinity boundary "
+         "requests on the supported subset");
 }
 
 void GenerateBuiltinEtaInfinityBoundaryRequestDoesNotMutateProblemSpecTest() {
@@ -24974,6 +25042,7 @@ int main() {
   try {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
+    ProblemSpecRoundTripPreservesComplexNumericSubstitutionsTest();
     AmflowPrefactorReferenceSpecContainsLockedEvidenceTest();
     AmflowPrefactorReferenceMirrorMatchesPrefactorReferenceSpecTest();
     DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest();
@@ -24987,6 +25056,8 @@ int main() {
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();
+    ValidateProblemSpecRejectsComplexNumericSubstitutionsWithoutComplexModeTest();
+    ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTest();
     EtaInsertionHappyPathTest();
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();

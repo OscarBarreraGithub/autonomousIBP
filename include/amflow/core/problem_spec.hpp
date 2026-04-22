@@ -49,6 +49,7 @@ struct Kinematics {
   std::vector<std::string> invariants;
   std::vector<ScalarProductRule> scalar_product_rules;
   std::map<std::string, std::string> numeric_substitutions;
+  std::map<std::string, std::string> complex_numeric_substitutions;
 };
 
 struct ProblemSpec {

@@ -190,6 +190,34 @@ bool IsIdentifierContinuation(const char character) {
          character == '_';
 }
 
+std::string CanonicalizeKiraDimensionIdentifier(const std::string& expression) {
+  std::string canonical;
+  canonical.reserve(expression.size() + 8);
+
+  for (std::size_t index = 0; index < expression.size();) {
+    if (!IsIdentifierStart(expression[index])) {
+      canonical.push_back(expression[index]);
+      ++index;
+      continue;
+    }
+
+    std::size_t end = index + 1;
+    while (end < expression.size() && IsIdentifierContinuation(expression[end])) {
+      ++end;
+    }
+
+    if (end - index == 1 && expression[index] == 'd' &&
+        (end == expression.size() || (expression[end] != '(' && expression[end] != '['))) {
+      canonical += "dimension";
+    } else {
+      canonical.append(expression, index, end - index);
+    }
+    index = end;
+  }
+
+  return canonical;
+}
+
 std::string NormalizeExpression(std::string expression) {
   expression.erase(
       std::remove_if(expression.begin(),
@@ -792,6 +820,7 @@ std::string NormalizeCoefficient(std::string coefficient) {
   coefficient = ExpandPrefactorWrappers(coefficient);
   coefficient = StripOuterParentheses(coefficient);
   coefficient = NormalizeExpression(coefficient);
+  coefficient = CanonicalizeKiraDimensionIdentifier(coefficient);
   if (coefficient.empty() || coefficient == "+" || coefficient == "1" ||
       coefficient == "+1") {
     return "1";

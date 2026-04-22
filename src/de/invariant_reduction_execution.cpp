@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include "amflow/solver/coefficient_evaluator.hpp"
+
 namespace amflow {
 
 namespace {
@@ -31,6 +33,42 @@ std::string VariableContext(const GeneratedDerivativeVariable& generated_variabl
     return "variable \"" + generated_variable.variable.name + "\"";
   }
   return "variable[" + std::to_string(index) + "]";
+}
+
+std::optional<std::string> ResolveProblemSpecExactDimension(
+    const ProblemSpec& spec) {
+  try {
+    return EvaluateCoefficientExpression(spec.dimension, NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+void ApplyExactDimensionExecutionMode(
+    BackendPreparation& preparation,
+    const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override) {
+  preparation.command_arguments.clear();
+  if (exact_dimension_override.has_value()) {
+    preparation.command_arguments.push_back("-sd=" + *exact_dimension_override);
+  }
+
+  std::ostringstream command;
+  command << "FERMATPATH=<fermat-executable> kira";
+  for (const std::string& argument : preparation.command_arguments) {
+    command << " " << argument;
+  }
+  command << " " << (layout.generated_config_dir / "jobs.yaml").string();
+  preparation.commands = {command.str()};
+}
+
+void ApplyProblemSpecExactDimensionExecutionMode(BackendPreparation& preparation,
+                                                 const ArtifactLayout& layout,
+                                                 const ProblemSpec& spec) {
+  ApplyExactDimensionExecutionMode(preparation,
+                                   layout,
+                                   ResolveProblemSpecExactDimension(spec));
 }
 
 void ThrowIfParsedMasterSetDrift(const ParsedMasterList& master_basis,
@@ -196,13 +234,16 @@ DESystem BuildInvariantGeneratedDESystemList(
         "automatic invariant DE construction list requires at least one invariant name");
   }
 
-  return BuildInvariantGeneratedDESystemFromBatchPreparation(
-      master_basis,
-      PrepareInvariantGeneratedReductionList(spec, master_basis, invariant_names, options, layout),
-      spec.family.name,
-      layout,
-      kira_executable,
-      fermat_executable);
+  InvariantGeneratedReductionBatchPreparation preparation =
+      PrepareInvariantGeneratedReductionList(spec, master_basis, invariant_names, options, layout);
+  ApplyProblemSpecExactDimensionExecutionMode(preparation.backend_preparation, layout, spec);
+
+  return BuildInvariantGeneratedDESystemFromBatchPreparation(master_basis,
+                                                            std::move(preparation),
+                                                            spec.family.name,
+                                                            layout,
+                                                            kira_executable,
+                                                            fermat_executable);
 }
 
 InvariantGeneratedReductionExecution RunInvariantGeneratedReduction(
@@ -213,9 +254,12 @@ InvariantGeneratedReductionExecution RunInvariantGeneratedReduction(
     const ArtifactLayout& layout,
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable) {
+  InvariantGeneratedReductionPreparation preparation =
+      PrepareInvariantGeneratedReduction(spec, master_basis, invariant_name, options, layout);
+  ApplyProblemSpecExactDimensionExecutionMode(preparation.backend_preparation, layout, spec);
   return ExecuteInvariantGeneratedReduction(
       master_basis,
-      PrepareInvariantGeneratedReduction(spec, master_basis, invariant_name, options, layout),
+      std::move(preparation),
       spec.family.name,
       layout,
       kira_executable,
@@ -230,9 +274,12 @@ InvariantGeneratedReductionExecution RunInvariantGeneratedReduction(
     const ArtifactLayout& layout,
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable) {
+  InvariantGeneratedReductionPreparation preparation =
+      PrepareInvariantGeneratedReduction(spec, master_basis, seed, options, layout);
+  ApplyProblemSpecExactDimensionExecutionMode(preparation.backend_preparation, layout, spec);
   return ExecuteInvariantGeneratedReduction(
       master_basis,
-      PrepareInvariantGeneratedReduction(spec, master_basis, seed, options, layout),
+      std::move(preparation),
       spec.family.name,
       layout,
       kira_executable,

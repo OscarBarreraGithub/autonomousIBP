@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -69,6 +70,33 @@ bool ContainsAnySubstring(const std::vector<std::string>& values,
                           const std::vector<std::string>& needles) {
   for (const auto& needle : needles) {
     if (ContainsSubstring(values, needle)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ContainsStandaloneIdentifier(const std::string& value,
+                                  const std::string& identifier) {
+  if (identifier.empty()) {
+    return false;
+  }
+
+  for (std::size_t index = 0; index + identifier.size() <= value.size(); ++index) {
+    if (value.compare(index, identifier.size(), identifier) != 0) {
+      continue;
+    }
+
+    const bool has_left_identifier =
+        index > 0 &&
+        (std::isalnum(static_cast<unsigned char>(value[index - 1])) != 0 ||
+         value[index - 1] == '_');
+    const std::size_t end = index + identifier.size();
+    const bool has_right_identifier =
+        end < value.size() &&
+        (std::isalnum(static_cast<unsigned char>(value[end])) != 0 ||
+         value[end] == '_');
+    if (!has_left_identifier && !has_right_identifier) {
       return true;
     }
   }
@@ -2698,6 +2726,32 @@ std::string MakeFixtureCopyScriptExpectingLeadingArgument(
   return script.str();
 }
 
+std::string MakeFamilyFixtureCopyScript(const std::filesystem::path& fixture_root,
+                                        const std::string& family,
+                                        const bool write_stdout = true,
+                                        const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/" << family << "\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cp "
+         << std::filesystem::absolute(fixture_root / "results" / family / "masters").string()
+         << " \"$dest/masters\"\n";
+  const std::filesystem::path rule_path = fixture_root / "results" / family / "kira_target.m";
+  if (std::filesystem::exists(rule_path)) {
+    script << "cp " << std::filesystem::absolute(rule_path).string()
+           << " \"$dest/kira_target.m\"\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"fixture:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::string MakeFixtureCopyScriptWithReversedMasters(const std::filesystem::path& fixture_root,
                                                      const bool write_stdout = true,
                                                      const int exit_code = 0) {
@@ -2854,6 +2908,40 @@ std::string MakeAutoInvariantResultScript(const bool write_rule_file,
   std::ostringstream script;
   script << "#!/bin/sh\n";
   script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_family[1,1,1] 0\n";
+  script << "toy_auto_family[0,-1,2] 0\n";
+  script << "EOF\n";
+  if (write_rule_file) {
+    script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+    script << rule_file_contents;
+    script << "EOF\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"auto-invariant:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeAutoInvariantResultScriptExpectingLeadingArgument(
+    const bool write_rule_file,
+    const std::string& rule_file_contents,
+    const std::string& expected_argument,
+    const bool write_stdout = true,
+    const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "if [ \"$1\" != " << ShellSingleQuote(expected_argument) << " ]; then\n";
+  script << "  echo \"expected-leading-arg:" << expected_argument << "; actual:$1\" 1>&2\n";
+  script << "  exit 13\n";
+  script << "fi\n";
+  script << "shift\n";
   script << "dest=\"$PWD/results/toy_auto_family\"\n";
   script << "mkdir -p \"$dest\"\n";
   script << "cat > \"$dest/masters\" <<'EOF'\n";
@@ -13731,6 +13819,71 @@ void BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest() {
          "reviewed assembled eta DESystem unchanged");
 }
 
+void BuildEtaGeneratedDESystemCanonicalizesSymbolicKiraDimensionTest() {
+  const std::filesystem::path fixture_root = AutomaticLoopRetainedDiffeqsetupRoot("box1", 1);
+  amflow::KiraBackend backend;
+  const amflow::ParsedMasterList master_basis = backend.ParseMasterList(fixture_root, "box1");
+  const amflow::ProblemSpec spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
+      {{"box1", {2, 0, 1, 0}},
+       {"box1", {2, 1, 1, 1}},
+       {"box1", {2, 0, 0, 0}},
+       {"box1", {2, 1, 0, 1}}},
+      {"box1[0,1,0,1]", "box1[1,0,1,0]", "box1[1,1,1,1]"},
+      {15},
+      {
+          {"l", "eta"},
+          {"l + p1", "0"},
+          {"l + p1 + p2", "0"},
+          {"l - p3", "0"},
+      });
+
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "RetainedBox1";
+  decision.selected_propagator_indices = {0};
+  decision.selected_propagators = {spec.family.propagators.front().expression};
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-symbolic-dimension-canonical"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path);
+
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "eta-generated symbolic-dimension canonicalization coverage should return a valid "
+         "DESystem");
+  const auto matrix_it = system.coefficient_matrices.find("eta");
+  Expect(matrix_it != system.coefficient_matrices.end(),
+         "eta-generated symbolic-dimension canonicalization coverage should populate the eta "
+         "matrix");
+
+  bool saw_dimension = false;
+  bool saw_raw_d = false;
+  for (const auto& row : matrix_it->second) {
+    for (const auto& cell : row) {
+      saw_dimension = saw_dimension || ContainsStandaloneIdentifier(cell, "dimension");
+      saw_raw_d = saw_raw_d || ContainsStandaloneIdentifier(cell, "d");
+    }
+  }
+
+  Expect(saw_dimension,
+         "eta-generated symbolic-dimension canonicalization coverage should preserve retained "
+         "symbolic dimension dependence under the canonical internal name");
+  Expect(!saw_raw_d,
+         "eta-generated symbolic-dimension canonicalization coverage should not preserve raw "
+         "Kira d identifiers in the assembled DESystem");
+}
+
 void BuildEtaGeneratedDESystemExecutionFailureTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -14423,6 +14576,63 @@ void BuildInvariantGeneratedDESystemAutomaticHappyPathTest() {
              matrix_it->second[1][1] == "(1)*(11) + ((-2)*(-1))*(17)",
          "automatic invariant DE consumer should return the reviewed automatic invariant matrix "
          "entries unchanged");
+}
+
+void BuildInvariantGeneratedDESystemUsesProblemSpecDimensionExactOverrideTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.dimension = "12/2";
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path,
+                        MakeAutoInvariantResultScript(true, MakeAutoInvariantHappyRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::InvariantGeneratedReductionExecution baseline_execution =
+      amflow::RunInvariantGeneratedReduction(spec,
+                                             master_basis,
+                                             "s",
+                                             MakeKiraReductionOptions(),
+                                             baseline_layout,
+                                             baseline_kira_path,
+                                             baseline_fermat_path);
+  Expect(baseline_execution.assembled_system.has_value(),
+         "automatic invariant exact-dimension baseline should assemble a DESystem");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-desystem-exact-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-copy-with-sd.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantResultScriptExpectingLeadingArgument(
+                            true, MakeAutoInvariantHappyRuleFile(), "-sd=6"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              layout,
+                                              kira_path,
+                                              fermat_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "automatic invariant exact-dimension override coverage should return a valid DESystem");
+  Expect(SameDESystem(system, *baseline_execution.assembled_system),
+         "automatic invariant exact-dimension override coverage should preserve the reviewed "
+         "assembled invariant DESystem unchanged");
 }
 
 void BuildInvariantGeneratedDESystemAutomaticExecutionFailureTest() {
@@ -25228,6 +25438,7 @@ int main() {
     RunEtaGeneratedReductionRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemHappyPathTest();
     BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest();
+    BuildEtaGeneratedDESystemCanonicalizesSymbolicKiraDimensionTest();
     BuildEtaGeneratedDESystemExecutionFailureTest();
     BuildEtaGeneratedDESystemRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemRejectsEmptyGeneratedTargetsTest();
@@ -25246,6 +25457,7 @@ int main() {
     RunInvariantGeneratedReductionAutomaticRejectsIdentityFallbackResultsTest();
     RunInvariantGeneratedReductionAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     BuildInvariantGeneratedDESystemAutomaticHappyPathTest();
+    BuildInvariantGeneratedDESystemUsesProblemSpecDimensionExactOverrideTest();
     BuildInvariantGeneratedDESystemAutomaticExecutionFailureTest();
     BuildInvariantGeneratedDESystemAutomaticRejectsEmptyInvariantNameTest();
     BuildInvariantGeneratedDESystemAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();

@@ -168,6 +168,29 @@ bool IsMissingNumericBindingError(const std::invalid_argument& error) {
          std::string::npos;
 }
 
+std::optional<std::string> NormalizeDimensionExpression(
+    const std::optional<std::string>& dimension_expression) {
+  if (!dimension_expression.has_value()) {
+    return std::nullopt;
+  }
+
+  const std::string normalized_expression = RemoveWhitespace(*dimension_expression);
+  if (normalized_expression.empty()) {
+    throw std::invalid_argument("eta-generated dimension expression must not be empty");
+  }
+  DimensionExpressionSyntaxValidator(*dimension_expression).Validate();
+
+  try {
+    return EvaluateCoefficientExpression(normalized_expression, NumericEvaluationPoint{})
+        .ToString();
+  } catch (const std::invalid_argument& error) {
+    if (!IsMissingNumericBindingError(error)) {
+      throw;
+    }
+    return normalized_expression;
+  }
+}
+
 std::optional<std::string> ResolveExactDimensionOverride(
     const std::optional<std::string>& exact_dimension_override) {
   if (!exact_dimension_override.has_value()) {
@@ -188,6 +211,49 @@ std::optional<std::string> ResolveExactDimensionOverride(
       throw;
     }
     return std::nullopt;
+  }
+}
+
+std::string SubstituteDimensionIdentifier(const std::string& expression,
+                                          const std::string& dimension_expression) {
+  std::string rewritten;
+  rewritten.reserve(expression.size() + dimension_expression.size());
+
+  for (std::size_t index = 0; index < expression.size();) {
+    if (!IsDimensionIdentifierStart(expression[index])) {
+      rewritten.push_back(expression[index]);
+      ++index;
+      continue;
+    }
+
+    std::size_t end = index + 1;
+    while (end < expression.size() && IsDimensionIdentifierContinuation(expression[end])) {
+      ++end;
+    }
+
+    if (expression.compare(index, end - index, "dimension") == 0 &&
+        (end == expression.size() || (expression[end] != '(' && expression[end] != '['))) {
+      rewritten += "(" + dimension_expression + ")";
+    } else {
+      rewritten.append(expression, index, end - index);
+    }
+    index = end;
+  }
+
+  return rewritten;
+}
+
+void ApplySymbolicDimensionExpression(DESystem& system, const std::string& dimension_expression) {
+  for (auto& [variable_name, matrix] : system.coefficient_matrices) {
+    static_cast<void>(variable_name);
+    for (auto& row : matrix) {
+      for (std::string& cell : row) {
+        cell = SubstituteDimensionIdentifier(cell, dimension_expression);
+      }
+    }
+  }
+  for (std::string& point : system.singular_points) {
+    point = SubstituteDimensionIdentifier(point, dimension_expression);
   }
 }
 
@@ -321,11 +387,16 @@ EtaGeneratedReductionExecution RunEtaGeneratedReduction(
     const std::filesystem::path& fermat_executable,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  const std::optional<std::string> normalized_dimension_expression =
+      NormalizeDimensionExpression(exact_dimension_override);
+  const std::optional<std::string> normalized_exact_dimension_override =
+      ResolveExactDimensionOverride(normalized_dimension_expression);
+
   EtaGeneratedReductionExecution execution;
   execution.preparation =
       PrepareEtaGeneratedReduction(spec, master_basis, decision, options, layout, eta_symbol);
   ApplyExactDimensionOverride(
-      execution.preparation.backend_preparation, layout, exact_dimension_override);
+      execution.preparation.backend_preparation, layout, normalized_exact_dimension_override);
 
   KiraBackend backend;
   execution.execution_result = backend.ExecutePrepared(execution.preparation.backend_preparation,
@@ -353,6 +424,11 @@ EtaGeneratedReductionExecution RunEtaGeneratedReduction(
   variable_input.generated_variable = execution.preparation.generated_variable;
   variable_input.reduction_result = *execution.parsed_reduction_result;
   execution.assembled_system = AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  if (execution.assembled_system.has_value() && normalized_dimension_expression.has_value() &&
+      !normalized_exact_dimension_override.has_value()) {
+    ApplySymbolicDimensionExpression(*execution.assembled_system,
+                                     *normalized_dimension_expression);
+  }
   return execution;
 }
 

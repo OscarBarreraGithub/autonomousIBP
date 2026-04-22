@@ -649,6 +649,49 @@ bool SameDESystem(const amflow::DESystem& lhs, const amflow::DESystem& rhs) {
   return true;
 }
 
+bool DESystemContainsStandaloneIdentifier(const amflow::DESystem& system,
+                                          const std::string& identifier) {
+  for (const auto& [variable_name, matrix] : system.coefficient_matrices) {
+    static_cast<void>(variable_name);
+    for (const auto& row : matrix) {
+      for (const auto& cell : row) {
+        if (ContainsStandaloneIdentifier(cell, identifier)) {
+          return true;
+        }
+      }
+    }
+  }
+  for (const auto& singular_point : system.singular_points) {
+    if (ContainsStandaloneIdentifier(singular_point, identifier)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void ExpectSymbolicDimensionExpressionRewrittenEtaDESystem(
+    const amflow::DESystem& system,
+    const amflow::DESystem& baseline_system,
+    const std::string& context) {
+  Expect(amflow::ValidateDESystem(system).empty(), context + " should return a valid DESystem");
+  Expect(system.masters.size() == baseline_system.masters.size() &&
+             system.variables.size() == baseline_system.variables.size() &&
+             system.coefficient_matrices.size() == baseline_system.coefficient_matrices.size(),
+         context + " should preserve the assembled DESystem shape");
+  Expect(!SameDESystem(system, baseline_system),
+         context + " should rewrite the dimension-dependent DESystem when the explicit dimension "
+                   "expression is symbolic");
+  Expect(!DESystemContainsStandaloneIdentifier(system, "dimension"),
+         context + " should not preserve the canonical dimension identifier after rewriting the "
+                   "explicit symbolic dimension expression");
+  Expect(DESystemContainsStandaloneIdentifier(system, "D0"),
+         context + " should substitute the caller-supplied symbolic dimension expression into "
+                   "the assembled DESystem");
+  Expect(DESystemContainsStandaloneIdentifier(system, "eps"),
+         context + " should preserve the caller-supplied symbolic eps dependence in the "
+                   "assembled DESystem");
+}
+
 bool SamePrecisionPolicy(const amflow::PrecisionPolicy& lhs, const amflow::PrecisionPolicy& rhs) {
   return lhs.working_precision == rhs.working_precision &&
          lhs.chop_precision == rhs.chop_precision &&
@@ -14069,6 +14112,77 @@ void BuildEtaGeneratedDESystemCanonicalizesSymbolicKiraDimensionTest() {
          "Kira d identifiers in the assembled DESystem");
 }
 
+void BuildEtaGeneratedDESystemUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest() {
+  const std::filesystem::path fixture_root = AutomaticLoopRetainedDiffeqsetupRoot("box1", 1);
+  amflow::KiraBackend backend;
+  const amflow::ParsedMasterList master_basis = backend.ParseMasterList(fixture_root, "box1");
+  const amflow::ProblemSpec spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
+      {{"box1", {2, 0, 1, 0}},
+       {"box1", {2, 1, 1, 1}},
+       {"box1", {2, 0, 0, 0}},
+       {"box1", {2, 1, 0, 1}}},
+      {"box1[0,1,0,1]", "box1[1,0,1,0]", "box1[1,1,1,1]"},
+      {15},
+      {
+          {"l", "eta"},
+          {"l + p1", "0"},
+          {"l + p1 + p2", "0"},
+          {"l - p3", "0"},
+      });
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "RetainedBox1";
+  decision.selected_propagator_indices = {0};
+  decision.selected_propagators = {spec.family.propagators.front().expression};
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-desystem-symbolic-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-desystem-symbolic-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        "eta",
+                                        std::optional<std::string>{" D0 - 2*eps "});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated DE consumer symbolic dimension coverage should not mutate the input "
+         "problem spec");
+  ExpectSymbolicDimensionExpressionRewrittenEtaDESystem(
+      system,
+      baseline_system,
+      "eta-generated DE consumer symbolic dimension coverage");
+}
+
 void BuildEtaGeneratedDESystemExecutionFailureTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -14234,6 +14348,84 @@ void RunEtaGeneratedReductionSymbolicDimensionOverrideFallsBackToDefaultExecutio
   Expect(SameDESystem(*execution.assembled_system, *baseline_execution.assembled_system),
          "eta-generated wrapper symbolic dimension coverage should preserve the reviewed "
          "assembled eta DESystem when the explicit dimension expression is symbolic");
+}
+
+void RunEtaGeneratedReductionUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest() {
+  const std::filesystem::path fixture_root = AutomaticLoopRetainedDiffeqsetupRoot("box1", 1);
+  amflow::KiraBackend backend;
+  const amflow::ParsedMasterList master_basis = backend.ParseMasterList(fixture_root, "box1");
+  const amflow::ProblemSpec spec = MakeAutomaticLoopBox1DiffeqsetupSpec(
+      {{"box1", {2, 0, 1, 0}},
+       {"box1", {2, 1, 1, 1}},
+       {"box1", {2, 0, 0, 0}},
+       {"box1", {2, 1, 0, 1}}},
+      {"box1[0,1,0,1]", "box1[1,0,1,0]", "box1[1,1,1,1]"},
+      {15},
+      {
+          {"l", "eta"},
+          {"l + p1", "0"},
+          {"l + p1 + p2", "0"},
+          {"l - p3", "0"},
+      });
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "RetainedBox1";
+  decision.selected_propagator_indices = {0};
+  decision.selected_propagators = {spec.family.propagators.front().expression};
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-run-symbolic-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution baseline_execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       decision,
+                                       MakeKiraReductionOptions(),
+                                       baseline_layout,
+                                       baseline_kira_path,
+                                       baseline_fermat_path);
+  Expect(baseline_execution.execution_result.Succeeded() &&
+             baseline_execution.assembled_system.has_value(),
+         "eta-generated wrapper symbolic dimension-dependent baseline should execute "
+         "successfully");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-run-symbolic-dimension"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       decision,
+                                       MakeKiraReductionOptions(),
+                                       layout,
+                                       kira_path,
+                                       fermat_path,
+                                       "eta",
+                                       std::optional<std::string>{" D0 - 2*eps "});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated wrapper symbolic dimension-dependent coverage should not mutate the "
+         "input problem spec");
+  Expect(execution.execution_result.Succeeded() && execution.assembled_system.has_value(),
+         "eta-generated wrapper symbolic dimension-dependent coverage should preserve "
+         "successful reducer execution");
+  ExpectSymbolicDimensionExpressionRewrittenEtaDESystem(
+      *execution.assembled_system,
+      *baseline_execution.assembled_system,
+      "eta-generated wrapper symbolic dimension-dependent coverage");
 }
 
 void RunEtaGeneratedReductionRejectsMalformedDimensionExpressionTest() {
@@ -26591,10 +26783,12 @@ int main() {
     BuildEtaGeneratedDESystemHappyPathTest();
     BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest();
     BuildEtaGeneratedDESystemCanonicalizesSymbolicKiraDimensionTest();
+    BuildEtaGeneratedDESystemUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest();
     BuildEtaGeneratedDESystemExecutionFailureTest();
     BuildEtaGeneratedDESystemRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemRejectsEmptyGeneratedTargetsTest();
     RunEtaGeneratedReductionSymbolicDimensionOverrideFallsBackToDefaultExecutionModeTest();
+    RunEtaGeneratedReductionUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest();
     RunEtaGeneratedReductionRejectsMalformedDimensionExpressionTest();
     RunEtaGeneratedReductionRejectsWhitespaceCorruptedDimensionExpressionTest();
     RunInvariantGeneratedReductionHappyPathTest();

@@ -36977,6 +36977,123 @@ void Phase0CorrectDigitScorerMatchesRetainedDED0PacketTest() {
                  "output visible");
 }
 
+void Phase0CorrectDigitPacketSetSelfCheckAggregatesRetainedPacketPairsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-correct-digit-packet-set-self-check",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      {"--self-check"},
+      "phase-0 correct-digit packet-set self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 correct-digit packet-set self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_packet_set_meets_digit_thresholds\": true",
+                 "phase-0 correct-digit packet-set self-check should keep a matching candidate "
+                 "packet set on the threshold-meeting pass path");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 correct-digit packet-set self-check should keep the required retained "
+                 "packet visible");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 correct-digit packet-set self-check should surface scaffold "
+                 "threshold, failure-code, and regression metadata");
+  ExpectContains(result.stdout_json, "\"structural_only_output_preserved\": true",
+                 "phase-0 correct-digit packet-set self-check should preserve structural-only "
+                 "outputs on the composed packet-set scorer path");
+  ExpectContains(result.stdout_json, "\"threshold_failure_detected\": true",
+                 "phase-0 correct-digit packet-set self-check should fail closed when one "
+                 "packet drops below the frozen digit floor");
+  ExpectContains(result.stdout_json, "\"missing_packet_rejected\": true",
+                 "phase-0 correct-digit packet-set self-check should fail closed when one "
+                 "captured packet is omitted");
+  ExpectContains(result.stdout_json, "\"placeholder_directories_ignored\": true",
+                 "phase-0 correct-digit packet-set self-check should ignore uncaptured "
+                 "placeholder benchmark directories that do not publish result manifests");
+  ExpectContains(result.stdout_json, "\"extra_candidate_benchmark_rejected\": true",
+                 "phase-0 correct-digit packet-set self-check should fail closed when one "
+                 "candidate packet publishes benchmarks outside its retained packet split");
+  ExpectContains(result.stdout_json, "\"duplicate_packet_label_rejected\": true",
+                 "phase-0 correct-digit packet-set self-check should reject duplicate "
+                 "reference packet labels across packet pairs");
+  ExpectContains(result.stdout_json, "\"malformed_packet_pair_rejected\": true",
+                 "phase-0 correct-digit packet-set self-check should reject malformed "
+                 "--packet-root-pair values");
+  ExpectContains(result.stdout_json, "\"skeleton_mismatch_rejected\": true",
+                 "phase-0 correct-digit packet-set self-check should reject changing the "
+                 "retained nonnumeric skeleton on one packet");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 correct-digit packet-set self-check should write the synthetic "
+                 "summary output");
+}
+
+void Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest() {
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-correct-digit-packet-set-retained") / "summary.json";
+  std::vector<std::string> script_args = {"--summary-path", summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    script_args.push_back("--packet-root-pair");
+    script_args.push_back(root.string() + "::" + root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-correct-digit-packet-set-retained",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      script_args,
+      "phase-0 correct-digit packet-set report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 correct-digit packet-set report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 correct-digit packet-set report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"packet_pair_count\": 3",
+                 "phase-0 correct-digit packet-set report should record the retained packet "
+                 "split");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 correct-digit packet-set report should keep the required retained "
+                 "packet visible");
+  ExpectContains(result.stdout_json,
+                 "\"reference_packet_labels_match_scaffold_reference_captured\": true",
+                 "phase-0 correct-digit packet-set report should keep retained packet labels "
+                 "aligned with the scaffold's captured packet split");
+  ExpectContains(result.stdout_json,
+                 "\"compared_phase0_ids_match_scaffold_reference_captured\": true",
+                 "phase-0 correct-digit packet-set report should keep the compared phase-0 "
+                 "benchmark ids aligned with the scaffold's captured set");
+  ExpectContains(result.stdout_json, "\"candidate_packet_benchmark_sets_match_reference\": true",
+                 "phase-0 correct-digit packet-set report should require each candidate packet "
+                 "to publish exactly the retained benchmark split");
+  ExpectContains(result.stdout_json,
+                 "\"candidate_numeric_literal_skeletons_match_reference\": true",
+                 "phase-0 correct-digit packet-set report should keep the retained nonnumeric "
+                 "canonical skeleton fixed across the packet split");
+  ExpectContains(result.stdout_json, "\"all_compared_benchmarks_meet_digit_thresholds\": false",
+                 "phase-0 correct-digit packet-set report should truthfully keep the retained "
+                 "packet split short of an M6-passing score verdict");
+  ExpectContains(result.stdout_json,
+                 "\"minimum_observed_correct_digits_across_packet_set\": 18",
+                 "phase-0 correct-digit packet-set report should surface the lowest retained "
+                 "packet-set score");
+  ExpectContains(result.stdout_json, "\"required-set\"",
+                 "phase-0 correct-digit packet-set report should include the retained required-"
+                 "set packet label");
+  ExpectContains(result.stdout_json, "\"de-d0-pair\"",
+                 "phase-0 correct-digit packet-set report should include the retained D0 packet "
+                 "label");
+  ExpectContains(result.stdout_json, "\"user-hook-pair\"",
+                 "phase-0 correct-digit packet-set report should include the retained user-hook "
+                 "packet label");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 correct-digit packet-set report should include automatic_vs_manual");
+  ExpectContains(result.stdout_json, "\"status\": \"digit-threshold-failed\"",
+                 "phase-0 correct-digit packet-set report should keep failing retained "
+                 "benchmarks visible");
+  ExpectContains(result.stdout_json, "\"differential_equation_solver\"",
+                 "phase-0 correct-digit packet-set report should include the retained "
+                 "differential-equation benchmark");
+  ExpectContains(result.stdout_json, "\"status\": \"digit-threshold-met\"",
+                 "phase-0 correct-digit packet-set report should keep passing retained "
+                 "benchmarks visible");
+  ExpectContains(result.stdout_json, "\"user_defined_amfmode\"",
+                 "phase-0 correct-digit packet-set report should include the retained "
+                 "user-defined AMF-mode benchmark");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -38024,6 +38141,8 @@ int main() {
     Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
     Phase0CorrectDigitScorerSelfCheckCoversThresholdAndSkeletonFailuresTest();
     Phase0CorrectDigitScorerMatchesRetainedDED0PacketTest();
+    Phase0CorrectDigitPacketSetSelfCheckAggregatesRetainedPacketPairsTest();
+    Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();

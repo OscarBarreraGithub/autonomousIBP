@@ -268,6 +268,13 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   root on the existing manifest/run schema, keeps the retained output-name set and nonnumeric
   canonical-text skeleton fixed, scores only approximate Mathematica numeric literals tokenwise
   against the frozen digit-threshold profiles, and leaves exact symbolic outputs structural-only.
+- `tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py` is the first
+  packet-set M6 correct-digit aggregator: it composes the reviewed packet-level scorer across the
+  retained `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique
+  reference packet label per pair, requires each candidate packet root to publish exactly the
+  retained benchmark split for that packet, and keeps the scored benchmark ids synchronized with
+  the scaffold's current `reference-captured` phase-0 set without overclaiming qualification
+  closure.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
   audits the checklist source/docs targets, and writes one blocked release-readiness summary that
@@ -281,10 +288,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification
 suite as the solver is implemented. The qualification scaffold is planning metadata only: it does
 not by itself claim any new captured benchmark evidence or solver parity. The packet-level
-correct-digit scorer remains narrower than qualification closure as well: it scores one packet's
-reviewed approximate numeric literals against retained references, but it does not aggregate the
-full packet split, audit candidate failure-code behavior, or claim that `Milestone M6` is
-passing.
+correct-digit scorer and the packet-set correct-digit aggregator both remain narrower than
+qualification closure as well: they score reviewed approximate numeric literals against retained
+references, but they do not audit candidate failure-code behavior, do not compare case-study
+numerics, and do not claim that `Milestone M6` is passing.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in

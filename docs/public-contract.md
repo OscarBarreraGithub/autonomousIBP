@@ -98,14 +98,20 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   entries while ignoring uncaptured placeholder directories without manifests, and requiring the
   compared benchmark ids to match the scaffold's full current `reference-captured` phase-0 set
   exactly while preserving the same threshold/failure/regression metadata.
+  `tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py` then composes the
+  reviewed packet-level correct-digit scorer across that same retained packet split, requiring one
+  unique reference packet label per pair, requiring each candidate packet root to publish exactly
+  the retained benchmark split for that packet, and preserving the same threshold/failure/
+  regression metadata alongside one machine-readable packet-set score summary that truthfully
+  keeps the current retained packet split short of a full qualification verdict.
   `tools/reference-harness/scripts/qualification_case_study_readiness.py` is then the first
   machine-readable case-study-family consumer of the same scaffold: it validates the selected
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
   singular `next_runtime_lane` blocker plus its landed predecessor anchor against the frozen
   sources before later case-study qualification lanes widen into real numerics.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, do not inspect
-  candidate failure-code behavior, do not compare retained case-study numerics, do not aggregate
-  packet-level digit scores into a full qualification verdict, and do not claim that
+  candidate failure-code behavior, do not compare retained case-study numerics, do not elevate
+  retained packet-set correct-digit aggregation into a full qualification verdict, and do not claim that
   `Milestone M6` is passing
 - current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
   `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed

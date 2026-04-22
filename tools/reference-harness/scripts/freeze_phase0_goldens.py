@@ -14,6 +14,7 @@ from typing import Any
 
 PLACEHOLDER_STATUSES = {"placeholder", "pending-reference-capture"}
 VALID_BENCHMARK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+VALID_RUNTIME_LANE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 
 def ensure_dir(path: Path, dry_run: bool) -> None:
@@ -61,6 +62,21 @@ def validate_benchmark_id(raw_id: Any) -> str:
     return raw_id
 
 
+def normalize_runtime_lane(raw_lane: Any) -> str:
+    if raw_lane is None:
+        return ""
+    if not isinstance(raw_lane, str):
+        raise TypeError(f"runtime lane must be a string, got {type(raw_lane).__name__}")
+    if raw_lane != raw_lane.strip():
+        raise ValueError(f"runtime lane has surrounding whitespace: {raw_lane!r}")
+    if not VALID_RUNTIME_LANE.fullmatch(raw_lane):
+        raise ValueError(
+            "runtime lane must match "
+            f"{VALID_RUNTIME_LANE.pattern!r}: {raw_lane!r}"
+        )
+    return raw_lane
+
+
 def normalize_benchmark_entry(raw: Any) -> dict[str, Any]:
     if isinstance(raw, str):
         benchmark_id = validate_benchmark_id(raw)
@@ -80,6 +96,7 @@ def normalize_benchmark_entry(raw: Any) -> dict[str, Any]:
         "required": bool(raw.get("required", False)),
         "feature_gate": raw.get("feature_gate", "phase0"),
         "oracle": raw.get("oracle", "upstream-amflow"),
+        "next_runtime_lane": normalize_runtime_lane(raw.get("next_runtime_lane")),
         "notes": raw.get("notes", ""),
     }
 
@@ -137,6 +154,8 @@ def freeze_phase0_placeholders(
         golden_metadata["benchmark_label"] = benchmark["label"]
         golden_metadata["required"] = benchmark["required"]
         golden_metadata["feature_gate"] = benchmark["feature_gate"]
+        if benchmark["next_runtime_lane"]:
+            golden_metadata["next_runtime_lane"] = benchmark["next_runtime_lane"]
         golden_metadata["oracle"]["kind"] = benchmark["oracle"]
         golden_metadata["oracle"]["manifest"] = str(manifest_path) if manifest_path else ""
         golden_metadata["oracle"]["benchmark_catalog"] = str(benchmark_catalog)

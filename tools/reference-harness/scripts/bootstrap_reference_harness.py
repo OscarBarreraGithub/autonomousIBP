@@ -133,6 +133,18 @@ def load_verification_strategy_digit_thresholds(path: Path) -> dict[str, int]:
     return thresholds
 
 
+THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
+    "automatic_phasespace": "b63e",
+    "complex_kinematics": "b61g",
+    "feynman_prescription": "b63e",
+    "linear_propagator": "b64d",
+}
+
+THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
+    "one-singular-endpoint-case": "b62f",
+}
+
+
 def build_manifest(
     *,
     template_path: Path,
@@ -376,6 +388,27 @@ def run_self_check() -> dict[str, Any]:
         case_study_families = qualification["case_study_families"]
         case_study_ids = [entry["id"] for entry in case_study_families]
         case_study_labels = [entry["parity_matrix_label"] for entry in case_study_families]
+        catalog_runtime_lanes = {
+            entry["id"]: entry.get("next_runtime_lane", "")
+            for entry in catalog_entries
+            if entry.get("next_runtime_lane")
+        }
+        qualification_phase0_runtime_lanes = {
+            entry["id"]: entry.get("next_runtime_lane", "")
+            for entry in phase0_example_classes
+            if entry.get("next_runtime_lane")
+        }
+        qualification_case_study_runtime_lanes = {
+            entry["id"]: entry.get("next_runtime_lane", "")
+            for entry in case_study_families
+            if entry.get("next_runtime_lane")
+        }
+        placeholder_runtime_lanes = {
+            benchmark_id: load_json(
+                harness_root / "goldens" / "phase0" / benchmark_id / "metadata.json"
+            ).get("next_runtime_lane", "")
+            for benchmark_id in THEORY_BLOCKED_PHASE0_RUNTIME_LANES
+        }
         digit_threshold_profiles = {
             entry["id"]: entry["minimum_correct_digits"]
             for entry in qualification["digit_threshold_profiles"]
@@ -420,6 +453,22 @@ def run_self_check() -> dict[str, Any]:
                 for entry in case_study_families
             ),
             "qualification scaffold selected benchmark refs should stay locked to selected-benchmarks anchors",
+        )
+        expect(
+            catalog_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
+            "phase-0 catalog theory-blocked runtime lanes should stay locked to the reviewed next-slice plan",
+        )
+        expect(
+            qualification_phase0_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
+            "qualification scaffold phase-0 runtime lanes should stay locked to the reviewed next-slice plan",
+        )
+        expect(
+            qualification_case_study_runtime_lanes == THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES,
+            "qualification scaffold case-study runtime lanes should stay locked to the reviewed next-slice plan",
+        )
+        expect(
+            placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
+            "bootstrap self-check should preserve theory-blocked runtime lanes in placeholder metadata",
         )
         expect(set(verification_thresholds).issubset(digit_threshold_profiles),
                "qualification scaffold should keep the verification-strategy digit-threshold profiles")
@@ -483,9 +532,20 @@ def run_self_check() -> dict[str, Any]:
                     set(entry["selected_benchmark_refs"]) ==
                     ({qualification_anchor_refs[entry["id"]]}
                      if qualification_anchor_refs[entry["id"]] is not None
-                     else set())
+                    else set())
                     for entry in case_study_families
                 )
+            ),
+            "theory_blocked_phase0_runtime_lanes_locked": (
+                catalog_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
+                and qualification_phase0_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
+            ),
+            "singular_case_study_runtime_lane_locked": (
+                qualification_case_study_runtime_lanes
+                == THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES
+            ),
+            "placeholder_metadata_preserves_runtime_lane_hints": (
+                placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
             ),
             "digit_threshold_profiles_match_verification_strategy": all(
                 digit_threshold_profiles[profile_id] == threshold
@@ -563,7 +623,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Run a local regression check for bootstrap layout creation, placeholder freeze wiring, "
-            "and qualification scaffold/catalog coherence"
+            "qualification scaffold/catalog coherence, and theory-blocked runtime-lane hints"
         ),
     )
     return parser.parse_args()

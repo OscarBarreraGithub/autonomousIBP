@@ -60,7 +60,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 
 All six harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
-`next_runtime_lane` blocker hints for the still-deferred `b61l` / `b62l` / `b63i` / `b64i`
+`next_runtime_lane` blocker hints for the still-deferred `b61m` / `b62m` / `b63j` / `b64j`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`:
 
@@ -233,7 +233,7 @@ The capture script writes:
   blocked on reviewed runtime slices, plus `optional_capture_packet` hints for ready example pairs
   that belong in the retained `de-d0-pair` or retained `user-hook-pair` packets. Those hints
   stay aligned with the current theory frontier while still anchoring against the recorded
-  predecessor slices `b61i` / `b62k` / `b63f` / `b64h`.
+  predecessor slices `b61i` / `b62l` / `b63g` / `b64i`.
 - `templates/release-signoff-checklist.json` is the first machine-readable M7 scaffold: it freezes
   the later release-review sections for qualification closure, performance review, diagnostic
   review, docs completion, and the final parity sign-off statement. It is planning metadata only

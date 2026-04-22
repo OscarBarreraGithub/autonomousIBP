@@ -325,6 +325,18 @@ std::string ReadFile(const std::filesystem::path& path) {
                      std::istreambuf_iterator<char>());
 }
 
+std::vector<std::string> SortedRegularFileNames(const std::filesystem::path& directory) {
+  std::vector<std::string> names;
+  for (const auto& entry : std::filesystem::directory_iterator(directory)) {
+    if (!entry.is_regular_file()) {
+      continue;
+    }
+    names.push_back(entry.path().filename().string());
+  }
+  std::sort(names.begin(), names.end());
+  return names;
+}
+
 void ExpectRetainedKiraConfigSurfaces(const amflow::BackendPreparation& preparation,
                                       const std::filesystem::path& retained_root,
                                       const std::string& context) {
@@ -1553,6 +1565,12 @@ std::filesystem::path AutomaticLoopRetainedDiffeqsetupRoot(const std::string& fa
              "phase0-reference-captured-20260419-required-set/generated-config/phase0/"
              "automatic_loop/primary/cache") /
          (family + "_amflow") / std::to_string(stage) / "diffeqsetup";
+}
+
+std::filesystem::path OptionalPhase0ReferencePacketRoot() {
+  return std::filesystem::path(
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+      "phase0-reference-captured-20260422-de-d0-pair");
 }
 
 amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
@@ -31057,6 +31075,23 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "bootstrap reference-harness self-check should keep qualification case studies "
                  "locked to parity-matrix labels and selected benchmark ids");
   ExpectContains(result.stdout_json,
+                 "\"theory_blocked_phase0_runtime_lanes_locked\": true",
+                 "bootstrap reference-harness self-check should keep the theory-blocked phase-0 "
+                 "runtime-lane hints synchronized with the reviewed next-slice plan");
+  ExpectContains(result.stdout_json,
+                 "\"singular_case_study_runtime_lane_locked\": true",
+                 "bootstrap reference-harness self-check should keep the singular guardrail "
+                 "runtime-lane hint synchronized with the reviewed next-slice plan");
+  ExpectContains(result.stdout_json,
+                 "\"placeholder_metadata_preserves_runtime_lane_hints\": true",
+                 "bootstrap reference-harness self-check should preserve theory-backed runtime "
+                 "lane hints in placeholder metadata");
+  ExpectContains(result.stdout_json,
+                 "\"ready_optional_examples_reference_captured\": true",
+                 "bootstrap reference-harness self-check should keep the ready optional "
+                 "differential-equation and spacetime-dimension captures visible in the "
+                 "qualification scaffold");
+  ExpectContains(result.stdout_json,
                  "\"digit_threshold_profiles_match_verification_strategy\": true",
                  "bootstrap reference-harness self-check should keep qualification digit "
                  "thresholds locked to the verification strategy");
@@ -31077,6 +31112,27 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "bootstrap-only placeholder state");
   ExpectContains(result.stdout_json, "\"state_summary_written\": true",
                  "bootstrap reference-harness self-check should write the bootstrap state summary");
+}
+
+void OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest() {
+  const std::filesystem::path repo_templates_root =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / "tools/reference-harness/templates";
+  const std::filesystem::path retained_templates_root =
+      OptionalPhase0ReferencePacketRoot() / "templates";
+
+  const std::vector<std::string> repo_template_names = SortedRegularFileNames(repo_templates_root);
+  const std::vector<std::string> retained_template_names =
+      SortedRegularFileNames(retained_templates_root);
+  Expect(retained_template_names == repo_template_names,
+         "optional retained phase-0 packet should keep the copied template file set "
+         "synchronized with the repo templates");
+
+  for (const std::string& name : repo_template_names) {
+    Expect(ReadFile(retained_templates_root / name) == ReadFile(repo_templates_root / name),
+           "optional retained phase-0 packet should keep copied template contents synchronized "
+           "with the repo templates for " +
+               name);
+  }
 }
 
 void FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest() {
@@ -31985,6 +32041,7 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
+    OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest();
     FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
     CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();

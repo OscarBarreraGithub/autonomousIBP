@@ -134,14 +134,19 @@ def load_verification_strategy_digit_thresholds(path: Path) -> dict[str, int]:
 
 
 THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
-    "automatic_phasespace": "b63e",
-    "complex_kinematics": "b61g",
-    "feynman_prescription": "b63e",
+    "automatic_phasespace": "b63f",
+    "complex_kinematics": "b61h",
+    "feynman_prescription": "b63f",
     "linear_propagator": "b64d",
 }
 
 THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
-    "one-singular-endpoint-case": "b62f",
+    "one-singular-endpoint-case": "b62g",
+}
+
+READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
+    "differential_equation_solver",
+    "spacetime_dimension",
 }
 
 
@@ -388,6 +393,16 @@ def run_self_check() -> dict[str, Any]:
         case_study_families = qualification["case_study_families"]
         case_study_ids = [entry["id"] for entry in case_study_families]
         case_study_labels = [entry["parity_matrix_label"] for entry in case_study_families]
+        ready_optional_captured_examples = {
+            entry["id"]
+            for entry in phase0_example_classes
+            if entry["current_evidence_state"] == "reference-captured" and not entry["required_capture"]
+        }
+        ready_optional_examples_without_runtime_lane = {
+            entry["id"]
+            for entry in phase0_example_classes
+            if entry["id"] in READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES and not entry.get("next_runtime_lane")
+        }
         catalog_runtime_lanes = {
             entry["id"]: entry.get("next_runtime_lane", "")
             for entry in catalog_entries
@@ -470,6 +485,12 @@ def run_self_check() -> dict[str, Any]:
             placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
             "bootstrap self-check should preserve theory-blocked runtime lanes in placeholder metadata",
         )
+        expect(
+            ready_optional_captured_examples == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
+            and ready_optional_examples_without_runtime_lane == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES,
+            "qualification scaffold should keep the ready optional retained captures visible "
+            "without stale runtime-lane blockers",
+        )
         expect(set(verification_thresholds).issubset(digit_threshold_profiles),
                "qualification scaffold should keep the verification-strategy digit-threshold profiles")
         expect(
@@ -546,6 +567,11 @@ def run_self_check() -> dict[str, Any]:
             ),
             "placeholder_metadata_preserves_runtime_lane_hints": (
                 placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
+            ),
+            "ready_optional_examples_reference_captured": (
+                ready_optional_captured_examples == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
+                and ready_optional_examples_without_runtime_lane
+                == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
             ),
             "digit_threshold_profiles_match_verification_strategy": all(
                 digit_threshold_profiles[profile_id] == threshold

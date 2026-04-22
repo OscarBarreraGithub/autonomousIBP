@@ -22,8 +22,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b61g",
-      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61g`) lands."
+      "next_runtime_lane": "b61h",
+      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61h`) lands."
     },
     {
       "id": "differential_equation_solver",
@@ -39,8 +39,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63e",
-      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63e`) lands."
+      "next_runtime_lane": "b63f",
+      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63f`) lands."
     },
     {
       "id": "automatic_phasespace",
@@ -48,8 +48,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63e",
-      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63e`) lands."
+      "next_runtime_lane": "b63f",
+      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63f`) lands."
     },
     {
       "id": "linear_propagator",

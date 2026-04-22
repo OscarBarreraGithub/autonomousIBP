@@ -60,7 +60,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 
 All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
-`next_runtime_lane` blocker hints for the still-deferred `b61g` / `b62f` / `b63e` / `b64d`
+`next_runtime_lane` blocker hints for the still-deferred `b61h` / `b62g` / `b63f` / `b64d`
 surfaces:
 
 ```bash
@@ -121,6 +121,8 @@ python3 tools/reference-harness/scripts/capture_phase0_reference.py \
 
 Repeated `--benchmark-id` flags collapse duplicates and still run in the catalog's frozen order
 rather than CLI order. `--required-only` cannot be combined with explicit benchmark ids.
+If the required phase-0 pair is absent, the packet summary truthfully stays `bootstrap-only` even
+when the selected optional examples become `reference-captured`.
 
 The capture script writes:
 

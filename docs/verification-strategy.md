@@ -17,6 +17,12 @@ The migration is phase-gated. Every phase must pass:
   walltime, resumed job `6732338` completed the packet via `--resume-existing`, and the manifest
   now records `phase0.capture_state = "reference-captured"` with both required benchmarks
   captured
+- a sibling optional-capture packet at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair`
+  now retains `differential_equation_solver` and `spacetime_dimension` with passed
+  bundled-backup and rerun reproducibility summaries; because it intentionally reran only those
+  two examples, its manifest truthfully remains `phase0.capture_state = "bootstrap-only"` and it
+  does not replace the accepted M0b root
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
   `ctest --test-dir build --output-on-failure`
@@ -195,6 +201,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set`,
   where `automatic_vs_manual` and `automatic_loop` both have promoted goldens, result manifests,
   and passed bundled-backup plus rerun reproducibility summaries
+- the current ready-example optional capture evidence is the sibling root at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair`,
+  where `differential_equation_solver` and `spacetime_dimension` each now have promoted goldens,
+  result manifests, and passed bundled-backup plus rerun reproducibility summaries; because that
+  packet omits the required pair, its manifest remains `bootstrap-only`
 - `M0a` remains the bootstrap precursor only; `M0b` now supplies the accepted
   `reference-captured` state for the required phase-0 benchmark set
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap

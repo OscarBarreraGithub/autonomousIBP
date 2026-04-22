@@ -3653,13 +3653,16 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const std::optional<std::string> fermat_executable_replay_fingerprint =
         skip_reduction ? std::nullopt
                        : std::make_optional(BuildExecutableReplayFingerprint(fermat_executable));
+    const bool use_live_reviewed_complex_continuation =
+        !spec.kinematics.complex_numeric_substitutions.empty() &&
+        solver.SupportsReviewedComplexEtaContinuation();
     ValidateComplexEtaGeneratedWrapperBindings(spec);
     if (const std::optional<SolverDiagnostics> diagnostics =
             AssessGeneratedSolvePhysicalKinematics(spec);
         diagnostics.has_value()) {
       return *diagnostics;
     }
-    if (!skip_reduction) {
+    if (!skip_reduction && !use_live_reviewed_complex_continuation) {
       if (const std::optional<SolverDiagnostics> diagnostics =
               MaybeReplayDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
                   layout,
@@ -3704,6 +3707,10 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
                                         amf_requested_d0,
                                         amf_requested_dimension_expression,
                                         requested_digits);
+    if (use_live_reviewed_complex_continuation) {
+      return SolveWithReviewedLiveComplexEtaContinuationPlan(
+          spec, layout, solver, eta_symbol, std::move(request));
+    }
     const std::optional<SolverDiagnostics> diagnostics =
         MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
             spec,

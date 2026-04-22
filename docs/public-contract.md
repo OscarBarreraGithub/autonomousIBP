@@ -239,12 +239,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
 - current worktree `Batch 61a` through `Batch 64j` are still narrow: explicit complex kinematics
-  now stop at exact-complex evaluation plus reviewed contour-plan persistence; the planned
-  `AmfOptions` helper path and any non-opt-in solver surface still defer with explicit
-  `unsupported_solver_path` diagnostics plus cache replay on the reviewed helper path, while the
-  direct eta-generated and eta-mode-planned solver handoffs now add one still narrower live path
-  only for injected solvers that explicitly opt into the reviewed complex-continuation surface by
-  consuming a persisted `EtaContinuationPlan` on `SolveRequest`; the reviewed K0
+  now stop at exact-complex evaluation plus reviewed contour-plan persistence; any non-opt-in
+  solver surface still defers with explicit `unsupported_solver_path` diagnostics, and the
+  reviewed helper deferred/cache replay remains limited to that non-opt-in subset, while the
+  direct eta-generated, eta-mode-planned, and planned `AmfOptions` helper handoffs now add one
+  still narrower live path only for injected solvers that explicitly opt into the reviewed
+  complex-continuation surface by consuming a persisted `EtaContinuationPlan` on `SolveRequest`;
+  the reviewed K0
   one-mass real guardrails now cover only the explicit `s`/`t` continuation-segment diagnostics
   described below; the reviewed local phase-space slice now narrows builtin `Prescription` to
   standard uncut `-i0` propagators (`Batch 63b`), emits explicit Kira `cut_propagators`
@@ -883,14 +884,22 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   this helper; bare `complex_mode` requests without explicit complex substitutions therefore stay
   on the reviewed `physical_kinematics_not_supported` rejection path
 - when `ProblemSpec.kinematics.complex_numeric_substitutions` is non-empty, this helper also
-  carries the reviewed complex-continuation deferral seam on the current worktree: after that
-  shared complex preflight passes, it builds or `skip_reduction`-assembles the wrapper-owned
-  eta-generated `DESystem`, applies the existing wrapper-owned symbolic-dimension rewrite, then
-  plans and persists one reviewed upper-half-plane continuation contour under
-  `layout.manifests_dir/`, writes one distinct solved-path cache artifact keyed on the dedicated
+  first rebuilds or `skip_reduction`-assembles the wrapper-owned eta-generated `DESystem`,
+  applies the existing wrapper-owned symbolic-dimension rewrite, and then splits on the injected
+  solver capability. If `SeriesSolver::SupportsReviewedComplexEtaContinuation()` stays false, the
+  helper preserves the reviewed deferred/cache complex-continuation seam: it plans and persists
+  one reviewed upper-half-plane continuation contour under `layout.manifests_dir/`, writes one
+  distinct solved-path cache artifact keyed on the dedicated
   `complex-continuation-deferred-v1` slot plus the planned contour fingerprint, and stops with
   explicit `unsupported_solver_path` diagnostics that report the contour fingerprint plus manifest
   path instead of invoking the supplied solver
+- if that same helper path sees an injected solver that explicitly opts into
+  `SeriesSolver::SupportsReviewedComplexEtaContinuation()`, it instead persists the same
+  reviewed contour-plan manifest, attaches the reviewed `EtaContinuationPlan` onto
+  `SolveRequest.eta_continuation_plan`, and routes one live solve through
+  `SolveWithPrecisionRetry(...)`; this still stays on the reviewed finite-horizontal
+  upper-half-plane subset only, and it does not write solved-path cache artifacts on that live
+  opt-in path
 - on that deferred complex subset, `amf_options.use_cache == true` now enables replay only for
   that one reviewed deferred diagnostic shape. On the non-`skip_reduction` path, replay now
   happens before rebuilding the live reduced `DESystem`, and that fast replay also requires the

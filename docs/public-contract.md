@@ -41,12 +41,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64g`; latest head commit
+  not-yet-accepted public/runtime seams described below through `Batch 64j`; latest head commit
   `2125db5` is the narrow `Batch 62i` raw `t`-segment continuation guardrail packet and does not
   widen the last fully accepted public/runtime contract;
   the current worktree now also carries the local-only narrow `Batch 62j` raw single-invariant
   `msq`-segment singular-crossing continuation guardrail packet, which likewise does not widen
   the last fully accepted public/runtime contract;
+  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64j`
+  linear-propagator packets, which likewise stay below the last fully accepted public/runtime
+  contract;
   local tracking `origin/main` matches that same head;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
@@ -235,7 +238,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61a` through `Batch 64g` are still narrow: explicit complex kinematics
+- current worktree `Batch 61a` through `Batch 64j` are still narrow: explicit complex kinematics
   now stop at exact-complex evaluation plus reviewed contour-plan persistence; the planned
   `AmfOptions` helper path and any non-opt-in solver surface still defer with explicit
   `unsupported_solver_path` diagnostics plus cache replay on the reviewed helper path, while the
@@ -248,11 +251,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   (`Batch 63c`), adds Cutkosky phase-space request/attach wrappers, and adds a caller-supplied
   provider-registry seam without phase-space boundary values;
   and explicit linear variants now reach only the reviewed invariant seed/execution subsets, the
-  stricter general Kira-preparation subset, and the direct eta-generated plus eta-mode-planned
-  solver handoffs on the reviewed direct-decision subset where only reviewed quadratic
-  propagators are eta-shifted and the explicit linear slot stays passive. Live complex contour
-  execution, broader phase-space topology/provider behavior, builtin eta-mode linear selection,
-  broader non-invariant linear solver behavior, and wider symbolic runtime parity remain deferred
+  stricter general Kira-preparation subset, the direct eta-generated plus eta-mode-planned solver
+  handoffs on the reviewed direct-decision subset where only reviewed quadratic propagators are
+  eta-shifted and the explicit linear slot stays passive, and the narrow passive-linear
+  `Prescription` wrapper surface through direct builtin, builtin-list, builtin-only `AmfOptions`,
+  mixed/user-defined `AmfOptions` fallback, and the matching planned-`AmfOptions` helper tail on
+  that same reviewed subset. Live complex contour execution, broader phase-space
+  topology/provider behavior, broader non-invariant linear solver behavior, broader
+  AMFlow-faithful `x` / gauge-link linear-driver parity, and wider symbolic runtime parity
+  remain deferred
 
 ## Core Types
 
@@ -1177,7 +1184,7 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - `kinematics.invariants` appends `eta` exactly once and preserves existing order otherwise
 - the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`variant`/`prescription`
 - empty selections, duplicate indices, out-of-range indices, and selected auxiliary propagators fail locally with deterministic diagnostics; selected nonzero-mass propagators are now allowed on this reviewed eta-generated path, and rewritten selected propagators carry `Trim(original.mass)` in the transformed copy so the reducer-facing equal-mass surface stays coherent with planner grouping. This is only outer-whitespace trimming on selected rewritten literals, not broader mass canonicalization
-- builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is now the first truthful `Propagator::prescription` consumer on the reviewed local phase-space subset only: it validates the frozen raw `-1/0/1` vocabulary across the current propagator table, then scans the current declaration-order surface and selects only standard uncut `-i0` propagators. It preserves `mode_name == "Prescription"` and uses a distinct explanation string for that filtered subset. On the reviewed passive-linear subset inherited from `Batch 64f`, the same builtin planner now also stays truthful when one explicit `variant: "linear"` propagator remains in the family: it still selects only the standard uncut `-i0` quadratic slots, leaves the explicit linear slot passive, the direct `SolveBuiltinEtaModeSeries(...)` wrapper and `SolveBuiltinEtaModeListSeries(...)` forward the resulting eta-generated `DESystem`, locations, precision policy, requested digits, and solver diagnostics unchanged on that one-master fixture when `Prescription` is the selected builtin, and the builtin-only `SolveAmfOptionsEtaModeSeries(...)` wrapper forwards that same reviewed passive-linear `DESystem`, locations, requested digits, and solver diagnostics unchanged while applying only its existing wrapper-owned live precision/runtime policy fields. This does not yet claim top-sector-aware or loop-derived upstream `AMFlowInfo["Prescription"]` parity, any linear rewrite semantics for the selected set itself, broader linear-propagator support, broader phase-space boundary semantics, or mixed/user-defined `AmfOptions` solver-path widening
+- builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is now the first truthful `Propagator::prescription` consumer on the reviewed local phase-space subset only: it validates the frozen raw `-1/0/1` vocabulary across the current propagator table, then scans the current declaration-order surface and selects only standard uncut `-i0` propagators. It preserves `mode_name == "Prescription"` and uses a distinct explanation string for that filtered subset. On the reviewed passive-linear subset inherited from `Batch 64f`, the same builtin planner now also stays truthful when one explicit `variant: "linear"` propagator remains in the family: it still selects only the standard uncut `-i0` quadratic slots, leaves the explicit linear slot passive, the direct `SolveBuiltinEtaModeSeries(...)` wrapper and `SolveBuiltinEtaModeListSeries(...)` forward the resulting eta-generated `DESystem`, locations, precision policy, requested digits, and solver diagnostics unchanged on that one-master fixture when `Prescription` is the selected builtin, the builtin-only `SolveAmfOptionsEtaModeSeries(...)` wrapper forwards that same reviewed passive-linear `DESystem`, locations, requested digits, and solver diagnostics unchanged while preserving the already-reviewed wrapper-owned live precision/runtime policy plus requested-`D0` / dimension-carrier metadata, and the mixed/user-defined `SolveAmfOptionsEtaModeSeries(...)` overload now matches the planned-`AmfOptions` helper tail on that same passive-linear solve path after ordered fallback from reviewed user-defined planning failures into builtin `Prescription`. This does not yet claim top-sector-aware or loop-derived upstream `AMFlowInfo["Prescription"]` parity, any linear rewrite semantics for the selected set itself, broader linear-propagator support, broader phase-space boundary semantics, or broader AMFlow-faithful `x` / gauge-link driver parity
 - on the current reviewed local phase-space subset, `KiraBackend` family YAML is now the first truthful Kira cut-surface consumer: emitted `integralfamilies.yaml` always carries an explicit 1-based `cut_propagators` list derived from `PropagatorKind::Cut`, including after the reviewed `Prescription` eta-insertion path, while reviewed loop-only surfaces stay on the explicit empty list. This still does not widen into Cutkosky boundary generation, phase-space boundary attachment, or broader upstream AMFlow/Kira parity
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
 - builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists

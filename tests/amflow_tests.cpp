@@ -928,6 +928,18 @@ void ExpectRationalString(const amflow::ExactRational& value,
          message + "; expected " + expected + ", got " + value.ToString());
 }
 
+void ExpectComplexRationalParts(const amflow::ExactComplexRational& value,
+                                const std::string& expected_real,
+                                const std::string& expected_imaginary,
+                                const std::string& message) {
+  ExpectRationalString(value.real,
+                       expected_real,
+                       message + " (real part)");
+  ExpectRationalString(value.imaginary,
+                       expected_imaginary,
+                       message + " (imaginary part)");
+}
+
 void ExpectStringVector(const std::vector<std::string>& values,
                         const std::vector<std::string>& expected,
                         const std::string& message) {
@@ -10121,6 +10133,111 @@ void EvaluateCoefficientExpressionConstantOnlyTest() {
                        "3",
                        "coefficient evaluation should evaluate constant-only expressions without "
                        "symbol bindings");
+}
+
+void EvaluateComplexCoefficientExpressionClosedFormTest() {
+  const amflow::ExactComplexRational value =
+      amflow::EvaluateComplexCoefficientExpression("(2-I)/(1+I)", {});
+
+  ExpectComplexRationalParts(value,
+                             "1/2",
+                             "-3/2",
+                             "complex coefficient evaluation should preserve the closed-form "
+                             "(2-I)/(1+I) result exactly");
+}
+
+void EvaluateComplexCoefficientMatrixUsesProblemSpecComplexBindingsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1 + I"},
+  };
+
+  const amflow::NumericEvaluationPoint evaluation_point =
+      amflow::BuildComplexNumericEvaluationPoint(spec);
+  const amflow::ExactComplexRationalMatrix matrix =
+      amflow::EvaluateComplexCoefficientMatrix(amflow::MakeSampleDESystem(),
+                                               "s",
+                                               evaluation_point);
+
+  Expect(matrix.size() == 2 && matrix[0].size() == 2,
+         "complex coefficient evaluation should preserve the sample s-matrix shape");
+  ExpectComplexRationalParts(matrix[0][0],
+                             "0",
+                             "0",
+                             "complex coefficient evaluation should preserve zero sample "
+                             "s-matrix entries");
+  ExpectComplexRationalParts(
+      matrix[0][1],
+      "1/2",
+      "-1/2",
+      "complex coefficient evaluation should evaluate sample s-matrix row-0 col-1 with "
+      "ProblemSpec complex bindings");
+  ExpectComplexRationalParts(
+      matrix[1][0],
+      "1/2",
+      "-1/2",
+      "complex coefficient evaluation should evaluate sample s-matrix row-1 col-0 with "
+      "ProblemSpec complex bindings");
+  ExpectComplexRationalParts(matrix[1][1],
+                             "0",
+                             "0",
+                             "complex coefficient evaluation should preserve zero sample "
+                             "s-matrix entries");
+}
+
+void EvaluateComplexPointExpressionUsesProblemSpecComplexBindingsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1 + I"},
+  };
+
+  const amflow::ExactComplexRational value = amflow::EvaluateComplexPointExpression(
+      "eta",
+      "eta=s",
+      amflow::BuildComplexNumericEvaluationPoint(spec));
+
+  ExpectComplexRationalParts(
+      value,
+      "1",
+      "1",
+      "complex point parsing should resolve eta=s through ProblemSpec complex bindings");
+}
+
+void EvaluateCoefficientExpressionRejectsImaginaryUnitOnExactPathTest() {
+  ExpectInvalidArgument(
+      []() {
+        static_cast<void>(amflow::EvaluateCoefficientExpression("(2-I)/(1+I)", {}));
+      },
+      "symbol \"I\"",
+      "exact coefficient evaluation should still reject the imaginary unit instead of silently "
+      "accepting complex input");
+}
+
+void BuildComplexNumericEvaluationPointRejectsImaginaryUnitInExactBindingsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.kinematics.numeric_substitutions["s"] = "1 + I";
+
+  ExpectInvalidArgument(
+      [&spec]() {
+        static_cast<void>(amflow::BuildComplexNumericEvaluationPoint(spec));
+      },
+      "symbol \"I\"",
+      "complex evaluation point construction should still reject the imaginary unit when it is "
+      "smuggled through exact numeric_substitutions");
+}
+
+void EvaluateComplexCoefficientExpressionRejectsReservedImaginaryBindingNameTest() {
+  ExpectInvalidArgument(
+      []() {
+        static_cast<void>(amflow::EvaluateComplexCoefficientExpression("I+1", {{"I", "5"}}));
+      },
+      "reserves symbol \"I\"",
+      "complex coefficient evaluation should reject a caller binding named I instead of silently "
+      "shadowing it with the imaginary unit");
 }
 
 void EvaluateCoefficientMatrixIgnoresUnusedSubstitutionsTest() {
@@ -26277,6 +26394,12 @@ int main() {
     EvaluateCoefficientMatrixGeneratedEtaFixtureTest();
     EvaluateCoefficientMatrixAutomaticInvariantFixtureTest();
     EvaluateCoefficientExpressionConstantOnlyTest();
+    EvaluateComplexCoefficientExpressionClosedFormTest();
+    EvaluateComplexCoefficientMatrixUsesProblemSpecComplexBindingsTest();
+    EvaluateComplexPointExpressionUsesProblemSpecComplexBindingsTest();
+    EvaluateCoefficientExpressionRejectsImaginaryUnitOnExactPathTest();
+    BuildComplexNumericEvaluationPointRejectsImaginaryUnitInExactBindingsTest();
+    EvaluateComplexCoefficientExpressionRejectsReservedImaginaryBindingNameTest();
     EvaluateCoefficientMatrixIgnoresUnusedSubstitutionsTest();
     EvaluateCoefficientMatrixRejectsMissingSymbolTest();
     EvaluateCoefficientMatrixRejectsDivisionByZeroTest();

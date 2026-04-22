@@ -251,7 +251,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(...)`: standalone `AmfOptions::ending_schemes` eta->infinity boundary-request selector that preserves the reviewed ordered fallback semantics without attaching boundary data or invoking the solver
 - `PlanBuiltinAmfOptionsEtaMode(...)`: standalone builtin-only `AmfOptions::amf_modes` eta-mode decision helper that performs only reviewed ordered builtin selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `PlanAmfOptionsEtaMode(...)`: standalone `AmfOptions::amf_modes` mixed eta-mode decision helper that performs only reviewed ordered mixed builtin/user-defined selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
-- `ExactRational`, `EvaluateCoefficientExpression(...)`, and `EvaluateCoefficientMatrix(...)`: exact rational evaluation of one coefficient expression or one selected `DESystem` coefficient matrix at one explicit substitution point
+- `ExactRational`, `ExactComplexRational`, `BuildComplexNumericEvaluationPoint(...)`, `EvaluateCoefficientExpression(...)`, `EvaluateComplexCoefficientExpression(...)`, `EvaluateCoefficientMatrix(...)`, `EvaluateComplexCoefficientMatrix(...)`, and `EvaluateComplexPointExpression(...)`: exact rational coefficient evaluation plus a separate exact-complex helper layer over one explicit substitution point, including merged `ProblemSpec` exact/complex kinematic bindings and standalone complex point-expression parsing
 - `SeriesPatch` plus `GenerateScalarRegularPointSeriesPatch(...)`: the first scalar-only regular-point local-series patch seam over one selected reviewed `DESystem` variable
 - `ScalarFrobeniusSeriesPatch` plus `GenerateScalarFrobeniusSeriesPatch(...)`: the first scalar-only regular-singular / Frobenius local-series patch seam over one selected reviewed `DESystem` variable
 - `UpperTriangularMatrixSeriesPatch` plus `GenerateUpperTriangularRegularPointSeriesPatch(...)`: the first upper-triangular matrix regular-point local propagator seam over one selected reviewed `DESystem` variable
@@ -762,6 +762,15 @@ The first numeric coefficient-evaluation seam is now reviewed:
 - exact numeric bindings are still supplied as strings and are themselves parsed through the same exact rational grammar, so reviewed substitution values such as `-10/3` remain exact
 - unknown variable names, unresolved symbols, and malformed expressions fail deterministically as argument errors; division by zero fails deterministically as plain evaluation failure without attempting singular-point classification
 - this batch does not rewrite or canonicalize stored coefficient strings, does not classify singularities, does not generate local series, does not replace the scaffolded `BootstrapSeriesSolver`, and does not widen into automatic boundaries, continuation, or CLI behavior
+
+On the current worktree, that exact evaluator now has a separate narrow complex helper companion:
+
+- `BuildComplexNumericEvaluationPoint(...)` merges `ProblemSpec.kinematics.numeric_substitutions` with the reviewed raw `complex_numeric_substitutions` surface, rejects invalid overlap, and still requires `complex_mode: true` when complex bindings are present
+- `EvaluateComplexCoefficientExpression(...)` evaluates the same reviewed arithmetic grammar plus the literal imaginary unit `I`, returning exact real and imaginary rational parts in `ExactComplexRational`; caller-supplied binding names may not reuse the reserved symbol `I`
+- `EvaluateComplexCoefficientMatrix(...)` evaluates one selected reviewed `DESystem` coefficient matrix at one explicit exact-complex substitution point without mutating the source `DESystem`
+- `EvaluateComplexPointExpression(...)` parses one explicit point expression in the same `x` or `eta=x` style already used by the reviewed exact path, but resolves its RHS through the separate exact-complex helper bindings
+- the original exact `EvaluateCoefficientExpression(...)` and `EvaluateCoefficientMatrix(...)` surfaces remain exact-only and still reject unresolved `I` input rather than silently switching semantics
+- this helper slice does not yet widen singular-point detection/classification, regular or Frobenius series generation, continuation, solver execution, cache identity, contour planning, branch bookkeeping, Kira emission, or CLI behavior
 
 The first singular-point detection and classification seam is now reviewed:
 

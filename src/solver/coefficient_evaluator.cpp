@@ -19,6 +19,22 @@ std::string StripLeadingZeros(const std::string& digits) {
   return digits.substr(first_nonzero);
 }
 
+std::string Trim(const std::string& value) {
+  std::size_t start = 0;
+  while (start < value.size() &&
+         std::isspace(static_cast<unsigned char>(value[start]))) {
+    ++start;
+  }
+
+  std::size_t end = value.size();
+  while (end > start &&
+         std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+    --end;
+  }
+
+  return value.substr(start, end - start);
+}
+
 struct BigInt {
   bool negative = false;
   std::string digits = "0";
@@ -319,6 +335,8 @@ struct BigRational {
     }
   }
 
+  bool IsZero() const { return numerator.IsZero(); }
+
   ExactRational ToPublic() const { return {numerator.ToString(), denominator.ToString()}; }
 };
 
@@ -338,6 +356,42 @@ BigRational operator*(const BigRational& lhs, const BigRational& rhs) {
 
 BigRational operator/(const BigRational& lhs, const BigRational& rhs) {
   return BigRational(lhs.numerator * rhs.denominator, lhs.denominator * rhs.numerator);
+}
+
+struct BigComplexRational {
+  BigRational real = BigRational(0);
+  BigRational imaginary = BigRational(0);
+
+  BigComplexRational() = default;
+  explicit BigComplexRational(const long long value) : real(value), imaginary(0) {}
+  BigComplexRational(BigRational real_value, BigRational imaginary_value)
+      : real(std::move(real_value)), imaginary(std::move(imaginary_value)) {}
+
+  bool IsZero() const { return real.IsZero() && imaginary.IsZero(); }
+
+  ExactComplexRational ToPublic() const {
+    return {real.ToPublic(), imaginary.ToPublic()};
+  }
+};
+
+BigComplexRational operator+(const BigComplexRational& lhs, const BigComplexRational& rhs) {
+  return BigComplexRational(lhs.real + rhs.real, lhs.imaginary + rhs.imaginary);
+}
+
+BigComplexRational operator-(const BigComplexRational& lhs, const BigComplexRational& rhs) {
+  return BigComplexRational(lhs.real - rhs.real, lhs.imaginary - rhs.imaginary);
+}
+
+BigComplexRational operator*(const BigComplexRational& lhs, const BigComplexRational& rhs) {
+  return BigComplexRational(lhs.real * rhs.real - lhs.imaginary * rhs.imaginary,
+                            lhs.real * rhs.imaginary + lhs.imaginary * rhs.real);
+}
+
+BigComplexRational operator/(const BigComplexRational& lhs, const BigComplexRational& rhs) {
+  const BigRational denominator = rhs.real * rhs.real + rhs.imaginary * rhs.imaginary;
+  return BigComplexRational((lhs.real * rhs.real + lhs.imaginary * rhs.imaginary) / denominator,
+                            (lhs.imaginary * rhs.real - lhs.real * rhs.imaginary) /
+                                denominator);
 }
 
 enum class TokenKind {
@@ -419,6 +473,7 @@ std::vector<Token> Tokenize(const std::string& expression) {
 }
 
 using ExactBindingMap = std::map<std::string, BigRational>;
+using ComplexBindingMap = std::map<std::string, BigComplexRational>;
 
 class ExpressionParser {
  public:
@@ -556,6 +611,184 @@ ExactBindingMap ParseEvaluationPoint(const NumericEvaluationPoint& evaluation_po
   return bindings;
 }
 
+class ComplexExpressionParser {
+ public:
+  ComplexExpressionParser(std::string expression, ComplexBindingMap bindings)
+      : expression_(std::move(expression)),
+        tokens_(Tokenize(expression_)),
+        bindings_(std::move(bindings)) {}
+
+  BigComplexRational Parse() {
+    const BigComplexRational value = ParseExpression();
+    if (Current().kind != TokenKind::End) {
+      throw Malformed("unexpected trailing token \"" + Current().text + "\"");
+    }
+    return value;
+  }
+
+ private:
+  const Token& Current() const { return tokens_[position_]; }
+
+  const Token& Advance() {
+    const Token& current = Current();
+    if (position_ < tokens_.size()) {
+      ++position_;
+    }
+    return current;
+  }
+
+  bool Match(const TokenKind kind) {
+    if (Current().kind != kind) {
+      return false;
+    }
+    Advance();
+    return true;
+  }
+
+  std::invalid_argument Malformed(const std::string& detail) const {
+    return std::invalid_argument("complex coefficient evaluation encountered malformed "
+                                 "expression: " +
+                                 detail + " in \"" + expression_ + "\"");
+  }
+
+  BigComplexRational ParseExpression() {
+    BigComplexRational value = ParseTerm();
+    while (true) {
+      if (Match(TokenKind::Plus)) {
+        value = value + ParseTerm();
+        continue;
+      }
+      if (Match(TokenKind::Minus)) {
+        value = value - ParseTerm();
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  BigComplexRational ParseTerm() {
+    BigComplexRational value = ParseUnary();
+    while (true) {
+      if (Match(TokenKind::Star)) {
+        value = value * ParseUnary();
+        continue;
+      }
+      if (Match(TokenKind::Slash)) {
+        try {
+          value = value / ParseUnary();
+        } catch (const std::runtime_error&) {
+          throw std::runtime_error("complex coefficient evaluation encountered division by zero "
+                                   "in \"" +
+                                   expression_ + "\"");
+        }
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  BigComplexRational ParseUnary() {
+    if (Match(TokenKind::Plus)) {
+      return ParseUnary();
+    }
+    if (Match(TokenKind::Minus)) {
+      return BigComplexRational(0) - ParseUnary();
+    }
+    return ParsePrimary();
+  }
+
+  BigComplexRational ParsePrimary() {
+    if (Current().kind == TokenKind::Number) {
+      const Token token = Advance();
+      return BigComplexRational(
+          BigRational(BigInt::FromUnsignedDigits(token.text), BigInt(1)),
+          BigRational(0));
+    }
+
+    if (Current().kind == TokenKind::Identifier) {
+      const Token token = Advance();
+      if (token.text == "I") {
+        return BigComplexRational(BigRational(0), BigRational(1));
+      }
+
+      const auto binding_it = bindings_.find(token.text);
+      if (binding_it == bindings_.end()) {
+        throw std::invalid_argument("complex coefficient evaluation requires a numeric binding "
+                                    "for symbol \"" +
+                                    token.text + "\"");
+      }
+      return binding_it->second;
+    }
+
+    if (Match(TokenKind::LeftParen)) {
+      const BigComplexRational value = ParseExpression();
+      if (!Match(TokenKind::RightParen)) {
+        throw Malformed("expected ')'");
+      }
+      return value;
+    }
+
+    if (Current().kind == TokenKind::End) {
+      throw Malformed("unexpected end of expression");
+    }
+    throw Malformed("unexpected token \"" + Current().text + "\"");
+  }
+
+  std::string expression_;
+  std::vector<Token> tokens_;
+  ComplexBindingMap bindings_;
+  std::size_t position_ = 0;
+};
+
+BigComplexRational EvaluateExpressionToBigComplexRational(
+    const std::string& expression,
+    const ComplexBindingMap& bindings) {
+  return ComplexExpressionParser(expression, bindings).Parse();
+}
+
+ComplexBindingMap ParseComplexEvaluationPoint(const NumericEvaluationPoint& evaluation_point) {
+  ComplexBindingMap bindings;
+  for (const auto& [symbol, value] : evaluation_point) {
+    if (symbol == "I") {
+      throw std::invalid_argument(
+          "complex coefficient evaluation reserves symbol \"I\" for the imaginary unit");
+    }
+    bindings.emplace(symbol, EvaluateExpressionToBigComplexRational(value, ComplexBindingMap{}));
+  }
+  return bindings;
+}
+
+BigComplexRational EvaluateComplexPointExpressionImpl(const std::string& variable_name,
+                                                      const std::string& point_expression,
+                                                      const ComplexBindingMap& bindings) {
+  const std::string trimmed = Trim(point_expression);
+  if (trimmed.empty()) {
+    throw std::invalid_argument(
+        "complex point parsing encountered malformed point expression: empty input");
+  }
+
+  const std::size_t separator = trimmed.find('=');
+  if (separator == std::string::npos) {
+    return EvaluateExpressionToBigComplexRational(trimmed, bindings);
+  }
+
+  if (trimmed.find('=', separator + 1) != std::string::npos) {
+    throw std::invalid_argument("complex point parsing encountered malformed point expression: \"" +
+                                point_expression + "\"");
+  }
+
+  const std::string lhs = Trim(trimmed.substr(0, separator));
+  const std::string rhs = Trim(trimmed.substr(separator + 1));
+  if (lhs != variable_name || rhs.empty()) {
+    throw std::invalid_argument("complex point parsing encountered malformed point expression: \"" +
+                                point_expression + "\"");
+  }
+
+  return EvaluateExpressionToBigComplexRational(rhs, bindings);
+}
+
 }  // namespace
 
 bool ExactRational::IsZero() const {
@@ -574,6 +807,28 @@ bool operator==(const ExactRational& lhs, const ExactRational& rhs) {
 }
 
 bool operator!=(const ExactRational& lhs, const ExactRational& rhs) {
+  return !(lhs == rhs);
+}
+
+bool ExactComplexRational::IsReal() const {
+  return imaginary.IsZero();
+}
+
+std::string ExactComplexRational::ToString() const {
+  if (imaginary.IsZero()) {
+    return real.ToString();
+  }
+  if (real.IsZero()) {
+    return "(" + imaginary.ToString() + ")*I";
+  }
+  return "(" + real.ToString() + ") + (" + imaginary.ToString() + ")*I";
+}
+
+bool operator==(const ExactComplexRational& lhs, const ExactComplexRational& rhs) {
+  return lhs.real == rhs.real && lhs.imaginary == rhs.imaginary;
+}
+
+bool operator!=(const ExactComplexRational& lhs, const ExactComplexRational& rhs) {
   return !(lhs == rhs);
 }
 
@@ -605,6 +860,69 @@ ExactRationalMatrix EvaluateCoefficientMatrix(const DESystem& system,
     evaluated_matrix.push_back(std::move(evaluated_row));
   }
   return evaluated_matrix;
+}
+
+NumericEvaluationPoint BuildComplexNumericEvaluationPoint(const ProblemSpec& spec) {
+  if (!spec.kinematics.complex_numeric_substitutions.empty() && !spec.complex_mode) {
+    throw std::invalid_argument(
+        "kinematics.complex_numeric_substitutions require complex_mode: true");
+  }
+
+  NumericEvaluationPoint evaluation_point;
+  for (const auto& [name, value] : spec.kinematics.numeric_substitutions) {
+    static_cast<void>(EvaluateCoefficientExpression(value, NumericEvaluationPoint{}));
+    evaluation_point.emplace(name, value);
+  }
+  for (const auto& [name, value] : spec.kinematics.complex_numeric_substitutions) {
+    if (!evaluation_point.emplace(name, value).second) {
+      throw std::invalid_argument("kinematics.complex_numeric_substitutions entry for \"" + name +
+                                  "\" must not also appear in kinematics.numeric_substitutions");
+    }
+  }
+  return evaluation_point;
+}
+
+ExactComplexRational EvaluateComplexCoefficientExpression(
+    const std::string& expression,
+    const NumericEvaluationPoint& evaluation_point) {
+  return EvaluateExpressionToBigComplexRational(expression,
+                                                ParseComplexEvaluationPoint(evaluation_point))
+      .ToPublic();
+}
+
+ExactComplexRationalMatrix EvaluateComplexCoefficientMatrix(
+    const DESystem& system,
+    const std::string& variable_name,
+    const NumericEvaluationPoint& evaluation_point) {
+  const auto matrix_it = system.coefficient_matrices.find(variable_name);
+  if (matrix_it == system.coefficient_matrices.end()) {
+    throw std::invalid_argument("complex coefficient evaluation requires coefficient matrix for "
+                                "variable \"" +
+                                variable_name + "\"");
+  }
+
+  const ComplexBindingMap bindings = ParseComplexEvaluationPoint(evaluation_point);
+  ExactComplexRationalMatrix evaluated_matrix;
+  evaluated_matrix.reserve(matrix_it->second.size());
+  for (const auto& row : matrix_it->second) {
+    std::vector<ExactComplexRational> evaluated_row;
+    evaluated_row.reserve(row.size());
+    for (const auto& cell : row) {
+      evaluated_row.push_back(EvaluateExpressionToBigComplexRational(cell, bindings).ToPublic());
+    }
+    evaluated_matrix.push_back(std::move(evaluated_row));
+  }
+  return evaluated_matrix;
+}
+
+ExactComplexRational EvaluateComplexPointExpression(
+    const std::string& variable_name,
+    const std::string& point_expression,
+    const NumericEvaluationPoint& evaluation_point) {
+  return EvaluateComplexPointExpressionImpl(variable_name,
+                                            point_expression,
+                                            ParseComplexEvaluationPoint(evaluation_point))
+      .ToPublic();
 }
 
 }  // namespace amflow

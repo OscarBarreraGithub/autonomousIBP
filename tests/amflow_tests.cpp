@@ -23316,6 +23316,450 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsNonExactDimensionOverrideTest() {
          "the solver when the exact dimension override is invalid");
 }
 
+void SolveAmfOptionsEtaModeSeriesUsesExactDimensionOverrideHappyPathEquivalenceTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-builtin-exact-dimension-override-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amf_options.d0 = "6";
+  amf_options.fixed_eps = "1";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "rho=7/15";
+  const std::string target_location = "rho=31/35";
+  const int requested_digits = 91;
+  const std::string eta_symbol = "rho";
+  const std::optional<std::string> exact_dimension_override = std::string{"10/2"};
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-builtin-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=5"));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout helper_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-builtin-exact-dimension-helper"));
+  const std::filesystem::path helper_kira_path =
+      helper_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path helper_fermat_path =
+      helper_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(helper_kira_path.parent_path());
+  WriteExecutableScript(helper_kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=5"));
+  WriteExecutableScript(helper_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.00048828125;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.0009765625;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary =
+      "recorded builtin AmfOptions exact-dimension override solve";
+  helper_solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           baseline_layout,
+                                           baseline_kira_path,
+                                           baseline_fermat_path,
+                                           baseline_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol,
+                                           exact_dimension_override);
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  helper_layout,
+                                                  helper_kira_path,
+                                                  helper_fermat_path,
+                                                  helper_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol,
+                                                  exact_dimension_override);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin AmfOptions exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "builtin AmfOptions exact-dimension override coverage should match the planned-helper "
+         "baseline with one solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& helper_request = helper_solver.last_request();
+  Expect(SameSolveRequest(helper_request, baseline_request),
+         "builtin AmfOptions exact-dimension override coverage should forward the same "
+         "SolveRequest as the planned-helper baseline");
+  Expect(SamePrecisionPolicy(helper_request.precision_policy, expected_live_precision_policy) &&
+             helper_request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*helper_request.amf_runtime_policy,
+                                       expected_live_runtime_policy),
+         "builtin AmfOptions exact-dimension override coverage should preserve the live wrapper-"
+         "owned precision and runtime-policy wiring");
+  Expect(helper_request.amf_requested_d0.has_value() &&
+             *helper_request.amf_requested_d0 == amf_options.d0,
+         "builtin AmfOptions exact-dimension override coverage should preserve the wrapper-owned "
+         "requested D0 metadata");
+  Expect(helper_request.amf_requested_dimension_expression == std::optional<std::string>{"5"},
+         "builtin AmfOptions exact-dimension override coverage should route the canonical exact "
+         "override into SolveRequest.amf_requested_dimension_expression");
+  Expect(SameSolverDiagnostics(helper_diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(helper_diagnostics, helper_solver.returned_diagnostics),
+         "builtin AmfOptions exact-dimension override coverage should return the same diagnostics "
+         "as the planned-helper baseline");
+
+  const std::string baseline_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      baseline_layout,
+      "builtin AmfOptions exact-dimension override coverage baseline should seed one solved-path "
+      "cache manifest"));
+  const std::string helper_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      helper_layout,
+      "builtin AmfOptions exact-dimension override coverage should seed one solved-path cache "
+      "manifest"));
+  ExpectSolvedPathCacheManifestMatchesBaseline(helper_manifest_yaml,
+                                               baseline_manifest_yaml,
+                                               "amf-options-builtin-eta-mode-series",
+                                               "builtin AmfOptions exact-dimension override "
+                                               "coverage");
+}
+
+void SolveAmfOptionsEtaModeSeriesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-amf-options-builtin-symbolic-dimension-override-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-builtin-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+            MakeBuiltinPropagatorMixedSpec(),
+            master_basis,
+            MakePoisonedAmfOptions({"Propagator"}),
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "rho=0",
+            "rho=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "rho",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "exact dimension override",
+      "builtin AmfOptions exact-dimension override coverage should reject symbolic or non-exact "
+      "dimension expressions");
+  Expect(solver.call_count() == 0,
+         "builtin AmfOptions exact-dimension override coverage should not call the solver when "
+         "the exact dimension override is invalid");
+}
+
+void SolveAmfOptionsEtaModeSeriesExactDimensionOverridePreservesUnknownBuiltinFailureTest() {
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+            amflow::MakeSampleProblemSpec(),
+            amflow::ParsedMasterList{},
+            MakePoisonedAmfOptions({"NotAMode", "All"}),
+            MakeKiraReductionOptions(),
+            amflow::EnsureArtifactLayout(
+                FreshTempDir("amflow-bootstrap-amf-options-eta-mode-exact-dimension-unknown")),
+            "unused-kira",
+            "unused-fermat",
+            solver,
+            "eta=0",
+            "eta=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "eta",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "unknown eta mode: NotAMode",
+      "builtin AmfOptions exact-dimension override coverage should preserve unknown builtin-name "
+      "diagnostics ahead of exact-override validation");
+  Expect(solver.call_count() == 0,
+         "builtin AmfOptions exact-dimension override coverage should not call the solver when "
+         "builtin-name resolution fails");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUsesExactDimensionOverrideHappyPathEquivalenceTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"RetryMode", "CustomMode"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "rho=11/26";
+  const std::string target_location = "rho=47/53";
+  const int requested_digits = 103;
+  const std::string eta_symbol = "rho";
+  const std::optional<std::string> exact_dimension_override = std::string{"10/2"};
+
+  const auto planned_retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto planned_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::PlanAmfOptionsEtaMode(spec, amf_options, {planned_retry_mode, planned_custom_mode});
+
+  const auto baseline_retry_mode = std::make_shared<RecordingEtaMode>(
+      MakeEtaGeneratedHappyDecision(),
+      "RetryMode",
+      "retry eta planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto baseline_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=5"));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout helper_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-exact-dimension-helper"));
+  const std::filesystem::path helper_kira_path =
+      helper_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path helper_fermat_path =
+      helper_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(helper_kira_path.parent_path());
+  WriteExecutableScript(helper_kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=5"));
+  WriteExecutableScript(helper_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.0001220703125;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary =
+      "recorded resolved AmfOptions exact-dimension override solve";
+  helper_solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           {baseline_retry_mode, baseline_custom_mode},
+                                           MakeKiraReductionOptions(),
+                                           baseline_layout,
+                                           baseline_kira_path,
+                                           baseline_fermat_path,
+                                           baseline_solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           eta_symbol,
+                                           exact_dimension_override);
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-resolved-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  helper_layout,
+                                                  helper_kira_path,
+                                                  helper_fermat_path,
+                                                  helper_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol,
+                                                  exact_dimension_override);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "resolved AmfOptions exact-dimension override coverage should not mutate the input "
+         "problem spec");
+  Expect(planned_retry_mode->call_count() == 1 && planned_custom_mode->call_count() == 1 &&
+             baseline_retry_mode->call_count() == 1 && baseline_custom_mode->call_count() == 1,
+         "resolved AmfOptions exact-dimension override coverage should plan the ordered mixed "
+         "selection exactly once for the helper input and once for the wrapper baseline");
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "resolved AmfOptions exact-dimension override coverage should match the planned-helper "
+         "baseline with one solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& helper_request = helper_solver.last_request();
+  Expect(SameSolveRequest(helper_request, baseline_request),
+         "resolved AmfOptions exact-dimension override coverage should forward the same "
+         "SolveRequest as the planned-helper baseline");
+  Expect(SamePrecisionPolicy(helper_request.precision_policy, expected_live_precision_policy) &&
+             helper_request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*helper_request.amf_runtime_policy,
+                                       expected_live_runtime_policy),
+         "resolved AmfOptions exact-dimension override coverage should preserve the live wrapper-"
+         "owned precision and runtime-policy wiring");
+  Expect(helper_request.amf_requested_d0.has_value() &&
+             *helper_request.amf_requested_d0 == amf_options.d0,
+         "resolved AmfOptions exact-dimension override coverage should preserve the wrapper-owned "
+         "requested D0 metadata");
+  Expect(helper_request.amf_requested_dimension_expression == std::optional<std::string>{"5"},
+         "resolved AmfOptions exact-dimension override coverage should route the canonical exact "
+         "override into SolveRequest.amf_requested_dimension_expression");
+  Expect(SameSolverDiagnostics(helper_diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(helper_diagnostics, helper_solver.returned_diagnostics),
+         "resolved AmfOptions exact-dimension override coverage should return the same diagnostics "
+         "as the planned-helper baseline");
+
+  const std::string baseline_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      baseline_layout,
+      "resolved AmfOptions exact-dimension override coverage baseline should seed one solved-path "
+      "cache manifest"));
+  const std::string helper_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      helper_layout,
+      "resolved AmfOptions exact-dimension override coverage should seed one solved-path cache "
+      "manifest"));
+  ExpectSolvedPathCacheManifestMatchesBaseline(helper_manifest_yaml,
+                                               baseline_manifest_yaml,
+                                               "amf-options-resolved-eta-mode-series",
+                                               "resolved AmfOptions exact-dimension override "
+                                               "coverage");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-resolved-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&master_basis, &layout, &kira_path, &fermat_path, &custom_mode, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+            amflow::MakeSampleProblemSpec(),
+            master_basis,
+            MakePoisonedAmfOptions({"CustomMode"}),
+            std::vector<std::shared_ptr<amflow::EtaMode>>{custom_mode},
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "rho=0",
+            "rho=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "rho",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "exact dimension override",
+      "resolved AmfOptions exact-dimension override coverage should reject symbolic or non-exact "
+      "dimension expressions");
+  Expect(custom_mode->call_count() == 1,
+         "resolved AmfOptions exact-dimension override coverage should still plan the selected "
+         "user-defined mode before downstream exact-dimension validation fails");
+  Expect(solver.call_count() == 0,
+         "resolved AmfOptions exact-dimension override coverage should not call the solver when "
+         "the exact dimension override is invalid");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExactDimensionOverridePreservesUnknownNameFailureTest() {
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&custom_mode, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+            amflow::MakeSampleProblemSpec(),
+            amflow::ParsedMasterList{},
+            MakePoisonedAmfOptions({"MissingMode", "All"}),
+            std::vector<std::shared_ptr<amflow::EtaMode>>{custom_mode},
+            MakeKiraReductionOptions(),
+            amflow::EnsureArtifactLayout(FreshTempDir(
+                "amflow-bootstrap-amf-options-resolved-exact-dimension-missing")),
+            "unused-kira",
+            "unused-fermat",
+            solver,
+            "eta=0",
+            "eta=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "eta",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "unknown eta mode: MissingMode",
+      "resolved AmfOptions exact-dimension override coverage should preserve unknown-name "
+      "diagnostics ahead of exact-override validation");
+  Expect(custom_mode->call_count() == 0,
+         "resolved AmfOptions exact-dimension override coverage should not plan user-defined "
+         "modes when mixed name resolution fails");
+  Expect(solver.call_count() == 0,
+         "resolved AmfOptions exact-dimension override coverage should not call the solver when "
+         "mixed name resolution fails");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesSkipReductionRejectsChangedExactDimensionOverrideTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -24774,6 +25218,9 @@ int main() {
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
+    SolveAmfOptionsEtaModeSeriesUsesExactDimensionOverrideHappyPathEquivalenceTest();
+    SolveAmfOptionsEtaModeSeriesRejectsNonExactDimensionOverrideTest();
+    SolveAmfOptionsEtaModeSeriesExactDimensionOverridePreservesUnknownBuiltinFailureTest();
     SolveBuiltinEtaModeListSeriesDoesNotReplaySolvedPathCacheManifestTest();
     SolveResolvedEtaModeSeriesBuiltinHappyPathTest();
     SolveResolvedEtaModeSeriesUserDefinedHappyPathTest();
@@ -24810,6 +25257,9 @@ int main() {
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionRejectsMismatchedPreparedStateTest();
     SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUseCacheSkipReductionInvalidatesSemanticReductionDriftTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesUsesExactDimensionOverrideHappyPathEquivalenceTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRejectsNonExactDimensionOverrideTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesExactDimensionOverridePreservesUnknownNameFailureTest();
     SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();

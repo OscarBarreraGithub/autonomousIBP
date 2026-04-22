@@ -224,8 +224,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `SolveRequest.amf_requested_dimension_expression` over the shared wrapper-owned
   policy/cache/`skip_reduction` tail, and carries that same exact override into solved-path
   cache slot/input identity plus prepared-state validation. Symbolic or non-exact overrides fail
-  explicitly, and the retained overload without that extra argument stays unchanged. This still
-  falls well short of full `Batch 59` / `Batch 60`: direct public
+  explicitly, and the retained overload without that extra argument stays unchanged. The two outer
+  public `SolveAmfOptionsEtaModeSeries(...)` wrappers now also expose matching exact-only
+  overloads: each keeps its reviewed builtin-only or mixed eta-mode selection step local, then
+  delegates the same canonical exact override through that planned helper while preserving the
+  wrapper-owned solved-path/cache identity. This still falls well short of full `Batch 59` /
+  `Batch 60`: direct public
   generated-`DESystem` construction, broader Kira preparation artifacts, wrapper-owned symbolic
   `D0` execution parity, and broader arbitrary-`D0` / fixed-`eps` runtime behavior remain
   deferred
@@ -276,7 +280,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `SolvePlannedAmfOptionsEtaModeSeries(...)`: standalone planned-decision `AmfOptions` eta-mode execution helper over the already-landed wrapper-owned live policy, cache, `skip_reduction`, and requested-`D0` metadata tail
 - `SolveBuiltinEtaModeSeries(...)`: the first builtin eta-mode-name library-only solve wrapper that resolves `MakeBuiltinEtaMode(...)` and reuses the reviewed eta-mode-planned solver handoff, with a matching narrow exact-only public dimension-override overload
 - `SolveBuiltinEtaModeListSeries(...)`: the first caller-supplied ordered builtin eta-mode-list library-only solve wrapper that selects the first planning-successful builtin and reuses the reviewed single-name builtin solver handoff, with a matching narrow exact-only public dimension-override overload
-- `SolveAmfOptionsEtaModeSeries(...)`: the first `AmfOptions`-fed eta-mode solver-wrapper surface, with reviewed builtin-only and mixed builtin/user-defined overloads
+- `SolveAmfOptionsEtaModeSeries(...)`: the first `AmfOptions`-fed eta-mode solver-wrapper surface, with reviewed builtin-only and mixed builtin/user-defined overloads plus matching narrow exact-only public dimension-override overloads
 - `SolveAmfOptionsEndingSchemeEtaInfinitySeries(...)`: the first narrow `AmfOptions::ending_schemes`-fed eta->infinity boundary attach-and-solve wrapper that delegates through the standalone `GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(...)` seam, then uses a caller-supplied `BoundaryProvider` and injected `SeriesSolver`
 - `SolveResolvedEtaModeSeries(...)`: the first single-name library-only eta-mode solver wrapper that resolves one name against builtin plus user-defined registrations and then reuses the reviewed eta-mode-planned solver handoff, with a matching narrow exact-only public dimension-override overload
 - `SolveResolvedEtaModeListSeries(...)`: the first ordered mixed builtin-plus-user-defined eta-mode-list library-only solve wrapper that probes planning in caller order and carries the winning planned eta decision forward without re-planning, with a matching narrow exact-only public dimension-override overload
@@ -582,6 +586,7 @@ The first builtin eta-mode-list solver wrapper is also bootstrap-only:
 The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstrap-only:
 
 - `SolveAmfOptionsEtaModeSeries(...)` takes the same eta solver inputs as `SolveBuiltinEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
+- a matching overload now also accepts one explicit `exact_dimension_override` after `eta_symbol`, with the same exact-only validation and canonicalization rule as `SolvePlannedAmfOptionsEtaModeSeries(...)`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
 - after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
 - after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains the same metadata-only symbolic wrapper carrier. The direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding, and on these two wrappers only the live eta-generated Kira execution may also prepend `-sd=<dimension>` plus record that same exact override in wrapper-owned prepared-state validation. Separately, direct public generated-DE helpers now expose their own exact-only explicit-dimension overloads; the retained overloads without that extra argument stay unchanged
@@ -644,14 +649,16 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
   solved-path cache slot naming and input fingerprinting, solved-path request-summary
   truthfulness, and `skip_reduction` replay validation on this helper
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
-- `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
-- the builtin-only `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for builtin eta-mode selection: it keeps `SelectBuiltinEtaModeName(...)` and the selected builtin `EtaMode::Plan(...)` step local, then delegates the shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved builtin solved-path identity
-- the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity
+- `SolveAmfOptionsEtaModeSeries(...)` also exposes matching exact-only overloads on both its builtin-only and mixed entrypoints; each takes one explicit `exact_dimension_override` after `eta_symbol`
+- the builtin-only `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for builtin eta-mode selection: it keeps `SelectBuiltinEtaModeName(...)` and the selected builtin `EtaMode::Plan(...)` step local, then delegates the shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved builtin solved-path identity; on the exact-only overload, that same wrapper-local selection still happens before downstream exact-override validation runs
+- the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity; on the exact-only overload, that same ordered selection still happens before downstream exact-override validation runs
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`, and exact
   `fixed_eps`
   metadata now participate in solved-path cache slotting plus request fingerprinting,
   solved-path request-summary truthfulness, and `skip_reduction` replay validation on those
-  wrappers through the shared planned-decision execution helper
+  wrappers through the shared planned-decision execution helper; when the explicit exact-only
+  overload is used, that canonical override also participates in those same identities instead of
+  the helper's otherwise derived live dimension carrier
 - the current bootstrap solver still does not implement the broader upstream algorithmic effects of `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, or `RunLength`; on the reviewed subset those fields are carried and fingerprinted rather than given broader standalone semantics
 - direct `SolveEtaGeneratedSeries(...)`, public eta-helper surfaces, and direct `SolveDifferentialEquation(...)` remain unchanged, while direct `SolveResolvedEtaModeListSeries(...)` still has no cache behavior and now only adds its separate exact-only explicit-dimension overload
 - this batch still does not add interruption-resume behavior, direct `SolveResolvedEtaModeListSeries(...)` cache behavior, public eta-helper `skip_reduction` semantics, CLI behavior, or broader orchestration widening

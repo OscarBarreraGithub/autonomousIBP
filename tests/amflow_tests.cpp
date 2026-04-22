@@ -3043,6 +3043,12 @@ std::string MakeAutoInvariantWholeFactorCombinedRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantLinearRuleFile() {
+  return "{\n"
+         "  toy_auto_linear_family[0,2,1] -> 3*toy_auto_linear_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantResultScript(const bool write_rule_file,
                                           const std::string& rule_file_contents,
                                           const bool write_stdout = true,
@@ -3065,6 +3071,32 @@ std::string MakeAutoInvariantResultScript(const bool write_rule_file,
   }
   if (write_stdout) {
     script << "echo \"auto-invariant:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeAutoInvariantLinearResultScript(const bool write_rule_file,
+                                                const std::string& rule_file_contents,
+                                                const bool write_stdout = true,
+                                                const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_linear_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_linear_family[1,1,1] 0\n";
+  script << "EOF\n";
+  if (write_rule_file) {
+    script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+    script << rule_file_contents;
+    script << "EOF\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"auto-invariant-linear:$1\"\n";
   }
   script << "exit " << exit_code << "\n";
   return script.str();
@@ -15838,6 +15870,100 @@ void RunInvariantGeneratedReductionAutomaticHappyPathTest() {
          "entries");
 }
 
+void RunInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest() {
+  amflow::KiraBackend backend;
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-linear-wrapper"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-linear-wrapper-baseline"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-linear-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.Prepare(spec, MakeKiraReductionOptions(), baseline_layout);
+
+  const amflow::InvariantGeneratedReductionExecution execution =
+      amflow::RunInvariantGeneratedReduction(spec,
+                                             master_basis,
+                                             "s",
+                                             MakeKiraReductionOptions(),
+                                             layout,
+                                             kira_path,
+                                             fermat_path);
+
+  Expect(execution.execution_result.Succeeded(),
+         "automatic invariant-generated wrapper should preserve successful reducer execution on "
+         "the reviewed linear subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant-generated wrapper should not mutate reviewed linear subset inputs");
+  Expect(execution.execution_result.working_directory == layout.generated_config_dir,
+         "automatic invariant-generated wrapper should record the reducer working-directory "
+         "artifact root on the reviewed linear subset");
+  Expect(execution.parsed_reduction_result.has_value(),
+         "automatic invariant-generated wrapper should expose the parsed reduction result on the "
+         "reviewed linear subset");
+  Expect(execution.assembled_system.has_value(),
+         "automatic invariant-generated wrapper should expose the assembled system on the "
+         "reviewed linear subset");
+  Expect(execution.parsed_reduction_result->master_list.source_path ==
+             execution.execution_result.working_directory / "results/toy_auto_linear_family/masters",
+         "automatic invariant-generated wrapper should parse reviewed linear-subset results from "
+         "the recorded working-directory artifact root");
+  Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
+             "toy_auto_linear_family[0,2,1]\n",
+         "automatic invariant-generated wrapper should preserve generated-target order on the "
+         "reviewed linear subset");
+
+  const auto family_yaml_it =
+      execution.preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+             baseline_family_yaml_it != baseline_preparation.generated_files.end() &&
+             family_yaml_it->second == baseline_family_yaml_it->second &&
+             family_yaml_it->second.find("[\"k*n\", \"-1\"]\n") != std::string::npos,
+         "automatic invariant-generated wrapper should preserve the original family YAML on the "
+         "reviewed linear subset");
+
+  const auto kinematics_yaml_it =
+      execution.preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "automatic invariant-generated wrapper should preserve the original kinematics YAML on "
+         "the reviewed linear subset");
+
+  Expect(execution.parsed_reduction_result->status == amflow::ParsedReductionStatus::ParsedRules &&
+             execution.parsed_reduction_result->explicit_rule_count == 1 &&
+             execution.parsed_reduction_result->rules.size() == 2,
+         "automatic invariant-generated wrapper should parse one explicit reviewed linear-subset "
+         "Kira rule");
+  Expect(execution.assembled_system->variables.size() == 1 &&
+             execution.assembled_system->variables.front().name == "s" &&
+             execution.assembled_system->variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Invariant,
+         "automatic invariant-generated wrapper should assemble a single invariant variable on "
+         "the reviewed linear subset");
+  const auto matrix_it = execution.assembled_system->coefficient_matrices.find("s");
+  Expect(matrix_it != execution.assembled_system->coefficient_matrices.end(),
+         "automatic invariant-generated wrapper should populate the invariant matrix on the "
+         "reviewed linear subset");
+  Expect(matrix_it->second.size() == 1 && matrix_it->second[0].size() == 1 &&
+             matrix_it->second[0][0] == "((-1)*(-1))*(3)",
+         "automatic invariant-generated wrapper should preserve the reviewed linear-subset "
+         "invariant matrix entry");
+}
+
 void RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   spec.family.top_level_sectors = {1, 7};
@@ -16135,6 +16261,76 @@ void BuildInvariantGeneratedDESystemAutomaticHappyPathTest() {
          "entries unchanged");
 }
 
+void BuildInvariantGeneratedDESystemAutomaticSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-linear-desystem-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-linear-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::InvariantGeneratedReductionExecution baseline_execution =
+      amflow::RunInvariantGeneratedReduction(spec,
+                                             master_basis,
+                                             "s",
+                                             MakeKiraReductionOptions(),
+                                             baseline_layout,
+                                             baseline_kira_path,
+                                             baseline_fermat_path);
+  Expect(baseline_execution.assembled_system.has_value(),
+         "automatic invariant-generated linear baseline should assemble a DESystem");
+
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-invariant-auto-linear-desystem"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-linear-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              layout,
+                                              kira_path,
+                                              fermat_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant DE consumer should not mutate reviewed linear subset inputs");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "automatic invariant DE consumer should return a valid DESystem on the reviewed linear "
+         "subset");
+  Expect(system.masters.size() == 1 &&
+             system.masters[0].label == "toy_auto_linear_family[1,1,1]",
+         "automatic invariant DE consumer should preserve the reviewed linear master basis");
+  Expect(system.variables.size() == 1 &&
+             system.variables.front().name == "s" &&
+             system.variables.front().kind == amflow::DifferentiationVariableKind::Invariant,
+         "automatic invariant DE consumer should preserve the reviewed linear invariant variable");
+  const auto matrix_it = system.coefficient_matrices.find("s");
+  Expect(matrix_it != system.coefficient_matrices.end(),
+         "automatic invariant DE consumer should populate the invariant coefficient matrix on the "
+         "reviewed linear subset");
+  Expect(matrix_it->second == baseline_execution.assembled_system->coefficient_matrices.at("s") &&
+             matrix_it->second.size() == 1 && matrix_it->second[0].size() == 1 &&
+             matrix_it->second[0][0] == "((-1)*(-1))*(3)",
+         "automatic invariant DE consumer should return the reviewed linear-subset invariant "
+         "matrix entry unchanged");
+}
+
 void BuildInvariantGeneratedDESystemUsesProblemSpecDimensionExactOverrideTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   spec.dimension = "12/2";
@@ -16367,6 +16563,98 @@ void SolveInvariantGeneratedSeriesAutomaticHappyPathTest() {
          "automatic invariant solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "automatic invariant solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveInvariantGeneratedSeriesAutomaticSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "s=1/5";
+  const std::string target_location = "s=9/7";
+  const int requested_digits = 73;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-linear-solver-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-linear-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildInvariantGeneratedDESystem(spec,
+                                              master_basis,
+                                              "s",
+                                              MakeKiraReductionOptions(),
+                                              baseline_layout,
+                                              baseline_kira_path,
+                                              baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-invariant-auto-linear-solver"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-linear-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.03125;
+  solver.returned_diagnostics.overlap_mismatch = 0.0625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded automatic invariant linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            master_basis,
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant solver handoff should not mutate reviewed linear subset inputs");
+  Expect(solver.call_count() == 1,
+         "automatic invariant solver handoff should call the supplied solver exactly once on the "
+         "reviewed linear subset");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "automatic invariant solver handoff should forward the reviewed linear-subset DESystem "
+         "unchanged into SolveRequest");
+  Expect(request.system.coefficient_matrices.at("s").size() == 1 &&
+             request.system.coefficient_matrices.at("s")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("s")[0][0] == "((-1)*(-1))*(3)",
+         "automatic invariant solver handoff should preserve the reviewed linear-subset matrix "
+         "entry");
+  Expect(request.start_location == start_location,
+         "automatic invariant solver handoff should preserve the reviewed linear-subset start "
+         "location");
+  Expect(request.target_location == target_location,
+         "automatic invariant solver handoff should preserve the reviewed linear-subset target "
+         "location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "automatic invariant solver handoff should preserve every precision-policy field on the "
+         "reviewed linear subset");
+  Expect(request.requested_digits == requested_digits,
+         "automatic invariant solver handoff should preserve requested_digits on the reviewed "
+         "linear subset");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "automatic invariant solver handoff should return solver diagnostics verbatim on the "
+         "reviewed linear subset");
 }
 
 void SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
@@ -29510,6 +29798,7 @@ int main() {
     RunInvariantGeneratedReductionRejectsIdentityFallbackResultsTest();
     RunInvariantGeneratedReductionRejectsMissingExplicitRuleForMasterTargetTest();
     RunInvariantGeneratedReductionAutomaticHappyPathTest();
+    RunInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest();
     RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest();
     RunInvariantGeneratedReductionAutomaticExecutionFailureTest();
     RunInvariantGeneratedReductionAutomaticRejectsEmptyInvariantNameTest();
@@ -29519,11 +29808,13 @@ int main() {
     RunInvariantGeneratedReductionAutomaticRejectsIdentityFallbackResultsTest();
     RunInvariantGeneratedReductionAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     BuildInvariantGeneratedDESystemAutomaticHappyPathTest();
+    BuildInvariantGeneratedDESystemAutomaticSupportsReviewedLinearPropagatorSubsetTest();
     BuildInvariantGeneratedDESystemUsesProblemSpecDimensionExactOverrideTest();
     BuildInvariantGeneratedDESystemAutomaticExecutionFailureTest();
     BuildInvariantGeneratedDESystemAutomaticRejectsEmptyInvariantNameTest();
     BuildInvariantGeneratedDESystemAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
+    SolveInvariantGeneratedSeriesAutomaticSupportsReviewedLinearPropagatorSubsetTest();
     SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsThresholdCrossingPhysicalSegmentBeforeDEConstructionTest();

@@ -218,9 +218,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   vocabulary `{quadratic, linear}`. On the current reviewed B64a surface it is preserved through
   file-backed YAML and resolved by `EffectivePropagatorVariant(...)`, but any explicit `variant`
   must still agree with the legacy `PropagatorKind`-backed linearity encoding because downstream
-  eta-mode, Kira, and solver consumers have not yet migrated off `PropagatorKind::Linear`; the
-  reviewed automatic invariant-seed builder now keys on `EffectivePropagatorVariant(...)` for one
-  invariant-independent linear-propagator subset only
+  eta-mode and general Kira consumers have not yet migrated off `PropagatorKind::Linear`; the
+  reviewed automatic invariant seed / preparation / execution / `DESystem` / solver path now keys
+  on `EffectivePropagatorVariant(...)` for one invariant-independent linear-propagator subset only
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -307,8 +307,8 @@ Within each propagator entry, the current reviewed B64a surface also accepts an 
 preserves that field through canonicalization, but loaded-spec validation still requires any
 explicit `variant` to agree with the legacy `kind`-backed linearity encoding because downstream
 runtime/reducer consumers still key on `PropagatorKind::Linear`, even though the reviewed
-automatic invariant-seed builder now consumes `EffectivePropagatorVariant(...)` on one narrow
-linear subset.
+automatic invariant seed / preparation / execution / `DESystem` / solver path now consumes
+`EffectivePropagatorVariant(...)` on one narrow linear subset.
 
 The file-backed loader applies two safety rules on top of that subset:
 
@@ -467,6 +467,7 @@ The first invariant-generated target reducer preparation seam is also bootstrap-
 - preparation rejects `seed.family != spec.family.name` and `seed.propagator_derivatives.size() != spec.family.propagators.size()` locally before derivative generation
 - the invariant-name overload preserves the existing `BuildInvariantDerivativeSeed(...)` diagnostics for empty, unknown, or `eta` invariant names and for unsupported bootstrap-subset masses or symbolic forms
 - invariant-generated target preparation preserves the exact `reduction_targets` order from `GenerateInvariantDerivativeVariable(...)`
+- on the reviewed linear-propagator subset inherited from `BuildInvariantDerivativeSeed(...)`, that same preparation path preserves the original family/kinematics YAML unchanged and emits the exact generated target list without introducing any special linear-only reducer metadata
 - invariant-generated preparation rejects empty generated target lists locally before reducer execution
 - this seam remains one invariant at a time and preparation only; it does not add multi-invariant orchestration, CLI, `SkipReduction`, or broader symbolic parity beyond the reviewed bootstrap subset
 
@@ -496,6 +497,7 @@ The first invariant-generated reduction execution seam is also bootstrap-only:
   execution working-directory artifact root using the original family name, then parse `masters`
   and `kira_target.m` from that chosen tree before assembling the invariant `DESystem`
 - invariant execution continues to use the original family and kinematics without eta insertion, and the automatic overload preserves the exact generated-target order from the reviewed automatic preparation path
+- on the reviewed linear-propagator subset inherited from that preparation path, the same execution wrapper now also preserves the original family/kinematics YAML unchanged, parses the reducer output from `results/<family>/`, and assembles the resulting invariant row through the ordinary generated-row reduction path without any linear-specific execution branch
 - successful process execution is not enough on its own: malformed parsed reductions, identity-fallback reductions, or missing explicit rules for generated invariant targets fail during the parse/assembly phase
 - this batch still does not claim the full upstream symbolic automatic-derivative solver; it remains one invariant at a time and does not add multi-invariant orchestration, CLI, `SkipReduction`, or broader symbolic-subset widening beyond the reviewed bootstrap path
 
@@ -503,6 +505,7 @@ The first invariant-generated `DESystem` consumer is also bootstrap-only:
 
 - `BuildInvariantGeneratedDESystem(...)` is a library-only one-invariant convenience seam over the reviewed automatic `RunInvariantGeneratedReduction(...)` wrapper and returns the assembled `DESystem` directly on success
 - it reuses the existing automatic preparation, reducer execution, parse, and generated-row assembly path instead of reimplementing reducer orchestration locally
+- on the reviewed linear-propagator subset inherited from the automatic execution wrapper, it returns the same assembled one-variable `DESystem` unchanged, including the ordinary generated invariant matrix entries
 - unsuccessful reducer execution is converted into a deterministic consumer-level failure that preserves the recorded execution status, exit code, and stderr log path in the diagnostic
 - this batch does not add a seed-based consumer overload, solver invocation, CLI, `SkipReduction`, or broader symbolic-subset widening
 
@@ -529,6 +532,7 @@ The first invariant-generated solver handoff remains narrow:
 - `SolveInvariantGeneratedSeries(...)` takes the same one-invariant automatic reduction inputs as `BuildInvariantGeneratedDESystem(...)`, plus an injected `const SeriesSolver&` and solver request fields excluding `DESystem`
 - after `BuildInvariantGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2687-2712`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
 - on retryable `failure_code == "insufficient_precision"`, that internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
+- on the reviewed linear-propagator subset inherited from `BuildInvariantGeneratedDESystem(...)`, the same wrapper forwards the assembled invariant `DESystem`, start/target locations, precision policy, and requested digits unchanged into the injected solver
 - pre-solver failures preserve the existing `BuildInvariantGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
 - this batch does not add solver-selection policy, a seed-based solver overload, CLI, boundary generation, or algorithmic series solving
 

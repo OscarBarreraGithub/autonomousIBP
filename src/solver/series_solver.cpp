@@ -3185,13 +3185,15 @@ std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
 std::optional<SolverDiagnostics> AssessInvariantGeneratedSolvePhysicalKinematics(
     const ProblemSpec& spec,
     const bool allow_reviewed_s_segment,
+    const bool allow_unlabeled_reviewed_s_expressions,
     const std::string& start_location,
     const std::string& target_location) {
   const PhysicalKinematicsGuardrailAssessment assessment =
       allow_reviewed_s_segment
           ? AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(spec,
                                                                        start_location,
-                                                                       target_location)
+                                                                       target_location,
+                                                                       allow_unlabeled_reviewed_s_expressions)
           : AssessPhysicalKinematicsForBatch62(spec);
   switch (assessment.verdict) {
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
@@ -4143,7 +4145,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const int requested_digits) {
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(
-              spec, invariant_name == "s", start_location, target_location);
+              spec, invariant_name == "s", invariant_name == "s", start_location, target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }
@@ -4186,9 +4188,15 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   }
   const bool allow_reviewed_s_segment =
       std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end();
+  const bool allow_unlabeled_reviewed_s_expressions =
+      invariant_names.size() == 1 && invariant_names.front() == "s";
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(
-              spec, allow_reviewed_s_segment, start_location, target_location);
+              spec,
+              allow_reviewed_s_segment,
+              allow_unlabeled_reviewed_s_expressions,
+              start_location,
+              target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }

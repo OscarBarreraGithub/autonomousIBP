@@ -3842,6 +3842,22 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresh
                  "Batch 62c should report the reviewed threshold locus for crossing segments");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdCrossingTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(spec, "5", "3");
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::SingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62e should classify raw reviewed s segments that cross the threshold as "
+         "singular");
+  ExpectContains(assessment.detail,
+                 "s = 4*msq",
+                 "Batch 62e should report the reviewed threshold locus for raw crossing "
+                 "segments");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointCrossingTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
 
@@ -3875,8 +3891,25 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresh
                  "Batch 62d should report the frozen exact near-singular margin");
   ExpectContains(assessment.detail,
                  "s = 4*msq",
-                 "Batch 62d should report the reviewed threshold locus for near-singular "
-                 "segments");
+      "Batch 62d should report the reviewed threshold locus for near-singular "
+      "segments");
+}
+
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdNearMarginTest() {
+  const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(spec, "17/4", "9/2");
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::NearSingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62e should classify raw reviewed s segments inside the frozen near-singular "
+         "margin");
+  ExpectContains(assessment.detail,
+                 "width 1/4",
+                 "Batch 62e should report the frozen exact near-singular margin on raw "
+                 "reviewed s segments");
 }
 
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest() {
@@ -16435,6 +16468,39 @@ void SolveInvariantGeneratedSeriesRejectsThresholdCrossingPhysicalSegmentBeforeD
          "singular segment");
 }
 
+void SolveInvariantGeneratedSeriesRejectsRawThresholdCrossingPhysicalSegmentBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-raw-crossing-threshold-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            amflow::ParsedMasterList{},
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            layout.root / "bin" / "unused-kira.sh",
+                                            layout.root / "bin" / "unused-fermat.sh",
+                                            solver,
+                                            "5",
+                                            "3",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62e should reject raw reviewed s segments that cross the threshold before DE "
+         "construction");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62e should report the threshold locus when raw invariant continuation crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62e should not call the solver when raw invariant continuation crosses a "
+         "reviewed singular segment");
+}
+
 void SolveInvariantGeneratedSeriesRejectsThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -16635,6 +16701,40 @@ void SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEC
   Expect(solver.call_count() == 0,
          "automatic invariant solver handoff list should not call the solver when physical "
          "kinematics are singular");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-raw-near-threshold-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "17/4",
+                                                "9/2",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_near_singular",
+         "Batch 62e should reject raw reviewed s segments on the single-invariant list wrapper "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "width 1/4",
+      "Batch 62e should report the frozen near-singular margin when the single-invariant list "
+      "wrapper receives raw reviewed s segments");
+  Expect(solver.call_count() == 0,
+         "Batch 62e should not call the solver when the single-invariant list wrapper receives "
+         "a raw reviewed s segment inside the near-singular margin");
 }
 
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
@@ -28900,8 +29000,10 @@ int main() {
     AssessPhysicalKinematicsForBatch62ClassifiesEndpointSurfaceAsSingularTest();
     AssessPhysicalKinematicsForBatch62RejectsRealSurfaceOutsideOpenRegionTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdCrossingTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdNearMarginTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsThresholdClearSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeSegmentSupportedTest();
@@ -29425,6 +29527,7 @@ int main() {
     SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsThresholdCrossingPhysicalSegmentBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesRejectsRawThresholdCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesK0SmokeSafePhysicalSegmentReachesNextLayerTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
@@ -29452,6 +29555,7 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticClassifiesReducerMasterSetDriftTest();
     SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

@@ -276,27 +276,51 @@ NumericEvaluationPoint BuildReviewedSegmentPassiveBindings(
 std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
     const std::string& start_location,
     const std::string& target_location,
-    const ReviewedK0ExactSubstitutions& substitutions) {
-  const std::optional<ExplicitLocationAssignment> start_assignment =
-      ParseExplicitLocationAssignment(start_location);
-  const std::optional<ExplicitLocationAssignment> target_assignment =
-      ParseExplicitLocationAssignment(target_location);
-  if (!start_assignment.has_value() || !target_assignment.has_value() ||
-      start_assignment->variable != "s" || target_assignment->variable != "s") {
+    const ReviewedK0ExactSubstitutions& substitutions,
+    const bool allow_unlabeled_reviewed_s_expressions) {
+  const auto parse_location =
+      [&substitutions, allow_unlabeled_reviewed_s_expressions](
+          const std::string& location) -> std::optional<ExactRational> {
+    const NumericEvaluationPoint passive_bindings =
+        BuildReviewedSegmentPassiveBindings(substitutions, "s");
+    const std::optional<ExplicitLocationAssignment> assignment =
+        ParseExplicitLocationAssignment(location);
+    if (assignment.has_value()) {
+      if (assignment->variable != "s") {
+        return std::nullopt;
+      }
+      try {
+        return EvaluateCoefficientExpression(assignment->expression, passive_bindings);
+      } catch (const std::exception&) {
+        return std::nullopt;
+      }
+    }
+
+    if (!allow_unlabeled_reviewed_s_expressions) {
+      return std::nullopt;
+    }
+
+    const std::string trimmed = Trim(location);
+    if (trimmed.empty() || trimmed.find('=') != std::string::npos) {
+      return std::nullopt;
+    }
+
+    try {
+      return EvaluateCoefficientExpression(trimmed, passive_bindings);
+    } catch (const std::exception&) {
+      return std::nullopt;
+    }
+  };
+
+  const std::optional<ExactRational> start_value = parse_location(start_location);
+  const std::optional<ExactRational> target_value = parse_location(target_location);
+  if (!start_value.has_value() || !target_value.has_value()) {
     return std::nullopt;
   }
 
-  const NumericEvaluationPoint passive_bindings =
-      BuildReviewedSegmentPassiveBindings(substitutions, "s");
   ReviewedInvariantSegment segment;
-  try {
-    segment.start =
-        EvaluateCoefficientExpression(start_assignment->expression, passive_bindings);
-    segment.target =
-        EvaluateCoefficientExpression(target_assignment->expression, passive_bindings);
-  } catch (const std::exception&) {
-    return std::nullopt;
-  }
+  segment.start = *start_value;
+  segment.target = *target_value;
   return segment;
 }
 
@@ -412,7 +436,8 @@ PhysicalKinematicsGuardrailAssessment
 AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const ProblemSpec& spec,
     const std::string& start_location,
-    const std::string& target_location) {
+    const std::string& target_location,
+    const bool allow_unlabeled_reviewed_s_expressions) {
   PhysicalKinematicsGuardrailAssessment assessment =
       AssessPhysicalKinematicsForBatch62(spec);
   if (assessment.verdict !=
@@ -429,7 +454,8 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
   const std::optional<ReviewedInvariantSegment> segment =
       ParseReviewedSInvariantSegment(start_location,
                                     target_location,
-                                    *exact_substitutions);
+                                    *exact_substitutions,
+                                    allow_unlabeled_reviewed_s_expressions);
   if (!segment.has_value()) {
     return assessment;
   }
@@ -480,6 +506,15 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     return assessment;
   }
   return assessment;
+}
+
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& start_location,
+    const std::string& target_location) {
+  return AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+      spec, start_location, target_location, true);
 }
 
 }  // namespace amflow

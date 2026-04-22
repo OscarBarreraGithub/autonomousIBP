@@ -58,11 +58,11 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All eight harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All nine harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
-`user-hook-pair`:
+`user-hook-pair`, plus the blocked M7 release-readiness audit:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -98,13 +98,16 @@ python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
 
 python3 tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py \
   --self-check
+
+python3 tools/reference-harness/scripts/release_signoff_readiness.py \
+  --self-check
 ```
 
 `amflow-tests` now exercises all nine helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, scaffold-validation, phase-0 and case-study readiness, and the single-packet
-plus packet-set retained-reference comparison regression paths without needing a real benchmark
-packet.
+retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness,
+blocked release-readiness, and the single-packet plus packet-set retained-reference comparison
+regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -228,6 +231,19 @@ harness-only comparator plumbing: it does not launch the C++ runtime, does not c
 correct-digit scores, does not inspect candidate failure-code behavior, and does not by itself
 claim that `Milestone M6` is passing.
 
+To turn one retained M6 readiness summary into the first blocked M7 release-readiness report:
+
+```bash
+python3 tools/reference-harness/scripts/release_signoff_readiness.py \
+  --qualification-summary /tmp/qualification-readiness.json
+```
+
+Add `--summary-path` if you want the JSON report written to disk as well as printed to stdout.
+This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
+and docs-completion targets, keeps the current blocked `b61n` / `b62n` / `b63k` / `b64k`
+frontier visible from the retained M6 evidence packet, and writes one blocked release-readiness
+summary without claiming that `Milestone M6` or `Milestone M7` is closed.
+
 The capture script writes:
 
 - `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
@@ -293,6 +309,11 @@ The capture script writes:
   validates the selected literature anchors, parity labels, digit floors, failure/regression
   profiles, and the reviewed singular blocker hint against the frozen sources and emits one
   machine-readable family-readiness summary without comparing case-study numerics.
+- `release_signoff_readiness.py` is the first executable M7 helper: it consumes one
+  machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
+  audits that the checklist source/doc paths exist inside the repo, preserves the blocked
+  `next_runtime_lane` frontier, and writes one blocked release-readiness summary without
+  overclaiming qualified release evidence.
 - `compare_phase0_results_to_reference.py` is the first actual M6 packet comparator: it compares
   one candidate packet root against one retained reference packet root through exact canonical
   output-name/hash agreement on the selected phase-0 benchmarks while surfacing the frozen
@@ -322,6 +343,10 @@ The capture script writes:
 - `qualification_case_study_readiness.py --self-check` exercises the first M6 case-study-family
   summary against synthetic selected-benchmark anchors, stronger-threshold inheritance, the
   reviewed singular blocker lane, and the recorded predecessor batch.
+- `release_signoff_readiness.py --self-check` exercises the first blocked M7 release-readiness
+  audit against one synthetic M6 summary, covering withheld release claims, visible runtime-lane
+  blockers, checklist/doc-path auditing, and the docs-completion review path that is ready to
+  audit before signoff itself is allowed to proceed.
 - `compare_phase0_results_to_reference.py --self-check` exercises the first actual packet
   comparator against one synthetic retained reference root plus matching and mismatched candidate
   packets, covering hash mismatch, output-name drift, and missing-result-manifest rejection.

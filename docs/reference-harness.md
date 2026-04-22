@@ -182,6 +182,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/qualification_case_study_readiness.py`: first M6 case-study-family helper. It consumes the frozen qualification scaffold plus `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`, `docs/verification-strategy.md`, and the implementation ledger, validates that the selected literature anchors, digit floors, failure/regression profiles, and the reviewed singular `next_runtime_lane` blocker stay synchronized, and writes one machine-readable readiness summary of literature-anchor, matrix-only, strong-precision, and runtime-blocked case-study families. This is still evidence/planning only: it does not compare retained case-study numerics and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/compare_phase0_results_to_reference.py`: first actual M6 phase-0 packet comparator. It consumes one retained reference packet root plus one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema, fails closed unless every selected benchmark keeps the exact retained output-name set and canonical hashes, and surfaces the frozen digit-threshold, failure-code, and regression metadata from the qualification scaffold alongside the per-benchmark match report. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py`: first multi-packet M6 phase-0 comparator. It consumes one or more `--packet-root-pair <reference_root>::<candidate_root>` mappings, composes the retained packet comparator across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique reference packet label per pair, requires each candidate packet root to publish exactly the retained benchmark split for that packet through `result-manifest.json` entries while ignoring uncaptured placeholder directories without manifests, and fails closed unless the compared benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
+- `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not review performance or diagnostics, and does not claim release readiness.
 
 ## Qualification Scaffold
 
@@ -241,8 +242,15 @@ retained outputs and rerun evidence.
 - The scaffold consumes the existing qualification surfaces rather than replacing them: it points
   future M7 helpers at `docs/release-signoff-checklist.md`,
   `templates/qualification-benchmarks.json`,
-  `tools/reference-harness/scripts/qualification_readiness.py`, the parity matrix, and the durable
-  docs as the inputs that must already be coherent before release review can start.
+  `tools/reference-harness/scripts/qualification_readiness.py`,
+  `tools/reference-harness/scripts/release_signoff_readiness.py`, the parity matrix, and the
+  durable docs as the inputs that must already be coherent before release review can start.
+- The first executable M7 helper is
+  `tools/reference-harness/scripts/release_signoff_readiness.py`. It consumes one retained
+  M6-readiness summary instead of re-running qualification, audits the checklist source/doc paths,
+  and writes one blocked release-readiness summary that keeps the current `b61n` / `b62n` /
+  `b63k` / `b64k` frontier visible while `Milestone M6` and the later release-review sections
+  remain open.
 - The scaffold is planning metadata only. Adding or editing it does not run qualification,
   performance, or diagnostic review; does not claim `Milestone M6` or `Milestone M7` is closed;
   and does not claim release readiness.
@@ -250,11 +258,12 @@ retained outputs and rerun evidence.
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
 the retained-golden promotion path. All nine helpers expose `--self-check` modes so the repo can
 rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, scaffold
-validation, phase-0 and case-study readiness audits, and the single-packet plus packet-set
-retained-reference comparators without needing a full benchmark packet. `amflow-tests` now drives
-those bootstrap, fetch, placeholder-freeze, retained-capture, scaffold-validation, phase-0
-readiness, case-study readiness, and the two retained phase-0 reference-comparator self-checks
-through the configured repo-local Python interpreter, and the retained-capture helper also
-self-checks the restart-safe `--resume-existing` path plus the explicit benchmark-id,
-optional-packet, and `--required-only` selection contract, including direct
+validation, qualification-readiness, case-study-family readiness, blocked release-readiness, and
+the single-packet plus packet-set retained-reference comparators without needing a full benchmark
+packet. `amflow-tests` now drives those bootstrap, fetch, placeholder-freeze, retained-capture,
+scaffold-validation, qualification-readiness, case-study-family readiness, blocked
+release-readiness, and the two retained phase-0 reference-comparator self-checks through the
+configured repo-local Python interpreter, and the retained-capture helper also self-checks the
+restart-safe `--resume-existing` path plus the explicit benchmark-id, optional-packet, and
+`--required-only` selection contract, including direct
 `optional_capture_packet` selection.

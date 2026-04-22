@@ -5,6 +5,7 @@
     "release_signoff_markdown": "docs/release-signoff-checklist.md",
     "qualification_scaffold": "tools/reference-harness/templates/qualification-benchmarks.json",
     "qualification_readiness_helper": "tools/reference-harness/scripts/qualification_readiness.py",
+    "release_readiness_helper": "tools/reference-harness/scripts/release_signoff_readiness.py",
     "parity_matrix": "specs/parity-matrix.yaml",
     "verification_strategy": "docs/verification-strategy.md",
     "roadmap": "docs/full-amflow-completion-roadmap.md",

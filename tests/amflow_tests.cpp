@@ -36352,6 +36352,122 @@ void Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest() {
                  "user-defined ending benchmark");
 }
 
+void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-signoff-readiness-self-check",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--self-check"},
+      "release signoff readiness self-check");
+  Expect(result.stderr_log.empty(),
+         "release signoff readiness self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"qualification_evidence_coherent\": true",
+                 "release signoff readiness self-check should require coherent retained M6 "
+                 "evidence before it audits M7 blockers");
+  ExpectContains(result.stdout_json, "\"checklist_sources_present\": true",
+                 "release signoff readiness self-check should require the checklist source paths "
+                 "to exist");
+  ExpectContains(result.stdout_json, "\"milestone_m6_blocked\": true",
+                 "release signoff readiness self-check should keep Milestone M6 blocked when the "
+                 "qualification corpus is not yet closed");
+  ExpectContains(result.stdout_json, "\"phase_f_runtime_blockers_preserved\": true",
+                 "release signoff readiness self-check should keep the current runtime-lane "
+                 "blockers visible");
+  ExpectContains(result.stdout_json,
+                 "\"retained_reference_evidence_not_overclaimed\": true",
+                 "release signoff readiness self-check should keep captured retained evidence "
+                 "short of qualified release evidence");
+  ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
+                 "release signoff readiness self-check should require the checklist docs targets "
+                 "to exist");
+  ExpectContains(result.stdout_json,
+                 "\"docs_completion_section_ready_to_audit\": true",
+                 "release signoff readiness self-check should keep docs-completion audit-ready "
+                 "even while signoff stays blocked");
+  ExpectContains(result.stdout_json, "\"final_parity_signoff_blocked\": true",
+                 "release signoff readiness self-check should keep the final parity signoff "
+                 "blocked while upstream prerequisites remain open");
+  ExpectContains(result.stdout_json, "\"withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve the explicit non-claims "
+                 "from the M7 scaffold");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release signoff readiness self-check should write the synthetic summary output");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-qualification-summary") / "qualification-summary.json";
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-release-signoff-readiness-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-prereq-qualification-summary",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff prerequisite qualification summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff prerequisite qualification summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(qualification_summary_path),
+         "release signoff prerequisite qualification summary should write the requested summary "
+         "file");
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-signoff-readiness-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--summary-path",
+       summary_path.string()},
+      "release signoff readiness summary");
+  Expect(result.stderr_log.empty(),
+         "release signoff readiness summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "release signoff readiness summary should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"checklist_sources_present\": true",
+                 "release signoff readiness summary should require the scaffold source paths to "
+                 "exist");
+  ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
+                 "release signoff readiness summary should require the docs-completion targets to "
+                 "exist");
+  ExpectContains(result.stdout_json, "\"qualification_evidence_coherent\": true",
+                 "release signoff readiness summary should require coherent retained M6 evidence");
+  ExpectContains(result.stdout_json, "\"current_state\": \"blocked-on-qualification-closure\"",
+                 "release signoff readiness summary should keep Milestone M6 blocked until the "
+                 "qualification corpus is truthfully closed");
+  ExpectContains(result.stdout_json, "\"current_state\": \"captured-but-not-qualified\"",
+                 "release signoff readiness summary should keep retained evidence short of "
+                 "qualified release evidence");
+  ExpectContains(result.stdout_json, "\"status\": \"ready-to-audit\"",
+                 "release signoff readiness summary should keep docs completion review-ready on "
+                 "the blocked M7 lane");
+  ExpectContains(result.stdout_json, "\"release_signoff_ready\": false",
+                 "release signoff readiness summary should keep the final release signoff "
+                 "blocked");
+  ExpectContains(result.stdout_json, "\"id\": \"complex_kinematics\"",
+                 "release signoff readiness summary should preserve the blocked complex "
+                 "kinematics anchor");
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b61n\"",
+                 "release signoff readiness summary should preserve the blocked complex "
+                 "kinematics lane hint");
+  ExpectContains(result.stdout_json,
+                 "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b62n\",\n    \"b63k\",\n    \"b64k\"\n  ]",
+                 "release signoff readiness summary should keep the current blocked runtime-lane "
+                 "frontier visible");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -37258,6 +37374,8 @@ int main() {
     Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
     Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest();
     Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
+    ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
+    ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

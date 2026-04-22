@@ -669,6 +669,13 @@ prerequisite M6 gate plus the same later release-review sections for later
 harness-side consumers. Neither
 artifact relaxes the dependency on truthful `Milestone M6` closure or claims
 that release sign-off is complete.
+The first executable M7 helper then stays blocked on purpose:
+`tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
+machine-readable `qualification_readiness.py` summary plus that checklist,
+audits the durable checklist/doc targets, and writes one blocked release-
+readiness summary that keeps the current `b61n` / `b62n` / `b63k` / `b64k`
+frontier visible without claiming that `Milestone M6` or `Milestone M7`
+has closed.
 
 ## Acceptance Gates Per Phase
 

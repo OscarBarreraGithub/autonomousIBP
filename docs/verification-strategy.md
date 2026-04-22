@@ -263,6 +263,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   machine-readable release sign-off scaffold: the prerequisite M6 gate plus the later
   qualification-closure, performance, diagnostic, docs-completion, and parity-signoff review
   sections.
+- `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
+  helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
+  audits the checklist source/docs targets, and writes one blocked release-readiness summary that
+  keeps the current runtime-lane frontier visible without claiming `Milestone M6` or `Milestone M7`
+  closure.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py` audits retained phase-0
   packet roots against that scaffold and reports benchmark-level readiness while keeping packet-
   level `bootstrap-only` versus `reference-captured` truthfulness explicit.
@@ -274,6 +279,8 @@ not by itself claim any new captured benchmark evidence or solver parity.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in
-the retained artifacts and durable docs.
+the retained artifacts and durable docs. The blocked release-readiness helper remains in that same
+planning-only category: it audits prerequisites and keeps withheld claims explicit, but it does not
+run performance review, diagnostic review, or parity sign-off.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

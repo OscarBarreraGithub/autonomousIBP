@@ -1,0 +1,552 @@
+#!/usr/bin/env python3
+"""Audit the M7 release-signoff scaffold against retained M6 readiness evidence."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import tempfile
+from pathlib import Path
+from typing import Any
+
+from freeze_phase0_goldens import load_json
+
+
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def normalize_string_list(raw: Any, label: str) -> list[str]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} must be a list, got {type(raw).__name__}")
+    values: list[str] = []
+    for item in raw:
+        if not isinstance(item, str):
+            raise TypeError(f"{label} entries must be strings, got {type(item).__name__}")
+        value = item.strip()
+        if not value:
+            raise ValueError(f"{label} entries must not be empty")
+        values.append(value)
+    return values
+
+
+def expect_unique(values: list[str], label: str) -> None:
+    expect(len(set(values)) == len(values), f"{label} must not contain duplicates")
+
+
+def expect_path_within_root(path: Path, root: Path, label: str) -> None:
+    resolved_path = path.resolve(strict=False)
+    resolved_root = root.resolve(strict=False)
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as error:
+        raise RuntimeError(f"{label} must stay under {root}: {path}") from error
+
+
+def parse_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]:
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} must be a list")
+    entries: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise TypeError(f"{label} entries must be objects")
+        entry_id_raw = entry.get("id")
+        next_runtime_lane_raw = entry.get("next_runtime_lane", "")
+        if not isinstance(entry_id_raw, str):
+            raise TypeError(f"{label} id must be a string")
+        if not isinstance(next_runtime_lane_raw, str):
+            raise TypeError(f"{label} next_runtime_lane must be a string")
+        entry_id = entry_id_raw.strip()
+        next_runtime_lane = next_runtime_lane_raw.strip()
+        if not entry_id:
+            raise ValueError(f"{label} id must not be empty")
+        if entry_id in seen_ids:
+            raise ValueError(f"duplicate {label} id: {entry_id}")
+        if not next_runtime_lane:
+            raise ValueError(f"{label} next_runtime_lane must not be empty")
+        seen_ids.add(entry_id)
+        entries.append(
+            {
+                "id": entry_id,
+                "next_runtime_lane": next_runtime_lane,
+            }
+        )
+    return entries
+
+
+def load_release_checklist(checklist_path: Path) -> dict[str, Any]:
+    checklist = load_json(checklist_path)
+    expect(checklist.get("schema_version") == 1, "release checklist schema_version must be 1")
+
+    sources = checklist.get("sources")
+    if not isinstance(sources, dict):
+        raise TypeError("release checklist sources must be an object")
+    for key, value in sources.items():
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"release checklist source {key} must be a non-empty string path")
+
+    review_sections = checklist.get("review_sections")
+    if not isinstance(review_sections, list):
+        raise TypeError("release checklist review_sections must be a list")
+    review_section_ids: list[str] = []
+    for section in review_sections:
+        if not isinstance(section, dict):
+            raise TypeError("release checklist review_sections entries must be objects")
+        section_id = str(section.get("id", "")).strip()
+        if not section_id:
+            raise ValueError("release checklist review section id must not be empty")
+        review_section_ids.append(section_id)
+        normalize_string_list(
+            section.get("required_inputs", []),
+            f"release checklist review section {section_id} required_inputs",
+        )
+        normalize_string_list(
+            section.get("required_outputs", []),
+            f"release checklist review section {section_id} required_outputs",
+        )
+    expect_unique(review_section_ids, "release checklist review section ids")
+
+    release_prerequisites = checklist.get("release_prerequisites")
+    if not isinstance(release_prerequisites, list):
+        raise TypeError("release checklist release_prerequisites must be a list")
+    prerequisite_ids: list[str] = []
+    for prerequisite in release_prerequisites:
+        if not isinstance(prerequisite, dict):
+            raise TypeError("release checklist release_prerequisites entries must be objects")
+        prerequisite_id = str(prerequisite.get("id", "")).strip()
+        if not prerequisite_id:
+            raise ValueError("release checklist prerequisite id must not be empty")
+        prerequisite_ids.append(prerequisite_id)
+        required_state = str(prerequisite.get("required_state", "")).strip()
+        if not required_state:
+            raise ValueError(
+                f"release checklist prerequisite {prerequisite_id} required_state must not be empty"
+            )
+    expect_unique(prerequisite_ids, "release checklist prerequisite ids")
+
+    docs_completion_targets = checklist.get("docs_completion_targets")
+    if not isinstance(docs_completion_targets, list):
+        raise TypeError("release checklist docs_completion_targets must be a list")
+    doc_target_paths: list[str] = []
+    for target in docs_completion_targets:
+        if not isinstance(target, dict):
+            raise TypeError("release checklist docs_completion_targets entries must be objects")
+        path = str(target.get("path", "")).strip()
+        if not path:
+            raise ValueError("release checklist docs_completion_targets path must not be empty")
+        doc_target_paths.append(path)
+        expectation = str(target.get("expectation", "")).strip()
+        if not expectation:
+            raise ValueError(
+                f"release checklist docs_completion_targets expectation must not be empty for {path}"
+            )
+    expect_unique(doc_target_paths, "release checklist docs_completion_targets paths")
+
+    normalize_string_list(checklist.get("explicit_non_claims", []), "release checklist explicit_non_claims")
+    return checklist
+
+
+def load_qualification_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "qualification summary schema_version must be 1")
+
+    required_boolean_fields = [
+        "required_root_reference_captured",
+        "required_root_captures_required_set",
+        "required_root_only_captures_required_set",
+        "optional_packets_preserve_bootstrap_only_state",
+        "optional_capture_packets_match_scaffold",
+        "captured_examples_publish_reference_artifacts",
+        "captured_examples_pass_comparison_checks",
+        "observed_reference_captured_matches_scaffold",
+        "pending_examples_preserve_runtime_lane_hints",
+        "blocked_case_study_families_preserve_runtime_lane_hints",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"qualification summary {field} must be a bool")
+
+    phase0_reference_captured_ids = normalize_string_list(
+        summary.get("phase0_reference_captured_ids", []),
+        "qualification summary phase0_reference_captured_ids",
+    )
+    phase0_pending_ids = normalize_string_list(
+        summary.get("phase0_pending_ids", []),
+        "qualification summary phase0_pending_ids",
+    )
+    expect_unique(
+        phase0_reference_captured_ids,
+        "qualification summary phase0_reference_captured_ids",
+    )
+    expect_unique(phase0_pending_ids, "qualification summary phase0_pending_ids")
+
+    blocked_phase0_examples = parse_runtime_lane_entries(
+        summary.get("blocked_phase0_examples", []),
+        "qualification summary blocked_phase0_examples",
+    )
+    blocked_case_study_families = parse_runtime_lane_entries(
+        summary.get("blocked_case_study_families", []),
+        "qualification summary blocked_case_study_families",
+    )
+
+    return {
+        **summary,
+        "phase0_reference_captured_ids": phase0_reference_captured_ids,
+        "phase0_pending_ids": phase0_pending_ids,
+        "blocked_phase0_examples": blocked_phase0_examples,
+        "blocked_case_study_families": blocked_case_study_families,
+    }
+
+
+def summarize_release_readiness(
+    *,
+    checklist_path: Path,
+    qualification_summary_path: Path,
+) -> dict[str, Any]:
+    root = repo_root()
+    checklist_path = checklist_path.resolve(strict=False)
+    expect_path_within_root(checklist_path, root, "release checklist path")
+    checklist = load_release_checklist(checklist_path)
+    qualification_summary = load_qualification_summary(qualification_summary_path)
+
+    checklist_sources: list[dict[str, Any]] = []
+    checklist_sources_present = True
+    for source_id, relative_path in checklist["sources"].items():
+        source_path = root / relative_path
+        expect_path_within_root(source_path, root, f"release checklist source {source_id}")
+        exists = source_path.exists()
+        checklist_sources.append(
+            {
+                "id": source_id,
+                "path": relative_path,
+                "exists": exists,
+                "within_repo": True,
+            }
+        )
+        checklist_sources_present = checklist_sources_present and exists
+
+    docs_completion_targets: list[dict[str, Any]] = []
+    docs_completion_targets_present = True
+    for target in checklist["docs_completion_targets"]:
+        relative_path = target["path"]
+        target_path = root / relative_path
+        expect_path_within_root(target_path, root, f"docs completion target {relative_path}")
+        exists = target_path.exists()
+        docs_completion_targets.append(
+            {
+                "path": relative_path,
+                "expectation": target["expectation"],
+                "exists": exists,
+                "within_repo": True,
+            }
+        )
+        docs_completion_targets_present = docs_completion_targets_present and exists
+
+    qualification_evidence_coherent = all(
+        qualification_summary[field]
+        for field in [
+            "required_root_reference_captured",
+            "required_root_captures_required_set",
+            "required_root_only_captures_required_set",
+            "optional_packets_preserve_bootstrap_only_state",
+            "optional_capture_packets_match_scaffold",
+            "captured_examples_publish_reference_artifacts",
+            "captured_examples_pass_comparison_checks",
+            "observed_reference_captured_matches_scaffold",
+            "pending_examples_preserve_runtime_lane_hints",
+            "blocked_case_study_families_preserve_runtime_lane_hints",
+        ]
+    )
+
+    blocked_runtime_lanes = sorted(
+        {
+            entry["next_runtime_lane"]
+            for entry in (
+                qualification_summary["blocked_phase0_examples"]
+                + qualification_summary["blocked_case_study_families"]
+            )
+        }
+    )
+    phase0_pending_ids = qualification_summary["phase0_pending_ids"]
+    blocked_case_study_ids = [
+        entry["id"] for entry in qualification_summary["blocked_case_study_families"]
+    ]
+    milestone_m6_blocked = (
+        not qualification_evidence_coherent
+        or bool(phase0_pending_ids)
+        or bool(blocked_case_study_ids)
+    )
+    phase_f_blocked = bool(blocked_runtime_lanes)
+
+    release_prerequisites: list[dict[str, Any]] = []
+    for prerequisite in checklist["release_prerequisites"]:
+        prerequisite_id = prerequisite["id"]
+        current_state = "blocked"
+        blockers: list[str] = []
+        satisfied = False
+
+        if prerequisite_id == "milestone-m6":
+            blockers = phase0_pending_ids + blocked_case_study_ids
+            current_state = (
+                "blocked-on-qualification-closure"
+                if milestone_m6_blocked
+                else "awaiting-reviewed-and-accepted-m6-packet"
+            )
+        elif prerequisite_id == "phase-f-feature-parity":
+            blockers = blocked_runtime_lanes
+            current_state = (
+                "blocked-on-runtime-lanes"
+                if phase_f_blocked
+                else "awaiting-reviewed-and-accepted-m5-packet"
+            )
+        elif prerequisite_id == "retained-reference-evidence":
+            blockers = phase0_pending_ids + blocked_case_study_ids
+            current_state = (
+                "captured-but-not-qualified"
+                if qualification_evidence_coherent
+                else "incoherent-retained-evidence"
+            )
+        else:
+            blockers = ["unknown-prerequisite"]
+            current_state = "unknown-prerequisite"
+
+        release_prerequisites.append(
+            {
+                "id": prerequisite_id,
+                "required_state": prerequisite["required_state"],
+                "notes": prerequisite["notes"],
+                "current_state": current_state,
+                "satisfied": satisfied,
+                "blockers": blockers,
+            }
+        )
+
+    review_sections: list[dict[str, Any]] = []
+    for section in checklist["review_sections"]:
+        section_id = section["id"]
+        status = "blocked"
+        blockers: list[str] = []
+
+        if section_id == "qualification-corpus":
+            blockers = phase0_pending_ids + blocked_case_study_ids
+            status = "blocked"
+        elif section_id == "performance-review":
+            blockers = ["milestone-m6"]
+            status = "blocked"
+        elif section_id == "diagnostic-review":
+            blockers = ["milestone-m6"]
+            status = "blocked"
+        elif section_id == "docs-completion":
+            blockers = []
+            if not checklist_sources_present:
+                blockers.append("missing-checklist-source")
+            if not docs_completion_targets_present:
+                blockers.append("missing-doc-target")
+            status = "ready-to-audit" if not blockers else "blocked"
+        elif section_id == "parity-signoff":
+            blockers = ["qualification-corpus", "performance-review", "diagnostic-review"]
+            status = "blocked"
+        else:
+            blockers = ["unknown-review-section"]
+            status = "blocked"
+
+        review_sections.append(
+            {
+                "id": section_id,
+                "required_inputs": section["required_inputs"],
+                "required_outputs": section["required_outputs"],
+                "notes": section["notes"],
+                "status": status,
+                "blockers": blockers,
+            }
+        )
+
+    return {
+        "schema_version": 1,
+        "checklist_path": str(checklist_path),
+        "qualification_summary_path": str(qualification_summary_path),
+        "checklist_sources": checklist_sources,
+        "checklist_sources_present": checklist_sources_present,
+        "checklist_sources_within_repo": True,
+        "docs_completion_targets": docs_completion_targets,
+        "docs_completion_targets_present": docs_completion_targets_present,
+        "docs_completion_targets_within_repo": True,
+        "qualification_evidence_coherent": qualification_evidence_coherent,
+        "phase0_reference_captured_ids": qualification_summary["phase0_reference_captured_ids"],
+        "phase0_pending_ids": phase0_pending_ids,
+        "blocked_phase0_examples": qualification_summary["blocked_phase0_examples"],
+        "blocked_case_study_families": qualification_summary["blocked_case_study_families"],
+        "blocked_runtime_lanes": blocked_runtime_lanes,
+        "release_prerequisites": release_prerequisites,
+        "review_sections": review_sections,
+        "withheld_claims": checklist["explicit_non_claims"],
+        "release_signoff_ready": False,
+    }
+
+
+def write_synthetic_qualification_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "required_root_reference_captured": True,
+            "required_root_captures_required_set": True,
+            "required_root_only_captures_required_set": True,
+            "optional_packets_preserve_bootstrap_only_state": True,
+            "optional_capture_packets_match_scaffold": True,
+            "captured_examples_publish_reference_artifacts": True,
+            "captured_examples_pass_comparison_checks": True,
+            "observed_reference_captured_matches_scaffold": True,
+            "pending_examples_preserve_runtime_lane_hints": True,
+            "blocked_case_study_families_preserve_runtime_lane_hints": True,
+            "phase0_reference_captured_ids": [
+                "automatic_loop",
+                "automatic_vs_manual",
+                "differential_equation_solver",
+                "spacetime_dimension",
+                "user_defined_amfmode",
+                "user_defined_ending",
+            ],
+            "phase0_pending_ids": [
+                "automatic_phasespace",
+                "complex_kinematics",
+                "feynman_prescription",
+                "linear_propagator",
+            ],
+            "blocked_phase0_examples": [
+                {
+                    "id": "automatic_phasespace",
+                    "next_runtime_lane": "b63k",
+                },
+                {
+                    "id": "complex_kinematics",
+                    "next_runtime_lane": "b61n",
+                },
+                {
+                    "id": "feynman_prescription",
+                    "next_runtime_lane": "b63k",
+                },
+                {
+                    "id": "linear_propagator",
+                    "next_runtime_lane": "b64k",
+                },
+            ],
+            "blocked_case_study_families": [
+                {
+                    "id": "one-singular-endpoint-case",
+                    "next_runtime_lane": "b62n",
+                }
+            ],
+        },
+    )
+
+
+def run_self_check(checklist_path: Path) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
+        temp_root = Path(tmp)
+        qualification_summary_path = temp_root / "qualification-summary.json"
+        summary_path = temp_root / "release-readiness-summary.json"
+
+        write_synthetic_qualification_summary(qualification_summary_path)
+        summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+        )
+        write_json(summary_path, summary)
+
+        return {
+            "checklist_sources_present": summary["checklist_sources_present"],
+            "qualification_evidence_coherent": summary["qualification_evidence_coherent"],
+            "milestone_m6_blocked": any(
+                prerequisite["id"] == "milestone-m6"
+                and prerequisite["current_state"] == "blocked-on-qualification-closure"
+                for prerequisite in summary["release_prerequisites"]
+            ),
+            "phase_f_runtime_blockers_preserved": (
+                summary["blocked_runtime_lanes"] == ["b61n", "b62n", "b63k", "b64k"]
+            ),
+            "retained_reference_evidence_not_overclaimed": any(
+                prerequisite["id"] == "retained-reference-evidence"
+                and prerequisite["current_state"] == "captured-but-not-qualified"
+                for prerequisite in summary["release_prerequisites"]
+            ),
+            "docs_completion_targets_present": summary["docs_completion_targets_present"],
+            "docs_completion_section_ready_to_audit": any(
+                section["id"] == "docs-completion" and section["status"] == "ready-to-audit"
+                for section in summary["review_sections"]
+            ),
+            "final_parity_signoff_blocked": any(
+                section["id"] == "parity-signoff" and section["status"] == "blocked"
+                for section in summary["review_sections"]
+            ),
+            "withheld_claims_preserved": len(summary["withheld_claims"]) >= 5,
+            "summary_written": summary_path.exists(),
+        }
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--qualification-summary",
+        type=Path,
+        help="Path to the machine-readable summary emitted by qualification_readiness.py",
+    )
+    parser.add_argument(
+        "--checklist-path",
+        type=Path,
+        help="Release-signoff checklist JSON path",
+    )
+    parser.add_argument(
+        "--summary-path",
+        type=Path,
+        help="Optional output file for the release-readiness summary",
+    )
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="Run a synthetic release-readiness audit against the live checklist",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    checklist_path = (
+        args.checklist_path
+        if args.checklist_path is not None
+        else repo_root() / "tools" / "reference-harness" / "templates" / "release-signoff-checklist.json"
+    )
+
+    if args.self_check:
+        print(json.dumps(run_self_check(checklist_path), indent=2, sort_keys=True))
+        return 0
+
+    expect(
+        args.qualification_summary is not None,
+        "--qualification-summary is required unless --self-check is used",
+    )
+    summary = summarize_release_readiness(
+        checklist_path=checklist_path,
+        qualification_summary_path=args.qualification_summary,
+    )
+    if args.summary_path is not None:
+        write_json(args.summary_path, summary)
+    print(json.dumps(summary, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

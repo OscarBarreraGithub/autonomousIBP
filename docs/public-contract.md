@@ -108,6 +108,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   planning metadata only: it does not run any release review, does not claim that `Milestone M6`
   or `Milestone M7` is passing, and does not widen the last fully accepted public/runtime
   contract
+- current worktree now also carries the first executable M7 helper on top of that scaffold only:
+  `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one machine-readable
+  `qualification_readiness.py` summary plus the release-signoff checklist, audits the checklist
+  source/doc targets inside the repo, preserves the blocked `b61n` / `b62n` / `b63k` / `b64k`
+  runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
+  release-readiness summary. This remains release-prep plumbing only: it does not mark
+  `Milestone M6` or `Milestone M7` complete, does not run performance or diagnostic review, and
+  does not widen the last fully accepted public/runtime contract
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

@@ -3,6 +3,7 @@
 #include <cctype>
 #include <exception>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -15,6 +16,12 @@ namespace {
 
 constexpr char kReviewedSubsetName[] = "k0_one_mass_2to2_real_v1";
 
+struct ReviewedK0ExactSubstitutions {
+  ExactRational s;
+  ExactRational t;
+  ExactRational msq;
+};
+
 std::string RemoveWhitespace(const std::string& value) {
   std::string normalized;
   normalized.reserve(value.size());
@@ -24,6 +31,38 @@ std::string RemoveWhitespace(const std::string& value) {
     }
   }
   return normalized;
+}
+
+ExactRational IntegerRational(const int value) {
+  return {std::to_string(value), "1"};
+}
+
+std::string Parenthesize(const ExactRational& value) {
+  return "(" + value.ToString() + ")";
+}
+
+ExactRational EvaluateExactArithmetic(const std::string& expression) {
+  return EvaluateCoefficientExpression(expression, NumericEvaluationPoint{});
+}
+
+ExactRational AddRational(const ExactRational& lhs, const ExactRational& rhs) {
+  return EvaluateExactArithmetic(Parenthesize(lhs) + "+" + Parenthesize(rhs));
+}
+
+ExactRational SubtractRational(const ExactRational& lhs, const ExactRational& rhs) {
+  return EvaluateExactArithmetic(Parenthesize(lhs) + "-" + Parenthesize(rhs));
+}
+
+ExactRational MultiplyRational(const ExactRational& lhs, const ExactRational& rhs) {
+  return EvaluateExactArithmetic(Parenthesize(lhs) + "*" + Parenthesize(rhs));
+}
+
+bool IsNegative(const ExactRational& value) {
+  return !value.IsZero() && !value.numerator.empty() && value.numerator.front() == '-';
+}
+
+bool IsPositive(const ExactRational& value) {
+  return !value.IsZero() && !IsNegative(value);
 }
 
 bool MatchesExpectedMomentumLists(const ProblemSpec& spec) {
@@ -102,23 +141,39 @@ bool MatchesExpectedScalarProductRules(const std::vector<ScalarProductRule>& rul
   return actual == expected;
 }
 
-bool MatchesExpectedExactNumericSubstitutions(
+std::optional<ReviewedK0ExactSubstitutions> LoadReviewedExactNumericSubstitutions(
     const std::map<std::string, std::string>& substitutions) {
   if (substitutions.size() != 3 || substitutions.count("s") != 1 ||
       substitutions.count("t") != 1 || substitutions.count("msq") != 1) {
-    return false;
+    return std::nullopt;
   }
 
-  for (const std::string& symbol : std::vector<std::string>{"s", "t", "msq"}) {
-    const auto value_it = substitutions.find(symbol);
-    try {
-      static_cast<void>(EvaluateCoefficientExpression(value_it->second, NumericEvaluationPoint{}));
-    } catch (const std::exception&) {
-      return false;
-    }
+  ReviewedK0ExactSubstitutions exact_substitutions;
+  try {
+    exact_substitutions.s =
+        EvaluateCoefficientExpression(substitutions.at("s"), NumericEvaluationPoint{});
+    exact_substitutions.t =
+        EvaluateCoefficientExpression(substitutions.at("t"), NumericEvaluationPoint{});
+    exact_substitutions.msq =
+        EvaluateCoefficientExpression(substitutions.at("msq"), NumericEvaluationPoint{});
+  } catch (const std::exception&) {
+    return std::nullopt;
   }
+  return exact_substitutions;
+}
 
-  return true;
+ExactRational ComputeReviewedEndpointPolynomial(const ReviewedK0ExactSubstitutions& substitutions) {
+  const ExactRational twice_msq =
+      MultiplyRational(IntegerRational(2), substitutions.msq);
+  const ExactRational t_squared =
+      MultiplyRational(substitutions.t, substitutions.t);
+  const ExactRational mass_squared =
+      MultiplyRational(substitutions.msq, substitutions.msq);
+  return AddRational(
+      SubtractRational(
+          t_squared,
+          MultiplyRational(SubtractRational(twice_msq, substitutions.s), substitutions.t)),
+      mass_squared);
 }
 
 }  // namespace
@@ -149,8 +204,49 @@ PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
     assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
     return assessment;
   }
-  if (!MatchesExpectedExactNumericSubstitutions(spec.kinematics.numeric_substitutions)) {
+  const std::optional<ReviewedK0ExactSubstitutions> exact_substitutions =
+      LoadReviewedExactNumericSubstitutions(spec.kinematics.numeric_substitutions);
+  if (!exact_substitutions.has_value()) {
     assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+    assessment.detail =
+        "exact numeric substitutions must provide exact real bindings for s, t, and msq";
+    return assessment;
+  }
+
+  if (!IsPositive(exact_substitutions->msq)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+    assessment.detail = "the reviewed open physical region requires msq > 0";
+    return assessment;
+  }
+
+  const ExactRational threshold_gap =
+      SubtractRational(exact_substitutions->s,
+                       MultiplyRational(IntegerRational(4), exact_substitutions->msq));
+  const ExactRational endpoint_polynomial =
+      ComputeReviewedEndpointPolynomial(*exact_substitutions);
+  if (threshold_gap.IsZero() && endpoint_polynomial.IsZero()) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+    assessment.detail = "exact bindings hit the reviewed pair-production threshold s = 4*msq";
+    return assessment;
+  }
+  if (!IsPositive(threshold_gap)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+    assessment.detail = "exact bindings lie outside the reviewed open real 2->2 physical region";
+    return assessment;
+  }
+
+  // On the reviewed equal-mass 2->2 subset, the open physical interval is the interior of the
+  // exact endpoint polynomial t^2 - (2*msq - s)*t + msq^2.
+  if (endpoint_polynomial.IsZero()) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+    assessment.detail =
+        "exact bindings hit the reviewed 2->2 endpoint polynomial "
+        "t^2 - (2*msq - s)*t + msq^2 = 0";
+    return assessment;
+  }
+  if (!IsNegative(endpoint_polynomial)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+    assessment.detail = "exact bindings lie outside the reviewed open real 2->2 physical region";
     return assessment;
   }
 

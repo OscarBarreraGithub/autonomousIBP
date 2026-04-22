@@ -3531,6 +3531,24 @@ amflow::ProblemSpec MakeComplexK0SmokeProblemSpecForTests() {
   return spec;
 }
 
+amflow::ProblemSpec MakeThresholdSingularK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.kinematics.numeric_substitutions = {{"s", "4"}, {"t", "-1"}, {"msq", "1"}};
+  return spec;
+}
+
+amflow::ProblemSpec MakeEndpointSingularK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.kinematics.numeric_substitutions = {{"s", "25/4"}, {"t", "-1/4"}, {"msq", "1"}};
+  return spec;
+}
+
+amflow::ProblemSpec MakeOutsideOpenPhysicalRegionK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.kinematics.numeric_substitutions = {{"s", "25/4"}, {"t", "0"}, {"msq", "1"}};
+  return spec;
+}
+
 void K0SmokeProblemSpecFileTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const auto messages = amflow::ValidateProblemSpec(spec);
@@ -3614,6 +3632,50 @@ void AssessPhysicalKinematicsForBatch62RejectsComplexSurfaceTest() {
              amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
              assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
          "Batch 62a should fail closed on complex physical-kinematics surfaces");
+}
+
+void AssessPhysicalKinematicsForBatch62ClassifiesThresholdSurfaceAsSingularTest() {
+  const amflow::ProblemSpec spec = MakeThresholdSingularK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::SingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62b should classify the reviewed pair-production threshold as singular");
+  ExpectContains(assessment.detail,
+                 "s = 4*msq",
+                 "Batch 62b should report the reviewed threshold surface explicitly");
+}
+
+void AssessPhysicalKinematicsForBatch62ClassifiesEndpointSurfaceAsSingularTest() {
+  const amflow::ProblemSpec spec = MakeEndpointSingularK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::SingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62b should classify reviewed two-body endpoint surfaces as singular");
+  ExpectContains(
+      assessment.detail,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62b should report the reviewed endpoint polynomial explicitly");
+}
+
+void AssessPhysicalKinematicsForBatch62RejectsRealSurfaceOutsideOpenRegionTest() {
+  const amflow::ProblemSpec spec = MakeOutsideOpenPhysicalRegionK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62b should keep support limited to the reviewed open real physical region");
+  ExpectContains(assessment.detail,
+                 "outside the reviewed open real 2->2 physical region",
+                 "Batch 62b should explain why real off-region points stay unsupported");
 }
 
 void LoadedSpecValidationRejectsMalformedTargetsTest() {
@@ -15408,6 +15470,39 @@ void SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDECo
          "kinematics are unsupported");
 }
 
+void SolveInvariantGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeThresholdSingularK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-singular-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            amflow::ParsedMasterList{},
+                                            "s",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            layout.root / "bin" / "unused-kira.sh",
+                                            layout.root / "bin" / "unused-fermat.sh",
+                                            solver,
+                                            "s=0",
+                                            "s=1",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "automatic invariant solver handoff should classify reviewed singular physical "
+         "kinematics before DE construction");
+  ExpectContains(diagnostics.summary,
+                 "s = 4*msq",
+                 "automatic invariant solver handoff should report the reviewed threshold "
+                 "surface in the singular physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff should not call the solver when physical "
+         "kinematics are singular");
+}
+
 void SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
   const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
@@ -15505,6 +15600,39 @@ void SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBefore
   Expect(solver.call_count() == 0,
          "automatic invariant solver handoff list should not call the solver when physical "
          "kinematics are unsupported");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeThresholdSingularK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-singular-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "s=0",
+                                                "s=1",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "automatic invariant solver handoff list should classify reviewed singular physical "
+         "kinematics before DE construction");
+  ExpectContains(diagnostics.summary,
+                 "s = 4*msq",
+                 "automatic invariant solver handoff list should report the reviewed threshold "
+                 "surface in the singular physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "automatic invariant solver handoff list should not call the solver when physical "
+         "kinematics are singular");
 }
 
 void SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest() {
@@ -16943,6 +17071,39 @@ void SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstruction
   Expect(solver.call_count() == 0,
          "eta solver handoff should not call the solver when complex physical kinematics are "
          "unsupported");
+}
+
+void SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeThresholdSingularK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-singular-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "eta=0",
+                                      "eta=1",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "eta solver handoff should classify reviewed singular physical kinematics before DE "
+         "construction");
+  ExpectContains(diagnostics.summary,
+                 "s = 4*msq",
+                 "eta solver handoff should report the reviewed threshold surface in the "
+                 "singular physical-kinematics summary");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when physical kinematics are singular");
 }
 
 void SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest() {
@@ -26587,6 +26748,9 @@ int main() {
     AssessPhysicalKinematicsForBatch62IgnoresLegacyBootstrapSurfaceTest();
     AssessPhysicalKinematicsForBatch62RejectsLookalikeFamilySurfaceTest();
     AssessPhysicalKinematicsForBatch62RejectsComplexSurfaceTest();
+    AssessPhysicalKinematicsForBatch62ClassifiesThresholdSurfaceAsSingularTest();
+    AssessPhysicalKinematicsForBatch62ClassifiesEndpointSurfaceAsSingularTest();
+    AssessPhysicalKinematicsForBatch62RejectsRealSurfaceOutsideOpenRegionTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();
@@ -27080,6 +27244,7 @@ int main() {
     BuildInvariantGeneratedDESystemAutomaticRejectsMissingExplicitRuleForGeneratedTargetTest();
     SolveInvariantGeneratedSeriesAutomaticHappyPathTest();
     SolveInvariantGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesAutomaticBootstrapSolverPassthroughTest();
     SolveInvariantGeneratedSeriesAutomaticExecutionFailureTest();
     SolveInvariantGeneratedSeriesAutomaticPropagatesMasterBasisFamilyMismatchTest();
@@ -27104,11 +27269,13 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticPropagatesMasterBasisFamilyMismatchTest();
     SolveInvariantGeneratedSeriesListAutomaticClassifiesReducerMasterSetDriftTest();
     SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();
     SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveEtaGeneratedSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();

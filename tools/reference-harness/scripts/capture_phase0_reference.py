@@ -795,6 +795,35 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         benchmark_catalog_path = harness_root / "templates" / "phase0-benchmarks.json"
         source_amflow = temp_root / "source-amflow"
         example_root = source_amflow / "examples" / "demo_benchmark"
+        selection_benchmarks = [
+            normalize_benchmark_entry(
+                {
+                    "id": "required_alpha",
+                    "label": "required_alpha",
+                    "required": True,
+                    "feature_gate": "phase0",
+                    "oracle": "upstream-amflow",
+                }
+            ),
+            normalize_benchmark_entry(
+                {
+                    "id": "optional_beta",
+                    "label": "optional_beta",
+                    "required": False,
+                    "feature_gate": "phase0",
+                    "oracle": "upstream-amflow",
+                }
+            ),
+            normalize_benchmark_entry(
+                {
+                    "id": "required_gamma",
+                    "label": "required_gamma",
+                    "required": True,
+                    "feature_gate": "phase0",
+                    "oracle": "upstream-amflow",
+                }
+            ),
+        ]
 
         ensure_dir(example_root / "backup")
         ensure_dir(source_amflow / "ibp_interface" / "Kira")
@@ -926,11 +955,56 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         )
         updated_manifest = load_json(manifest_path)
         comparison_summary = load_json(harness_root / "comparisons" / "phase0" / "demo_benchmark.summary.json")
+        selected_ids = [
+            entry["id"]
+            for entry in select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=["optional_beta", "required_alpha", "optional_beta"],
+                required_only=False,
+            )
+        ]
+        required_only_ids = [
+            entry["id"]
+            for entry in select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=None,
+                required_only=True,
+            )
+        ]
+        selection_conflict_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=["optional_beta"],
+                required_only=True,
+            )
+        except ValueError as exc:
+            selection_conflict_rejected = (
+                str(exc) == "pass benchmark ids or --required-only, not both"
+            )
+        unknown_benchmark_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=["missing_benchmark"],
+                required_only=False,
+            )
+        except ValueError as exc:
+            unknown_benchmark_rejected = (
+                str(exc) == "unknown benchmark ids: missing_benchmark"
+            )
         return {
             "capture_state_reference_captured": updated_manifest["phase0"]["capture_state"] == "reference-captured",
             "summary_written": Path(summary["summary_path"]).exists(),
             "backup_match_ok": comparison_summary["checks"][2]["status"] == "passed",
             "rerun_match_ok": comparison_summary["checks"][3]["status"] == "passed",
+            "selected_ids_follow_catalog_order": selected_ids == ["required_alpha", "optional_beta"],
+            "required_only_selects_required_subset": required_only_ids == [
+                "required_alpha",
+                "required_gamma",
+            ],
+            "benchmark_selection_conflict_rejected": selection_conflict_rejected,
+            "unknown_benchmark_rejected": unknown_benchmark_rejected,
             "resume_reused_existing_runs": bool(
                 resumed_primary.get("resumed_existing") and resumed_rerun.get("resumed_existing")
             ),
@@ -944,7 +1018,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--benchmark-id",
         action="append",
-        help="Benchmark id to capture; may be passed multiple times",
+        help=(
+            "Benchmark id to capture; may be passed multiple times, duplicates collapse, and "
+            "execution follows the frozen catalog order"
+        ),
     )
     parser.add_argument(
         "--required-only",

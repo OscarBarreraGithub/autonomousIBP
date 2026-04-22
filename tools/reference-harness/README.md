@@ -107,6 +107,19 @@ python3 tools/reference-harness/scripts/capture_phase0_reference.py \
 Add `--resume-existing` to reuse any already-retained `primary` or `rerun` run manifests after a
 walltime kill instead of replaying completed labels.
 
+To resume one narrow optional-capture packet in the same frozen order as the catalog:
+
+```bash
+python3 tools/reference-harness/scripts/capture_phase0_reference.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --benchmark-id spacetime_dimension \
+  --benchmark-id differential_equation_solver \
+  --resume-existing
+```
+
+Repeated `--benchmark-id` flags collapse duplicates and still run in the catalog's frozen order
+rather than CLI order. `--required-only` cannot be combined with explicit benchmark ids.
+
 The capture script writes:
 
 - `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
@@ -156,4 +169,5 @@ The capture script writes:
 - The fetch helper `--self-check` now also verifies the tar extraction policy against rejected symlink, hardlink, device, absolute-path, and escaping entries.
 - `capture_phase0_reference.py --self-check` exercises the retained-golden promotion flow end to
   end against a synthetic benchmark without requiring Kira or Fermat, including reuse of retained
-  per-run manifests through `--resume-existing`.
+  per-run manifests through `--resume-existing` and the explicit benchmark-selection contract for
+  repeated `--benchmark-id` flags versus `--required-only`.

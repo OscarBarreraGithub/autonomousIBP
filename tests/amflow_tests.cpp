@@ -28735,6 +28735,17 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
                  "capture reference-harness self-check should prove bundled-backup agreement");
   ExpectContains(result.stdout_json, "\"rerun_match_ok\": true",
                  "capture reference-harness self-check should prove rerun reproducibility");
+  ExpectContains(result.stdout_json, "\"selected_ids_follow_catalog_order\": true",
+                 "capture reference-harness self-check should keep repeated benchmark-id "
+                 "selection in frozen catalog order");
+  ExpectContains(result.stdout_json, "\"required_only_selects_required_subset\": true",
+                 "capture reference-harness self-check should keep --required-only locked to the "
+                 "required catalog subset");
+  ExpectContains(result.stdout_json, "\"benchmark_selection_conflict_rejected\": true",
+                 "capture reference-harness self-check should reject mixing explicit benchmark "
+                 "ids with --required-only");
+  ExpectContains(result.stdout_json, "\"unknown_benchmark_rejected\": true",
+                 "capture reference-harness self-check should reject unknown benchmark ids");
   ExpectContains(result.stdout_json, "\"resume_reused_existing_runs\": true",
                  "capture reference-harness self-check should reuse retained run manifests when "
                  "--resume-existing is requested");

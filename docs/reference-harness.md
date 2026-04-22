@@ -144,7 +144,7 @@ retained outputs and rerun evidence.
   digit-threshold floors in `docs/verification-strategy.md`.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
-- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels.
+- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--required-only` stays mutually exclusive with explicit benchmark ids, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels.
 
 ## Qualification Scaffold
 
@@ -164,4 +164,4 @@ rerun the bootstrap, catalog/scaffold coherence, and retained-capture regression
 needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
 placeholder-freeze, and retained-capture self-checks through the configured repo-local Python
 interpreter, and the retained-capture helper also self-checks the restart-safe
-`--resume-existing` path.
+`--resume-existing` path plus the explicit benchmark-selection contract.

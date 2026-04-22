@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <exception>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 
 #include "amflow/core/options.hpp"
@@ -18,6 +19,66 @@ bool IsBuiltinEndingSchemeName(const std::string& name) {
     }
   }
   return false;
+}
+
+std::string JoinIndices(const std::vector<std::size_t>& indices) {
+  std::ostringstream stream;
+  stream << "[";
+  for (std::size_t index = 0; index < indices.size(); ++index) {
+    if (index != 0) {
+      stream << ", ";
+    }
+    stream << indices[index];
+  }
+  stream << "]";
+  return stream.str();
+}
+
+std::vector<std::size_t> CollectCutPropagatorIndices(const ProblemSpec& spec) {
+  std::vector<std::size_t> cut_indices;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if (spec.family.propagators[index].kind == PropagatorKind::Cut) {
+      cut_indices.push_back(index);
+    }
+  }
+  return cut_indices;
+}
+
+std::string EtaInfinityTerminalNode(const ProblemSpec& spec) {
+  return spec.family.name + "::eta->infinity";
+}
+
+std::string CutkoskyPhaseSpaceTerminalNode(const ProblemSpec& spec) {
+  return spec.family.name + "::cutkosky-phase-space";
+}
+
+void ValidateTraditionEndingSurface(const ProblemSpec& spec) {
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    return;
+  }
+
+  throw std::runtime_error("ending scheme Tradition only supports the current loop-only subset; "
+                           "cut propagators are present at indices " +
+                           JoinIndices(cut_indices));
+}
+
+void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    throw std::runtime_error("ending scheme Cutkosky requires at least one cut propagator on "
+                             "the current reviewed phase-space subset");
+  }
+
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const PropagatorKind kind = spec.family.propagators[index].kind;
+    if (kind == PropagatorKind::Standard || kind == PropagatorKind::Cut) {
+      continue;
+    }
+    throw std::runtime_error("ending scheme Cutkosky only supports standard/cut propagators on "
+                             "the current reviewed phase-space subset; propagator " +
+                             std::to_string(index) + " has kind " + ToString(kind));
+  }
 }
 
 void ValidateUserDefinedEndingSchemeRegistry(
@@ -76,7 +137,18 @@ class BuiltinEndingScheme final : public EndingScheme {
   EndingDecision Plan(const ProblemSpec& spec) const override {
     EndingDecision decision;
     decision.terminal_strategy = name_;
-    decision.terminal_nodes.push_back(spec.family.name + "::eta->infinity");
+    if (name_ == "Tradition") {
+      ValidateTraditionEndingSurface(spec);
+      decision.terminal_nodes.push_back(EtaInfinityTerminalNode(spec));
+      return decision;
+    }
+    if (name_ == "Cutkosky") {
+      ValidateCutkoskyEndingSurface(spec);
+      decision.terminal_nodes.push_back(CutkoskyPhaseSpaceTerminalNode(spec));
+      return decision;
+    }
+
+    decision.terminal_nodes.push_back(EtaInfinityTerminalNode(spec));
     if (name_ == "Trivial") {
       decision.terminal_nodes.push_back(spec.family.name + "::trivial-region");
     }

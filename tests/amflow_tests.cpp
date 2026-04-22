@@ -1775,6 +1775,13 @@ amflow::ProblemSpec MakeBuiltinAllAuxiliarySpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeReviewedCutkoskyPhaseSpaceSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Cut;
+  return spec;
+}
+
 amflow::ProblemSpec MakeUnsupportedBranchLoopGrammarSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.family.propagators[0].expression = "s*((k1)^2)";
@@ -5571,6 +5578,35 @@ void PlanEndingSchemeBuiltinHappyPathTest() {
          "single-name ending planner should preserve builtin planning behavior");
 }
 
+void PlanEndingSchemeTraditionRejectsPhaseSpaceSubsetTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Tradition", {}));
+      },
+      "ending scheme Tradition only supports the current loop-only subset",
+      "single-name ending planner should reject cut-marked phase-space specs on the reviewed "
+      "Tradition subset");
+}
+
+void PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::EndingDecision decision =
+      amflow::PlanEndingScheme(spec, "Cutkosky", {});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "single-name ending planner should not mutate the input phase-space spec on the "
+         "Cutkosky path");
+  Expect(decision.terminal_strategy == "Cutkosky",
+         "Cutkosky ending planning should preserve its builtin strategy name");
+  Expect(decision.terminal_nodes ==
+             std::vector<std::string>{"planar_double_box::cutkosky-phase-space"},
+         "Cutkosky ending planning should expose the reviewed phase-space terminal node");
+}
+
 void PlanEndingSchemeUserDefinedHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -5829,6 +5865,22 @@ void PlanAmfOptionsEndingSchemeUsesDefaultEndingSchemeListTest() {
 
   Expect(SameEndingDecision(decision, baseline) && decision.terminal_strategy == "Tradition",
          "AmfOptions ending planner should use the default ending_schemes list unchanged");
+}
+
+void PlanAmfOptionsEndingSchemeSelectsCutkoskyOnPhaseSpaceSubsetTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options;
+
+  const amflow::EndingDecision decision =
+      amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {});
+
+  Expect(decision.terminal_strategy == "Cutkosky",
+         "AmfOptions ending planner should fall through from Tradition to Cutkosky on the "
+         "reviewed phase-space subset");
+  Expect(decision.terminal_nodes ==
+             std::vector<std::string>{"planar_double_box::cutkosky-phase-space"},
+         "AmfOptions ending planner should preserve the reviewed Cutkosky phase-space terminal "
+         "node");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest() {
@@ -8298,6 +8350,21 @@ void GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest() {
          "planned eta->infinity boundary generation should not mutate the input ProblemSpec");
 }
 
+void GeneratePlannedEtaInfinityBoundaryRequestRejectsCutkoskyPhaseSpaceTerminalNodeTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            spec,
+            "Cutkosky",
+            {}));
+      },
+      "unsupported extra terminal node planar_double_box::cutkosky-phase-space",
+      "planned eta->infinity boundary generation should reject the reviewed Cutkosky "
+      "phase-space terminal node as outside the eta->infinity boundary subset");
+}
+
 void GeneratePlannedEtaInfinityBoundaryRequestUserDefinedSingletonHappyPathTest() {
   amflow::EndingDecision custom_decision;
   custom_decision.terminal_strategy = "custom::should-not-be-used";
@@ -8675,6 +8742,23 @@ void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestIgnoresInertAmfOpti
   Expect(SameBoundaryRequest(inert, baseline),
          "AmfOptions eta->infinity boundary generation should ignore inert "
          "non-ending_schemes AmfOptions fields");
+}
+
+void GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestStopsAtCutkoskyPhaseSpaceSelectionTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+            spec,
+            amf_options,
+            {},
+            "eta"));
+      },
+      "unsupported extra terminal node planar_double_box::cutkosky-phase-space",
+      "AmfOptions eta->infinity boundary generation should stop on the first selected "
+      "Cutkosky phase-space ending instead of falling through to later placeholder endings");
 }
 
 void GenerateBuiltinEtaInfinityBoundaryRequestSupportsEtaSymbolOverrideTest() {
@@ -28903,6 +28987,8 @@ int main() {
     ResolveEndingSchemeRejectsBuiltinNameCollisionsUnrelatedToQueryTest();
     ResolveEndingSchemeRejectsNullRegistryEntriesTest();
     PlanEndingSchemeBuiltinHappyPathTest();
+    PlanEndingSchemeTraditionRejectsPhaseSpaceSubsetTest();
+    PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
     PlanEndingSchemeRejectsRegistryValidationFailureTest();
@@ -28914,6 +29000,7 @@ int main() {
     PlanEndingSchemeListExhaustedKnownModesPreservesLastDiagnosticTest();
     PlanAmfOptionsEndingSchemeHappyPathTest();
     PlanAmfOptionsEndingSchemeUsesDefaultEndingSchemeListTest();
+    PlanAmfOptionsEndingSchemeSelectsCutkoskyOnPhaseSpaceSubsetTest();
     PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();
@@ -29005,6 +29092,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRejectsPreexistingBoundaryConditionsTest();
     AttachBoundaryConditionsFromProviderIsDeterministicAndNonMutatingTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();
+    GeneratePlannedEtaInfinityBoundaryRequestRejectsCutkoskyPhaseSpaceTerminalNodeTest();
     GeneratePlannedEtaInfinityBoundaryRequestUserDefinedSingletonHappyPathTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinTrivialRejectsExtraNodeTest();
     GeneratePlannedEtaInfinityBoundaryRequestRejectsUserDefinedExtraNodeTest();
@@ -29018,6 +29106,7 @@ int main() {
     GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestFallsThroughInvalidArgumentPlanningFailureTest();
     GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestPlanningShortCircuitTest();
     GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestIgnoresInertAmfOptionsFieldsTest();
+    GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequestStopsAtCutkoskyPhaseSpaceSelectionTest();
     GenerateBuiltinEtaInfinityBoundaryRequestSampleSpecHappyPathTest();
     GenerateBuiltinEtaInfinityBoundaryRequestSupportsEtaSymbolOverrideTest();
     GenerateBuiltinEtaInfinityBoundaryRequestIgnoresNonBoundaryProblemSpecFieldsTest();

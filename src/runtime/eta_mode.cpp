@@ -1115,6 +1115,28 @@ std::shared_ptr<EtaMode> ResolveEtaMode(
   return MakeBuiltinEtaMode(name);
 }
 
+EtaInsertionDecision PlanBuiltinAmfOptionsEtaMode(const ProblemSpec& spec,
+                                                  const AmfOptions& amf_options) {
+  if (amf_options.amf_modes.empty()) {
+    throw std::invalid_argument("builtin eta-mode list must not be empty");
+  }
+
+  for (std::size_t index = 0; index < amf_options.amf_modes.size(); ++index) {
+    const std::string& eta_mode_name = amf_options.amf_modes[index];
+    const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(eta_mode_name);
+    try {
+      return eta_mode->Plan(spec);
+    } catch (const std::runtime_error&) {
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
+          index + 1 == amf_options.amf_modes.size()) {
+        throw;
+      }
+    }
+  }
+
+  throw std::runtime_error("failed to select a builtin eta mode");
+}
+
 EtaInsertionDecision PlanAmfOptionsEtaMode(
     const ProblemSpec& spec,
     const AmfOptions& amf_options,

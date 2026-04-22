@@ -4175,9 +4175,7 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
-  const std::string selected_eta_mode_name = SelectBuiltinEtaModeName(spec, amf_options.amf_modes);
-  const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(selected_eta_mode_name);
-  const EtaInsertionDecision decision = eta_mode->Plan(spec);
+  const EtaInsertionDecision decision = PlanBuiltinAmfOptionsEtaMode(spec, amf_options);
   return SolvePlannedAmfOptionsEtaModeSeries(spec,
                                              master_basis,
                                              decision,

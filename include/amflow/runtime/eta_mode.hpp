@@ -31,6 +31,9 @@ std::shared_ptr<EtaMode> MakeBuiltinEtaMode(const std::string& name);
 std::shared_ptr<EtaMode> ResolveEtaMode(
     const std::string& name,
     const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes);
+EtaInsertionDecision PlanBuiltinAmfOptionsEtaMode(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options);
 EtaInsertionDecision PlanAmfOptionsEtaMode(
     const ProblemSpec& spec,
     const AmfOptions& amf_options,

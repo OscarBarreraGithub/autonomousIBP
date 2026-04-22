@@ -4372,6 +4372,120 @@ amflow::EtaInsertionDecision PlanEtaModeListBaseline(
   throw std::runtime_error("failed to select an eta mode");
 }
 
+amflow::EtaInsertionDecision PlanBuiltinEtaModeListBaseline(
+    const amflow::ProblemSpec& spec,
+    const std::vector<std::string>& eta_mode_names) {
+  if (eta_mode_names.empty()) {
+    throw std::invalid_argument("builtin eta-mode list must not be empty");
+  }
+
+  for (std::size_t index = 0; index < eta_mode_names.size(); ++index) {
+    const std::string& eta_mode_name = eta_mode_names[index];
+    const std::shared_ptr<amflow::EtaMode> eta_mode =
+        amflow::MakeBuiltinEtaMode(eta_mode_name);
+    try {
+      return eta_mode->Plan(spec);
+    } catch (const std::runtime_error&) {
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
+          index + 1 == eta_mode_names.size()) {
+        throw;
+      }
+    }
+  }
+
+  throw std::runtime_error("failed to select a builtin eta mode");
+}
+
+void PlanBuiltinAmfOptionsEtaModeHappyPathTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions poisoned_amf_options =
+      MakePoisonedAmfOptions({"Mass", "Propagator"});
+  amflow::AmfOptions clean_amf_options;
+  clean_amf_options.amf_modes = poisoned_amf_options.amf_modes;
+
+  const amflow::EtaInsertionDecision baseline =
+      PlanBuiltinEtaModeListBaseline(spec, poisoned_amf_options.amf_modes);
+  const amflow::EtaInsertionDecision decision =
+      amflow::PlanBuiltinAmfOptionsEtaMode(spec, poisoned_amf_options);
+  const amflow::EtaInsertionDecision clean_decision =
+      amflow::PlanBuiltinAmfOptionsEtaMode(spec, clean_amf_options);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin AmfOptions eta-mode planner should not mutate the input problem spec");
+  Expect(SameEtaInsertionDecision(decision, baseline),
+         "builtin AmfOptions eta-mode planner should preserve ordered builtin fallback and "
+         "return the same winning eta decision as the direct builtin-list baseline");
+  Expect(SameEtaInsertionDecision(clean_decision, baseline),
+         "builtin AmfOptions eta-mode planner should ignore non-amf_modes fields, including "
+         "policy, cache, and D0 inputs");
+}
+
+void PlanBuiltinAmfOptionsEtaModeRejectsEmptyAmfModeListTest() {
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({});
+
+  ExpectInvalidArgument(
+      [&amf_options]() {
+        static_cast<void>(
+            amflow::PlanBuiltinAmfOptionsEtaMode(amflow::MakeSampleProblemSpec(), amf_options));
+      },
+      "builtin eta-mode list must not be empty",
+      "builtin AmfOptions eta-mode planner should preserve empty builtin-list diagnostics");
+}
+
+void PlanBuiltinAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest() {
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"MissingMode", "Propagator"});
+
+  ExpectInvalidArgument(
+      [&amf_options]() {
+        static_cast<void>(
+            amflow::PlanBuiltinAmfOptionsEtaMode(amflow::MakeSampleProblemSpec(), amf_options));
+      },
+      "unknown eta mode: MissingMode",
+      "builtin AmfOptions eta-mode planner should preserve unknown-name diagnostics");
+}
+
+void PlanBuiltinAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Mass"});
+
+  const std::string baseline_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options]() {
+        static_cast<void>(PlanBuiltinEtaModeListBaseline(spec, amf_options.amf_modes));
+      },
+      "builtin eta-mode planner baseline should preserve the final planning diagnostic when the "
+      "configured builtin list exhausts");
+  const std::string helper_message = CaptureRuntimeErrorMessage(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanBuiltinAmfOptionsEtaMode(spec, amf_options));
+      },
+      "builtin AmfOptions eta-mode planner should preserve the final planning diagnostic when "
+      "the configured builtin list exhausts");
+
+  Expect(helper_message == baseline_message,
+         "builtin AmfOptions eta-mode planner should preserve the final planning diagnostic when "
+         "the configured builtin list exhausts");
+}
+
+void PlanBuiltinAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedBranchLoopGrammarSpec();
+
+  for (const std::string& mode_name : std::vector<std::string>{"Branch", "Loop"}) {
+    const amflow::AmfOptions amf_options =
+        MakePoisonedAmfOptions({mode_name, "Propagator"});
+    const std::string message = CaptureRuntimeErrorMessage(
+        [&spec, &amf_options]() {
+          static_cast<void>(amflow::PlanBuiltinAmfOptionsEtaMode(spec, amf_options));
+        },
+        "builtin AmfOptions eta-mode planner should preserve builtin Branch/Loop blockers");
+    ExpectBranchLoopBootstrapBlockerMessage(
+        message,
+        mode_name,
+        "builtin AmfOptions eta-mode planner should preserve builtin Branch/Loop blockers");
+  }
+}
+
 void PlanAmfOptionsEtaModeHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -24710,6 +24824,11 @@ int main() {
     ResolveEtaModeRejectsBuiltinNameCollisionsUnrelatedToQueryTest();
     ResolveEtaModeRejectsPrescriptionBuiltinNameCollisionsUnrelatedToQueryTest();
     ResolveEtaModeRejectsNullRegistryEntriesTest();
+    PlanBuiltinAmfOptionsEtaModeHappyPathTest();
+    PlanBuiltinAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
+    PlanBuiltinAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
+    PlanBuiltinAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();
+    PlanBuiltinAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest();
     PlanAmfOptionsEtaModeHappyPathTest();
     PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
     PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();

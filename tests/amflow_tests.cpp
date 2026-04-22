@@ -5126,6 +5126,184 @@ void EtaInsertionAllowsNonzeroMassPropagatorsTest() {
          "nonzero-mass path when the input masses are already trimmed");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*((k)^2) + (k*n)",
+         "reviewed lightlike linear auxiliary rewrite should return the first lightlike "
+         "quadratic driver on the narrow gauge-link subset");
+  Expect(rewritten.mass == spec.family.propagators[2].mass,
+         "reviewed lightlike linear auxiliary rewrite should preserve the original mass literal");
+  Expect(rewritten.kind == amflow::PropagatorKind::Standard,
+         "reviewed lightlike linear auxiliary rewrite should return a quadratic Standard "
+         "propagator");
+  Expect(rewritten.variant.has_value() &&
+             *rewritten.variant == amflow::PropagatorVariant::Quadratic,
+         "reviewed lightlike linear auxiliary rewrite should mark the rewritten propagator as "
+         "explicitly quadratic");
+  Expect(rewritten.prescription == spec.family.propagators[2].prescription,
+         "reviewed lightlike linear auxiliary rewrite should preserve the original prescription");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "reviewed lightlike linear auxiliary rewrite should not mutate the input problem spec");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesConstantsAndCoefficientsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "1/2 + 3*k*n";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, " chi ");
+
+  Expect(rewritten.expression == "chi*(((3)*(k))^2) + (1/2 + 3*k*n)",
+         "reviewed lightlike linear auxiliary rewrite should preserve rational constants and "
+         "canonicalize the loop coefficient on the reviewed subset");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTopLevelSubtractionSignsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "1/2 - 3*k*n";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*(((-3)*(k))^2) + (1/2 - 3*k*n)",
+         "reviewed lightlike linear auxiliary rewrite should preserve top-level subtraction "
+         "signs inside the claimed rational-plus-bilinear grammar");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesLeadingUnaryMinusTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "-k*n";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*(((-1)*(k))^2) + (-k*n)",
+         "reviewed lightlike linear auxiliary rewrite should preserve a leading unary-minus "
+         "bilinear coefficient on the claimed rational-coefficient surface");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesSpacedPostSeparatorUnaryMinusTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "1/2 - -k*n";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*((k)^2) + (1/2 - -k*n)",
+         "reviewed lightlike linear auxiliary rewrite should normalize a spaced post-separator "
+         "unary minus on the claimed rational-coefficient surface");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTrailingConstantDivisionTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k*n/2";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*(((1/2)*(k))^2) + (k*n/2)",
+         "reviewed lightlike linear auxiliary rewrite should preserve rational coefficients "
+         "that appear as constant denominators after the loop-external bilinear");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k*n/(2*3)";
+
+  const amflow::Propagator grouped_product =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(grouped_product.expression == "x*(((1/6)*(k))^2) + (k*n/(2*3))",
+         "reviewed lightlike linear auxiliary rewrite should preserve grouped constant-product "
+         "denominators on the claimed rational-coefficient surface");
+
+  spec.family.propagators[2].expression = "k*n/(2/3)";
+  const amflow::Propagator grouped_quotient =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(grouped_quotient.expression == "x*(((3/2)*(k))^2) + (k*n/(2/3))",
+         "reviewed lightlike linear auxiliary rewrite should preserve grouped constant-quotient "
+         "denominators on the claimed rational-coefficient surface");
+
+  spec.family.propagators[2].expression = "k*n/(2+3)";
+  const amflow::Propagator grouped_sum =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(grouped_sum.expression == "x*(((1/5)*(k))^2) + (k*n/(2+3))",
+         "reviewed lightlike linear auxiliary rewrite should preserve grouped additive constant "
+         "denominators on the claimed rational-coefficient surface");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, " "));
+      },
+      "reviewed lightlike linear auxiliary rewrite symbol must not be empty",
+      "reviewed lightlike linear auxiliary rewrite should reject empty auxiliary symbols");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(
+            spec, spec.family.propagators.size(), "x"));
+      },
+      "propagator index out of range",
+      "reviewed lightlike linear auxiliary rewrite should reject out-of-range propagator "
+      "indices");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].variant.reset();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "to carry explicit variant \"linear\" on kind \"linear\"",
+      "reviewed lightlike linear auxiliary rewrite should keep legacy kind-only linear "
+      "metadata outside the claimed subset");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "1"},
+  };
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "requires scalar-product rule n*n to evaluate exactly to 0",
+      "reviewed lightlike linear auxiliary rewrite should reject non-lightlike external "
+      "surfaces");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.outgoing_momenta.push_back("p");
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "requires exactly one declared external momentum symbol",
+      "reviewed lightlike linear auxiliary rewrite should keep broader multi-external gauge-link "
+      "surfaces deferred");
+}
+
 void AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const auto mode = amflow::MakeBuiltinEtaMode("All");
@@ -36584,6 +36762,18 @@ int main() {
     EtaInsertionRejectsEmptySelectionTest();
     EtaInsertionRejectsAuxiliaryPropagatorsTest();
     EtaInsertionAllowsNonzeroMassPropagatorsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorHappyPathTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesConstantsAndCoefficientsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTopLevelSubtractionSignsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesLeadingUnaryMinusTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesSpacedPostSeparatorUnaryMinusTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTrailingConstantDivisionTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest();
     AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     AllEtaModeSkipsAuxiliaryPropagatorsTest();
     PrescriptionEtaModeSelectsUncutMinusI0PropagatorsTest();

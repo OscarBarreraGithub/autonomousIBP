@@ -15,6 +15,11 @@ struct AuxiliaryFamilyTransformResult {
   std::vector<std::size_t> rewritten_propagator_indices;
 };
 
+Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(
+    const ProblemSpec& spec,
+    std::size_t propagator_index,
+    const std::string& x_symbol = "x");
+
 AuxiliaryFamilyTransformResult ApplyEtaInsertion(
     const ProblemSpec& spec,
     const EtaInsertionDecision& decision,

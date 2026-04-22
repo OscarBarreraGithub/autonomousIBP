@@ -84,12 +84,16 @@ python3 tools/reference-harness/scripts/capture_phase0_reference.py \
 python3 tools/reference-harness/scripts/validate_qualification_scaffold.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
+
+python3 tools/reference-harness/scripts/qualification_readiness.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --self-check
 ```
 
-`amflow-tests` now exercises all five helper self-checks through the configured
+`amflow-tests` now exercises all six helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, and qualification-readiness regression paths without needing a real benchmark
-packet.
+retained-capture, scaffold-validation, and qualification-readiness regression paths without
+needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -146,6 +150,23 @@ The validator keeps the accepted `required-set` packet distinct from the narrowe
 and `user-hook-pair` packets whose manifests truthfully remain `bootstrap-only`, while still
 crediting their benchmark-level retained goldens in the readiness report.
 
+To aggregate the accepted required retained root plus any narrower optional packets into the first
+machine-readable M6 readiness summary:
+
+```bash
+python3 tools/reference-harness/scripts/qualification_readiness.py \
+  --root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set \
+  --optional-packet-root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair \
+  --optional-packet-root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair
+```
+
+Add `--summary-path` if you want the JSON summary written to disk as well as printed to stdout.
+The helper is evidence-only: it validates the retained phase-0 packet set against
+`templates/qualification-benchmarks.json`, keeps blocked `next_runtime_lane` hints visible, and
+normalizes older optional packets that predate the explicit `optional_capture_packet` summary field
+by inferring that packet id from the scaffold when the retained packet contents make the mapping
+unambiguous.
+
 The capture script writes:
 
 - `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
@@ -198,6 +219,11 @@ The capture script writes:
   reports which phase-0 example classes are already covered by the current `required-set`,
   `de-d0-pair`, and `user-hook-pair` packet split without claiming any new parity or `Milestone M6`
   closure.
+- `qualification_readiness.py` is the first M6 groundwork summary helper: it aggregates the
+  accepted required retained root plus any narrower optional packet roots into one
+  machine-readable readiness summary, validates that the observed retained artifacts still match
+  the scaffold, and keeps blocked `next_runtime_lane` hints visible without running any
+  qualification numerics.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`
@@ -210,3 +236,6 @@ The capture script writes:
   per-run manifests through `--resume-existing` and the explicit benchmark-selection contract for
   repeated `--benchmark-id` flags, `--required-only`, and direct `--optional-capture-packet`
   selection.
+- `qualification_readiness.py --self-check` exercises the first M6 groundwork summary against one
+  synthetic required retained root plus two synthetic optional packets, including scaffold-based
+  inference of an older optional packet id that is absent from the retained packet summary.

@@ -178,6 +178,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
 - `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` selects every matching ready benchmark in that same frozen order, at most one explicit selection mode may be used at a time, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py`: the first narrow M6 readiness helper. It consumes one or more retained phase-0 packet roots, validates their manifests / capture summaries / promoted comparison surfaces against the current qualification scaffold, and reports which frozen phase-0 example classes already have retained goldens across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` packet split. This is an evidence-audit helper only: it does not run any qualification numerics and does not claim case-study parity or `Milestone M6` closure.
+- `tools/reference-harness/scripts/qualification_readiness.py`: first M6 groundwork helper. It aggregates the accepted required retained root plus any narrower optional packet roots against `templates/qualification-benchmarks.json`, validates that every observed captured example still publishes promoted golden/result manifests plus passing comparison summaries, and writes one machine-readable summary of retained `reference-captured` versus still-pending phase-0 examples together with the blocked `next_runtime_lane` hints that remain on the scaffold. Older optional packets may predate the explicit `optional_capture_packet` summary field; when every captured example in one packet shares the same scaffold packet hint, this helper infers that packet id from the scaffold instead of requiring the external retained packet to be rewritten.
 
 ## Qualification Scaffold
 
@@ -202,13 +203,17 @@ retained outputs and rerun evidence.
 - Future optional-capture lanes should pair the scaffold with
   `tools/reference-harness/templates/phase0-benchmarks.json` so that catalog completeness
   (`feynman_prescription` included) and later qualification thresholds stay synchronized.
+- The first M6 groundwork helper is `tools/reference-harness/scripts/qualification_readiness.py`.
+  It is still evidence-only: the helper summarizes the currently retained phase-0 packet set and
+  verifies scaffold alignment, but it does not run any benchmark family qualification corpus and
+  does not claim `Milestone M6` is passing.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All five helpers expose `--self-check` modes so the repo can
-rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, and the
-new qualification-readiness audit without needing a full benchmark packet. `amflow-tests` now
-drives those bootstrap, fetch, placeholder-freeze, retained-capture, and qualification-readiness
-self-checks through the configured repo-local Python interpreter, and the retained-capture helper
-also self-checks the restart-safe `--resume-existing` path plus the explicit benchmark-id,
-optional-packet, and `--required-only` selection contract, including direct
-`optional_capture_packet` selection.
+the retained-golden promotion path. All six helpers expose `--self-check` modes so the repo can
+rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, scaffold
+validation, and the new qualification-readiness audit without needing a full benchmark packet.
+`amflow-tests` now drives those bootstrap, fetch, placeholder-freeze, retained-capture,
+scaffold-validation, and qualification-readiness self-checks through the configured repo-local
+Python interpreter, and the retained-capture helper also self-checks the restart-safe
+`--resume-existing` path plus the explicit benchmark-id, optional-packet, and `--required-only`
+selection contract, including direct `optional_capture_packet` selection.

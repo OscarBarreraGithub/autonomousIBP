@@ -1622,8 +1622,14 @@ std::vector<std::filesystem::path> OptionalPhase0ReferencePacketRoots() {
           "phase0-reference-captured-20260422-de-d0-pair"),
       std::filesystem::path(
           "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
-          "phase0-reference-captured-20260422-user-hook-pair"),
+      "phase0-reference-captured-20260422-user-hook-pair"),
   };
+}
+
+std::filesystem::path RequiredPhase0ReferenceCapturedRoot() {
+  return std::filesystem::path(
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+      "phase0-reference-captured-20260419-required-set");
 }
 
 std::filesystem::path UserHookOptionalPhase0ReferencePacketRoot() {
@@ -34049,6 +34055,80 @@ void QualificationScaffoldReadinessMatchesRetainedPacketSetTest() {
                  "qualification scaffold readiness report should keep linear_propagator pending");
 }
 
+void QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-qualification-readiness-summary") / "summary.json";
+
+  std::vector<std::string> script_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    script_args.push_back("--optional-packet-root");
+    script_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-qualification-readiness-summary-run",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      script_args,
+      "qualification readiness summary");
+  Expect(result.stderr_log.empty(),
+         "qualification readiness summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "qualification readiness summary should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"required_root_reference_captured\": true",
+                 "qualification readiness summary should keep the accepted M0b root in the "
+                 "reference-captured state");
+  ExpectContains(result.stdout_json, "\"required_root_captures_required_set\": true",
+                 "qualification readiness summary should keep the required phase-0 pair on the "
+                 "accepted M0b root");
+  ExpectContains(result.stdout_json, "\"required_root_only_captures_required_set\": true",
+                 "qualification readiness summary should keep the accepted M0b root scoped to "
+                 "the required phase-0 pair exactly");
+  ExpectContains(result.stdout_json, "\"optional_packets_preserve_bootstrap_only_state\": true",
+                 "qualification readiness summary should preserve bootstrap-only manifest state "
+                 "on narrower optional packets");
+  ExpectContains(result.stdout_json, "\"captured_examples_publish_reference_artifacts\": true",
+                 "qualification readiness summary should require promoted golden and result "
+                 "manifests for captured examples");
+  ExpectContains(result.stdout_json, "\"captured_examples_pass_comparison_checks\": true",
+                 "qualification readiness summary should require reference-captured comparison "
+                 "status plus backup and rerun agreement");
+  ExpectContains(result.stdout_json, "\"observed_reference_captured_matches_scaffold\": true",
+                 "qualification readiness summary should keep observed retained captures aligned "
+                 "with the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"optional_capture_packets_match_scaffold\": true",
+                 "qualification readiness summary should keep optional packet groupings aligned "
+                 "with the scaffold hints");
+  ExpectContains(result.stdout_json, "\"inferred_optional_capture_packet\": \"de-d0-pair\"",
+                 "qualification readiness summary should infer older optional packet ids from the "
+                 "scaffold when the retained summary predates the explicit packet field");
+  ExpectContains(result.stdout_json, "\"reported_optional_capture_packet\": \"user-hook-pair\"",
+                 "qualification readiness summary should preserve explicit packet ids from newer "
+                 "retained packet summaries");
+  ExpectContains(result.stdout_json,
+                 "\"blocked_case_study_families_preserve_runtime_lane_hints\": true",
+                 "qualification readiness summary should keep blocked case-study lane hints "
+                 "visible");
+  ExpectContains(result.stdout_json, "\"id\": \"complex_kinematics\"",
+                 "qualification readiness summary should keep blocked complex-kinematics evidence "
+                 "visible");
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b61k\"",
+                 "qualification readiness summary should keep the blocked complex-kinematics "
+                 "next-slice hint visible");
+  ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
+                 "qualification readiness summary should keep the blocked singular case-study "
+                 "anchor visible");
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62k\"",
+                 "qualification readiness summary should keep the blocked singular case-study "
+                 "next-slice hint visible");
+}
+
 void FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
       "amflow-reference-harness-fetch-self-check",
@@ -34158,6 +34238,49 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
   ExpectContains(result.stdout_json, "\"resume_reused_existing_runs\": true",
                  "capture reference-harness self-check should reuse retained run manifests when "
                  "--resume-existing is requested");
+}
+
+void QualificationReadinessSelfCheckAggregatesRetainedPacketsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+      "amflow-reference-harness-qualification-self-check",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      "qualification readiness self-check");
+  Expect(result.stderr_log.empty(),
+         "qualification readiness self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"required_root_reference_captured\": true",
+                 "qualification readiness self-check should require the synthetic required root "
+                 "to stay reference-captured");
+  ExpectContains(result.stdout_json, "\"required_root_captures_required_set\": true",
+                 "qualification readiness self-check should require the synthetic required root "
+                 "to carry the required phase-0 pair");
+  ExpectContains(result.stdout_json, "\"required_root_only_captures_required_set\": true",
+                 "qualification readiness self-check should keep the synthetic required root "
+                 "scoped to the required phase-0 pair exactly");
+  ExpectContains(result.stdout_json,
+                 "\"optional_capture_packet_inferred_from_scaffold\": true",
+                 "qualification readiness self-check should infer older optional packet ids from "
+                 "the scaffold when the summary omits them");
+  ExpectContains(result.stdout_json, "\"optional_capture_packets_match_scaffold\": true",
+                 "qualification readiness self-check should keep optional packet groupings "
+                 "aligned with the scaffold");
+  ExpectContains(result.stdout_json, "\"captured_examples_publish_reference_artifacts\": true",
+                 "qualification readiness self-check should require promoted artifact paths for "
+                 "captured examples");
+  ExpectContains(result.stdout_json, "\"captured_examples_pass_comparison_checks\": true",
+                 "qualification readiness self-check should require reference-captured "
+                 "comparison status plus backup and rerun agreement");
+  ExpectContains(result.stdout_json, "\"observed_reference_captured_matches_scaffold\": true",
+                 "qualification readiness self-check should keep the synthetic retained evidence "
+                 "aligned with the scaffold");
+  ExpectContains(result.stdout_json, "\"pending_examples_preserve_runtime_lane_hints\": true",
+                 "qualification readiness self-check should keep blocked phase-0 lane hints "
+                 "visible");
+  ExpectContains(result.stdout_json,
+                 "\"blocked_case_study_families_preserve_runtime_lane_hints\": true",
+                 "qualification readiness self-check should keep blocked case-study lane hints "
+                 "visible");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "qualification readiness self-check should write the synthetic summary output");
 }
 
 void OptionDefaultsTest() {
@@ -35019,9 +35142,11 @@ int main() {
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();
     QualificationScaffoldReadinessSelfCheckAggregatesRetainedPacketsTest();
     QualificationScaffoldReadinessMatchesRetainedPacketSetTest();
+    QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest();
     FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
     CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();
+    QualificationReadinessSelfCheckAggregatesRetainedPacketsTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

@@ -36,6 +36,32 @@
 - `2025-moller-ew-double-box`
   Strong electroweak double-box target even without confirmed explicit AMFlow use.
 
+## Qualification Scaffold IDs
+
+- `package-double-box`
+  Internal parity-matrix anchor for the baseline package family; no dedicated literature packet is frozen yet.
+- `ttbar-j`
+  Current literature anchor: `2023-ttj-planar-topology`.
+- `ttbar-h`
+  Current preferred precision anchor: `2024-tth-light-quark-loop-mi`, which carries the stronger `100`-digit floor.
+- `five-point-one-mass-scattering`
+  Current literature anchor: `2024-five-point-one-mass-scattering`.
+- `ttbar-w`
+  Current literature anchor: `2025-ttw-leading-colour-integrals`.
+- `diphoton-heavy-quark-form-factors`
+  Current literature anchor: `2023-diphoton-heavy-quark-form-factors`, which carries the stronger `200`-digit floor.
+- `h-to-bb`
+  Current literature anchor: `2024-h-to-bb-nnlo`.
+- `n4-sym-three-loop-form-factor`
+  Current literature anchor: `2024-n4-sym-three-loop-form-factor`.
+- `single-top-planar-nonplanar`
+  Current literature anchor: `2023-single-top-planar-nonplanar-topologies`.
+- `one-singular-endpoint-case`
+  Internal parity-matrix guardrail anchor for the singular-surface family; no dedicated literature packet is frozen yet.
+
+Unless a stronger profile is named above, the qualification scaffold uses the default `50`-digit
+core-family floor from `docs/verification-strategy.md`.
+
 ## Regression Gaps Still Worth Tracking
 
 - six-point multiscale physical-region examples remain thinner than five-point examples

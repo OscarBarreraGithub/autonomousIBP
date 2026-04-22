@@ -72,8 +72,11 @@ retained outputs and rerun evidence.
   sufficient there for path stability only
 - `M0b` is now accepted on the required phase-0 benchmark set only: the retained root above has
   promoted goldens plus passed bundled-backup and rerun-reproducibility summaries for
-  `automatic_vs_manual` and `automatic_loop`, while the remaining frozen examples and later
-  regression families stay on the rolling future-capture lane
+  `automatic_vs_manual` and `automatic_loop`. The remaining frozen examples
+  `complex_kinematics`, `differential_equation_solver`, `feynman_prescription`,
+  `automatic_phasespace`, `linear_propagator`, `spacetime_dimension`, `user_defined_amfmode`,
+  and `user_defined_ending`, plus the later regression families, stay on the rolling
+  future-capture lane
 
 ## Canonical Baseline
 
@@ -114,7 +117,7 @@ retained outputs and rerun evidence.
 - `results/`: benchmark-specific raw outputs, run manifests, and canonicalized sidecars
 - `comparisons/`: placeholder and later real comparison summaries
 - `goldens/phase0/`: per-benchmark placeholder golden metadata, promoted golden-output manifests, and an index file
-- `templates/`: copied benchmark, manifest, env, Wolfram, and placeholder templates
+- `templates/`: copied benchmark, manifest, env, Wolfram, placeholder, and qualification templates
 - `state/`: bootstrap and fetch summaries for automation and audit trails
 
 ## Bring-Up Sequence
@@ -128,7 +131,7 @@ retained outputs and rerun evidence.
 6. Freeze or refresh the placeholder phase-0 golden layout with `freeze_phase0_goldens.py`, creating stable metadata, coefficient-table, comparison, log, config, and result paths for each benchmark. Benchmark IDs are path-safe only. By default the script refreshes missing or placeholder-status files and preserves promoted real artifacts unless `--force` is supplied.
 7. Verify the Wolfram kernel is usable in non-interactive mode once the licensed environment is ready.
 8. Run dependency sanity checks in the pinned environment.
-9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any available complex, phase-space, linear-propagator, arbitrary-`D0`, and custom-mode examples.
+9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any available `complex_kinematics`, `differential_equation_solver`, `feynman_prescription`, `automatic_phasespace`, `linear_propagator`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending` examples.
 10. Promote the primary retained outputs to goldens, canonicalize the Mathematica output files for truthful comparison, and rerun the pinned environment to prove reproducibility.
 
 ## Current Batch-2 Scripts
@@ -137,6 +140,18 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
 - `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels.
+
+## Qualification Scaffold
+
+- `tools/reference-harness/templates/qualification-benchmarks.json` is the first machine-readable
+  M6 scaffold. It mirrors every parity-matrix frozen example class and case-study family, freezes
+  the current digit-threshold profiles, and carries the required failure-code and regression
+  profiles that future qualification packets must keep visible.
+- The scaffold is planning metadata only. Adding or editing it does not claim any new
+  `reference-captured` benchmark, any new runtime parity, or any reviewed solver widening.
+- Future optional-capture lanes should pair the scaffold with
+  `tools/reference-harness/templates/phase0-benchmarks.json` so that catalog completeness
+  (`feynman_prescription` included) and later qualification thresholds stay synchronized.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
 the retained-golden promotion path. All four helpers expose `--self-check` modes so the repo can

@@ -8,6 +8,10 @@ Kira/Fermat install hook to the pinned toolchain, runs each selected example twi
 Mathematica outputs as goldens, canonicalizes rule-list ordering for truthful comparisons, and
 emits machine-readable backup-match plus rerun-reproducibility summaries.
 
+The shipped phase-0 catalog now names all frozen upstream examples, including
+`feynman_prescription`; only `automatic_vs_manual` and `automatic_loop` are required for the
+accepted `reference-captured` gate today.
+
 ## Quick Start
 
 ```bash
@@ -110,7 +114,7 @@ The capture script writes:
 - `results/`: captured benchmark outputs, run manifests, and canonical sidecars
 - `comparisons/`: parity and reproducibility reports vs retained goldens
 - `goldens/`: phase-0 golden metadata, promoted output manifests, and index files
-- `templates/`: copied manifest, environment, Wolfram, and phase-0 benchmark templates
+- `templates/`: copied manifest, environment, Wolfram, phase-0 benchmark, and qualification templates
 - `state/`: bootstrap/fetch summaries for automation and audit trails
 
 ## Required External Inputs
@@ -129,6 +133,9 @@ The capture script writes:
   upstream examples can rewrite the same rule set in a different textual order across runs even
   when the mathematical result is unchanged.
 - The templates here are designed to match the repo-level docs in `docs/reference-harness.md` and the manifest shape in `specs/reference-harness-manifest.yaml`.
+- `templates/qualification-benchmarks.json` is the first machine-readable M6 scaffold: it mirrors
+  the parity-matrix benchmark families, the current digit-threshold profiles, the required failure
+  codes, and the known regression families without claiming any new captured evidence.
 - The fetch helper `--self-check` now also verifies the tar extraction policy against rejected symlink, hardlink, device, absolute-path, and escaping entries.
 - `capture_phase0_reference.py --self-check` exercises the retained-golden promotion flow end to
   end against a synthetic benchmark without requiring Kira or Fermat, including reuse of retained

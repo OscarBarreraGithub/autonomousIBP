@@ -139,6 +139,11 @@ The migration is phase-gated. Every phase must pass:
 - precision monotonicity is mandatory
 - unstable runs must fail explicitly with diagnostics
 
+These floors are mirrored in
+`tools/reference-harness/templates/qualification-benchmarks.json` so future M6 qualification lanes
+can consume one machine-readable threshold scaffold instead of reverse-engineering this document
+and `specs/parity-matrix.yaml`.
+
 ## Phase-0 Harness States
 
 - `bootstrap-only`: the harness layout, manifest, pinned inputs, and placeholder benchmark metadata exist, but the required phase-0 benchmark set has not yet been retained as real Wolfram outputs
@@ -219,8 +224,13 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - `specs/reference-harness-manifest.yaml` defines the manifest shape that the bootstrap writes as JSON.
 - `tools/reference-harness/templates/phase0-benchmarks.json` freezes the initial phase-0 benchmark catalog.
 - `tools/reference-harness/templates/phase0-golden.template.json` and `comparison-summary.template.json` define the placeholder and promoted comparison contracts.
+- `tools/reference-harness/templates/qualification-benchmarks.json` freezes the current
+  qualification scaffold: parity-matrix benchmark families, digit-threshold profiles, required
+  failure codes, and known regression families.
 - `docs/implementation-ledger.md` tracks which implementation batches have been reviewed and what verification was run.
 
-The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification suite as the solver is implemented.
+The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification
+suite as the solver is implemented. The qualification scaffold is planning metadata only: it does
+not by itself claim any new captured benchmark evidence or solver parity.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

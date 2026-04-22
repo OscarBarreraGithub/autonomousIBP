@@ -33,6 +33,14 @@
       "notes": "Standalone DE solver smoke test if present in the pinned example set."
     },
     {
+      "id": "feynman_prescription",
+      "label": "feynman_prescription",
+      "required": false,
+      "feature_gate": "phase0",
+      "oracle": "upstream-amflow",
+      "notes": "User-defined Feynman prescription smoke test if present in the pinned example set."
+    },
+    {
       "id": "automatic_phasespace",
       "label": "automatic_phasespace",
       "required": false,

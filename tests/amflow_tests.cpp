@@ -18895,6 +18895,78 @@ void SolveInvariantGeneratedSeriesListRejectsRawMsqSegmentEndpointCrossingBefore
          "crosses a reviewed singular segment");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentThresholdCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-crossing-msq-threshold-segment-"
+          "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=7",
+                                                "msq=8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62k should reject explicit reviewed msq segments on multi-invariant list "
+         "requests before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62k should report the threshold locus when explicit multi-invariant msq "
+      "continuation crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62k should not call the solver when explicit multi-invariant msq continuation "
+         "crosses a reviewed singular segment");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentEndpointCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-crossing-msq-endpoint-segment-"
+          "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=6",
+                                                "msq=7",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62k should reject explicit reviewed endpoint-crossing msq segments on "
+         "multi-invariant list requests before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62k should report the endpoint locus when explicit multi-invariant msq "
+      "continuation crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62k should not call the solver when explicit multi-invariant msq continuation "
+         "crosses a reviewed endpoint segment");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -34766,6 +34838,8 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMsqSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawMsqSegmentEndpointCrossingBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentThresholdCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentEndpointCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();

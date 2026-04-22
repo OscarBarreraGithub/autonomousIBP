@@ -154,6 +154,61 @@ std::string RemoveWhitespace(const std::string& value) {
   return normalized;
 }
 
+std::optional<std::string> ParseExplicitLocationAssignmentVariable(
+    const std::string& location) {
+  const std::string trimmed = Trim(location);
+  if (trimmed.empty()) {
+    return std::nullopt;
+  }
+
+  const std::size_t separator = trimmed.find('=');
+  if (separator == std::string::npos ||
+      trimmed.find('=', separator + 1) != std::string::npos) {
+    return std::nullopt;
+  }
+
+  const std::string variable = Trim(trimmed.substr(0, separator));
+  const std::string expression = Trim(trimmed.substr(separator + 1));
+  if (variable.empty() || expression.empty()) {
+    return std::nullopt;
+  }
+  return variable;
+}
+
+std::optional<std::string> ResolveReviewedInvariantListSegmentName(
+    const std::vector<std::string>& invariant_names,
+    const std::string& start_location,
+    const std::string& target_location) {
+  if (invariant_names.size() == 1 &&
+      (invariant_names.front() == "s" || invariant_names.front() == "t" ||
+       invariant_names.front() == "msq")) {
+    return invariant_names.front();
+  }
+
+  const std::optional<std::string> start_variable =
+      ParseExplicitLocationAssignmentVariable(start_location);
+  const std::optional<std::string> target_variable =
+      ParseExplicitLocationAssignmentVariable(target_location);
+  if (start_variable.has_value() && target_variable.has_value() &&
+      *start_variable == "msq" && *target_variable == "msq" &&
+      std::find(invariant_names.begin(), invariant_names.end(), "msq") !=
+          invariant_names.end()) {
+    return std::string("msq");
+  }
+
+  if (std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end()) {
+    return std::string("s");
+  }
+  return std::nullopt;
+}
+
+bool ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(
+    const std::vector<std::string>& invariant_names) {
+  return invariant_names.size() == 1 &&
+         (invariant_names.front() == "s" || invariant_names.front() == "t" ||
+          invariant_names.front() == "msq");
+}
+
 std::filesystem::path AbsoluteOrEmpty(const std::filesystem::path& path) {
   return path.empty() ? std::filesystem::path{} : std::filesystem::absolute(path);
 }
@@ -4567,19 +4622,10 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
     throw std::runtime_error(
         "automatic invariant solver handoff list requires at least one invariant name");
   }
-  std::optional<std::string> reviewed_segment_invariant_name;
-  if (invariant_names.size() == 1 &&
-      (invariant_names.front() == "s" || invariant_names.front() == "t" ||
-       invariant_names.front() == "msq")) {
-    reviewed_segment_invariant_name = invariant_names.front();
-  } else if (std::find(invariant_names.begin(), invariant_names.end(), "s") !=
-             invariant_names.end()) {
-    reviewed_segment_invariant_name = "s";
-  }
+  const std::optional<std::string> reviewed_segment_invariant_name =
+      ResolveReviewedInvariantListSegmentName(invariant_names, start_location, target_location);
   const bool allow_unlabeled_reviewed_raw_expressions =
-      invariant_names.size() == 1 &&
-      (invariant_names.front() == "s" || invariant_names.front() == "t" ||
-       invariant_names.front() == "msq");
+      ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(invariant_names);
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(
               spec,

@@ -89,6 +89,9 @@ python3 tools/reference-harness/scripts/qualification_readiness.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
 
+python3 tools/reference-harness/scripts/qualification_case_study_readiness.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
   --reference-root /tmp/amflow-reference-bootstrap \
   --self-check
@@ -97,10 +100,11 @@ python3 tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.p
   --self-check
 ```
 
-`amflow-tests` now exercises all eight helper self-checks through the configured
+`amflow-tests` now exercises all nine helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, scaffold-validation, qualification-readiness, and the single-packet plus
-packet-set retained-reference comparison regression paths without needing a real benchmark packet.
+retained-capture, scaffold-validation, phase-0 and case-study readiness, and the single-packet
+plus packet-set retained-reference comparison regression paths without needing a real benchmark
+packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -173,6 +177,20 @@ The helper is evidence-only: it validates the retained phase-0 packet set agains
 normalizes older optional packets that predate the explicit `optional_capture_packet` summary field
 by inferring that packet id from the scaffold when the retained packet contents make the mapping
 unambiguous.
+
+To summarize the frozen M6 case-study-family anchors without running any case-study numerics:
+
+```bash
+python3 tools/reference-harness/scripts/qualification_case_study_readiness.py
+```
+
+Add `--summary-path` if you want the JSON summary written to disk as well as printed to stdout.
+The helper validates the case-study-family portion of `templates/qualification-benchmarks.json`
+against `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`,
+`docs/verification-strategy.md`, and the implementation ledger, and keeps the reviewed singular
+`next_runtime_lane` blocker plus its landed predecessor anchor visible. This is still
+evidence/planning only: it does not compare retained case-study numerics and does not claim that
+`Milestone M6` is passing.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:
@@ -271,6 +289,10 @@ The capture script writes:
   machine-readable readiness summary, validates that the observed retained artifacts still match
   the scaffold, and keeps blocked `next_runtime_lane` hints visible without running any
   qualification numerics.
+- `qualification_case_study_readiness.py` is the first M6 case-study-family summary helper: it
+  validates the selected literature anchors, parity labels, digit floors, failure/regression
+  profiles, and the reviewed singular blocker hint against the frozen sources and emits one
+  machine-readable family-readiness summary without comparing case-study numerics.
 - `compare_phase0_results_to_reference.py` is the first actual M6 packet comparator: it compares
   one candidate packet root against one retained reference packet root through exact canonical
   output-name/hash agreement on the selected phase-0 benchmarks while surfacing the frozen
@@ -297,6 +319,9 @@ The capture script writes:
 - `qualification_readiness.py --self-check` exercises the first M6 groundwork summary against one
   synthetic required retained root plus two synthetic optional packets, including scaffold-based
   inference of an older optional packet id that is absent from the retained packet summary.
+- `qualification_case_study_readiness.py --self-check` exercises the first M6 case-study-family
+  summary against synthetic selected-benchmark anchors, stronger-threshold inheritance, the
+  reviewed singular blocker lane, and the recorded predecessor batch.
 - `compare_phase0_results_to_reference.py --self-check` exercises the first actual packet
   comparator against one synthetic retained reference root plus matching and mismatched candidate
   packets, covering hash mismatch, output-name drift, and missing-result-manifest rejection.

@@ -35517,6 +35517,72 @@ ReferenceHarnessSelfCheckRun RunQualificationScaffoldReadinessReport() {
                                    "qualification scaffold readiness report");
 }
 
+void QualificationCaseStudyReadinessSelfCheckLocksAnchorMetadataTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-reference-harness-case-study-readiness-self-check",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--self-check"},
+      "qualification case-study readiness self-check");
+  Expect(result.stderr_log.empty(),
+         "qualification case-study readiness self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"case_study_ids_match_selected_benchmarks\": true",
+                 "qualification case-study readiness self-check should keep case-study ids "
+                 "locked to selected-benchmarks.md");
+  ExpectContains(result.stdout_json, "\"parity_labels_match_parity_matrix\": true",
+                 "qualification case-study readiness self-check should keep parity labels locked "
+                 "to the parity matrix");
+  ExpectContains(result.stdout_json,
+                 "\"selected_benchmark_refs_match_selected_benchmarks\": true",
+                 "qualification case-study readiness self-check should keep selected benchmark "
+                 "anchors locked to selected-benchmarks.md");
+  ExpectContains(result.stdout_json,
+                 "\"digit_threshold_profiles_match_verification_strategy\": true",
+                 "qualification case-study readiness self-check should keep digit thresholds "
+                 "locked to the verification strategy");
+  ExpectContains(result.stdout_json,
+                 "\"stronger_threshold_assignments_match_selected_benchmark_anchors\": true",
+                 "qualification case-study readiness self-check should keep stronger threshold "
+                 "assignments locked to the selected benchmark anchors");
+  ExpectContains(result.stdout_json, "\"failure_code_profile_matches_parity_matrix\": true",
+                 "qualification case-study readiness self-check should keep failure-code "
+                 "profiles locked to the parity matrix");
+  ExpectContains(result.stdout_json, "\"regression_profile_matches_parity_matrix\": true",
+                 "qualification case-study readiness self-check should keep regression profiles "
+                 "locked to the parity matrix");
+  ExpectContains(result.stdout_json,
+                 "\"runtime_blocked_case_study_lanes_match_theory_frontier\": true",
+                 "qualification case-study readiness self-check should keep blocked case-study "
+                 "runtime lanes aligned with the reviewed theory frontier");
+  ExpectContains(result.stdout_json, "\"runtime_lane_predecessors_recorded\": true",
+                 "qualification case-study readiness self-check should keep blocked case-study "
+                 "predecessors anchored in the implementation ledger");
+  ExpectContains(result.stdout_json,
+                 "\"literature_anchor_case_study_ids_match_expected_set\": true",
+                 "qualification case-study readiness self-check should keep literature-anchor "
+                 "families visible");
+  ExpectContains(result.stdout_json, "\"matrix_only_case_study_ids_match_expected_set\": true",
+                 "qualification case-study readiness self-check should keep matrix-only anchors "
+                 "visible");
+  ExpectContains(result.stdout_json,
+                 "\"runtime_blocked_case_study_ids_match_expected_set\": true",
+                 "qualification case-study readiness self-check should keep runtime-blocked "
+                 "families visible");
+  ExpectContains(result.stdout_json, "\"unknown_selected_benchmark_ref_rejected\": true",
+                 "qualification case-study readiness self-check should reject unknown selected "
+                 "benchmark anchors");
+  ExpectContains(result.stdout_json, "\"stronger_threshold_mismatch_rejected\": true",
+                 "qualification case-study readiness self-check should reject stronger-threshold "
+                 "drift");
+  ExpectContains(result.stdout_json, "\"blocked_lane_mismatch_rejected\": true",
+                 "qualification case-study readiness self-check should reject blocked-lane drift");
+  ExpectContains(result.stdout_json, "\"missing_predecessor_rejected\": true",
+                 "qualification case-study readiness self-check should reject missing blocked-lane "
+                 "predecessor anchors");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "qualification case-study readiness self-check should write the synthetic "
+                 "summary output");
+}
+
 void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
       "amflow-reference-harness-bootstrap-self-check",
@@ -35893,6 +35959,62 @@ void QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest() {
   ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62n\"",
                  "qualification readiness summary should keep the blocked singular case-study "
                  "next-slice hint visible");
+}
+
+void QualificationCaseStudyReadinessMatchesRepoSourcesTest() {
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-qualification-case-study-readiness") / "summary.json";
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-qualification-case-study-readiness-report",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", summary_path.string()},
+      "qualification case-study readiness report");
+  Expect(result.stderr_log.empty(),
+         "qualification case-study readiness report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "qualification case-study readiness report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"case_study_ids_match_selected_benchmarks\": true",
+                 "qualification case-study readiness report should keep case-study ids locked to "
+                 "selected-benchmarks.md");
+  ExpectContains(result.stdout_json,
+                 "\"runtime_blocked_case_study_lanes_match_theory_frontier\": true",
+                 "qualification case-study readiness report should keep blocked case-study lanes "
+                 "aligned with the reviewed theory frontier");
+  ExpectContains(result.stdout_json, "\"runtime_lane_predecessors_recorded\": true",
+                 "qualification case-study readiness report should keep blocked case-study "
+                 "predecessors anchored in the implementation ledger");
+  ExpectContains(result.stdout_json, "\"strong_precision_case_study_ids\": [",
+                 "qualification case-study readiness report should record the stronger precision "
+                 "family subset");
+  ExpectContains(result.stdout_json, "\"ttbar-h\"",
+                 "qualification case-study readiness report should retain the ttbar-h anchor");
+  ExpectContains(result.stdout_json, "\"diphoton-heavy-quark-form-factors\"",
+                 "qualification case-study readiness report should retain the diphoton precision "
+                 "anchor");
+  ExpectContains(result.stdout_json, "\"matrix_only_case_study_ids\": [",
+                 "qualification case-study readiness report should keep matrix-only anchors "
+                 "visible");
+  ExpectContains(result.stdout_json, "\"package-double-box\"",
+                 "qualification case-study readiness report should keep the package-double-box "
+                 "matrix-only anchor visible");
+  ExpectContains(result.stdout_json, "\"id\": \"ttbar-h\"",
+                 "qualification case-study readiness report should summarize the ttbar-h family");
+  ExpectContains(result.stdout_json,
+                 "\"selected_benchmark_refs\": [\n        \"2024-tth-light-quark-loop-mi\"",
+                 "qualification case-study readiness report should keep the ttbar-h selected "
+                 "benchmark anchor visible");
+  ExpectContains(result.stdout_json, "\"minimum_correct_digits\": 100",
+                 "qualification case-study readiness report should keep the stronger ttbar-h "
+                 "digit floor visible");
+  ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
+                 "qualification case-study readiness report should summarize the singular "
+                 "endpoint family");
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62n\"",
+                 "qualification case-study readiness report should keep the blocked singular "
+                 "runtime lane visible");
+  ExpectContains(result.stdout_json, "\"landed_runtime_predecessor\": \"b62m\"",
+                 "qualification case-study readiness report should keep the blocked singular "
+                 "predecessor anchor visible");
 }
 
 void FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest() {
@@ -37126,6 +37248,8 @@ int main() {
     QualificationScaffoldReadinessSelfCheckAggregatesRetainedPacketsTest();
     QualificationScaffoldReadinessMatchesRetainedPacketSetTest();
     QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest();
+    QualificationCaseStudyReadinessSelfCheckLocksAnchorMetadataTest();
+    QualificationCaseStudyReadinessMatchesRepoSourcesTest();
     FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
     CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();

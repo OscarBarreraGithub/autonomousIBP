@@ -25995,6 +25995,147 @@ void SolveAmfOptionsEtaModeSeriesHappyPathTest() {
          "direct builtin-list baseline");
 }
 
+void SolveAmfOptionsEtaModeSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Prescription", "Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "eta=5/29";
+  const std::string target_location = "eta=31/19";
+  const int requested_digits = 71;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Prescription")->Plan(spec);
+
+  Expect(baseline_decision.selected_propagator_indices == std::vector<std::size_t>{0, 1},
+         "AmfOptions passive-linear coverage should preserve the reviewed Prescription "
+         "quadratic selection");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-prescription-linear-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-prescription-linear"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.001953125;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary = "recorded AmfOptions passive-linear solve";
+  solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveBuiltinEtaModeListSeries(spec,
+                                            master_basis,
+                                            amf_options.amf_modes,
+                                            MakeKiraReductionOptions(),
+                                            baseline_layout,
+                                            baseline_kira_path,
+                                            baseline_fermat_path,
+                                            baseline_solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions passive-linear coverage should not mutate reviewed inputs");
+  Expect(baseline_solver.call_count() == 1 && solver.call_count() == 1,
+         "AmfOptions passive-linear coverage should match the direct builtin-list baseline with "
+         "one solver call");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(baseline_request.system, baseline_system),
+         "AmfOptions passive-linear coverage should preserve the direct builtin-list eta "
+         "DESystem on the reviewed baseline");
+  Expect(SameDESystem(request.system, baseline_request.system),
+         "AmfOptions passive-linear coverage should forward the same eta DESystem as the direct "
+         "builtin-list baseline when Prescription is selected");
+  Expect(request.system.coefficient_matrices.at("eta").size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0][0] ==
+                 "(-1)*(3) + (-1)*(5)",
+         "AmfOptions passive-linear coverage should preserve the reviewed eta matrix entry");
+  Expect(request.start_location == baseline_request.start_location &&
+             request.start_location == start_location,
+         "AmfOptions passive-linear coverage should preserve the start location unchanged");
+  Expect(request.target_location == baseline_request.target_location &&
+             request.target_location == target_location,
+         "AmfOptions passive-linear coverage should preserve the target location unchanged");
+  Expect(SamePrecisionPolicy(baseline_request.precision_policy, precision_policy) &&
+             !baseline_request.amf_runtime_policy.has_value() &&
+             !baseline_request.amf_requested_d0.has_value(),
+         "direct builtin-list passive-linear baseline should keep the explicit caller policy "
+         "unchanged");
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy) &&
+             !SamePrecisionPolicy(request.precision_policy, baseline_request.precision_policy),
+         "AmfOptions passive-linear coverage should override the wrapper-owned precision policy "
+         "with live AmfOptions fields");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy,
+                                       expected_live_runtime_policy) &&
+             !baseline_request.amf_runtime_policy.has_value(),
+         "AmfOptions passive-linear coverage should attach the live AMF runtime policy to the "
+         "solver request");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(request,
+                                                   precision_policy,
+                                                   amf_options,
+                                                   "AmfOptions passive-linear coverage");
+  Expect(request.requested_digits == baseline_request.requested_digits &&
+             request.requested_digits == requested_digits,
+         "AmfOptions passive-linear coverage should preserve requested_digits unchanged");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "AmfOptions passive-linear coverage should return the same solver diagnostics as the "
+         "direct builtin-list baseline");
+}
+
 void SolveAmfOptionsEtaModeSeriesMassShortCircuitTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -35048,6 +35189,7 @@ int main() {
     SolveBuiltinEtaModeListSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeListSeriesExecutionFailureStopsIterationTest();
     SolveAmfOptionsEtaModeSeriesHappyPathTest();
+    SolveAmfOptionsEtaModeSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest();
     SolveAmfOptionsEtaModeSeriesMassShortCircuitTest();
     SolveAmfOptionsEtaModeSeriesBootstrapSolverStopsAfterFirstCompletedModeTest();
     SolveAmfOptionsEtaModeSeriesUsesDefaultAmfModeListTest();

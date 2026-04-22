@@ -181,6 +181,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/qualification_readiness.py`: first M6 groundwork helper. It aggregates the accepted required retained root plus any narrower optional packet roots against `templates/qualification-benchmarks.json`, validates that every observed captured example still publishes promoted golden/result manifests plus passing comparison summaries, and writes one machine-readable summary of retained `reference-captured` versus still-pending phase-0 examples together with the blocked `next_runtime_lane` hints that remain on the scaffold. Older optional packets may predate the explicit `optional_capture_packet` summary field; when every captured example in one packet shares the same scaffold packet hint, this helper infers that packet id from the scaffold instead of requiring the external retained packet to be rewritten.
 - `tools/reference-harness/scripts/qualification_case_study_readiness.py`: first M6 case-study-family helper. It consumes the frozen qualification scaffold plus `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`, `docs/verification-strategy.md`, and the implementation ledger, validates that the selected literature anchors, digit floors, failure/regression profiles, and the reviewed singular `next_runtime_lane` blocker stay synchronized, and writes one machine-readable readiness summary of literature-anchor, matrix-only, strong-precision, and runtime-blocked case-study families. This is still evidence/planning only: it does not compare retained case-study numerics and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/compare_phase0_results_to_reference.py`: first actual M6 phase-0 packet comparator. It consumes one retained reference packet root plus one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema, fails closed unless every selected benchmark keeps the exact retained output-name set and canonical hashes, and surfaces the frozen digit-threshold, failure-code, and regression metadata from the qualification scaffold alongside the per-benchmark match report. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
+- `tools/reference-harness/scripts/score_phase0_correct_digits.py`: first actual M6 packet-level correct-digit scorer. It consumes one retained reference packet root plus one candidate packet root on the same `result-manifest.json` and primary `run-manifest.json` schema, requires the retained output-name set and nonnumeric canonical-text skeleton to stay fixed, scores only approximate Mathematica numeric literals tokenwise against the frozen digit-threshold profiles, and leaves exact symbolic outputs structural-only on this reviewed path. This is still qualification plumbing only: it does not launch the C++ runtime, does not inspect candidate failure-code behavior, does not aggregate scores across the full packet split, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py`: first multi-packet M6 phase-0 comparator. It consumes one or more `--packet-root-pair <reference_root>::<candidate_root>` mappings, composes the retained packet comparator across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique reference packet label per pair, requires each candidate packet root to publish exactly the retained benchmark split for that packet through `result-manifest.json` entries while ignoring uncaptured placeholder directories without manifests, and fails closed unless the compared benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not review performance or diagnostics, and does not claim release readiness.
 
@@ -223,6 +224,14 @@ retained outputs and rerun evidence.
   schema and requires exact canonical output-hash agreement on the selected phase-0 examples, but
   it still does not score correct digits, audit candidate failure-code behavior, or claim
   `Milestone M6` is passing.
+- The first actual M6 packet-level correct-digit scorer is
+  `tools/reference-harness/scripts/score_phase0_correct_digits.py`. It consumes one retained
+  reference packet root plus one candidate packet root on that same manifest/run schema, keeps the
+  retained output-name set and nonnumeric canonical-text skeleton fixed, scores only approximate
+  Mathematica numeric literals tokenwise against the frozen digit-threshold profiles, and leaves
+  exact symbolic outputs structural-only on this reviewed path. It still does not audit candidate
+  failure-code behavior, aggregate scores across the full packet split, or claim `Milestone M6`
+  is passing.
 - The first multi-packet M6 phase-0 comparator is
   `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py`. It composes that
   packet-level comparator across the retained `required-set`, `de-d0-pair`, and `user-hook-pair`
@@ -230,7 +239,8 @@ retained outputs and rerun evidence.
   to publish exactly the retained benchmark split for that packet through `result-manifest.json`
   entries while ignoring uncaptured placeholder directories without manifests, and requires the
   compared benchmark ids to match the scaffold's full current `reference-captured` phase-0 set
-  exactly, but it still does not score correct digits, audit candidate failure-code behavior, or
+  exactly, but it still does not aggregate packet-level digit scores, audit candidate failure-code
+  behavior, or
   claim `Milestone M6` is passing.
 
 ## Release Sign-Off Scaffold
@@ -256,13 +266,14 @@ retained outputs and rerun evidence.
   and does not claim release readiness.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All nine helpers expose `--self-check` modes so the repo can
+the retained-golden promotion path. All eleven helpers expose `--self-check` modes so the repo can
 rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, scaffold
 validation, qualification-readiness, case-study-family readiness, blocked release-readiness, and
 the single-packet plus packet-set retained-reference comparators without needing a full benchmark
 packet. `amflow-tests` now drives those bootstrap, fetch, placeholder-freeze, retained-capture,
 scaffold-validation, qualification-readiness, case-study-family readiness, blocked
-release-readiness, and the two retained phase-0 reference-comparator self-checks through the
+release-readiness, and the retained single-packet comparator, packet-level correct-digit scorer,
+plus packet-set reference-comparator self-checks through the
 configured repo-local Python interpreter, and the retained-capture helper also self-checks the
 restart-safe `--resume-existing` path plus the explicit benchmark-id, optional-packet, and
 `--required-only` selection contract, including direct

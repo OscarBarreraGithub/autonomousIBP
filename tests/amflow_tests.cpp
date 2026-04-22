@@ -36874,6 +36874,109 @@ void Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest() {
                  "user-defined ending benchmark");
 }
 
+void Phase0CorrectDigitScorerSelfCheckCoversThresholdAndSkeletonFailuresTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-correct-digit-self-check",
+      "tools/reference-harness/scripts/score_phase0_correct_digits.py",
+      {"--self-check"},
+      "phase-0 correct-digit scorer self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 correct-digit scorer self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_candidate_meets_thresholds\": true",
+                 "phase-0 correct-digit scorer self-check should keep a matching candidate on "
+                 "the threshold-meeting pass path");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 correct-digit scorer self-check should surface scaffold threshold, "
+                 "failure-code, and regression metadata");
+  ExpectContains(result.stdout_json, "\"small_numeric_drift_meets_threshold\": true",
+                 "phase-0 correct-digit scorer self-check should tolerate small numeric drift "
+                 "that still clears the frozen digit floor");
+  ExpectContains(result.stdout_json, "\"threshold_failure_detected\": true",
+                 "phase-0 correct-digit scorer self-check should fail closed when numeric drift "
+                 "drops below the frozen digit floor");
+  ExpectContains(result.stdout_json, "\"structural_only_output_preserved\": true",
+                 "phase-0 correct-digit scorer self-check should preserve structural-only "
+                 "outputs outside the approximate-literal scorer path");
+  ExpectContains(result.stdout_json, "\"numeric_output_scored\": true",
+                 "phase-0 correct-digit scorer self-check should score approximate numeric "
+                 "outputs on the reviewed tokenwise path");
+  ExpectContains(result.stdout_json, "\"subunit_precision_literal_scored\": true",
+                 "phase-0 correct-digit scorer self-check should accept sub-unit Mathematica "
+                 "precisions as zero available digits instead of failing");
+  ExpectContains(result.stdout_json, "\"skeleton_mismatch_rejected\": true",
+                 "phase-0 correct-digit scorer self-check should reject candidate canonical "
+                 "texts that change the retained nonnumeric skeleton");
+  ExpectContains(result.stdout_json, "\"missing_reference_root_rejected\": true",
+                 "phase-0 correct-digit scorer self-check should reject omitting "
+                 "--reference-root outside the synthetic path");
+  ExpectContains(result.stdout_json, "\"missing_candidate_root_rejected\": true",
+                 "phase-0 correct-digit scorer self-check should reject omitting "
+                 "--candidate-root outside the synthetic path");
+  ExpectContains(result.stdout_json, "\"escaping_run_manifest_rejected\": true",
+                 "phase-0 correct-digit scorer self-check should reject primary run manifests "
+                 "that escape the candidate packet root");
+  ExpectContains(result.stdout_json, "\"escaping_canonical_text_rejected\": true",
+                 "phase-0 correct-digit scorer self-check should reject canonical text paths "
+                 "that escape the candidate packet root");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 correct-digit scorer self-check should write the synthetic summary "
+                 "output");
+}
+
+void Phase0CorrectDigitScorerMatchesRetainedDED0PacketTest() {
+  const std::filesystem::path reference_root = OptionalPhase0ReferencePacketRoots().front();
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-correct-digit-de-d0") / "summary.json";
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-correct-digit-de-d0",
+      "tools/reference-harness/scripts/score_phase0_correct_digits.py",
+      {"--reference-root",
+       reference_root.string(),
+       "--candidate-root",
+       reference_root.string(),
+       "--benchmark-id",
+       "differential_equation_solver",
+       "--summary-path",
+       summary_path.string()},
+      "phase-0 correct-digit scorer report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 correct-digit scorer report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 correct-digit scorer report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"reference_packet_label\": \"de-d0-pair\"",
+                 "phase-0 correct-digit scorer report should preserve the retained de-d0 packet "
+                 "label");
+  ExpectContains(result.stdout_json, "\"reference_capture_state\": \"bootstrap-only\"",
+                 "phase-0 correct-digit scorer report should keep the retained optional packet "
+                 "capture state truthful");
+  ExpectContains(result.stdout_json, "\"all_selected_benchmarks_meet_digit_thresholds\": true",
+                 "phase-0 correct-digit scorer report should record when the selected retained "
+                 "benchmark clears the frozen digit floor");
+  ExpectContains(result.stdout_json,
+                 "\"candidate_numeric_literal_skeletons_match_reference\": true",
+                 "phase-0 correct-digit scorer report should require the retained nonnumeric "
+                 "skeleton to stay unchanged");
+  ExpectContains(result.stdout_json, "\"differential_equation_solver\"",
+                 "phase-0 correct-digit scorer report should include the retained differential-"
+                 "equation benchmark");
+  ExpectContains(result.stdout_json, "\"status\": \"digit-threshold-met\"",
+                 "phase-0 correct-digit scorer report should record the retained benchmark as "
+                 "meeting the frozen digit threshold on the reviewed packet");
+  ExpectContains(result.stdout_json, "\"minimum_observed_correct_digits\": 99",
+                 "phase-0 correct-digit scorer report should floor exact-match scoring to the "
+                 "least precise retained approximate literal");
+  ExpectContains(result.stdout_json, "\"structural_only_output_names\": [",
+                 "phase-0 correct-digit scorer report should distinguish exact structural "
+                 "outputs from approximate numeric outputs");
+  ExpectContains(result.stdout_json, "\"diffeq\"",
+                 "phase-0 correct-digit scorer report should keep the structural-only diffeq "
+                 "output visible");
+  ExpectContains(result.stdout_json, "\"redtable\"",
+                 "phase-0 correct-digit scorer report should keep the structural-only redtable "
+                 "output visible");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -37919,6 +38022,8 @@ int main() {
     Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
     Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest();
     Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
+    Phase0CorrectDigitScorerSelfCheckCoversThresholdAndSkeletonFailuresTest();
+    Phase0CorrectDigitScorerMatchesRetainedDED0PacketTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();

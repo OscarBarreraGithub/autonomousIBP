@@ -75,7 +75,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   initial packet job `6721330` completed the `automatic_vs_manual` primary before walltime,
   resumed packet job `6732338` completed the packet via `--resume-existing`, and both required
   benchmark comparison summaries now pass
-- current `main` now also carries narrow M6 harness helpers only:
+- the repo now also carries narrow M6 harness helpers only:
   `tools/reference-harness/scripts/qualification_readiness.py` aggregates the accepted M0b root
   plus the reviewed optional retained packet roots into one machine-readable evidence summary,
   validates that every observed captured phase-0 example still publishes promoted
@@ -86,6 +86,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   actual benchmark comparator on that retained packet shape only: it compares one candidate packet
   root against one retained reference packet root through exact canonical output-name/hash
   agreement while surfacing the frozen scaffold threshold/failure/regression metadata.
+  `tools/reference-harness/scripts/score_phase0_correct_digits.py` is then the first narrow
+  packet-level correct-digit scorer on that same retained packet shape only: it keeps the
+  retained output-name set and nonnumeric canonical-text skeleton fixed, scores only approximate
+  Mathematica numeric literals tokenwise against the frozen digit-threshold profiles, and leaves
+  exact symbolic outputs structural-only on this reviewed path.
   `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py` then composes that
   comparator across the retained `required-set`, `de-d0-pair`, and `user-hook-pair` packet split,
   requiring one unique reference packet label per pair, requiring each candidate packet root to
@@ -98,9 +103,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
   singular `next_runtime_lane` blocker plus its landed predecessor anchor against the frozen
   sources before later case-study qualification lanes widen into real numerics.
-  Together these remain harness-only plumbing: they do not launch the C++ runtime, do not score
-  correct digits, do not inspect candidate failure-code behavior, do not compare retained
-  case-study numerics, and do not claim that `Milestone M6` is passing
+  Together these remain harness-only plumbing: they do not launch the C++ runtime, do not inspect
+  candidate failure-code behavior, do not compare retained case-study numerics, do not aggregate
+  packet-level digit scores into a full qualification verdict, and do not claim that
+  `Milestone M6` is passing
 - current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
   `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed
   `docs/release-signoff-checklist.md` packet with the first machine-readable prerequisite/docs/

@@ -207,7 +207,7 @@ The capture script writes:
 - `results/`: captured benchmark outputs, run manifests, and canonical sidecars
 - `comparisons/`: parity and reproducibility reports vs retained goldens
 - `goldens/`: phase-0 golden metadata, promoted output manifests, and index files
-- `templates/`: copied manifest, environment, Wolfram, phase-0 benchmark, and qualification templates
+- `templates/`: copied manifest, environment, Wolfram, phase-0 benchmark, qualification, and release-signoff templates
 - `state/`: bootstrap/fetch summaries for automation and audit trails
 
 ## Required External Inputs
@@ -234,6 +234,10 @@ The capture script writes:
   that belong in the retained `de-d0-pair` or retained `user-hook-pair` packets. Those hints
   stay aligned with the current theory frontier while still anchoring against the recorded
   predecessor slices `b61i` / `b62k` / `b63f` / `b64h`.
+- `templates/release-signoff-checklist.json` is the first machine-readable M7 scaffold: it freezes
+  the later release-review sections for qualification closure, performance review, diagnostic
+  review, docs completion, and the final parity sign-off statement. It is planning metadata only
+  and does not claim `Milestone M6` closure, `Milestone M7` closure, or release readiness.
 - `validate_qualification_scaffold.py` is the first narrow M6 evidence-audit helper: it validates
   retained packet manifests, comparison summaries, and promoted goldens against the scaffold and
   reports which phase-0 example classes are already covered by the current `required-set`,

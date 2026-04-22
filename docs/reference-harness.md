@@ -145,7 +145,7 @@ retained outputs and rerun evidence.
 - `results/`: benchmark-specific raw outputs, run manifests, and canonicalized sidecars
 - `comparisons/`: placeholder and later real comparison summaries
 - `goldens/phase0/`: per-benchmark placeholder golden metadata, promoted golden-output manifests, and an index file
-- `templates/`: copied benchmark, manifest, env, Wolfram, placeholder, and qualification templates
+- `templates/`: copied benchmark, manifest, env, Wolfram, placeholder, qualification, and release-signoff templates
 - `state/`: bootstrap and fetch summaries for automation and audit trails
 
 ## Bring-Up Sequence
@@ -214,6 +214,21 @@ retained outputs and rerun evidence.
   schema and requires exact canonical output-hash agreement on the selected phase-0 examples, but
   it still does not score correct digits, audit candidate failure-code behavior, or claim
   `Milestone M6` is passing.
+
+## Release Sign-Off Scaffold
+
+- `tools/reference-harness/templates/release-signoff-checklist.json` is the first
+  machine-readable M7 scaffold. It freezes the release-review sections that later sign-off lanes
+  must clear in order: qualification-corpus closure, performance review, diagnostic review, docs
+  completion, and the final parity sign-off statement.
+- The scaffold consumes the existing qualification surfaces rather than replacing them: it points
+  future M7 helpers at `docs/release-signoff-checklist.md`,
+  `templates/qualification-benchmarks.json`,
+  `tools/reference-harness/scripts/qualification_readiness.py`, the parity matrix, and the durable
+  docs as the inputs that must already be coherent before release review can start.
+- The scaffold is planning metadata only. Adding or editing it does not run qualification,
+  performance, or diagnostic review; does not claim `Milestone M6` or `Milestone M7` is closed;
+  and does not claim release readiness.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
 the retained-golden promotion path. All seven helpers expose `--self-check` modes so the repo can

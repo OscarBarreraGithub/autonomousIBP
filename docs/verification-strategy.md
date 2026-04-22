@@ -259,6 +259,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - `tools/reference-harness/templates/qualification-benchmarks.json` freezes the current
   qualification scaffold: parity-matrix benchmark families, digit-threshold profiles, required
   failure codes, and known regression families.
+- `tools/reference-harness/templates/release-signoff-checklist.json` freezes the first
+  machine-readable release sign-off scaffold: the prerequisite M6 gate plus the later
+  qualification-closure, performance, diagnostic, docs-completion, and parity-signoff review
+  sections.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py` audits retained phase-0
   packet roots against that scaffold and reports benchmark-level readiness while keeping packet-
   level `bootstrap-only` versus `reference-captured` truthfulness explicit.
@@ -267,5 +271,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification
 suite as the solver is implemented. The qualification scaffold is planning metadata only: it does
 not by itself claim any new captured benchmark evidence or solver parity.
+
+The release-signoff scaffold is planning metadata only as well: it does not claim qualification
+closure, release readiness, or any broader parity surface beyond the evidence already recorded in
+the retained artifacts and durable docs.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

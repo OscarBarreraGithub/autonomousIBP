@@ -86,6 +86,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, do not score
   correct digits, do not inspect candidate failure-code behavior, and do not claim that
   `Milestone M6` is passing
+- current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
+  `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed
+  `docs/release-signoff-checklist.md` packet with the first machine-readable prerequisite/docs/
+  diagnostics/performance/parity review buckets for later harness-side consumers. This is
+  planning metadata only: it does not run any release review, does not claim that `Milestone M6`
+  or `Milestone M7` is passing, and does not widen the last fully accepted public/runtime
+  contract
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

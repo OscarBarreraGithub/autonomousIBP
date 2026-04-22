@@ -663,7 +663,11 @@ dependency change.
 The first `Milestone M7` groundwork packet is documentation-only:
 `docs/release-signoff-checklist.md` records the exact evidence buckets,
 mandatory release-note prompts, and reviewer dispositions that a future release
-packet must fill in. It does not claim that the qualification corpus passes or
+packet must fill in. The follow-on machine-readable scaffold
+`tools/reference-harness/templates/release-signoff-checklist.json` freezes the
+prerequisite M6 gate plus the same later release-review sections for later
+harness-side consumers. Neither
+artifact relaxes the dependency on truthful `Milestone M6` closure or claims
 that release sign-off is complete.
 
 ## Acceptance Gates Per Phase

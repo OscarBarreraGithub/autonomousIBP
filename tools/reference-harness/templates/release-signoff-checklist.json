@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "current_state": "planning-only",
+  "sources": {
+    "release_signoff_markdown": "docs/release-signoff-checklist.md",
+    "qualification_scaffold": "tools/reference-harness/templates/qualification-benchmarks.json",
+    "qualification_readiness_helper": "tools/reference-harness/scripts/qualification_readiness.py",
+    "parity_matrix": "specs/parity-matrix.yaml",
+    "verification_strategy": "docs/verification-strategy.md",
+    "roadmap": "docs/full-amflow-completion-roadmap.md",
+    "public_contract": "docs/public-contract.md",
+    "implementation_ledger": "docs/implementation-ledger.md"
+  },
+  "release_prerequisites": [
+    {
+      "id": "milestone-m6",
+      "required_state": "reviewed-and-accepted",
+      "notes": "Milestone M7 stays blocked until the qualification corpus is truthfully closed over retained evidence."
+    },
+    {
+      "id": "phase-f-feature-parity",
+      "required_state": "reviewed-and-accepted",
+      "notes": "Release sign-off requires the reviewed complex, singular, phase-space, linear, D0/fixed-eps, and user-hook runtime surfaces to be closed under Milestone M5 before M7 can proceed."
+    },
+    {
+      "id": "retained-reference-evidence",
+      "required_state": "captured-and-qualified",
+      "notes": "Use already-retained goldens, promoted manifests, and comparison summaries instead of planning a new reference-capture model inside M7."
+    }
+  ],
+  "review_sections": [
+    {
+      "id": "qualification-corpus",
+      "required_inputs": [
+        "qualification readiness summary",
+        "retained benchmark comparison summaries",
+        "known-regression coverage notes"
+      ],
+      "required_outputs": [
+        "closed benchmark-family coverage statement",
+        "explicit residual blockers or carve-outs"
+      ],
+      "notes": "Do not mark complete until Milestone M6 is already truthfully closed."
+    },
+    {
+      "id": "performance-review",
+      "required_inputs": [
+        "mandatory benchmark timings",
+        "reviewed benchmark-family scope",
+        "clean rebuild gate output"
+      ],
+      "required_outputs": [
+        "performance summary",
+        "explicit unstable or unreviewed performance carve-outs"
+      ],
+      "notes": "This is a release-readiness review, not a new benchmark-capture lane."
+    },
+    {
+      "id": "diagnostic-review",
+      "required_inputs": [
+        "required failure-code set from the parity matrix",
+        "retained unstable-run evidence",
+        "known-regression outcomes"
+      ],
+      "required_outputs": [
+        "diagnostic coverage summary",
+        "explicit missing or degraded diagnostic paths"
+      ],
+      "notes": "Keep explicit typed-failure expectations visible through release sign-off."
+    },
+    {
+      "id": "docs-completion",
+      "required_inputs": [
+        "public contract",
+        "implementation ledger",
+        "verification strategy",
+        "reference harness guide",
+        "completion roadmap"
+      ],
+      "required_outputs": [
+        "docs alignment note",
+        "explicit non-claim and caveat review"
+      ],
+      "notes": "Docs must match the reviewed evidence surface rather than the requested end state."
+    },
+    {
+      "id": "parity-signoff",
+      "required_inputs": [
+        "qualification closure note",
+        "performance review summary",
+        "diagnostic review summary",
+        "docs completion note"
+      ],
+      "required_outputs": [
+        "release sign-off statement",
+        "explicit withheld-claim list if sign-off is still blocked"
+      ],
+      "notes": "The sign-off statement belongs after the earlier sections have already passed."
+    }
+  ],
+  "docs_completion_targets": [
+    {
+      "path": "docs/public-contract.md",
+      "expectation": "Matches the reviewed runtime and harness surface without widening claims."
+    },
+    {
+      "path": "docs/implementation-ledger.md",
+      "expectation": "Records the reviewed evidence packet, verification commands, and residual caveats."
+    },
+    {
+      "path": "docs/verification-strategy.md",
+      "expectation": "States the exact qualification and release gates still in force."
+    },
+    {
+      "path": "docs/reference-harness.md",
+      "expectation": "Keeps the retained-reference lane and later M6/M7 consumers aligned."
+    },
+    {
+      "path": "tools/reference-harness/README.md",
+      "expectation": "Keeps the user-facing harness guide aligned with the retained-reference lane and later M6/M7 consumers."
+    },
+    {
+      "path": "docs/full-amflow-completion-roadmap.md",
+      "expectation": "Preserves milestone ordering and explicit blocker language for M6 and M7."
+    }
+  ],
+  "explicit_non_claims": [
+    "Editing this scaffold does not claim Milestone M6 closure.",
+    "Editing this scaffold does not claim Milestone M7 closure.",
+    "Editing this scaffold does not claim release readiness.",
+    "Editing this scaffold does not claim new captured benchmark evidence.",
+    "Editing this scaffold does not widen the reviewed runtime or public contract."
+  ]
+}

@@ -239,7 +239,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   while general `KiraBackend` preparation is now the first non-invariant consumer of explicit
   `variant: "linear"` on a stricter reviewed subset that requires the relevant external-symbol
   scalar-product surface to stay on identifier-free rational-constant expressions with nonzero
-  denominators only
+  denominators only; the direct eta-generated preparation / execution / `DESystem` seams now also
+  consume that same explicit-variant subset only when a caller-supplied direct eta decision
+  rewrites reviewed quadratic propagators and leaves the explicit linear slot passive, while
+  builtin eta-mode selection and eta-generated solver handoff still remain outside this claimed
+  surface
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -527,6 +531,11 @@ The first eta-generated reduction execution seam is also bootstrap-only:
 - when that explicit public dimension expression is symbolic, the wrapper rewrites standalone
   assembled `dimension` identifiers onto the normalized symbolic expression after parse/assembly
   while keeping the parsed reduction result itself unchanged
+- on the reviewed explicit-linear subset inherited from `KiraBackend` preparation, the same
+  wrapper now also preserves the transformed family / kinematics YAML and parses `results/<family>/`
+  unchanged when the direct eta decision rewrites only reviewed quadratic propagators and leaves
+  the explicit `variant: "linear"` slot passive, then assembles the ordinary eta row through the
+  same generated-row reduction path without a linear-specific execution branch
 - successful process execution is not enough on its own: malformed parsed reductions or identity-fallback reductions for generated eta targets fail during the parse/assembly phase
 - this batch does not add CLI, `SkipReduction`, invariant reduction orchestration, or broader end-to-end orchestration beyond the eta-only wrapper
 
@@ -566,8 +575,13 @@ The first eta-generated `DESystem` consumer is also bootstrap-only:
   expressions keep reducer launch unchanged and return an assembled `DESystem` whose standalone
   `dimension` identifiers have been rewritten onto the normalized symbolic expression
 - it reuses the existing eta preparation, reducer execution, parse, and generated-row assembly path instead of reimplementing eta orchestration locally
+- on the reviewed explicit-linear subset inherited from the eta-generated execution wrapper, it
+  returns the same assembled one-variable eta `DESystem` unchanged when the direct eta decision
+  rewrites only reviewed quadratic propagators and leaves the explicit linear slot passive,
+  including the ordinary eta matrix entries
 - unsuccessful reducer execution is converted into a deterministic consumer-level failure that preserves the recorded execution status, exit code, and stderr log path in the diagnostic
-- this batch does not add solver handoff, eta-mode expansion, CLI, multi-variable orchestration, `SkipReduction`, or broader end-to-end eta solving
+- this batch does not add solver handoff on that linear subset, eta-mode expansion, CLI,
+  multi-variable orchestration, `SkipReduction`, or broader end-to-end eta solving
 
 The first invariant-generated solver handoff remains narrow:
 

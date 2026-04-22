@@ -2835,6 +2835,17 @@ amflow::ProblemSpec MakeAutoInvariantLinearProblemSpec() {
   return spec;
 }
 
+amflow::EtaInsertionDecision MakeAutoEtaLinearDecision() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "Explicit";
+  decision.selected_propagator_indices = {0};
+  decision.selected_propagators = {
+      spec.family.propagators[0].expression,
+  };
+  return decision;
+}
+
 amflow::ProblemSpec MakeUnsupportedKiraLinearProblemSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.family.propagators[1].expression = "k1*p1";
@@ -3147,6 +3158,12 @@ std::string MakeAutoInvariantLinearRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoEtaLinearRuleFile() {
+  return "{\n"
+         "  toy_auto_linear_family[2,1,1] -> 3*toy_auto_linear_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantResultScript(const bool write_rule_file,
                                           const std::string& rule_file_contents,
                                           const bool write_stdout = true,
@@ -3195,6 +3212,32 @@ std::string MakeAutoInvariantLinearResultScript(const bool write_rule_file,
   }
   if (write_stdout) {
     script << "echo \"auto-invariant-linear:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
+std::string MakeAutoEtaLinearResultScript(const bool write_rule_file,
+                                          const std::string& rule_file_contents,
+                                          const bool write_stdout = true,
+                                          const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "dest=\"$PWD/results/toy_auto_linear_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_linear_family[1,1,1] 0\n";
+  script << "EOF\n";
+  if (write_rule_file) {
+    script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+    script << rule_file_contents;
+    script << "EOF\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"auto-eta-linear:$1\"\n";
   }
   script << "exit " << exit_code << "\n";
   return script.str();
@@ -15513,6 +15556,82 @@ void PrepareEtaGeneratedReductionHappyPathTest() {
          "eta-generated Kira preparation should include eta in the invariants");
 }
 
+void PrepareEtaGeneratedReductionSupportsReviewedLinearPropagatorSubsetTest() {
+  amflow::KiraBackend backend;
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::EtaInsertionDecision decision = MakeAutoEtaLinearDecision();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-prepare"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-prepare-baseline"));
+  const amflow::AuxiliaryFamilyTransformResult transformed =
+      amflow::ApplyEtaInsertion(spec, decision);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.Prepare(transformed.transformed_spec, MakeKiraReductionOptions(), baseline_layout);
+
+  const amflow::EtaGeneratedReductionPreparation preparation =
+      amflow::PrepareEtaGeneratedReduction(
+          spec, master_basis, decision, MakeKiraReductionOptions(), layout);
+
+  Expect(preparation.generated_variable.variable.name == "eta" &&
+             preparation.generated_variable.variable.kind ==
+                 amflow::DifferentiationVariableKind::Eta,
+         "eta-generated linear preparation should preserve the eta differentiation variable");
+  Expect(preparation.generated_variable.rows.size() == 1 &&
+             preparation.generated_variable.rows.front().source_master.Label() ==
+                 "toy_auto_linear_family[1,1,1]" &&
+             preparation.generated_variable.rows.front().terms.size() == 1 &&
+             preparation.generated_variable.rows.front().terms.front().coefficient == "-1" &&
+             preparation.generated_variable.rows.front().terms.front().target.Label() ==
+                 "toy_auto_linear_family[2,1,1]",
+         "eta-generated linear preparation should preserve the reviewed generated row");
+  Expect(preparation.generated_variable.reduction_targets.size() == 1 &&
+             preparation.generated_variable.reduction_targets.front().Label() ==
+                 "toy_auto_linear_family[2,1,1]",
+         "eta-generated linear preparation should expose the reviewed generated target");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated linear preparation should not mutate reviewed linear subset inputs");
+  Expect(preparation.backend_preparation.validation_messages.empty(),
+         "eta-generated linear preparation should preserve an empty validation result on the "
+         "reviewed linear subset");
+
+  const auto target_it = preparation.backend_preparation.generated_files.find("target");
+  Expect(target_it != preparation.backend_preparation.generated_files.end(),
+         "eta-generated linear preparation should emit the explicit target file");
+  Expect(target_it->second == "toy_auto_linear_family[2,1,1]\n",
+         "eta-generated linear preparation should preserve exact generated target order");
+
+  const auto family_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_family_yaml_it != baseline_preparation.generated_files.end() &&
+             family_yaml_it->second == baseline_family_yaml_it->second,
+         "eta-generated linear preparation should preserve transformed family YAML on the "
+         "reviewed direct-decision subset");
+  Expect(family_yaml_it->second.find("\"((k)^2) + eta\"") != std::string::npos &&
+             family_yaml_it->second.find("[\"k*n\", \"-1\"]\n") != std::string::npos &&
+             family_yaml_it->second.find("\"(k*n) + eta\"") == std::string::npos,
+         "eta-generated linear preparation should eta-shift only the reviewed quadratic slot "
+         "while leaving the explicit linear slot passive");
+
+  const auto kinematics_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "eta-generated linear preparation should preserve transformed kinematics YAML on the "
+         "reviewed direct-decision subset");
+  Expect(kinematics_yaml_it->second.find("\"s\"") != std::string::npos &&
+             kinematics_yaml_it->second.find("\"eta\"") != std::string::npos,
+         "eta-generated linear preparation should preserve the reviewed invariant list plus eta");
+}
+
 void PrepareEtaGeneratedReductionRejectsEmptyGeneratedTargetsTest() {
   amflow::ParsedMasterList master_basis;
   master_basis.family = "planar_double_box";
@@ -16103,6 +16222,102 @@ void RunEtaGeneratedReductionHappyPathTest() {
          "eta-generated wrapper should preserve the reviewed eta matrix entries");
 }
 
+void RunEtaGeneratedReductionSupportsReviewedLinearPropagatorSubsetTest() {
+  amflow::KiraBackend backend;
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::EtaInsertionDecision decision = MakeAutoEtaLinearDecision();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-wrapper"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-wrapper-baseline"));
+  const amflow::AuxiliaryFamilyTransformResult transformed =
+      amflow::ApplyEtaInsertion(spec, decision);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.Prepare(transformed.transformed_spec, MakeKiraReductionOptions(), baseline_layout);
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       decision,
+                                       MakeKiraReductionOptions(),
+                                       layout,
+                                       kira_path,
+                                       fermat_path);
+
+  Expect(execution.execution_result.Succeeded(),
+         "eta-generated linear wrapper should preserve successful reducer execution on the "
+         "reviewed direct-decision subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated linear wrapper should not mutate reviewed linear subset inputs");
+  Expect(execution.execution_result.working_directory == layout.generated_config_dir,
+         "eta-generated linear wrapper should record the reducer working-directory artifact root");
+  Expect(execution.parsed_reduction_result.has_value(),
+         "eta-generated linear wrapper should expose the parsed reduction result on the "
+         "reviewed direct-decision subset");
+  Expect(execution.assembled_system.has_value(),
+         "eta-generated linear wrapper should expose the assembled system on the reviewed "
+         "direct-decision subset");
+  Expect(execution.parsed_reduction_result->master_list.source_path ==
+             execution.execution_result.working_directory / "results/toy_auto_linear_family/masters",
+         "eta-generated linear wrapper should parse reviewed linear-subset results from the "
+         "recorded working-directory artifact root");
+  Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
+             "toy_auto_linear_family[2,1,1]\n",
+         "eta-generated linear wrapper should preserve generated-target order on the reviewed "
+         "direct-decision subset");
+
+  const auto family_yaml_it =
+      execution.preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+             baseline_family_yaml_it != baseline_preparation.generated_files.end() &&
+             family_yaml_it->second == baseline_family_yaml_it->second &&
+             family_yaml_it->second.find("\"((k)^2) + eta\"") != std::string::npos &&
+             family_yaml_it->second.find("[\"k*n\", \"-1\"]\n") != std::string::npos &&
+             family_yaml_it->second.find("\"(k*n) + eta\"") == std::string::npos,
+         "eta-generated linear wrapper should preserve the reviewed transformed family YAML "
+         "without eta-shifting the explicit linear slot");
+
+  const auto kinematics_yaml_it =
+      execution.preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "eta-generated linear wrapper should preserve transformed kinematics YAML on the "
+         "reviewed direct-decision subset");
+
+  Expect(execution.parsed_reduction_result->status == amflow::ParsedReductionStatus::ParsedRules &&
+             execution.parsed_reduction_result->explicit_rule_count == 1 &&
+             execution.parsed_reduction_result->rules.size() == 2,
+         "eta-generated linear wrapper should parse one explicit reviewed linear-subset Kira "
+         "rule");
+  Expect(execution.assembled_system->variables.size() == 1 &&
+             execution.assembled_system->variables.front().name == "eta" &&
+             execution.assembled_system->variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Eta,
+         "eta-generated linear wrapper should assemble a single eta variable on the reviewed "
+         "direct-decision subset");
+  const auto matrix_it = execution.assembled_system->coefficient_matrices.find("eta");
+  Expect(matrix_it != execution.assembled_system->coefficient_matrices.end(),
+         "eta-generated linear wrapper should populate the eta matrix on the reviewed "
+         "direct-decision subset");
+  Expect(matrix_it->second.size() == 1 && matrix_it->second[0].size() == 1 &&
+             matrix_it->second[0][0] == "(-1)*(3)",
+         "eta-generated linear wrapper should preserve the reviewed eta matrix entry");
+}
+
 void RunEtaGeneratedReductionUsesExactDimensionOverrideLeadingArgumentTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -16289,6 +16504,79 @@ void BuildEtaGeneratedDESystemHappyPathTest() {
              matrix_it->second[1][0] == "(-1)*(t)" &&
              matrix_it->second[1][1] == "(-1)*(3)",
          "eta-generated DE consumer should return the reviewed eta matrix entries unchanged");
+}
+
+void BuildEtaGeneratedDESystemSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::EtaInsertionDecision decision = MakeAutoEtaLinearDecision();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-desystem-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::EtaGeneratedReductionExecution baseline_execution =
+      amflow::RunEtaGeneratedReduction(spec,
+                                       master_basis,
+                                       decision,
+                                       MakeKiraReductionOptions(),
+                                       baseline_layout,
+                                       baseline_kira_path,
+                                       baseline_fermat_path);
+  Expect(baseline_execution.assembled_system.has_value(),
+         "eta-generated linear DE baseline should assemble a DESystem");
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-generated-linear-desystem"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-generated linear DE consumer should not mutate reviewed linear subset inputs");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "eta-generated linear DE consumer should return a valid DESystem on the reviewed "
+         "direct-decision subset");
+  Expect(system.masters.size() == 1 &&
+             system.masters[0].label == "toy_auto_linear_family[1,1,1]",
+         "eta-generated linear DE consumer should preserve the reviewed linear master basis");
+  Expect(system.variables.size() == 1 &&
+             system.variables.front().name == "eta" &&
+             system.variables.front().kind == amflow::DifferentiationVariableKind::Eta,
+         "eta-generated linear DE consumer should preserve the eta variable on the reviewed "
+         "direct-decision subset");
+  const auto matrix_it = system.coefficient_matrices.find("eta");
+  Expect(matrix_it != system.coefficient_matrices.end(),
+         "eta-generated linear DE consumer should populate the eta coefficient matrix on the "
+         "reviewed direct-decision subset");
+  Expect(matrix_it->second ==
+                 baseline_execution.assembled_system->coefficient_matrices.at("eta") &&
+             matrix_it->second.size() == 1 && matrix_it->second[0].size() == 1 &&
+             matrix_it->second[0][0] == "(-1)*(3)",
+         "eta-generated linear DE consumer should return the reviewed eta matrix entry "
+         "unchanged");
 }
 
 void BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest() {
@@ -31921,6 +32209,7 @@ int main() {
     GeneratedDerivativeAssemblyRejectsRowCountMismatchTest();
     GeneratedDerivativeAssemblyRejectsDuplicateVariableNamesTest();
     PrepareEtaGeneratedReductionHappyPathTest();
+    PrepareEtaGeneratedReductionSupportsReviewedLinearPropagatorSubsetTest();
     PrepareEtaGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest();
     PrepareEtaGeneratedReductionRejectsEmptyGeneratedTargetsTest();
     PrepareEtaGeneratedReductionFakeExecutionSmokeTest();
@@ -31943,10 +32232,12 @@ int main() {
     PrepareInvariantGeneratedReductionRejectsSpecSeedArityMismatchTest();
     PrepareInvariantGeneratedReductionFakeExecutionSmokeTest();
     RunEtaGeneratedReductionHappyPathTest();
+    RunEtaGeneratedReductionSupportsReviewedLinearPropagatorSubsetTest();
     RunEtaGeneratedReductionUsesExactDimensionOverrideLeadingArgumentTest();
     RunEtaGeneratedReductionExecutionFailureTest();
     RunEtaGeneratedReductionRejectsIdentityFallbackResultsTest();
     BuildEtaGeneratedDESystemHappyPathTest();
+    BuildEtaGeneratedDESystemSupportsReviewedLinearPropagatorSubsetTest();
     BuildEtaGeneratedDESystemUsesExactDimensionOverrideHappyPathTest();
     BuildEtaGeneratedDESystemCanonicalizesSymbolicKiraDimensionTest();
     BuildEtaGeneratedDESystemUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest();

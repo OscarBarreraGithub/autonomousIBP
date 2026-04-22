@@ -42,8 +42,36 @@ void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
   }
 }
 
+void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
+  bool saw_cut_propagator = false;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind == PropagatorKind::Cut) {
+      saw_cut_propagator = true;
+      continue;
+    }
+    if (propagator.kind == PropagatorKind::Standard) {
+      continue;
+    }
+    throw BoundaryUnsolvedError(
+        "builtin Cutkosky phase-space boundary request generation only supports standard/cut "
+        "propagators; propagator " +
+        std::to_string(index) + " has kind " + ToString(propagator.kind));
+  }
+
+  if (!saw_cut_propagator) {
+    throw BoundaryUnsolvedError(
+        "builtin Cutkosky phase-space boundary request generation requires at least one cut "
+        "propagator on the current reviewed phase-space subset");
+  }
+}
+
 std::string SupportedEtaInfinityTerminalNode(const ProblemSpec& spec) {
   return spec.family.name + "::eta->infinity";
+}
+
+std::string SupportedCutkoskyPhaseSpaceTerminalNode(const ProblemSpec& spec) {
+  return spec.family.name + "::cutkosky-phase-space";
 }
 
 void ValidatePlannedEtaInfinityTerminalNodes(const ProblemSpec& spec,
@@ -77,6 +105,37 @@ void ValidatePlannedEtaInfinityTerminalNodes(const ProblemSpec& spec,
   }
 }
 
+void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
+                                                    const EndingDecision& decision) {
+  const std::string supported_terminal_node = SupportedCutkoskyPhaseSpaceTerminalNode(spec);
+  const std::size_t supported_count =
+      static_cast<std::size_t>(std::count(decision.terminal_nodes.begin(),
+                                          decision.terminal_nodes.end(),
+                                          supported_terminal_node));
+  if (supported_count > 1) {
+    throw BoundaryUnsolvedError(
+        "planned Cutkosky phase-space boundary request requires exactly one supported terminal "
+        "node " +
+        supported_terminal_node + "; duplicate supported terminal node");
+  }
+
+  for (const std::string& terminal_node : decision.terminal_nodes) {
+    if (terminal_node != supported_terminal_node) {
+      throw BoundaryUnsolvedError(
+          "planned Cutkosky phase-space boundary request requires exactly one supported "
+          "terminal node " +
+          supported_terminal_node + "; unsupported extra terminal node " + terminal_node);
+    }
+  }
+
+  if (supported_count == 0) {
+    throw BoundaryUnsolvedError(
+        "planned Cutkosky phase-space boundary request requires exactly one supported terminal "
+        "node " +
+        supported_terminal_node + "; missing supported terminal node");
+  }
+}
+
 }  // namespace
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spec,
@@ -100,6 +159,27 @@ BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spe
   return request;
 }
 
+BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(const ProblemSpec& spec,
+                                                                 const std::string& eta_symbol) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+
+  if (eta_symbol.empty()) {
+    throw std::invalid_argument(
+        "builtin Cutkosky phase-space boundary request eta_symbol must not be empty");
+  }
+
+  ValidateBuiltinCutkoskyPhaseSpaceSubset(spec);
+
+  BoundaryRequest request;
+  request.variable = eta_symbol;
+  request.location = "cutkosky-phase-space";
+  request.strategy = "builtin::cutkosky-phase-space";
+  return request;
+}
+
 BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,
     const std::string& ending_scheme_name,
@@ -111,6 +191,17 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
   return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
 }
 
+BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+    const ProblemSpec& spec,
+    const std::string& ending_scheme_name,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const std::string& eta_symbol) {
+  const EndingDecision decision =
+      PlanEndingScheme(spec, ending_scheme_name, user_defined_schemes);
+  ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(spec, decision);
+  return GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec, eta_symbol);
+}
+
 BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,
     const AmfOptions& amf_options,
@@ -120,6 +211,17 @@ BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
   return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+}
+
+BoundaryRequest GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const std::string& eta_symbol) {
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(spec, decision);
+  return GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec, eta_symbol);
 }
 
 }  // namespace amflow

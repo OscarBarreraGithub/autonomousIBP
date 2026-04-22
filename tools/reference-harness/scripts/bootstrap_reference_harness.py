@@ -144,6 +144,17 @@ THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
     "one-singular-endpoint-case": "b62i",
 }
 
+LANDED_PHASE0_RUNTIME_PREDECESSORS = {
+    "automatic_phasespace": "b63f",
+    "complex_kinematics": "b61h",
+    "feynman_prescription": "b63f",
+    "linear_propagator": "b64e",
+}
+
+LANDED_CASE_STUDY_RUNTIME_PREDECESSORS = {
+    "one-singular-endpoint-case": "b62h",
+}
+
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
     "differential_equation_solver",
     "spacetime_dimension",
@@ -352,6 +363,7 @@ def run_self_check() -> dict[str, Any]:
     parity_matrix_path = repo_root / "specs" / "parity-matrix.yaml"
     selected_benchmarks_path = repo_root / "references" / "case-studies" / "selected-benchmarks.md"
     verification_strategy_path = repo_root / "docs" / "verification-strategy.md"
+    implementation_ledger_path = repo_root / "docs" / "implementation-ledger.md"
 
     with tempfile.TemporaryDirectory(prefix="amflow-bootstrap-self-check-") as tmp:
         temp_root = Path(tmp)
@@ -387,6 +399,7 @@ def run_self_check() -> dict[str, Any]:
         phase0_catalog = load_json(phase0_catalog_path)
         qualification = load_json(qualification_path)
         golden_index = load_json(golden_index_path)
+        implementation_ledger_text = implementation_ledger_path.read_text(encoding="utf-8")
         parity_example_classes = load_yaml_string_list(parity_matrix_path, "example_classes")
         parity_benchmarks = load_yaml_string_list(parity_matrix_path, "benchmarks")
         parity_regressions = load_yaml_string_list(parity_matrix_path, "known_regressions")
@@ -470,6 +483,14 @@ def run_self_check() -> dict[str, Any]:
             entry["id"]: entry["families"] for entry in qualification["known_regression_profiles"]
         }
         golden_index_ids = [entry["benchmark_id"] for entry in golden_index["benchmarks"]]
+        recorded_phase0_runtime_predecessors = all(
+            f"Batch {lane[1:]}" in implementation_ledger_text
+            for lane in set(LANDED_PHASE0_RUNTIME_PREDECESSORS.values())
+        )
+        recorded_case_study_runtime_predecessors = all(
+            f"Batch {lane[1:]}" in implementation_ledger_text
+            for lane in set(LANDED_CASE_STUDY_RUNTIME_PREDECESSORS.values())
+        )
 
         expect(summary["placeholders"]["benchmark_count"] == len(catalog_ids),
                "bootstrap self-check should freeze one placeholder benchmark per phase-0 catalog entry")
@@ -515,6 +536,10 @@ def run_self_check() -> dict[str, Any]:
         expect(
             qualification_case_study_runtime_lanes == THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES,
             "qualification scaffold case-study runtime lanes should stay locked to the reviewed next-slice plan",
+        )
+        expect(
+            recorded_phase0_runtime_predecessors and recorded_case_study_runtime_predecessors,
+            "bootstrap self-check should anchor forward blocker hints to recorded landed runtime predecessors",
         )
         expect(
             placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
@@ -614,6 +639,10 @@ def run_self_check() -> dict[str, Any]:
             "singular_case_study_runtime_lane_locked": (
                 qualification_case_study_runtime_lanes
                 == THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES
+            ),
+            "runtime_lane_predecessors_recorded": (
+                recorded_phase0_runtime_predecessors
+                and recorded_case_study_runtime_predecessors
             ),
             "placeholder_metadata_preserves_runtime_lane_hints": (
                 placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES

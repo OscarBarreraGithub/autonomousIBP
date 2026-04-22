@@ -173,7 +173,8 @@ retained outputs and rerun evidence.
   profiles that future qualification packets must keep visible. Where the next retained capture is
   still blocked by unfinished runtime work, the scaffold and copied phase-0 catalog also carry one
   optional `next_runtime_lane` hint so future capture threads do not need to rediscover the
-  current `b61i` / `b62i` / `b63g` / `b64f` blocker map from scratch. Ready optional examples may
+  current `b61i` / `b62i` / `b63g` / `b64f` blocker map from scratch. Those hints intentionally
+  step one slice past the recorded landed predecessors `b61h` / `b62h` / `b63f` / `b64e`. Ready optional examples may
   instead carry `optional_capture_packet` so future capture threads keep the retained `de-d0-pair`
   and next `user-hook-pair` grouped without re-planning that packet shape.
 - The scaffold is planning metadata only. Adding or editing it does not claim any new

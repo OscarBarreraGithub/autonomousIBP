@@ -826,6 +826,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         benchmark_catalog_path = harness_root / "templates" / "phase0-benchmarks.json"
         source_amflow = temp_root / "source-amflow"
         example_root = source_amflow / "examples" / "demo_benchmark"
+        extracted_example_root = temp_root / "cpc-extracted" / "amflow-cpc" / "examples" / "demo_benchmark"
         selection_benchmarks = [
             normalize_benchmark_entry(
                 {
@@ -868,6 +869,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         ]
 
         ensure_dir(example_root / "backup")
+        ensure_dir(extracted_example_root)
         ensure_dir(source_amflow / "ibp_interface" / "Kira")
         ensure_dir(harness_root / "goldens" / "phase0" / "demo_benchmark")
         ensure_dir(harness_root / "comparisons" / "phase0")
@@ -1029,6 +1031,15 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                 required_only=False,
             )
         ]
+        fallback_example_root = resolve_example_root(
+            {
+                "upstream": {
+                    "amflow": {"source": {"path": str(temp_root / "missing-amflow")}},
+                    "cpc_archive": {"source": {"extracted_path": str(temp_root / "cpc-extracted")}},
+                }
+            },
+            "demo_benchmark",
+        )
         required_only_ids = [
             entry["id"]
             for entry in select_benchmarks(
@@ -1139,6 +1150,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             "summary_records_selected_packet": summary["optional_capture_packet"] == "demo-packet",
             "backup_match_ok": comparison_summary["checks"][2]["status"] == "passed",
             "rerun_match_ok": comparison_summary["checks"][3]["status"] == "passed",
+            "cpc_fallback_example_root_resolved": fallback_example_root == extracted_example_root,
             "selected_ids_follow_catalog_order": selected_ids == ["required_alpha", "optional_beta"],
             "required_only_selects_required_subset": required_only_ids == [
                 "required_alpha",

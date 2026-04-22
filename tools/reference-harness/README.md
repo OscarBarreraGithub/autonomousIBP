@@ -171,7 +171,9 @@ The capture script writes:
   codes, and the known regression families without claiming any new captured evidence. It now also
   carries optional `next_runtime_lane` hints for feature or qualification anchors that are still
   blocked on reviewed runtime slices, plus `optional_capture_packet` hints for ready example pairs
-  that belong in the retained `de-d0-pair` or next `user-hook-pair` packets.
+  that belong in the retained `de-d0-pair` or next `user-hook-pair` packets. Those hints
+  intentionally point one slice beyond the recorded landed predecessors `b61h` / `b62h` /
+  `b63f` / `b64e`.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`

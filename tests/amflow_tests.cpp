@@ -32770,6 +32770,10 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "bootstrap reference-harness self-check should keep the singular guardrail "
                  "runtime-lane hint synchronized with the reviewed next-slice plan");
   ExpectContains(result.stdout_json,
+                 "\"runtime_lane_predecessors_recorded\": true",
+                 "bootstrap reference-harness self-check should anchor forward runtime-lane "
+                 "hints to recorded landed predecessor slices");
+  ExpectContains(result.stdout_json,
                  "\"placeholder_metadata_preserves_runtime_lane_hints\": true",
                  "bootstrap reference-harness self-check should preserve theory-backed runtime "
                  "lane hints in placeholder metadata");
@@ -32910,6 +32914,9 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
                  "capture reference-harness self-check should prove bundled-backup agreement");
   ExpectContains(result.stdout_json, "\"rerun_match_ok\": true",
                  "capture reference-harness self-check should prove rerun reproducibility");
+  ExpectContains(result.stdout_json, "\"cpc_fallback_example_root_resolved\": true",
+                 "capture reference-harness self-check should cover fallback example discovery "
+                 "from the extracted CPC tree");
   ExpectContains(result.stdout_json, "\"selected_ids_follow_catalog_order\": true",
                  "capture reference-harness self-check should keep repeated benchmark-id "
                  "selection in frozen catalog order");

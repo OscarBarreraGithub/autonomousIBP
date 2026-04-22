@@ -8842,6 +8842,179 @@ void AttachBoundaryConditionsFromProviderIsDeterministicAndNonMutatingTest() {
          "provider boundary attachment should be deterministic across repeated runs");
 }
 
+void AttachBoundaryConditionsFromProviderRegistryHappyPathTest() {
+  amflow::SolveRequest request = MakeBoundarySolveRequest();
+  request.boundary_requests.push_back({"eta", "eta=2", "automatic"});
+
+  const amflow::BoundaryCondition first = MakeValidBoundaryCondition();
+  const amflow::BoundaryCondition second = {"eta", "eta=2", {"7/11", "13/17"}, "automatic"};
+  auto manual_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            first,
+                                                        });
+  auto automatic_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("automatic",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            second,
+                                                        });
+
+  const amflow::SolveRequest attached = amflow::AttachBoundaryConditionsFromProviderRegistry(
+      request,
+      {manual_provider, automatic_provider});
+
+  amflow::SolveRequest expected = request;
+  expected.boundary_conditions = {first, second};
+
+  Expect(request.boundary_conditions.empty(),
+         "provider registry boundary attachment should not mutate the original request");
+  Expect(manual_provider->strategy_call_count() == 1 && manual_provider->provide_call_count() == 1 &&
+             automatic_provider->strategy_call_count() == 1 &&
+             automatic_provider->provide_call_count() == 1,
+         "provider registry boundary attachment should validate each registered provider once "
+         "and then consult matching providers exactly once per request");
+  Expect(manual_provider->seen_requests().size() == 1 &&
+             SameBoundaryRequest(manual_provider->seen_requests().front(),
+                                request.boundary_requests.front()) &&
+             automatic_provider->seen_requests().size() == 1 &&
+             SameBoundaryRequest(automatic_provider->seen_requests().front(),
+                                request.boundary_requests.back()),
+         "provider registry boundary attachment should preserve boundary-request order while "
+         "routing each request to the matching provider");
+  Expect(SameSolveRequest(attached, expected),
+         "provider registry boundary attachment should preserve all solve-request fields while "
+         "attaching the matched explicit boundary list");
+}
+
+void AttachBoundaryConditionsFromProviderRegistryRejectsMissingStrategyTest() {
+  amflow::SolveRequest request = MakeBoundarySolveRequest();
+  request.boundary_requests.front().strategy = "automatic";
+  auto provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+
+  ExpectBoundaryUnsolved(
+      [&request, &provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProviderRegistry(request, {provider}));
+      },
+      "boundary provider registry does not contain strategy automatic for eta @ eta=1",
+      "provider registry boundary attachment should report missing strategy coverage as "
+      "boundary_unsolved");
+  Expect(provider->strategy_call_count() == 1 && provider->provide_call_count() == 0,
+         "provider registry boundary attachment should stop before Provide when no registered "
+         "provider matches the request strategy");
+}
+
+void AttachBoundaryConditionsFromProviderRegistryRejectsNullEntryTest() {
+  auto provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+
+  ExpectInvalidArgument(
+      [&provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProviderRegistry(
+            MakeBoundarySolveRequest(),
+            {provider, std::shared_ptr<amflow::BoundaryProvider>()}));
+      },
+      "boundary provider registry entry 2 is null",
+      "provider registry boundary attachment should reject null registry entries eagerly");
+  Expect(provider->strategy_call_count() == 1 && provider->provide_call_count() == 0,
+         "provider registry boundary attachment should reject null registry entries before any "
+         "provider Provide call");
+}
+
+void AttachBoundaryConditionsFromProviderRegistryRejectsDuplicateStrategyTest() {
+  auto first_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+  auto second_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+
+  ExpectInvalidArgument(
+      [&first_provider, &second_provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProviderRegistry(
+            MakeBoundarySolveRequest(),
+            {first_provider, second_provider}));
+      },
+      "boundary provider registry contains duplicate strategy: manual",
+      "provider registry boundary attachment should reject duplicate strategy registrations");
+  Expect(first_provider->strategy_call_count() == 1 && second_provider->strategy_call_count() == 1 &&
+             first_provider->provide_call_count() == 0 &&
+             second_provider->provide_call_count() == 0,
+         "provider registry boundary attachment should reject duplicate registry strategies "
+         "before any provider Provide call");
+}
+
+void AttachBoundaryConditionsFromProviderRegistryPropagatesProviderBoundaryUnsolvedTest() {
+  const amflow::SolveRequest request = MakeBoundarySolveRequest();
+  auto noise_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("automatic",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+  auto provider = std::make_shared<ThrowingBoundaryProvider>(
+      "manual",
+      "provider could not resolve eta @ eta=1");
+
+  try {
+    static_cast<void>(amflow::AttachBoundaryConditionsFromProviderRegistry(
+        request,
+        {noise_provider, provider}));
+  } catch (const amflow::BoundaryUnsolvedError& error) {
+    Expect(std::string(error.what()) == "boundary_unsolved: provider could not resolve eta @ eta=1",
+           "provider registry boundary attachment should propagate provider BoundaryUnsolvedError "
+           "messages unchanged");
+    Expect(std::string(error.failure_code()) == "boundary_unsolved",
+           "provider registry boundary attachment should preserve the typed boundary_unsolved "
+           "code");
+    Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0 &&
+               provider->strategy_call_count() == 1 && provider->provide_call_count() == 1,
+           "provider registry boundary attachment should stop after the matched provider reports "
+           "boundary_unsolved");
+    return;
+  }
+  throw std::runtime_error("provider registry boundary attachment should propagate provider "
+                           "BoundaryUnsolvedError unchanged");
+}
+
+void AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest() {
+  amflow::BoundaryCondition explicit_boundary = MakeValidBoundaryCondition();
+  explicit_boundary.location = "eta=3";
+  auto noise_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("automatic",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeValidBoundaryCondition(),
+                                                        });
+  auto provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            explicit_boundary,
+                                                        });
+
+  ExpectBoundaryUnsolved(
+      [&noise_provider, &provider]() {
+        static_cast<void>(amflow::AttachBoundaryConditionsFromProviderRegistry(
+            MakeBoundarySolveRequest(),
+            {noise_provider, provider}));
+      },
+      "no explicit boundary data matched the solver start location: eta=1",
+      "provider registry boundary attachment should route wrong-location provider output through "
+      "the reviewed manual attachment validator");
+  Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0 &&
+             provider->strategy_call_count() == 1 && provider->provide_call_count() == 1,
+         "provider registry boundary attachment should preserve manual-validation failures after "
+         "routing the matched provider output");
+}
+
 void GenerateBuiltinEtaInfinityBoundaryRequestSampleSpecHappyPathTest() {
   const amflow::BoundaryRequest request =
       amflow::GenerateBuiltinEtaInfinityBoundaryRequest(amflow::MakeSampleProblemSpec());
@@ -11276,6 +11449,221 @@ void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTe
   Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
          "Batch 63f Cutkosky wrapper should preserve downstream solver diagnostics when a "
          "caller-supplied eta symbol is used");
+}
+
+void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto wrapper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto wrapper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  auto baseline_cutkosky_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto wrapper_noise_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "unused::noise",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto wrapper_cutkosky_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {baseline_retry_scheme, baseline_custom_scheme},
+          request_template,
+          *baseline_cutkosky_provider,
+          baseline_solver);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {wrapper_retry_scheme, wrapper_custom_scheme},
+          request_template,
+          std::vector<std::shared_ptr<amflow::BoundaryProvider>>{wrapper_noise_provider,
+                                                                 wrapper_cutkosky_provider},
+          wrapper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 63g Cutkosky registry wrapper should not mutate the shared input ProblemSpec on "
+         "the happy path");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 63g Cutkosky registry wrapper should not mutate the caller-owned solve request "
+         "template on the happy path");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             wrapper_retry_scheme->call_count() == 1 && wrapper_custom_scheme->call_count() == 1,
+         "Batch 63g Cutkosky registry wrapper should preserve ordered ending fallback with one "
+         "planning probe per configured scheme");
+  Expect(baseline_cutkosky_provider->strategy_call_count() == 1 &&
+             baseline_cutkosky_provider->provide_call_count() == 1 &&
+             wrapper_noise_provider->strategy_call_count() == 1 &&
+             wrapper_noise_provider->provide_call_count() == 0 &&
+             wrapper_cutkosky_provider->strategy_call_count() == 1 &&
+             wrapper_cutkosky_provider->provide_call_count() == 1,
+         "Batch 63g Cutkosky registry wrapper should preserve the single-provider happy path "
+         "while consulting only the matching phase-space provider from the registry");
+  Expect(baseline_solver.call_count() == 1 && wrapper_solver.call_count() == 1,
+         "Batch 63g Cutkosky registry wrapper should make exactly one solver call on the happy "
+         "path");
+  Expect(baseline_cutkosky_provider->seen_requests().size() == 1 &&
+             wrapper_cutkosky_provider->seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_cutkosky_provider->seen_requests().front(),
+                                baseline_cutkosky_provider->seen_requests().front()),
+         "Batch 63g Cutkosky registry wrapper should feed the same planned phase-space request "
+         "into the matched provider as the manual registry baseline");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63g Cutkosky registry wrapper should feed the same attached SolveRequest into "
+         "the solver as the manual registry baseline");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63g Cutkosky registry wrapper should preserve downstream solver diagnostics "
+         "relative to the reviewed single-provider wrapper baseline");
+}
+
+void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  auto noise_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "unused::noise",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options, &request_template, &noise_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{noise_provider},
+            solver));
+      },
+      "boundary provider registry does not contain strategy builtin::cutkosky-phase-space for "
+      "eta @ cutkosky-phase-space",
+      "Batch 63g Cutkosky registry wrapper should preserve missing-provider diagnostics before "
+      "solver execution");
+  Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0,
+         "Batch 63g Cutkosky registry wrapper should validate registered providers before "
+         "reporting missing phase-space coverage");
+  Expect(solver.call_count() == 0,
+         "Batch 63g Cutkosky registry wrapper should not call the solver when the registry "
+         "cannot satisfy the phase-space boundary request");
+}
+
+void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  ThrowingBoundaryProvider baseline_provider("builtin::cutkosky-phase-space",
+                                             "provider could not resolve eta @ cutkosky-phase-space");
+  auto noise_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "unused::noise",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto wrapper_provider = std::make_shared<ThrowingBoundaryProvider>(
+      "builtin::cutkosky-phase-space",
+      "provider could not resolve eta @ cutkosky-phase-space");
+  RecordingSeriesSolver solver;
+
+  const std::string baseline_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &request_template, &baseline_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            baseline_provider,
+            solver));
+      },
+      "Batch 63g single-provider wrapper baseline should preserve provider boundary_unsolved "
+      "before solver execution");
+  const std::string composed_message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &request_template, &noise_provider, &wrapper_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{noise_provider,
+                                                                   wrapper_provider},
+            solver));
+      },
+      "Batch 63g registry wrapper should preserve provider boundary_unsolved before solver "
+      "execution");
+
+  Expect(composed_message == baseline_message,
+         "Batch 63g Cutkosky registry wrapper should preserve matched-provider "
+         "boundary_unsolved diagnostics unchanged");
+  Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0 &&
+             wrapper_provider->strategy_call_count() == 1 &&
+             wrapper_provider->provide_call_count() == 1,
+         "Batch 63g Cutkosky registry wrapper should stop after the matched provider reports "
+         "boundary_unsolved");
+  Expect(solver.call_count() == 0,
+         "Batch 63g Cutkosky registry wrapper should not call the solver after matched-provider "
+         "failure");
+}
+
+void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  auto cutkosky_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &amf_options, &request_template, &cutkosky_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{
+                cutkosky_provider,
+                std::shared_ptr<amflow::BoundaryProvider>()},
+            solver));
+      },
+      "boundary provider registry entry 2 is null",
+      "Batch 63g Cutkosky registry wrapper should preserve registry validation failures before "
+      "solver execution");
+  Expect(cutkosky_provider->strategy_call_count() == 1 &&
+             cutkosky_provider->provide_call_count() == 0,
+         "Batch 63g Cutkosky registry wrapper should validate the registry before any provider "
+         "Provide call");
+  Expect(solver.call_count() == 0,
+         "Batch 63g Cutkosky registry wrapper should not call the solver when registry "
+         "validation fails");
 }
 
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
@@ -33521,6 +33909,12 @@ int main() {
     AttachBoundaryConditionsFromProviderRejectsDuplicateLociOutputTest();
     AttachBoundaryConditionsFromProviderRejectsPreexistingBoundaryConditionsTest();
     AttachBoundaryConditionsFromProviderIsDeterministicAndNonMutatingTest();
+    AttachBoundaryConditionsFromProviderRegistryHappyPathTest();
+    AttachBoundaryConditionsFromProviderRegistryRejectsMissingStrategyTest();
+    AttachBoundaryConditionsFromProviderRegistryRejectsNullEntryTest();
+    AttachBoundaryConditionsFromProviderRegistryRejectsDuplicateStrategyTest();
+    AttachBoundaryConditionsFromProviderRegistryPropagatesProviderBoundaryUnsolvedTest();
+    AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();
     GeneratePlannedCutkoskyPhaseSpaceBoundaryRequestBuiltinHappyPathTest();
@@ -33594,6 +33988,10 @@ int main() {
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceProviderFailureShortCircuitTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceIgnoresInertAmfOptionsFieldsTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTest();
+    Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest();
+    Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest();
+    Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest();
+    Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

@@ -134,14 +134,14 @@ def load_verification_strategy_digit_thresholds(path: Path) -> dict[str, int]:
 
 
 THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
-    "automatic_phasespace": "b63f",
+    "automatic_phasespace": "b63g",
     "complex_kinematics": "b61h",
-    "feynman_prescription": "b63f",
-    "linear_propagator": "b64d",
+    "feynman_prescription": "b63g",
+    "linear_propagator": "b64e",
 }
 
 THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
-    "one-singular-endpoint-case": "b62g",
+    "one-singular-endpoint-case": "b62h",
 }
 
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {

@@ -89,9 +89,9 @@ retained outputs and rerun evidence.
   `automatic_phasespace`, and `linear_propagator`, plus the uncaptured user-hook examples and
   later regression families, stay on the rolling future-capture lane. The copied phase-0 catalog
   now marks the theory-blocked feature captures explicitly: `complex_kinematics -> b61h`,
-  `feynman_prescription -> b63f`, `automatic_phasespace -> b63f`, and
-  `linear_propagator -> b64d`; the qualification scaffold keeps the singular guardrail anchor
-  `one-singular-endpoint-case -> b62g`
+  `feynman_prescription -> b63g`, `automatic_phasespace -> b63g`, and
+  `linear_propagator -> b64e`; the qualification scaffold keeps the singular guardrail anchor
+  `one-singular-endpoint-case -> b62h`
 
 ## Canonical Baseline
 
@@ -158,7 +158,7 @@ retained outputs and rerun evidence.
   `specs/parity-matrix.yaml`, `references/case-studies/selected-benchmarks.md`, the
   digit-threshold floors in `docs/verification-strategy.md`, the retained optional-capture state
   for `differential_equation_solver` / `spacetime_dimension`, and the theory-backed
-  `next_runtime_lane` blocker hints for the still-deferred `b61h` / `b62g` / `b63f` / `b64d`
+  `next_runtime_lane` blocker hints for the still-deferred `b61h` / `b62h` / `b63g` / `b64e`
   surfaces.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
@@ -172,7 +172,7 @@ retained outputs and rerun evidence.
   profiles that future qualification packets must keep visible. Where the next retained capture is
   still blocked by unfinished runtime work, the scaffold and copied phase-0 catalog also carry one
   optional `next_runtime_lane` hint so future capture threads do not need to rediscover the
-  current `b61h` / `b62g` / `b63f` / `b64d` blocker map from scratch.
+  current `b61h` / `b62h` / `b63g` / `b64e` blocker map from scratch.
 - The scaffold is planning metadata only. Adding or editing it does not claim any new
   `reference-captured` benchmark, any new runtime parity, or any reviewed solver widening.
 - Future optional-capture lanes should pair the scaffold with

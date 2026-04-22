@@ -64,11 +64,11 @@
       "phase0_catalog_id": "automatic_phasespace",
       "required_capture": false,
       "current_evidence_state": "cataloged-pending-capture",
-      "next_runtime_lane": "b63f",
+      "next_runtime_lane": "b63g",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Cataloged as an optional frozen example only; retained capture stays blocked on the next reviewed phase-space/prescription slice (`b63f`)."
+      "notes": "Cataloged as an optional frozen example only; retained capture stays blocked on the next reviewed phase-space/prescription slice (`b63g`)."
     },
     {
       "id": "automatic_vs_manual",
@@ -106,22 +106,22 @@
       "phase0_catalog_id": "feynman_prescription",
       "required_capture": false,
       "current_evidence_state": "cataloged-pending-capture",
-      "next_runtime_lane": "b63f",
+      "next_runtime_lane": "b63g",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Catalog completeness only in-repo today; retained capture stays blocked on the next reviewed phase-space/prescription slice (`b63f`)."
+      "notes": "Catalog completeness only in-repo today; retained capture stays blocked on the next reviewed phase-space/prescription slice (`b63g`)."
     },
     {
       "id": "linear_propagator",
       "phase0_catalog_id": "linear_propagator",
       "required_capture": false,
       "current_evidence_state": "cataloged-pending-capture",
-      "next_runtime_lane": "b64d",
+      "next_runtime_lane": "b64e",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Optional frozen example whose retained capture stays blocked on the next reviewed linear-propagator slice (`b64d`)."
+      "notes": "Optional frozen example whose retained capture stays blocked on the next reviewed linear-propagator slice (`b64e`)."
     },
     {
       "id": "spacetime_dimension",
@@ -256,11 +256,11 @@
       "id": "one-singular-endpoint-case",
       "parity_matrix_label": "one singular-endpoint case",
       "selected_benchmark_refs": [],
-      "next_runtime_lane": "b62g",
+      "next_runtime_lane": "b62h",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Matrix-only guardrail anchor for the singular-surface family; qualification stays blocked on the next reviewed singular-kinematics slice (`b62g`)."
+      "notes": "Matrix-only guardrail anchor for the singular-surface family; qualification stays blocked on the next reviewed singular-kinematics slice (`b62h`)."
     }
   ]
 }

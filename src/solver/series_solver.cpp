@@ -190,10 +190,11 @@ std::optional<std::string> ResolveReviewedInvariantListSegmentName(
   const std::optional<std::string> target_variable =
       ParseExplicitLocationAssignmentVariable(target_location);
   if (start_variable.has_value() && target_variable.has_value() &&
-      *start_variable == "msq" && *target_variable == "msq" &&
-      std::find(invariant_names.begin(), invariant_names.end(), "msq") !=
+      *start_variable == *target_variable &&
+      (*start_variable == "s" || *start_variable == "t" || *start_variable == "msq") &&
+      std::find(invariant_names.begin(), invariant_names.end(), *start_variable) !=
           invariant_names.end()) {
-    return std::string("msq");
+    return *start_variable;
   }
 
   if (std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end()) {

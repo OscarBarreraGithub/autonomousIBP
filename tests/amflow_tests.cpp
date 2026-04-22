@@ -19361,6 +19361,74 @@ void SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentEndpointCrossingO
          "crosses a reviewed endpoint segment");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsExplicitTSegmentEndpointCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-crossing-t-endpoint-segment-"
+          "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s", "t"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "t=-1",
+                                                "t=0",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62l should reject explicit reviewed t segments on multi-invariant list requests "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62l should report the endpoint locus when explicit multi-invariant t continuation "
+      "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62l should not call the solver when explicit multi-invariant t continuation "
+         "crosses a reviewed singular segment");
+}
+
+void SolveInvariantGeneratedSeriesListExplicitTSegmentOnReviewedMultiInvariantRequestReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-safe-t-segment-multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                                    amflow::ParsedMasterList{},
+                                                                    {"s", "t"},
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    layout.root / "bin" /
+                                                                        "unused-kira.sh",
+                                                                    layout.root / "bin" /
+                                                                        "unused-fermat.sh",
+                                                                    solver,
+                                                                    "t=-1",
+                                                                    "t=-1/2",
+                                                                    MakeDistinctPrecisionPolicy(),
+                                                                    55));
+      },
+      "supports only linear scalar-product-rule expressions",
+      "Batch 62l should let explicit reviewed t segments on multi-invariant requests reach the "
+      "next invariant validation layer instead of ignoring the reviewed t surface");
+  Expect(solver.call_count() == 0,
+         "Batch 62l explicit multi-invariant t safe-segment coverage should still fail before "
+         "the downstream solver when master-basis validation blocks invariant DE construction");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -35514,6 +35582,8 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsRawMsqSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentThresholdCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsExplicitMsqSegmentEndpointCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsExplicitTSegmentEndpointCrossingOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListExplicitTSegmentOnReviewedMultiInvariantRequestReachesNextLayerTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();

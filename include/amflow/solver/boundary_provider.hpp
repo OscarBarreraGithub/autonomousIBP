@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "amflow/core/boundary_data.hpp"
 
@@ -19,5 +21,8 @@ class BoundaryProvider {
 
 SolveRequest AttachBoundaryConditionsFromProvider(const SolveRequest& request,
                                                   const BoundaryProvider& provider);
+SolveRequest AttachBoundaryConditionsFromProviderRegistry(
+    const SolveRequest& request,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers);
 
 }  // namespace amflow

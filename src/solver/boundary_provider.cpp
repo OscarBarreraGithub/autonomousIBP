@@ -74,4 +74,59 @@ SolveRequest AttachBoundaryConditionsFromProvider(const SolveRequest& request,
   return AttachManualBoundaryConditions(request, explicit_conditions);
 }
 
+SolveRequest AttachBoundaryConditionsFromProviderRegistry(
+    const SolveRequest& request,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers) {
+  ValidateBoundaryRequestsForProvider(request);
+
+  if (!request.boundary_conditions.empty()) {
+    throw BoundaryUnsolvedError(
+        "manual boundary conditions are already attached to this solve request");
+  }
+
+  if (request.boundary_requests.empty()) {
+    return AttachManualBoundaryConditions(request, {});
+  }
+
+  std::vector<std::pair<std::string, const BoundaryProvider*>> registered_providers;
+  registered_providers.reserve(providers.size());
+  for (std::size_t index = 0; index < providers.size(); ++index) {
+    if (!providers[index]) {
+      throw std::invalid_argument("boundary provider registry entry " +
+                                  std::to_string(index + 1) + " is null");
+    }
+
+    const std::string strategy = providers[index]->Strategy();
+    for (const auto& entry : registered_providers) {
+      if (entry.first == strategy) {
+        throw std::invalid_argument("boundary provider registry contains duplicate strategy: " +
+                                    strategy);
+      }
+    }
+    registered_providers.push_back({strategy, providers[index].get()});
+  }
+
+  std::vector<BoundaryCondition> explicit_conditions;
+  explicit_conditions.reserve(request.boundary_requests.size());
+  for (const auto& boundary_request : request.boundary_requests) {
+    const BoundaryProvider* matched_provider = nullptr;
+    for (const auto& entry : registered_providers) {
+      if (entry.first == boundary_request.strategy) {
+        matched_provider = entry.second;
+        break;
+      }
+    }
+
+    if (!matched_provider) {
+      throw BoundaryUnsolvedError("boundary provider registry does not contain strategy " +
+                                  boundary_request.strategy + " for " +
+                                  DescribeBoundaryLocus(boundary_request));
+    }
+
+    explicit_conditions.push_back(matched_provider->Provide(request.system, boundary_request));
+  }
+
+  return AttachManualBoundaryConditions(request, explicit_conditions);
+}
+
 }  // namespace amflow

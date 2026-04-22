@@ -58,14 +58,23 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-Both helper scripts also expose a local `--self-check` mode for the regression cases fixed in Batch 2:
+All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
+Batch 2 and the new M5/M6 catalog/scaffold coherence lock:
 
 ```bash
+python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --self-check
+
 python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
 
 python3 tools/reference-harness/scripts/freeze_phase0_goldens.py \
+  --root /tmp/amflow-reference-bootstrap \
+  --self-check
+
+python3 tools/reference-harness/scripts/capture_phase0_reference.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
 ```
@@ -136,6 +145,10 @@ The capture script writes:
 - `templates/qualification-benchmarks.json` is the first machine-readable M6 scaffold: it mirrors
   the parity-matrix benchmark families, the current digit-threshold profiles, the required failure
   codes, and the known regression families without claiming any new captured evidence.
+- `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
+  placeholder index benchmark IDs, qualification scaffold IDs, and digit-threshold floors stay
+  synchronized with `specs/parity-matrix.yaml`, `references/case-studies/selected-benchmarks.md`,
+  and `docs/verification-strategy.md`.
 - The fetch helper `--self-check` now also verifies the tar extraction policy against rejected symlink, hardlink, device, absolute-path, and escaping entries.
 - `capture_phase0_reference.py --self-check` exercises the retained-golden promotion flow end to
   end against a synthetic benchmark without requiring Kira or Fermat, including reuse of retained

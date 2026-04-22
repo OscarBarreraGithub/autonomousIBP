@@ -57,10 +57,15 @@ amflow_apply_default_warnings(amflow-cli)
 
 include(CTest)
 if(BUILD_TESTING)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
   add_executable(amflow-tests tests/amflow_tests.cpp)
   target_link_libraries(amflow-tests PRIVATE amflow)
   target_compile_features(amflow-tests PRIVATE cxx_std_17)
-  target_compile_definitions(amflow-tests PRIVATE AMFLOW_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_compile_definitions(
+    amflow-tests PRIVATE
+      AMFLOW_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+      AMFLOW_PYTHON_EXECUTABLE="${Python3_EXECUTABLE}"
+  )
   amflow_apply_default_warnings(amflow-tests)
   add_test(NAME amflow-tests COMMAND amflow-tests)
 endif()

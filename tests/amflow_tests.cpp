@@ -24998,6 +24998,62 @@ void ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest() {
          "probe is unavailable");
 }
 
+void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-reference-harness-bootstrap-self-check");
+  const std::filesystem::path ignored_root = run_root / "ignored-root";
+  const std::filesystem::path stdout_path = run_root / "stdout.json";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::string python_executable = AMFLOW_PYTHON_EXECUTABLE;
+  const std::filesystem::path script_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/scripts/bootstrap_reference_harness.py";
+
+  const std::string command =
+      ShellSingleQuote(python_executable) + " " + ShellSingleQuote(script_path.string()) +
+      " --root " +
+      ShellSingleQuote(ignored_root.string()) + " --self-check >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "bootstrap reference-harness self-check should complete successfully");
+  const std::string stdout_json = ReadFile(stdout_path);
+  const std::string stderr_log = ReadFile(stderr_path);
+  Expect(stderr_log.empty(),
+         "bootstrap reference-harness self-check should not emit stderr noise on success");
+  ExpectContains(stdout_json, "\"copied_qualification_template\": true",
+                 "bootstrap reference-harness self-check should copy the qualification scaffold");
+  ExpectContains(stdout_json, "\"phase0_catalog_matches_parity_example_classes\": true",
+                 "bootstrap reference-harness self-check should keep the phase-0 catalog locked "
+                 "to parity example classes");
+  ExpectContains(stdout_json, "\"phase0_catalog_matches_qualification_scaffold\": true",
+                 "bootstrap reference-harness self-check should keep the qualification scaffold "
+                 "locked to the copied phase-0 catalog");
+  ExpectContains(stdout_json, "\"case_studies_match_parity_and_selected_benchmarks\": true",
+                 "bootstrap reference-harness self-check should keep qualification case studies "
+                 "locked to parity-matrix labels and selected benchmark ids");
+  ExpectContains(stdout_json, "\"digit_threshold_profiles_match_verification_strategy\": true",
+                 "bootstrap reference-harness self-check should keep qualification digit "
+                 "thresholds locked to the verification strategy");
+  ExpectContains(stdout_json, "\"failure_code_profile_matches_parity_matrix\": true",
+                 "bootstrap reference-harness self-check should keep failure-code defaults "
+                 "locked to the parity matrix");
+  ExpectContains(stdout_json, "\"regression_profile_matches_parity_matrix\": true",
+                 "bootstrap reference-harness self-check should keep regression defaults "
+                 "locked to the parity matrix");
+  ExpectContains(stdout_json, "\"placeholder_count_matches_catalog\": true",
+                 "bootstrap reference-harness self-check should freeze placeholders for every "
+                 "catalog benchmark");
+  ExpectContains(stdout_json, "\"golden_index_matches_catalog_ids\": true",
+                 "bootstrap reference-harness self-check should keep the golden index benchmark "
+                 "ids aligned with the copied phase-0 catalog");
+  ExpectContains(stdout_json, "\"manifest_records_bootstrap_only_state\": true",
+                 "bootstrap reference-harness self-check should keep the manifest in the "
+                 "bootstrap-only placeholder state");
+  ExpectContains(stdout_json, "\"state_summary_written\": true",
+                 "bootstrap reference-harness self-check should write the bootstrap state summary");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -25678,6 +25734,7 @@ int main() {
     RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest();
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
+    BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

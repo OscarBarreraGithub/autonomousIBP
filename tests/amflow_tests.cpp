@@ -1432,6 +1432,14 @@ amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanParityWideningSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeAutomaticVsManualTtReductionSpanWiderTopSectorDescendantWideningSpec() {
+  amflow::ProblemSpec spec = MakeAutomaticVsManualTtReductionSpanParityWideningSpec();
+  spec.family.top_level_sectors = {15};
+  spec.notes = "Synthetic wider-top-sector dotted-descendant widening check on the retained "
+               "automatic_vs_manual tt reduction-span seam.";
+  return spec;
+}
+
 std::filesystem::path AutomaticLoopRetainedDiffeqsetupRoot(const std::string& family,
                                                            int stage) {
   return std::filesystem::path(
@@ -5797,6 +5805,36 @@ void KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest() {
                  std::string::npos,
          "same-path automatic_vs_manual mandatory-family reduction-span widening check should "
          "emit the sector-[7] Kira span with r = 5 and not regress to r = 4");
+}
+
+void KiraPrepareForTargetsMandatoryFamilyReductionSpanWiderTopSectorDescendantWideningTest() {
+  const amflow::ProblemSpec spec =
+      MakeAutomaticVsManualTtReductionSpanWiderTopSectorDescendantWideningSpec();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(FreshTempDir(
+      "amflow-bootstrap-kira-mandatory-family-reduction-span-wider-top-sector-descendant"));
+  const std::string expected_target_file = "tt[2,2,1,0,0,0,0,0,0]\n";
+  const std::string expected_reduction_entry =
+      "        - {topologies: [\"tt\"], sectors: [15], r: 5, s: 3, d: 0}\n";
+
+  amflow::KiraBackend backend;
+  const amflow::BackendPreparation preparation =
+      backend.PrepareForTargets(spec, MakeKiraReductionOptions(), layout, spec.targets);
+
+  Expect(preparation.validation_messages.empty(),
+         "wider-top-sector dotted-descendant automatic_vs_manual mandatory-family reduction-span "
+         "widening check should validate cleanly for Kira");
+  Expect(preparation.generated_files.at("target") == expected_target_file,
+         "wider-top-sector dotted-descendant automatic_vs_manual mandatory-family reduction-span "
+         "widening check should preserve the synthetic descendant target order");
+  Expect(preparation.generated_files.at("jobs.yaml").find(expected_reduction_entry) !=
+                 std::string::npos &&
+             preparation.generated_files.at("jobs.yaml")
+                     .find(
+                         "        - {topologies: [\"tt\"], sectors: [15], r: 4, s: 3, d: 0}\n") ==
+                 std::string::npos,
+         "wider-top-sector dotted-descendant automatic_vs_manual mandatory-family reduction-span "
+         "widening check should emit the declared sector-[15] Kira span with r = 5 and not "
+         "under-seed it to r = 4");
 }
 
 void KiraPrepareForTargetsRetainedAutomaticLoopMandatoryFamilyReductionSpanEvidenceTest() {
@@ -24273,6 +24311,7 @@ int main() {
     KiraPrepareForTargetsHappyPathTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest();
+    KiraPrepareForTargetsMandatoryFamilyReductionSpanWiderTopSectorDescendantWideningTest();
     KiraPrepareForTargetsRetainedAutomaticLoopMandatoryFamilyReductionSpanEvidenceTest();
     KiraPrepareForTargetsMultipleTopLevelSectorsHappyPathTest();
     KiraPrepareForTargetsRejectsNonPositiveTopLevelSectorTest();

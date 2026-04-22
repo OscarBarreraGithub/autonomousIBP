@@ -1250,6 +1250,11 @@ bool TopLevelSectorFitsPropagatorMask(const int sector, const std::size_t propag
   return true;
 }
 
+bool SectorMaskContains(const unsigned long long sector_mask,
+                        const unsigned long long target_mask) {
+  return (sector_mask & target_mask) == target_mask;
+}
+
 int ReductionRankForSector(const ProblemSpec& spec,
                            const ReductionOptions& options,
                            const std::vector<TargetIntegral>& targets,
@@ -1260,7 +1265,9 @@ int ReductionRankForSector(const ProblemSpec& spec,
     if (target.family != spec.family.name) {
       continue;
     }
-    if (PositiveSupportSectorMask(target, spec.family.propagators.size()) != sector_mask) {
+    if (!SectorMaskContains(sector_mask,
+                            PositiveSupportSectorMask(target,
+                                                      spec.family.propagators.size()))) {
       continue;
     }
     rank = std::max(rank, PositiveIndexSum(target, spec.family.propagators.size()));

@@ -20233,6 +20233,283 @@ void SolveInvariantGeneratedSeriesListRejectsMalformedNonExplicitRawTLocationsOn
          "malformed non-explicit raw t continuation locations");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawMsqThresholdCrossingOnReviewedTMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-mixed-msq-threshold-segment-"
+          "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=7",
+                                                "8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62n should reject mixed explicit/raw reviewed msq segments on {t, msq} multi-"
+         "invariant requests before DE construction");
+  ExpectContains(diagnostics.summary,
+                 "s = 4*msq",
+                 "Batch 62n should report the threshold locus when mixed {t, msq} continuation "
+                 "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when mixed {t, msq} continuation crosses a "
+         "reviewed singular msq segment");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawMsqEndpointCrossingOnReviewedSMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir(
+          "amflow-bootstrap-invariant-auto-list-solver-mixed-msq-endpoint-segment-"
+          "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "6",
+                                                "msq=7",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62n should reject mixed explicit/raw endpoint-crossing reviewed msq segments on "
+         "{s, msq} "
+         "multi-invariant requests before DE construction");
+  ExpectContains(diagnostics.summary,
+                 "t^2 - (2*msq - s)*t + msq^2 = 0",
+                 "Batch 62n should report the endpoint locus when mixed {s, msq} continuation "
+                 "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when mixed {s, msq} continuation crosses a "
+         "reviewed endpoint msq segment");
+}
+
+void SolveInvariantGeneratedSeriesListMixedExplicitRawMsqSegmentOnReviewedTMsqRequestReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-safe-mixed-msq-segment-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                                    amflow::ParsedMasterList{},
+                                                                    {"t", "msq"},
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    layout.root / "bin" /
+                                                                        "unused-kira.sh",
+                                                                    layout.root / "bin" /
+                                                                        "unused-fermat.sh",
+                                                                    solver,
+                                                                    "msq=1",
+                                                                    "2",
+                                                                    MakeDistinctPrecisionPolicy(),
+                                                                    55));
+      },
+      "supports only linear scalar-product-rule expressions",
+      "Batch 62n should let mixed explicit/raw reviewed msq segments on {t, msq} requests "
+      "reach the next invariant validation layer instead of falling through the raw t blocker");
+  Expect(solver.call_count() == 0,
+         "Batch 62n safe mixed {t, msq} coverage should still fail before the downstream solver "
+         "when invariant generation blocks DE construction");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawMsqLocationOnReviewedTMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-mixed-msq-tmsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=7",
+                                                "foo",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62n should fail closed on malformed mixed explicit/raw {t, msq} locations "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62n should report explicit msq guidance when the raw side of a mixed {t, msq} "
+      "request is malformed");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when a mixed explicit/raw {t, msq} request is "
+         "malformed");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawMsqLocationOnReviewedSMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-mixed-msq-smsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"s", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "foo",
+                                                "msq=7",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62n should fail closed on malformed mixed explicit/raw {s, msq} locations "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62n should keep explicit msq guidance when the raw side of a mixed {s, msq} "
+      "request is malformed");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when a mixed explicit/raw {s, msq} request is "
+         "malformed");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSideOnReviewedTMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-explicit-msq-tmsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=foo",
+                                                "8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62n should fail closed when the explicit msq side of a mixed {t, msq} request "
+         "is malformed");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62n should keep explicit msq guidance when the explicit side of a mixed {t, msq} "
+      "request is malformed");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when the explicit side of a mixed {t, msq} "
+         "request is malformed");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSyntaxOnReviewedTMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-explicit-msq-syntax-"
+                   "tmsq-multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "msq=",
+                                                "8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62n should fail closed when malformed explicit msq syntax targets the mixed "
+         "{t, msq} seam");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62n should keep explicit msq guidance when malformed explicit msq syntax reaches "
+      "the mixed {t, msq} seam");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when malformed explicit msq syntax reaches the "
+         "mixed {t, msq} seam");
+}
+
+void SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMsqRequestFailClosedTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-fully-raw-msq-like-tmsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "7",
+                                                "8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62n should keep fully non-explicit raw {t, msq} locations fail-closed");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62n should keep the existing raw t guidance on fully non-explicit {t, msq} "
+      "multi-invariant requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62n should not call the solver when fully non-explicit {t, msq} locations "
+         "remain outside the reviewed mixed explicit/raw msq surface");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -37371,6 +37648,14 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedNonExplicitRawTLocationsOnReviewedMultiInvariantRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawMsqThresholdCrossingOnReviewedTMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawMsqEndpointCrossingOnReviewedSMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListMixedExplicitRawMsqSegmentOnReviewedTMsqRequestReachesNextLayerTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawMsqLocationOnReviewedTMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawMsqLocationOnReviewedSMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSideOnReviewedTMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSyntaxOnReviewedTMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMsqRequestFailClosedTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

@@ -100,11 +100,11 @@ retained outputs and rerun evidence.
   `complex_kinematics`, `feynman_prescription`, `automatic_phasespace`, and `linear_propagator`,
   plus later regression families, stay on the rolling future-capture lane. The copied phase-0
   catalog now marks the theory-blocked feature captures explicitly:
-  `complex_kinematics -> b61k`, `feynman_prescription -> b63h`,
-  `automatic_phasespace -> b63h`, and `linear_propagator -> b64h`; it also carries
+  `complex_kinematics -> b61l`, `feynman_prescription -> b63i`,
+  `automatic_phasespace -> b63i`, and `linear_propagator -> b64i`; it also carries
   `optional_capture_packet = de-d0-pair` and `optional_capture_packet = user-hook-pair` for the
   two retained ready-example pairs. The qualification scaffold keeps the singular guardrail anchor
-  `one-singular-endpoint-case -> b62k`
+  `one-singular-endpoint-case -> b62l`
 
 ## Canonical Baseline
 
@@ -173,7 +173,7 @@ retained outputs and rerun evidence.
   for `differential_equation_solver` / `spacetime_dimension` and
   `user_defined_amfmode` / `user_defined_ending`, the absence of any remaining ready uncaptured
   optional packet, and the theory-backed `next_runtime_lane` blocker hints for the still-deferred
-  `b61k` / `b62k` / `b63h` / `b64h` surfaces.
+  `b61l` / `b62l` / `b63i` / `b64i` surfaces.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
 - `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` selects every matching ready benchmark in that same frozen order, at most one explicit selection mode may be used at a time, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
@@ -188,9 +188,9 @@ retained outputs and rerun evidence.
   profiles that future qualification packets must keep visible. Where the next retained capture is
   still blocked by unfinished runtime work, the scaffold and copied phase-0 catalog also carry one
   optional `next_runtime_lane` hint so future capture threads do not need to rediscover the
-  current `b61k` / `b62k` / `b63h` / `b64h` blocker map from scratch. Those hints stay aligned
+  current `b61l` / `b62l` / `b63i` / `b64i` blocker map from scratch. Those hints stay aligned
   with the current theory frontier while still anchoring against the recorded predecessor slices
-  `b61h` / `b62j` / `b63f` / `b64g`. Ready optional examples may
+  `b61i` / `b62k` / `b63f` / `b64h`. Ready optional examples may
   instead carry `optional_capture_packet` so future capture threads keep the retained `de-d0-pair`
   and retained `user-hook-pair` grouped without re-planning that packet shape.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py` is the first live consumer

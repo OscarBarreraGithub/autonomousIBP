@@ -181,6 +181,129 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
   throw std::runtime_error(std::string(kSkipReductionUnavailablePrefix) + ": " + detail);
 }
 
+bool IsDimensionIdentifierStart(const char character) {
+  return std::isalpha(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+bool IsDimensionIdentifierContinuation(const char character) {
+  return std::isalnum(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+class DimensionExpressionSyntaxValidator {
+ public:
+  explicit DimensionExpressionSyntaxValidator(std::string expression)
+      : expression_(std::move(expression)) {}
+
+  void Validate() {
+    SkipWhitespace();
+    ParseExpression();
+    SkipWhitespace();
+    if (position_ != expression_.size()) {
+      throw Malformed(std::string("unexpected trailing token \"") + expression_[position_] + "\"");
+    }
+  }
+
+ private:
+  std::invalid_argument Malformed(const std::string& detail) const {
+    return std::invalid_argument("eta-generated dimension expression is malformed: " + detail +
+                                 " in \"" + expression_ + "\"");
+  }
+
+  void SkipWhitespace() {
+    while (position_ < expression_.size() &&
+           std::isspace(static_cast<unsigned char>(expression_[position_])) != 0) {
+      ++position_;
+    }
+  }
+
+  bool Match(const char token) {
+    SkipWhitespace();
+    if (position_ >= expression_.size() || expression_[position_] != token) {
+      return false;
+    }
+    ++position_;
+    return true;
+  }
+
+  void ParseExpression() {
+    ParseTerm();
+    while (true) {
+      SkipWhitespace();
+      if (position_ >= expression_.size() ||
+          (expression_[position_] != '+' && expression_[position_] != '-')) {
+        break;
+      }
+      ++position_;
+      ParseTerm();
+    }
+  }
+
+  void ParseTerm() {
+    ParseUnary();
+    while (true) {
+      SkipWhitespace();
+      if (position_ >= expression_.size() ||
+          (expression_[position_] != '*' && expression_[position_] != '/')) {
+        break;
+      }
+      ++position_;
+      ParseUnary();
+    }
+  }
+
+  void ParseUnary() {
+    SkipWhitespace();
+    while (position_ < expression_.size() &&
+           (expression_[position_] == '+' || expression_[position_] == '-')) {
+      ++position_;
+      SkipWhitespace();
+    }
+    ParsePrimary();
+  }
+
+  void ParsePrimary() {
+    SkipWhitespace();
+    if (position_ >= expression_.size()) {
+      throw Malformed("unexpected end of expression");
+    }
+
+    if (Match('(')) {
+      ParseExpression();
+      if (!Match(')')) {
+        throw Malformed("expected ')'");
+      }
+      return;
+    }
+
+    if (std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        ++position_;
+      }
+      return;
+    }
+
+    if (IsDimensionIdentifierStart(expression_[position_])) {
+      ++position_;
+      while (position_ < expression_.size() &&
+             IsDimensionIdentifierContinuation(expression_[position_])) {
+        ++position_;
+      }
+      return;
+    }
+
+    throw Malformed(std::string("unexpected token \"") + expression_[position_] + "\"");
+  }
+
+  std::string expression_;
+  std::size_t position_ = 0;
+};
+
+bool IsMissingNumericBindingError(const std::invalid_argument& error) {
+  return std::string(error.what()).find("requires a numeric binding for symbol") !=
+         std::string::npos;
+}
+
 std::optional<std::string> ResolveExactDimensionOverride(
     const std::optional<std::string>& amf_requested_dimension_expression) {
   if (!amf_requested_dimension_expression.has_value()) {
@@ -196,18 +319,27 @@ std::optional<std::string> ResolveExactDimensionOverride(
   }
 }
 
-std::optional<std::string> NormalizePublicExactDimensionOverride(
-    const std::optional<std::string>& exact_dimension_override) {
-  if (!exact_dimension_override.has_value()) {
+std::optional<std::string> NormalizePublicDimensionExpression(
+    const std::optional<std::string>& dimension_expression) {
+  if (!dimension_expression.has_value()) {
     return std::nullopt;
   }
 
+  const std::string trimmed_expression = Trim(*dimension_expression);
+  if (trimmed_expression.empty()) {
+    throw std::invalid_argument("eta-generated dimension expression must not be empty");
+  }
+  DimensionExpressionSyntaxValidator(trimmed_expression).Validate();
+  const std::string normalized_expression = RemoveWhitespace(trimmed_expression);
+
   try {
-    return EvaluateCoefficientExpression(*exact_dimension_override, NumericEvaluationPoint{})
+    return EvaluateCoefficientExpression(normalized_expression, NumericEvaluationPoint{})
         .ToString();
-  } catch (const std::exception&) {
-    throw std::invalid_argument("eta-generated exact dimension override must evaluate exactly "
-                                "without additional symbols");
+  } catch (const std::invalid_argument& error) {
+    if (!IsMissingNumericBindingError(error)) {
+      throw;
+    }
+    return normalized_expression;
   }
 }
 
@@ -2514,7 +2646,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const std::optional<std::string>& amf_requested_d0,
     const std::optional<std::string>& fixed_eps,
-    const std::optional<std::string>& exact_dimension_override,
+    const std::optional<std::string>& explicit_dimension_expression,
     const int requested_digits,
     const std::string& eta_symbol) {
   std::ostringstream out;
@@ -2536,7 +2668,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
   out << "amf_fixed_eps:\n" << SerializeOptionalAmfFixedEpsForFingerprint(fixed_eps);
   out << "exact_dimension_override:\n"
       << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
-             exact_dimension_override);
+             explicit_dimension_expression);
   return ComputeArtifactFingerprint(out.str());
 }
 
@@ -2559,15 +2691,15 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
                                         const std::string& eta_symbol,
                                         const std::optional<std::string>& amf_requested_d0,
                                         const std::optional<std::string>& fixed_eps,
-                                        const std::optional<std::string>& exact_dimension_override) {
+                                        const std::optional<std::string>& explicit_dimension_expression) {
   std::string slot_name = solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) + "-" +
                           SanitizeCacheSlotComponent(decision.mode_name) + "-" +
                           SanitizeCacheSlotComponent(eta_symbol);
   if (amf_requested_d0.has_value()) {
     slot_name += "-" + SanitizeCacheSlotComponent(*amf_requested_d0);
   }
-  if (exact_dimension_override.has_value()) {
-    slot_name += "-exact-dimension-" + SanitizeCacheSlotComponent(*exact_dimension_override);
+  if (explicit_dimension_expression.has_value()) {
+    slot_name += "-exact-dimension-" + SanitizeCacheSlotComponent(*explicit_dimension_expression);
   } else if (fixed_eps.has_value()) {
     slot_name += "-fixed-eps-" + SanitizeCacheSlotComponent(*fixed_eps);
   }
@@ -3806,8 +3938,10 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  const std::optional<std::string> normalized_dimension_expression =
+      NormalizePublicDimensionExpression(exact_dimension_override);
   const std::optional<std::string> normalized_exact_dimension_override =
-      NormalizePublicExactDimensionOverride(exact_dimension_override);
+      ResolveExactDimensionOverride(normalized_dimension_expression);
   SolveRequest request;
   try {
     request.system = BuildEtaGeneratedDESystem(spec,
@@ -3825,7 +3959,7 @@ SolverDiagnostics SolveEtaGeneratedSeries(
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;
-  request.amf_requested_dimension_expression = normalized_exact_dimension_override;
+  request.amf_requested_dimension_expression = normalized_dimension_expression;
   request.requested_digits = requested_digits;
   return SolveWithPrecisionRetry(solver, std::move(request));
 }
@@ -3943,8 +4077,8 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
-  const std::optional<std::string> normalized_exact_dimension_override =
-      NormalizePublicExactDimensionOverride(exact_dimension_override);
+  const std::optional<std::string> normalized_explicit_dimension_expression =
+      NormalizePublicDimensionExpression(exact_dimension_override);
   const PrecisionPolicy live_precision_policy =
       BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
   const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
@@ -3952,11 +4086,11 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
   const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
   const std::optional<std::string> live_amf_fixed_eps = amf_options.fixed_eps;
   const std::optional<std::string> live_amf_requested_dimension_expression =
-      normalized_exact_dimension_override.has_value()
-          ? normalized_exact_dimension_override
+      normalized_explicit_dimension_expression.has_value()
+          ? normalized_explicit_dimension_expression
           : BuildAmfRequestedDimensionExpression(live_amf_requested_d0, live_amf_fixed_eps);
   const std::optional<std::string> live_amf_fixed_eps_for_cache_identity =
-      normalized_exact_dimension_override.has_value() ? std::nullopt : live_amf_fixed_eps;
+      normalized_explicit_dimension_expression.has_value() ? std::nullopt : live_amf_fixed_eps;
 
   SolvedPathCacheContext cache_context;
   cache_context.replay_enabled = amf_options.use_cache;
@@ -3969,7 +4103,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
           eta_symbol,
           live_amf_requested_d0,
           live_amf_fixed_eps_for_cache_identity,
-          normalized_exact_dimension_override);
+          normalized_explicit_dimension_expression);
   cache_context.input_fingerprint =
       BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
                                             spec,
@@ -3983,7 +4117,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                             live_amf_runtime_policy,
                                             live_amf_requested_d0,
                                             live_amf_fixed_eps_for_cache_identity,
-                                            normalized_exact_dimension_override,
+                                            normalized_explicit_dimension_expression,
                                             requested_digits,
                                             eta_symbol);
   return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,

@@ -1,5 +1,6 @@
 #include "amflow/de/eta_reduction_execution.hpp"
 
+#include <cctype>
 #include <sstream>
 #include <stdexcept>
 
@@ -33,18 +34,160 @@ std::string VariableContext(const GeneratedDerivativeVariable& generated_variabl
   return "variable[" + std::to_string(index) + "]";
 }
 
-std::optional<std::string> NormalizeExactDimensionOverride(
+std::string RemoveWhitespace(const std::string& value) {
+  std::string normalized;
+  normalized.reserve(value.size());
+  for (const char character : value) {
+    if (!std::isspace(static_cast<unsigned char>(character))) {
+      normalized.push_back(character);
+    }
+  }
+  return normalized;
+}
+
+bool IsDimensionIdentifierStart(const char character) {
+  return std::isalpha(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+bool IsDimensionIdentifierContinuation(const char character) {
+  return std::isalnum(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+class DimensionExpressionSyntaxValidator {
+ public:
+  explicit DimensionExpressionSyntaxValidator(std::string expression)
+      : expression_(std::move(expression)) {}
+
+  void Validate() {
+    SkipWhitespace();
+    ParseExpression();
+    SkipWhitespace();
+    if (position_ != expression_.size()) {
+      throw Malformed(std::string("unexpected trailing token \"") + expression_[position_] + "\"");
+    }
+  }
+
+ private:
+  std::invalid_argument Malformed(const std::string& detail) const {
+    return std::invalid_argument("eta-generated dimension expression is malformed: " + detail +
+                                 " in \"" + expression_ + "\"");
+  }
+
+  void SkipWhitespace() {
+    while (position_ < expression_.size() &&
+           std::isspace(static_cast<unsigned char>(expression_[position_])) != 0) {
+      ++position_;
+    }
+  }
+
+  bool Match(const char token) {
+    SkipWhitespace();
+    if (position_ >= expression_.size() || expression_[position_] != token) {
+      return false;
+    }
+    ++position_;
+    return true;
+  }
+
+  void ParseExpression() {
+    ParseTerm();
+    while (true) {
+      SkipWhitespace();
+      if (position_ >= expression_.size() ||
+          (expression_[position_] != '+' && expression_[position_] != '-')) {
+        break;
+      }
+      ++position_;
+      ParseTerm();
+    }
+  }
+
+  void ParseTerm() {
+    ParseUnary();
+    while (true) {
+      SkipWhitespace();
+      if (position_ >= expression_.size() ||
+          (expression_[position_] != '*' && expression_[position_] != '/')) {
+        break;
+      }
+      ++position_;
+      ParseUnary();
+    }
+  }
+
+  void ParseUnary() {
+    SkipWhitespace();
+    while (position_ < expression_.size() &&
+           (expression_[position_] == '+' || expression_[position_] == '-')) {
+      ++position_;
+      SkipWhitespace();
+    }
+    ParsePrimary();
+  }
+
+  void ParsePrimary() {
+    SkipWhitespace();
+    if (position_ >= expression_.size()) {
+      throw Malformed("unexpected end of expression");
+    }
+
+    if (Match('(')) {
+      ParseExpression();
+      if (!Match(')')) {
+        throw Malformed("expected ')'");
+      }
+      return;
+    }
+
+    if (std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        ++position_;
+      }
+      return;
+    }
+
+    if (IsDimensionIdentifierStart(expression_[position_])) {
+      ++position_;
+      while (position_ < expression_.size() &&
+             IsDimensionIdentifierContinuation(expression_[position_])) {
+        ++position_;
+      }
+      return;
+    }
+
+    throw Malformed(std::string("unexpected token \"") + expression_[position_] + "\"");
+  }
+
+  std::string expression_;
+  std::size_t position_ = 0;
+};
+
+bool IsMissingNumericBindingError(const std::invalid_argument& error) {
+  return std::string(error.what()).find("requires a numeric binding for symbol") !=
+         std::string::npos;
+}
+
+std::optional<std::string> ResolveExactDimensionOverride(
     const std::optional<std::string>& exact_dimension_override) {
   if (!exact_dimension_override.has_value()) {
     return std::nullopt;
   }
 
+  const std::string normalized_expression = RemoveWhitespace(*exact_dimension_override);
+  if (normalized_expression.empty()) {
+    throw std::invalid_argument("eta-generated dimension expression must not be empty");
+  }
+  DimensionExpressionSyntaxValidator(*exact_dimension_override).Validate();
+
   try {
-    return EvaluateCoefficientExpression(*exact_dimension_override, NumericEvaluationPoint{})
+    return EvaluateCoefficientExpression(normalized_expression, NumericEvaluationPoint{})
         .ToString();
-  } catch (const std::exception&) {
-    throw std::invalid_argument("eta-generated exact dimension override must evaluate exactly "
-                                "without additional symbols");
+  } catch (const std::invalid_argument& error) {
+    if (!IsMissingNumericBindingError(error)) {
+      throw;
+    }
+    return std::nullopt;
   }
 }
 
@@ -52,7 +195,7 @@ void ApplyExactDimensionOverride(BackendPreparation& preparation,
                                  const ArtifactLayout& layout,
                                  const std::optional<std::string>& exact_dimension_override) {
   const std::optional<std::string> normalized_override =
-      NormalizeExactDimensionOverride(exact_dimension_override);
+      ResolveExactDimensionOverride(exact_dimension_override);
   preparation.command_arguments.clear();
   if (normalized_override.has_value()) {
     preparation.command_arguments.push_back("-sd=" + *normalized_override);

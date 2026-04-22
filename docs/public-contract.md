@@ -31,7 +31,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - the actual SSH remote `main` state for this packet now runs through
-  `main@348cecb1049e09d41e9dc07e21e6cf18f0a06de4`; that landed history includes `Batch 50b` at
+  `main@2125db50adf91efb5033c5c4472b1792158dc48f`; that landed history includes `Batch 50b` at
   `95f33f398bbdebf2084bf360a498fea3de89fc30`, `Batch 50` through `Batch 58g` at
   `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`,
   `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`,
@@ -41,9 +41,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64d`; latest head commit
-  `348cecb` is the docs/harness-only `m5_next5` packet and does not widen this public/runtime
-  contract;
+  not-yet-accepted public/runtime seams described below through `Batch 64f`; latest head commit
+  `2125db5` is the narrow `Batch 62i` raw `t`-segment continuation guardrail packet and does not
+  widen the last fully accepted public/runtime contract;
   local tracking `origin/main` matches that same head;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
@@ -211,7 +211,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61a` through `Batch 64d` are still narrow: explicit complex kinematics
+- current worktree `Batch 61a` through `Batch 64f` are still narrow: explicit complex kinematics
   now stop at exact-complex evaluation, reviewed contour-plan persistence, and deferred
   `unsupported_solver_path` cache replay on the planned `AmfOptions` helper path; the reviewed K0
   one-mass real guardrails now cover only the explicit `s`/`t` continuation-segment diagnostics
@@ -219,10 +219,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   standard uncut `-i0` propagators (`Batch 63b`), emits explicit Kira `cut_propagators`
   (`Batch 63c`), and adds Cutkosky phase-space request/attach wrappers without phase-space
   boundary values or provider registries;
-  and explicit linear variants now reach only the reviewed invariant seed/execution and stricter
-  Kira-preparation subsets. Live complex contour execution, broader phase-space topology/provider
-  behavior, non-invariant linear solver consumers, and wider symbolic runtime parity remain
-  deferred
+  and explicit linear variants now reach only the reviewed invariant seed/execution subsets, the
+  stricter general Kira-preparation subset, and the direct eta-generated plus eta-mode-planned
+  solver handoffs on the reviewed direct-decision subset where only reviewed quadratic
+  propagators are eta-shifted and the explicit linear slot stays passive. Live complex contour
+  execution, broader phase-space topology/provider behavior, builtin eta-mode linear selection,
+  broader non-invariant linear solver behavior, and wider symbolic runtime parity remain deferred
 
 ## Core Types
 
@@ -241,9 +243,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   scalar-product surface to stay on identifier-free rational-constant expressions with nonzero
   denominators only; the direct eta-generated preparation / execution / `DESystem` seams now also
   consume that same explicit-variant subset only when a caller-supplied direct eta decision
-  rewrites reviewed quadratic propagators and leaves the explicit linear slot passive, while
-  builtin eta-mode selection and eta-generated solver handoff still remain outside this claimed
-  surface
+  rewrites reviewed quadratic propagators and leaves the explicit linear slot passive, and the
+  direct eta-generated plus eta-mode-planned solver handoffs now preserve that same reviewed
+  direct-decision subset without widening builtin eta-mode selection or broader non-invariant
+  linear solver behavior
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -641,12 +644,19 @@ The first eta-generated solver handoff remains narrow:
   solve through `SolveWithPrecisionRetry(...)` rather than a raw single
   `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at
   `src/solver/series_solver.cpp:1904-1928`)
+- on the reviewed explicit-linear subset inherited from `BuildEtaGeneratedDESystem(...)`, the
+  same direct solver wrapper now forwards the assembled one-variable eta `DESystem`, start/target
+  locations, precision policy, requested digits, and injected solver diagnostics unchanged when a
+  caller-supplied direct eta decision rewrites only reviewed quadratic propagators and leaves the
+  explicit linear slot passive
 - on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
 - malformed or exact-arithmetic-invalid public dimension expressions still fail explicitly with
   `invalid_argument` or the underlying exact-arithmetic diagnostic, and the retained overload
   without that extra argument stays unchanged
-- this batch does not add solver-selection policy, CLI, eta-mode expansion, multi-variable orchestration, boundary generation, or algorithmic series solving
+- this batch does not add solver-selection policy, CLI, builtin eta-mode linear selection,
+  eta-mode expansion, multi-variable orchestration, boundary generation, or algorithmic series
+  solving
 
 The first eta-mode-planned solver handoff is also bootstrap-only:
 
@@ -671,9 +681,15 @@ The first eta-mode-planned solver handoff is also bootstrap-only:
 - if reviewed contour planning succeeds but manifest persistence fails downstream, this wrapper
   still preserves the direct eta-generated explicit `unsupported_solver_path` diagnostics after
   exactly one retained `EtaMode::Plan(spec)` call
+- on the reviewed explicit-linear subset inherited from the direct eta-generated solver handoff,
+  the same thin wrapper now performs exactly one retained `EtaMode::Plan(spec)` call, then
+  forwards the assembled one-variable eta `DESystem`, start/target locations, precision policy,
+  requested digits, and injected solver diagnostics unchanged when that planned decision rewrites
+  only reviewed quadratic propagators and leaves the explicit linear slot passive
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   exactly one `EtaMode::Plan(spec)` call and still do not invoke the supplied solver
-- this batch does not add new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
+- this batch does not add new builtin eta-mode semantics for linear propagators, cache policy,
+  CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
 
 The first builtin eta-mode-name solver wrapper is also bootstrap-only:
 

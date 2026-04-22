@@ -20235,6 +20235,93 @@ void SolveEtaGeneratedSeriesHappyPathTest() {
          "eta solver handoff should return solver diagnostics verbatim");
 }
 
+void SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::EtaInsertionDecision decision = MakeAutoEtaLinearDecision();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=1/5";
+  const std::string target_location = "eta=9/7";
+  const int requested_digits = 71;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-linear-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-solver-linear"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.015625;
+  solver.returned_diagnostics.overlap_mismatch = 0.03125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded eta linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta solver handoff should not mutate reviewed linear subset inputs");
+  Expect(solver.call_count() == 1,
+         "eta solver handoff should call the supplied solver exactly once on the reviewed "
+         "linear subset");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta solver handoff should forward the reviewed linear-subset eta DESystem unchanged "
+         "into SolveRequest");
+  Expect(request.system.coefficient_matrices.at("eta").size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0][0] == "(-1)*(3)",
+         "eta solver handoff should preserve the reviewed linear-subset eta matrix entry");
+  Expect(request.start_location == start_location,
+         "eta solver handoff should preserve the reviewed linear-subset start location");
+  Expect(request.target_location == target_location,
+         "eta solver handoff should preserve the reviewed linear-subset target location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "eta solver handoff should preserve every reviewed linear-subset precision-policy "
+         "field");
+  Expect(request.requested_digits == requested_digits,
+         "eta solver handoff should preserve reviewed linear-subset requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta solver handoff should return reviewed linear-subset solver diagnostics verbatim");
+}
+
 void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -21896,6 +21983,105 @@ void SolveEtaModePlannedSeriesHappyPathTest() {
          "eta-mode-planned solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "eta-mode-planned solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveEtaModePlannedSeriesSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::EtaInsertionDecision decision = MakeAutoEtaLinearDecision();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=2/11";
+  const std::string target_location = "eta=13/17";
+  const int requested_digits = 73;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-linear-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-bootstrap-eta-mode-solver-linear"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-auto-eta-linear.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode eta_mode(decision, "RecordedLinear");
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0078125;
+  solver.returned_diagnostics.overlap_mismatch = 0.015625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded planned eta linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned solver handoff should not mutate reviewed linear subset inputs");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned solver handoff should plan exactly once on the reviewed linear "
+         "subset");
+  Expect(eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned solver handoff should plan against the original reviewed linear "
+         "subset inputs");
+  Expect(solver.call_count() == 1,
+         "eta-mode-planned solver handoff should call the supplied solver exactly once on the "
+         "reviewed linear subset");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta-mode-planned solver handoff should forward the reviewed linear-subset eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.system.coefficient_matrices.at("eta").size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0][0] == "(-1)*(3)",
+         "eta-mode-planned solver handoff should preserve the reviewed linear-subset eta "
+         "matrix entry");
+  Expect(request.start_location == start_location,
+         "eta-mode-planned solver handoff should preserve the reviewed linear-subset start "
+         "location");
+  Expect(request.target_location == target_location,
+         "eta-mode-planned solver handoff should preserve the reviewed linear-subset target "
+         "location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "eta-mode-planned solver handoff should preserve every reviewed linear-subset "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "eta-mode-planned solver handoff should preserve reviewed linear-subset "
+         "requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta-mode-planned solver handoff should return reviewed linear-subset solver "
+         "diagnostics verbatim");
 }
 
 void SolveEtaModePlannedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest() {
@@ -33437,6 +33623,7 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
+    SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
@@ -33462,6 +33649,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest();
     SolveEtaGeneratedSeriesRejectsEmptyGeneratedTargetsTest();
     SolveEtaModePlannedSeriesHappyPathTest();
+    SolveEtaModePlannedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaModePlannedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
     SolveEtaModePlannedSeriesPlansComplexContinuationManifestAfterPlanningTest();
     SolveEtaModePlannedSeriesPreservesComplexContinuationPlanningInputErrorsTest();

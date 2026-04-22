@@ -79,6 +79,10 @@ python3 tools/reference-harness/scripts/capture_phase0_reference.py \
   --self-check
 ```
 
+`amflow-tests` now exercises all four helper self-checks through the configured
+`Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze, and
+retained-capture regression paths without needing a real benchmark packet.
+
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
 

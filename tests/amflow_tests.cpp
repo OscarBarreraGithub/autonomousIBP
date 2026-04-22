@@ -25810,60 +25810,150 @@ void ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest() {
          "probe is unavailable");
 }
 
-void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
-  const std::filesystem::path run_root =
-      FreshTempDir("amflow-reference-harness-bootstrap-self-check");
+struct ReferenceHarnessSelfCheckRun {
+  std::string stdout_json;
+  std::string stderr_log;
+};
+
+ReferenceHarnessSelfCheckRun RunReferenceHarnessSelfCheck(
+    const std::string& run_root_name,
+    const std::string& script_relative_path,
+    const std::string& message_prefix) {
+  const std::filesystem::path run_root = FreshTempDir(run_root_name);
   const std::filesystem::path ignored_root = run_root / "ignored-root";
   const std::filesystem::path stdout_path = run_root / "stdout.json";
   const std::filesystem::path stderr_path = run_root / "stderr.log";
   const std::string python_executable = AMFLOW_PYTHON_EXECUTABLE;
   const std::filesystem::path script_path =
-      std::filesystem::path(AMFLOW_SOURCE_DIR) /
-      "tools/reference-harness/scripts/bootstrap_reference_harness.py";
+      std::filesystem::path(AMFLOW_SOURCE_DIR) / script_relative_path;
 
   const std::string command =
       ShellSingleQuote(python_executable) + " " + ShellSingleQuote(script_path.string()) +
-      " --root " +
-      ShellSingleQuote(ignored_root.string()) + " --self-check >" +
+      " --root " + ShellSingleQuote(ignored_root.string()) + " --self-check >" +
       ShellSingleQuote(stdout_path.string()) + " 2>" + ShellSingleQuote(stderr_path.string());
 
-  Expect(RunShellCommand(command) == 0,
-         "bootstrap reference-harness self-check should complete successfully");
-  const std::string stdout_json = ReadFile(stdout_path);
-  const std::string stderr_log = ReadFile(stderr_path);
-  Expect(stderr_log.empty(),
+  Expect(RunShellCommand(command) == 0, message_prefix + " should complete successfully");
+  return {ReadFile(stdout_path), ReadFile(stderr_path)};
+}
+
+void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+      "amflow-reference-harness-bootstrap-self-check",
+      "tools/reference-harness/scripts/bootstrap_reference_harness.py",
+      "bootstrap reference-harness self-check");
+  Expect(result.stderr_log.empty(),
          "bootstrap reference-harness self-check should not emit stderr noise on success");
-  ExpectContains(stdout_json, "\"copied_qualification_template\": true",
+  ExpectContains(result.stdout_json, "\"copied_qualification_template\": true",
                  "bootstrap reference-harness self-check should copy the qualification scaffold");
-  ExpectContains(stdout_json, "\"phase0_catalog_matches_parity_example_classes\": true",
+  ExpectContains(result.stdout_json, "\"phase0_catalog_matches_parity_example_classes\": true",
                  "bootstrap reference-harness self-check should keep the phase-0 catalog locked "
                  "to parity example classes");
-  ExpectContains(stdout_json, "\"phase0_catalog_matches_qualification_scaffold\": true",
+  ExpectContains(result.stdout_json, "\"phase0_catalog_matches_qualification_scaffold\": true",
                  "bootstrap reference-harness self-check should keep the qualification scaffold "
                  "locked to the copied phase-0 catalog");
-  ExpectContains(stdout_json, "\"case_studies_match_parity_and_selected_benchmarks\": true",
+  ExpectContains(result.stdout_json,
+                 "\"case_studies_match_parity_and_selected_benchmarks\": true",
                  "bootstrap reference-harness self-check should keep qualification case studies "
                  "locked to parity-matrix labels and selected benchmark ids");
-  ExpectContains(stdout_json, "\"digit_threshold_profiles_match_verification_strategy\": true",
+  ExpectContains(result.stdout_json,
+                 "\"digit_threshold_profiles_match_verification_strategy\": true",
                  "bootstrap reference-harness self-check should keep qualification digit "
                  "thresholds locked to the verification strategy");
-  ExpectContains(stdout_json, "\"failure_code_profile_matches_parity_matrix\": true",
+  ExpectContains(result.stdout_json, "\"failure_code_profile_matches_parity_matrix\": true",
                  "bootstrap reference-harness self-check should keep failure-code defaults "
                  "locked to the parity matrix");
-  ExpectContains(stdout_json, "\"regression_profile_matches_parity_matrix\": true",
+  ExpectContains(result.stdout_json, "\"regression_profile_matches_parity_matrix\": true",
                  "bootstrap reference-harness self-check should keep regression defaults "
                  "locked to the parity matrix");
-  ExpectContains(stdout_json, "\"placeholder_count_matches_catalog\": true",
+  ExpectContains(result.stdout_json, "\"placeholder_count_matches_catalog\": true",
                  "bootstrap reference-harness self-check should freeze placeholders for every "
                  "catalog benchmark");
-  ExpectContains(stdout_json, "\"golden_index_matches_catalog_ids\": true",
+  ExpectContains(result.stdout_json, "\"golden_index_matches_catalog_ids\": true",
                  "bootstrap reference-harness self-check should keep the golden index benchmark "
                  "ids aligned with the copied phase-0 catalog");
-  ExpectContains(stdout_json, "\"manifest_records_bootstrap_only_state\": true",
+  ExpectContains(result.stdout_json, "\"manifest_records_bootstrap_only_state\": true",
                  "bootstrap reference-harness self-check should keep the manifest in the "
                  "bootstrap-only placeholder state");
-  ExpectContains(stdout_json, "\"state_summary_written\": true",
+  ExpectContains(result.stdout_json, "\"state_summary_written\": true",
                  "bootstrap reference-harness self-check should write the bootstrap state summary");
+}
+
+void FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+      "amflow-reference-harness-fetch-self-check",
+      "tools/reference-harness/scripts/fetch_upstream_amflow.py",
+      "fetch reference-harness self-check");
+  ExpectContains(result.stdout_json, "\"updated_commit_matches_remote\": true",
+                 "fetch reference-harness self-check should refresh the pinned checkout to the "
+                 "latest requested remote commit");
+  ExpectContains(result.stdout_json, "\"existing_checkout_was_refreshed\": true",
+                 "fetch reference-harness self-check should prove an existing checkout is "
+                 "refreshed instead of staying stale");
+  ExpectContains(result.stdout_json, "\"mismatch_detected\": true",
+                 "fetch reference-harness self-check should reject an existing checkout whose "
+                 "origin does not match the requested URL");
+  ExpectContains(result.stdout_json, "\"cpc_extraction_cleaned\": true",
+                 "fetch reference-harness self-check should recreate the CPC extraction "
+                 "directory before re-extraction");
+  ExpectContains(result.stdout_json, "\"tar_symlink_rejected\": true",
+                 "fetch reference-harness self-check should reject tar symlink entries");
+  ExpectContains(result.stdout_json, "\"tar_hardlink_rejected\": true",
+                 "fetch reference-harness self-check should reject tar hardlink entries");
+  ExpectContains(result.stdout_json, "\"tar_device_rejected\": true",
+                 "fetch reference-harness self-check should reject tar device entries");
+  ExpectContains(result.stdout_json, "\"tar_absolute_path_rejected\": true",
+                 "fetch reference-harness self-check should reject tar absolute-path entries");
+  ExpectContains(result.stdout_json, "\"tar_escape_rejected\": true",
+                 "fetch reference-harness self-check should reject tar entries that escape the "
+                 "extraction root");
+  ExpectContains(result.stdout_json, "\"tar_mixed_archive_rejected_before_write\": true",
+                 "fetch reference-harness self-check should reject mixed tar archives before any "
+                 "payload is written");
+}
+
+void FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+      "amflow-reference-harness-freeze-self-check",
+      "tools/reference-harness/scripts/freeze_phase0_goldens.py",
+      "freeze reference-harness self-check");
+  Expect(result.stderr_log.empty(),
+         "freeze reference-harness self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"initial_benchmark_count\": 1",
+                 "freeze reference-harness self-check should report the seeded placeholder "
+                 "benchmark count");
+  ExpectContains(result.stdout_json, "\"placeholder_metadata_refreshed\": true",
+                 "freeze reference-harness self-check should refresh placeholder metadata when "
+                 "the catalog changes");
+  ExpectContains(result.stdout_json, "\"placeholder_refresh_reported\": true",
+                 "freeze reference-harness self-check should report placeholder refresh work");
+  ExpectContains(result.stdout_json, "\"promoted_artifact_preserved\": true",
+                 "freeze reference-harness self-check should preserve already-promoted artifacts "
+                 "during placeholder-only refreshes");
+  ExpectContains(result.stdout_json, "\"preserved_existing_reported\": true",
+                 "freeze reference-harness self-check should report preserved promoted artifacts");
+  ExpectContains(result.stdout_json, "\"unsafe_id_rejected\": true",
+                 "freeze reference-harness self-check should reject unsafe benchmark ids");
+}
+
+void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+      "amflow-reference-harness-capture-self-check",
+      "tools/reference-harness/scripts/capture_phase0_reference.py",
+      "capture reference-harness self-check");
+  Expect(result.stderr_log.empty(),
+         "capture reference-harness self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"capture_state_reference_captured\": true",
+                 "capture reference-harness self-check should promote the synthetic benchmark "
+                 "into reference-captured state");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "capture reference-harness self-check should write the packet summary");
+  ExpectContains(result.stdout_json, "\"backup_match_ok\": true",
+                 "capture reference-harness self-check should prove bundled-backup agreement");
+  ExpectContains(result.stdout_json, "\"rerun_match_ok\": true",
+                 "capture reference-harness self-check should prove rerun reproducibility");
+  ExpectContains(result.stdout_json, "\"resume_reused_existing_runs\": true",
+                 "capture reference-harness self-check should reuse retained run manifests when "
+                 "--resume-existing is requested");
 }
 
 void OptionDefaultsTest() {
@@ -26552,6 +26642,9 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
+    FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
+    FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
+    CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

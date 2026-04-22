@@ -219,7 +219,8 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - path-safe benchmark catalog IDs and placeholder-only refresh semantics
 - local `--self-check` coverage in the bootstrap, fetch, placeholder-freeze, and retained-capture
   helpers for the Batch-2/M0b regression cases, including qualification scaffold/catalog
-  coherence against the frozen parity sources
+  coherence against the frozen parity sources and repo-local `amflow-tests` wiring for those
+  helper checks
 
 ## Batch-2 Reviewable Artifacts
 

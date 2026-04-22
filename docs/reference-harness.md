@@ -161,5 +161,7 @@ retained outputs and rerun evidence.
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
 the retained-golden promotion path. All four helpers expose `--self-check` modes so the repo can
 rerun the bootstrap, catalog/scaffold coherence, and retained-capture regression scenarios without
-needing a full benchmark packet, and the retained-capture helper now also self-checks the
-restart-safe `--resume-existing` path.
+needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
+placeholder-freeze, and retained-capture self-checks through the configured repo-local Python
+interpreter, and the retained-capture helper also self-checks the restart-safe
+`--resume-existing` path.

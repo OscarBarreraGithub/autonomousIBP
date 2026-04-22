@@ -2644,6 +2644,39 @@ std::string SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
   return out.str();
 }
 
+std::string SerializeEtaContinuationPlanForSolveRequestFingerprint(
+    const EtaContinuationPlan& plan) {
+  std::ostringstream out;
+  out << "eta_symbol=" << plan.eta_symbol << "\n";
+  out << "start_location=" << plan.start_location << "\n";
+  out << "target_location=" << plan.target_location << "\n";
+  out << "half_plane=" << ToString(plan.half_plane) << "\n";
+  out << "contour_points=" << plan.contour_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.contour_points.size(); ++index) {
+    out << "contour_point[" << index << "]=" << plan.contour_points[index].ToString() << "\n";
+  }
+  out << "singular_points=" << plan.singular_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.singular_points.size(); ++index) {
+    const EtaContourSingularPoint& singular_point = plan.singular_points[index];
+    out << "singular_point[" << index << "].expression=" << singular_point.expression << "\n";
+    out << "singular_point[" << index << "].value=" << singular_point.value.ToString() << "\n";
+    out << "singular_point[" << index << "].branch_winding=" << singular_point.branch_winding
+        << "\n";
+  }
+  out << "contour_fingerprint=" << plan.contour_fingerprint << "\n";
+  return out.str();
+}
+
+std::string SerializeOptionalEtaContinuationPlanForFingerprint(
+    const std::optional<EtaContinuationPlan>& eta_continuation_plan) {
+  std::ostringstream out;
+  out << "present=" << (eta_continuation_plan.has_value() ? "true" : "false") << "\n";
+  if (eta_continuation_plan.has_value()) {
+    out << SerializeEtaContinuationPlanForSolveRequestFingerprint(*eta_continuation_plan);
+  }
+  return out.str();
+}
+
 std::string SerializeOptionalAmfFixedEpsForFingerprint(
     const std::optional<std::string>& fixed_eps) {
   std::ostringstream out;
@@ -2731,6 +2764,10 @@ std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
   out << "amf_requested_dimension_expression:\n"
       << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
              request.amf_requested_dimension_expression);
+  if (request.eta_continuation_plan.has_value()) {
+    out << "eta_continuation_plan:\n"
+        << SerializeOptionalEtaContinuationPlanForFingerprint(request.eta_continuation_plan);
+  }
   return out.str();
 }
 
@@ -2951,6 +2988,11 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
   if (request.amf_requested_dimension_expression.has_value()) {
     manifest.request_summary +=
         "; amf_requested_dimension_expression=" + *request.amf_requested_dimension_expression;
+  }
+  if (request.eta_continuation_plan.has_value()) {
+    manifest.request_summary +=
+        "; eta_continuation_plan.contour_fingerprint=" +
+        request.eta_continuation_plan->contour_fingerprint;
   }
   manifest.cache_root = AbsoluteOrEmpty(manifest_path.parent_path());
   manifest.manifest_path = AbsoluteOrEmpty(manifest_path);
@@ -3226,6 +3268,36 @@ MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
   return diagnostics;
 }
 
+SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request);
+
+SolverDiagnostics SolveWithReviewedLiveComplexEtaContinuationPlan(
+    const ProblemSpec& spec,
+    const ArtifactLayout& layout,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol,
+    SolveRequest request) {
+  const EtaContinuationPlan plan =
+      PlanEtaContinuationContour(request.system,
+                                 spec,
+                                 eta_symbol,
+                                 request.start_location,
+                                 request.target_location,
+                                 EtaContourHalfPlane::Upper);
+  const std::filesystem::path manifest_path =
+      BuildComplexEtaContinuationManifestPath(layout, plan);
+  const EtaContinuationPlanManifest manifest =
+      MakeEtaContinuationPlanManifest(plan, BuildComplexEtaContinuationManifestRunId(plan));
+  try {
+    static_cast<void>(WriteEtaContinuationPlanManifest(layout, manifest));
+  } catch (const std::exception& error) {
+    return MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
+        plan, manifest_path, error);
+  }
+
+  request.eta_continuation_plan = plan;
+  return SolveWithPrecisionRetry(solver, std::move(request));
+}
+
 void ValidateComplexEtaGeneratedWrapperBindings(const ProblemSpec& spec) {
   if (spec.kinematics.complex_numeric_substitutions.empty()) {
     return;
@@ -3485,6 +3557,7 @@ void PopulateSolveRequestExecutionInputs(
   request.amf_runtime_policy = amf_runtime_policy;
   request.amf_requested_d0 = amf_requested_d0;
   request.amf_requested_dimension_expression = amf_requested_dimension_expression;
+  request.eta_continuation_plan.reset();
   request.requested_digits = requested_digits;
 }
 
@@ -4593,8 +4666,35 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     return *diagnostics;
   }
 
-  SolvedPathCacheContext cache_context;
   if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    if (solver.SupportsReviewedComplexEtaContinuation()) {
+      SolveRequest request;
+      try {
+        request.system = BuildEtaGeneratedDESystem(spec,
+                                                   master_basis,
+                                                   decision,
+                                                   options,
+                                                   layout,
+                                                   kira_executable,
+                                                   fermat_executable,
+                                                   eta_symbol,
+                                                   normalized_exact_dimension_override);
+        ApplySymbolicDimensionExpression(request.system,
+                                         normalized_dimension_expression,
+                                         normalized_exact_dimension_override);
+      } catch (const MasterSetInstabilityError& error) {
+        return MakeMasterSetInstabilityDiagnostics(error.what());
+      }
+      request.start_location = start_location;
+      request.target_location = target_location;
+      request.precision_policy = precision_policy;
+      request.amf_requested_dimension_expression = normalized_dimension_expression;
+      request.requested_digits = requested_digits;
+      return SolveWithReviewedLiveComplexEtaContinuationPlan(
+          spec, layout, solver, eta_symbol, std::move(request));
+    }
+
+    SolvedPathCacheContext cache_context;
     const std::string kira_executable_replay_fingerprint =
         BuildExecutableReplayFingerprint(kira_executable);
     const std::string fermat_executable_replay_fingerprint =

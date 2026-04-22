@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "amflow/core/de_system.hpp"
+#include "amflow/runtime/continuation_path.hpp"
 #include "amflow/solver/boundary_request.hpp"
 #include "amflow/solver/coefficient_evaluator.hpp"
 #include "amflow/solver/precision_policy.hpp"
@@ -91,6 +92,10 @@ struct SolveRequest {
   // and broader symbolic runtime parity remain deferred.
   std::optional<std::string> amf_requested_d0;
   std::optional<std::string> amf_requested_dimension_expression;
+  // Reviewed complex eta continuation metadata for injected solvers that opt
+  // into the separate complex contour path. The default exact bootstrap solver
+  // still ignores this and remains on the deferred path.
+  std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;
 };
 
@@ -98,6 +103,7 @@ class SeriesSolver {
  public:
   virtual ~SeriesSolver() = default;
 
+  virtual bool SupportsReviewedComplexEtaContinuation() const { return false; }
   virtual SolverDiagnostics Solve(const SolveRequest& request) const = 0;
 };
 

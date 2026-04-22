@@ -743,6 +743,28 @@ bool SameAmfSolveRuntimePolicy(const amflow::AmfSolveRuntimePolicy& lhs,
          lhs.test_x_order == rhs.test_x_order && lhs.run_length == rhs.run_length;
 }
 
+bool SameEtaContourSingularPoint(const amflow::EtaContourSingularPoint& lhs,
+                                 const amflow::EtaContourSingularPoint& rhs) {
+  return lhs.expression == rhs.expression && lhs.value == rhs.value &&
+         lhs.branch_winding == rhs.branch_winding;
+}
+
+bool SameEtaContinuationPlan(const amflow::EtaContinuationPlan& lhs,
+                             const amflow::EtaContinuationPlan& rhs) {
+  if (lhs.eta_symbol != rhs.eta_symbol || lhs.start_location != rhs.start_location ||
+      lhs.target_location != rhs.target_location || lhs.half_plane != rhs.half_plane ||
+      lhs.contour_points != rhs.contour_points || lhs.contour_fingerprint != rhs.contour_fingerprint ||
+      lhs.singular_points.size() != rhs.singular_points.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < lhs.singular_points.size(); ++index) {
+    if (!SameEtaContourSingularPoint(lhs.singular_points[index], rhs.singular_points[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool SameSolveRequest(const amflow::SolveRequest& lhs, const amflow::SolveRequest& rhs) {
   if (!SameDESystem(lhs.system, rhs.system) ||
       lhs.boundary_requests.size() != rhs.boundary_requests.size() ||
@@ -753,6 +775,10 @@ bool SameSolveRequest(const amflow::SolveRequest& lhs, const amflow::SolveReques
       lhs.amf_runtime_policy.has_value() != rhs.amf_runtime_policy.has_value() ||
       (lhs.amf_runtime_policy.has_value() &&
        !SameAmfSolveRuntimePolicy(*lhs.amf_runtime_policy, *rhs.amf_runtime_policy)) ||
+      lhs.eta_continuation_plan.has_value() != rhs.eta_continuation_plan.has_value() ||
+      (lhs.eta_continuation_plan.has_value() &&
+       !SameEtaContinuationPlan(*lhs.eta_continuation_plan,
+                                *rhs.eta_continuation_plan)) ||
       lhs.requested_digits != rhs.requested_digits) {
     return false;
   }
@@ -1298,7 +1324,12 @@ amflow::SolverDiagnostics MakeRequestDrivenEquivalenceHarnessDiagnostics(
 class RecordingSeriesSolver final : public amflow::SeriesSolver {
  public:
   bool use_request_driven_diagnostics = false;
+  bool supports_reviewed_complex_eta_continuation = false;
   amflow::SolverDiagnostics returned_diagnostics;
+
+  bool SupportsReviewedComplexEtaContinuation() const override {
+    return supports_reviewed_complex_eta_continuation;
+  }
 
   amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
     ++call_count_;
@@ -1327,7 +1358,12 @@ class RecordingSeriesSolver final : public amflow::SeriesSolver {
 
 class RecordingSeriesSolverSequence final : public amflow::SeriesSolver {
  public:
+  bool supports_reviewed_complex_eta_continuation = false;
   std::vector<amflow::SolverDiagnostics> returned_diagnostics;
+
+  bool SupportsReviewedComplexEtaContinuation() const override {
+    return supports_reviewed_complex_eta_continuation;
+  }
 
   amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
     ++call_count_;
@@ -1350,12 +1386,18 @@ class RecordingSeriesSolverSequence final : public amflow::SeriesSolver {
 
 class ScriptedRecordingSeriesSolver final : public amflow::SeriesSolver {
  public:
+  bool supports_reviewed_complex_eta_continuation = false;
+
   struct Step {
     bool use_request_driven_diagnostics = false;
     amflow::SolverDiagnostics diagnostics;
   };
 
   std::vector<Step> steps;
+
+  bool SupportsReviewedComplexEtaContinuation() const override {
+    return supports_reviewed_complex_eta_continuation;
+  }
 
   amflow::SolverDiagnostics Solve(const amflow::SolveRequest& request) const override {
     ++call_count_;
@@ -1583,7 +1625,6 @@ std::filesystem::path UserHookOptionalPhase0ReferencePacketRoot() {
       "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
       "phase0-reference-captured-20260422-user-hook-pair");
 }
-
 amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
     const std::vector<amflow::TargetIntegral>& targets,
     const std::vector<std::string>& preferred_masters,
@@ -20668,6 +20709,165 @@ void SolveEtaGeneratedSeriesPlansComplexContinuationManifestBeforeExactSolverTes
          "wrapper has switched onto contour-plan deferral");
 }
 
+void SolveEtaGeneratedSeriesSupportsReviewedComplexContinuationPlanHandoffTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 67;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-live-complex-continuation-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-live-complex-continuation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.000732421875;
+  solver.returned_diagnostics.overlap_mismatch = 0.00146484375;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded complex continuation solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta solver live complex continuation coverage should persist exactly one continuation-"
+      "plan manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta solver live complex continuation coverage should not mutate the input problem "
+         "spec");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta solver live complex continuation coverage should not write solved-path cache "
+         "artifacts on the reviewed live handoff path");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta solver live complex continuation coverage should persist the reviewed "
+         "continuation-plan payload verbatim");
+  Expect(solver.call_count() == 1,
+         "eta solver live complex continuation coverage should call the supplied solver exactly "
+         "once on the reviewed opt-in path");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta solver live complex continuation coverage should forward the assembled eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.start_location == start_location,
+         "eta solver live complex continuation coverage should preserve the start location");
+  Expect(request.target_location == target_location,
+         "eta solver live complex continuation coverage should preserve the target location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "eta solver live complex continuation coverage should preserve every precision-policy "
+         "field");
+  Expect(request.requested_digits == requested_digits,
+         "eta solver live complex continuation coverage should preserve requested_digits");
+  Expect(request.eta_continuation_plan.has_value(),
+         "eta solver live complex continuation coverage should attach the reviewed "
+         "continuation plan to SolveRequest");
+  Expect(request.eta_continuation_plan.has_value() &&
+             SameEtaContinuationPlan(*request.eta_continuation_plan, expected_plan),
+         "eta solver live complex continuation coverage should forward the reviewed "
+         "continuation plan unchanged");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta solver live complex continuation coverage should return solver diagnostics "
+         "verbatim");
+}
+
+void SolveEtaGeneratedSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-live-complex-continuation-input-error"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(spec,
+                                                          master_basis,
+                                                          MakeEtaGeneratedHappyDecision(),
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          kira_path,
+                                                          fermat_path,
+                                                          solver,
+                                                          "eta=I/5",
+                                                          "eta=2",
+                                                          MakeDistinctPrecisionPolicy(),
+                                                          57));
+      },
+      "currently supports only finite start and target points on one horizontal line",
+      "eta solver live complex continuation coverage should preserve reviewed contour-planning "
+      "input errors");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "eta solver live complex continuation coverage should not write manifests when "
+         "reviewed contour planning rejects the caller inputs");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta solver live complex continuation coverage should not write solved-path cache "
+         "artifacts when reviewed contour planning rejects the caller inputs");
+  Expect(solver.call_count() == 0,
+         "eta solver live complex continuation coverage should not call the exact solver when "
+         "reviewed contour planning rejects the caller inputs");
+}
+
 void SolveEtaGeneratedSeriesPreservesComplexContinuationPlanningInputErrorsTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -20791,6 +20991,95 @@ void SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWr
          "when manifest persistence fails");
   Expect(solver.call_count() == 0,
          "eta solver complex continuation coverage should not call the exact solver when "
+         "manifest persistence fails");
+}
+
+void SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenLiveContinuationManifestWriteFailsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-live-complex-continuation-write-failure-"
+                   "baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-live-complex-continuation-write-failure"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+  std::filesystem::remove_all(layout.manifests_dir);
+  OverwriteTextFile(layout.manifests_dir, "blocking file\n");
+
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      65);
+
+  const std::filesystem::path expected_manifest_path =
+      ExpectedComplexEtaContinuationManifestPathForTests(layout, expected_plan);
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "eta solver live complex continuation coverage should keep manifest-write failures on "
+         "the explicit unsupported solver diagnostic path");
+  ExpectContains(diagnostics.summary,
+                 expected_plan.contour_fingerprint,
+                 "eta solver live complex continuation coverage should report the planned "
+                 "contour fingerprint when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 expected_manifest_path.string(),
+                 "eta solver live complex continuation coverage should report the intended "
+                 "manifest path when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 "continuation_plan_manifest_write_failed=",
+                 "eta solver live complex continuation coverage should report explicit "
+                 "manifest-write failure context");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta solver live complex continuation coverage should not write solved-path cache "
+         "artifacts when manifest persistence fails");
+  Expect(solver.call_count() == 0,
+         "eta solver live complex continuation coverage should not call the exact solver when "
          "manifest persistence fails");
 }
 
@@ -22368,6 +22657,182 @@ void SolveEtaModePlannedSeriesPlansComplexContinuationManifestAfterPlanningTest(
          "the wrapper has switched onto contour-plan deferral");
 }
 
+void SolveEtaModePlannedSeriesSupportsReviewedComplexContinuationPlanHandoffTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+  const int requested_digits = 69;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-live-complex-continuation-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-live-complex-continuation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuationLive");
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0003662109375;
+  solver.returned_diagnostics.overlap_mismatch = 0.000732421875;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded planned complex continuation solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  const std::filesystem::path manifest_path = RequireOnlyContinuationPlanManifestPath(
+      layout,
+      "eta-mode-planned live complex continuation coverage should persist exactly one "
+      "continuation-plan manifest");
+  const amflow::EtaContinuationPlanManifest expected_manifest =
+      amflow::MakeEtaContinuationPlanManifest(expected_plan, manifest_path.stem().string());
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned live complex continuation coverage should not mutate the input "
+         "problem spec");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned live complex continuation coverage should still plan exactly once");
+  Expect(eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned live complex continuation coverage should preserve the original "
+         "planning input");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta-mode-planned live complex continuation coverage should not write solved-path "
+         "cache artifacts on the reviewed live handoff path");
+  Expect(ReadFile(manifest_path) ==
+             amflow::SerializeEtaContinuationPlanManifestYaml(expected_manifest),
+         "eta-mode-planned live complex continuation coverage should persist the reviewed "
+         "continuation-plan payload verbatim");
+  Expect(solver.call_count() == 1,
+         "eta-mode-planned live complex continuation coverage should call the supplied solver "
+         "exactly once on the reviewed opt-in path");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "eta-mode-planned live complex continuation coverage should forward the assembled eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.start_location == start_location,
+         "eta-mode-planned live complex continuation coverage should preserve the start "
+         "location");
+  Expect(request.target_location == target_location,
+         "eta-mode-planned live complex continuation coverage should preserve the target "
+         "location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "eta-mode-planned live complex continuation coverage should preserve every "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "eta-mode-planned live complex continuation coverage should preserve "
+         "requested_digits");
+  Expect(request.eta_continuation_plan.has_value(),
+         "eta-mode-planned live complex continuation coverage should attach the reviewed "
+         "continuation plan to SolveRequest");
+  Expect(request.eta_continuation_plan.has_value() &&
+             SameEtaContinuationPlan(*request.eta_continuation_plan, expected_plan),
+         "eta-mode-planned live complex continuation coverage should forward the reviewed "
+         "continuation plan unchanged");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "eta-mode-planned live complex continuation coverage should return solver diagnostics "
+         "verbatim");
+}
+
+void SolveEtaModePlannedSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-live-complex-continuation-input-error"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingEtaMode eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuationLive");
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolveEtaModePlannedSeries(spec,
+                                                            master_basis,
+                                                            eta_mode,
+                                                            MakeKiraReductionOptions(),
+                                                            layout,
+                                                            kira_path,
+                                                            fermat_path,
+                                                            solver,
+                                                            "eta=I/5",
+                                                            "eta=2",
+                                                            MakeDistinctPrecisionPolicy(),
+                                                            59));
+      },
+      "currently supports only finite start and target points on one horizontal line",
+      "eta-mode-planned live complex continuation coverage should preserve reviewed contour-"
+      "planning input errors");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned live complex continuation coverage should still plan exactly once "
+         "before contour-planning rejection");
+  Expect(eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned live complex continuation coverage should preserve the original "
+         "planning input when contour planning rejects the caller inputs");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "eta-mode-planned live complex continuation coverage should not write manifests when "
+         "reviewed contour planning rejects the caller inputs");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta-mode-planned live complex continuation coverage should not write solved-path "
+         "cache artifacts when reviewed contour planning rejects the caller inputs");
+  Expect(solver.call_count() == 0,
+         "eta-mode-planned live complex continuation coverage should not call the exact solver "
+         "when reviewed contour planning rejects the caller inputs");
+}
+
 void SolveEtaModePlannedSeriesPreservesComplexContinuationPlanningInputErrorsTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -22512,6 +22977,106 @@ void SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenContinuationManifest
   Expect(solver.call_count() == 0,
          "eta-mode-planned complex continuation coverage should not call the exact solver when "
          "manifest persistence fails");
+}
+
+void SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenLiveContinuationManifestWriteFailsTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=-1";
+  const std::string target_location = "eta=2";
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-live-complex-continuation-write-failure-"
+                   "baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        MakeEtaGeneratedHappyDecision(),
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+  const amflow::EtaContinuationPlan expected_plan =
+      amflow::PlanEtaContinuationContour(baseline_system,
+                                         spec,
+                                         "eta",
+                                         start_location,
+                                         target_location,
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-live-complex-continuation-write-failure"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+  std::filesystem::remove_all(layout.manifests_dir);
+  OverwriteTextFile(layout.manifests_dir, "blocking file\n");
+
+  RecordingEtaMode eta_mode(MakeEtaGeneratedHappyDecision(), "RecordedComplexContinuationLive");
+  RecordingSeriesSolver solver;
+  solver.supports_reviewed_complex_eta_continuation = true;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaModePlannedSeries(spec,
+                                        master_basis,
+                                        eta_mode,
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        67);
+
+  const std::filesystem::path expected_manifest_path =
+      ExpectedComplexEtaContinuationManifestPathForTests(layout, expected_plan);
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "eta-mode-planned live complex continuation coverage should not mutate the input "
+         "problem spec when manifest persistence fails");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned live complex continuation coverage should still plan exactly once "
+         "before manifest-write failure deferral");
+  Expect(eta_mode.last_planned_spec_yaml() == original_yaml,
+         "eta-mode-planned live complex continuation coverage should preserve the original "
+         "planning input when manifest persistence fails");
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "eta-mode-planned live complex continuation coverage should keep manifest-write "
+         "failures on the explicit unsupported solver diagnostic path");
+  ExpectContains(diagnostics.summary,
+                 expected_plan.contour_fingerprint,
+                 "eta-mode-planned live complex continuation coverage should report the planned "
+                 "contour fingerprint when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 expected_manifest_path.string(),
+                 "eta-mode-planned live complex continuation coverage should report the "
+                 "intended manifest path when manifest persistence fails");
+  ExpectContains(diagnostics.summary,
+                 "continuation_plan_manifest_write_failed=",
+                 "eta-mode-planned live complex continuation coverage should report explicit "
+                 "manifest-write failure context");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta-mode-planned live complex continuation coverage should not write solved-path "
+         "cache artifacts when manifest persistence fails");
+  Expect(solver.call_count() == 0,
+         "eta-mode-planned live complex continuation coverage should not call the exact solver "
+         "when manifest persistence fails");
 }
 
 void SolveEtaModePlannedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest() {
@@ -33065,24 +33630,41 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "bootstrap reference-harness self-check should write the bootstrap state summary");
 }
 
-void OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest() {
+void BootstrapReferenceHarnessCopiesTemplatesVerbatimTest() {
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-reference-harness-bootstrap-template-copy");
+  const std::filesystem::path harness_root = run_root / "harness";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path script_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/scripts/bootstrap_reference_harness.py";
+  const std::string command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(script_path.string()) + " --root " +
+      ShellSingleQuote(harness_root.string()) + " --manifest-name " +
+      ShellSingleQuote("phase0-reference-copy") + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "bootstrap reference-harness template copy should complete successfully");
+  Expect(ReadFile(stderr_path).empty(),
+         "bootstrap reference-harness template copy should not emit stderr noise on success");
+
   const std::filesystem::path repo_templates_root =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "tools/reference-harness/templates";
+  const std::filesystem::path copied_templates_root = harness_root / "templates";
   const std::vector<std::string> repo_template_names = SortedRegularFileNames(repo_templates_root);
-  for (const std::filesystem::path& retained_root : OptionalPhase0ReferencePacketRoots()) {
-    const std::filesystem::path retained_templates_root = retained_root / "templates";
-    const std::vector<std::string> retained_template_names =
-        SortedRegularFileNames(retained_templates_root);
-    Expect(retained_template_names == repo_template_names,
-           "optional retained phase-0 packet should keep the copied template file set "
-           "synchronized with the repo templates");
+  const std::vector<std::string> copied_template_names =
+      SortedRegularFileNames(copied_templates_root);
+  Expect(copied_template_names == repo_template_names,
+         "bootstrap reference-harness template copy should preserve the repo template file set");
 
-    for (const std::string& name : repo_template_names) {
-      Expect(ReadFile(retained_templates_root / name) == ReadFile(repo_templates_root / name),
-             "optional retained phase-0 packet should keep copied template contents synchronized "
-             "with the repo templates for " +
-                 name);
-    }
+  for (const std::string& name : repo_template_names) {
+    Expect(ReadFile(copied_templates_root / name) == ReadFile(repo_templates_root / name),
+           "bootstrap reference-harness template copy should preserve exact template contents "
+           "for " +
+               name);
   }
 }
 
@@ -33938,7 +34520,10 @@ int main() {
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesPlansComplexContinuationManifestBeforeExactSolverTest();
+    SolveEtaGeneratedSeriesSupportsReviewedComplexContinuationPlanHandoffTest();
+    SolveEtaGeneratedSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest();
     SolveEtaGeneratedSeriesPreservesComplexContinuationPlanningInputErrorsTest();
+    SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenLiveContinuationManifestWriteFailsTest();
     SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
     SolveEtaGeneratedSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();
     SolveEtaGeneratedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest();
@@ -33962,7 +34547,10 @@ int main() {
     SolveEtaModePlannedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaModePlannedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
     SolveEtaModePlannedSeriesPlansComplexContinuationManifestAfterPlanningTest();
+    SolveEtaModePlannedSeriesSupportsReviewedComplexContinuationPlanHandoffTest();
+    SolveEtaModePlannedSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest();
     SolveEtaModePlannedSeriesPreservesComplexContinuationPlanningInputErrorsTest();
+    SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenLiveContinuationManifestWriteFailsTest();
     SolveEtaModePlannedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
     SolveEtaModePlannedSeriesReplaysDeferredComplexContinuationDiagnosticsFromSolvedPathCacheTest();
     SolveEtaModePlannedSeriesRejectsDeferredComplexReplayWhenManifestFingerprintDriftsTest();
@@ -34093,7 +34681,7 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
-    OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest();
+    BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();
     FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();

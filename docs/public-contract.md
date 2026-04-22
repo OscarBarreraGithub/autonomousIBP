@@ -215,8 +215,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
 - current worktree `Batch 61a` through `Batch 64g` are still narrow: explicit complex kinematics
-  now stop at exact-complex evaluation, reviewed contour-plan persistence, and deferred
-  `unsupported_solver_path` cache replay on the planned `AmfOptions` helper path; the reviewed K0
+  now stop at exact-complex evaluation plus reviewed contour-plan persistence; the planned
+  `AmfOptions` helper path and any non-opt-in solver surface still defer with explicit
+  `unsupported_solver_path` diagnostics plus cache replay on the reviewed helper path, while the
+  direct eta-generated and eta-mode-planned solver handoffs now add one still narrower live path
+  only for injected solvers that explicitly opt into the reviewed complex-continuation surface by
+  consuming a persisted `EtaContinuationPlan` on `SolveRequest`; the reviewed K0
   one-mass real guardrails now cover only the explicit `s`/`t` continuation-segment diagnostics
   described below; the reviewed local phase-space slice now narrows builtin `Prescription` to
   standard uncut `-i0` propagators (`Batch 63b`), emits explicit Kira `cut_propagators`
@@ -270,7 +274,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `UpperTriangularMatrixFrobeniusSeriesPatch` plus `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)`: the first upper-triangular matrix regular-singular / Frobenius local propagator seam over one selected reviewed `DESystem` variable on the diagonal-residue, no-log subset
 - `ScalarSeriesPatchOverlapDiagnostics`, `EvaluateScalarSeriesPatchResidual(...)`, and `MatchScalarSeriesPatches(...)`: exact scalar patch residual and overlap diagnostics over already-generated regular patches
 - `UpperTriangularMatrixSeriesPatchOverlapDiagnostics`, `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)`, and `MatchUpperTriangularMatrixSeriesPatches(...)`: exact upper-triangular matrix patch residual and overlap diagnostics over already-generated regular patches
-- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, and derived `amf_requested_dimension_expression`. On the current worktree, the same reviewed dimension-expression execution surface now spans both direct and generated solver entry points: exactly numeric `amf_requested_dimension_expression` values remain passive exact `dimension` bindings and may derive passive exact `eps` only when both `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly, while symbolic expressions rewrite assembled standalone `dimension` identifiers in the `DESystem` onto the normalized symbolic carrier before solver execution. Manual boundary values stay on the reviewed exact-only parsing path. Generated eta-mode solver handoffs still keep live reducer `-sd=<dimension>` plus wrapper-owned prepared-state validation exact-only, but both explicit public symbolic expressions and wrapper-derived symbolic `D0 - 2*eps` carriers now rewrite the assembled eta-generated `DESystem` before solver execution, including the reviewed `AmfOptions` wrapper-owned live and `skip_reduction` assembly paths. Broader Kira preparation artifacts, reducer-facing symbolic overrides, and broader arbitrary symbolic runtime parity remain deferred
+- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, derived `amf_requested_dimension_expression`, and on the current worktree one optional reviewed `eta_continuation_plan` that is attached only by the live complex eta solver wrappers after manifest persistence. `SeriesSolver` also exposes one reviewed capability hook so injected solvers may opt into that live complex eta plan handoff while the default bootstrap solver keeps the deferred path unchanged. On the current worktree, the same reviewed dimension-expression execution surface now spans both direct and generated solver entry points: exactly numeric `amf_requested_dimension_expression` values remain passive exact `dimension` bindings and may derive passive exact `eps` only when both `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly, while symbolic expressions rewrite assembled standalone `dimension` identifiers in the `DESystem` onto the normalized symbolic carrier before solver execution. Manual boundary values stay on the reviewed exact-only parsing path. Generated eta-mode solver handoffs still keep live reducer `-sd=<dimension>` plus wrapper-owned prepared-state validation exact-only, but both explicit public symbolic expressions and wrapper-derived symbolic `D0 - 2*eps` carriers now rewrite the assembled eta-generated `DESystem` before solver execution, including the reviewed `AmfOptions` wrapper-owned live and `skip_reduction` assembly paths. Broader Kira preparation artifacts, reducer-facing symbolic overrides, and broader arbitrary symbolic runtime parity remain deferred
 - `PrecisionPolicy`: precision and stability controls
 - `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
@@ -629,9 +633,11 @@ The first eta-generated solver handoff remains narrow:
   `BuildEtaGeneratedDESystem(...)`, the wrapper now treats that request as one reviewed complex
   continuation candidate: on the reviewed finite-horizontal auto-planning subset it plans one
   reviewed upper-half-plane contour through `PlanEtaContinuationContour(...)`, persists an
-  `EtaContinuationPlanManifest` under `layout.manifests_dir/`, and returns explicit
-  `unsupported_solver_path` diagnostics carrying the contour fingerprint plus the persisted
-  manifest path instead of invoking the supplied solver
+  `EtaContinuationPlanManifest` under `layout.manifests_dir/`; injected solvers that explicitly
+  advertise the reviewed live complex-continuation capability then receive one live
+  `SolveRequest` carrying that same `eta_continuation_plan`, while non-opt-in solvers keep the
+  retained explicit `unsupported_solver_path` diagnostic carrying the contour fingerprint plus
+  the persisted manifest path instead of being invoked
 - unsupported or malformed contour-planning inputs on that same reviewed complex-continuation path
   still fail explicitly with the underlying `invalid_argument` rather than being relabeled as a
   solver-path diagnostic
@@ -661,7 +667,7 @@ The first eta-generated solver handoff remains narrow:
   eta-mode expansion, multi-variable orchestration, boundary generation, or algorithmic series
   solving
 
-The first eta-mode-planned solver handoff is also bootstrap-only:
+The first eta-mode-planned solver handoff stays narrow:
 
 - `SolveEtaModePlannedSeries(...)` takes the same eta-generated solver inputs as `SolveEtaGeneratedSeries(...)`, except `EtaInsertionDecision` is replaced by an injected `const EtaMode&`
 - a matching overload now also accepts one explicit public dimension expression after `eta_symbol`,
@@ -676,8 +682,9 @@ The first eta-mode-planned solver handoff is also bootstrap-only:
 - when that downstream reviewed complex-continuation deferral applies on the reviewed
   finite-horizontal auto-planning subset, the same single retained `EtaMode::Plan(spec)` call
   still happens first, then this wrapper inherits the direct eta-generated contour-plan manifest
-  persistence plus explicit `unsupported_solver_path` diagnostics without invoking the supplied
-  solver
+  persistence and either the same live reviewed `eta_continuation_plan` solver handoff for
+  opt-in solvers or the same explicit `unsupported_solver_path` diagnostics for non-opt-in
+  solvers
 - unsupported or malformed contour-planning inputs on that downstream reviewed continuation path
   still fail explicitly with the underlying `invalid_argument` after exactly one retained
   `EtaMode::Plan(spec)` call

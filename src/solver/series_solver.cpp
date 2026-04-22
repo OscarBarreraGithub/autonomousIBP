@@ -347,6 +347,65 @@ std::optional<std::string> NormalizePublicDimensionExpression(
   }
 }
 
+bool HasSymbolicPublicDimensionExpression(
+    const std::optional<std::string>& dimension_expression) {
+  return dimension_expression.has_value() &&
+         !ResolveExactDimensionOverride(dimension_expression).has_value();
+}
+
+const char* SymbolicDimensionRewriteCacheEpoch() {
+  return "symbolic-dimension-rewrite-v1";
+}
+
+std::string SubstituteDimensionIdentifier(const std::string& expression,
+                                          const std::string& dimension_expression) {
+  std::string rewritten;
+  rewritten.reserve(expression.size() + dimension_expression.size());
+
+  for (std::size_t index = 0; index < expression.size();) {
+    if (!IsDimensionIdentifierStart(expression[index])) {
+      rewritten.push_back(expression[index]);
+      ++index;
+      continue;
+    }
+
+    std::size_t end = index + 1;
+    while (end < expression.size() && IsDimensionIdentifierContinuation(expression[end])) {
+      ++end;
+    }
+
+    if (expression.compare(index, end - index, "dimension") == 0 &&
+        (end == expression.size() || (expression[end] != '(' && expression[end] != '['))) {
+      rewritten += "(" + dimension_expression + ")";
+    } else {
+      rewritten.append(expression, index, end - index);
+    }
+    index = end;
+  }
+
+  return rewritten;
+}
+
+void ApplySymbolicDimensionExpression(DESystem& system,
+                                      const std::optional<std::string>& dimension_expression,
+                                      const std::optional<std::string>& exact_dimension_override) {
+  if (!dimension_expression.has_value() || exact_dimension_override.has_value()) {
+    return;
+  }
+
+  for (auto& [variable_name, matrix] : system.coefficient_matrices) {
+    static_cast<void>(variable_name);
+    for (auto& row : matrix) {
+      for (std::string& cell : row) {
+        cell = SubstituteDimensionIdentifier(cell, *dimension_expression);
+      }
+    }
+  }
+  for (std::string& point : system.singular_points) {
+    point = SubstituteDimensionIdentifier(point, *dimension_expression);
+  }
+}
+
 std::string SerializeWrapperExactDimensionOverrideState(
     const std::optional<std::string>& exact_dimension_override) {
   std::ostringstream out;
@@ -2673,6 +2732,11 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
   out << "exact_dimension_override:\n"
       << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
              explicit_dimension_expression);
+  out << "symbolic_dimension_rewrite_epoch="
+      << (HasSymbolicPublicDimensionExpression(explicit_dimension_expression)
+              ? SymbolicDimensionRewriteCacheEpoch()
+              : "none")
+      << "\n";
   return ComputeArtifactFingerprint(out.str());
 }
 
@@ -2704,6 +2768,9 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
   }
   if (explicit_dimension_expression.has_value()) {
     slot_name += "-exact-dimension-" + SanitizeCacheSlotComponent(*explicit_dimension_expression);
+    if (HasSymbolicPublicDimensionExpression(explicit_dimension_expression)) {
+      slot_name += "-" + std::string(SymbolicDimensionRewriteCacheEpoch());
+    }
   } else if (fixed_eps.has_value()) {
     slot_name += "-fixed-eps-" + SanitizeCacheSlotComponent(*fixed_eps);
   }
@@ -3038,6 +3105,7 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const PrecisionPolicy& precision_policy,
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const std::optional<std::string>& amf_requested_d0,
+    const std::optional<std::string>& explicit_dimension_expression,
     const std::optional<std::string>& amf_requested_dimension_expression,
     const int requested_digits,
     const std::string& eta_symbol,
@@ -3053,6 +3121,8 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
         master_basis,
         LoadValidatedWrapperEtaGeneratedReductionState(
             spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
+    ApplySymbolicDimensionExpression(
+        request.system, explicit_dimension_expression, exact_dimension_override);
     PopulateSolveRequestExecutionInputs(request,
                                         start_location,
                                         target_location,
@@ -3085,6 +3155,8 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
                                                         exact_dimension_override,
                                                         eta_symbol,
                                                         false);
+      ApplySymbolicDimensionExpression(
+          request.system, explicit_dimension_expression, exact_dimension_override);
     }
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
@@ -4025,6 +4097,9 @@ SolverDiagnostics SolveEtaGeneratedSeries(
                                                fermat_executable,
                                                eta_symbol,
                                                normalized_exact_dimension_override);
+    ApplySymbolicDimensionExpression(request.system,
+                                     normalized_dimension_expression,
+                                     normalized_exact_dimension_override);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
@@ -4205,6 +4280,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                                     live_precision_policy,
                                                     live_amf_runtime_policy,
                                                     live_amf_requested_d0,
+                                                    normalized_explicit_dimension_expression,
                                                     live_amf_requested_dimension_expression,
                                                     requested_digits,
                                                     eta_symbol,

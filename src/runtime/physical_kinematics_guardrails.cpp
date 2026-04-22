@@ -380,6 +380,34 @@ bool TSegmentCrossesReviewedEndpointSurface(
   return !IsPositive(vertex_polynomial);
 }
 
+ExactRational ComputeReviewedThresholdSingularMsq(
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  return DivideRational(substitutions.s, IntegerRational(4));
+}
+
+bool MsqSegmentCrossesReviewedEndpointSurface(
+    const ReviewedInvariantSegment& segment,
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  const ExactRational start_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, substitutions.t, segment.start);
+  const ExactRational target_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, substitutions.t, segment.target);
+  if (start_polynomial.IsZero() || target_polynomial.IsZero() ||
+      HaveOppositeSigns(start_polynomial, target_polynomial)) {
+    return true;
+  }
+  if (!IsPositive(start_polynomial) || !IsPositive(target_polynomial)) {
+    return false;
+  }
+  if (!LiesOnClosedSegment(substitutions.t, segment.start, segment.target)) {
+    return false;
+  }
+
+  const ExactRational vertex_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, substitutions.t, substitutions.t);
+  return !IsPositive(vertex_polynomial);
+}
+
 std::optional<ExactRational> ComputeReviewedEndpointSingularS(
     const ReviewedK0ExactSubstitutions& substitutions) {
   if (substitutions.t.IsZero()) {
@@ -409,6 +437,12 @@ std::string DescribeReviewedClosedRealSSegment(const ExactRational& start,
 std::string DescribeReviewedClosedRealTSegment(const ExactRational& start,
                                                const ExactRational& target) {
   return "requested closed real t segment [" + start.ToString() + ", " +
+         target.ToString() + "]";
+}
+
+std::string DescribeReviewedClosedRealMsqSegment(const ExactRational& start,
+                                                 const ExactRational& target) {
+  return "requested closed real msq segment [" + start.ToString() + ", " +
          target.ToString() + "]";
 }
 
@@ -514,7 +548,7 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     return assessment;
   }
 
-  if (invariant_name != "s" && invariant_name != "t") {
+  if (invariant_name != "s" && invariant_name != "t" && invariant_name != "msq") {
     return assessment;
   }
 
@@ -543,6 +577,26 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
       assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
       assessment.detail =
           DescribeReviewedClosedRealTSegment(segment->start, segment->target) +
+          " crosses the reviewed 2->2 endpoint polynomial "
+          "t^2 - (2*msq - s)*t + msq^2 = 0";
+    }
+    return assessment;
+  }
+
+  if (invariant_name == "msq") {
+    const ExactRational threshold_msq =
+        ComputeReviewedThresholdSingularMsq(*exact_substitutions);
+    if (LiesOnClosedSegment(threshold_msq, segment->start, segment->target)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealMsqSegment(segment->start, segment->target) +
+          " crosses the reviewed pair-production threshold s = 4*msq";
+      return assessment;
+    }
+    if (MsqSegmentCrossesReviewedEndpointSurface(*segment, *exact_substitutions)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealMsqSegment(segment->start, segment->target) +
           " crosses the reviewed 2->2 endpoint polynomial "
           "t^2 - (2*msq - s)*t + msq^2 = 0";
     }

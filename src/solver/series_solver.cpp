@@ -4394,7 +4394,7 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits) {
   const std::optional<std::string> reviewed_segment_invariant_name =
-      (invariant_name == "s" || invariant_name == "t")
+      (invariant_name == "s" || invariant_name == "t" || invariant_name == "msq")
           ? std::optional<std::string>(invariant_name)
           : std::nullopt;
   if (const std::optional<SolverDiagnostics> diagnostics =
@@ -4445,7 +4445,8 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   }
   std::optional<std::string> reviewed_segment_invariant_name;
   if (invariant_names.size() == 1 &&
-      (invariant_names.front() == "s" || invariant_names.front() == "t")) {
+      (invariant_names.front() == "s" || invariant_names.front() == "t" ||
+       invariant_names.front() == "msq")) {
     reviewed_segment_invariant_name = invariant_names.front();
   } else if (std::find(invariant_names.begin(), invariant_names.end(), "s") !=
              invariant_names.end()) {

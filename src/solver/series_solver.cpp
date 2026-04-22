@@ -42,6 +42,8 @@ constexpr char kMatrixOverlapPrefix[] =
     "upper-triangular matrix series patch overlap diagnostics";
 constexpr char kBootstrapSolverPrefix[] = "bootstrap regular-point continuation solver";
 constexpr char kUnsupportedSolverPathCode[] = "unsupported_solver_path";
+constexpr char kPhysicalKinematicsNearSingularCode[] =
+    "physical_kinematics_near_singular";
 constexpr char kPhysicalKinematicsSingularCode[] = "physical_kinematics_singular";
 constexpr char kPhysicalKinematicsNotSupportedCode[] =
     "physical_kinematics_not_supported";
@@ -2985,6 +2987,23 @@ SolverDiagnostics MakePhysicalKinematicsSingularDiagnostics(
   return diagnostics;
 }
 
+SolverDiagnostics MakePhysicalKinematicsNearSingularDiagnostics(
+    const PhysicalKinematicsGuardrailAssessment& assessment) {
+  SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = kPhysicalKinematicsNearSingularCode;
+  diagnostics.summary =
+      std::string(kPhysicalKinematicsNearSingularCode) +
+      ": Batch 62 only reviews subset " + assessment.reviewed_subset +
+      "; requested continuation segment enters a conservative reviewed near-singular margin";
+  if (!assessment.detail.empty()) {
+    diagnostics.summary += "; " + assessment.detail;
+  }
+  return diagnostics;
+}
+
 SolverDiagnostics MakeBoundaryUnsolvedDiagnostics(const BoundaryUnsolvedError& error) {
   SolverDiagnostics diagnostics;
   diagnostics.success = false;
@@ -3089,6 +3108,8 @@ std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
     case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
       return std::nullopt;
+    case PhysicalKinematicsGuardrailVerdict::NearSingularSurface:
+      return MakePhysicalKinematicsNearSingularDiagnostics(assessment);
     case PhysicalKinematicsGuardrailVerdict::SingularSurface:
       return MakePhysicalKinematicsSingularDiagnostics(assessment);
     case PhysicalKinematicsGuardrailVerdict::UnsupportedSurface:
@@ -3113,6 +3134,8 @@ std::optional<SolverDiagnostics> AssessInvariantGeneratedSolvePhysicalKinematics
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
     case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
       return std::nullopt;
+    case PhysicalKinematicsGuardrailVerdict::NearSingularSurface:
+      return MakePhysicalKinematicsNearSingularDiagnostics(assessment);
     case PhysicalKinematicsGuardrailVerdict::SingularSurface:
       return MakePhysicalKinematicsSingularDiagnostics(assessment);
     case PhysicalKinematicsGuardrailVerdict::UnsupportedSurface:

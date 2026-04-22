@@ -10,6 +10,7 @@ enum class PhysicalKinematicsGuardrailVerdict {
   NotApplicable,
   SupportedReviewedSubset,
   SingularSurface,
+  NearSingularSurface,
   UnsupportedSurface
 };
 

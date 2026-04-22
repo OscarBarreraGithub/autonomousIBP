@@ -92,6 +92,10 @@ bool IsPositive(const ExactRational& value) {
   return !value.IsZero() && !IsNegative(value);
 }
 
+ExactRational AbsoluteValue(const ExactRational& value) {
+  return IsNegative(value) ? EvaluateExactArithmetic("-" + Parenthesize(value)) : value;
+}
+
 bool IsLessThan(const ExactRational& lhs, const ExactRational& rhs) {
   return IsNegative(SubtractRational(lhs, rhs));
 }
@@ -106,6 +110,18 @@ bool LiesOnClosedSegment(const ExactRational& point,
   const ExactRational& lower = IsLessThan(start, target) ? start : target;
   const ExactRational& upper = IsLessThan(start, target) ? target : start;
   return IsLessThanOrEqual(lower, point) && IsLessThanOrEqual(point, upper);
+}
+
+ExactRational DistanceToClosedSegment(const ExactRational& point,
+                                      const ExactRational& start,
+                                      const ExactRational& target) {
+  if (LiesOnClosedSegment(point, start, target)) {
+    return IntegerRational(0);
+  }
+
+  const ExactRational start_distance = AbsoluteValue(SubtractRational(start, point));
+  const ExactRational target_distance = AbsoluteValue(SubtractRational(target, point));
+  return IsLessThan(start_distance, target_distance) ? start_distance : target_distance;
 }
 
 std::optional<ExplicitLocationAssignment> ParseExplicitLocationAssignment(
@@ -299,10 +315,19 @@ std::optional<ExactRational> ComputeReviewedEndpointSingularS(
       DivideRational(AddRational(t_squared, mass_squared), substitutions.t));
 }
 
+ExactRational ComputeReviewedNearSingularMargin(
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  return DivideRational(substitutions.msq, IntegerRational(4));
+}
+
 std::string DescribeReviewedClosedRealSSegment(const ExactRational& start,
                                                const ExactRational& target) {
   return "requested closed real s segment [" + start.ToString() + ", " +
          target.ToString() + "]";
+}
+
+std::string DescribeReviewedNearSingularMargin(const ExactRational& margin) {
+  return "conservative reviewed near-singular margin of width " + margin.ToString();
 }
 
 }  // namespace
@@ -428,6 +453,31 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
         DescribeReviewedClosedRealSSegment(segment->start, segment->target) +
         " crosses the reviewed 2->2 endpoint polynomial "
         "t^2 - (2*msq - s)*t + msq^2 = 0";
+    return assessment;
+  }
+
+  const ExactRational near_singular_margin =
+      ComputeReviewedNearSingularMargin(*exact_substitutions);
+  if (IsLessThanOrEqual(DistanceToClosedSegment(threshold_s, segment->start, segment->target),
+                        near_singular_margin)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+    assessment.detail =
+        DescribeReviewedClosedRealSSegment(segment->start, segment->target) +
+        " enters the " + DescribeReviewedNearSingularMargin(near_singular_margin) +
+        " around the reviewed pair-production threshold s = 4*msq";
+    return assessment;
+  }
+  if (endpoint_s.has_value() &&
+      IsLessThanOrEqual(
+          DistanceToClosedSegment(*endpoint_s, segment->start, segment->target),
+          near_singular_margin)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+    assessment.detail =
+        DescribeReviewedClosedRealSSegment(segment->start, segment->target) +
+        " enters the " + DescribeReviewedNearSingularMargin(near_singular_margin) +
+        " around the reviewed 2->2 endpoint polynomial "
+        "t^2 - (2*msq - s)*t + msq^2 = 0";
+    return assessment;
   }
   return assessment;
 }

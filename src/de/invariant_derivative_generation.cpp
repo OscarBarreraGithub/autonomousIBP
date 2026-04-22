@@ -696,6 +696,65 @@ bool AppendLinearScalar(const Expr& expr,
   return false;
 }
 
+bool IsReviewedLinearPropagatorBilinearTerm(const Expr& expr,
+                                            const std::set<std::string>& loop_momenta,
+                                            const std::set<std::string>& invariant_independent_external_momenta) {
+  if (expr.kind != ExprKind::Multiply) {
+    return false;
+  }
+
+  int loop_factor_count = 0;
+  int external_factor_count = 0;
+  for (const auto& factor : expr.terms) {
+    if (factor.kind == ExprKind::Number) {
+      continue;
+    }
+    if (factor.kind != ExprKind::Symbol) {
+      return false;
+    }
+    if (loop_momenta.count(factor.symbol) > 0) {
+      ++loop_factor_count;
+      continue;
+    }
+    if (invariant_independent_external_momenta.count(factor.symbol) > 0) {
+      ++external_factor_count;
+      continue;
+    }
+    return false;
+  }
+
+  return loop_factor_count == 1 && external_factor_count == 1;
+}
+
+bool IsReviewedLinearPropagatorTerm(const Expr& expr,
+                                    const std::set<std::string>& loop_momenta,
+                                    const std::set<std::string>& invariant_independent_external_momenta) {
+  return expr.kind == ExprKind::Number ||
+         IsReviewedLinearPropagatorBilinearTerm(
+             expr, loop_momenta, invariant_independent_external_momenta);
+}
+
+bool IsReviewedLinearPropagatorExpression(const Expr& expr,
+                                          const std::set<std::string>& loop_momenta,
+                                          const std::set<std::string>& invariant_independent_external_momenta) {
+  if (expr.kind == ExprKind::Add) {
+    bool saw_bilinear_term = false;
+    for (const auto& term : expr.terms) {
+      if (!IsReviewedLinearPropagatorTerm(
+              term, loop_momenta, invariant_independent_external_momenta)) {
+        return false;
+      }
+      saw_bilinear_term =
+          saw_bilinear_term ||
+          IsReviewedLinearPropagatorBilinearTerm(
+              term, loop_momenta, invariant_independent_external_momenta);
+    }
+    return saw_bilinear_term;
+  }
+  return IsReviewedLinearPropagatorBilinearTerm(
+      expr, loop_momenta, invariant_independent_external_momenta);
+}
+
 std::pair<std::string, std::string> CanonicalPair(const std::string& left,
                                                   const std::string& right) {
   if (left <= right) {
@@ -1122,12 +1181,28 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
     }
   }
 
+  std::set<std::string> invariant_independent_external_momenta;
+  for (const auto& external_symbol : external_momenta) {
+    bool all_pairs_are_known_zero = true;
+    for (const auto& other_external_symbol : external_momenta) {
+      const auto pair = CanonicalPair(external_symbol, other_external_symbol);
+      const auto pair_it = context.scalar_pair_derivatives.find(pair);
+      if (pair_it == context.scalar_pair_derivatives.end() || !pair_it->second.IsZero()) {
+        all_pairs_are_known_zero = false;
+        break;
+      }
+    }
+    if (all_pairs_are_known_zero) {
+      invariant_independent_external_momenta.insert(external_symbol);
+    }
+  }
+
   std::vector<Expr> propagator_expressions;
   propagator_expressions.reserve(spec.family.propagators.size());
   for (const auto& propagator : spec.family.propagators) {
-    if (propagator.kind != PropagatorKind::Standard) {
+    if (propagator.kind == PropagatorKind::Cut || propagator.kind == PropagatorKind::Auxiliary) {
       throw std::runtime_error("automatic invariant seed construction supports Standard "
-                               "propagators only");
+                               "propagators plus the reviewed linear subset only");
     }
     const std::string trimmed_mass = TrimWhitespace(propagator.mass);
     if (ContainsInvariantIdentifier(trimmed_mass, invariant_symbols)) {
@@ -1140,7 +1215,21 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
                                "rational constants in the bootstrap subset");
     }
     Expr expression = ExprParser(propagator.expression).Parse();
-    ValidateExpressionSymbols(expression, invariant_symbols);
+    switch (EffectivePropagatorVariant(propagator)) {
+      case PropagatorVariant::Quadratic:
+        ValidateExpressionSymbols(expression, invariant_symbols);
+        break;
+      case PropagatorVariant::Linear:
+        if (!IsReviewedLinearPropagatorExpression(
+                expression, loop_momenta, invariant_independent_external_momenta)) {
+          throw std::runtime_error("automatic invariant seed construction supports linear "
+                                   "propagators only on the reviewed invariant-independent "
+                                   "loop-external subset under the declared scalar-product-rule "
+                                   "derivatives: " +
+                                   DescribeExpr(expression));
+        }
+        break;
+    }
     propagator_expressions.push_back(std::move(expression));
   }
 

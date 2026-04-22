@@ -2728,6 +2728,33 @@ amflow::ProblemSpec MakeAutoInvariantWholeFactorProblemSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeAutoInvariantLinearProblemSpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_auto_linear_family";
+  spec.family.loop_momenta = {"k"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"k*n", "-1", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.outgoing_momenta = {};
+  spec.kinematics.momentum_conservation = "n = 0";
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_auto_linear_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+  return spec;
+}
+
 amflow::ParsedMasterList MakeAutoInvariantHappyMasterBasis() {
   amflow::ParsedMasterList master_basis;
   master_basis.family = "toy_auto_family";
@@ -2743,6 +2770,15 @@ amflow::ParsedMasterList MakeAutoInvariantWholeFactorMasterBasis() {
   master_basis.family = "toy_auto_factor_family";
   master_basis.masters = {
       {"toy_auto_factor_family", {1, 1, 1}},
+  };
+  return master_basis;
+}
+
+amflow::ParsedMasterList MakeAutoInvariantLinearMasterBasis() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 1}},
   };
   return master_basis;
 }
@@ -13749,6 +13785,32 @@ void BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagato
          "for invariant-independent rational propagator masses");
 }
 
+void BuildInvariantDerivativeSeedSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::InvariantDerivativeSeed seed =
+      amflow::BuildInvariantDerivativeSeed(spec, "s");
+
+  Expect(seed.propagator_derivatives.size() == 3,
+         "automatic invariant seed construction should preserve propagator-table arity on the "
+         "reviewed linear subset");
+  Expect(seed.propagator_derivatives[0].terms.empty(),
+         "automatic invariant seed construction should preserve zero-derivative quadratic slots "
+         "on the reviewed linear subset");
+  Expect(seed.propagator_derivatives[1].terms.size() == 1 &&
+             seed.propagator_derivatives[1].terms[0].coefficient == "-1" &&
+             seed.propagator_derivatives[1].terms[0].factor_indices ==
+                 std::vector<int>({-1, 0, 0}),
+         "automatic invariant seed construction should still match known quadratic factors while "
+         "admitting reviewed linear propagators");
+  Expect(seed.propagator_derivatives[2].terms.empty(),
+         "automatic invariant seed construction should preserve zero-derivative linear "
+         "propagator slots on the reviewed subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "automatic invariant seed construction should not mutate reviewed linear subset inputs");
+}
+
 void BuildInvariantDerivativeSeedRejectsEmptyInvariantNameTest() {
   ExpectRuntimeError(
       []() {
@@ -13824,8 +13886,22 @@ void BuildInvariantDerivativeSeedRejectsUnsupportedPropagatorKindTest() {
       [&spec]() {
         static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
       },
-      "supports Standard propagators only",
+      "supports Standard propagators plus the reviewed linear subset only",
       "automatic invariant seed construction should reject unsupported propagator kinds");
+}
+
+void BuildInvariantDerivativeSeedRejectsUnsupportedLinearPropagatorSurfaceTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[2] = {
+      "k*p1", "0", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear};
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
+      },
+      "reviewed invariant-independent loop-external subset",
+      "automatic invariant seed construction should reject linear propagators outside the "
+      "reviewed invariant-independent loop-external subset");
 }
 
 void BuildInvariantDerivativeSeedRejectsInvariantDependentMassPropagatorTest() {
@@ -14183,6 +14259,63 @@ void PrepareInvariantGeneratedReductionAutomaticHappyPathTest() {
   Expect(kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
          "automatic invariant-generated preparation should preserve the original kinematics "
          "YAML");
+}
+
+void PrepareInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest() {
+  amflow::KiraBackend backend;
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-linear-prepare"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-linear-prepare-baseline"));
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.Prepare(spec, MakeKiraReductionOptions(), baseline_layout);
+
+  const amflow::InvariantGeneratedReductionPreparation preparation =
+      amflow::PrepareInvariantGeneratedReduction(
+          spec, master_basis, "s", MakeKiraReductionOptions(), layout);
+
+  Expect(preparation.generated_variable.reduction_targets.size() == 1 &&
+             preparation.generated_variable.reduction_targets[0].Label() ==
+                 "toy_auto_linear_family[0,2,1]",
+         "automatic invariant-generated preparation should preserve the reviewed linear-subset "
+         "generated target surface");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "automatic invariant-generated preparation should not mutate reviewed linear subset "
+         "inputs");
+  Expect(preparation.backend_preparation.validation_messages.empty(),
+         "automatic invariant-generated preparation should preserve an empty validation result on "
+         "the reviewed linear subset");
+
+  const auto target_it = preparation.backend_preparation.generated_files.find("target");
+  Expect(target_it != preparation.backend_preparation.generated_files.end(),
+         "automatic invariant-generated preparation should emit the explicit target file on the "
+         "reviewed linear subset");
+  Expect(target_it->second == "toy_auto_linear_family[0,2,1]\n",
+         "automatic invariant-generated preparation should preserve exact generated target order "
+         "on the reviewed linear subset");
+
+  const auto family_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_family_yaml_it != baseline_preparation.generated_files.end() &&
+             family_yaml_it->second == baseline_family_yaml_it->second,
+         "automatic invariant-generated preparation should preserve original family YAML on the "
+         "reviewed linear subset");
+
+  const auto kinematics_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "automatic invariant-generated preparation should preserve original kinematics YAML on "
+         "the reviewed linear subset");
 }
 
 void PrepareInvariantGeneratedReductionAutomaticRejectsEmptyGeneratedTargetsTest() {
@@ -28613,6 +28746,7 @@ int main() {
     BuildInvariantDerivativeSeedAllowsInvariantIndependentMassPropagatorTest();
     BuildInvariantDerivativeSeedCompositionWithInvariantIndependentMassTest();
     BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagatorTest();
+    BuildInvariantDerivativeSeedSupportsReviewedLinearPropagatorSubsetTest();
     BuildInvariantDerivativeSeedRejectsEmptyInvariantNameTest();
     BuildInvariantDerivativeSeedRejectsEtaInvariantNameTest();
     BuildInvariantDerivativeSeedRejectsUnknownInvariantNameTest();
@@ -28620,6 +28754,7 @@ int main() {
     BuildInvariantDerivativeSeedRejectsUnknownMomentumSymbolTest();
     BuildInvariantDerivativeSeedRejectsUnsupportedScalarRuleGrammarTest();
     BuildInvariantDerivativeSeedRejectsUnsupportedPropagatorKindTest();
+    BuildInvariantDerivativeSeedRejectsUnsupportedLinearPropagatorSurfaceTest();
     BuildInvariantDerivativeSeedRejectsInvariantDependentMassPropagatorTest();
     BuildInvariantDerivativeSeedRejectsUnsupportedInvariantIndependentMassGrammarTest();
     BuildInvariantDerivativeSeedRejectsZeroDenominatorMassRationalTest();
@@ -28635,6 +28770,7 @@ int main() {
     PrepareEtaGeneratedReductionRejectsEmptyGeneratedTargetsTest();
     PrepareEtaGeneratedReductionFakeExecutionSmokeTest();
     PrepareInvariantGeneratedReductionAutomaticHappyPathTest();
+    PrepareInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsEmptyGeneratedTargetsTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsEmptyInvariantNameTest();
     PrepareInvariantGeneratedReductionAutomaticRejectsEtaInvariantNameTest();

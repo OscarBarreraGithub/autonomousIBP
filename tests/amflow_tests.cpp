@@ -32620,6 +32620,9 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
                  "into reference-captured state");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "capture reference-harness self-check should write the packet summary");
+  ExpectContains(result.stdout_json, "\"summary_records_selected_packet\": true",
+                 "capture reference-harness self-check should route optional capture packets "
+                 "through the parsed selector and packet summary");
   ExpectContains(result.stdout_json, "\"backup_match_ok\": true",
                  "capture reference-harness self-check should prove bundled-backup agreement");
   ExpectContains(result.stdout_json, "\"rerun_match_ok\": true",
@@ -32630,11 +32633,27 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
   ExpectContains(result.stdout_json, "\"required_only_selects_required_subset\": true",
                  "capture reference-harness self-check should keep --required-only locked to the "
                  "required catalog subset");
+  ExpectContains(result.stdout_json,
+                 "\"optional_capture_packet_selects_catalog_order\": true",
+                 "capture reference-harness self-check should resolve optional capture packets "
+                 "through the frozen catalog order");
   ExpectContains(result.stdout_json, "\"benchmark_selection_conflict_rejected\": true",
                  "capture reference-harness self-check should reject mixing explicit benchmark "
                  "ids with --required-only");
+  ExpectContains(result.stdout_json, "\"required_only_packet_conflict_rejected\": true",
+                 "capture reference-harness self-check should reject mixing optional capture "
+                 "packets with --required-only");
+  ExpectContains(result.stdout_json, "\"packet_selection_conflict_rejected\": true",
+                 "capture reference-harness self-check should reject mixing optional capture "
+                 "packets with other selection modes");
   ExpectContains(result.stdout_json, "\"unknown_benchmark_rejected\": true",
                  "capture reference-harness self-check should reject unknown benchmark ids");
+  ExpectContains(result.stdout_json, "\"required_packet_rejected\": true",
+                 "capture reference-harness self-check should fail closed if an optional packet "
+                 "ever includes a required benchmark");
+  ExpectContains(result.stdout_json, "\"unknown_capture_packet_rejected\": true",
+                 "capture reference-harness self-check should reject unknown optional capture "
+                 "packets");
   ExpectContains(result.stdout_json, "\"resume_reused_existing_runs\": true",
                  "capture reference-harness self-check should reuse retained run manifests when "
                  "--resume-existing is requested");

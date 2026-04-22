@@ -60,7 +60,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 
 All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
-`next_runtime_lane` blocker hints for the still-deferred `b61h` / `b62h` / `b63g` / `b64e`
+`next_runtime_lane` blocker hints for the still-deferred `b61i` / `b62i` / `b63g` / `b64f`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` plus the next
 ready uncaptured `user-hook-pair`:
 
@@ -115,13 +115,15 @@ To resume one narrow optional-capture packet in the same frozen order as the cat
 ```bash
 python3 tools/reference-harness/scripts/capture_phase0_reference.py \
   --root /tmp/amflow-reference-bootstrap \
-  --benchmark-id spacetime_dimension \
-  --benchmark-id differential_equation_solver \
+  --optional-capture-packet de-d0-pair \
   --resume-existing
 ```
 
-Repeated `--benchmark-id` flags collapse duplicates and still run in the catalog's frozen order
-rather than CLI order. `--required-only` cannot be combined with explicit benchmark ids.
+Repeated `--benchmark-id` flags still collapse duplicates and run in the catalog's frozen order
+rather than CLI order. `--required-only` cannot be combined with explicit benchmark ids, and
+`--optional-capture-packet` is mutually exclusive with both other selection modes while selecting
+every matching catalog entry in that same frozen order. The next ready uncaptured user-hook packet
+can therefore be requested directly as `--optional-capture-packet user-hook-pair`.
 If the required phase-0 pair is absent, the packet summary truthfully stays `bootstrap-only` even
 when the selected optional examples become `reference-captured`.
 
@@ -180,4 +182,5 @@ The capture script writes:
 - `capture_phase0_reference.py --self-check` exercises the retained-golden promotion flow end to
   end against a synthetic benchmark without requiring Kira or Fermat, including reuse of retained
   per-run manifests through `--resume-existing` and the explicit benchmark-selection contract for
-  repeated `--benchmark-id` flags versus `--required-only`.
+  repeated `--benchmark-id` flags, `--required-only`, and direct `--optional-capture-packet`
+  selection.

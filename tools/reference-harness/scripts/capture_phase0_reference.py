@@ -14,7 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from freeze_phase0_goldens import load_json, normalize_benchmark_entry
+from freeze_phase0_goldens import (
+    load_json,
+    normalize_benchmark_entry,
+    normalize_capture_packet,
+)
 
 
 RUN_OUTPUT_PATTERN = re.compile(r'FileNameJoin\[\{current,\s*"([^"]+)"\}\]')
@@ -69,9 +73,30 @@ def select_benchmarks(
     *,
     benchmark_ids: list[str] | None,
     required_only: bool,
+    optional_capture_packet: str | None = None,
 ) -> list[dict[str, Any]]:
     if benchmark_ids and required_only:
         raise ValueError("pass benchmark ids or --required-only, not both")
+    if optional_capture_packet is not None and (benchmark_ids or required_only):
+        raise ValueError(
+            "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
+        )
+    if optional_capture_packet is not None:
+        wanted_packet = normalize_capture_packet(optional_capture_packet)
+        selected = [
+            benchmark
+            for benchmark in benchmarks
+            if benchmark.get("optional_capture_packet", "") == wanted_packet
+        ]
+        if not selected:
+            raise ValueError(f"unknown optional capture packet: {wanted_packet}")
+        required_matches = [benchmark["id"] for benchmark in selected if benchmark["required"]]
+        if required_matches:
+            raise ValueError(
+                "optional capture packet "
+                f"{wanted_packet} includes required benchmark ids: {', '.join(required_matches)}"
+            )
+        return selected
     if benchmark_ids:
         wanted = set(benchmark_ids)
         selected = [benchmark for benchmark in benchmarks if benchmark["id"] in wanted]
@@ -298,7 +323,7 @@ def resolve_example_root(manifest: dict[str, Any], benchmark_id: str) -> Path:
         return candidate
 
     extracted_root = Path(manifest["upstream"]["cpc_archive"]["source"]["extracted_path"])
-    secondary = next(sorted(extracted_root.glob(f"*/examples/{benchmark_id}")), None)
+    secondary = next(iter(sorted(extracted_root.glob(f"*/examples/{benchmark_id}"))), None)
     if secondary is not None:
         return secondary
     raise FileNotFoundError(f"could not locate example root for benchmark {benchmark_id!r}")
@@ -721,6 +746,7 @@ def capture_reference_packet(
     manifest_path: Path,
     benchmark_ids: list[str] | None,
     required_only: bool,
+    optional_capture_packet: str | None,
     keep_stage_workdirs: bool,
     resume_existing: bool,
 ) -> dict[str, Any]:
@@ -731,6 +757,7 @@ def capture_reference_packet(
         benchmarks,
         benchmark_ids=benchmark_ids,
         required_only=required_only,
+        optional_capture_packet=optional_capture_packet,
     )
 
     benchmark_summaries: list[dict[str, Any]] = []
@@ -769,6 +796,7 @@ def capture_reference_packet(
         "manifest": str(manifest_path),
         "root": str(root),
         "required_only": required_only,
+        "optional_capture_packet": optional_capture_packet or "",
         "resume_existing": resume_existing,
         "selected_benchmarks": [benchmark["id"] for benchmark in selected_benchmarks],
         "benchmark_summaries": benchmark_summaries,
@@ -812,6 +840,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                     "required": False,
                     "feature_gate": "phase0",
                     "oracle": "upstream-amflow",
+                    "optional_capture_packet": "ready-pair",
                 }
             ),
             normalize_benchmark_entry(
@@ -821,6 +850,16 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                     "required": True,
                     "feature_gate": "phase0",
                     "oracle": "upstream-amflow",
+                }
+            ),
+            normalize_benchmark_entry(
+                {
+                    "id": "optional_delta",
+                    "label": "optional_delta",
+                    "required": False,
+                    "feature_gate": "phase0",
+                    "oracle": "upstream-amflow",
+                    "optional_capture_packet": "ready-pair",
                 }
             ),
         ]
@@ -895,11 +934,19 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             {
                 "phase0_benchmarks": [
                     {
-                        "id": "demo_benchmark",
-                        "label": "demo_benchmark",
+                        "id": "required_benchmark",
+                        "label": "required_benchmark",
                         "required": True,
                         "feature_gate": "phase0",
                         "oracle": "upstream-amflow",
+                    },
+                    {
+                        "id": "demo_benchmark",
+                        "label": "demo_benchmark",
+                        "required": False,
+                        "feature_gate": "phase0",
+                        "oracle": "upstream-amflow",
+                        "optional_capture_packet": "demo-packet",
                     }
                 ]
             },
@@ -924,19 +971,35 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                     "placeholder_goldens_frozen": True,
                     "capture_state": "bootstrap-only",
                     "capture_summary": "",
+                    "captured_benchmarks": ["required_benchmark"],
                 },
             },
         )
 
-        summary = capture_reference_packet(
-            root=harness_root,
-            manifest_path=manifest_path,
-            benchmark_ids=["demo_benchmark"],
-            required_only=False,
-            keep_stage_workdirs=False,
-            resume_existing=False,
+        parsed_args = parse_args(
+            [
+                "--root",
+                str(harness_root),
+                "--manifest-path",
+                str(manifest_path),
+                "--optional-capture-packet",
+                "demo-packet",
+            ]
         )
-        benchmark = load_benchmark_catalog(benchmark_catalog_path)[0]
+        summary = capture_reference_packet(
+            root=parsed_args.root,
+            manifest_path=parsed_args.manifest_path,
+            benchmark_ids=parsed_args.benchmark_id,
+            required_only=parsed_args.required_only,
+            optional_capture_packet=parsed_args.optional_capture_packet,
+            keep_stage_workdirs=parsed_args.keep_stage_workdirs,
+            resume_existing=parsed_args.resume_existing,
+        )
+        benchmark = next(
+            entry
+            for entry in load_benchmark_catalog(benchmark_catalog_path)
+            if entry["id"] == "demo_benchmark"
+        )
         resumed_primary = run_benchmark_capture(
             root=harness_root,
             manifest=load_json(manifest_path),
@@ -971,6 +1034,15 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                 required_only=True,
             )
         ]
+        packet_selected_ids = [
+            entry["id"]
+            for entry in select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=None,
+                required_only=False,
+                optional_capture_packet="ready-pair",
+            )
+        ]
         selection_conflict_rejected = False
         try:
             select_benchmarks(
@@ -981,6 +1053,32 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         except ValueError as exc:
             selection_conflict_rejected = (
                 str(exc) == "pass benchmark ids or --required-only, not both"
+            )
+        required_only_packet_conflict_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=None,
+                required_only=True,
+                optional_capture_packet="ready-pair",
+            )
+        except ValueError as exc:
+            required_only_packet_conflict_rejected = (
+                str(exc)
+                == "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
+            )
+        packet_selection_conflict_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=["optional_beta"],
+                required_only=False,
+                optional_capture_packet="ready-pair",
+            )
+        except ValueError as exc:
+            packet_selection_conflict_rejected = (
+                str(exc)
+                == "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
             )
         unknown_benchmark_rejected = False
         try:
@@ -993,9 +1091,48 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             unknown_benchmark_rejected = (
                 str(exc) == "unknown benchmark ids: missing_benchmark"
             )
+        required_packet_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks
+                + [
+                    normalize_benchmark_entry(
+                        {
+                            "id": "required_packet_member",
+                            "label": "required_packet_member",
+                            "required": True,
+                            "feature_gate": "phase0",
+                            "oracle": "upstream-amflow",
+                            "optional_capture_packet": "bad-packet",
+                        }
+                    )
+                ],
+                benchmark_ids=None,
+                required_only=False,
+                optional_capture_packet="bad-packet",
+            )
+        except ValueError as exc:
+            required_packet_rejected = (
+                str(exc)
+                == "optional capture packet bad-packet includes required benchmark ids: "
+                "required_packet_member"
+            )
+        unknown_capture_packet_rejected = False
+        try:
+            select_benchmarks(
+                selection_benchmarks,
+                benchmark_ids=None,
+                required_only=False,
+                optional_capture_packet="missing_packet",
+            )
+        except ValueError as exc:
+            unknown_capture_packet_rejected = (
+                str(exc) == "unknown optional capture packet: missing_packet"
+            )
         return {
             "capture_state_reference_captured": updated_manifest["phase0"]["capture_state"] == "reference-captured",
             "summary_written": Path(summary["summary_path"]).exists(),
+            "summary_records_selected_packet": summary["optional_capture_packet"] == "demo-packet",
             "backup_match_ok": comparison_summary["checks"][2]["status"] == "passed",
             "rerun_match_ok": comparison_summary["checks"][3]["status"] == "passed",
             "selected_ids_follow_catalog_order": selected_ids == ["required_alpha", "optional_beta"],
@@ -1003,15 +1140,23 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
                 "required_alpha",
                 "required_gamma",
             ],
+            "optional_capture_packet_selects_catalog_order": packet_selected_ids == [
+                "optional_beta",
+                "optional_delta",
+            ],
             "benchmark_selection_conflict_rejected": selection_conflict_rejected,
+            "required_only_packet_conflict_rejected": required_only_packet_conflict_rejected,
+            "packet_selection_conflict_rejected": packet_selection_conflict_rejected,
             "unknown_benchmark_rejected": unknown_benchmark_rejected,
+            "required_packet_rejected": required_packet_rejected,
+            "unknown_capture_packet_rejected": unknown_capture_packet_rejected,
             "resume_reused_existing_runs": bool(
                 resumed_primary.get("resumed_existing") and resumed_rerun.get("resumed_existing")
             ),
         }
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True, help="Reference harness root")
     parser.add_argument("--manifest-path", type=Path, help="Harness manifest JSON path")
@@ -1027,6 +1172,13 @@ def parse_args() -> argparse.Namespace:
         "--required-only",
         action="store_true",
         help="Capture only required benchmarks from the phase-0 catalog",
+    )
+    parser.add_argument(
+        "--optional-capture-packet",
+        help=(
+            "Capture every non-required benchmark whose phase-0 catalog entry carries this "
+            "optional_capture_packet hint; execution follows the frozen catalog order"
+        ),
     )
     parser.add_argument(
         "--keep-stage-workdirs",
@@ -1048,7 +1200,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Override the Mathematica kernel path used by --self-check",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> int:
@@ -1066,6 +1218,7 @@ def main() -> int:
         manifest_path=manifest_path,
         benchmark_ids=args.benchmark_id,
         required_only=args.required_only,
+        optional_capture_packet=args.optional_capture_packet,
         keep_stage_workdirs=args.keep_stage_workdirs,
         resume_existing=args.resume_existing,
     )

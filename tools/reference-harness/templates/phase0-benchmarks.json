@@ -22,8 +22,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b61h",
-      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61h`) lands."
+      "next_runtime_lane": "b61i",
+      "notes": "Complex-valued kinematics smoke test stays capture-blocked until the next reviewed complex-kinematics runtime slice (`b61i`) lands."
     },
     {
       "id": "differential_equation_solver",
@@ -58,8 +58,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b64e",
-      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64e`) lands."
+      "next_runtime_lane": "b64f",
+      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64f`) lands."
     },
     {
       "id": "spacetime_dimension",

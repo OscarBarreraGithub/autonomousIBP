@@ -88,11 +88,11 @@ retained outputs and rerun evidence.
   remaining still-blocked frozen examples `complex_kinematics`, `feynman_prescription`,
   `automatic_phasespace`, and `linear_propagator`, plus the uncaptured user-hook examples and
   later regression families, stay on the rolling future-capture lane. The copied phase-0 catalog
-  now marks the theory-blocked feature captures explicitly: `complex_kinematics -> b61h`,
-  `linear_propagator -> b64e`; it also carries `optional_capture_packet = de-d0-pair` for the
+  now marks the theory-blocked feature captures explicitly: `complex_kinematics -> b61i`,
+  `linear_propagator -> b64f`; it also carries `optional_capture_packet = de-d0-pair` for the
   retained ready example pair and `optional_capture_packet = user-hook-pair` for the next ready
   uncaptured `user_defined_amfmode` / `user_defined_ending` pair. The qualification scaffold keeps
-  the singular guardrail anchor `one-singular-endpoint-case -> b62h`
+  the singular guardrail anchor `one-singular-endpoint-case -> b62i`
 
 ## Canonical Baseline
 
@@ -160,10 +160,10 @@ retained outputs and rerun evidence.
   digit-threshold floors in `docs/verification-strategy.md`, the retained optional-capture state
   for `differential_equation_solver` / `spacetime_dimension`, the next ready uncaptured
   `user-hook-pair`, and the theory-backed `next_runtime_lane` blocker hints for the still-deferred
-  `b61h` / `b62h` / `b63g` / `b64e` surfaces.
+  `b61i` / `b62i` / `b63g` / `b64f` surfaces.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
-- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--required-only` stays mutually exclusive with explicit benchmark ids, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
+- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` now selects every matching ready packet in that same frozen order, both selector modes stay mutually exclusive with `--required-only`, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
 
 ## Qualification Scaffold
 
@@ -173,7 +173,7 @@ retained outputs and rerun evidence.
   profiles that future qualification packets must keep visible. Where the next retained capture is
   still blocked by unfinished runtime work, the scaffold and copied phase-0 catalog also carry one
   optional `next_runtime_lane` hint so future capture threads do not need to rediscover the
-  current `b61h` / `b62h` / `b63g` / `b64e` blocker map from scratch. Ready optional examples may
+  current `b61i` / `b62i` / `b63g` / `b64f` blocker map from scratch. Ready optional examples may
   instead carry `optional_capture_packet` so future capture threads keep the retained `de-d0-pair`
   and next `user-hook-pair` grouped without re-planning that packet shape.
 - The scaffold is planning metadata only. Adding or editing it does not claim any new
@@ -188,4 +188,5 @@ rerun the bootstrap, catalog/scaffold coherence, and retained-capture regression
 needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
 placeholder-freeze, and retained-capture self-checks through the configured repo-local Python
 interpreter, and the retained-capture helper also self-checks the restart-safe
-`--resume-existing` path plus the explicit benchmark-selection contract.
+`--resume-existing` path plus the explicit benchmark-selection contract, including direct
+`optional_capture_packet` selection.

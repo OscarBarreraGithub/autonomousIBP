@@ -23147,6 +23147,237 @@ void SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTe
          "diagnostic unchanged");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesExactDimensionOverrideBuildsExactDimensionExpressionTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-exact-dimension-override-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  amf_options.d0 = "6";
+  amf_options.fixed_eps = "1";
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const amflow::PrecisionPolicy expected_live_precision_policy =
+      MakeExpectedAmfOptionsLivePrecisionPolicy(precision_policy, amf_options);
+  const amflow::AmfSolveRuntimePolicy expected_live_runtime_policy =
+      MakeExpectedAmfSolveRuntimePolicy(amf_options);
+  const std::string start_location = "rho=9/14";
+  const std::string target_location = "rho=17/19";
+  const int requested_digits = 89;
+  const std::string eta_symbol = "rho";
+  const std::optional<std::string> exact_dimension_override = std::string{"5"};
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-exact-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeFixtureCopyScriptExpectingLeadingArgument(fixture_root, "-sd=5"));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.000244140625;
+  solver.returned_diagnostics.overlap_mismatch = 0.00048828125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary =
+      "recorded planned helper exact dimension override solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol,
+                                                  exact_dimension_override);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should not mutate "
+         "the input problem spec");
+  Expect(solver.call_count() == 1,
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should call the "
+         "solver exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SamePrecisionPolicy(request.precision_policy, expected_live_precision_policy),
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should preserve "
+         "the live wrapper-owned PrecisionPolicy");
+  Expect(request.amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*request.amf_runtime_policy, expected_live_runtime_policy),
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should preserve "
+         "the live wrapper-owned runtime policy");
+  Expect(request.amf_requested_d0.has_value() && *request.amf_requested_d0 == amf_options.d0,
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should preserve "
+         "the wrapper-owned requested D0 metadata");
+  Expect(request.amf_requested_dimension_expression == exact_dimension_override,
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should route the "
+         "canonical explicit exact override into SolveRequest.amf_requested_dimension_expression");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should preserve "
+         "the live solver diagnostic unchanged");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsNonExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-symbolic-dimension-override-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-symbolic-dimension-override"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &master_basis, &planned_decision, &layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            planned_decision,
+            MakePoisonedAmfOptions({"Propagator"}),
+            "amf-options-builtin-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "rho=0",
+            "rho=1",
+            MakeDistinctPrecisionPolicy(),
+            55,
+            "rho",
+            std::optional<std::string>{"D0-2*eps"}));
+      },
+      "exact dimension override",
+      "planned AmfOptions eta-mode helper exact-dimension override coverage should reject "
+      "symbolic or non-exact dimension expressions");
+  Expect(solver.call_count() == 0,
+         "planned AmfOptions eta-mode helper exact-dimension override coverage should not call "
+         "the solver when the exact dimension override is invalid");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesSkipReductionRejectsChangedExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-exact-dimension-skip-reduction-mismatch-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  amflow::AmfOptions seed_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  seed_amf_options.use_cache = false;
+  seed_amf_options.skip_reduction = false;
+  seed_amf_options.d0 = "6";
+  amflow::AmfOptions reuse_amf_options = seed_amf_options;
+  reuse_amf_options.skip_reduction = true;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(FreshTempDir(
+      "amflow-bootstrap-planned-amf-options-exact-dimension-skip-reduction-mismatch"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.001953125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  seed_solver.returned_diagnostics.failure_code.clear();
+  seed_solver.returned_diagnostics.summary =
+      "recorded planned helper exact dimension skip_reduction seed solve";
+
+  static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+      spec,
+      master_basis,
+      planned_decision,
+      seed_amf_options,
+      "amf-options-builtin-eta-mode-series",
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "rho=4/9",
+      "rho=25/27",
+      MakeDistinctPrecisionPolicy(),
+      83,
+      "rho",
+      std::optional<std::string>{"5"}));
+
+  Expect(seed_solver.call_count() == 1,
+         "planned helper exact-dimension skip_reduction mismatch coverage should seed one live "
+         "eta-generated state");
+
+  WriteExecutableScript(
+      kira_path,
+      MakeReducerFailureScript("unexpected live reducer execution during planned helper exact "
+                               "dimension skip_reduction mismatch"));
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec,
+       &master_basis,
+       &planned_decision,
+       &reuse_amf_options,
+       &layout,
+       &kira_path,
+       &fermat_path,
+       &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            planned_decision,
+            reuse_amf_options,
+            "amf-options-builtin-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "rho=4/9",
+            "rho=25/27",
+            MakeDistinctPrecisionPolicy(),
+            83,
+            "rho",
+            std::optional<std::string>{"4"}));
+      },
+      "planned helper exact-dimension skip_reduction should reject prepared eta-generated state "
+      "from a different exact dimension override");
+
+  Expect(message.find("skip_reduction requested but no matching eta-generated reduction state is "
+                      "available") != std::string::npos,
+         "planned helper exact-dimension skip_reduction should reject prepared eta-generated "
+         "state when the explicit exact dimension override changes");
+  Expect(solver.call_count() == 0,
+         "planned helper exact-dimension skip_reduction mismatch coverage should not call the "
+         "solver when the prepared eta-generated state was seeded with a different explicit "
+         "exact dimension override");
+}
+
 void SolveAmfOptionsEtaModeSeriesSkipReductionRejectsChangedFixedEpsPreparedStateTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -23235,6 +23466,152 @@ void SolveAmfOptionsEtaModeSeriesSkipReductionRejectsChangedFixedEpsPreparedStat
   Expect(solver.call_count() == 0,
          "fixed_eps skip_reduction mismatch coverage should not call the solver when the prepared "
          "eta-generated state was seeded with a different exact dimension override");
+}
+
+void SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedExactDimensionOverrideTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-amf-options-exact-dimension-cache-invalidation-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+  amflow::AmfOptions cached_amf_options = MakePoisonedAmfOptions({"Propagator"});
+  cached_amf_options.d0 = "6";
+  const amflow::AmfOptions invalidated_amf_options = cached_amf_options;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=8/11";
+  const std::string target_location = "rho=29/31";
+  const int requested_digits = 79;
+  const std::string eta_symbol = "rho";
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-exact-dimension-cache-invalidation"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver cached_solver;
+  cached_solver.returned_diagnostics.success = true;
+  cached_solver.returned_diagnostics.residual_norm = 0.001953125;
+  cached_solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  cached_solver.returned_diagnostics.failure_code.clear();
+  cached_solver.returned_diagnostics.summary =
+      "recorded planned helper exact dimension cache baseline";
+
+  static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+      spec,
+      master_basis,
+      planned_decision,
+      cached_amf_options,
+      "amf-options-builtin-eta-mode-series",
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      cached_solver,
+      start_location,
+      target_location,
+      precision_policy,
+      requested_digits,
+      eta_symbol,
+      std::optional<std::string>{"5"}));
+
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "planned helper exact-dimension invalidation should seed one solved-path cache manifest "
+      "before mutating the explicit override");
+  const std::string stale_manifest_yaml = ReadFile(manifest_path);
+  const std::string stale_input_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "input_fingerprint");
+  const std::string stale_request_fingerprint =
+      ExtractYamlScalarValue(stale_manifest_yaml, "request_fingerprint");
+
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.residual_norm = 0.0009765625;
+  live_solver.returned_diagnostics.overlap_mismatch = 0.001953125;
+  live_solver.returned_diagnostics.failure_code.clear();
+  live_solver.returned_diagnostics.summary =
+      "recorded planned helper exact dimension cache live solve";
+
+  const amflow::SolverDiagnostics live_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  invalidated_amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  kira_path,
+                                                  fermat_path,
+                                                  live_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol,
+                                                  std::optional<std::string>{"4"});
+
+  Expect(live_solver.call_count() == 1,
+         "planned helper exact-dimension invalidation should fall back to a live solve when the "
+         "explicit exact dimension override changes");
+  Expect(SameSolverDiagnostics(live_diagnostics, live_solver.returned_diagnostics),
+         "planned helper exact-dimension invalidation should return the fresh live diagnostics "
+         "after the cache miss");
+  Expect(live_solver.last_request().amf_requested_dimension_expression.has_value() &&
+             *live_solver.last_request().amf_requested_dimension_expression == "4",
+         "planned helper exact-dimension invalidation should rebuild the live solve request with "
+         "the new explicit exact dimension expression");
+
+  std::vector<std::filesystem::path> refreshed_manifest_paths;
+  for (const auto& entry : std::filesystem::directory_iterator(SolvedPathCacheDir(layout))) {
+    if (entry.is_regular_file()) {
+      refreshed_manifest_paths.push_back(entry.path());
+    }
+  }
+  Expect(refreshed_manifest_paths.size() == 2,
+         "planned helper exact-dimension invalidation should keep the seeded manifest and add "
+         "one override-specific solved-path cache manifest after the live fallback");
+  std::filesystem::path refreshed_manifest_path;
+  for (const auto& candidate : refreshed_manifest_paths) {
+    if (candidate != manifest_path) {
+      refreshed_manifest_path = candidate;
+      break;
+    }
+  }
+  Expect(!refreshed_manifest_path.empty(),
+         "planned helper exact-dimension invalidation should materialize a second solved-path "
+         "cache manifest for the changed explicit override");
+  Expect(refreshed_manifest_path.filename().string().find("exact-dimension-4") !=
+             std::string::npos,
+         "planned helper exact-dimension invalidation should key the new solved-path cache "
+         "manifest path by the changed explicit override");
+
+  const std::string refreshed_manifest_yaml = ReadFile(refreshed_manifest_path);
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "input_fingerprint") !=
+             stale_input_fingerprint,
+         "planned helper exact-dimension invalidation should record a distinct solved-path input "
+         "fingerprint in the override-specific cache entry");
+  Expect(ExtractYamlScalarValue(refreshed_manifest_yaml, "request_fingerprint") !=
+             stale_request_fingerprint,
+         "planned helper exact-dimension invalidation should record a distinct solved-path "
+         "request fingerprint in the override-specific cache entry");
+  Expect(refreshed_manifest_yaml.find("amf_requested_d0=" + invalidated_amf_options.d0) !=
+             std::string::npos,
+         "planned helper exact-dimension invalidation should preserve the requested D0 in the "
+         "cached request summary");
+  Expect(refreshed_manifest_yaml.find("amf_requested_dimension_expression=4") !=
+             std::string::npos,
+         "planned helper exact-dimension invalidation should record the refreshed explicit exact "
+         "dimension expression in the cached request summary");
+  Expect(refreshed_manifest_yaml.find("summary: \"" + live_solver.returned_diagnostics.summary +
+                                      "\"\n") != std::string::npos,
+         "planned helper exact-dimension invalidation should persist the fresh live diagnostics "
+         "in the override-specific cache entry");
 }
 
 void SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedFixedEpsTest() {
@@ -24398,6 +24775,10 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
     SolvePlannedAmfOptionsEtaModeSeriesFixedEpsBuildsExactDimensionExpressionTest();
+    SolvePlannedAmfOptionsEtaModeSeriesExactDimensionOverrideBuildsExactDimensionExpressionTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsNonExactDimensionOverrideTest();
+    SolvePlannedAmfOptionsEtaModeSeriesSkipReductionRejectsChangedExactDimensionOverrideTest();
+    SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedExactDimensionOverrideTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedFixedEpsTest();
     BootstrapBuiltinSampleManifestTest();
     K0BootstrapManifestSerializationTest();

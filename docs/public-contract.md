@@ -217,7 +217,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `-sd=<dimension>` exact override into the reviewed eta-generated exact-override path and
   copies the canonical exact value onto `SolveRequest.amf_requested_dimension_expression`
   before solver execution, while the retained overload without that extra argument stays
-  unchanged. This still falls well short of full `Batch 59` / `Batch 60`: direct public
+  unchanged. The public planned-decision `AmfOptions` eta-mode execution helper now also exposes
+  a matching exact-only overload on `SolvePlannedAmfOptionsEtaModeSeries(...)`: it accepts one
+  explicit `exact_dimension_override` alongside `eta_symbol`, canonicalizes that override after
+  planning has already happened, threads the resulting exact value as the effective
+  `SolveRequest.amf_requested_dimension_expression` over the shared wrapper-owned
+  policy/cache/`skip_reduction` tail, and carries that same exact override into solved-path
+  cache slot/input identity plus prepared-state validation. Symbolic or non-exact overrides fail
+  explicitly, and the retained overload without that extra argument stays unchanged. This still
+  falls well short of full `Batch 59` / `Batch 60`: direct public
   generated-`DESystem` construction, broader Kira preparation artifacts, wrapper-owned symbolic
   `D0` execution parity, and broader arbitrary-`D0` / fixed-`eps` runtime behavior remain
   deferred
@@ -623,8 +631,18 @@ The first `AmfOptions`-fed mixed eta-mode solver wrapper is also bootstrap-only:
 - if the list exhausts, the final recorded planning failure is rethrown unchanged; the defensive exhaustion `runtime_error` remains only for the impossible no-failure path
 - this helper does not read or rebuild `PrecisionPolicy`, does not attach `AmfSolveRuntimePolicy`, does not touch solved-path cache slotting or fingerprints, does not validate `skip_reduction`, and does not thread `amf_options.d0` into `SolveRequest`
 - `SolvePlannedAmfOptionsEtaModeSeries(...)` takes `(const ProblemSpec&, const ParsedMasterList&, const EtaInsertionDecision&, const AmfOptions&, const std::string& solve_kind, const ReductionOptions&, const ArtifactLayout&, const std::filesystem::path& kira_executable, const std::filesystem::path& fermat_executable, const SeriesSolver&, const std::string& start_location, const std::string& target_location, const PrecisionPolicy&, int requested_digits, const std::string& eta_symbol = "eta")`
+- a matching overload also takes `const std::optional<std::string>& exact_dimension_override`
+  after `eta_symbol`
 - it is a standalone planned-decision execution helper: after a caller has already selected and planned one eta mode, it rebuilds the same live wrapper-owned solve tail from `AmfOptions` that the reviewed `SolveAmfOptionsEtaModeSeries(...)` overloads already owned, including live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0` metadata plus derived dimension-expression, optional exact `fixed_eps` collapse on that dimension carrier, solved-path cache setup, `use_cache`, and `skip_reduction`
+- when the overload with `exact_dimension_override` is used, that override must evaluate
+  exactly without additional symbols, is canonicalized once at the public boundary, and then
+  replaces the otherwise derived live dimension carrier on this helper only; the helper still
+  preserves wrapper-owned requested-`D0`, live `PrecisionPolicy`, live runtime policy,
+  `solve_kind`, `use_cache`, and `skip_reduction` semantics unchanged
 - this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or planning, and does not change direct `SolveDifferentialEquation(...)` behavior. Its generated-DE widening stays narrow: only when the derived dimension carrier is itself exact does the live Kira execution prepend `-sd=<dimension>` and include that same exact override in wrapper-owned prepared-state validation, while symbolic or non-exact carriers remain inert. The separate public eta-generated exact-dimension overloads require an explicit exact override from the caller and do not infer symbolic `D0` carriers, so broader symbolic-`D0` / fixed-`eps` runtime parity remains deferred
+- on that explicit-override overload, the canonical exact override also participates in
+  solved-path cache slot naming and input fingerprinting, solved-path request-summary
+  truthfulness, and `skip_reduction` replay validation on this helper
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes an overload that takes the same eta solver inputs as `SolveResolvedEtaModeListSeries(...)`, except the caller-supplied `const std::vector<std::string>& eta_mode_names` is replaced by `const AmfOptions& amf_options`
 - the builtin-only `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for builtin eta-mode selection: it keeps `SelectBuiltinEtaModeName(...)` and the selected builtin `EtaMode::Plan(...)` step local, then delegates the shared downstream wrapper-owned execution tail through `SolvePlannedAmfOptionsEtaModeSeries(...)` with the preserved builtin solved-path identity

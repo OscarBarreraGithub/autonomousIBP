@@ -2514,6 +2514,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const std::optional<std::string>& amf_requested_d0,
     const std::optional<std::string>& fixed_eps,
+    const std::optional<std::string>& exact_dimension_override,
     const int requested_digits,
     const std::string& eta_symbol) {
   std::ostringstream out;
@@ -2533,6 +2534,9 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
   out << "amf_requested_d0:\n"
       << SerializeOptionalAmfRequestedD0ForFingerprint(amf_requested_d0);
   out << "amf_fixed_eps:\n" << SerializeOptionalAmfFixedEpsForFingerprint(fixed_eps);
+  out << "exact_dimension_override:\n"
+      << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
+             exact_dimension_override);
   return ComputeArtifactFingerprint(out.str());
 }
 
@@ -2554,14 +2558,17 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
                                         const EtaInsertionDecision& decision,
                                         const std::string& eta_symbol,
                                         const std::optional<std::string>& amf_requested_d0,
-                                        const std::optional<std::string>& fixed_eps) {
+                                        const std::optional<std::string>& fixed_eps,
+                                        const std::optional<std::string>& exact_dimension_override) {
   std::string slot_name = solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) + "-" +
                           SanitizeCacheSlotComponent(decision.mode_name) + "-" +
                           SanitizeCacheSlotComponent(eta_symbol);
   if (amf_requested_d0.has_value()) {
     slot_name += "-" + SanitizeCacheSlotComponent(*amf_requested_d0);
   }
-  if (fixed_eps.has_value()) {
+  if (exact_dimension_override.has_value()) {
+    slot_name += "-exact-dimension-" + SanitizeCacheSlotComponent(*exact_dimension_override);
+  } else if (fixed_eps.has_value()) {
     slot_name += "-fixed-eps-" + SanitizeCacheSlotComponent(*fixed_eps);
   }
   return slot_name;
@@ -3901,6 +3908,43 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& eta_symbol) {
+  return SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                             master_basis,
+                                             decision,
+                                             amf_options,
+                                             solve_kind,
+                                             options,
+                                             layout,
+                                             kira_executable,
+                                             fermat_executable,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol,
+                                             std::nullopt);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const AmfOptions& amf_options,
+    const std::string& solve_kind,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
+  const std::optional<std::string> normalized_exact_dimension_override =
+      NormalizePublicExactDimensionOverride(exact_dimension_override);
   const PrecisionPolicy live_precision_policy =
       BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
   const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
@@ -3908,7 +3952,11 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
   const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
   const std::optional<std::string> live_amf_fixed_eps = amf_options.fixed_eps;
   const std::optional<std::string> live_amf_requested_dimension_expression =
-      BuildAmfRequestedDimensionExpression(live_amf_requested_d0, live_amf_fixed_eps);
+      normalized_exact_dimension_override.has_value()
+          ? normalized_exact_dimension_override
+          : BuildAmfRequestedDimensionExpression(live_amf_requested_d0, live_amf_fixed_eps);
+  const std::optional<std::string> live_amf_fixed_eps_for_cache_identity =
+      normalized_exact_dimension_override.has_value() ? std::nullopt : live_amf_fixed_eps;
 
   SolvedPathCacheContext cache_context;
   cache_context.replay_enabled = amf_options.use_cache;
@@ -3920,7 +3968,8 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
           decision,
           eta_symbol,
           live_amf_requested_d0,
-          live_amf_fixed_eps);
+          live_amf_fixed_eps_for_cache_identity,
+          normalized_exact_dimension_override);
   cache_context.input_fingerprint =
       BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
                                             spec,
@@ -3933,10 +3982,10 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                             live_precision_policy,
                                             live_amf_runtime_policy,
                                             live_amf_requested_d0,
-                                            live_amf_fixed_eps,
+                                            live_amf_fixed_eps_for_cache_identity,
+                                            normalized_exact_dimension_override,
                                             requested_digits,
                                             eta_symbol);
-
   return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
                                                     master_basis,
                                                     decision,

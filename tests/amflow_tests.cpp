@@ -3164,6 +3164,13 @@ std::string MakeAutoEtaLinearRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoEtaLinearPrescriptionRuleFile() {
+  return "{\n"
+         "  toy_auto_linear_family[2,1,1] -> 3*toy_auto_linear_family[1,1,1],\n"
+         "  toy_auto_linear_family[1,2,1] -> 5*toy_auto_linear_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantResultScript(const bool write_rule_file,
                                           const std::string& rule_file_contents,
                                           const bool write_stdout = true,
@@ -4848,6 +4855,37 @@ void PrescriptionEtaModeRejectsUnsupportedRawValuesBeforeFilteringTest() {
       "eta mode Prescription encountered unsupported raw propagator prescription at index 1",
       "Prescription eta mode should validate the frozen raw vocabulary before filtering cut "
       "or linear propagators");
+}
+
+void PrescriptionEtaModeSupportsReviewedPassiveLinearSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto mode = amflow::MakeBuiltinEtaMode("Prescription");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.mode_name == "Prescription",
+         "Prescription eta mode should preserve its mode name on the reviewed passive-linear "
+         "subset");
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 1},
+         "Prescription eta mode should select only the reviewed uncut standard -i0 quadratic "
+         "propagators while leaving the explicit linear slot passive");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[0].expression,
+                                      spec.family.propagators[1].expression},
+         "Prescription eta mode should preserve declaration-order quadratic expressions on the "
+         "reviewed passive-linear subset");
+  Expect(std::find(decision.selected_propagator_indices.begin(),
+                   decision.selected_propagator_indices.end(),
+                   2) == decision.selected_propagator_indices.end(),
+         "Prescription eta mode should keep the explicit linear propagator out of the reviewed "
+         "passive-linear selection");
+  Expect(decision.explanation ==
+             "Bootstrap Prescription selector selected 2 uncut standard -i0 propagators in "
+             "declaration order on the current local declaration-order candidate surface",
+         "Prescription eta mode should reuse the reviewed filtered explanation on the "
+         "passive-linear subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Prescription eta mode should not mutate the reviewed passive-linear inputs");
 }
 
 void PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
@@ -23693,6 +23731,107 @@ void SolveBuiltinEtaModeSeriesPropagatorAllowsSelectedNonzeroMassTest() {
          "widened mixed-mass path");
 }
 
+void SolveBuiltinEtaModeSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=3/13";
+  const std::string target_location = "eta=19/17";
+  const int requested_digits = 67;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Prescription")->Plan(spec);
+
+  Expect(baseline_decision.selected_propagator_indices == std::vector<std::size_t>{0, 1},
+         "builtin Prescription eta-mode solve should select the reviewed quadratic subset on "
+         "the passive-linear fixture");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-prescription-linear-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-prescription-linear"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoEtaLinearResultScript(
+                            true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00390625;
+  solver.returned_diagnostics.overlap_mismatch = 0.0078125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded builtin prescription passive-linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeSeries(spec,
+                                        master_basis,
+                                        "Prescription",
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin Prescription eta-mode solve should not mutate reviewed passive-linear "
+         "inputs");
+  Expect(solver.call_count() == 1,
+         "builtin Prescription eta-mode solve should call the supplied solver exactly once on "
+         "the reviewed passive-linear subset");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin Prescription eta-mode solve should forward the reviewed passive-linear eta "
+         "DESystem unchanged into SolveRequest");
+  Expect(request.system.coefficient_matrices.at("eta").size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0][0] ==
+                 "(-1)*(3) + (-1)*(5)",
+         "builtin Prescription eta-mode solve should preserve the reviewed passive-linear eta "
+         "matrix entry");
+  Expect(request.start_location == start_location,
+         "builtin Prescription eta-mode solve should preserve the reviewed passive-linear "
+         "start location");
+  Expect(request.target_location == target_location,
+         "builtin Prescription eta-mode solve should preserve the reviewed passive-linear "
+         "target location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin Prescription eta-mode solve should preserve every reviewed passive-linear "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "builtin Prescription eta-mode solve should preserve reviewed passive-linear "
+         "requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin Prescription eta-mode solve should return reviewed passive-linear solver "
+         "diagnostics verbatim");
+}
+
 void SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -33058,6 +33197,7 @@ int main() {
     PrescriptionEtaModeSelectsUncutMinusI0PropagatorsTest();
     PrescriptionEtaModeRejectsWhenNoUncutMinusI0PropagatorsRemainTest();
     PrescriptionEtaModeRejectsUnsupportedRawValuesBeforeFilteringTest();
+    PrescriptionEtaModeSupportsReviewedPassiveLinearSubsetTest();
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();
@@ -33673,6 +33813,7 @@ int main() {
     SolveBuiltinEtaModeSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveBuiltinEtaModeSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveBuiltinEtaModeSeriesPrescriptionHappyPathTest();
+    SolveBuiltinEtaModeSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest();
     SolveBuiltinEtaModeSeriesMassHappyPathTest();
     SolveBuiltinEtaModeSeriesPropagatorHappyPathTest();
     SolveBuiltinEtaModeSeriesPropagatorAllowsSelectedNonzeroMassTest();

@@ -3,6 +3,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace amflow {
@@ -16,6 +17,14 @@ enum class PropagatorKind {
 
 std::string ToString(PropagatorKind kind);
 
+enum class PropagatorVariant {
+  Quadratic,
+  Linear,
+};
+
+std::string ToString(PropagatorVariant variant);
+std::optional<PropagatorVariant> ParsePropagatorVariantKeyword(const std::string& keyword);
+
 enum class FeynmanPrescription {
   MinusI0 = -1,
   None = 0,
@@ -25,11 +34,26 @@ enum class FeynmanPrescription {
 std::optional<FeynmanPrescription> ParseFeynmanPrescription(int raw_value);
 
 struct Propagator {
+  Propagator() = default;
+  Propagator(std::string expression_in,
+             std::string mass_in = "0",
+             PropagatorKind kind_in = PropagatorKind::Standard,
+             int prescription_in = -1,
+             std::optional<PropagatorVariant> variant_in = std::nullopt)
+      : expression(std::move(expression_in)),
+        mass(std::move(mass_in)),
+        kind(kind_in),
+        prescription(prescription_in),
+        variant(std::move(variant_in)) {}
+
   std::string expression;
   std::string mass = "0";
   PropagatorKind kind = PropagatorKind::Standard;
   int prescription = -1;
+  std::optional<PropagatorVariant> variant;
 };
+
+PropagatorVariant EffectivePropagatorVariant(const Propagator& propagator);
 
 struct ScalarProductRule {
   std::string left;

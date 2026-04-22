@@ -207,6 +207,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `ProblemSpec`: family definition, propagators, cuts, conservation rules, invariants,
   prescriptions, targets, exact numeric substitutions, raw complex numeric substitutions, and
   dimensional settings
+- `ProblemSpec` propagators now also admit an optional typed `variant` keyword with the frozen
+  vocabulary `{quadratic, linear}`. On the current reviewed B64a surface it is preserved through
+  file-backed YAML and resolved by `EffectivePropagatorVariant(...)`, but any explicit `variant`
+  must still agree with the legacy `PropagatorKind`-backed linearity encoding because downstream
+  eta-mode, Kira, derivative-generation, and solver consumers have not yet migrated off
+  `PropagatorKind::Linear`
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -287,6 +293,12 @@ shape matches the checked-in example spec: nested `family`, `kinematics`, and `t
 bracketed scalar lists; block lists for propagators, preferred masters, scalar-product rules, and
 targets; scalar maps for exact `numeric_substitutions` and raw
 `complex_numeric_substitutions`; and top-level `dimension`, `complex_mode`, and `notes`.
+
+Within each propagator entry, the current reviewed B64a surface also accepts an optional typed
+`variant` scalar with the frozen keywords `"quadratic"` or `"linear"`. The file-backed loader
+preserves that field through canonicalization, but loaded-spec validation still requires any
+explicit `variant` to agree with the legacy `kind`-backed linearity encoding because downstream
+runtime/reducer consumers still key on `PropagatorKind::Linear`.
 
 The file-backed loader applies two safety rules on top of that subset:
 
@@ -912,7 +924,7 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - `ApplyEtaInsertion(...)` returns a typed transformed-spec result and never mutates the input `ProblemSpec`
 - only the selected propagators are rewritten, and the bootstrap rewrite is deterministic string-level logic of the form `(<old expression>) + eta`
 - `kinematics.invariants` appends `eta` exactly once and preserves existing order otherwise
-- the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`prescription`
+- the transform preserves family name, targets, top sectors, scalar-product rules, numeric substitutions, and propagator `kind`/`variant`/`prescription`
 - empty selections, duplicate indices, out-of-range indices, and selected auxiliary propagators fail locally with deterministic diagnostics; selected nonzero-mass propagators are now allowed on this reviewed eta-generated path, and rewritten selected propagators carry `Trim(original.mass)` in the transformed copy so the reducer-facing equal-mass surface stays coherent with planner grouping. This is only outer-whitespace trimming on selected rewritten literals, not broader mass canonicalization
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is a narrow bootstrap alias over that reviewed `All` selector on the current supported loop-integral subset, so it selects every non-auxiliary propagator in declaration order, preserves `mode_name == "Prescription"`, and uses a distinct honest bootstrap-alias explanation string
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim

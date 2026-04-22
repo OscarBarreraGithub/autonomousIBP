@@ -3379,6 +3379,24 @@ void ProblemSpecRoundTripPreservesComplexNumericSubstitutionsTest() {
          "problem spec round-trip should preserve complex numeric substitutions");
 }
 
+void ProblemSpecRoundTripPreservesExplicitPropagatorVariantTest() {
+  amflow::ProblemSpec original = amflow::MakeSampleProblemSpec();
+  original.family.propagators[0].kind = amflow::PropagatorKind::Linear;
+  original.family.propagators[0].variant = amflow::PropagatorVariant::Linear;
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / "amflow-bootstrap-linear-variant-problem-spec.yaml";
+  {
+    std::ofstream stream(path);
+    stream << amflow::SerializeProblemSpecYaml(original);
+  }
+
+  const amflow::ProblemSpec loaded = amflow::LoadProblemSpecFile(path);
+  Expect(loaded.family.propagators[0].variant == amflow::PropagatorVariant::Linear,
+         "problem spec round-trip should preserve explicit propagator variants");
+  Expect(amflow::SerializeProblemSpecYaml(loaded) == amflow::SerializeProblemSpecYaml(original),
+         "problem spec round-trip should preserve explicit propagator variants");
+}
+
 void AmflowPrefactorReferenceSpecContainsLockedEvidenceTest() {
   const std::string yaml = ReadFile(AmflowPrefactorReferenceSpecPath());
   ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(yaml);
@@ -3777,6 +3795,37 @@ void ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTes
          "the same invariant should not be accepted in both exact and complex substitution maps");
 }
 
+void PropagatorVariantVocabularyAndLegacyFallbackTest() {
+  Expect(amflow::ParsePropagatorVariantKeyword("quadratic") ==
+             amflow::PropagatorVariant::Quadratic,
+         "quadratic should map to the frozen quadratic propagator variant");
+  Expect(amflow::ParsePropagatorVariantKeyword("linear") == amflow::PropagatorVariant::Linear,
+         "linear should map to the frozen linear propagator variant");
+  Expect(!amflow::ParsePropagatorVariantKeyword("cubic").has_value(),
+         "out-of-vocabulary propagator variants should be rejected");
+
+  amflow::Propagator standard;
+  Expect(amflow::EffectivePropagatorVariant(standard) == amflow::PropagatorVariant::Quadratic,
+         "legacy Standard propagators should keep the quadratic fallback variant");
+
+  amflow::Propagator legacy_linear;
+  legacy_linear.kind = amflow::PropagatorKind::Linear;
+  Expect(amflow::EffectivePropagatorVariant(legacy_linear) == amflow::PropagatorVariant::Linear,
+         "legacy Linear propagator kinds should still resolve to the linear variant");
+}
+
+void ValidateProblemSpecRejectsMismatchedExplicitPropagatorVariantTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].variant = amflow::PropagatorVariant::Linear;
+
+  const auto messages = amflow::ValidateProblemSpec(spec);
+  Expect(ContainsSubstring(messages,
+                           "family.propagators[0].variant must be \"quadratic\" when kind is "
+                           "\"standard\""),
+         "problem-spec validation should reject explicit propagator variants that disagree with "
+         "the current legacy kind-backed linearity surface");
+}
+
 void FeynmanPrescriptionVocabularyTest() {
   Expect(amflow::ParseFeynmanPrescription(-1) == amflow::FeynmanPrescription::MinusI0,
          "raw -1 should map to the frozen -i0 prescription");
@@ -3797,6 +3846,34 @@ void ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest() {
                            "family.propagators[0].prescription must be one of -1 (-i0), 0 "
                            "(none), or 1 (+i0)"),
          "problem-spec validation should reject unsupported raw prescription values");
+}
+
+void LoadedSpecValidationRejectsMismatchedExplicitPropagatorVariantTest() {
+  const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
+  std::string invalid_variant_yaml = amflow::SerializeProblemSpecYaml(sample);
+  ReplaceFirst(invalid_variant_yaml,
+               "      kind: \"standard\"\n",
+               "      kind: \"standard\"\n"
+               "      variant: \"linear\"\n");
+  const auto messages =
+      amflow::ValidateLoadedProblemSpec(amflow::ParseProblemSpecYaml(invalid_variant_yaml));
+  Expect(ContainsSubstring(messages,
+                           "family.propagators[0].variant must be \"quadratic\" when kind is "
+                           "\"standard\""),
+         "loaded-spec validation should reject explicit propagator variants that disagree with "
+         "the current legacy kind-backed linearity surface");
+}
+
+void ParseProblemSpecRejectsUnsupportedPropagatorVariantKeywordTest() {
+  const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
+  std::string invalid_variant_yaml = amflow::SerializeProblemSpecYaml(sample);
+  ReplaceFirst(invalid_variant_yaml,
+               "      kind: \"standard\"\n",
+               "      kind: \"standard\"\n"
+               "      variant: \"cubic\"\n");
+  ExpectParseFailure(invalid_variant_yaml,
+                     "unsupported propagator variant: cubic",
+                     "problem-spec parsing should reject unsupported propagator variant keywords");
 }
 
 void EtaInsertionHappyPathTest() {
@@ -27359,6 +27436,7 @@ int main() {
     SampleProblemValidationTest();
     ProblemSpecRoundTripTest();
     ProblemSpecRoundTripPreservesComplexNumericSubstitutionsTest();
+    ProblemSpecRoundTripPreservesExplicitPropagatorVariantTest();
     AmflowPrefactorReferenceSpecContainsLockedEvidenceTest();
     AmflowPrefactorReferenceMirrorMatchesPrefactorReferenceSpecTest();
     DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest();
@@ -27382,8 +27460,12 @@ int main() {
     DuplicateKeysAreRejectedTest();
     ValidateProblemSpecRejectsComplexNumericSubstitutionsWithoutComplexModeTest();
     ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTest();
+    PropagatorVariantVocabularyAndLegacyFallbackTest();
+    ValidateProblemSpecRejectsMismatchedExplicitPropagatorVariantTest();
     FeynmanPrescriptionVocabularyTest();
     ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest();
+    LoadedSpecValidationRejectsMismatchedExplicitPropagatorVariantTest();
+    ParseProblemSpecRejectsUnsupportedPropagatorVariantKeywordTest();
     EtaInsertionHappyPathTest();
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();

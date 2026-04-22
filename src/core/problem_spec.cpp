@@ -42,6 +42,26 @@ std::string ToString(PropagatorKind kind) {
   return "standard";
 }
 
+std::string ToString(PropagatorVariant variant) {
+  switch (variant) {
+    case PropagatorVariant::Quadratic:
+      return "quadratic";
+    case PropagatorVariant::Linear:
+      return "linear";
+  }
+  return "quadratic";
+}
+
+std::optional<PropagatorVariant> ParsePropagatorVariantKeyword(const std::string& keyword) {
+  if (keyword == "quadratic") {
+    return PropagatorVariant::Quadratic;
+  }
+  if (keyword == "linear") {
+    return PropagatorVariant::Linear;
+  }
+  return std::nullopt;
+}
+
 std::optional<FeynmanPrescription> ParseFeynmanPrescription(const int raw_value) {
   switch (raw_value) {
     case static_cast<int>(FeynmanPrescription::MinusI0):
@@ -52,6 +72,14 @@ std::optional<FeynmanPrescription> ParseFeynmanPrescription(const int raw_value)
       return FeynmanPrescription::PlusI0;
   }
   return std::nullopt;
+}
+
+PropagatorVariant EffectivePropagatorVariant(const Propagator& propagator) {
+  if (propagator.variant.has_value()) {
+    return *propagator.variant;
+  }
+  return propagator.kind == PropagatorKind::Linear ? PropagatorVariant::Linear
+                                                   : PropagatorVariant::Quadratic;
 }
 
 std::string ToString(AmflowLoopPrefactorSign sign) {
@@ -80,6 +108,11 @@ std::string TargetIntegral::Label() const {
 std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec) {
   std::vector<std::string> messages;
 
+  const auto expected_variant_for_kind = [](const PropagatorKind kind) {
+    return kind == PropagatorKind::Linear ? PropagatorVariant::Linear
+                                          : PropagatorVariant::Quadratic;
+  };
+
   if (spec.family.name.empty()) {
     messages.emplace_back("family.name must not be empty");
   }
@@ -90,7 +123,17 @@ std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec) {
     messages.emplace_back("family.propagators must not be empty");
   }
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
-    if (ParseFeynmanPrescription(spec.family.propagators[index].prescription).has_value()) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.variant.has_value()) {
+      const PropagatorVariant expected_variant = expected_variant_for_kind(propagator.kind);
+      if (*propagator.variant != expected_variant) {
+        messages.emplace_back("family.propagators[" + std::to_string(index) +
+                              "].variant must be " + Quote(ToString(expected_variant)) +
+                              " when kind is " + Quote(ToString(propagator.kind)) +
+                              " on the current legacy kind-backed linearity surface");
+      }
+    }
+    if (ParseFeynmanPrescription(propagator.prescription).has_value()) {
       continue;
     }
     messages.emplace_back("family.propagators[" + std::to_string(index) +
@@ -146,6 +189,9 @@ std::string SerializeProblemSpecYaml(const ProblemSpec& spec) {
     out << Indent(2) << "- expression: " << Quote(propagator.expression) << "\n";
     out << Indent(3) << "mass: " << Quote(propagator.mass) << "\n";
     out << Indent(3) << "kind: " << Quote(ToString(propagator.kind)) << "\n";
+    if (propagator.variant.has_value()) {
+      out << Indent(3) << "variant: " << Quote(ToString(*propagator.variant)) << "\n";
+    }
     out << Indent(3) << "prescription: " << propagator.prescription << "\n";
   }
 

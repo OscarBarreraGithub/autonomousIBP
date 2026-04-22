@@ -238,6 +238,15 @@ PropagatorKind ParsePropagatorKindValue(const ParsedLine& line, const std::strin
   Fail(line.number, "unsupported propagator kind: " + parsed);
 }
 
+PropagatorVariant ParsePropagatorVariantValue(const ParsedLine& line, const std::string& value) {
+  const std::string parsed = ParseStringValue(line, value);
+  const std::optional<PropagatorVariant> variant = ParsePropagatorVariantKeyword(parsed);
+  if (variant.has_value()) {
+    return *variant;
+  }
+  Fail(line.number, "unsupported propagator variant: " + parsed);
+}
+
 void RecordSeenKey(std::set<std::string>& seen,
                    const ParsedLine& line,
                    const std::string& scope,
@@ -270,6 +279,10 @@ bool ApplyPropagatorField(Propagator& propagator,
   }
   if (key == "kind") {
     propagator.kind = ParsePropagatorKindValue(line, value);
+    return true;
+  }
+  if (key == "variant") {
+    propagator.variant = ParsePropagatorVariantValue(line, value);
     return true;
   }
   if (key == "prescription") {

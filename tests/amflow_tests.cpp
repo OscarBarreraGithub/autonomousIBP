@@ -24923,6 +24923,103 @@ void SolveBuiltinEtaModeListSeriesHappyPathFallbackTest() {
          "builtin eta-mode-list solver handoff should return solver diagnostics verbatim");
 }
 
+void SolveBuiltinEtaModeListSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "eta=5/29";
+  const std::string target_location = "eta=31/19";
+  const int requested_digits = 71;
+  const amflow::EtaInsertionDecision baseline_decision =
+      amflow::MakeBuiltinEtaMode("Prescription")->Plan(spec);
+
+  Expect(baseline_decision.selected_propagator_indices == std::vector<std::size_t>{0, 1},
+         "builtin eta-mode-list passive-linear coverage should preserve the reviewed "
+         "Prescription quadratic selection");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-prescription-linear-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoEtaLinearResultScript(true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        baseline_decision,
+                                        MakeKiraReductionOptions(),
+                                        baseline_layout,
+                                        baseline_kira_path,
+                                        baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-list-prescription-linear"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-eta-linear-prescription.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoEtaLinearResultScript(
+                            true, MakeAutoEtaLinearPrescriptionRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.001953125;
+  solver.returned_diagnostics.overlap_mismatch = 0.00390625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded builtin eta-mode-list passive-linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeListSeries(spec,
+                                            master_basis,
+                                            {"Prescription", "Propagator"},
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            kira_path,
+                                            fermat_path,
+                                            solver,
+                                            start_location,
+                                            target_location,
+                                            precision_policy,
+                                            requested_digits);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin eta-mode-list passive-linear coverage should not mutate reviewed inputs");
+  Expect(solver.call_count() == 1,
+         "builtin eta-mode-list passive-linear coverage should call the supplied solver "
+         "exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin eta-mode-list passive-linear coverage should forward the same eta DESystem "
+         "when Prescription is the selected builtin");
+  Expect(request.system.coefficient_matrices.at("eta").size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("eta")[0][0] ==
+                 "(-1)*(3) + (-1)*(5)",
+         "builtin eta-mode-list passive-linear coverage should preserve the reviewed eta "
+         "matrix entry");
+  Expect(request.start_location == start_location,
+         "builtin eta-mode-list passive-linear coverage should preserve the start location");
+  Expect(request.target_location == target_location,
+         "builtin eta-mode-list passive-linear coverage should preserve the target location");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin eta-mode-list passive-linear coverage should preserve every reviewed "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "builtin eta-mode-list passive-linear coverage should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin eta-mode-list passive-linear coverage should return solver diagnostics "
+         "verbatim");
+}
+
 void SolveBuiltinEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -34601,6 +34698,7 @@ int main() {
     SolveBuiltinEtaModeSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeSeriesExecutionFailureTest();
     SolveBuiltinEtaModeListSeriesHappyPathFallbackTest();
+    SolveBuiltinEtaModeListSeriesPrescriptionSupportsReviewedLinearPropagatorSubsetTest();
     SolveBuiltinEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveBuiltinEtaModeListSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveBuiltinEtaModeListSeriesExactDimensionOverridePreservesUnknownNameFailureTest();

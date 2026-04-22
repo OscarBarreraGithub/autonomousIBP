@@ -5,6 +5,8 @@
 #include <map>
 #include <string>
 
+#include "amflow/runtime/continuation_path.hpp"
+
 namespace amflow {
 
 struct ArtifactManifest {
@@ -92,6 +94,12 @@ struct SolvedPathCacheManifest {
   std::string summary;
 };
 
+struct EtaContinuationPlanManifest {
+  std::string manifest_kind = "eta-continuation-plan";
+  std::string run_id = "eta-continuation-plan";
+  EtaContinuationPlan plan;
+};
+
 ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root);
 CommandLogPaths MakeCommandLogPaths(const ArtifactLayout& layout,
                                     const std::string& command_name);
@@ -109,5 +117,13 @@ SolvedPathCacheManifest ParseSolvedPathCacheManifestYaml(const std::string& yaml
 SolvedPathCacheManifest ReadSolvedPathCacheManifest(const std::filesystem::path& path);
 std::filesystem::path WriteSolvedPathCacheManifest(const std::filesystem::path& path,
                                                    const SolvedPathCacheManifest& manifest);
+EtaContinuationPlanManifest MakeEtaContinuationPlanManifest(
+    const EtaContinuationPlan& plan,
+    const std::string& run_id = "eta-continuation-plan");
+std::string SerializeEtaContinuationPlanManifestYaml(
+    const EtaContinuationPlanManifest& manifest);
+std::filesystem::path WriteEtaContinuationPlanManifest(
+    const ArtifactLayout& layout,
+    const EtaContinuationPlanManifest& manifest);
 
 }  // namespace amflow

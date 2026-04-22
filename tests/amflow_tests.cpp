@@ -27,6 +27,7 @@
 #include "amflow/runtime/auxiliary_family.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/boundary_generation.hpp"
+#include "amflow/runtime/continuation_path.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
 #include "amflow/runtime/physical_kinematics_guardrails.hpp"
@@ -10436,6 +10437,246 @@ void EvaluateComplexCoefficientExpressionRejectsReservedImaginaryBindingNameTest
       "reserves symbol \"I\"",
       "complex coefficient evaluation should reject a caller binding named I instead of silently "
       "shadowing it with the imaginary unit");
+}
+
+void PlanEtaContinuationContourUpperAndLowerDetoursProduceDistinctBranchLedgerFingerprintsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+  };
+
+  amflow::DESystem system;
+  system.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system.singular_points = {"eta=s"};
+
+  const amflow::EtaContinuationPlan upper_plan =
+      amflow::PlanEtaContinuationContour(system,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaContinuationPlan lower_plan =
+      amflow::PlanEtaContinuationContour(system,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Lower);
+
+  Expect(upper_plan.contour_points.size() == 5 && lower_plan.contour_points.size() == 5,
+         "complex contour planning should materialize one three-point detour around the reviewed "
+         "single pole");
+  ExpectComplexRationalParts(upper_plan.contour_points[2],
+                             "1",
+                             "1/4",
+                             "upper-half-plane contour planning should route the detour apex "
+                             "above the reviewed pole");
+  ExpectComplexRationalParts(lower_plan.contour_points[2],
+                             "1",
+                             "-1/4",
+                             "lower-half-plane contour planning should route the detour apex "
+                             "below the reviewed pole");
+  Expect(upper_plan.singular_points.size() == 1 && lower_plan.singular_points.size() == 1,
+         "complex contour planning should persist the reviewed single evaluated pole");
+  Expect(upper_plan.singular_points[0].expression == "eta=s" &&
+             lower_plan.singular_points[0].expression == "eta=s",
+         "complex contour planning should preserve the source singular-point expression");
+  Expect(upper_plan.singular_points[0].branch_winding !=
+             lower_plan.singular_points[0].branch_winding,
+         "complex contour planning should distinguish upper and lower admissible detours by "
+         "branch ledger");
+  Expect(upper_plan.contour_fingerprint != lower_plan.contour_fingerprint,
+         "complex contour planning should fingerprint admissible detours with identical "
+         "endpoints distinctly");
+}
+
+void FinalizeEtaContinuationContourRejectsSegmentCrossingEvaluatedSingularPointTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+  };
+
+  amflow::DESystem system;
+  system.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system.singular_points = {"eta=s"};
+
+  ExpectInvalidArgument(
+      [&system, &spec]() {
+        static_cast<void>(amflow::FinalizeEtaContinuationContour(system,
+                                                                 spec,
+                                                                 "eta",
+                                                                 {"eta=0", "eta=2"},
+                                                                 amflow::EtaContourHalfPlane::Upper));
+      },
+      "crosses evaluated singular point",
+      "complex contour finalization should reject any explicit segment that crosses an "
+      "evaluated singular point");
+}
+
+void WriteEtaContinuationPlanManifestPersistsContourPointsAndBranchLedgerTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+  };
+
+  amflow::DESystem system;
+  system.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system.singular_points = {"eta=s"};
+
+  const amflow::EtaContinuationPlan plan =
+      amflow::PlanEtaContinuationContour(system,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Upper);
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-b61c-contour-manifest"));
+  const amflow::EtaContinuationPlanManifest manifest =
+      amflow::MakeEtaContinuationPlanManifest(plan, "b61c-upper-contour");
+  const std::string yaml = amflow::SerializeEtaContinuationPlanManifestYaml(manifest);
+  const std::filesystem::path path =
+      amflow::WriteEtaContinuationPlanManifest(layout, manifest);
+
+  Expect(manifest.manifest_kind == "eta-continuation-plan",
+         "complex contour manifest should declare its continuation-plan kind explicitly");
+  Expect(path == layout.manifests_dir / "b61c-upper-contour.yaml",
+         "complex contour manifest should use the supplied run id as its filename");
+  Expect(std::filesystem::exists(path),
+         "complex contour manifest writing should persist one continuation-plan YAML file");
+  Expect(ReadFile(path) == yaml,
+         "complex contour manifest writing should preserve the serialized continuation-plan "
+         "payload verbatim");
+  ExpectContains(yaml,
+                 "half_plane: \"upper\"",
+                 "complex contour manifest YAML should preserve the selected half-plane");
+  ExpectContains(yaml,
+                 "contour_fingerprint: \"" + plan.contour_fingerprint + "\"",
+                 "complex contour manifest YAML should preserve the contour fingerprint");
+  ExpectContains(yaml,
+                 "expression: \"eta=s\"",
+                 "complex contour manifest YAML should preserve the singular-point expression");
+  ExpectContains(yaml,
+                 "branch_winding:",
+                 "complex contour manifest YAML should persist branch-ledger entries");
+  ExpectContains(yaml,
+                 "- \"(1) + (1/4)*I\"",
+                 "complex contour manifest YAML should preserve the detour apex exactly");
+}
+
+void WriteEtaContinuationPlanManifestRejectsEscapingRunIdTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+  };
+
+  amflow::DESystem system;
+  system.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system.singular_points = {"eta=s"};
+
+  const amflow::EtaContinuationPlan plan =
+      amflow::PlanEtaContinuationContour(system,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Upper);
+  const auto layout =
+      amflow::EnsureArtifactLayout(FreshTempDir("amflow-b61c-contour-manifest-escape"));
+
+  ExpectInvalidArgument(
+      [&layout, &plan]() {
+        const amflow::EtaContinuationPlanManifest manifest =
+            amflow::MakeEtaContinuationPlanManifest(plan, "../escape");
+        static_cast<void>(amflow::WriteEtaContinuationPlanManifest(layout, manifest));
+      },
+      "simple filename stem",
+      "complex contour manifest writing should reject run ids that escape the manifest root");
+}
+
+void PlanEtaContinuationContourCanonicalizesAliasedSingularPointLocationsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.numeric_substitutions.erase("t");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+      {"t", "1"},
+  };
+
+  amflow::DESystem system_forward;
+  system_forward.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system_forward.singular_points = {"eta=s", "eta=t"};
+  amflow::DESystem system_reversed = system_forward;
+  system_reversed.singular_points = {"eta=t", "eta=s"};
+
+  const amflow::EtaContinuationPlan forward_plan =
+      amflow::PlanEtaContinuationContour(system_forward,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaContinuationPlan reversed_plan =
+      amflow::PlanEtaContinuationContour(system_reversed,
+                                         spec,
+                                         "eta",
+                                         "eta=0",
+                                         "eta=2",
+                                         amflow::EtaContourHalfPlane::Upper);
+
+  Expect(forward_plan.contour_points.size() == 5 &&
+             reversed_plan.contour_points.size() == 5,
+         "complex contour planning should keep one reviewed detour when aliased singular-point "
+         "expressions evaluate to the same location");
+  Expect(forward_plan.singular_points.size() == 1 &&
+             reversed_plan.singular_points.size() == 1,
+         "complex contour planning should canonicalize aliased singular-point expressions to one "
+         "evaluated branch point");
+  Expect(forward_plan.singular_points[0].expression == "eta=s" &&
+             reversed_plan.singular_points[0].expression == "eta=s",
+         "complex contour planning should preserve a deterministic representative expression for "
+         "aliased singular-point locations");
+  Expect(forward_plan.contour_fingerprint == reversed_plan.contour_fingerprint,
+         "complex contour planning should keep the contour fingerprint stable across aliased "
+         "singular-point ordering");
+}
+
+void FinalizeEtaContinuationContourRejectsOutOfRangeBranchLedgerProjectionTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "1"},
+  };
+
+  amflow::DESystem system;
+  system.variables = {{"eta", amflow::DifferentiationVariableKind::Eta}};
+  system.singular_points = {"eta=s"};
+
+  ExpectInvalidArgument(
+      [&system, &spec]() {
+        static_cast<void>(amflow::FinalizeEtaContinuationContour(
+            system,
+            spec,
+            "eta",
+            {"eta=-100000000000000000000",
+             "eta=1+(1/4)*I",
+             "eta=100000000000000000000"},
+            amflow::EtaContourHalfPlane::Upper));
+      },
+      "reviewed long-double projection range",
+      "complex contour finalization should fail explicitly when branch-ledger projection would "
+      "leave the reviewed moderate-size rational subset");
 }
 
 void EvaluateCoefficientMatrixIgnoresUnusedSubstitutionsTest() {
@@ -27410,6 +27651,12 @@ int main() {
     EvaluateCoefficientExpressionRejectsImaginaryUnitOnExactPathTest();
     BuildComplexNumericEvaluationPointRejectsImaginaryUnitInExactBindingsTest();
     EvaluateComplexCoefficientExpressionRejectsReservedImaginaryBindingNameTest();
+    PlanEtaContinuationContourUpperAndLowerDetoursProduceDistinctBranchLedgerFingerprintsTest();
+    FinalizeEtaContinuationContourRejectsSegmentCrossingEvaluatedSingularPointTest();
+    WriteEtaContinuationPlanManifestPersistsContourPointsAndBranchLedgerTest();
+    WriteEtaContinuationPlanManifestRejectsEscapingRunIdTest();
+    PlanEtaContinuationContourCanonicalizesAliasedSingularPointLocationsTest();
+    FinalizeEtaContinuationContourRejectsOutOfRangeBranchLedgerProjectionTest();
     EvaluateCoefficientMatrixIgnoresUnusedSubstitutionsTest();
     EvaluateCoefficientMatrixRejectsMissingSymbolTest();
     EvaluateCoefficientMatrixRejectsDivisionByZeroTest();

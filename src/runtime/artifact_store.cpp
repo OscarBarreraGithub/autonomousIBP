@@ -62,6 +62,21 @@ std::filesystem::path AtomicTempPathFor(const std::filesystem::path& path) {
   return path.parent_path() / (path.filename().string() + ".tmp");
 }
 
+void ValidateManifestRunId(const std::string& run_id,
+                           const std::string& manifest_kind) {
+  if (run_id.empty()) {
+    throw std::invalid_argument(manifest_kind + " run_id must not be empty");
+  }
+  if (run_id == "." || run_id == ".." || run_id.find('/') != std::string::npos ||
+      run_id.find('\\') != std::string::npos) {
+    throw std::invalid_argument(manifest_kind + " run_id must be a simple filename stem");
+  }
+  const std::filesystem::path path(run_id);
+  if (path.is_absolute() || path.has_parent_path()) {
+    throw std::invalid_argument(manifest_kind + " run_id must be a simple filename stem");
+  }
+}
+
 std::string ToPortableString(const std::filesystem::path& path) {
   return path.empty() ? std::string() : path.lexically_normal().string();
 }
@@ -174,6 +189,20 @@ void WriteStringMap(std::ostringstream& out,
   for (const auto& [entry_key, entry_value] : values) {
     out << std::string(static_cast<std::size_t>(indent + 2), ' ') << entry_key << ": "
         << Quote(entry_value) << "\n";
+  }
+}
+
+void WriteStringVector(std::ostringstream& out,
+                       const std::string& key,
+                       const std::vector<std::string>& values,
+                       const int indent = 0) {
+  if (values.empty()) {
+    return;
+  }
+  out << std::string(static_cast<std::size_t>(indent), ' ') << key << ":\n";
+  for (const std::string& value : values) {
+    out << std::string(static_cast<std::size_t>(indent + 2), ' ') << "- " << Quote(value)
+        << "\n";
   }
 }
 
@@ -519,6 +548,84 @@ std::filesystem::path WriteSolvedPathCacheManifest(const std::filesystem::path& 
       std::error_code cleanup_error;
       std::filesystem::remove(temp_path, cleanup_error);
       throw std::runtime_error("failed to write solved-path cache manifest: " +
+                               temp_path.string());
+    }
+  }
+
+  try {
+    std::filesystem::rename(temp_path, path);
+  } catch (...) {
+    std::error_code cleanup_error;
+    std::filesystem::remove(temp_path, cleanup_error);
+    throw;
+  }
+  return path;
+}
+
+EtaContinuationPlanManifest MakeEtaContinuationPlanManifest(const EtaContinuationPlan& plan,
+                                                            const std::string& run_id) {
+  EtaContinuationPlanManifest manifest;
+  if (!run_id.empty()) {
+    ValidateManifestRunId(run_id, "eta continuation plan manifest");
+    manifest.run_id = run_id;
+  }
+  manifest.plan = plan;
+  return manifest;
+}
+
+std::string SerializeEtaContinuationPlanManifestYaml(
+    const EtaContinuationPlanManifest& manifest) {
+  std::ostringstream out;
+  WriteQuotedLine(out, "manifest_kind", manifest.manifest_kind);
+  WriteQuotedLine(out, "run_id", manifest.run_id);
+  out << "plan:\n";
+  WriteQuotedLine(out, "eta_symbol", manifest.plan.eta_symbol, 2);
+  WriteQuotedLine(out, "start_location", manifest.plan.start_location, 2);
+  WriteQuotedLine(out, "target_location", manifest.plan.target_location, 2);
+  WriteQuotedLine(out, "half_plane", ToString(manifest.plan.half_plane), 2);
+  WriteQuotedLine(out, "contour_fingerprint", manifest.plan.contour_fingerprint, 2);
+
+  std::vector<std::string> contour_points;
+  contour_points.reserve(manifest.plan.contour_points.size());
+  for (const ExactComplexRational& contour_point : manifest.plan.contour_points) {
+    contour_points.push_back(contour_point.ToString());
+  }
+  WriteStringVector(out, "contour_points", contour_points, 2);
+
+  if (!manifest.plan.singular_points.empty()) {
+    out << "  singular_points:\n";
+    for (const EtaContourSingularPoint& singular_point : manifest.plan.singular_points) {
+      out << "    - expression: " << Quote(singular_point.expression) << "\n";
+      out << "      value: " << Quote(singular_point.value.ToString()) << "\n";
+      WriteIntegerLine(out, "branch_winding", singular_point.branch_winding, 6);
+    }
+  }
+
+  return out.str();
+}
+
+std::filesystem::path WriteEtaContinuationPlanManifest(
+    const ArtifactLayout& layout,
+    const EtaContinuationPlanManifest& manifest) {
+  ValidateManifestRunId(manifest.run_id, "eta continuation plan manifest");
+  const std::filesystem::path path = layout.manifests_dir / (manifest.run_id + ".yaml");
+  std::filesystem::create_directories(path.parent_path());
+  const std::filesystem::path temp_path = AtomicTempPathFor(path);
+  const std::string serialized = SerializeEtaContinuationPlanManifestYaml(manifest);
+
+  {
+    std::ofstream stream(temp_path, std::ios::trunc);
+    if (!stream) {
+      throw std::runtime_error("failed to open eta continuation plan manifest for writing: " +
+                               temp_path.string());
+    }
+
+    stream << serialized;
+    stream.flush();
+    if (!stream) {
+      std::error_code cleanup_error;
+      std::filesystem::remove(temp_path, cleanup_error);
+      throw std::runtime_error("failed to write eta continuation plan manifest: " +
                                temp_path.string());
     }
   }

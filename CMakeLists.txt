@@ -27,6 +27,7 @@ add_library(amflow
   src/runtime/artifact_store.cpp
   src/runtime/auxiliary_family.cpp
   src/runtime/boundary_generation.cpp
+  src/runtime/continuation_path.cpp
   src/runtime/eta_mode.cpp
   src/runtime/ending_scheme.cpp
   src/runtime/physical_kinematics_guardrails.cpp

@@ -243,18 +243,22 @@ std::optional<ReviewedK0ExactSubstitutions> LoadReviewedExactNumericSubstitution
   return exact_substitutions;
 }
 
-ExactRational ComputeReviewedEndpointPolynomial(const ReviewedK0ExactSubstitutions& substitutions) {
-  const ExactRational twice_msq =
-      MultiplyRational(IntegerRational(2), substitutions.msq);
-  const ExactRational t_squared =
-      MultiplyRational(substitutions.t, substitutions.t);
-  const ExactRational mass_squared =
-      MultiplyRational(substitutions.msq, substitutions.msq);
+ExactRational ComputeReviewedEndpointPolynomial(const ExactRational& s,
+                                                const ExactRational& t,
+                                                const ExactRational& msq) {
+  const ExactRational twice_msq = MultiplyRational(IntegerRational(2), msq);
+  const ExactRational t_squared = MultiplyRational(t, t);
+  const ExactRational mass_squared = MultiplyRational(msq, msq);
   return AddRational(
-      SubtractRational(
-          t_squared,
-          MultiplyRational(SubtractRational(twice_msq, substitutions.s), substitutions.t)),
+      SubtractRational(t_squared, MultiplyRational(SubtractRational(twice_msq, s), t)),
       mass_squared);
+}
+
+ExactRational ComputeReviewedEndpointPolynomial(
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  return ComputeReviewedEndpointPolynomial(substitutions.s,
+                                           substitutions.t,
+                                           substitutions.msq);
 }
 
 NumericEvaluationPoint BuildReviewedSegmentPassiveBindings(
@@ -273,20 +277,21 @@ NumericEvaluationPoint BuildReviewedSegmentPassiveBindings(
   return passive_bindings;
 }
 
-std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
+std::optional<ReviewedInvariantSegment> ParseReviewedInvariantSegment(
     const std::string& start_location,
     const std::string& target_location,
     const ReviewedK0ExactSubstitutions& substitutions,
+    const std::string& active_variable,
     const bool allow_unlabeled_reviewed_s_expressions) {
   const auto parse_location =
-      [&substitutions, allow_unlabeled_reviewed_s_expressions](
+      [&substitutions, &active_variable, allow_unlabeled_reviewed_s_expressions](
           const std::string& location) -> std::optional<ExactRational> {
     const NumericEvaluationPoint passive_bindings =
-        BuildReviewedSegmentPassiveBindings(substitutions, "s");
+        BuildReviewedSegmentPassiveBindings(substitutions, active_variable);
     const std::optional<ExplicitLocationAssignment> assignment =
         ParseExplicitLocationAssignment(location);
     if (assignment.has_value()) {
-      if (assignment->variable != "s") {
+      if (assignment->variable != active_variable) {
         return std::nullopt;
       }
       try {
@@ -296,7 +301,7 @@ std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
       }
     }
 
-    if (!allow_unlabeled_reviewed_s_expressions) {
+    if (active_variable != "s" || !allow_unlabeled_reviewed_s_expressions) {
       return std::nullopt;
     }
 
@@ -337,6 +342,44 @@ bool HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(
          IsUnlabeledLocationWithoutAssignment(target_location);
 }
 
+bool HaveOppositeSigns(const ExactRational& lhs, const ExactRational& rhs) {
+  return (IsNegative(lhs) && IsPositive(rhs)) ||
+         (IsPositive(lhs) && IsNegative(rhs));
+}
+
+ExactRational ComputeReviewedEndpointVertexT(
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  return DivideRational(
+      SubtractRational(MultiplyRational(IntegerRational(2), substitutions.msq),
+                       substitutions.s),
+      IntegerRational(2));
+}
+
+bool TSegmentCrossesReviewedEndpointSurface(
+    const ReviewedInvariantSegment& segment,
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  const ExactRational start_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, segment.start, substitutions.msq);
+  const ExactRational target_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, segment.target, substitutions.msq);
+  if (start_polynomial.IsZero() || target_polynomial.IsZero() ||
+      HaveOppositeSigns(start_polynomial, target_polynomial)) {
+    return true;
+  }
+  if (!IsPositive(start_polynomial) || !IsPositive(target_polynomial)) {
+    return false;
+  }
+
+  const ExactRational vertex_t = ComputeReviewedEndpointVertexT(substitutions);
+  if (!LiesOnClosedSegment(vertex_t, segment.start, segment.target)) {
+    return false;
+  }
+
+  const ExactRational vertex_polynomial =
+      ComputeReviewedEndpointPolynomial(substitutions.s, vertex_t, substitutions.msq);
+  return !IsPositive(vertex_polynomial);
+}
+
 std::optional<ExactRational> ComputeReviewedEndpointSingularS(
     const ReviewedK0ExactSubstitutions& substitutions) {
   if (substitutions.t.IsZero()) {
@@ -360,6 +403,12 @@ ExactRational ComputeReviewedNearSingularMargin(
 std::string DescribeReviewedClosedRealSSegment(const ExactRational& start,
                                                const ExactRational& target) {
   return "requested closed real s segment [" + start.ToString() + ", " +
+         target.ToString() + "]";
+}
+
+std::string DescribeReviewedClosedRealTSegment(const ExactRational& start,
+                                               const ExactRational& target) {
+  return "requested closed real t segment [" + start.ToString() + ", " +
          target.ToString() + "]";
 }
 
@@ -448,6 +497,7 @@ PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
 PhysicalKinematicsGuardrailAssessment
 AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const ProblemSpec& spec,
+    const std::string& invariant_name,
     const std::string& start_location,
     const std::string& target_location,
     const bool allow_unlabeled_reviewed_s_expressions) {
@@ -464,13 +514,18 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     return assessment;
   }
 
+  if (invariant_name != "s" && invariant_name != "t") {
+    return assessment;
+  }
+
   const std::optional<ReviewedInvariantSegment> segment =
-      ParseReviewedSInvariantSegment(start_location,
+      ParseReviewedInvariantSegment(start_location,
                                     target_location,
                                     *exact_substitutions,
+                                    invariant_name,
                                     allow_unlabeled_reviewed_s_expressions);
   if (!segment.has_value()) {
-    if (!allow_unlabeled_reviewed_s_expressions &&
+    if (invariant_name == "s" && !allow_unlabeled_reviewed_s_expressions &&
         HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(start_location,
                                                             target_location,
                                                             *exact_substitutions)) {
@@ -479,6 +534,17 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
           "ambiguous unlabeled continuation locations remain unsupported when s participates in "
           "a reviewed multi-invariant solve request; spell the reviewed s segment explicitly as "
           "s=...";
+    }
+    return assessment;
+  }
+
+  if (invariant_name == "t") {
+    if (TSegmentCrossesReviewedEndpointSurface(*segment, *exact_substitutions)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::SingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealTSegment(segment->start, segment->target) +
+          " crosses the reviewed 2->2 endpoint polynomial "
+          "t^2 - (2*msq - s)*t + msq^2 = 0";
     }
     return assessment;
   }
@@ -535,9 +601,23 @@ PhysicalKinematicsGuardrailAssessment
 AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const ProblemSpec& spec,
     const std::string& start_location,
+    const std::string& target_location,
+    const bool allow_unlabeled_reviewed_s_expressions) {
+  return AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+      spec,
+      "s",
+      start_location,
+      target_location,
+      allow_unlabeled_reviewed_s_expressions);
+}
+
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& start_location,
     const std::string& target_location) {
   return AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
-      spec, start_location, target_location, true);
+      spec, "s", start_location, target_location, true);
 }
 
 }  // namespace amflow

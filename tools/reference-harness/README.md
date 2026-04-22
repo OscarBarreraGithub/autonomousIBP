@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All six harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All eight harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61m` / `b62m` / `b63j` / `b64j`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
@@ -92,12 +92,15 @@ python3 tools/reference-harness/scripts/qualification_readiness.py \
 python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
   --reference-root /tmp/amflow-reference-bootstrap \
   --self-check
+
+python3 tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py \
+  --self-check
 ```
 
-`amflow-tests` now exercises all seven helper self-checks through the configured
+`amflow-tests` now exercises all eight helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, scaffold-validation, qualification-readiness, and retained-reference packet
-comparison regression paths without needing a real benchmark packet.
+retained-capture, scaffold-validation, qualification-readiness, and the single-packet plus
+packet-set retained-reference comparison regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -187,6 +190,26 @@ profiles from `templates/qualification-benchmarks.json`. It is still comparator 
 does not launch the C++ runtime, does not compute correct-digit scores, and does not by itself
 claim that `Milestone M6` is passing.
 
+To compare the full retained phase-0 packet split against candidate packet roots in one aggregated
+report:
+
+```bash
+python3 tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py \
+  --packet-root-pair /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set::/path/to/candidate-required-set \
+  --packet-root-pair /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair::/path/to/candidate-de-d0-pair \
+  --packet-root-pair /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair::/path/to/candidate-user-hook-pair
+```
+
+This packet-set comparator composes the existing single-packet comparator across the retained
+`required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique reference packet
+label per pair, requires each candidate packet root to publish exactly the retained benchmark split
+for that packet through `result-manifest.json` entries, and ignores uncaptured placeholder
+directories that do not publish a manifest. It still fails closed unless the compared benchmark ids
+match the scaffold's full current `reference-captured` phase-0 set exactly. It is still
+harness-only comparator plumbing: it does not launch the C++ runtime, does not compute
+correct-digit scores, does not inspect candidate failure-code behavior, and does not by itself
+claim that `Milestone M6` is passing.
+
 The capture script writes:
 
 - `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
@@ -252,6 +275,13 @@ The capture script writes:
   one candidate packet root against one retained reference packet root through exact canonical
   output-name/hash agreement on the selected phase-0 benchmarks while surfacing the frozen
   threshold/failure/regression metadata from the qualification scaffold.
+- `compare_phase0_packet_set_to_reference.py` is the first multi-packet M6 comparator: it
+  composes the existing packet comparator across the retained `required-set`, `de-d0-pair`, and
+  `user-hook-pair` split, requires one unique reference packet label per comparison pair, requires
+  each candidate packet root to publish exactly the retained benchmark split for that packet
+  through `result-manifest.json` entries while ignoring uncaptured placeholder directories without
+  manifests, and fails closed unless the compared benchmark ids match the scaffold's current
+  `reference-captured` phase-0 set exactly.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`
@@ -270,3 +300,8 @@ The capture script writes:
 - `compare_phase0_results_to_reference.py --self-check` exercises the first actual packet
   comparator against one synthetic retained reference root plus matching and mismatched candidate
   packets, covering hash mismatch, output-name drift, and missing-result-manifest rejection.
+- `compare_phase0_packet_set_to_reference.py --self-check` exercises the first multi-packet
+  comparator against one synthetic required retained root plus two synthetic optional packet
+  pairs, covering missing-packet rejection, placeholder-directory ignore behavior,
+  extra-candidate-benchmark rejection, duplicate packet-label rejection, and malformed
+  `--packet-root-pair` rejection.

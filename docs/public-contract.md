@@ -86,6 +86,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   actual benchmark comparator on that retained packet shape only: it compares one candidate packet
   root against one retained reference packet root through exact canonical output-name/hash
   agreement while surfacing the frozen scaffold threshold/failure/regression metadata.
+  `tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py` then composes that
+  comparator across the retained `required-set`, `de-d0-pair`, and `user-hook-pair` packet split,
+  requiring one unique reference packet label per pair, requiring each candidate packet root to
+  publish exactly the retained benchmark split for that packet through `result-manifest.json`
+  entries while ignoring uncaptured placeholder directories without manifests, and requiring the
+  compared benchmark ids to match the scaffold's full current `reference-captured` phase-0 set
+  exactly while preserving the same threshold/failure/regression metadata.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, do not score
   correct digits, do not inspect candidate failure-code behavior, and do not claim that
   `Milestone M6` is passing

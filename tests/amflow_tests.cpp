@@ -35895,6 +35895,112 @@ void Phase0ReferenceComparatorMatchesRetainedRequiredSetTest() {
                  "failure-code profile from the qualification scaffold");
 }
 
+void Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-reference-packet-set-compare-self-check",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      {"--self-check"},
+      "phase-0 reference packet-set comparator self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 reference packet-set comparator self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"matching_packet_set_matches_reference\": true",
+                 "phase-0 reference packet-set comparator self-check should keep a matching "
+                 "packet set on the retained-reference pass path");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 reference packet-set comparator self-check should keep the required "
+                 "reference-captured packet visible");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 reference packet-set comparator self-check should surface digit-"
+                 "threshold, failure-code, and regression metadata from the qualification "
+                 "scaffold");
+  ExpectContains(result.stdout_json, "\"missing_packet_rejected\": true",
+                 "phase-0 reference packet-set comparator self-check should fail closed when "
+                 "one captured packet is omitted");
+  ExpectContains(result.stdout_json, "\"placeholder_directories_ignored\": true",
+                 "phase-0 reference packet-set comparator self-check should ignore uncaptured "
+                 "placeholder benchmark directories that do not publish result manifests");
+  ExpectContains(result.stdout_json, "\"extra_candidate_benchmark_rejected\": true",
+                 "phase-0 reference packet-set comparator self-check should fail closed when "
+                 "one candidate packet publishes benchmarks outside its retained packet split");
+  ExpectContains(result.stdout_json, "\"duplicate_packet_label_rejected\": true",
+                 "phase-0 reference packet-set comparator self-check should reject duplicate "
+                 "reference packet labels across packet pairs");
+  ExpectContains(result.stdout_json, "\"malformed_packet_pair_rejected\": true",
+                 "phase-0 reference packet-set comparator self-check should reject malformed "
+                 "--packet-root-pair values");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 reference packet-set comparator self-check should write the synthetic "
+                 "summary output");
+}
+
+void Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest() {
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-reference-packet-set-compare-retained") / "summary.json";
+  std::vector<std::string> script_args = {"--summary-path", summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    script_args.push_back("--packet-root-pair");
+    script_args.push_back(root.string() + "::" + root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-reference-packet-set-compare-retained",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      script_args,
+      "phase-0 reference packet-set comparator report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 reference packet-set comparator report should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 reference packet-set comparator report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"packet_pair_count\": 3",
+                 "phase-0 reference packet-set comparator report should record the retained "
+                 "packet split");
+  ExpectContains(result.stdout_json, "\"required_packet_present\": true",
+                 "phase-0 reference packet-set comparator report should keep the required "
+                 "reference-captured packet visible");
+  ExpectContains(result.stdout_json,
+                 "\"reference_packet_labels_match_scaffold_reference_captured\": true",
+                 "phase-0 reference packet-set comparator report should keep retained packet "
+                 "labels synchronized with the scaffold's captured packet split");
+  ExpectContains(result.stdout_json,
+                 "\"compared_phase0_ids_match_scaffold_reference_captured\": true",
+                 "phase-0 reference packet-set comparator report should keep the compared phase-0 "
+                 "benchmark ids synchronized with the scaffold's captured set");
+  ExpectContains(result.stdout_json, "\"candidate_packet_benchmark_sets_match_reference\": true",
+                 "phase-0 reference packet-set comparator report should require each candidate "
+                 "packet to publish exactly the retained benchmark split");
+  ExpectContains(result.stdout_json, "\"candidate_output_hashes_match_reference\": true",
+                 "phase-0 reference packet-set comparator report should require exact canonical-"
+                 "output matches across the retained packet split");
+  ExpectContains(result.stdout_json, "\"required-set\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "required-set packet label");
+  ExpectContains(result.stdout_json, "\"de-d0-pair\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "D0 packet label");
+  ExpectContains(result.stdout_json, "\"user-hook-pair\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "user-hook packet label");
+  ExpectContains(result.stdout_json, "\"automatic_loop\"",
+                 "phase-0 reference packet-set comparator report should include automatic_loop");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 reference packet-set comparator report should include "
+                 "automatic_vs_manual");
+  ExpectContains(result.stdout_json, "\"differential_equation_solver\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "differential-equation benchmark");
+  ExpectContains(result.stdout_json, "\"spacetime_dimension\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "spacetime-dimension benchmark");
+  ExpectContains(result.stdout_json, "\"user_defined_amfmode\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "user-defined AMF-mode benchmark");
+  ExpectContains(result.stdout_json, "\"user_defined_ending\"",
+                 "phase-0 reference packet-set comparator report should include the retained "
+                 "user-defined ending benchmark");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -36791,6 +36897,8 @@ int main() {
     QualificationReadinessSelfCheckAggregatesRetainedPacketsTest();
     Phase0ReferenceComparatorSelfCheckCoversMismatchFailuresTest();
     Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
+    Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest();
+    Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

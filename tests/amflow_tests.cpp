@@ -1725,6 +1725,27 @@ amflow::ProblemSpec MakeBuiltinMassOverSelectionSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeBuiltinPrescriptionPhaseSpaceSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[1].prescription = -1;
+  spec.family.propagators[2].kind = amflow::PropagatorKind::Linear;
+  spec.family.propagators[2].prescription = -1;
+  spec.family.propagators[3].prescription = 1;
+  spec.family.propagators[4].kind = amflow::PropagatorKind::Auxiliary;
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[5].prescription = -1;
+  spec.family.propagators[6].prescription = -1;
+  return spec;
+}
+
+amflow::ProblemSpec MakeBuiltinPrescriptionNoEligibleSpec() {
+  amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  spec.family.propagators[0].prescription = 1;
+  spec.family.propagators[6].prescription = 0;
+  return spec;
+}
+
 amflow::ProblemSpec MakeBuiltinAllAuxiliarySpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   for (auto& propagator : spec.family.propagators) {
@@ -4223,8 +4244,8 @@ void AllEtaModeSkipsAuxiliaryPropagatorsTest() {
          "All eta mode should not select the second auxiliary propagator");
 }
 
-void PrescriptionEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
-  const amflow::ProblemSpec spec = MakeBuiltinAllEtaHappySpec();
+void PrescriptionEtaModeSelectsUncutMinusI0PropagatorsTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const auto mode = amflow::MakeBuiltinEtaMode("Prescription");
   const amflow::EtaInsertionDecision decision = mode->Plan(spec);
@@ -4232,30 +4253,47 @@ void PrescriptionEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
   Expect(decision.mode_name == "Prescription",
          "Prescription eta mode should preserve its mode name in the planning decision");
   Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 6},
-         "Prescription eta mode should select the supported non-auxiliary propagators in "
-         "declaration order");
+         "Prescription eta mode should select only the reviewed uncut standard -i0 "
+         "propagators in declaration order");
   Expect(decision.selected_propagators ==
              std::vector<std::string>{spec.family.propagators[0].expression,
                                       spec.family.propagators[6].expression},
          "Prescription eta mode should continue to expose the matching propagator expressions");
   Expect(decision.explanation ==
-             "Bootstrap alias selected 2 non-auxiliary propagators in declaration order for "
-             "mode Prescription",
-         "Prescription eta mode should use an honest bootstrap alias explanation");
+             "Bootstrap Prescription selector selected 2 uncut standard -i0 propagators in "
+             "declaration order on the current local declaration-order candidate surface",
+         "Prescription eta mode should use an honest explanation for the reviewed filtered "
+         "phase-space subset while keeping linear propagators out of scope");
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "Prescription eta mode should not mutate the input problem spec");
 }
 
-void PrescriptionEtaModeRejectsAllAuxiliaryPropagatorsTest() {
-  const amflow::ProblemSpec spec = MakeBuiltinAllAuxiliarySpec();
+void PrescriptionEtaModeRejectsWhenNoUncutMinusI0PropagatorsRemainTest() {
+  const amflow::ProblemSpec spec = MakeBuiltinPrescriptionNoEligibleSpec();
   const auto mode = amflow::MakeBuiltinEtaMode("Prescription");
 
   ExpectRuntimeError(
       [&mode, &spec]() {
         static_cast<void>(mode->Plan(spec));
       },
-      "eta mode Prescription found no non-auxiliary propagators in bootstrap",
-      "Prescription eta mode should reject an all-auxiliary bootstrap fixture deterministically");
+      "eta mode Prescription found no uncut standard -i0 propagators on the current local "
+      "declaration-order candidate surface",
+      "Prescription eta mode should reject reviewed phase-space surfaces that leave no uncut "
+      "standard -i0 candidates");
+}
+
+void PrescriptionEtaModeRejectsUnsupportedRawValuesBeforeFilteringTest() {
+  amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  spec.family.propagators[1].prescription = 2;
+  const auto mode = amflow::MakeBuiltinEtaMode("Prescription");
+
+  ExpectInvalidArgument(
+      [&mode, &spec]() {
+        static_cast<void>(mode->Plan(spec));
+      },
+      "eta mode Prescription encountered unsupported raw propagator prescription at index 1",
+      "Prescription eta mode should validate the frozen raw vocabulary before filtering cut "
+      "or linear propagators");
 }
 
 void PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
@@ -4959,6 +4997,21 @@ void PlanBuiltinAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest() {
   }
 }
 
+void PlanBuiltinAmfOptionsEtaModeRejectsInvalidPrescriptionBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  spec.family.propagators[1].prescription = 2;
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"Prescription", "Mass", "Propagator"});
+
+  ExpectInvalidArgument(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanBuiltinAmfOptionsEtaMode(spec, amf_options));
+      },
+      "eta mode Prescription encountered unsupported raw propagator prescription at index 1",
+      "builtin AmfOptions eta-mode planning should fail fast on invalid Prescription "
+      "vocabulary instead of falling through to later builtin modes");
+}
+
 void PlanAmfOptionsEtaModeHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -5123,6 +5176,31 @@ void PlanAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest() {
            "AmfOptions eta-mode planner should stop immediately on builtin Branch/Loop "
            "blockers without planning later modes");
   }
+}
+
+void PlanAmfOptionsEtaModeRejectsInvalidPrescriptionBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  spec.family.propagators[1].prescription = 2;
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"Prescription", "CustomMode"});
+
+  amflow::EtaInsertionDecision custom_decision;
+  custom_decision.mode_name = "CustomMode";
+  custom_decision.selected_propagator_indices = {0};
+  custom_decision.selected_propagators = {spec.family.propagators[0].expression};
+  const auto custom_mode =
+      std::make_shared<RecordingEtaMode>(custom_decision, "CustomMode");
+
+  ExpectInvalidArgument(
+      [&spec, &amf_options, &custom_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(spec, amf_options, {custom_mode}));
+      },
+      "eta mode Prescription encountered unsupported raw propagator prescription at index 1",
+      "mixed AmfOptions eta-mode planning should fail fast on invalid builtin Prescription "
+      "vocabulary instead of falling through");
+  Expect(custom_mode->call_count() == 0,
+         "mixed AmfOptions eta-mode planning should not try later modes after invalid builtin "
+         "Prescription input");
 }
 
 void ResolveEndingSchemeResolvesBuiltinNameWithoutUserDefinedOverrideTest() {
@@ -18927,7 +19005,7 @@ void SolveBuiltinEtaModeSeriesPrescriptionHappyPathTest() {
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
-  const amflow::ProblemSpec spec = MakeBuiltinAllEtaHappySpec();
+  const amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "eta=3/11";
@@ -20038,7 +20116,7 @@ void SolveBuiltinEtaModeListSeriesPrescriptionShortCircuitTest() {
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
   const amflow::ParsedMasterList master_basis =
       backend.ParseMasterList(fixture_root, "planar_double_box");
-  const amflow::ProblemSpec spec = MakeBuiltinAllEtaHappySpec();
+  const amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const std::string start_location = "eta=4/9";
@@ -20919,6 +20997,41 @@ void SolveAmfOptionsEtaModeSeriesRejectsUnknownBuiltinNameImmediatelyTest() {
   Expect(solver.call_count() == 0,
          "AmfOptions eta-mode solver handoff should not call the solver when builtin-name "
          "resolution fails");
+}
+
+void SolveAmfOptionsEtaModeSeriesRejectsInvalidPrescriptionBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeBuiltinPrescriptionPhaseSpaceSpec();
+  spec.family.propagators[1].prescription = 2;
+  amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"Prescription", "Mass", "Propagator"});
+  amflow::ParsedMasterList master_basis;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-eta-mode-invalid-prescription"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &amf_options, &master_basis, &layout, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            amf_options,
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "eta=0",
+            "eta=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "eta mode Prescription encountered unsupported raw propagator prescription at index 1",
+      "AmfOptions eta-mode solver handoff should fail fast on invalid Prescription vocabulary "
+      "instead of falling through to later builtin modes");
+
+  Expect(solver.call_count() == 0,
+         "AmfOptions eta-mode solver handoff should not call the solver after invalid "
+         "Prescription input");
 }
 
 void SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest() {
@@ -27619,8 +27732,9 @@ int main() {
     EtaInsertionAllowsNonzeroMassPropagatorsTest();
     AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     AllEtaModeSkipsAuxiliaryPropagatorsTest();
-    PrescriptionEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
-    PrescriptionEtaModeRejectsAllAuxiliaryPropagatorsTest();
+    PrescriptionEtaModeSelectsUncutMinusI0PropagatorsTest();
+    PrescriptionEtaModeRejectsWhenNoUncutMinusI0PropagatorsRemainTest();
+    PrescriptionEtaModeRejectsUnsupportedRawValuesBeforeFilteringTest();
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();
@@ -27658,12 +27772,14 @@ int main() {
     PlanBuiltinAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
     PlanBuiltinAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();
     PlanBuiltinAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest();
+    PlanBuiltinAmfOptionsEtaModeRejectsInvalidPrescriptionBeforeFallbackTest();
     PlanAmfOptionsEtaModeHappyPathTest();
     PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
     PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEtaModeRejectsRegistryValidationFailureTest();
     PlanAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();
     PlanAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest();
+    PlanAmfOptionsEtaModeRejectsInvalidPrescriptionBeforeFallbackTest();
     ResolveEndingSchemeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEndingSchemeResolvesUniqueUserDefinedSchemeTest();
     ResolveEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
@@ -28185,6 +28301,7 @@ int main() {
     SolveAmfOptionsEtaModeSeriesUsesDefaultAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesRejectsEmptyAmfModeListTest();
     SolveAmfOptionsEtaModeSeriesRejectsUnknownBuiltinNameImmediatelyTest();
+    SolveAmfOptionsEtaModeSeriesRejectsInvalidPrescriptionBeforeFallbackTest();
     SolveAmfOptionsEtaModeSeriesExecutionFailureAfterFallbackTest();
     SolveAmfOptionsEtaModeSeriesBootstrapPreflightFailureTest();
     SolveAmfOptionsEtaModeSeriesUseCacheReplaysMatchingSolvedPathTest();

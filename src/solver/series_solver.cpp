@@ -2421,6 +2421,12 @@ std::string SelectBuiltinEtaModeName(const ProblemSpec& spec,
   throw std::runtime_error("failed to select a builtin eta mode");
 }
 
+bool IsPrescriptionVocabularyFailure(const std::invalid_argument& error) {
+  return std::string(error.what()).find(
+             "eta mode Prescription encountered unsupported raw propagator prescription at index ") !=
+         std::string::npos;
+}
+
 EtaInsertionDecision SelectResolvedEtaModeDecision(
     const ProblemSpec& spec,
     const std::vector<std::string>& eta_mode_names,
@@ -2435,6 +2441,14 @@ EtaInsertionDecision SelectResolvedEtaModeDecision(
         ResolveEtaMode(eta_mode_name, user_defined_modes);
     try {
       return eta_mode->Plan(spec);
+    } catch (const std::invalid_argument& error) {
+      if (IsPrescriptionVocabularyFailure(error)) {
+        throw;
+      }
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
+          index + 1 == eta_mode_names.size()) {
+        throw;
+      }
     } catch (const std::exception&) {
       if (eta_mode_name == "Branch" || eta_mode_name == "Loop" ||
           index + 1 == eta_mode_names.size()) {

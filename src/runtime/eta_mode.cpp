@@ -53,6 +53,38 @@ void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision
   }
 }
 
+void ValidatePrescriptionVocabulary(const ProblemSpec& spec) {
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if (ParseFeynmanPrescription(spec.family.propagators[index].prescription).has_value()) {
+      continue;
+    }
+    throw std::invalid_argument(
+        "eta mode Prescription encountered unsupported raw propagator prescription at index " +
+        std::to_string(index));
+  }
+}
+
+bool IsPrescriptionVocabularyFailure(const std::invalid_argument& error) {
+  return std::string(error.what()).find(
+             "eta mode Prescription encountered unsupported raw propagator prescription at index ") !=
+         std::string::npos;
+}
+
+void SelectPrescriptionPropagators(const ProblemSpec& spec, EtaInsertionDecision& decision) {
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const auto& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Standard) {
+      continue;
+    }
+    if (propagator.prescription != static_cast<int>(FeynmanPrescription::MinusI0)) {
+      continue;
+    }
+
+    decision.selected_propagator_indices.push_back(index);
+    decision.selected_propagators.push_back(propagator.expression);
+  }
+}
+
 struct EtaTopologyPropagatorSummary {
   std::size_t declaration_order_index = 0;
   std::string expression;
@@ -1031,15 +1063,18 @@ class BuiltinEtaMode final : public EtaMode {
     decision.mode_name = name_;
 
     if (name_ == "Prescription") {
-      SelectNonAuxiliaryPropagators(spec, decision);
+      ValidatePrescriptionVocabulary(spec);
+      SelectPrescriptionPropagators(spec, decision);
       if (decision.selected_propagator_indices.empty()) {
-        throw std::runtime_error(
-            "eta mode Prescription found no non-auxiliary propagators in bootstrap");
+        throw std::runtime_error("eta mode Prescription found no uncut standard -i0 "
+                                 "propagators on the current local declaration-order candidate "
+                                 "surface");
       }
       std::ostringstream explanation;
-      explanation << "Bootstrap alias selected "
+      explanation << "Bootstrap Prescription selector selected "
                   << decision.selected_propagator_indices.size()
-                  << " non-auxiliary propagators in declaration order for mode Prescription";
+                  << " uncut standard -i0 propagators in declaration order on the current "
+                     "local declaration-order candidate surface";
       decision.explanation = explanation.str();
       return decision;
     }
@@ -1151,6 +1186,14 @@ EtaInsertionDecision PlanAmfOptionsEtaMode(
         ResolveEtaMode(eta_mode_name, user_defined_modes);
     try {
       return eta_mode->Plan(spec);
+    } catch (const std::invalid_argument& error) {
+      if (IsPrescriptionVocabularyFailure(error)) {
+        throw;
+      }
+      last_failure = std::current_exception();
+      if (eta_mode_name == "Branch" || eta_mode_name == "Loop") {
+        std::rethrow_exception(last_failure);
+      }
     } catch (const std::exception&) {
       last_failure = std::current_exception();
       if (eta_mode_name == "Branch" || eta_mode_name == "Loop") {

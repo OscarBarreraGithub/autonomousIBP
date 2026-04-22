@@ -147,7 +147,7 @@ retained outputs and rerun evidence.
 6. Freeze or refresh the placeholder phase-0 golden layout with `freeze_phase0_goldens.py`, creating stable metadata, coefficient-table, comparison, log, config, and result paths for each benchmark. Benchmark IDs are path-safe only. By default the script refreshes missing or placeholder-status files and preserves promoted real artifacts unless `--force` is supplied.
 7. Verify the Wolfram kernel is usable in non-interactive mode once the licensed environment is ready.
 8. Run dependency sanity checks in the pinned environment.
-9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any remaining examples that are not still marked with a `next_runtime_lane` blocker in the copied phase-0 catalog, such as `differential_equation_solver`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`. The copied catalog now also groups those ready optional examples by `optional_capture_packet`, so `de-d0-pair` and the next ready uncaptured `user-hook-pair` stay explicit.
+9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any remaining examples that are not still marked with a `next_runtime_lane` blocker in the copied phase-0 catalog, such as `differential_equation_solver`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`. The copied catalog now also groups those ready optional examples by `optional_capture_packet`, so `de-d0-pair` and the next ready uncaptured `user-hook-pair` stay explicit, and `capture_phase0_reference.py` can consume those packet ids directly.
 10. Promote the primary retained outputs to goldens, canonicalize the Mathematica output files for truthful comparison, and rerun the pinned environment to prove reproducibility.
 
 ## Current Batch-2 Scripts
@@ -163,7 +163,7 @@ retained outputs and rerun evidence.
   `b61i` / `b62i` / `b63g` / `b64f` surfaces.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
-- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` now selects every matching ready packet in that same frozen order, both selector modes stay mutually exclusive with `--required-only`, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
+- `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` and `--optional-capture-packet` flags are deduplicated and executed in the frozen phase-0 catalog order, at most one explicit selection mode may be used at a time, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
 
 ## Qualification Scaffold
 
@@ -188,5 +188,5 @@ rerun the bootstrap, catalog/scaffold coherence, and retained-capture regression
 needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
 placeholder-freeze, and retained-capture self-checks through the configured repo-local Python
 interpreter, and the retained-capture helper also self-checks the restart-safe
-`--resume-existing` path plus the explicit benchmark-selection contract, including direct
-`optional_capture_packet` selection.
+`--resume-existing` path plus the explicit benchmark-id, optional-packet, and `--required-only`
+selection contract, including direct `optional_capture_packet` selection.

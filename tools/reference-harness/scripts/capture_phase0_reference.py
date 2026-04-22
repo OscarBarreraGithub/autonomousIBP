@@ -75,11 +75,14 @@ def select_benchmarks(
     required_only: bool,
     optional_capture_packet: str | None = None,
 ) -> list[dict[str, Any]]:
-    if benchmark_ids and required_only:
-        raise ValueError("pass benchmark ids or --required-only, not both")
-    if optional_capture_packet is not None and (benchmark_ids or required_only):
+    selection_modes = (
+        int(bool(benchmark_ids))
+        + int(required_only)
+        + int(optional_capture_packet is not None)
+    )
+    if selection_modes > 1:
         raise ValueError(
-            "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
+            "choose at most one of --benchmark-id, --optional-capture-packet, or --required-only"
         )
     if optional_capture_packet is not None:
         wanted_packet = normalize_capture_packet(optional_capture_packet)
@@ -1052,7 +1055,8 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             )
         except ValueError as exc:
             selection_conflict_rejected = (
-                str(exc) == "pass benchmark ids or --required-only, not both"
+                str(exc)
+                == "choose at most one of --benchmark-id, --optional-capture-packet, or --required-only"
             )
         required_only_packet_conflict_rejected = False
         try:
@@ -1065,7 +1069,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         except ValueError as exc:
             required_only_packet_conflict_rejected = (
                 str(exc)
-                == "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
+                == "choose at most one of --benchmark-id, --optional-capture-packet, or --required-only"
             )
         packet_selection_conflict_rejected = False
         try:
@@ -1078,7 +1082,7 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         except ValueError as exc:
             packet_selection_conflict_rejected = (
                 str(exc)
-                == "pass benchmark ids, --required-only, or one optional capture packet, not a mixture"
+                == "choose at most one of --benchmark-id, --optional-capture-packet, or --required-only"
             )
         unknown_benchmark_rejected = False
         try:

@@ -32735,8 +32735,8 @@ void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
                  "capture reference-harness self-check should resolve optional capture packets "
                  "through the frozen catalog order");
   ExpectContains(result.stdout_json, "\"benchmark_selection_conflict_rejected\": true",
-                 "capture reference-harness self-check should reject mixing explicit benchmark "
-                 "ids with --required-only");
+                 "capture reference-harness self-check should reject mixing explicit selection "
+                 "modes");
   ExpectContains(result.stdout_json, "\"required_only_packet_conflict_rejected\": true",
                  "capture reference-harness self-check should reject mixing optional capture "
                  "packets with --required-only");

@@ -120,10 +120,10 @@ python3 tools/reference-harness/scripts/capture_phase0_reference.py \
 ```
 
 Repeated `--benchmark-id` flags still collapse duplicates and run in the catalog's frozen order
-rather than CLI order. `--required-only` cannot be combined with explicit benchmark ids, and
-`--optional-capture-packet` is mutually exclusive with both other selection modes while selecting
-every matching catalog entry in that same frozen order. The next ready uncaptured user-hook packet
-can therefore be requested directly as `--optional-capture-packet user-hook-pair`.
+rather than CLI order. `--optional-capture-packet` selects every matching catalog entry in that
+same frozen order, and at most one explicit selection mode may be used at a time. Packet
+selection is therefore the preferred path when the catalog already groups a ready optional pair
+such as `de-d0-pair` or `user-hook-pair`.
 If the required phase-0 pair is absent, the packet summary truthfully stays `bootstrap-only` even
 when the selected optional examples become `reference-captured`.
 

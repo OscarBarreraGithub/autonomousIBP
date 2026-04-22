@@ -324,6 +324,30 @@ std::optional<ReviewedInvariantSegment> ParseReviewedSInvariantSegment(
   return segment;
 }
 
+std::optional<ExactRational> ParseUnlabeledReviewedSLocationExpression(
+    const std::string& location,
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  const std::string trimmed = Trim(location);
+  if (trimmed.empty() || trimmed.find('=') != std::string::npos) {
+    return std::nullopt;
+  }
+
+  try {
+    return EvaluateCoefficientExpression(
+        trimmed, BuildReviewedSegmentPassiveBindings(substitutions, "s"));
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+bool HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(
+    const std::string& start_location,
+    const std::string& target_location,
+    const ReviewedK0ExactSubstitutions& substitutions) {
+  return ParseUnlabeledReviewedSLocationExpression(start_location, substitutions).has_value() ||
+         ParseUnlabeledReviewedSLocationExpression(target_location, substitutions).has_value();
+}
+
 std::optional<ExactRational> ComputeReviewedEndpointSingularS(
     const ReviewedK0ExactSubstitutions& substitutions) {
   if (substitutions.t.IsZero()) {
@@ -457,6 +481,16 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
                                     *exact_substitutions,
                                     allow_unlabeled_reviewed_s_expressions);
   if (!segment.has_value()) {
+    if (!allow_unlabeled_reviewed_s_expressions &&
+        HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(start_location,
+                                                            target_location,
+                                                            *exact_substitutions)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+      assessment.detail =
+          "ambiguous unlabeled continuation locations remain unsupported when s participates in "
+          "a reviewed multi-invariant solve request; spell the reviewed s segment explicitly as "
+          "s=...";
+    }
     return assessment;
   }
 

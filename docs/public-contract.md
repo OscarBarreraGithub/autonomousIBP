@@ -540,6 +540,11 @@ The first eta-generated solver handoff remains narrow:
   expressions keep reducer launch unchanged but rewrite assembled standalone `dimension`
   identifiers on this direct solver handoff before solver execution and still carry the normalized
   symbolic request metadata on `SolveRequest.amf_requested_dimension_expression`
+- when `ProblemSpec.kinematics.complex_numeric_substitutions` is non-empty, the wrapper now
+  validates that merged exact/complex binding map and exact-complex expression grammar before the
+  retained physical-kinematics guardrails or DE construction run, so malformed complex numeric
+  bindings fail explicitly with the underlying parser diagnostic instead of collapsing into the
+  retained unsupported-complex-kinematics summary
 - after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
 - on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
@@ -557,6 +562,9 @@ The first eta-mode-planned solver handoff is also bootstrap-only:
 - it is a thin wrapper: it calls `EtaMode::Plan(spec)`, then forwards the resulting `EtaInsertionDecision` directly into `SolveEtaGeneratedSeries(...)`, so the same generated-wrapper retry behavior applies downstream
 - planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
+- when complex numeric bindings are present, the same malformed-binding preflight now happens only
+  after exactly one retained `EtaMode::Plan(spec)` call because this wrapper still delegates
+  directly into `SolveEtaGeneratedSeries(...)`
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   exactly one `EtaMode::Plan(spec)` call and still do not invoke the supplied solver
 - this batch does not add new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
@@ -571,6 +579,9 @@ The first builtin eta-mode-name solver wrapper is also bootstrap-only:
 - builtin-name resolution failures preserve the existing `MakeBuiltinEtaMode(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream builtin planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaModePlannedSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
+- when complex numeric bindings are present, malformed complex-binding failures now also surface
+  downstream after builtin-name resolution and retained planning because this wrapper still
+  delegates into `SolveEtaModePlannedSeries(...)` / `SolveEtaGeneratedSeries(...)`
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   builtin-name resolution and still do not invoke the supplied solver
 - this batch does not add `AMFMode` list fallback, user-defined mode registration, new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving
@@ -587,6 +598,9 @@ The first builtin eta-mode-list solver wrapper is also bootstrap-only:
 - builtin `Branch` / `Loop` planning failures remain immediate terminal failures and do not fall through to later builtin names
 - if no builtin in the caller-supplied list reaches solve selection, the final builtin planning failure is preserved unchanged and the supplied solver is not invoked
 - downstream eta-generated `DESystem` construction failures from the selected builtin preserve the existing `SolveBuiltinEtaModeSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not trigger fallback to later builtin names
+- when complex numeric bindings are present, malformed complex-binding failures from the selected
+  builtin now also preserve that downstream failure path and do not trigger fallback to later
+  builtin names
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   builtin-list selection and still do not trigger fallback to later builtin names or invoke the
   supplied solver
@@ -626,6 +640,9 @@ The first mixed eta-mode single-name solver wrapper is also bootstrap-only:
 - resolution failures preserve the existing `ResolveEtaMode(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream planning failures preserve the existing `EtaMode::Plan(...)` diagnostics unchanged and do not invoke the supplied solver
 - downstream eta-generated `DESystem` construction failures also preserve the existing `SolveEtaModePlannedSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not invoke the supplied solver
+- when complex numeric bindings are present, malformed complex-binding failures now also surface
+  downstream after single-name resolution and retained planning because this wrapper still
+  delegates into `SolveEtaModePlannedSeries(...)` / `SolveEtaGeneratedSeries(...)`
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   single-name resolution and still do not invoke the supplied solver
 - this batch does not add exact-only `AmfOptions` overloads, CLI, cache policy, new builtin eta-mode semantics, or broader orchestration behavior
@@ -642,6 +659,8 @@ The first mixed eta-mode-list solver wrapper is also bootstrap-only:
 - if no mode in the caller-supplied list reaches solve selection, the final planning failure from `EtaMode::Plan(...)` is preserved unchanged and the supplied solver is not invoked
 - standard planning failures from `EtaMode::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts
 - downstream eta-generated `DESystem` construction failures from the selected mode preserve the existing `SolveResolvedEtaModeSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not trigger fallback to later names
+- when complex numeric bindings are present, malformed complex-binding failures from the selected
+  mode now also preserve that downstream failure path and do not trigger fallback to later names
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   mixed ordered selection and still do not trigger fallback to later names or invoke the
   supplied solver

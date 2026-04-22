@@ -3565,6 +3565,7 @@ amflow::ProblemSpec MakeUnsupportedK0SmokeProblemSpecForTests() {
 amflow::ProblemSpec MakeComplexK0SmokeProblemSpecForTests() {
   amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   spec.complex_mode = true;
+  spec.kinematics.numeric_substitutions.erase("s");
   spec.kinematics.complex_numeric_substitutions = {
       {"s", "30 + I/7"},
   };
@@ -17606,6 +17607,39 @@ void SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstruction
          "unsupported");
 }
 
+void SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest() {
+  amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+  spec.kinematics.complex_numeric_substitutions["s"] = "30 +";
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-malformed-complex-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &decision, &layout, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(spec,
+                                                          amflow::ParsedMasterList{},
+                                                          decision,
+                                                          MakeKiraReductionOptions(),
+                                                          layout,
+                                                          layout.root / "bin" /
+                                                              "unused-kira.sh",
+                                                          layout.root / "bin" /
+                                                              "unused-fermat.sh",
+                                                          solver,
+                                                          "eta=0",
+                                                          "eta=1",
+                                                          MakeDistinctPrecisionPolicy(),
+                                                          55));
+      },
+      "unexpected end of expression",
+      "eta solver handoff should validate malformed complex numeric bindings before the "
+      "unsupported complex-physical-kinematics guardrail fires");
+  Expect(solver.call_count() == 0,
+         "eta solver handoff should not call the solver when malformed complex numeric "
+         "bindings fail preflight");
+}
+
 void SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdSingularK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -18396,6 +18430,43 @@ void SolveEtaModePlannedSeriesHappyPathTest() {
          "eta-mode-planned solver handoff should preserve requested_digits");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "eta-mode-planned solver handoff should return solver diagnostics verbatim");
+}
+
+void SolveEtaModePlannedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest() {
+  amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+  spec.kinematics.complex_numeric_substitutions["s"] = "30 +";
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-mode-solver-malformed-complex-physical-kinematics"));
+  RecordingEtaMode eta_mode(decision, "RecordedComplexK0");
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &layout, &eta_mode, &solver]() {
+        static_cast<void>(amflow::SolveEtaModePlannedSeries(spec,
+                                                            amflow::ParsedMasterList{},
+                                                            eta_mode,
+                                                            MakeKiraReductionOptions(),
+                                                            layout,
+                                                            layout.root / "bin" /
+                                                                "unused-kira.sh",
+                                                            layout.root / "bin" /
+                                                                "unused-fermat.sh",
+                                                            solver,
+                                                            "eta=0",
+                                                            "eta=1",
+                                                            MakeDistinctPrecisionPolicy(),
+                                                            55));
+      },
+      "unexpected end of expression",
+      "eta-mode-planned solver handoff should validate malformed complex numeric bindings "
+      "before the unsupported complex-physical-kinematics guardrail fires");
+  Expect(eta_mode.call_count() == 1,
+         "eta-mode-planned malformed complex-binding coverage should still plan the reviewed "
+         "eta mode exactly once before wrapper preflight fails");
+  Expect(solver.call_count() == 0,
+         "eta-mode-planned malformed complex-binding coverage should not call the solver when "
+         "complex preflight fails");
 }
 
 void SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest() {
@@ -19486,6 +19557,38 @@ void SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest() {
            "builtin eta-mode solver handoff should not call the solver when builtin planning "
            "fails");
   }
+}
+
+void SolveBuiltinEtaModeSeriesRejectsMalformedComplexBindingsAfterModeResolutionTest() {
+  amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+  spec.kinematics.complex_numeric_substitutions["s"] = "30 +";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-malformed-complex-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveBuiltinEtaModeSeries(spec,
+                                                            amflow::ParsedMasterList{},
+                                                            "All",
+                                                            MakeKiraReductionOptions(),
+                                                            layout,
+                                                            layout.root / "bin" /
+                                                                "unused-kira.sh",
+                                                            layout.root / "bin" /
+                                                                "unused-fermat.sh",
+                                                            solver,
+                                                            "eta=0",
+                                                            "eta=1",
+                                                            MakeDistinctPrecisionPolicy(),
+                                                            55));
+      },
+      "unexpected end of expression",
+      "builtin eta-mode solver handoff should preserve malformed complex-binding failures after "
+      "mode resolution");
+  Expect(solver.call_count() == 0,
+         "builtin eta-mode solver handoff should not call the solver when malformed complex "
+         "bindings fail downstream preflight");
 }
 
 void SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest() {
@@ -22714,6 +22817,49 @@ void SolveResolvedEtaModeSeriesPlanningFailureTest() {
          "once before propagating failure");
   Expect(solver.call_count() == 0,
          "resolved eta-mode solver handoff should not call the solver when planning fails");
+}
+
+void SolveResolvedEtaModeListSeriesRejectsMalformedComplexBindingsWithoutFallbackTest() {
+  amflow::ProblemSpec spec = MakeComplexK0SmokeProblemSpecForTests();
+  spec.kinematics.complex_numeric_substitutions["s"] = "30 +";
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const auto selected_mode =
+      std::make_shared<RecordingEtaMode>(decision, "SelectedComplexMode");
+  const auto fallback_mode =
+      std::make_shared<RecordingEtaMode>(decision, "FallbackComplexMode");
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-resolved-eta-mode-list-malformed-complex-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &selected_mode, &fallback_mode, &layout, &solver]() {
+        static_cast<void>(amflow::SolveResolvedEtaModeListSeries(
+            spec,
+            amflow::ParsedMasterList{},
+            {"SelectedComplexMode", "FallbackComplexMode"},
+            {selected_mode, fallback_mode},
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "eta=0",
+            "eta=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "unexpected end of expression",
+      "resolved eta-mode list solver handoff should preserve malformed complex-binding failures "
+      "from the selected mode without falling through");
+  Expect(selected_mode->call_count() == 1,
+         "resolved eta-mode list solver handoff should plan the selected mode exactly once "
+         "before malformed complex-binding preflight fails");
+  Expect(fallback_mode->call_count() == 0,
+         "resolved eta-mode list solver handoff should not plan later modes after malformed "
+         "complex-binding preflight fails on the selected mode");
+  Expect(solver.call_count() == 0,
+         "resolved eta-mode list solver handoff should not call the solver when malformed "
+         "complex bindings fail downstream preflight");
 }
 
 void SolveResolvedEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest() {
@@ -28248,6 +28394,7 @@ int main() {
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();
     SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
@@ -28262,6 +28409,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsIdentityFallbackResultsTest();
     SolveEtaGeneratedSeriesRejectsEmptyGeneratedTargetsTest();
     SolveEtaModePlannedSeriesHappyPathTest();
+    SolveEtaModePlannedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();
     SolveEtaModePlannedSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveEtaModePlannedSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveEtaModePlannedSeriesBootstrapSolverPassthroughTest();
@@ -28277,6 +28425,7 @@ int main() {
     SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest();
     SolveBuiltinEtaModeSeriesRejectsUnknownBuiltinNameTest();
     SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest();
+    SolveBuiltinEtaModeSeriesRejectsMalformedComplexBindingsAfterModeResolutionTest();
     SolveBuiltinEtaModeListSeriesBootstrapPreflightFailureTest();
     SolveBuiltinEtaModeSeriesRejectsPropagatorWithoutNonAuxiliaryPropagatorsTest();
     SolveBuiltinEtaModeSeriesRejectsAllWithoutNonAuxiliaryPropagatorsTest();
@@ -28327,6 +28476,7 @@ int main() {
     SolveResolvedEtaModeSeriesRejectsUnknownNameWithUserDefinedRegistryTest();
     SolveResolvedEtaModeSeriesRejectsRegistryValidationFailureTest();
     SolveResolvedEtaModeSeriesPlanningFailureTest();
+    SolveResolvedEtaModeListSeriesRejectsMalformedComplexBindingsWithoutFallbackTest();
     SolveResolvedEtaModeListSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveResolvedEtaModeListSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolveResolvedEtaModeListSeriesExactDimensionOverridePreservesUnknownNameFailureTest();

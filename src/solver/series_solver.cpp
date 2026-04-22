@@ -2904,6 +2904,18 @@ SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summar
   return diagnostics;
 }
 
+void ValidateComplexEtaGeneratedWrapperBindings(const ProblemSpec& spec) {
+  if (spec.kinematics.complex_numeric_substitutions.empty()) {
+    return;
+  }
+
+  const NumericEvaluationPoint evaluation_point = BuildComplexNumericEvaluationPoint(spec);
+  for (const auto& [name, value] : spec.kinematics.complex_numeric_substitutions) {
+    static_cast<void>(name);
+    static_cast<void>(EvaluateComplexCoefficientExpression(value, evaluation_point));
+  }
+}
+
 SolverDiagnostics MakePhysicalKinematicsNotSupportedDiagnostics(
     const PhysicalKinematicsGuardrailAssessment& assessment) {
   SolverDiagnostics diagnostics;
@@ -4118,6 +4130,7 @@ SolverDiagnostics SolveEtaGeneratedSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  ValidateComplexEtaGeneratedWrapperBindings(spec);
   const std::optional<std::string> normalized_dimension_expression =
       NormalizePublicDimensionExpression(exact_dimension_override);
   const std::optional<std::string> normalized_exact_dimension_override =

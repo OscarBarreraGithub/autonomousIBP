@@ -1,6 +1,8 @@
 #include "amflow/core/problem_spec.hpp"
 
+#include <cctype>
 #include <stdexcept>
+#include <set>
 #include <sstream>
 
 namespace amflow {
@@ -24,6 +26,30 @@ std::string Join(const std::vector<std::string>& values) {
     out << Quote(values[index]);
   }
   return out.str();
+}
+
+std::set<std::string> ExtractIdentifiers(const std::string& expression) {
+  std::set<std::string> identifiers;
+  std::size_t index = 0;
+  while (index < expression.size()) {
+    const unsigned char current = static_cast<unsigned char>(expression[index]);
+    if (std::isalpha(current) == 0 && current != static_cast<unsigned char>('_')) {
+      ++index;
+      continue;
+    }
+
+    const std::size_t begin = index;
+    ++index;
+    while (index < expression.size()) {
+      const unsigned char next = static_cast<unsigned char>(expression[index]);
+      if (std::isalnum(next) == 0 && next != static_cast<unsigned char>('_')) {
+        break;
+      }
+      ++index;
+    }
+    identifiers.insert(expression.substr(begin, index - begin));
+  }
+  return identifiers;
 }
 
 }  // namespace
@@ -82,6 +108,61 @@ PropagatorVariant EffectivePropagatorVariant(const Propagator& propagator) {
                                                    : PropagatorVariant::Quadratic;
 }
 
+std::optional<FeynmanPrescription> DerivePropagatorPrescriptionFromLoopPrescriptions(
+    const FamilyDefinition& family,
+    const Propagator& propagator) {
+  if (family.loop_prescriptions.empty()) {
+    return std::nullopt;
+  }
+  if (family.loop_prescriptions.size() != family.loop_momenta.size()) {
+    throw std::invalid_argument(
+        "family.loop_prescriptions size must match family.loop_momenta size");
+  }
+
+  const std::set<std::string> identifiers = ExtractIdentifiers(propagator.expression);
+  bool saw_matched_loop = false;
+  bool saw_plus = false;
+  bool saw_minus = false;
+  bool saw_none = false;
+  for (std::size_t index = 0; index < family.loop_prescriptions.size(); ++index) {
+    const FeynmanPrescription loop_prescription = family.loop_prescriptions[index];
+    if (!ParseFeynmanPrescription(static_cast<int>(loop_prescription)).has_value()) {
+      throw std::invalid_argument("family.loop_prescriptions[" + std::to_string(index) +
+                                  "] must be one of -1 (-i0), 0 (none), or 1 (+i0)");
+    }
+    if (identifiers.find(family.loop_momenta[index]) == identifiers.end()) {
+      continue;
+    }
+    saw_matched_loop = true;
+
+    switch (loop_prescription) {
+      case FeynmanPrescription::PlusI0:
+        saw_plus = true;
+        break;
+      case FeynmanPrescription::MinusI0:
+        saw_minus = true;
+        break;
+      case FeynmanPrescription::None:
+        saw_none = true;
+        break;
+    }
+  }
+
+  if (!saw_matched_loop) {
+    return std::nullopt;
+  }
+  if (!saw_plus && !saw_minus) {
+    if (saw_none) {
+      return FeynmanPrescription::None;
+    }
+    return std::nullopt;
+  }
+  if (saw_plus && saw_minus) {
+    return std::nullopt;
+  }
+  return saw_plus ? FeynmanPrescription::PlusI0 : FeynmanPrescription::MinusI0;
+}
+
 std::string ToString(AmflowLoopPrefactorSign sign) {
   switch (sign) {
     case AmflowLoopPrefactorSign::PlusI0:
@@ -118,6 +199,19 @@ std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec) {
   }
   if (spec.family.loop_momenta.empty()) {
     messages.emplace_back("family.loop_momenta must not be empty");
+  }
+  if (!spec.family.loop_prescriptions.empty() &&
+      spec.family.loop_prescriptions.size() != spec.family.loop_momenta.size()) {
+    messages.emplace_back(
+        "family.loop_prescriptions size must match family.loop_momenta size");
+  }
+  for (std::size_t index = 0; index < spec.family.loop_prescriptions.size(); ++index) {
+    if (ParseFeynmanPrescription(static_cast<int>(spec.family.loop_prescriptions[index]))
+            .has_value()) {
+      continue;
+    }
+    messages.emplace_back("family.loop_prescriptions[" + std::to_string(index) +
+                          "] must be one of -1 (-i0), 0 (none), or 1 (+i0)");
   }
   if (spec.family.propagators.empty()) {
     messages.emplace_back("family.propagators must not be empty");
@@ -170,6 +264,16 @@ std::string SerializeProblemSpecYaml(const ProblemSpec& spec) {
   out << "family:\n";
   out << Indent(1) << "name: " << Quote(spec.family.name) << "\n";
   out << Indent(1) << "loop_momenta: [" << Join(spec.family.loop_momenta) << "]\n";
+  if (!spec.family.loop_prescriptions.empty()) {
+    out << Indent(1) << "loop_prescriptions: [";
+    for (std::size_t index = 0; index < spec.family.loop_prescriptions.size(); ++index) {
+      if (index > 0) {
+        out << ", ";
+      }
+      out << static_cast<int>(spec.family.loop_prescriptions[index]);
+    }
+    out << "]\n";
+  }
   out << Indent(1) << "top_level_sectors: [";
   for (std::size_t index = 0; index < spec.family.top_level_sectors.size(); ++index) {
     if (index > 0) {

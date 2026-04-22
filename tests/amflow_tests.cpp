@@ -1872,6 +1872,48 @@ amflow::ProblemSpec MakeReviewedCutkoskyPhaseSpaceSpec() {
   return spec;
 }
 
+amflow::FamilyDefinition MakeAutomaticPhaseSpaceLoopPrescriptionFamily() {
+  amflow::FamilyDefinition family;
+  family.name = "phase";
+  family.loop_momenta = {"l1", "l2"};
+  family.loop_prescriptions = {amflow::FeynmanPrescription::None,
+                               amflow::FeynmanPrescription::None};
+  family.propagators = {
+      amflow::Propagator("l1^2-msq"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l1+l2+p1)^2"),
+      amflow::Propagator("(l1+l2+p1+p2)^2"),
+      amflow::Propagator("(l1+l2+p2)^2"),
+      amflow::Propagator("(l1+p2)^2"),
+  };
+  return family;
+}
+
+amflow::FamilyDefinition MakeFeynmanPrescriptionLoopPrescriptionFamily() {
+  amflow::FamilyDefinition family;
+  family.name = "loopxloop";
+  family.loop_momenta = {"l1", "l2", "q"};
+  family.loop_prescriptions = {amflow::FeynmanPrescription::PlusI0,
+                               amflow::FeynmanPrescription::MinusI0,
+                               amflow::FeynmanPrescription::None};
+  family.propagators = {
+      amflow::Propagator("l1^2"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("(l1+p1+p2)^2"),
+      amflow::Propagator("(l1+q)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l2-p2)^2"),
+      amflow::Propagator("(l2-p2-p1)^2"),
+      amflow::Propagator("(l2-q)^2"),
+      amflow::Propagator("q^2-msq"),
+      amflow::Propagator("(p1+p2-q)^2-m2sq"),
+      amflow::Propagator("(l1-l2)^2"),
+      amflow::Propagator("(p1-q)^2"),
+  };
+  return family;
+}
+
 amflow::ProblemSpec MakeUnsupportedBranchLoopGrammarSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.family.propagators[0].expression = "s*((k1)^2)";
@@ -3776,6 +3818,25 @@ void ProblemSpecRoundTripPreservesExplicitPropagatorVariantTest() {
          "problem spec round-trip should preserve explicit propagator variants");
 }
 
+void ProblemSpecRoundTripPreservesLoopPrescriptionsTest() {
+  amflow::ProblemSpec original = amflow::MakeSampleProblemSpec();
+  original.family.loop_prescriptions = {amflow::FeynmanPrescription::PlusI0,
+                                        amflow::FeynmanPrescription::None};
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() /
+      "amflow-bootstrap-loop-prescriptions-problem-spec.yaml";
+  {
+    std::ofstream stream(path);
+    stream << amflow::SerializeProblemSpecYaml(original);
+  }
+
+  const amflow::ProblemSpec loaded = amflow::LoadProblemSpecFile(path);
+  Expect(loaded.family.loop_prescriptions == original.family.loop_prescriptions,
+         "problem spec round-trip should preserve typed loop prescriptions");
+  Expect(amflow::SerializeProblemSpecYaml(loaded) == amflow::SerializeProblemSpecYaml(original),
+         "problem spec round-trip should preserve typed loop prescriptions");
+}
+
 void AmflowPrefactorReferenceSpecContainsLockedEvidenceTest() {
   const std::string yaml = ReadFile(AmflowPrefactorReferenceSpecPath());
   ExpectAmflowPrefactorReferenceSpecContainsLockedEvidence(yaml);
@@ -4579,6 +4640,18 @@ void ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest() {
          "problem-spec validation should reject unsupported raw prescription values");
 }
 
+void ValidateProblemSpecRejectsLoopPrescriptionArityMismatchTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.loop_prescriptions = {amflow::FeynmanPrescription::MinusI0};
+
+  const auto messages = amflow::ValidateProblemSpec(spec);
+  Expect(ContainsSubstring(messages,
+                           "family.loop_prescriptions size must match family.loop_momenta "
+                           "size"),
+         "problem-spec validation should reject loop-prescription vectors whose arity does not "
+         "match family.loop_momenta");
+}
+
 void LoadedSpecValidationRejectsMismatchedExplicitPropagatorVariantTest() {
   const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
   std::string invalid_variant_yaml = amflow::SerializeProblemSpecYaml(sample);
@@ -4605,6 +4678,125 @@ void ParseProblemSpecRejectsUnsupportedPropagatorVariantKeywordTest() {
   ExpectParseFailure(invalid_variant_yaml,
                      "unsupported propagator variant: cubic",
                      "problem-spec parsing should reject unsupported propagator variant keywords");
+}
+
+void ParseProblemSpecRejectsUnsupportedLoopPrescriptionKeywordTest() {
+  const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
+  std::string invalid_loop_yaml = amflow::SerializeProblemSpecYaml(sample);
+  InsertBefore(invalid_loop_yaml,
+               "  top_level_sectors:",
+               "  loop_prescriptions: [1, 2]\n");
+  ExpectParseFailure(
+      invalid_loop_yaml,
+      "unsupported loop prescription value: 2",
+      "problem-spec parsing should reject unsupported loop-prescription literals");
+}
+
+void ParseProblemSpecTreatsEmptyLoopPrescriptionListAsAbsentTest() {
+  const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
+  std::string empty_loop_yaml = amflow::SerializeProblemSpecYaml(sample);
+  InsertBefore(empty_loop_yaml,
+               "  top_level_sectors:",
+               "  loop_prescriptions: []\n");
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() /
+      "amflow-bootstrap-empty-loop-prescriptions-problem-spec.yaml";
+  {
+    std::ofstream stream(path);
+    stream << empty_loop_yaml;
+  }
+
+  const amflow::ProblemSpec loaded = amflow::LoadProblemSpecFile(path);
+  Expect(loaded.family.loop_prescriptions.empty(),
+         "problem-spec parsing should treat an explicit empty loop-prescription list as absent "
+         "metadata");
+  Expect(amflow::SerializeProblemSpecYaml(loaded).find("loop_prescriptions:") == std::string::npos,
+         "problem-spec canonicalization should omit an explicitly empty loop-prescription list");
+}
+
+void ParseProblemSpecCanonicalizesEquivalentLoopPrescriptionIntegersTest() {
+  const amflow::ProblemSpec sample = amflow::MakeSampleProblemSpec();
+  std::string equivalent_loop_yaml = amflow::SerializeProblemSpecYaml(sample);
+  InsertBefore(equivalent_loop_yaml,
+               "  top_level_sectors:",
+               "  loop_prescriptions: [+1, 00]\n");
+
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() /
+      "amflow-bootstrap-equivalent-loop-prescriptions-problem-spec.yaml";
+  {
+    std::ofstream stream(path);
+    stream << equivalent_loop_yaml;
+  }
+
+  const amflow::ProblemSpec loaded = amflow::LoadProblemSpecFile(path);
+  Expect(loaded.family.loop_prescriptions ==
+             std::vector<amflow::FeynmanPrescription>{amflow::FeynmanPrescription::PlusI0,
+                                                      amflow::FeynmanPrescription::None},
+         "problem-spec parsing should accept integer spellings that canonicalize to the reviewed "
+         "loop-prescription values");
+  Expect(amflow::SerializeProblemSpecYaml(loaded).find("loop_prescriptions: [1, 0]\n") !=
+             std::string::npos,
+         "problem-spec canonicalization should normalize equivalent loop-prescription integer "
+         "spellings");
+}
+
+void DerivePropagatorPrescriptionFromLoopPrescriptionsSupportsReviewedExampleShapesTest() {
+  const amflow::FamilyDefinition automatic_family =
+      MakeAutomaticPhaseSpaceLoopPrescriptionFamily();
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             automatic_family,
+             automatic_family.propagators[0]) == amflow::FeynmanPrescription::None,
+         "loop-prescription derivation should collapse the automatic_phasespace loop pair to "
+         "no prescription on a single-loop propagator");
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             automatic_family,
+             automatic_family.propagators[3]) == amflow::FeynmanPrescription::None,
+         "loop-prescription derivation should preserve the all-zero automatic_phasespace "
+         "polarity on mixed-loop propagators");
+
+  const amflow::FamilyDefinition feynman_family =
+      MakeFeynmanPrescriptionLoopPrescriptionFamily();
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             feynman_family,
+             feynman_family.propagators[1]) == amflow::FeynmanPrescription::PlusI0,
+         "loop-prescription derivation should preserve a uniform +i0 polarity from the frozen "
+         "feynman_prescription example shape");
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             feynman_family,
+             feynman_family.propagators[5]) == amflow::FeynmanPrescription::MinusI0,
+         "loop-prescription derivation should preserve a uniform -i0 polarity from the frozen "
+         "feynman_prescription example shape");
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             feynman_family,
+             feynman_family.propagators[8]) == amflow::FeynmanPrescription::None,
+         "loop-prescription derivation should collapse a loop with explicit 0 prescription to "
+         "the frozen no-prescription token");
+  Expect(amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+             feynman_family,
+             feynman_family.propagators[3]) == amflow::FeynmanPrescription::PlusI0,
+         "loop-prescription derivation should ignore zero-prescription loops when one nonzero "
+         "sign survives on the reviewed example surface");
+}
+
+void DerivePropagatorPrescriptionFromLoopPrescriptionsRejectsNoMatchedLoopsTest() {
+  const amflow::FamilyDefinition family = MakeAutomaticPhaseSpaceLoopPrescriptionFamily();
+  Expect(!amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(
+              family,
+              amflow::Propagator("(p1+p2)^2"))
+              .has_value(),
+         "loop-prescription derivation should report unresolved when a propagator expression "
+         "mentions no declared loop momentum");
+}
+
+void DerivePropagatorPrescriptionFromLoopPrescriptionsRejectsMixedSignsTest() {
+  const amflow::FamilyDefinition family = MakeFeynmanPrescriptionLoopPrescriptionFamily();
+  Expect(!amflow::DerivePropagatorPrescriptionFromLoopPrescriptions(family,
+                                                                    family.propagators[10])
+              .has_value(),
+         "loop-prescription derivation should report mixed nonzero signs as unresolved on the "
+         "reviewed phase-space example surface");
 }
 
 void EtaInsertionHappyPathTest() {
@@ -35749,6 +35941,7 @@ int main() {
     ProblemSpecRoundTripTest();
     ProblemSpecRoundTripPreservesComplexNumericSubstitutionsTest();
     ProblemSpecRoundTripPreservesExplicitPropagatorVariantTest();
+    ProblemSpecRoundTripPreservesLoopPrescriptionsTest();
     AmflowPrefactorReferenceSpecContainsLockedEvidenceTest();
     AmflowPrefactorReferenceMirrorMatchesPrefactorReferenceSpecTest();
     DefaultAmflowPrefactorConventionMatchesPrefactorReferenceSpecTest();
@@ -35797,8 +35990,15 @@ int main() {
     ValidateProblemSpecRejectsMismatchedExplicitPropagatorVariantTest();
     FeynmanPrescriptionVocabularyTest();
     ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest();
+    ValidateProblemSpecRejectsLoopPrescriptionArityMismatchTest();
     LoadedSpecValidationRejectsMismatchedExplicitPropagatorVariantTest();
     ParseProblemSpecRejectsUnsupportedPropagatorVariantKeywordTest();
+    ParseProblemSpecRejectsUnsupportedLoopPrescriptionKeywordTest();
+    ParseProblemSpecTreatsEmptyLoopPrescriptionListAsAbsentTest();
+    ParseProblemSpecCanonicalizesEquivalentLoopPrescriptionIntegersTest();
+    DerivePropagatorPrescriptionFromLoopPrescriptionsSupportsReviewedExampleShapesTest();
+    DerivePropagatorPrescriptionFromLoopPrescriptionsRejectsNoMatchedLoopsTest();
+    DerivePropagatorPrescriptionFromLoopPrescriptionsRejectsMixedSignsTest();
     EtaInsertionHappyPathTest();
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();

@@ -210,6 +210,19 @@ std::vector<int> ParseIntegerList(const ParsedLine& line, const std::string& val
   return parsed;
 }
 
+std::vector<FeynmanPrescription> ParseLoopPrescriptionList(const ParsedLine& line,
+                                                           const std::string& value) {
+  std::vector<FeynmanPrescription> parsed;
+  for (const int item : ParseIntegerList(line, value)) {
+    const std::optional<FeynmanPrescription> prescription = ParseFeynmanPrescription(item);
+    if (!prescription.has_value()) {
+      Fail(line.number, "unsupported loop prescription value: " + std::to_string(item));
+    }
+    parsed.push_back(*prescription);
+  }
+  return parsed;
+}
+
 bool ParseBoolValue(const ParsedLine& line, const std::string& value) {
   const std::string trimmed = Trim(value);
   if (trimmed == "true") {
@@ -497,6 +510,11 @@ FamilyDefinition ParseFamily(const std::vector<ParsedLine>& lines, std::size_t& 
     }
     if (key == "loop_momenta") {
       family.loop_momenta = ParseStringList(line, value);
+      ++index;
+      continue;
+    }
+    if (key == "loop_prescriptions") {
+      family.loop_prescriptions = ParseLoopPrescriptionList(line, value);
       ++index;
       continue;
     }

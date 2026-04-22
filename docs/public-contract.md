@@ -250,7 +250,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   described below; the reviewed local phase-space slice now narrows builtin `Prescription` to
   standard uncut `-i0` propagators (`Batch 63b`), emits explicit Kira `cut_propagators`
   (`Batch 63c`), adds Cutkosky phase-space request/attach wrappers, and adds a caller-supplied
-  provider-registry seam without phase-space boundary values;
+  provider-registry seam without phase-space boundary values; the current worktree now also adds
+  typed per-loop `family.loop_prescriptions` parsing/validation/serialization plus pure
+  `DerivePropagatorPrescriptionFromLoopPrescriptions(...)` collapse logic over reviewed frozen
+  example shapes only, without widening builtin `Prescription` selection, top-sector or Cutkosky
+  topology analysis, provider behavior, or automatic phase-space boundary-value generation;
   and explicit linear variants now reach only the reviewed invariant seed/execution subsets, the
   stricter general Kira-preparation subset, the direct eta-generated plus eta-mode-planned solver
   handoffs on the reviewed direct-decision subset where only reviewed quadratic propagators are
@@ -283,6 +287,20 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   direct eta-generated plus eta-mode-planned solver handoffs now preserve that same reviewed
   direct-decision subset without widening builtin eta-mode selection or broader non-invariant
   linear solver behavior
+- `FamilyDefinition.loop_prescriptions` plus
+  `DerivePropagatorPrescriptionFromLoopPrescriptions(...)`: the first typed per-loop prescription
+  metadata seam on the phase-space lane. File-backed `ProblemSpec` loading now preserves an
+  optional integer list whose parsed values must canonicalize to the frozen loop-prescription
+  vocabulary `-1`, `0`, or `1`; non-empty lists must stay parallel to `family.loop_momenta`,
+  while an explicit empty list canonicalizes to omitted metadata. The pure collapse helper then
+  inspects the referenced loop identifiers in one propagator expression and returns `PlusI0`,
+  `MinusI0`, `None`, or unresolved `std::nullopt` by preserving one uniform surviving nonzero
+  loop sign, ignoring zero-prescription loops when one nonzero sign survives, returning `None`
+  only when every matched loop stays at explicit `0`, and rejecting mixed surviving nonzero
+  signs or expressions that mention no declared loop momentum. This seam is metadata-only: it
+  does not yet widen
+  builtin `Prescription`, top-sector / Cutkosky topology analysis, provider behavior, or
+  automatic phase-space boundary-value generation
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -366,6 +384,13 @@ shape matches the checked-in example spec: nested `family`, `kinematics`, and `t
 bracketed scalar lists; block lists for propagators, preferred masters, scalar-product rules, and
 targets; scalar maps for exact `numeric_substitutions` and raw
 `complex_numeric_substitutions`; and top-level `dimension`, `complex_mode`, and `notes`.
+
+Within `family`, the current reviewed `Batch 63j` surface also accepts an optional
+`loop_prescriptions` bracketed integer list. Canonical loading accepts integer spellings whose
+parsed values are the frozen loop-prescription vocabulary `-1`, `0`, and `1`; equivalent forms
+such as `+1` or `00` therefore parse and canonicalize back to `1` and `0`. Non-empty lists must
+match the `loop_momenta` arity, and an explicit empty list is treated as omitted metadata and
+canonicalized back out of the serialized YAML.
 
 Within each propagator entry, the current reviewed B64a surface also accepts an optional typed
 `variant` scalar with the frozen keywords `"quadratic"` or `"linear"`. The file-backed loader
@@ -1044,6 +1069,10 @@ The first boundary-request and manual boundary-attachment seams are also bootstr
 - that overload is the first reviewed phase-space provider-registry wrapper: it preserves the same ordered ending-selection and request-copying behavior, then attaches through `AttachBoundaryConditionsFromProviderRegistry(...)` before calling the supplied `SeriesSolver` exactly once
 - ordered ending planning is therefore preserved unchanged through the standalone helper, while the first successfully selected phase-space ending now also owns the resulting phase-space boundary-subset diagnostic; provider attachment diagnostics still propagate unchanged
 - non-`ending_schemes` `AmfOptions` fields remain inert at this seam, and these wrappers do not widen into builtin provider registries, direct `SolveDifferentialEquation(...)` provider consultation, CLI behavior, or broader ending semantics beyond the exact singleton `<family>::cutkosky-phase-space` request
+- the current worktree also preserves typed per-loop `family.loop_prescriptions` metadata plus
+  pure `DerivePropagatorPrescriptionFromLoopPrescriptions(...)` collapse logic, but these
+  reviewed phase-space request/attach wrappers still do not consult that metadata for builtin
+  provider selection, topological cut analysis, or automatic boundary-value generation
 - `BootstrapSeriesSolver` now requires an explicit manual start boundary on its supported Batch 39 subset and returns typed `boundary_unsolved` for missing or incompatible explicit start-boundary attachment before continuation begins
 - Batch 44 keeps the provider seam separate from solving: `BootstrapSeriesSolver` and `SolveDifferentialEquation(...)` remain unchanged and do not consult `BoundaryProvider`
 - Batch 45 and Batch 46 still do not add builtin or registered boundary providers, eta-to-infinity or phase-space boundary value computation, or automatic `BoundaryCondition` generation. The current reviewed runtime now also generates one reviewed Cutkosky phase-space request shape, one single-provider `AmfOptions` phase-space attach-and-solve wrapper, and one caller-supplied provider-registry attach seam plus a matching phase-space wrapper overload, but automatic boundary-value generation and direct `SolveDifferentialEquation(...)` provider consultation remain deferred

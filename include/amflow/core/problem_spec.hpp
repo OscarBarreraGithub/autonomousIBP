@@ -70,10 +70,15 @@ struct TargetIntegral {
 struct FamilyDefinition {
   std::string name;
   std::vector<std::string> loop_momenta;
+  std::vector<FeynmanPrescription> loop_prescriptions;
   std::vector<int> top_level_sectors;
   std::vector<Propagator> propagators;
   std::vector<std::string> preferred_masters;
 };
+
+std::optional<FeynmanPrescription> DerivePropagatorPrescriptionFromLoopPrescriptions(
+    const FamilyDefinition& family,
+    const Propagator& propagator);
 
 struct Kinematics {
   std::vector<std::string> incoming_momenta;

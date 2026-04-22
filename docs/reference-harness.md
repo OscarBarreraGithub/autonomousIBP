@@ -179,6 +179,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/capture_phase0_reference.py`: stages isolated AMFlow example runs, patches the pinned reducer install hook, retains the primary and rerun outputs, canonicalizes Mathematica file ordering for truthful comparisons, and promotes the required phase-0 benchmark set into `reference-captured` state when every required benchmark matches both bundled `kira_*` backups and the rerun. Repeated `--benchmark-id` flags are deduplicated and executed in the frozen phase-0 catalog order, `--optional-capture-packet` selects every matching ready benchmark in that same frozen order, at most one explicit selection mode may be used at a time, and `--resume-existing` reuses already-retained per-run manifests after a walltime kill instead of replaying completed labels. Narrower optional packets may retain individual examples while the manifest truthfully remains `bootstrap-only` if the required phase-0 pair is absent.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py`: the first narrow M6 readiness helper. It consumes one or more retained phase-0 packet roots, validates their manifests / capture summaries / promoted comparison surfaces against the current qualification scaffold, and reports which frozen phase-0 example classes already have retained goldens across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` packet split. This is an evidence-audit helper only: it does not run any qualification numerics and does not claim case-study parity or `Milestone M6` closure.
 - `tools/reference-harness/scripts/qualification_readiness.py`: first M6 groundwork helper. It aggregates the accepted required retained root plus any narrower optional packet roots against `templates/qualification-benchmarks.json`, validates that every observed captured example still publishes promoted golden/result manifests plus passing comparison summaries, and writes one machine-readable summary of retained `reference-captured` versus still-pending phase-0 examples together with the blocked `next_runtime_lane` hints that remain on the scaffold. Older optional packets may predate the explicit `optional_capture_packet` summary field; when every captured example in one packet shares the same scaffold packet hint, this helper infers that packet id from the scaffold instead of requiring the external retained packet to be rewritten.
+- `tools/reference-harness/scripts/compare_phase0_results_to_reference.py`: first actual M6 phase-0 packet comparator. It consumes one retained reference packet root plus one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema, fails closed unless every selected benchmark keeps the exact retained output-name set and canonical hashes, and surfaces the frozen digit-threshold, failure-code, and regression metadata from the qualification scaffold alongside the per-benchmark match report. This is still comparator plumbing only: it does not launch the C++ runtime, does not compute correct-digit scores, does not inspect candidate failure-code behavior, and does not claim `Milestone M6` is passing.
 
 ## Qualification Scaffold
 
@@ -207,13 +208,20 @@ retained outputs and rerun evidence.
   It is still evidence-only: the helper summarizes the currently retained phase-0 packet set and
   verifies scaffold alignment, but it does not run any benchmark family qualification corpus and
   does not claim `Milestone M6` is passing.
+- The first actual M6 phase-0 comparator is
+  `tools/reference-harness/scripts/compare_phase0_results_to_reference.py`. It compares one
+  candidate packet root against one retained reference packet root on the existing manifest/run
+  schema and requires exact canonical output-hash agreement on the selected phase-0 examples, but
+  it still does not score correct digits, audit candidate failure-code behavior, or claim
+  `Milestone M6` is passing.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All six helpers expose `--self-check` modes so the repo can
+the retained-golden promotion path. All seven helpers expose `--self-check` modes so the repo can
 rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios, scaffold
-validation, and the new qualification-readiness audit without needing a full benchmark packet.
-`amflow-tests` now drives those bootstrap, fetch, placeholder-freeze, retained-capture,
-scaffold-validation, and qualification-readiness self-checks through the configured repo-local
-Python interpreter, and the retained-capture helper also self-checks the restart-safe
-`--resume-existing` path plus the explicit benchmark-id, optional-packet, and `--required-only`
-selection contract, including direct `optional_capture_packet` selection.
+validation, qualification-readiness audit, and the new retained-reference packet comparator
+without needing a full benchmark packet. `amflow-tests` now drives those bootstrap, fetch,
+placeholder-freeze, retained-capture, scaffold-validation, qualification-readiness, and retained
+phase-0 reference-comparator self-checks through the configured repo-local Python interpreter, and
+the retained-capture helper also self-checks the restart-safe `--resume-existing` path plus the
+explicit benchmark-id, optional-packet, and `--required-only` selection contract, including
+direct `optional_capture_packet` selection.

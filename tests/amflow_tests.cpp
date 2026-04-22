@@ -34892,6 +34892,81 @@ void QualificationReadinessSelfCheckAggregatesRetainedPacketsTest() {
                  "qualification readiness self-check should write the synthetic summary output");
 }
 
+void Phase0ReferenceComparatorSelfCheckCoversMismatchFailuresTest() {
+  const std::filesystem::path ignored_reference_root =
+      FreshTempDir("amflow-phase0-reference-compare-self-check-ignored");
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-reference-compare-self-check",
+      "tools/reference-harness/scripts/compare_phase0_results_to_reference.py",
+      {"--reference-root", ignored_reference_root.string(), "--self-check"},
+      "phase-0 reference comparator self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 reference comparator self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_candidate_matches_reference\": true",
+                 "phase-0 reference comparator self-check should keep a matching candidate "
+                 "packet on the retained-reference pass path");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 reference comparator self-check should surface digit-threshold, "
+                 "failure-code, and regression metadata from the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"hash_mismatch_rejected\": true",
+                 "phase-0 reference comparator self-check should fail closed on canonical hash "
+                 "mismatches");
+  ExpectContains(result.stdout_json, "\"output_name_mismatch_rejected\": true",
+                 "phase-0 reference comparator self-check should fail closed when the candidate "
+                 "output set diverges from the retained reference");
+  ExpectContains(result.stdout_json, "\"missing_candidate_root_rejected\": true",
+                 "phase-0 reference comparator self-check should reject omitting --candidate-root "
+                 "outside the synthetic self-check path");
+  ExpectContains(result.stdout_json, "\"missing_result_manifest_rejected\": true",
+                 "phase-0 reference comparator self-check should fail closed when the candidate "
+                 "packet omits a required result manifest");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 reference comparator self-check should write the synthetic summary "
+                 "output");
+}
+
+void Phase0ReferenceComparatorMatchesRetainedRequiredSetTest() {
+  const std::filesystem::path reference_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-reference-compare-retained-required-set") / "summary.json";
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-reference-compare-retained-required-set",
+      "tools/reference-harness/scripts/compare_phase0_results_to_reference.py",
+      {"--reference-root",
+       reference_root.string(),
+       "--candidate-root",
+       reference_root.string(),
+       "--summary-path",
+       summary_path.string()},
+      "phase-0 reference comparator report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 reference comparator report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 reference comparator report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"reference_packet_label\": \"required-set\"",
+                 "phase-0 reference comparator report should preserve the retained required-set "
+                 "packet label");
+  ExpectContains(result.stdout_json, "\"reference_capture_state\": \"reference-captured\"",
+                 "phase-0 reference comparator report should keep the retained reference packet "
+                 "in the reference-captured state");
+  ExpectContains(result.stdout_json, "\"candidate_output_hashes_match_reference\": true",
+                 "phase-0 reference comparator report should require exact canonical-output "
+                 "matches on the retained required-set packet");
+  ExpectContains(result.stdout_json, "\"automatic_loop\"",
+                 "phase-0 reference comparator report should include automatic_loop on the "
+                 "required-set packet");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 reference comparator report should include automatic_vs_manual on the "
+                 "required-set packet");
+  ExpectContains(result.stdout_json, "\"minimum_correct_digits\": 50",
+                 "phase-0 reference comparator report should surface the frozen core-package "
+                 "digit threshold from the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"insufficient_precision\"",
+                 "phase-0 reference comparator report should surface the frozen required "
+                 "failure-code profile from the qualification scaffold");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -35769,6 +35844,8 @@ int main() {
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
     CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();
     QualificationReadinessSelfCheckAggregatesRetainedPacketsTest();
+    Phase0ReferenceComparatorSelfCheckCoversMismatchFailuresTest();
+    Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

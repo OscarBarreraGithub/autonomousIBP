@@ -72,15 +72,20 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   initial packet job `6721330` completed the `automatic_vs_manual` primary before walltime,
   resumed packet job `6732338` completed the packet via `--resume-existing`, and both required
   benchmark comparison summaries now pass
-- current `main` now also carries a narrow M6-groundwork harness helper only:
+- current `main` now also carries narrow M6 harness helpers only:
   `tools/reference-harness/scripts/qualification_readiness.py` aggregates the accepted M0b root
   plus the reviewed optional retained packet roots into one machine-readable evidence summary,
   validates that every observed captured phase-0 example still publishes promoted
   golden/result-manifest artifacts plus passing comparison summaries, and keeps the blocked
   `next_runtime_lane` hints visible for the remaining uncaptured phase-0 examples and the
-  singular-endpoint qualification anchor. This is evidence-only harness plumbing: it does not run
-  any benchmark-family qualification corpus, does not compare the C++ runtime against those
-  retained goldens, and does not claim that `Milestone M6` is passing
+  singular-endpoint qualification anchor.
+  `tools/reference-harness/scripts/compare_phase0_results_to_reference.py` is then the first
+  actual benchmark comparator on that retained packet shape only: it compares one candidate packet
+  root against one retained reference packet root through exact canonical output-name/hash
+  agreement while surfacing the frozen scaffold threshold/failure/regression metadata.
+  Together these remain harness-only plumbing: they do not launch the C++ runtime, do not score
+  correct digits, do not inspect candidate failure-code behavior, and do not claim that
+  `Milestone M6` is passing
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

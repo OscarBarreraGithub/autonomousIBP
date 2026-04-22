@@ -88,12 +88,16 @@ python3 tools/reference-harness/scripts/validate_qualification_scaffold.py \
 python3 tools/reference-harness/scripts/qualification_readiness.py \
   --root /tmp/amflow-reference-bootstrap \
   --self-check
+
+python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
+  --reference-root /tmp/amflow-reference-bootstrap \
+  --self-check
 ```
 
-`amflow-tests` now exercises all six helper self-checks through the configured
+`amflow-tests` now exercises all seven helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, scaffold-validation, and qualification-readiness regression paths without
-needing a real benchmark packet.
+retained-capture, scaffold-validation, qualification-readiness, and retained-reference packet
+comparison regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -167,6 +171,22 @@ normalizes older optional packets that predate the explicit `optional_capture_pa
 by inferring that packet id from the scaffold when the retained packet contents make the mapping
 unambiguous.
 
+To compare one candidate phase-0 packet root against one retained reference packet root on the
+first actual M6 comparator path:
+
+```bash
+python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
+  --reference-root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set \
+  --candidate-root /path/to/candidate-packet-root
+```
+
+The comparator reuses the existing `results/phase0/<benchmark>/result-manifest.json` and primary
+`run-manifest.json` schema, requires the exact retained output-name set and canonical hashes on the
+selected benchmarks, and surfaces the frozen digit-threshold, failure-code, and regression
+profiles from `templates/qualification-benchmarks.json`. It is still comparator plumbing only: it
+does not launch the C++ runtime, does not compute correct-digit scores, and does not by itself
+claim that `Milestone M6` is passing.
+
 The capture script writes:
 
 - `results/phase0/<benchmark>/primary/` and `rerun/`: the retained raw Mathematica outputs for the
@@ -224,6 +244,10 @@ The capture script writes:
   machine-readable readiness summary, validates that the observed retained artifacts still match
   the scaffold, and keeps blocked `next_runtime_lane` hints visible without running any
   qualification numerics.
+- `compare_phase0_results_to_reference.py` is the first actual M6 packet comparator: it compares
+  one candidate packet root against one retained reference packet root through exact canonical
+  output-name/hash agreement on the selected phase-0 benchmarks while surfacing the frozen
+  threshold/failure/regression metadata from the qualification scaffold.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`
@@ -239,3 +263,6 @@ The capture script writes:
 - `qualification_readiness.py --self-check` exercises the first M6 groundwork summary against one
   synthetic required retained root plus two synthetic optional packets, including scaffold-based
   inference of an older optional packet id that is absent from the retained packet summary.
+- `compare_phase0_results_to_reference.py --self-check` exercises the first actual packet
+  comparator against one synthetic retained reference root plus matching and mismatched candidate
+  packets, covering hash mismatch, output-name drift, and missing-result-manifest rejection.

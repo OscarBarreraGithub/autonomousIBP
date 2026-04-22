@@ -1567,10 +1567,21 @@ std::filesystem::path AutomaticLoopRetainedDiffeqsetupRoot(const std::string& fa
          (family + "_amflow") / std::to_string(stage) / "diffeqsetup";
 }
 
-std::filesystem::path OptionalPhase0ReferencePacketRoot() {
+std::vector<std::filesystem::path> OptionalPhase0ReferencePacketRoots() {
+  return {
+      std::filesystem::path(
+          "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+          "phase0-reference-captured-20260422-de-d0-pair"),
+      std::filesystem::path(
+          "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
+          "phase0-reference-captured-20260422-user-hook-pair"),
+  };
+}
+
+std::filesystem::path UserHookOptionalPhase0ReferencePacketRoot() {
   return std::filesystem::path(
       "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/"
-      "phase0-reference-captured-20260422-de-d0-pair");
+      "phase0-reference-captured-20260422-user-hook-pair");
 }
 
 amflow::ProblemSpec MakeAutomaticLoopBox1DiffeqsetupSpec(
@@ -33025,12 +33036,12 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
   ExpectContains(result.stdout_json,
                  "\"ready_optional_examples_reference_captured\": true",
                  "bootstrap reference-harness self-check should keep the ready optional "
-                 "differential-equation and spacetime-dimension captures visible in the "
+                 "optional packet captures visible in the "
                  "qualification scaffold");
   ExpectContains(result.stdout_json,
-                 "\"ready_user_hook_examples_pending_capture\": true",
-                 "bootstrap reference-harness self-check should keep the next ready uncaptured "
-                 "user-hook examples visible without stale runtime blockers");
+                 "\"no_ready_optional_examples_pending_capture\": true",
+                 "bootstrap reference-harness self-check should not leave any ready optional "
+                 "examples pending capture once the retained user-hook packet is recorded");
   ExpectContains(result.stdout_json,
                  "\"digit_threshold_profiles_match_verification_strategy\": true",
                  "bootstrap reference-harness self-check should keep qualification digit "
@@ -33057,21 +33068,71 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
 void OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest() {
   const std::filesystem::path repo_templates_root =
       std::filesystem::path(AMFLOW_SOURCE_DIR) / "tools/reference-harness/templates";
-  const std::filesystem::path retained_templates_root =
-      OptionalPhase0ReferencePacketRoot() / "templates";
-
   const std::vector<std::string> repo_template_names = SortedRegularFileNames(repo_templates_root);
-  const std::vector<std::string> retained_template_names =
-      SortedRegularFileNames(retained_templates_root);
-  Expect(retained_template_names == repo_template_names,
-         "optional retained phase-0 packet should keep the copied template file set "
-         "synchronized with the repo templates");
+  for (const std::filesystem::path& retained_root : OptionalPhase0ReferencePacketRoots()) {
+    const std::filesystem::path retained_templates_root = retained_root / "templates";
+    const std::vector<std::string> retained_template_names =
+        SortedRegularFileNames(retained_templates_root);
+    Expect(retained_template_names == repo_template_names,
+           "optional retained phase-0 packet should keep the copied template file set "
+           "synchronized with the repo templates");
 
-  for (const std::string& name : repo_template_names) {
-    Expect(ReadFile(retained_templates_root / name) == ReadFile(repo_templates_root / name),
-           "optional retained phase-0 packet should keep copied template contents synchronized "
-           "with the repo templates for " +
-               name);
+    for (const std::string& name : repo_template_names) {
+      Expect(ReadFile(retained_templates_root / name) == ReadFile(repo_templates_root / name),
+             "optional retained phase-0 packet should keep copied template contents synchronized "
+             "with the repo templates for " +
+                 name);
+    }
+  }
+}
+
+void UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest() {
+  const std::filesystem::path retained_root = UserHookOptionalPhase0ReferencePacketRoot();
+  const std::filesystem::path manifest_path = retained_root / "manifests/phase0-reference.json";
+  const std::filesystem::path summary_path = retained_root / "state/phase0-reference.capture.json";
+  Expect(std::filesystem::exists(manifest_path),
+         "user-hook optional retained phase-0 packet should publish a manifest");
+  Expect(std::filesystem::exists(summary_path),
+         "user-hook optional retained phase-0 packet should publish a capture summary");
+
+  const std::string manifest_json = ReadFile(manifest_path);
+  const std::string summary_json = ReadFile(summary_path);
+  ExpectContains(manifest_json, "\"capture_state\": \"bootstrap-only\"",
+                 "user-hook optional retained phase-0 packet manifest should remain bootstrap-only "
+                 "when the required pair is absent");
+  ExpectContains(manifest_json, "\"user_defined_amfmode\"",
+                 "user-hook optional retained phase-0 packet manifest should record the retained "
+                 "AMF-mode benchmark");
+  ExpectContains(manifest_json, "\"user_defined_ending\"",
+                 "user-hook optional retained phase-0 packet manifest should record the retained "
+                 "ending benchmark");
+  ExpectContains(summary_json, "\"optional_capture_packet\": \"user-hook-pair\"",
+                 "user-hook optional retained phase-0 packet summary should record the selected "
+                 "optional packet id");
+  ExpectContains(summary_json, "\"capture_state\": \"bootstrap-only\"",
+                 "user-hook optional retained phase-0 packet summary should keep the required-set "
+                 "manifest state honest");
+  ExpectContains(summary_json, "\"benchmark_id\": \"user_defined_amfmode\"",
+                 "user-hook optional retained phase-0 packet summary should include the retained "
+                 "AMF-mode benchmark");
+  ExpectContains(summary_json, "\"benchmark_id\": \"user_defined_ending\"",
+                 "user-hook optional retained phase-0 packet summary should include the retained "
+                 "ending benchmark");
+
+  for (const std::string& benchmark_id : {"user_defined_amfmode", "user_defined_ending"}) {
+    const std::filesystem::path comparison_path =
+        retained_root / "comparisons" / "phase0" / (benchmark_id + ".summary.json");
+    Expect(std::filesystem::exists(comparison_path),
+           "user-hook optional retained phase-0 packet should publish comparison summary for " +
+               benchmark_id);
+    const std::string comparison_json = ReadFile(comparison_path);
+    ExpectContains(comparison_json, "\"benchmark_id\": \"" + benchmark_id + "\"",
+                   "user-hook optional retained phase-0 packet comparison should identify " +
+                       benchmark_id);
+    ExpectContains(comparison_json, "\"status\": \"reference-captured\"",
+                   "user-hook optional retained phase-0 packet comparison should retain a "
+                   "reference-captured result for " +
+                       benchmark_id);
   }
 }
 
@@ -34033,6 +34094,7 @@ int main() {
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     OptionalPhase0ReferencePacketTemplatesStaySynchronizedWithRepoTemplatesTest();
+    UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();
     FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest();
     FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest();
     CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest();

@@ -158,12 +158,11 @@ LANDED_CASE_STUDY_RUNTIME_PREDECESSORS = {
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
     "differential_equation_solver",
     "spacetime_dimension",
-}
-
-READY_OPTIONAL_PENDING_PHASE0_EXAMPLES = {
     "user_defined_amfmode",
     "user_defined_ending",
 }
+
+READY_OPTIONAL_PENDING_PHASE0_EXAMPLES: set[str] = set()
 
 OPTIONAL_CAPTURE_PACKET_HINTS = {
     "differential_equation_solver": "de-d0-pair",
@@ -563,8 +562,8 @@ def run_self_check() -> dict[str, Any]:
         )
         expect(
             ready_optional_pending_examples == READY_OPTIONAL_PENDING_PHASE0_EXAMPLES,
-            "qualification scaffold should keep the next ready uncaptured user-hook packet visible "
-            "without stale runtime-lane blockers",
+            "qualification scaffold should not leave any ready optional examples pending capture "
+            "once the retained user-hook packet has landed",
         )
         expect(set(verification_thresholds).issubset(digit_threshold_profiles),
                "qualification scaffold should keep the verification-strategy digit-threshold profiles")
@@ -659,7 +658,7 @@ def run_self_check() -> dict[str, Any]:
                 and ready_optional_examples_without_runtime_lane
                 == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
             ),
-            "ready_user_hook_examples_pending_capture": (
+            "no_ready_optional_examples_pending_capture": (
                 ready_optional_pending_examples == READY_OPTIONAL_PENDING_PHASE0_EXAMPLES
             ),
             "digit_threshold_profiles_match_verification_strategy": all(

@@ -77,7 +77,7 @@
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
       "optional_capture_packet": "user-hook-pair",
-      "notes": "User-defined eta-insertion hook smoke test if present in the pinned example set. This is part of the next ready uncaptured optional packet `user-hook-pair`."
+      "notes": "User-defined eta-insertion hook smoke test if present in the pinned example set. The reviewed retained optional packet for this ready example pair is `user-hook-pair`."
     },
     {
       "id": "user_defined_ending",
@@ -86,7 +86,7 @@
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
       "optional_capture_packet": "user-hook-pair",
-      "notes": "User-defined ending scheme smoke test if present in the pinned example set. This is part of the next ready uncaptured optional packet `user-hook-pair`."
+      "notes": "User-defined ending scheme smoke test if present in the pinned example set. The reviewed retained optional packet for this ready example pair is `user-hook-pair`."
     }
   ]
 }

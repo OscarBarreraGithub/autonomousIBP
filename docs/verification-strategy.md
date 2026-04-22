@@ -23,10 +23,12 @@ The migration is phase-gated. Every phase must pass:
   bundled-backup and rerun reproducibility summaries; because it intentionally reran only those
   two examples, its manifest truthfully remains `phase0.capture_state = "bootstrap-only"` and it
   does not replace the accepted M0b root
-- the next ready uncaptured optional packet is `user-hook-pair`, covering
-  `user_defined_amfmode` and `user_defined_ending`; the copied phase-0 catalog and qualification
-  scaffold now carry that packet hint as planning metadata only, and no retained evidence is
-  claimed yet
+- a sibling optional-capture packet at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair`
+  now retains `user_defined_amfmode` and `user_defined_ending` with passed bundled-backup and
+  rerun reproducibility summaries; because it intentionally reran only those two examples, its
+  manifest truthfully remains `phase0.capture_state = "bootstrap-only"` and it does not replace
+  the accepted M0b root
 - `Operational Gate B0/G1` is accepted: clean-candidate `sapphire` job `5305579` passed
   `cmake -S . -B build`, `cmake --build build --parallel 1`, and
   `ctest --test-dir build --output-on-failure`
@@ -210,9 +212,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   where `differential_equation_solver` and `spacetime_dimension` each now have promoted goldens,
   result manifests, and passed bundled-backup plus rerun reproducibility summaries; because that
   packet omits the required pair, its manifest remains `bootstrap-only`
-- the next ready uncaptured optional packet remains `user-hook-pair` for
-  `user_defined_amfmode` and `user_defined_ending`; this is scaffold/catalog planning metadata only
-  and does not by itself claim a retained root, promoted goldens, or runtime parity
+- the current user-hook optional capture evidence is the sibling root at
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair`,
+  where `user_defined_amfmode` and `user_defined_ending` each now have promoted goldens, result
+  manifests, and passed bundled-backup plus rerun reproducibility summaries; because that packet
+  also omits the required pair, its manifest remains `bootstrap-only`
 - `M0a` remains the bootstrap precursor only; `M0b` now supplies the accepted
   `reference-captured` state for the required phase-0 benchmark set
 - `K0` is now satisfied on the accepted narrow subset by that retained packet and honest bootstrap

@@ -48,6 +48,13 @@ retained outputs and rerun evidence.
   - retained ready-example optional-capture comparison summaries:
     `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/differential_equation_solver.summary.json`
     `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/spacetime_dimension.summary.json`
+  - retained user-hook optional-capture root:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/`
+  - retained user-hook optional-capture summary:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/state/phase0-reference.capture.json`
+  - retained user-hook optional-capture comparison summaries:
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_amfmode.summary.json`
+    `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_ending.summary.json`
 - accepted pinned upstream AMFlow source for the bootstrap lane:
   `https://gitlab.com/multiloop-pku/amflow.git` at ref `1.1`, with annotated tag object
   `a29fbdfe330ab172fe5ccdafcac2d6ec9211800e` and materialized checkout commit
@@ -85,16 +92,19 @@ retained outputs and rerun evidence.
   bundled-backup and rerun-reproducibility summaries, but because that packet intentionally reran
   only those two examples its manifest still truthfully records
   `phase0.capture_state = "bootstrap-only"` and it does not replace the accepted M0b root. The
-  remaining still-blocked frozen examples `complex_kinematics`, `feynman_prescription`,
-  `automatic_phasespace`, and `linear_propagator`, plus the uncaptured user-hook examples and
-  later regression families, stay on the rolling future-capture lane. The copied phase-0 catalog
-  now marks the theory-blocked feature captures explicitly:
+  sibling optional packet
+  `/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/`
+  likewise retains `user_defined_amfmode` and `user_defined_ending` with passed bundled-backup and
+  rerun-reproducibility summaries, and for the same reason its manifest also stays
+  `phase0.capture_state = "bootstrap-only"`. The remaining still-blocked frozen examples
+  `complex_kinematics`, `feynman_prescription`, `automatic_phasespace`, and `linear_propagator`,
+  plus later regression families, stay on the rolling future-capture lane. The copied phase-0
+  catalog now marks the theory-blocked feature captures explicitly:
   `complex_kinematics -> b61j`, `feynman_prescription -> b63g2`,
   `automatic_phasespace -> b63g2`, and `linear_propagator -> b64g`; it also carries
-  `optional_capture_packet = de-d0-pair` for the retained ready example pair and
-  `optional_capture_packet = user-hook-pair` for the next ready uncaptured
-  `user_defined_amfmode` / `user_defined_ending` pair. The qualification scaffold keeps the
-  singular guardrail anchor `one-singular-endpoint-case -> b62j`
+  `optional_capture_packet = de-d0-pair` and `optional_capture_packet = user-hook-pair` for the
+  two retained ready-example pairs. The qualification scaffold keeps the singular guardrail anchor
+  `one-singular-endpoint-case -> b62j`
 
 ## Canonical Baseline
 
@@ -149,7 +159,7 @@ retained outputs and rerun evidence.
 6. Freeze or refresh the placeholder phase-0 golden layout with `freeze_phase0_goldens.py`, creating stable metadata, coefficient-table, comparison, log, config, and result paths for each benchmark. Benchmark IDs are path-safe only. By default the script refreshes missing or placeholder-status files and preserves promoted real artifacts unless `--force` is supplied.
 7. Verify the Wolfram kernel is usable in non-interactive mode once the licensed environment is ready.
 8. Run dependency sanity checks in the pinned environment.
-9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any remaining examples that are not still marked with a `next_runtime_lane` blocker in the copied phase-0 catalog, such as `differential_equation_solver`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`. The copied catalog now also groups those ready optional examples by `optional_capture_packet`, so `de-d0-pair` and the next ready uncaptured `user-hook-pair` stay explicit, and `capture_phase0_reference.py` can consume those packet ids directly.
+9. Reproduce the required phase-0 benchmark set (`automatic_vs_manual` and `automatic_loop`) first, then any remaining examples that are not still marked with a `next_runtime_lane` blocker in the copied phase-0 catalog, such as `differential_equation_solver`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`. The copied catalog now also groups those ready optional examples by `optional_capture_packet`, so `de-d0-pair` and `user-hook-pair` stay explicit, and `capture_phase0_reference.py` can consume those packet ids directly.
 10. Promote the primary retained outputs to goldens, canonicalize the Mathematica output files for truthful comparison, and rerun the pinned environment to prove reproducibility.
 
 ## Current Batch-2 Scripts
@@ -160,8 +170,9 @@ retained outputs and rerun evidence.
   the copied phase-0 catalog, placeholder index benchmark IDs, qualification scaffold,
   `specs/parity-matrix.yaml`, `references/case-studies/selected-benchmarks.md`, the
   digit-threshold floors in `docs/verification-strategy.md`, the retained optional-capture state
-  for `differential_equation_solver` / `spacetime_dimension`, the next ready uncaptured
-  `user-hook-pair`, and the theory-backed `next_runtime_lane` blocker hints for the still-deferred
+  for `differential_equation_solver` / `spacetime_dimension` and
+  `user_defined_amfmode` / `user_defined_ending`, the absence of any remaining ready uncaptured
+  optional packet, and the theory-backed `next_runtime_lane` blocker hints for the still-deferred
   `b61j` / `b62j` / `b63g2` / `b64g` surfaces.
 - `tools/reference-harness/scripts/fetch_upstream_amflow.py`: focused helper for cloning or refreshing the upstream AMFlow checkout after verifying the requested remote, and for downloading/extracting the CPC archive into a clean extraction directory with explicit tar-entry policy enforcement.
 - `tools/reference-harness/scripts/freeze_phase0_goldens.py`: freezes or refreshes the benchmark-specific placeholder golden and comparison layout without requiring Mathematica, while rejecting unsafe benchmark IDs.
@@ -178,7 +189,7 @@ retained outputs and rerun evidence.
   current `b61j` / `b62j` / `b63g2` / `b64g` blocker map from scratch. Those hints intentionally
   step one slice past the recorded landed predecessors `b61h` / `b62i` / `b63f` / `b64f`. Ready optional examples may
   instead carry `optional_capture_packet` so future capture threads keep the retained `de-d0-pair`
-  and next `user-hook-pair` grouped without re-planning that packet shape.
+  and retained `user-hook-pair` grouped without re-planning that packet shape.
 - The scaffold is planning metadata only. Adding or editing it does not claim any new
   `reference-captured` benchmark, any new runtime parity, or any reviewed solver widening.
 - Future optional-capture lanes should pair the scaffold with

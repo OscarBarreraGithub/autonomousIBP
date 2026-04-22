@@ -61,8 +61,8 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61j` / `b62j` / `b63g2` / `b64g`
-surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` plus the next
-ready uncaptured `user-hook-pair`:
+surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
+`user-hook-pair`:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -123,7 +123,7 @@ Repeated `--benchmark-id` flags still collapse duplicates and run in the catalog
 rather than CLI order. `--optional-capture-packet` selects every matching catalog entry in that
 same frozen order, and at most one explicit selection mode may be used at a time. Packet
 selection is therefore the preferred path when the catalog already groups a ready optional pair
-such as `de-d0-pair` or `user-hook-pair`.
+such as the retained `de-d0-pair` or retained `user-hook-pair`.
 If the required phase-0 pair is absent, the packet summary truthfully stays `bootstrap-only` even
 when the selected optional examples become `reference-captured`.
 
@@ -171,7 +171,7 @@ The capture script writes:
   codes, and the known regression families without claiming any new captured evidence. It now also
   carries optional `next_runtime_lane` hints for feature or qualification anchors that are still
   blocked on reviewed runtime slices, plus `optional_capture_packet` hints for ready example pairs
-  that belong in the retained `de-d0-pair` or next `user-hook-pair` packets. Those hints
+  that belong in the retained `de-d0-pair` or retained `user-hook-pair` packets. Those hints
   intentionally point one slice beyond the recorded landed predecessors `b61h` / `b62i` /
   `b63f` / `b64f`.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,

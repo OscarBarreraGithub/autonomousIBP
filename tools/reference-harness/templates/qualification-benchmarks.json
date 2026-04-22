@@ -139,23 +139,23 @@
       "id": "user_defined_amfmode",
       "phase0_catalog_id": "user_defined_amfmode",
       "required_capture": false,
-      "current_evidence_state": "cataloged-pending-capture",
+      "current_evidence_state": "reference-captured",
       "optional_capture_packet": "user-hook-pair",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Optional custom AMF-mode example is part of the next ready uncaptured optional packet `user-hook-pair`; no retained capture is claimed yet."
+      "notes": "Optional custom AMF-mode example now has retained upstream-capture evidence in the reviewed optional packet `user-hook-pair`; this does not by itself widen runtime parity or close M5."
     },
     {
       "id": "user_defined_ending",
       "phase0_catalog_id": "user_defined_ending",
       "required_capture": false,
-      "current_evidence_state": "cataloged-pending-capture",
+      "current_evidence_state": "reference-captured",
       "optional_capture_packet": "user-hook-pair",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Optional custom ending example is part of the next ready uncaptured optional packet `user-hook-pair`; no retained capture is claimed yet."
+      "notes": "Optional custom ending example now has retained upstream-capture evidence in the reviewed optional packet `user-hook-pair`; this does not by itself widen runtime parity or close M5."
     }
   ],
   "case_study_families": [

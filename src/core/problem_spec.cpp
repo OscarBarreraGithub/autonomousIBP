@@ -42,6 +42,18 @@ std::string ToString(PropagatorKind kind) {
   return "standard";
 }
 
+std::optional<FeynmanPrescription> ParseFeynmanPrescription(const int raw_value) {
+  switch (raw_value) {
+    case static_cast<int>(FeynmanPrescription::MinusI0):
+      return FeynmanPrescription::MinusI0;
+    case static_cast<int>(FeynmanPrescription::None):
+      return FeynmanPrescription::None;
+    case static_cast<int>(FeynmanPrescription::PlusI0):
+      return FeynmanPrescription::PlusI0;
+  }
+  return std::nullopt;
+}
+
 std::string ToString(AmflowLoopPrefactorSign sign) {
   switch (sign) {
     case AmflowLoopPrefactorSign::PlusI0:
@@ -76,6 +88,13 @@ std::vector<std::string> ValidateProblemSpec(const ProblemSpec& spec) {
   }
   if (spec.family.propagators.empty()) {
     messages.emplace_back("family.propagators must not be empty");
+  }
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    if (ParseFeynmanPrescription(spec.family.propagators[index].prescription).has_value()) {
+      continue;
+    }
+    messages.emplace_back("family.propagators[" + std::to_string(index) +
+                          "].prescription must be one of -1 (-i0), 0 (none), or 1 (+i0)");
   }
   if (spec.kinematics.invariants.empty()) {
     messages.emplace_back("kinematics.invariants must not be empty");

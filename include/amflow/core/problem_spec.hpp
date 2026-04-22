@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,14 @@ enum class PropagatorKind {
 };
 
 std::string ToString(PropagatorKind kind);
+
+enum class FeynmanPrescription {
+  MinusI0 = -1,
+  None = 0,
+  PlusI0 = 1,
+};
+
+std::optional<FeynmanPrescription> ParseFeynmanPrescription(int raw_value);
 
 struct Propagator {
   std::string expression;

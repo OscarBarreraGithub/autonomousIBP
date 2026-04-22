@@ -3714,6 +3714,28 @@ void ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTes
          "the same invariant should not be accepted in both exact and complex substitution maps");
 }
 
+void FeynmanPrescriptionVocabularyTest() {
+  Expect(amflow::ParseFeynmanPrescription(-1) == amflow::FeynmanPrescription::MinusI0,
+         "raw -1 should map to the frozen -i0 prescription");
+  Expect(amflow::ParseFeynmanPrescription(0) == amflow::FeynmanPrescription::None,
+         "raw 0 should map to the frozen no-prescription token");
+  Expect(amflow::ParseFeynmanPrescription(1) == amflow::FeynmanPrescription::PlusI0,
+         "raw 1 should map to the frozen +i0 prescription");
+  Expect(!amflow::ParseFeynmanPrescription(2).has_value(),
+         "out-of-vocabulary raw prescription values should be rejected");
+}
+
+void ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].prescription = 2;
+
+  const auto messages = amflow::ValidateProblemSpec(spec);
+  Expect(ContainsSubstring(messages,
+                           "family.propagators[0].prescription must be one of -1 (-i0), 0 "
+                           "(none), or 1 (+i0)"),
+         "problem-spec validation should reject unsupported raw prescription values");
+}
+
 void EtaInsertionHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::EtaInsertionDecision decision;
@@ -26570,6 +26592,8 @@ int main() {
     DuplicateKeysAreRejectedTest();
     ValidateProblemSpecRejectsComplexNumericSubstitutionsWithoutComplexModeTest();
     ValidateProblemSpecRejectsOverlappingExactAndComplexNumericSubstitutionsTest();
+    FeynmanPrescriptionVocabularyTest();
+    ValidateProblemSpecRejectsUnsupportedPropagatorPrescriptionValuesTest();
     EtaInsertionHappyPathTest();
     EtaInsertionLeavesOriginalSpecUnchangedTest();
     EtaInsertionAppendsEtaOnceOnlyTest();

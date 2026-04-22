@@ -169,8 +169,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   propagators, there is no broader topology/component-order parity, no broader same-priority
   tie-break parity, and no broader symbolic mass canonicalization claim. It does not by itself
   close `M0b` or imply broader upstream parity
-- current worktree `Batch 59a`, `Batch 59b`, `Batch 59d`, `Batch 59e`, `Batch 59f`, and
-  `Batch 60a` through `Batch 60k` are still narrow: the two
+- current worktree `Batch 59a`, `Batch 59b`, `Batch 59d`, `Batch 59e`, `Batch 59f`,
+  `Batch 59g`, `Batch 59h`, and `Batch 60a` through `Batch 60k` are still narrow: the two
   `SolveAmfOptionsEtaModeSeries(...)` overloads may now carry wrapper-owned `amf_requested_d0`
   plus derived `amf_requested_dimension_expression` metadata on `SolveRequest`, solved-path
   request fingerprints, request summaries, and D0-sensitive cache identity now distinguish that
@@ -179,10 +179,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   an exactly numeric `SolveRequest.amf_requested_dimension_expression` as a passive
   `dimension` binding during coefficient evaluation, center classification, residual checks, and
   explicit boundary-value parsing, and may derive passive exact `eps` only when both
-  `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly. On the reviewed
-  wrapper path, an exact `AmfOptions.fixed_eps` may collapse the derived `D0 - 2*eps` carrier
-  down to an exact numeric dimension expression and participates in solved-path cache identity;
-  when that derived carrier is itself exact, the same two wrappers now also pass
+  `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly. When that same
+  request-owned dimension expression stays symbolic, the direct exact solver now rewrites
+  assembled standalone `dimension` identifiers in the `DESystem` onto the normalized symbolic
+  carrier before the reviewed exact path runs, while manual boundary values stay exact-only. On
+  the reviewed wrapper path, an exact `AmfOptions.fixed_eps` may
+  collapse the derived `D0 - 2*eps` carrier down to an exact numeric dimension expression and
+  participates in solved-path cache identity; when that derived carrier is itself exact, the same
+  two wrappers now also pass
   `-sd=<dimension>` into live eta-generated Kira execution and record that exact override in
   wrapper-owned prepared-state validation so stale `skip_reduction` reuse is rejected across
   exact-dimension changes. The direct public eta-generated execution / `DESystem` helpers now also
@@ -197,10 +201,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   assembled standalone `dimension` identifiers onto the normalized symbolic expression before
   solver execution, including wrapper-owned live and `skip_reduction` assembly, while preserving
   the normalized symbolic request metadata on
-  `SolveRequest.amf_requested_dimension_expression`. This still falls well short of full
-  `Batch 59` / `Batch 60`: manual direct `SolveRequest` symbolic-system consumption, broader Kira
-  preparation artifacts, wrapper-owned symbolic `D0` execution parity, and broader arbitrary-`D0`
-  / fixed-`eps` runtime behavior remain deferred
+  `SolveRequest.amf_requested_dimension_expression`. The same rewrite now also applies when the
+  wrappers derive a symbolic `D0 - 2*eps` carrier from `AmfOptions.d0` / `fixed_eps` without an
+  explicit public dimension-expression overload, and solved-path cache slot/input identity carries
+  a dedicated symbolic rewrite epoch for those derived carriers so stale pre-`Batch 59h` artifacts
+  fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
+  broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
+  arbitrary symbolic runtime behavior remain deferred
 
 ## Core Types
 
@@ -232,7 +239,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `UpperTriangularMatrixFrobeniusSeriesPatch` plus `GenerateUpperTriangularMatrixFrobeniusSeriesPatch(...)`: the first upper-triangular matrix regular-singular / Frobenius local propagator seam over one selected reviewed `DESystem` variable on the diagonal-residue, no-log subset
 - `ScalarSeriesPatchOverlapDiagnostics`, `EvaluateScalarSeriesPatchResidual(...)`, and `MatchScalarSeriesPatches(...)`: exact scalar patch residual and overlap diagnostics over already-generated regular patches
 - `UpperTriangularMatrixSeriesPatchOverlapDiagnostics`, `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)`, and `MatchUpperTriangularMatrixSeriesPatches(...)`: exact upper-triangular matrix patch residual and overlap diagnostics over already-generated regular patches
-- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, and derived `amf_requested_dimension_expression`. On the current worktree, generated eta-mode solver handoffs may now rewrite assembled standalone `dimension` identifiers onto a normalized symbolic public expression before solver execution, including the reviewed `AmfOptions` wrapper-owned live and `skip_reduction` assembly paths, while the direct exact solver still consumes only an exactly numeric `amf_requested_dimension_expression` as a passive `dimension` binding and derives a passive exact `eps` binding only when both `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly. Manual/direct standalone `SolveRequest` symbolic-system consumption remains deferred, so coefficient evaluation, center classification, residual checks, and explicit boundary-value parsing only resolve reviewed exact-path expressions that still mention `eps` directly when those passive bindings are exact
+- `SolveRequest`, `SolverDiagnostics`, `SeriesSolver`, `BootstrapSeriesSolver`, `MakeBootstrapSeriesSolver()`, and `SolveDifferentialEquation(...)`: the library-only exact one-hop continuation solver surface plus default bootstrap-solver construction and standalone wrapper over one declared reviewed `DESystem` variable with explicit manual start-boundary attachment, covering the reviewed regular/regular path and the reviewed Batch 43 mixed regular-start to regular-singular-target path on the integer-exponent Frobenius subset; `SolveRequest` may also carry an optional wrapper-owned `AmfSolveRuntimePolicy`, `amf_requested_d0`, and derived `amf_requested_dimension_expression`. On the current worktree, the same reviewed dimension-expression execution surface now spans both direct and generated solver entry points: exactly numeric `amf_requested_dimension_expression` values remain passive exact `dimension` bindings and may derive passive exact `eps` only when both `amf_requested_d0` and `amf_requested_dimension_expression` evaluate exactly, while symbolic expressions rewrite assembled standalone `dimension` identifiers in the `DESystem` onto the normalized symbolic carrier before solver execution. Manual boundary values stay on the reviewed exact-only parsing path. Generated eta-mode solver handoffs still keep live reducer `-sd=<dimension>` plus wrapper-owned prepared-state validation exact-only, but both explicit public symbolic expressions and wrapper-derived symbolic `D0 - 2*eps` carriers now rewrite the assembled eta-generated `DESystem` before solver execution, including the reviewed `AmfOptions` wrapper-owned live and `skip_reduction` assembly paths. Broader Kira preparation artifacts, reducer-facing symbolic overrides, and broader arbitrary symbolic runtime parity remain deferred
 - `PrecisionPolicy`: precision and stability controls
 - `AmfSolveRuntimePolicy`: narrow typed carrier for the currently wrapper-owned `AmfOptions` runtime fields `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength`
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
@@ -614,7 +621,7 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
   `SolvePlannedAmfOptionsEtaModeSeries(...)`
 - it is still a thin option-feed wrapper for eta-mode selection: it reads `amf_options.amf_modes`, preserves the reviewed ordered builtin-list semantics, and keeps caller/default order, empty-list rejection, immediate unknown-name failure, preserved final planning failure, and no downstream fallback widening unchanged
 - after builtin planning succeeds, the wrapper rebuilds a live wrapper-owned solve policy from `AmfOptions`: `WorkingPre`, `ChopPre`, `XOrder`, and `RationalizePre` overwrite the live `PrecisionPolicy` fields passed into the solver handoff, while `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, and `RunLength` are attached to `SolveRequest` through `AmfSolveRuntimePolicy`
-- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains a symbolic wrapper carrier. The direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding, and on these two wrappers the live eta-generated Kira execution plus wrapper-owned prepared-state validation still treat `-sd=<dimension>` as exact-only. Broader wrapper-owned symbolic `D0` / `fixed_eps` execution parity remains deferred: when there is no explicit public dimension-expression overload in use, a symbolic derived carrier stays metadata-only on the assembled eta-generated `DESystem`. Separately, direct public generated-DE helpers now expose their own public dimension-expression overloads; the retained overloads without that extra argument stay unchanged
+- after builtin planning succeeds, the wrapper also copies `amf_options.d0` into `SolveRequest.amf_requested_d0` and populates the derived `SolveRequest.amf_requested_dimension_expression`; when `amf_options.fixed_eps` is present and exact, that derived carrier collapses to an exact numeric dimension expression, otherwise it remains a symbolic wrapper carrier. The direct exact solver may use an already-exactly-numeric `amf_requested_dimension_expression` as a passive `dimension` binding, and on these two wrappers the live eta-generated Kira execution plus wrapper-owned prepared-state validation still treat `-sd=<dimension>` as exact-only. When there is no explicit public dimension-expression overload in use, that same derived symbolic carrier now also rewrites assembled standalone `dimension` identifiers on the eta-generated `DESystem` before solver execution instead of staying metadata-only. Separately, direct public generated-DE helpers now expose their own public dimension-expression overloads; the retained overloads without that extra argument stay unchanged
 - this wrapper now also reads `amf_options.use_cache` as a narrow solved-path diagnostic replay flag only: after builtin planning succeeds it computes one deterministic solved-path slot plus an input fingerprint over the wrapper-owned solve inputs and current concrete solver type, replays only matching successful cache artifacts, rejects stale or malformed artifacts in favor of live execution, refreshes the slot after any successful live solve, and still rebuilds and validates the current prepared eta-generated DE first whenever `amf_options.skip_reduction == true`
 - this wrapper now also reads `amf_options.skip_reduction` as a wrapper-owned reducer-reuse flag only: after builtin planning succeeds it rebuilds the current eta-generated preparation, requires matching prepared reducer inputs and parseable matching reduction artifacts under the current `ArtifactLayout`, and then continues through the same solver handoff without launching the reducer; missing or mismatched state fails explicitly
 - the live `PrecisionPolicy`, `AmfSolveRuntimePolicy`, wrapper-owned requested-`D0`,
@@ -622,6 +629,8 @@ The first `AmfOptions`-fed builtin eta-mode-list solver wrapper is also bootstra
   metadata now participate in solved-path cache slotting plus request fingerprinting,
   solved-path request-summary truthfulness, and `skip_reduction` replay validation on this
   wrapper
+- symbolic derived `D0 - 2*eps` carriers now also participate in a dedicated solved-path cache
+  rewrite epoch so stale pre-`Batch 59h` artifacts cannot replay the old metadata-only behavior
 - the current bootstrap solver still does not implement the broader upstream algorithmic effects of `ExtraXOrder`, `LearnXOrder`, `TestXOrder`, or `RunLength`; on the reviewed subset those fields are carried and fingerprinted rather than given broader standalone semantics
 - direct `SolveEtaGeneratedSeries(...)`, public eta-helper surfaces, and direct
   `SolveDifferentialEquation(...)` remain unchanged, while direct
@@ -698,15 +707,19 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   `solve_kind`, `use_cache`, and `skip_reduction` semantics unchanged
 - this helper does not re-read `amf_options.amf_modes`, does not perform eta-mode resolution or
   planning, and does not change direct `SolveDifferentialEquation(...)` behavior. The reviewed
-  widening stays narrow: symbolic explicit public dimension expressions are consumed only on the
-  generated eta-mode solver handoff / wrapper-owned assembled `DESystem`, and the helper still
-  does not infer symbolic `D0` carriers from `AmfOptions`, so broader symbolic-`D0` /
-  fixed-`eps` runtime parity remains deferred
+  widening stays narrow: symbolic explicit public dimension expressions and symbolic derived
+  `D0 - 2*eps` carriers are now consumed only on the generated eta-mode solver handoff /
+  wrapper-owned assembled `DESystem`, while reducer-facing symbolic overrides and broader
+  arbitrary symbolic runtime parity remain deferred
 - on that explicit-override overload, the normalized dimension carrier also participates in
   solved-path cache slot naming and input fingerprinting, solved-path request-summary truthfulness,
   and `skip_reduction` replay validation on this helper; symbolic explicit public dimension
   expressions also carry a dedicated solved-path cache epoch so stale pre-rewrite cache artifacts
   fall back to live execution rather than replaying across the B59g behavior change
+- when the helper instead derives a symbolic dimension carrier from `amf_options.d0` /
+  `fixed_eps`, the same solved-path cache epoch now participates in slot naming and input
+  fingerprinting so stale pre-`Batch 59h` artifacts fall back to live execution rather than
+  replaying across the old metadata-only derived-carrier behavior
 - it preserves the caller-supplied solved-path/cache identity string verbatim through slot naming, input fingerprinting, request fingerprinting, request-summary truthfulness, and manifest `solve_kind`; the reviewed `AmfOptions` wrappers keep carrying `"amf-options-builtin-eta-mode-series"` and `"amf-options-resolved-eta-mode-series"` unchanged
 - `SolveAmfOptionsEtaModeSeries(...)` also exposes matching public dimension-expression overloads
   on both its builtin-only and mixed entrypoints; each takes one explicit
@@ -917,7 +930,7 @@ The first exact one-hop continuation solver seam is now reviewed through the rev
 
 - `BootstrapSeriesSolver::Solve(...)` keeps the public `SeriesSolver` / `SolveRequest` surface unchanged and supports only two exact one-hop paths on the reviewed upper-triangular subset: the reviewed Batch 39 regular-start to regular-target path and the reviewed Batch 43 regular-start to regular-singular-target mixed path
 - the solver currently requires a well-formed `DESystem` with exactly one declared differentiation variable and one explicit manual start boundary attached through the existing `boundary_requests` plus `boundary_conditions` surface
-- when `SolveRequest.amf_requested_dimension_expression` is itself exactly numeric, the solver binds that exact value to the passive symbol name `dimension` on its reviewed exact path; non-exact or symbolic dimension expressions stay inert
+- when `SolveRequest.amf_requested_dimension_expression` is itself exactly numeric, the solver binds that exact value to the passive symbol name `dimension` on its reviewed exact path; when the normalized expression stays symbolic, it rewrites assembled standalone `dimension` identifiers on the live `DESystem` onto that symbolic carrier before exact coefficient evaluation, center classification, and residual checks, while explicit boundary-value parsing stays on the reviewed exact-only passive-binding path
 - `start_location` and `target_location` are parsed exactly through the reviewed coefficient-evaluator grammar; malformed location expressions, malformed explicit boundary values, and unresolved symbols remain deterministic argument errors instead of solver-level failure codes
 - the internal continuation order is fixed at `4`; Batch 39 and Batch 43 both choose `match = (start + target) / 2` and `check = (3*start + target) / 4` deterministically after exact point resolution
 - the reviewed regular path reuses `GenerateUpperTriangularRegularPointSeriesPatch(...)`, `MatchUpperTriangularMatrixSeriesPatches(...)`, and `EvaluateUpperTriangularMatrixSeriesPatchResidual(...)` directly, with scalar systems treated only as the degenerate `1x1` upper-triangular case

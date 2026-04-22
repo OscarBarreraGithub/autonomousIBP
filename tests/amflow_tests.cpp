@@ -1,5 +1,7 @@
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -350,9 +352,28 @@ void ExpectRetainedKiraConfigSurfaces(const amflow::BackendPreparation& preparat
 }
 
 std::filesystem::path FreshTempDir(const std::string& label) {
-  const std::filesystem::path path = std::filesystem::temp_directory_path() / label;
+  struct TempDirRegistry {
+    std::vector<std::filesystem::path> paths;
+
+    ~TempDirRegistry() {
+      for (const auto& path : paths) {
+        std::error_code error;
+        std::filesystem::remove_all(path, error);
+      }
+    }
+  };
+
+  static TempDirRegistry registry;
+  static std::atomic<unsigned long long> unique_counter{0};
+  const auto unique_suffix =
+      std::to_string(
+          std::chrono::steady_clock::now().time_since_epoch().count()) +
+      "-" + std::to_string(unique_counter.fetch_add(1, std::memory_order_relaxed));
+  const std::filesystem::path path =
+      std::filesystem::temp_directory_path() / (label + "-" + unique_suffix);
   std::filesystem::remove_all(path);
   std::filesystem::create_directories(path);
+  registry.paths.push_back(path);
   return path;
 }
 
@@ -10347,6 +10368,95 @@ void SolveDifferentialEquationUsesRequestedD0AndDimensionExpressionToBindExactEp
          "SolveRequest.amf_requested_d0 and SolveRequest.amf_requested_dimension_expression "
          "when coefficient evaluation uses eps directly; observed failure_code=\"" +
              actual.failure_code + "\", summary=\"" + actual.summary + "\"");
+}
+
+void BootstrapSeriesSolverUsesSymbolicDimensionExpressionForDirectSolveRequestTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("dimension/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "D0";
+  request.amf_requested_dimension_expression = " D0 - 2*eps ";
+
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(D0-2*eps)/(eta+1)"), "eta", "eta=0", "eta=2", {"1"});
+
+  const amflow::SolverDiagnostics expected =
+      amflow::BootstrapSeriesSolver().Solve(baseline_request);
+  const amflow::SolverDiagnostics actual = amflow::BootstrapSeriesSolver().Solve(request);
+
+  Expect(SameSolverDiagnostics(actual, expected),
+         "bootstrap solver should rewrite SolveRequest dimension-dependent systems onto the "
+         "normalized symbolic dimension carrier before exact evaluation; observed failure_code=\"" +
+             actual.failure_code + "\", summary=\"" + actual.summary + "\"");
+  Expect(actual.summary.find("numeric binding for symbol \"D0\"") != std::string::npos,
+         "bootstrap solver symbolic dimension rewrite coverage should surface the rewritten "
+         "symbolic carrier rather than a missing canonical dimension binding");
+}
+
+void SolveDifferentialEquationUsesSymbolicDimensionExpressionForDirectSolveRequestTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("dimension/(eta+1)"),
+      "eta",
+      "eta=0",
+      "eta=2",
+      {"1"});
+  request.amf_requested_d0 = "D0";
+  request.amf_requested_dimension_expression = " D0 - 2*eps ";
+
+  const amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("(D0-2*eps)/(eta+1)"), "eta", "eta=0", "eta=2", {"1"});
+
+  const amflow::SolverDiagnostics expected =
+      amflow::BootstrapSeriesSolver().Solve(baseline_request);
+  const amflow::SolverDiagnostics actual = amflow::SolveDifferentialEquation(request);
+
+  Expect(SameSolverDiagnostics(actual, expected),
+         "standalone DE solver wrapper should rewrite SolveRequest dimension-dependent systems "
+         "onto the normalized symbolic dimension carrier before exact evaluation; observed "
+         "failure_code=\"" +
+             actual.failure_code + "\", summary=\"" + actual.summary + "\"");
+  Expect(actual.summary.find("numeric binding for symbol \"D0\"") != std::string::npos,
+         "standalone DE solver wrapper symbolic dimension rewrite coverage should surface the "
+         "rewritten symbolic carrier rather than a missing canonical dimension binding");
+}
+
+void SolveDifferentialEquationKeepsSymbolicBoundaryValuesExactOnlyWhenDimensionExpressionIsSymbolicTest() {
+  const amflow::SolveRequest request = []() {
+    amflow::SolveRequest live_request = MakeManualStartBoundarySolveRequest(
+        MakeScalarRegularPointSeriesSystem("0"), "eta", "eta=0", "eta=2", {"dimension/2"});
+    live_request.amf_requested_d0 = "D0";
+    live_request.amf_requested_dimension_expression = " D0 - 2*eps ";
+    return live_request;
+  }();
+
+  auto capture_invalid_argument = [](auto&& callable,
+                                     const std::string& message) -> std::string {
+    try {
+      static_cast<void>(callable());
+    } catch (const std::invalid_argument& error) {
+      return error.what();
+    }
+    throw std::runtime_error(message);
+  };
+
+  const std::string expected = capture_invalid_argument(
+      [&request]() { return amflow::BootstrapSeriesSolver().Solve(request); },
+      "direct bootstrap solver should keep symbolic boundary values on the reviewed exact-only "
+      "parsing path");
+  const std::string actual = capture_invalid_argument(
+      [&request]() { return amflow::SolveDifferentialEquation(request); },
+      "standalone DE solver wrapper should preserve symbolic boundary-value exact-only failures");
+
+  ExpectContains(expected,
+                 "numeric binding for symbol \"dimension\"",
+                 "direct bootstrap solver symbolic boundary-value coverage should preserve the "
+                 "reviewed exact-only passive-binding requirement");
+  Expect(actual == expected,
+         "standalone DE solver wrapper should preserve the exact symbolic boundary-value "
+         "invalid_argument diagnostic");
 }
 
 void SolveDifferentialEquationKeepsExactEpsUnboundWhenRequestedD0IsSymbolicTest() {
@@ -25901,7 +26011,7 @@ void SolvePlannedAmfOptionsEtaModeSeriesUsesSymbolicDimensionExpressionOnDimensi
          "preserve the live solver diagnostic unchanged");
 }
 
-void SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMetadataOnlyOnDimensionDependentSystemTest() {
+void SolvePlannedAmfOptionsEtaModeSeriesUsesDerivedSymbolicDimensionCarrierOnDimensionDependentSystemTest() {
   const std::filesystem::path fixture_root = AutomaticLoopRetainedDiffeqsetupRoot("box1", 1);
   amflow::KiraBackend backend;
   const amflow::ParsedMasterList master_basis = backend.ParseMasterList(fixture_root, "box1");
@@ -25921,6 +26031,7 @@ void SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMeta
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
   amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"RetainedBox1"});
   amf_options.d0 = "D0";
+  amf_options.use_cache = true;
 
   amflow::EtaInsertionDecision planned_decision;
   planned_decision.mode_name = "RetainedBox1";
@@ -25946,6 +26057,28 @@ void SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMeta
                                         baseline_kira_path,
                                         baseline_fermat_path);
 
+  const amflow::ArtifactLayout expected_layout = amflow::EnsureArtifactLayout(FreshTempDir(
+      "amflow-bootstrap-planned-amf-options-symbolic-derived-dimension-dependent-expected"));
+  const std::filesystem::path expected_kira_path =
+      expected_layout.root / "bin" / "fake-kira-box1-copy.sh";
+  const std::filesystem::path expected_fermat_path =
+      expected_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(expected_kira_path.parent_path());
+  WriteExecutableScript(expected_kira_path, MakeFamilyFixtureCopyScript(fixture_root, "box1"));
+  WriteExecutableScript(expected_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem expected_system =
+      amflow::BuildEtaGeneratedDESystem(spec,
+                                        master_basis,
+                                        planned_decision,
+                                        MakeKiraReductionOptions(),
+                                        expected_layout,
+                                        expected_kira_path,
+                                        expected_fermat_path,
+                                        "eta",
+                                        BuildExpectedAmfRequestedDimensionExpressionForTest(
+                                            amf_options));
+
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(FreshTempDir(
       "amflow-bootstrap-planned-amf-options-symbolic-derived-dimension-dependent"));
   const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-box1-copy.sh";
@@ -25960,7 +26093,7 @@ void SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMeta
   solver.returned_diagnostics.overlap_mismatch = 0.000244140625;
   solver.returned_diagnostics.failure_code.clear();
   solver.returned_diagnostics.summary =
-      "recorded planned helper symbolic derived-dimension metadata-only solve";
+      "recorded planned helper symbolic derived-dimension rewrite solve";
 
   const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
   const amflow::PrecisionPolicy expected_live_precision_policy =
@@ -26005,9 +26138,21 @@ void SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMeta
              std::optional<std::string>{"(D0)-2*eps"},
          "planned AmfOptions eta-mode helper derived symbolic dimension coverage should "
          "preserve the derived symbolic dimension carrier on SolveRequest");
-  Expect(SameDESystem(request.system, baseline_system),
-         "planned AmfOptions eta-mode helper derived symbolic dimension coverage should keep "
-         "the assembled DESystem unchanged while symbolic D0 parity remains deferred");
+  ExpectSymbolicDimensionExpressionRewrittenEtaDESystem(
+      request.system,
+      baseline_system,
+      "planned AmfOptions eta-mode helper derived symbolic dimension coverage");
+  Expect(SameDESystem(request.system, expected_system),
+         "planned AmfOptions eta-mode helper derived symbolic dimension coverage should match "
+         "the direct symbolic eta-generated DE rewrite");
+  const std::filesystem::path manifest_path = RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "planned AmfOptions eta-mode helper derived symbolic dimension coverage should seed one "
+      "solved-path cache manifest");
+  Expect(manifest_path.filename().string().find("symbolic-dimension-rewrite-v1") !=
+             std::string::npos,
+         "planned AmfOptions eta-mode helper derived symbolic dimension coverage should key the "
+         "solved-path cache slot on the symbolic rewrite epoch");
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "planned AmfOptions eta-mode helper derived symbolic dimension coverage should "
          "preserve the live solver diagnostic unchanged");
@@ -28121,6 +28266,9 @@ int main() {
     SolveDifferentialEquationDoesNotMutateRequestTest();
     BootstrapSeriesSolverUsesRequestedD0AndDimensionExpressionToBindExactEpsTest();
     SolveDifferentialEquationUsesRequestedD0AndDimensionExpressionToBindExactEpsTest();
+    BootstrapSeriesSolverUsesSymbolicDimensionExpressionForDirectSolveRequestTest();
+    SolveDifferentialEquationUsesSymbolicDimensionExpressionForDirectSolveRequestTest();
+    SolveDifferentialEquationKeepsSymbolicBoundaryValuesExactOnlyWhenDimensionExpressionIsSymbolicTest();
     SolveDifferentialEquationKeepsExactEpsUnboundWhenRequestedD0IsSymbolicTest();
     EvaluateCoefficientMatrixDimensionBindingChangesResultTest();
     SolveDifferentialEquationUsesRequestedDimensionExpressionForCoefficientEvaluationTest();
@@ -28514,7 +28662,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesExactDimensionOverrideBuildsExactDimensionExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();
     SolvePlannedAmfOptionsEtaModeSeriesUsesSymbolicDimensionExpressionOnDimensionDependentSystemTest();
-    SolvePlannedAmfOptionsEtaModeSeriesKeepsDerivedSymbolicDimensionCarrierMetadataOnlyOnDimensionDependentSystemTest();
+    SolvePlannedAmfOptionsEtaModeSeriesUsesDerivedSymbolicDimensionCarrierOnDimensionDependentSystemTest();
     SolvePlannedAmfOptionsEtaModeSeriesSkipReductionRejectsChangedExactDimensionOverrideTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedExactDimensionOverrideTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheInvalidatesChangedSymbolicDimensionOverrideTest();

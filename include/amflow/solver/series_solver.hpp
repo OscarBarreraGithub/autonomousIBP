@@ -79,14 +79,16 @@ struct SolveRequest {
   std::string target_location;
   PrecisionPolicy precision_policy;
   std::optional<AmfSolveRuntimePolicy> amf_runtime_policy;
-  // Wrapper-owned AMFlow D0 intent. Generated eta-mode solver handoffs may
-  // rewrite assembled standalone "dimension" identifiers only for one explicit
-  // public symbolic dimension-expression path, while the standalone exact
-  // solver still only consumes an exactly numeric
-  // amf_requested_dimension_expression as a passive "dimension" binding and
-  // may derive a passive exact "eps" binding only when both D0 and the
-  // dimension expression evaluate exactly. Broader symbolic wrapper-owned D0
-  // parity remains deferred.
+  // Wrapper-owned AMFlow D0 intent. Generated eta-mode solver handoffs and the
+  // standalone exact solver now share one reviewed
+  // amf_requested_dimension_expression execution surface: exactly numeric
+  // expressions stay passive "dimension" bindings and may derive a passive
+  // exact "eps" binding only when both D0 and the dimension expression
+  // evaluate exactly, while symbolic expressions rewrite assembled standalone
+  // "dimension" identifiers in the `DESystem` onto the normalized symbolic
+  // carrier before solver execution. Manual boundary values stay on the
+  // reviewed exact-only parsing path. Reducer-facing exact-dimension overrides
+  // and broader symbolic runtime parity remain deferred.
   std::optional<std::string> amf_requested_d0;
   std::optional<std::string> amf_requested_dimension_expression;
   int requested_digits = 50;

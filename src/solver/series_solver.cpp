@@ -347,6 +347,25 @@ std::optional<std::string> NormalizePublicDimensionExpression(
   }
 }
 
+std::optional<std::string> NormalizeSolveRequestDimensionExpression(
+    const std::optional<std::string>& dimension_expression) {
+  if (!dimension_expression.has_value()) {
+    return std::nullopt;
+  }
+
+  try {
+    return NormalizePublicDimensionExpression(dimension_expression);
+  } catch (const std::invalid_argument& error) {
+    const std::string message = error.what();
+    const std::string prefix = "eta-generated dimension expression";
+    if (message.rfind(prefix, 0) == 0) {
+      throw std::invalid_argument("SolveRequest.amf_requested_dimension_expression" +
+                                  message.substr(prefix.size()));
+    }
+    throw;
+  }
+}
+
 bool HasSymbolicPublicDimensionExpression(
     const std::optional<std::string>& dimension_expression) {
   return dimension_expression.has_value() &&
@@ -404,6 +423,16 @@ void ApplySymbolicDimensionExpression(DESystem& system,
   for (std::string& point : system.singular_points) {
     point = SubstituteDimensionIdentifier(point, *dimension_expression);
   }
+}
+
+void NormalizeSolveRequestDimensionExecutionSurface(SolveRequest& request) {
+  request.amf_requested_dimension_expression =
+      NormalizeSolveRequestDimensionExpression(request.amf_requested_dimension_expression);
+  const std::optional<std::string> exact_dimension_override =
+      ResolveExactDimensionOverride(request.amf_requested_dimension_expression);
+  ApplySymbolicDimensionExpression(request.system,
+                                   request.amf_requested_dimension_expression,
+                                   exact_dimension_override);
 }
 
 std::string SerializeWrapperExactDimensionOverrideState(
@@ -2724,6 +2753,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
     const std::optional<std::string>& amf_requested_d0,
     const std::optional<std::string>& fixed_eps,
     const std::optional<std::string>& explicit_dimension_expression,
+    const std::optional<std::string>& symbolic_dimension_expression,
     const int requested_digits,
     const std::string& eta_symbol) {
   std::ostringstream out;
@@ -2747,7 +2777,7 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
       << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(
              explicit_dimension_expression);
   out << "symbolic_dimension_rewrite_epoch="
-      << (HasSymbolicPublicDimensionExpression(explicit_dimension_expression)
+      << (HasSymbolicPublicDimensionExpression(symbolic_dimension_expression)
               ? SymbolicDimensionRewriteCacheEpoch()
               : "none")
       << "\n";
@@ -2773,7 +2803,8 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
                                         const std::string& eta_symbol,
                                         const std::optional<std::string>& amf_requested_d0,
                                         const std::optional<std::string>& fixed_eps,
-                                        const std::optional<std::string>& explicit_dimension_expression) {
+                                        const std::optional<std::string>& explicit_dimension_expression,
+                                        const std::optional<std::string>& symbolic_dimension_expression) {
   std::string slot_name = solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) + "-" +
                           SanitizeCacheSlotComponent(decision.mode_name) + "-" +
                           SanitizeCacheSlotComponent(eta_symbol);
@@ -2787,6 +2818,10 @@ std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
     }
   } else if (fixed_eps.has_value()) {
     slot_name += "-fixed-eps-" + SanitizeCacheSlotComponent(*fixed_eps);
+  }
+  if (!explicit_dimension_expression.has_value() &&
+      HasSymbolicPublicDimensionExpression(symbolic_dimension_expression)) {
+    slot_name += "-" + std::string(SymbolicDimensionRewriteCacheEpoch());
   }
   return slot_name;
 }
@@ -3155,7 +3190,6 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     const PrecisionPolicy& precision_policy,
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const std::optional<std::string>& amf_requested_d0,
-    const std::optional<std::string>& explicit_dimension_expression,
     const std::optional<std::string>& amf_requested_dimension_expression,
     const int requested_digits,
     const std::string& eta_symbol,
@@ -3172,7 +3206,7 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
         LoadValidatedWrapperEtaGeneratedReductionState(
             spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
     ApplySymbolicDimensionExpression(
-        request.system, explicit_dimension_expression, exact_dimension_override);
+        request.system, amf_requested_dimension_expression, exact_dimension_override);
     PopulateSolveRequestExecutionInputs(request,
                                         start_location,
                                         target_location,
@@ -3206,7 +3240,7 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
                                                         eta_symbol,
                                                         false);
       ApplySymbolicDimensionExpression(
-          request.system, explicit_dimension_expression, exact_dimension_override);
+          request.system, amf_requested_dimension_expression, exact_dimension_override);
     }
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
@@ -3380,27 +3414,34 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
         " supports exactly one declared system variable");
   }
 
-  const std::vector<std::string> validation_messages = ValidateDESystem(request.system);
+  SolveRequest live_request = request;
+  try {
+    NormalizeSolveRequestDimensionExecutionSurface(live_request);
+  } catch (const std::invalid_argument& error) {
+    return MakeUnsupportedSolverPathDiagnostics(error.what());
+  }
+
+  const std::vector<std::string> validation_messages = ValidateDESystem(live_request.system);
   if (!validation_messages.empty()) {
     return MakeUnsupportedSolverPathDiagnostics(validation_messages.front());
   }
 
-  const std::string& variable_name = request.system.variables.front().name;
-  const NumericEvaluationPoint passive_bindings = BuildBootstrapPassiveBindings(request);
+  const std::string& variable_name = live_request.system.variables.front().name;
+  const NumericEvaluationPoint passive_bindings = BuildBootstrapPassiveBindings(live_request);
   const ExactRational start_value =
       ParsePointValue(variable_name,
-                      request.start_location,
+                      live_request.start_location,
                       passive_bindings,
                       kBootstrapSolverPrefix);
   const ExactRational target_value =
       ParsePointValue(variable_name,
-                      request.target_location,
+                      live_request.target_location,
                       passive_bindings,
                       kBootstrapSolverPrefix);
 
   const BoundaryCondition* start_boundary = nullptr;
   try {
-    start_boundary = &ResolveStartBoundaryCondition(request, variable_name);
+    start_boundary = &ResolveStartBoundaryCondition(live_request, variable_name);
   } catch (const BoundaryUnsolvedError& error) {
     return MakeBoundaryUnsolvedDiagnostics(error);
   }
@@ -3408,7 +3449,7 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
   const ExactRationalVector start_boundary_values =
       ParseBoundaryValuesExactly(*start_boundary, passive_bindings);
   const PrecisionDecision precision_budget =
-      EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
+      EvaluatePrecisionBudget(live_request.precision_policy, live_request.requested_digits);
   if (precision_budget.status == PrecisionStatus::Rejected) {
     return MakeInsufficientPrecisionDiagnostics(precision_budget);
   }
@@ -3422,14 +3463,14 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
 
   try {
     const UpperTriangularMatrixSeriesPatch start_patch =
-        GenerateUpperTriangularRegularPointSeriesPatch(request.system,
+        GenerateUpperTriangularRegularPointSeriesPatch(live_request.system,
                                                       variable_name,
                                                       start_expression,
                                                       kBootstrapContinuationOrder,
                                                       passive_bindings);
     try {
       const UpperTriangularMatrixSeriesPatch target_patch =
-          GenerateUpperTriangularRegularPointSeriesPatch(request.system,
+          GenerateUpperTriangularRegularPointSeriesPatch(live_request.system,
                                                         variable_name,
                                                         target_expression,
                                                         kBootstrapContinuationOrder,
@@ -3442,13 +3483,13 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                                                   check_expression,
                                                   passive_bindings);
       const ExactRationalMatrix start_residual =
-          EvaluateUpperTriangularMatrixSeriesPatchResidual(request.system,
+          EvaluateUpperTriangularMatrixSeriesPatchResidual(live_request.system,
                                                           variable_name,
                                                           start_patch,
                                                           check_expression,
                                                           passive_bindings);
       const ExactRationalMatrix target_residual =
-          EvaluateUpperTriangularMatrixSeriesPatchResidual(request.system,
+          EvaluateUpperTriangularMatrixSeriesPatchResidual(live_request.system,
                                                           variable_name,
                                                           target_patch,
                                                           check_expression,
@@ -3475,7 +3516,7 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
       }
     }
 
-    return SolveExactMixedRegularToSingularPath(request,
+    return SolveExactMixedRegularToSingularPath(live_request,
                                                 variable_name,
                                                 start_value,
                                                 target_value,
@@ -4305,7 +4346,8 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
           eta_symbol,
           live_amf_requested_d0,
           live_amf_fixed_eps_for_cache_identity,
-          normalized_explicit_dimension_expression);
+          normalized_explicit_dimension_expression,
+          live_amf_requested_dimension_expression);
   cache_context.input_fingerprint =
       BuildEtaGeneratedSolveInputFingerprint(cache_context.solve_kind,
                                             spec,
@@ -4320,6 +4362,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                             live_amf_requested_d0,
                                             live_amf_fixed_eps_for_cache_identity,
                                             normalized_explicit_dimension_expression,
+                                            live_amf_requested_dimension_expression,
                                             requested_digits,
                                             eta_symbol);
   return SolveEtaGeneratedSeriesWithSolvedPathCache(spec,
@@ -4335,7 +4378,6 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                                     live_precision_policy,
                                                     live_amf_runtime_policy,
                                                     live_amf_requested_d0,
-                                                    normalized_explicit_dimension_expression,
                                                     live_amf_requested_dimension_expression,
                                                     requested_digits,
                                                     eta_symbol,

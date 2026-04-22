@@ -555,7 +555,23 @@ The first eta-generated solver handoff remains narrow:
   retained physical-kinematics guardrails or DE construction run, so malformed complex numeric
   bindings fail explicitly with the underlying parser diagnostic instead of collapsing into the
   retained unsupported-complex-kinematics summary
-- after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the solve through `SolveWithPrecisionRetry(...)` rather than a raw single `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at `src/solver/series_solver.cpp:1904-1928`)
+- when complex numeric bindings are present on a surface that still reaches
+  `BuildEtaGeneratedDESystem(...)`, the wrapper now treats that request as one reviewed complex
+  continuation candidate: on the reviewed finite-horizontal auto-planning subset it plans one
+  reviewed upper-half-plane contour through `PlanEtaContinuationContour(...)`, persists an
+  `EtaContinuationPlanManifest` under `layout.manifests_dir/`, and returns explicit
+  `unsupported_solver_path` diagnostics carrying the contour fingerprint plus the persisted
+  manifest path instead of invoking the supplied solver
+- unsupported or malformed contour-planning inputs on that same reviewed complex-continuation path
+  still fail explicitly with the underlying `invalid_argument` rather than being relabeled as a
+  solver-path diagnostic
+- if reviewed contour planning succeeds but manifest persistence fails, the wrapper still returns
+  explicit `unsupported_solver_path` diagnostics that report the contour fingerprint, intended
+  manifest path, and artifact-store failure without invoking the supplied solver
+- otherwise, after `BuildEtaGeneratedDESystem(...)`, it populates `SolveRequest` and routes the
+  solve through `SolveWithPrecisionRetry(...)` rather than a raw single
+  `SeriesSolver::Solve(...)` call (`src/solver/series_solver.cpp:2753-2780`; retry loop at
+  `src/solver/series_solver.cpp:1904-1928`)
 - on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
 - malformed or exact-arithmetic-invalid public dimension expressions still fail explicitly with
@@ -575,6 +591,17 @@ The first eta-mode-planned solver handoff is also bootstrap-only:
 - when complex numeric bindings are present, the same malformed-binding preflight now happens only
   after exactly one retained `EtaMode::Plan(spec)` call because this wrapper still delegates
   directly into `SolveEtaGeneratedSeries(...)`
+- when that downstream reviewed complex-continuation deferral applies on the reviewed
+  finite-horizontal auto-planning subset, the same single retained `EtaMode::Plan(spec)` call
+  still happens first, then this wrapper inherits the direct eta-generated contour-plan manifest
+  persistence plus explicit `unsupported_solver_path` diagnostics without invoking the supplied
+  solver
+- unsupported or malformed contour-planning inputs on that downstream reviewed continuation path
+  still fail explicitly with the underlying `invalid_argument` after exactly one retained
+  `EtaMode::Plan(spec)` call
+- if reviewed contour planning succeeds but manifest persistence fails downstream, this wrapper
+  still preserves the direct eta-generated explicit `unsupported_solver_path` diagnostics after
+  exactly one retained `EtaMode::Plan(spec)` call
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   exactly one `EtaMode::Plan(spec)` call and still do not invoke the supplied solver
 - this batch does not add new builtin eta-mode semantics, cache policy, CLI, multi-variable orchestration, boundary generation, or algorithmic series solving

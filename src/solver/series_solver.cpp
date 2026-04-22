@@ -2941,6 +2941,69 @@ SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summar
   return diagnostics;
 }
 
+std::string BuildComplexEtaContinuationManifestRunId(const EtaContinuationPlan& plan) {
+  constexpr std::size_t kFingerprintPrefixLength = 12;
+  std::string run_id = "eta-generated-complex-continuation";
+  if (!plan.contour_fingerprint.empty()) {
+    run_id += "-" +
+              plan.contour_fingerprint.substr(
+                  0, std::min(kFingerprintPrefixLength, plan.contour_fingerprint.size()));
+  }
+  return run_id;
+}
+
+std::filesystem::path BuildComplexEtaContinuationManifestPath(
+    const ArtifactLayout& layout,
+    const EtaContinuationPlan& plan) {
+  return layout.manifests_dir / (BuildComplexEtaContinuationManifestRunId(plan) + ".yaml");
+}
+
+SolverDiagnostics MakeComplexEtaContinuationDeferredDiagnostics(
+    const EtaContinuationPlan& plan,
+    const std::filesystem::path& manifest_path) {
+  return MakeUnsupportedSolverPathDiagnostics(
+      "complex eta continuation currently stops after planning one reviewed upper-half-plane "
+      "contour; contour_fingerprint=" +
+      plan.contour_fingerprint + "; continuation_plan_manifest=" + manifest_path.string() +
+      "; live complex contour execution remains deferred");
+}
+
+SolverDiagnostics MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
+    const EtaContinuationPlan& plan,
+    const std::filesystem::path& manifest_path,
+    const std::exception& error) {
+  return MakeUnsupportedSolverPathDiagnostics(
+      "complex eta continuation planned one reviewed upper-half-plane contour but failed to "
+      "persist continuation_plan_manifest=" +
+      manifest_path.string() + "; contour_fingerprint=" + plan.contour_fingerprint +
+      "; continuation_plan_manifest_write_failed=" + std::string(error.what()) +
+      "; live complex contour execution remains deferred");
+}
+
+SolverDiagnostics DeferComplexEtaGeneratedContinuation(const DESystem& system,
+                                                       const ProblemSpec& spec,
+                                                       const ArtifactLayout& layout,
+                                                       const std::string& eta_symbol,
+                                                       const std::string& start_location,
+                                                       const std::string& target_location) {
+  const EtaContinuationPlan plan = PlanEtaContinuationContour(system,
+                                                             spec,
+                                                             eta_symbol,
+                                                             start_location,
+                                                             target_location,
+                                                             EtaContourHalfPlane::Upper);
+  const EtaContinuationPlanManifest manifest =
+      MakeEtaContinuationPlanManifest(plan, BuildComplexEtaContinuationManifestRunId(plan));
+  const std::filesystem::path manifest_path = BuildComplexEtaContinuationManifestPath(layout, plan);
+  try {
+    static_cast<void>(WriteEtaContinuationPlanManifest(layout, manifest));
+  } catch (const std::exception& error) {
+    return MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
+        plan, manifest_path, error);
+  }
+  return MakeComplexEtaContinuationDeferredDiagnostics(plan, manifest_path);
+}
+
 void ValidateComplexEtaGeneratedWrapperBindings(const ProblemSpec& spec) {
   if (spec.kinematics.complex_numeric_substitutions.empty()) {
     return;
@@ -4221,6 +4284,14 @@ SolverDiagnostics SolveEtaGeneratedSeries(
                                      normalized_exact_dimension_override);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
+  }
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    return DeferComplexEtaGeneratedContinuation(request.system,
+                                                spec,
+                                                layout,
+                                                eta_symbol,
+                                                start_location,
+                                                target_location);
   }
   request.start_location = start_location;
   request.target_location = target_location;

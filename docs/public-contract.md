@@ -31,7 +31,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - the last fully accepted public/runtime surface remains the reviewed `Batch 1` through `Batch 50a`
   boundary, carried on clean `main@bbd7b744b69a413bf34e4b706cd737e2b266256a`
 - the actual SSH remote `main` state for this packet now runs through
-  `main@7dee2a0a574f2df991edf917290cc4600c9ae215`; that landed history includes `Batch 50b` at
+  `main@348cecb1049e09d41e9dc07e21e6cf18f0a06de4`; that landed history includes `Batch 50b` at
   `95f33f398bbdebf2084bf360a498fea3de89fc30`, `Batch 50` through `Batch 58g` at
   `b40b0dccb1d286b287e2fcb45e5e554901223d63`, `08220d2569d1a60c9181f53d5e809f334dcfcd4e`,
   `95c2ebf6f7f7adb713c04625d9fccd3c1266eeb8`, `0f623d65e7e933d464deef3da4ea02efaf57a535`,
@@ -40,7 +40,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `a5d627f906dfb2c5829bda88dce2407bfa67f043`, `2f2538b`, `7d3806a`, and `53ec6a4`, the landed
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
-  landed narrow `Milestone M3` closure packet at `7dee2a0`;
+  landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
+  not-yet-accepted public/runtime seams described below through `Batch 64d`; latest head commit
+  `348cecb` is the docs/harness-only `m5_next5` packet and does not widen this public/runtime
+  contract;
   local tracking `origin/main` matches that same head;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
@@ -208,6 +211,18 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
+- current worktree `Batch 61a` through `Batch 64d` are still narrow: explicit complex kinematics
+  now stop at exact-complex evaluation, reviewed contour-plan persistence, and deferred
+  `unsupported_solver_path` cache replay on the planned `AmfOptions` helper path; the reviewed K0
+  one-mass real guardrails now cover only the explicit `s`/`t` continuation-segment diagnostics
+  described below; the reviewed local phase-space slice now narrows builtin `Prescription` to
+  standard uncut `-i0` propagators (`Batch 63b`), emits explicit Kira `cut_propagators`
+  (`Batch 63c`), and adds Cutkosky phase-space request/attach wrappers without phase-space
+  boundary values or provider registries;
+  and explicit linear variants now reach only the reviewed invariant seed/execution and stricter
+  Kira-preparation subsets. Live complex contour execution, broader phase-space topology/provider
+  behavior, non-invariant linear solver consumers, and wider symbolic runtime parity remain
+  deferred
 
 ## Core Types
 
@@ -235,6 +250,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `GenerateBuiltinEtaInfinityBoundaryRequest(...)`: pure builtin boundary-request generation over a validated bootstrap `ProblemSpec` subset, returning one explicit `BoundaryRequest` without boundary values or solver execution
 - `GeneratePlannedEtaInfinityBoundaryRequest(...)`: single-name ending-planned wrapper that accepts only the exact singleton `<family>::eta->infinity` terminal-node decision and then returns the reviewed builtin `eta -> infinity` `BoundaryRequest`
 - `GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(...)`: standalone `AmfOptions::ending_schemes` eta->infinity boundary-request selector that preserves the reviewed ordered fallback semantics without attaching boundary data or invoking the solver
+- `GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(...)`, `GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(...)`, and `GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(...)`: standalone reviewed Cutkosky phase-space boundary-request generators over the same narrow standard/cut-only subset, without boundary values or provider registries
 - `PlanBuiltinAmfOptionsEtaMode(...)`: standalone builtin-only `AmfOptions::amf_modes` eta-mode decision helper that performs only reviewed ordered builtin selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `PlanAmfOptionsEtaMode(...)`: standalone `AmfOptions::amf_modes` mixed eta-mode decision helper that performs only reviewed ordered mixed builtin/user-defined selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `ExactRational`, `ExactComplexRational`, `BuildComplexNumericEvaluationPoint(...)`, `EvaluateCoefficientExpression(...)`, `EvaluateComplexCoefficientExpression(...)`, `EvaluateCoefficientMatrix(...)`, `EvaluateComplexCoefficientMatrix(...)`, and `EvaluateComplexPointExpression(...)`: exact rational coefficient evaluation plus a separate exact-complex helper layer over one explicit substitution point, including merged `ProblemSpec` exact/complex kinematic bindings and standalone complex point-expression parsing
@@ -257,13 +273,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `GeneratedDerivativeVariableReductionInput` plus `AssembleGeneratedDerivativeDESystem(...)`: typed ingestion of generated rows plus parsed reductions into a `DESystem`
 - `EtaGeneratedReductionPreparation` plus `PrepareEtaGeneratedReduction(...)`: typed eta-generated target preparation from the accepted auxiliary-family and eta-derivative seams into the Kira reducer boundary
 - `InvariantGeneratedReductionPreparation` plus `PrepareInvariantGeneratedReduction(...)`: typed invariant-generated target preparation from the accepted invariant-derivative seam into the Kira reducer boundary, with overloads for either a precomputed `InvariantDerivativeSeed` or one invariant name on a validated bootstrap `ProblemSpec`
+- `InvariantGeneratedReductionBatchPreparation` plus `PrepareInvariantGeneratedReductionList(...)`: typed ordered multi-invariant preparation that batches generated variables and one shared reducer packet over the original `ArtifactLayout`
 - `EtaGeneratedReductionExecution` plus `RunEtaGeneratedReduction(...)`: typed eta-only orchestration over preparation, execution, parsing, and generated-row assembly, with a narrow overload that also accepts one explicit public dimension expression alongside `eta_symbol`
 - `BuildEtaGeneratedDESystem(...)`: the first library-only eta-generated `DESystem` consumer over the reviewed eta-generated execution wrapper, with a matching narrow public dimension-expression overload
 - `InvariantGeneratedReductionExecution` plus `RunInvariantGeneratedReduction(...)`: typed invariant-only orchestration over preparation, execution, parsing, and generated-row assembly, with overloads for either a precomputed `InvariantDerivativeSeed` or one invariant name on a validated bootstrap `ProblemSpec`
 - `BuildInvariantGeneratedDESystem(...)`: the first library-only one-invariant `DESystem` consumer over the reviewed automatic invariant-generated execution wrapper
-- `BuildInvariantGeneratedDESystemList(...)`: the first ordered multi-invariant `DESystem` consumer that iterates the reviewed one-invariant automatic invariant-generated execution wrapper without changing solver behavior
+- `BuildInvariantGeneratedDESystemList(...)`: the first ordered multi-invariant `DESystem` consumer over the reviewed batched automatic invariant-generated preparation/execution path
 - `SolveInvariantGeneratedSeries(...)`: the first library-only one-invariant solver handoff from the reviewed automatic invariant-generated `DESystem` consumer into an injected `SeriesSolver`
-- `SolveInvariantGeneratedSeriesList(...)`: the first ordered multi-invariant solver handoff that iterates the reviewed one-invariant automatic invariant-generated solver wrapper without changing solver policy
+- `SolveInvariantGeneratedSeriesList(...)`: the first ordered multi-invariant solver handoff over the reviewed batched automatic invariant-generated `DESystem` consumer
 - `SolveEtaGeneratedSeries(...)`: the first library-only eta-generated solver handoff from the reviewed eta-generated `DESystem` consumer into an injected `SeriesSolver`, with a matching narrow public dimension-expression overload
 - `SolveEtaModePlannedSeries(...)`: the first library-only eta-mode-planned solver handoff that composes `EtaMode::Plan(...)` with the reviewed eta-generated solver wrapper, with a matching narrow public dimension-expression overload
 - `SolvePlannedAmfOptionsEtaModeSeries(...)`: standalone planned-decision `AmfOptions` eta-mode execution helper over the already-landed wrapper-owned live policy, cache, `skip_reduction`, and requested-`D0` metadata tail
@@ -487,13 +504,14 @@ The first generated-target reducer preparation seam is also bootstrap-only:
 The first invariant-generated target reducer preparation seam is also bootstrap-only:
 
 - `PrepareInvariantGeneratedReduction(...)` keeps the existing seed-based overload intact and also exposes a one-invariant-at-a-time overload that takes `(ProblemSpec, ParsedMasterList, invariant_name, ReductionOptions, ArtifactLayout)` and composes `BuildInvariantDerivativeSeed(...)` with the existing seed-based preparation path
+- `PrepareInvariantGeneratedReductionList(...)` takes `(ProblemSpec, ParsedMasterList, invariant_names, ReductionOptions, ArtifactLayout)`, builds the ordered seed list once, preserves that generated-variable order for later assembly, deduplicates generated reduction targets across the batch in first-encounter order, and prepares one shared reducer packet on the original `layout.root` rather than per-invariant child roots
 - it consumes the original `ProblemSpec` unchanged; there is no eta insertion, no spec mutation, and the emitted family/kinematics YAML must still reflect the original family and invariant list
 - preparation rejects `seed.family != spec.family.name` and `seed.propagator_derivatives.size() != spec.family.propagators.size()` locally before derivative generation
-- the invariant-name overload preserves the existing `BuildInvariantDerivativeSeed(...)` diagnostics for empty, unknown, or `eta` invariant names and for unsupported bootstrap-subset masses or symbolic forms
-- invariant-generated target preparation preserves the exact `reduction_targets` order from `GenerateInvariantDerivativeVariable(...)`
+- the invariant-name overload and the ordered list overload both preserve the existing `BuildInvariantDerivativeSeed(...)` diagnostics for empty, unknown, or `eta` invariant names and for unsupported bootstrap-subset masses or symbolic forms
+- invariant-generated target preparation preserves the exact `reduction_targets` order from `GenerateInvariantDerivativeVariable(...)`, except that the ordered list path deduplicates the shared reducer target list across the whole batch before preparation
 - on the reviewed linear-propagator subset inherited from `BuildInvariantDerivativeSeed(...)`, that same preparation path preserves the original family/kinematics YAML unchanged and emits the exact generated target list without introducing any special linear-only reducer metadata
-- invariant-generated preparation rejects empty generated target lists locally before reducer execution
-- this seam remains one invariant at a time and preparation only; it does not add multi-invariant orchestration, CLI, `SkipReduction`, or broader symbolic parity beyond the reviewed bootstrap subset
+- the single-invariant path rejects empty generated target lists locally before reducer execution; the ordered list path instead returns a synthetic identity-fallback reduction override only when the entire batch generates no explicit reduction targets
+- this seam remains automatic-only and preparation-only: it does not add a public seed-based list overload, CLI, `SkipReduction`, or broader symbolic parity beyond the reviewed bootstrap subset
 
 The first eta-generated reduction execution seam is also bootstrap-only:
 
@@ -535,10 +553,10 @@ The first invariant-generated `DESystem` consumer is also bootstrap-only:
 
 The current local multi-invariant `DESystem` consumer extension is still narrow:
 
-- `BuildInvariantGeneratedDESystemList(...)` takes an ordered list of invariant names and iterates the reviewed `BuildInvariantGeneratedDESystem(...)` path once per item
-- it preserves caller order, isolates each iteration under `layout.root/invariant-000N-<sanitized-name>`, and returns the assembled `DESystem` objects in that same order
-- empty invariant lists fail locally before reducer execution, and any per-invariant hard failure stops iteration without inventing aggregate partial-success semantics
-- this local packet does not add a seed-based list consumer, cross-invariant coupling, CLI, `SkipReduction`, or broader symbolic-subset widening beyond the reviewed one-invariant path
+- `BuildInvariantGeneratedDESystemList(...)` takes an ordered list of invariant names, routes them through one shared `PrepareInvariantGeneratedReductionList(...)` batch on the original `layout.root`, then performs one reducer execution/parse pass whose reduction result is reused across the ordered generated variables during assembly
+- it preserves caller order in the assembled multi-variable `DESystem`, keeps the original family/kinematics YAML unchanged, and on the reviewed linear-propagator subset returns the same ordinary generated invariant matrix entries without introducing a special linear-only assembly path
+- empty invariant lists fail locally before reducer execution, and any hard batch-preparation, reducer-execution, or parse/assembly failure preserves the upstream diagnostic without inventing aggregate partial-success semantics
+- this local packet does not add a seed-based list consumer, CLI, `SkipReduction`, or broader symbolic-subset widening beyond the reviewed automatic list path
 
 The first eta-generated `DESystem` consumer is also bootstrap-only:
 
@@ -563,9 +581,9 @@ The first invariant-generated solver handoff remains narrow:
 The current local multi-invariant solver handoff extension is still narrow:
 
 - `SolveInvariantGeneratedSeriesList(...)` takes an ordered list of invariant names plus the same explicit solver-request fields as `SolveInvariantGeneratedSeries(...)`
-- it iterates `SolveInvariantGeneratedSeries(...)` once per invariant, so each iteration inherits the same internal `insufficient_precision` retry behavior with fixed `requested_digits` while preserving caller order (`src/solver/series_solver.cpp:2715-2750`, `src/solver/series_solver.cpp:1904-1928`)
-- each iteration uses a dedicated child artifact root under `layout.root/invariant-000N-<sanitized-name>`, and any pre-solver hard failure preserves the upstream diagnostic while stopping iteration before later solver calls
-- this local packet does not add solver-selection policy, a seed-based list overload, CLI, boundary generation, cross-invariant coupling, or algorithmic series solving
+- after the reviewed physical-kinematics preflight, it builds one shared invariant-generated `DESystem` through `BuildInvariantGeneratedDESystemList(...)`, then routes one solve through `SolveWithPrecisionRetry(...)` with the same fixed-`requested_digits` retry behavior used by the single-invariant wrapper (`src/solver/series_solver.cpp:4429-4479`, `src/solver/series_solver.cpp:1904-1928`)
+- pre-solver `MasterSetInstabilityError` is converted into returned `master_set_instability` diagnostics, while the remaining upstream list-validation or reducer-construction failures still propagate as throwing failures; none of those pre-solver paths invoke the supplied solver
+- this local packet does not add solver-selection policy, a seed-based list overload, CLI, boundary generation, or broader symbolic-subset widening beyond the reviewed automatic list path
 
 The first eta-generated solver handoff remains narrow:
 

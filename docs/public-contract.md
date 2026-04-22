@@ -104,15 +104,22 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   the retained benchmark split for that packet, and preserving the same threshold/failure/
   regression metadata alongside one machine-readable packet-set score summary that truthfully
   keeps the current retained packet split short of a full qualification verdict.
+  `tools/reference-harness/scripts/audit_phase0_failure_codes.py` is then the first packet-level
+  candidate failure-code audit on that same packet shape only: it consumes one candidate packet
+  root on the existing manifest/run schema plus optional
+  `results/phase0/<benchmark>/failure-code-audit.json` sidecars, surfaces the frozen required
+  failure-code profile per benchmark, and reports which required codes are still missing or
+  unexpectedly extra on the published candidate audit path.
   `tools/reference-harness/scripts/qualification_case_study_readiness.py` is then the first
   machine-readable case-study-family consumer of the same scaffold: it validates the selected
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
   singular `next_runtime_lane` blocker plus its landed predecessor anchor against the frozen
   sources before later case-study qualification lanes widen into real numerics.
-  Together these remain harness-only plumbing: they do not launch the C++ runtime, do not inspect
-  candidate failure-code behavior, do not compare retained case-study numerics, do not elevate
-  retained packet-set correct-digit aggregation into a full qualification verdict, and do not claim that
-  `Milestone M6` is passing
+  Together these remain harness-only plumbing: they do not launch the C++ runtime, the comparator
+  and scorer helpers still do not inspect candidate failure-code behavior, the new packet-level
+  failure-code audit checks only published audit sidecars against the frozen scaffold, none of
+  them compare retained case-study numerics, none elevate retained packet-set correct-digit
+  aggregation into a full qualification verdict, and none claim that `Milestone M6` is passing
 - current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
   `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed
   `docs/release-signoff-checklist.md` packet with the first machine-readable prerequisite/docs/

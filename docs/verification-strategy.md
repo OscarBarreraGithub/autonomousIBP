@@ -275,6 +275,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   retained benchmark split for that packet, and keeps the scored benchmark ids synchronized with
   the scaffold's current `reference-captured` phase-0 set without overclaiming qualification
   closure.
+- `tools/reference-harness/scripts/audit_phase0_failure_codes.py` is the first packet-level M6
+  candidate failure-code audit: it consumes one candidate packet root on the existing
+  manifest/run schema plus optional `failure-code-audit.json` sidecars, surfaces the frozen
+  required failure-code profile for each selected benchmark, and reports which required codes are
+  still missing or unexpectedly extra on the published candidate audit path.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
   audits the checklist source/docs targets, and writes one blocked release-readiness summary that
@@ -288,10 +293,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 The full benchmark matrix is frozen in `specs/parity-matrix.yaml` and grows into a qualification
 suite as the solver is implemented. The qualification scaffold is planning metadata only: it does
 not by itself claim any new captured benchmark evidence or solver parity. The packet-level
-correct-digit scorer and the packet-set correct-digit aggregator both remain narrower than
-qualification closure as well: they score reviewed approximate numeric literals against retained
-references, but they do not audit candidate failure-code behavior, do not compare case-study
-numerics, and do not claim that `Milestone M6` is passing.
+correct-digit scorer, the packet-set correct-digit aggregator, and the packet-level candidate
+failure-code audit all remain narrower than qualification closure: the scorers compare retained
+numerics but do not audit candidate failure-code behavior, the new failure-code audit checks only
+the published candidate audit sidecars against the frozen scaffold, and none of them compare
+case-study numerics or claim that `Milestone M6` is passing.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in

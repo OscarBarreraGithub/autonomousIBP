@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All twelve harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All thirteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
@@ -105,16 +105,19 @@ python3 tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.p
 python3 tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py \
   --self-check
 
+python3 tools/reference-harness/scripts/audit_phase0_failure_codes.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all twelve helper self-checks through the configured
+`amflow-tests` now exercises all thirteen helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness,
-blocked release-readiness, and the single-packet comparator, packet-level correct-digit scorer,
-plus the packet-set retained-reference comparison and packet-set correct-digit scorer regression
-paths without needing a real benchmark packet.
+blocked release-readiness, the single-packet comparator, packet-level correct-digit scorer,
+packet-level failure-code audit, plus the packet-set retained-reference comparison and packet-set
+correct-digit scorer regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -273,6 +276,22 @@ aggregation plumbing: it does not launch the C++ runtime, does not inspect candi
 behavior, does not compare case-study numerics, and does not by itself claim that `Milestone M6`
 is passing.
 
+To audit whether one candidate phase-0 packet root publishes the required failure-code coverage:
+
+```bash
+python3 tools/reference-harness/scripts/audit_phase0_failure_codes.py \
+  --candidate-root /path/to/candidate-packet-root
+```
+
+This helper consumes one full candidate packet root that publishes the existing
+`result-manifest.json` and primary `run-manifest.json` schema plus one optional
+`results/phase0/<benchmark>/failure-code-audit.json` sidecar per audited benchmark. Each sidecar
+lists the benchmark's observed typed failure codes; the helper then surfaces the frozen required
+failure-code profile from `templates/qualification-benchmarks.json` alongside the candidate's
+missing and unexpected codes. It is still harness-only qualification plumbing: it does not launch
+the C++ runtime, does not compare canonical outputs or correct digits, and does not by itself
+claim that `Milestone M6` is passing.
+
 To turn one retained M6 readiness summary into the first blocked M7 release-readiness report:
 
 ```bash
@@ -377,6 +396,11 @@ The capture script writes:
   requires one unique reference packet label per pair, requires each candidate packet root to
   publish exactly the retained benchmark split for that packet, and fails closed unless the scored
   benchmark ids match the scaffold's current `reference-captured` phase-0 set exactly.
+- `audit_phase0_failure_codes.py` is the first packet-level M6 candidate failure-code audit: it
+  consumes one candidate packet root on the existing manifest/run schema plus optional
+  `failure-code-audit.json` sidecars, surfaces the frozen required failure-code profile for each
+  selected benchmark, and reports which required codes are still missing or unexpectedly extra on
+  the published candidate audit path.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
   placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
   reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`
@@ -417,3 +441,7 @@ The capture script writes:
   placeholder-directory ignore behavior, extra-candidate-benchmark rejection, duplicate
   packet-label rejection, skeleton drift rejection, and malformed `--packet-root-pair`
   rejection.
+- `audit_phase0_failure_codes.py --self-check` exercises the first packet-level failure-code
+  audit against one synthetic candidate packet, covering missing audit sidecars, malformed
+  audit rejection, incomplete required-code coverage, duplicate observed-code rejection, and
+  missing-result-manifest rejection on the published candidate path.

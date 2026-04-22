@@ -52,6 +52,20 @@ void ExpectContains(const std::string& value,
   Expect(value.find(needle) != std::string::npos, message);
 }
 
+std::size_t CountSubstringOccurrences(const std::string& value, const std::string& needle) {
+  if (needle.empty()) {
+    return 0;
+  }
+
+  std::size_t count = 0;
+  std::size_t position = 0;
+  while ((position = value.find(needle, position)) != std::string::npos) {
+    ++count;
+    position += needle.size();
+  }
+  return count;
+}
+
 std::string TrimAsciiWhitespace(const std::string& value) {
   const std::size_t first = value.find_first_not_of(" \t\r\n");
   if (first == std::string::npos) {
@@ -37094,6 +37108,100 @@ void Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest() {
                  "user-defined AMF-mode benchmark");
 }
 
+void Phase0FailureCodeAuditSelfCheckCoversMissingAndIncompleteAuditsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-failure-code-audit-self-check",
+      "tools/reference-harness/scripts/audit_phase0_failure_codes.py",
+      {"--self-check"},
+      "phase-0 failure-code audit self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 failure-code audit self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_candidate_reports_required_failure_codes\": true",
+                 "phase-0 failure-code audit self-check should keep a matching candidate on the "
+                 "required-failure-code pass path");
+  ExpectContains(result.stdout_json, "\"profiles_reported_from_scaffold\": true",
+                 "phase-0 failure-code audit self-check should surface scaffold threshold, "
+                 "failure-code, and regression metadata");
+  ExpectContains(result.stdout_json, "\"unexpected_failure_codes_reported\": true",
+                 "phase-0 failure-code audit self-check should surface unexpected extra codes "
+                 "without dropping the required-code pass verdict");
+  ExpectContains(result.stdout_json, "\"missing_failure_code_audit_reported\": true",
+                 "phase-0 failure-code audit self-check should report missing per-benchmark "
+                 "audit artifacts explicitly");
+  ExpectContains(result.stdout_json, "\"incomplete_failure_code_audit_reported\": true",
+                 "phase-0 failure-code audit self-check should fail closed when one benchmark "
+                 "audit omits required failure codes");
+  ExpectContains(result.stdout_json, "\"duplicate_observed_failure_codes_rejected\": true",
+                 "phase-0 failure-code audit self-check should reject duplicate observed "
+                 "failure-code entries");
+  ExpectContains(result.stdout_json, "\"missing_observed_failure_codes_rejected\": true",
+                 "phase-0 failure-code audit self-check should reject malformed audit sidecars "
+                 "that omit observed failure codes");
+  ExpectContains(result.stdout_json, "\"null_observed_failure_codes_rejected\": true",
+                 "phase-0 failure-code audit self-check should reject malformed audit sidecars "
+                 "that set observed failure codes to null");
+  ExpectContains(result.stdout_json, "\"pathlike_benchmark_id_rejected\": true",
+                 "phase-0 failure-code audit self-check should reject path-like benchmark-id "
+                 "inputs before probing the filesystem");
+  ExpectContains(result.stdout_json, "\"missing_candidate_root_rejected\": true",
+                 "phase-0 failure-code audit self-check should reject omitting --candidate-root "
+                 "outside the synthetic path");
+  ExpectContains(result.stdout_json, "\"missing_result_manifest_rejected\": true",
+                 "phase-0 failure-code audit self-check should fail closed when a declared "
+                 "packet benchmark omits its result manifest");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 failure-code audit self-check should write the synthetic summary "
+                 "output");
+}
+
+void Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest() {
+  const std::filesystem::path candidate_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-failure-code-audit-retained-required-set") / "summary.json";
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-failure-code-audit-retained-required-set",
+      "tools/reference-harness/scripts/audit_phase0_failure_codes.py",
+      {"--candidate-root", candidate_root.string(), "--summary-path", summary_path.string()},
+      "phase-0 failure-code audit report");
+  Expect(result.stderr_log.empty(),
+         "phase-0 failure-code audit report should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 failure-code audit report should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"candidate_packet_label\": \"required-set\"",
+                 "phase-0 failure-code audit report should preserve the retained required-set "
+                 "packet label");
+  ExpectContains(result.stdout_json, "\"candidate_capture_state\": \"reference-captured\"",
+                 "phase-0 failure-code audit report should keep the retained required packet in "
+                 "the reference-captured state");
+  ExpectContains(result.stdout_json,
+                 "\"all_selected_benchmarks_publish_failure_code_audits\": false",
+                 "phase-0 failure-code audit report should truthfully keep the retained packet "
+                 "short of a published candidate failure-code audit");
+  ExpectContains(result.stdout_json,
+                 "\"all_selected_benchmarks_report_required_failure_codes\": false",
+                 "phase-0 failure-code audit report should keep required failure-code coverage "
+                 "blocked without explicit candidate audit artifacts");
+  ExpectContains(result.stdout_json, "\"automatic_loop\"",
+                 "phase-0 failure-code audit report should include automatic_loop on the "
+                 "retained required-set packet");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 failure-code audit report should include automatic_vs_manual on the "
+                 "retained required-set packet");
+  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": false") == 2,
+         "phase-0 failure-code audit report should show both retained benchmarks missing audit "
+         "sidecars");
+  ExpectContains(result.stdout_json, "\"status\": \"failure-code-audit-missing\"",
+                 "phase-0 failure-code audit report should mark retained benchmarks without "
+                 "audit sidecars as missing");
+  Expect(CountSubstringOccurrences(result.stdout_json, "\"status\": \"failure-code-audit-missing\"") == 2,
+         "phase-0 failure-code audit report should keep both retained benchmarks on the missing "
+         "audit path");
+  ExpectContains(result.stdout_json, "\"insufficient_precision\"",
+                 "phase-0 failure-code audit report should surface the frozen required "
+                 "failure-code profile from the qualification scaffold");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -38143,6 +38251,8 @@ int main() {
     Phase0CorrectDigitScorerMatchesRetainedDED0PacketTest();
     Phase0CorrectDigitPacketSetSelfCheckAggregatesRetainedPacketPairsTest();
     Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest();
+    Phase0FailureCodeAuditSelfCheckCoversMissingAndIncompleteAuditsTest();
+    Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();

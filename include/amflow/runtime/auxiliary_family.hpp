@@ -15,7 +15,18 @@ struct AuxiliaryFamilyTransformResult {
   std::vector<std::size_t> rewritten_propagator_indices;
 };
 
+struct LightlikeLinearAuxiliaryTransformResult {
+  ProblemSpec transformed_spec;
+  std::string x_symbol = "x";
+  std::size_t rewritten_propagator_index = 0;
+};
+
 Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(
+    const ProblemSpec& spec,
+    std::size_t propagator_index,
+    const std::string& x_symbol = "x");
+
+LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTransform(
     const ProblemSpec& spec,
     std::size_t propagator_index,
     const std::string& x_symbol = "x");

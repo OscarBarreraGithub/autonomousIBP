@@ -419,6 +419,22 @@ Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(const ProblemSpec& sp
   return rewritten;
 }
 
+LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTransform(
+    const ProblemSpec& spec,
+    const std::size_t propagator_index,
+    const std::string& x_symbol) {
+  LightlikeLinearAuxiliaryTransformResult result;
+  result.transformed_spec = spec;
+  result.x_symbol = Trim(x_symbol);
+  result.rewritten_propagator_index = propagator_index;
+  result.transformed_spec.family.propagators[propagator_index] =
+      BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, propagator_index, x_symbol);
+  if (!ContainsInvariant(result.transformed_spec.kinematics.invariants, result.x_symbol)) {
+    result.transformed_spec.kinematics.invariants.push_back(result.x_symbol);
+  }
+  return result;
+}
+
 AuxiliaryFamilyTransformResult ApplyEtaInsertion(const ProblemSpec& spec,
                                                 const EtaInsertionDecision& decision,
                                                 const std::string& eta_symbol) {

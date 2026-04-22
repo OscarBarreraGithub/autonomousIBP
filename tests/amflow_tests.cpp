@@ -5304,6 +5304,73 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomen
       "surfaces deferred");
 }
 
+void ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::LightlikeLinearAuxiliaryTransformResult result =
+      amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, " x ");
+
+  amflow::ProblemSpec expected = spec;
+  expected.family.propagators[2] =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+  expected.kinematics.invariants.push_back("x");
+
+  Expect(result.x_symbol == "x",
+         "reviewed lightlike linear auxiliary full-spec transform should trim and record the "
+         "chosen x symbol");
+  Expect(result.rewritten_propagator_index == 2,
+         "reviewed lightlike linear auxiliary full-spec transform should record the rewritten "
+         "propagator index");
+  Expect(amflow::SerializeProblemSpecYaml(result.transformed_spec) ==
+             amflow::SerializeProblemSpecYaml(expected),
+         "reviewed lightlike linear auxiliary full-spec transform should rewrite only the "
+         "selected propagator and append the x invariant once");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "reviewed lightlike linear auxiliary full-spec transform should not mutate the input "
+         "problem spec");
+}
+
+void ApplyReviewedLightlikeLinearAuxiliaryTransformDoesNotDuplicateInvariantTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.invariants.push_back("x");
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::LightlikeLinearAuxiliaryTransformResult result =
+      amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x");
+
+  amflow::ProblemSpec expected = spec;
+  expected.family.propagators[2] =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(std::count(result.transformed_spec.kinematics.invariants.begin(),
+                    result.transformed_spec.kinematics.invariants.end(),
+                    std::string("x")) == 1,
+         "reviewed lightlike linear auxiliary full-spec transform should append the x invariant "
+         "only when it is absent");
+  Expect(amflow::SerializeProblemSpecYaml(result.transformed_spec) ==
+             amflow::SerializeProblemSpecYaml(expected),
+         "reviewed lightlike linear auxiliary full-spec transform should preserve the rest of "
+         "the full-spec surface when x is already declared");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "reviewed lightlike linear auxiliary full-spec transform should not mutate the input "
+         "problem spec when the x invariant is already present");
+}
+
+void ApplyReviewedLightlikeLinearAuxiliaryTransformPreservesHelperRejectionSurfaceTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].variant.reset();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+      },
+      "to carry explicit variant \"linear\" on kind \"linear\"",
+      "reviewed lightlike linear auxiliary full-spec transform should preserve the helper's "
+      "explicit linear-subset rejection surface");
+}
+
 void AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const auto mode = amflow::MakeBuiltinEtaMode("All");
@@ -37051,6 +37118,9 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest();
+    ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest();
+    ApplyReviewedLightlikeLinearAuxiliaryTransformDoesNotDuplicateInvariantTest();
+    ApplyReviewedLightlikeLinearAuxiliaryTransformPreservesHelperRejectionSurfaceTest();
     AllEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     AllEtaModeSkipsAuxiliaryPropagatorsTest();
     PrescriptionEtaModeSelectsUncutMinusI0PropagatorsTest();

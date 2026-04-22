@@ -3407,7 +3407,7 @@ std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
 std::optional<SolverDiagnostics> AssessInvariantGeneratedSolvePhysicalKinematics(
     const ProblemSpec& spec,
     const std::optional<std::string>& reviewed_segment_invariant_name,
-    const bool allow_unlabeled_reviewed_s_expressions,
+    const bool allow_unlabeled_reviewed_raw_expressions,
     const std::string& start_location,
     const std::string& target_location) {
   const PhysicalKinematicsGuardrailAssessment assessment =
@@ -3417,7 +3417,7 @@ std::optional<SolverDiagnostics> AssessInvariantGeneratedSolvePhysicalKinematics
                 *reviewed_segment_invariant_name,
                 start_location,
                 target_location,
-                allow_unlabeled_reviewed_s_expressions)
+                allow_unlabeled_reviewed_raw_expressions)
           : AssessPhysicalKinematicsForBatch62(spec);
   switch (assessment.verdict) {
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
@@ -4446,10 +4446,12 @@ SolverDiagnostics SolveInvariantGeneratedSeries(
       (invariant_name == "s" || invariant_name == "t" || invariant_name == "msq")
           ? std::optional<std::string>(invariant_name)
           : std::nullopt;
+  const bool allow_unlabeled_reviewed_raw_expressions =
+      invariant_name == "s" || invariant_name == "t";
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(spec,
                                                           reviewed_segment_invariant_name,
-                                                          invariant_name == "s",
+                                                          allow_unlabeled_reviewed_raw_expressions,
                                                           start_location,
                                                           target_location);
       diagnostics.has_value()) {
@@ -4501,13 +4503,14 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
              invariant_names.end()) {
     reviewed_segment_invariant_name = "s";
   }
-  const bool allow_unlabeled_reviewed_s_expressions =
-      invariant_names.size() == 1 && invariant_names.front() == "s";
+  const bool allow_unlabeled_reviewed_raw_expressions =
+      invariant_names.size() == 1 &&
+      (invariant_names.front() == "s" || invariant_names.front() == "t");
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessInvariantGeneratedSolvePhysicalKinematics(
               spec,
               reviewed_segment_invariant_name,
-              allow_unlabeled_reviewed_s_expressions,
+              allow_unlabeled_reviewed_raw_expressions,
               start_location,
               target_location);
       diagnostics.has_value()) {

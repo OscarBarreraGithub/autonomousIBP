@@ -282,9 +282,9 @@ std::optional<ReviewedInvariantSegment> ParseReviewedInvariantSegment(
     const std::string& target_location,
     const ReviewedK0ExactSubstitutions& substitutions,
     const std::string& active_variable,
-    const bool allow_unlabeled_reviewed_s_expressions) {
+    const bool allow_unlabeled_reviewed_raw_expressions) {
   const auto parse_location =
-      [&substitutions, &active_variable, allow_unlabeled_reviewed_s_expressions](
+      [&substitutions, &active_variable, allow_unlabeled_reviewed_raw_expressions](
           const std::string& location) -> std::optional<ExactRational> {
     const NumericEvaluationPoint passive_bindings =
         BuildReviewedSegmentPassiveBindings(substitutions, active_variable);
@@ -301,7 +301,8 @@ std::optional<ReviewedInvariantSegment> ParseReviewedInvariantSegment(
       }
     }
 
-    if (active_variable != "s" || !allow_unlabeled_reviewed_s_expressions) {
+    if (!allow_unlabeled_reviewed_raw_expressions ||
+        (active_variable != "s" && active_variable != "t")) {
       return std::nullopt;
     }
 
@@ -534,7 +535,7 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const std::string& invariant_name,
     const std::string& start_location,
     const std::string& target_location,
-    const bool allow_unlabeled_reviewed_s_expressions) {
+    const bool allow_unlabeled_reviewed_raw_expressions) {
   PhysicalKinematicsGuardrailAssessment assessment =
       AssessPhysicalKinematicsForBatch62(spec);
   if (assessment.verdict !=
@@ -557,9 +558,9 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
                                     target_location,
                                     *exact_substitutions,
                                     invariant_name,
-                                    allow_unlabeled_reviewed_s_expressions);
+                                    allow_unlabeled_reviewed_raw_expressions);
   if (!segment.has_value()) {
-    if (invariant_name == "s" && !allow_unlabeled_reviewed_s_expressions &&
+    if (invariant_name == "s" && !allow_unlabeled_reviewed_raw_expressions &&
         HasAmbiguousUnlabeledReviewedSMultiInvariantLocation(start_location,
                                                             target_location,
                                                             *exact_substitutions)) {
@@ -656,13 +657,13 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const ProblemSpec& spec,
     const std::string& start_location,
     const std::string& target_location,
-    const bool allow_unlabeled_reviewed_s_expressions) {
+    const bool allow_unlabeled_reviewed_raw_expressions) {
   return AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
       spec,
       "s",
       start_location,
       target_location,
-      allow_unlabeled_reviewed_s_expressions);
+      allow_unlabeled_reviewed_raw_expressions);
 }
 
 PhysicalKinematicsGuardrailAssessment

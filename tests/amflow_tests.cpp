@@ -4074,6 +4074,23 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesTSegme
       "Batch 62g should report the reviewed endpoint locus for t-segment crossings");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawTSegmentEndpointCrossingTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "t", "-1", "0", true);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::SingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62i should classify raw reviewed t segments that cross the endpoint as "
+         "singular");
+  ExpectContains(
+      assessment.detail,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62i should report the reviewed endpoint locus for raw t-segment crossings");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSegmentThresholdCrossingTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
 
@@ -4239,6 +4256,19 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeTSegmen
              amflow::PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset &&
              assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
          "Batch 62g should keep reviewed same-side interior t segments supported");
+}
+
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawTSegmentSupportedTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "t", "-1", "-1/2", true);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62i should keep raw reviewed same-side interior t segments supported");
 }
 
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeMsqSegmentSupportedTest() {
@@ -18293,6 +18323,39 @@ void SolveInvariantGeneratedSeriesRejectsTSegmentEndpointCrossingBeforeDEConstru
          "segment");
 }
 
+void SolveInvariantGeneratedSeriesRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-solver-raw-crossing-t-endpoint-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeries(spec,
+                                            amflow::ParsedMasterList{},
+                                            "t",
+                                            MakeKiraReductionOptions(),
+                                            layout,
+                                            layout.root / "bin" / "unused-kira.sh",
+                                            layout.root / "bin" / "unused-fermat.sh",
+                                            solver,
+                                            "-1",
+                                            "0",
+                                            MakeDistinctPrecisionPolicy(),
+                                            55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62i should reject raw reviewed t segments that cross the endpoint before DE "
+         "construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62i should report the endpoint locus when raw t continuation crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62i should not call the solver when raw t continuation crosses a reviewed "
+         "singular segment");
+}
+
 void SolveInvariantGeneratedSeriesRejectsMsqSegmentThresholdCrossingBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -18560,6 +18623,40 @@ void SolveInvariantGeneratedSeriesListRejectsTSegmentEndpointCrossingBeforeDECon
   Expect(solver.call_count() == 0,
          "Batch 62g should not call the solver when the single-invariant t list wrapper crosses "
          "a reviewed singular segment");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-raw-crossing-t-endpoint-segment"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "-1",
+                                                "0",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62i should reject raw reviewed t segments on the single-invariant list wrapper "
+         "before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62i should report the endpoint locus when the single-invariant raw t list wrapper "
+      "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62i should not call the solver when the single-invariant raw t list wrapper "
+         "crosses a reviewed singular segment");
 }
 
 void SolveInvariantGeneratedSeriesListRejectsMsqSegmentEndpointCrossingBeforeDEConstructionTest() {
@@ -32727,6 +32824,7 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesTSegmentEndpointCrossingTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawTSegmentEndpointCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSegmentThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesMsqSegmentEndpointCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdNearMarginTest();
@@ -32737,6 +32835,7 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsThresholdClearSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeTSegmentSupportedTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawTSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeMsqSegmentSupportedTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
@@ -33298,6 +33397,7 @@ int main() {
     SolveInvariantGeneratedSeriesRejectsThresholdCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsRawThresholdCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsTSegmentEndpointCrossingBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsMsqSegmentThresholdCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesRejectsThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesK0SmokeSafePhysicalSegmentReachesNextLayerTest();
@@ -33327,6 +33427,7 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsTSegmentEndpointCrossingBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsRawTSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMsqSegmentEndpointCrossingBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();

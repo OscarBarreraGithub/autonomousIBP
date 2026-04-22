@@ -149,6 +149,18 @@ READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
     "spacetime_dimension",
 }
 
+READY_OPTIONAL_PENDING_PHASE0_EXAMPLES = {
+    "user_defined_amfmode",
+    "user_defined_ending",
+}
+
+OPTIONAL_CAPTURE_PACKET_HINTS = {
+    "differential_equation_solver": "de-d0-pair",
+    "spacetime_dimension": "de-d0-pair",
+    "user_defined_amfmode": "user-hook-pair",
+    "user_defined_ending": "user-hook-pair",
+}
+
 
 def build_manifest(
     *,
@@ -403,15 +415,32 @@ def run_self_check() -> dict[str, Any]:
             for entry in phase0_example_classes
             if entry["id"] in READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES and not entry.get("next_runtime_lane")
         }
+        ready_optional_pending_examples = {
+            entry["id"]
+            for entry in phase0_example_classes
+            if entry["current_evidence_state"] == "cataloged-pending-capture"
+            and entry["id"] in READY_OPTIONAL_PENDING_PHASE0_EXAMPLES
+            and not entry.get("next_runtime_lane")
+        }
         catalog_runtime_lanes = {
             entry["id"]: entry.get("next_runtime_lane", "")
             for entry in catalog_entries
             if entry.get("next_runtime_lane")
         }
+        catalog_capture_packets = {
+            entry["id"]: entry.get("optional_capture_packet", "")
+            for entry in catalog_entries
+            if entry.get("optional_capture_packet")
+        }
         qualification_phase0_runtime_lanes = {
             entry["id"]: entry.get("next_runtime_lane", "")
             for entry in phase0_example_classes
             if entry.get("next_runtime_lane")
+        }
+        qualification_phase0_capture_packets = {
+            entry["id"]: entry.get("optional_capture_packet", "")
+            for entry in phase0_example_classes
+            if entry.get("optional_capture_packet")
         }
         qualification_case_study_runtime_lanes = {
             entry["id"]: entry.get("next_runtime_lane", "")
@@ -423,6 +452,12 @@ def run_self_check() -> dict[str, Any]:
                 harness_root / "goldens" / "phase0" / benchmark_id / "metadata.json"
             ).get("next_runtime_lane", "")
             for benchmark_id in THEORY_BLOCKED_PHASE0_RUNTIME_LANES
+        }
+        placeholder_capture_packets = {
+            benchmark_id: load_json(
+                harness_root / "goldens" / "phase0" / benchmark_id / "metadata.json"
+            ).get("optional_capture_packet", "")
+            for benchmark_id in OPTIONAL_CAPTURE_PACKET_HINTS
         }
         digit_threshold_profiles = {
             entry["id"]: entry["minimum_correct_digits"]
@@ -486,9 +521,24 @@ def run_self_check() -> dict[str, Any]:
             "bootstrap self-check should preserve theory-blocked runtime lanes in placeholder metadata",
         )
         expect(
+            catalog_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS
+            and qualification_phase0_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS,
+            "phase-0 catalog and qualification scaffold should keep optional capture-packet hints "
+            "locked to the reviewed ready-example packet plan",
+        )
+        expect(
+            placeholder_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS,
+            "bootstrap self-check should preserve optional capture-packet hints in placeholder metadata",
+        )
+        expect(
             ready_optional_captured_examples == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
             and ready_optional_examples_without_runtime_lane == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES,
             "qualification scaffold should keep the ready optional retained captures visible "
+            "without stale runtime-lane blockers",
+        )
+        expect(
+            ready_optional_pending_examples == READY_OPTIONAL_PENDING_PHASE0_EXAMPLES,
+            "qualification scaffold should keep the next ready uncaptured user-hook packet visible "
             "without stale runtime-lane blockers",
         )
         expect(set(verification_thresholds).issubset(digit_threshold_profiles),
@@ -568,10 +618,20 @@ def run_self_check() -> dict[str, Any]:
             "placeholder_metadata_preserves_runtime_lane_hints": (
                 placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
             ),
+            "optional_capture_packets_locked": (
+                catalog_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS
+                and qualification_phase0_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS
+            ),
+            "placeholder_metadata_preserves_capture_packet_hints": (
+                placeholder_capture_packets == OPTIONAL_CAPTURE_PACKET_HINTS
+            ),
             "ready_optional_examples_reference_captured": (
                 ready_optional_captured_examples == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
                 and ready_optional_examples_without_runtime_lane
                 == READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES
+            ),
+            "ready_user_hook_examples_pending_capture": (
+                ready_optional_pending_examples == READY_OPTIONAL_PENDING_PHASE0_EXAMPLES
             ),
             "digit_threshold_profiles_match_verification_strategy": all(
                 digit_threshold_profiles[profile_id] == threshold

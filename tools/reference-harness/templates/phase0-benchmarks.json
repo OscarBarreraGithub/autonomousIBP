@@ -31,7 +31,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "notes": "Standalone DE solver smoke test if present in the pinned example set."
+      "optional_capture_packet": "de-d0-pair",
+      "notes": "Standalone DE solver smoke test if present in the pinned example set. The reviewed retained optional packet for this ready example pair is `de-d0-pair`."
     },
     {
       "id": "feynman_prescription",
@@ -66,7 +67,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "notes": "Arbitrary-D0 smoke test if present in the pinned example set."
+      "optional_capture_packet": "de-d0-pair",
+      "notes": "Arbitrary-D0 smoke test if present in the pinned example set. The reviewed retained optional packet for this ready example pair is `de-d0-pair`."
     },
     {
       "id": "user_defined_amfmode",
@@ -74,7 +76,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "notes": "User-defined eta-insertion hook smoke test if present in the pinned example set."
+      "optional_capture_packet": "user-hook-pair",
+      "notes": "User-defined eta-insertion hook smoke test if present in the pinned example set. This is part of the next ready uncaptured optional packet `user-hook-pair`."
     },
     {
       "id": "user_defined_ending",
@@ -82,7 +85,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "notes": "User-defined ending scheme smoke test if present in the pinned example set."
+      "optional_capture_packet": "user-hook-pair",
+      "notes": "User-defined ending scheme smoke test if present in the pinned example set. This is part of the next ready uncaptured optional packet `user-hook-pair`."
     }
   ]
 }

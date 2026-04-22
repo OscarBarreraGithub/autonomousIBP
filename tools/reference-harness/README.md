@@ -61,7 +61,8 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 All four harness scripts also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61h` / `b62h` / `b63g` / `b64e`
-surfaces:
+surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` plus the next
+ready uncaptured `user-hook-pair`:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -167,10 +168,12 @@ The capture script writes:
   the parity-matrix benchmark families, the current digit-threshold profiles, the required failure
   codes, and the known regression families without claiming any new captured evidence. It now also
   carries optional `next_runtime_lane` hints for feature or qualification anchors that are still
-  blocked on reviewed runtime slices.
+  blocked on reviewed runtime slices, plus `optional_capture_packet` hints for ready example pairs
+  that belong in the retained `de-d0-pair` or next `user-hook-pair` packets.
 - `bootstrap_reference_harness.py --self-check` now validates that the copied phase-0 catalog,
-  placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, and the
-  reviewed `next_runtime_lane` blocker hints stay synchronized with
+  placeholder index benchmark IDs, qualification scaffold IDs, digit-threshold floors, the
+  reviewed `next_runtime_lane` blocker hints, and the ready-example `optional_capture_packet`
+  hints stay synchronized with
   `specs/parity-matrix.yaml`, `references/case-studies/selected-benchmarks.md`, and
   `docs/verification-strategy.md`.
 - The fetch helper `--self-check` now also verifies the tar extraction policy against rejected symlink, hardlink, device, absolute-path, and escaping entries.

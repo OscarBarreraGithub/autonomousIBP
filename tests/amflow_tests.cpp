@@ -31087,10 +31087,22 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "bootstrap reference-harness self-check should preserve theory-backed runtime "
                  "lane hints in placeholder metadata");
   ExpectContains(result.stdout_json,
+                 "\"optional_capture_packets_locked\": true",
+                 "bootstrap reference-harness self-check should keep ready-example optional "
+                 "capture-packet hints synchronized with the reviewed packet plan");
+  ExpectContains(result.stdout_json,
+                 "\"placeholder_metadata_preserves_capture_packet_hints\": true",
+                 "bootstrap reference-harness self-check should preserve optional capture-packet "
+                 "hints in placeholder metadata");
+  ExpectContains(result.stdout_json,
                  "\"ready_optional_examples_reference_captured\": true",
                  "bootstrap reference-harness self-check should keep the ready optional "
                  "differential-equation and spacetime-dimension captures visible in the "
                  "qualification scaffold");
+  ExpectContains(result.stdout_json,
+                 "\"ready_user_hook_examples_pending_capture\": true",
+                 "bootstrap reference-harness self-check should keep the next ready uncaptured "
+                 "user-hook examples visible without stale runtime blockers");
   ExpectContains(result.stdout_json,
                  "\"digit_threshold_profiles_match_verification_strategy\": true",
                  "bootstrap reference-harness self-check should keep qualification digit "

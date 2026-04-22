@@ -15,6 +15,7 @@ from typing import Any
 PLACEHOLDER_STATUSES = {"placeholder", "pending-reference-capture"}
 VALID_BENCHMARK_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 VALID_RUNTIME_LANE = re.compile(r"^[a-z][a-z0-9_]*$")
+VALID_CAPTURE_PACKET = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 def ensure_dir(path: Path, dry_run: bool) -> None:
@@ -77,6 +78,23 @@ def normalize_runtime_lane(raw_lane: Any) -> str:
     return raw_lane
 
 
+def normalize_capture_packet(raw_packet: Any) -> str:
+    if raw_packet is None:
+        return ""
+    if not isinstance(raw_packet, str):
+        raise TypeError(
+            f"optional capture packet must be a string, got {type(raw_packet).__name__}"
+        )
+    if raw_packet != raw_packet.strip():
+        raise ValueError(f"optional capture packet has surrounding whitespace: {raw_packet!r}")
+    if not VALID_CAPTURE_PACKET.fullmatch(raw_packet):
+        raise ValueError(
+            "optional capture packet must match "
+            f"{VALID_CAPTURE_PACKET.pattern!r}: {raw_packet!r}"
+        )
+    return raw_packet
+
+
 def normalize_benchmark_entry(raw: Any) -> dict[str, Any]:
     if isinstance(raw, str):
         benchmark_id = validate_benchmark_id(raw)
@@ -97,6 +115,7 @@ def normalize_benchmark_entry(raw: Any) -> dict[str, Any]:
         "feature_gate": raw.get("feature_gate", "phase0"),
         "oracle": raw.get("oracle", "upstream-amflow"),
         "next_runtime_lane": normalize_runtime_lane(raw.get("next_runtime_lane")),
+        "optional_capture_packet": normalize_capture_packet(raw.get("optional_capture_packet")),
         "notes": raw.get("notes", ""),
     }
 
@@ -156,6 +175,8 @@ def freeze_phase0_placeholders(
         golden_metadata["feature_gate"] = benchmark["feature_gate"]
         if benchmark["next_runtime_lane"]:
             golden_metadata["next_runtime_lane"] = benchmark["next_runtime_lane"]
+        if benchmark["optional_capture_packet"]:
+            golden_metadata["optional_capture_packet"] = benchmark["optional_capture_packet"]
         golden_metadata["oracle"]["kind"] = benchmark["oracle"]
         golden_metadata["oracle"]["manifest"] = str(manifest_path) if manifest_path else ""
         golden_metadata["oracle"]["benchmark_catalog"] = str(benchmark_catalog)

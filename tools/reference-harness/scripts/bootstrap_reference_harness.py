@@ -133,26 +133,36 @@ def load_verification_strategy_digit_thresholds(path: Path) -> dict[str, int]:
     return thresholds
 
 
+def load_recorded_batch_ids(path: Path) -> set[str]:
+    batch_ids: set[str] = set()
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^\| `Batch ([0-9A-Za-z.]+)` \|", raw_line)
+        if match:
+            batch_ids.add("b" + match.group(1))
+    expect(batch_ids, f"failed to locate any batch rows in {path}")
+    return batch_ids
+
+
 THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
-    "automatic_phasespace": "b63g2",
-    "complex_kinematics": "b61j",
-    "feynman_prescription": "b63g2",
-    "linear_propagator": "b64g",
+    "automatic_phasespace": "b63h",
+    "complex_kinematics": "b61k",
+    "feynman_prescription": "b63h",
+    "linear_propagator": "b64h",
 }
 
 THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
-    "one-singular-endpoint-case": "b62j",
+    "one-singular-endpoint-case": "b62k",
 }
 
 LANDED_PHASE0_RUNTIME_PREDECESSORS = {
     "automatic_phasespace": "b63f",
     "complex_kinematics": "b61h",
     "feynman_prescription": "b63f",
-    "linear_propagator": "b64f",
+    "linear_propagator": "b64g",
 }
 
 LANDED_CASE_STUDY_RUNTIME_PREDECESSORS = {
-    "one-singular-endpoint-case": "b62i",
+    "one-singular-endpoint-case": "b62j",
 }
 
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
@@ -482,14 +492,13 @@ def run_self_check() -> dict[str, Any]:
             entry["id"]: entry["families"] for entry in qualification["known_regression_profiles"]
         }
         golden_index_ids = [entry["benchmark_id"] for entry in golden_index["benchmarks"]]
-        recorded_phase0_runtime_predecessors = all(
-            f"Batch {lane[1:]}" in implementation_ledger_text
-            for lane in set(LANDED_PHASE0_RUNTIME_PREDECESSORS.values())
+        recorded_batch_ids = load_recorded_batch_ids(implementation_ledger_path)
+        recorded_phase0_runtime_predecessors = set(LANDED_PHASE0_RUNTIME_PREDECESSORS.values()).issubset(
+            recorded_batch_ids
         )
-        recorded_case_study_runtime_predecessors = all(
-            f"Batch {lane[1:]}" in implementation_ledger_text
-            for lane in set(LANDED_CASE_STUDY_RUNTIME_PREDECESSORS.values())
-        )
+        recorded_case_study_runtime_predecessors = set(
+            LANDED_CASE_STUDY_RUNTIME_PREDECESSORS.values()
+        ).issubset(recorded_batch_ids)
 
         expect(summary["placeholders"]["benchmark_count"] == len(catalog_ids),
                "bootstrap self-check should freeze one placeholder benchmark per phase-0 catalog entry")
@@ -635,14 +644,18 @@ def run_self_check() -> dict[str, Any]:
                 catalog_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
                 and qualification_phase0_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
             ),
+            "theory_blocked_phase0_runtime_lanes": THEORY_BLOCKED_PHASE0_RUNTIME_LANES,
             "singular_case_study_runtime_lane_locked": (
                 qualification_case_study_runtime_lanes
                 == THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES
             ),
+            "singular_case_study_runtime_lanes": THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES,
             "runtime_lane_predecessors_recorded": (
                 recorded_phase0_runtime_predecessors
                 and recorded_case_study_runtime_predecessors
             ),
+            "recorded_phase0_runtime_predecessors": LANDED_PHASE0_RUNTIME_PREDECESSORS,
+            "recorded_case_study_runtime_predecessors": LANDED_CASE_STUDY_RUNTIME_PREDECESSORS,
             "placeholder_metadata_preserves_runtime_lane_hints": (
                 placeholder_runtime_lanes == THEORY_BLOCKED_PHASE0_RUNTIME_LANES
             ),

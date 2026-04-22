@@ -33578,14 +33578,38 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "\"theory_blocked_phase0_runtime_lanes_locked\": true",
                  "bootstrap reference-harness self-check should keep the theory-blocked phase-0 "
                  "runtime-lane hints synchronized with the reviewed next-slice plan");
+  ExpectContains(result.stdout_json, "\"complex_kinematics\": \"b61k\"",
+                 "bootstrap reference-harness self-check should publish the current complex "
+                 "kinematics blocker hint");
+  ExpectContains(result.stdout_json, "\"automatic_phasespace\": \"b63h\"",
+                 "bootstrap reference-harness self-check should publish the current phase-space "
+                 "blocker hint");
+  ExpectContains(result.stdout_json, "\"feynman_prescription\": \"b63h\"",
+                 "bootstrap reference-harness self-check should publish the current prescription "
+                 "blocker hint");
+  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64h\"",
+                 "bootstrap reference-harness self-check should publish the current linear "
+                 "propagator blocker hint");
   ExpectContains(result.stdout_json,
                  "\"singular_case_study_runtime_lane_locked\": true",
                  "bootstrap reference-harness self-check should keep the singular guardrail "
                  "runtime-lane hint synchronized with the reviewed next-slice plan");
+  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62k\"",
+                 "bootstrap reference-harness self-check should publish the current singular "
+                 "guardrail blocker hint");
   ExpectContains(result.stdout_json,
                  "\"runtime_lane_predecessors_recorded\": true",
                  "bootstrap reference-harness self-check should anchor forward runtime-lane "
                  "hints to recorded landed predecessor slices");
+  ExpectContains(result.stdout_json, "\"complex_kinematics\": \"b61h\"",
+                 "bootstrap reference-harness self-check should publish the recorded complex "
+                 "kinematics predecessor anchor");
+  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64g\"",
+                 "bootstrap reference-harness self-check should publish the recorded linear "
+                 "propagator predecessor anchor");
+  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62j\"",
+                 "bootstrap reference-harness self-check should publish the recorded singular "
+                 "guardrail predecessor anchor");
   ExpectContains(result.stdout_json,
                  "\"placeholder_metadata_preserves_runtime_lane_hints\": true",
                  "bootstrap reference-harness self-check should preserve theory-backed runtime "

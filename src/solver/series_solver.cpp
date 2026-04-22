@@ -3079,6 +3079,18 @@ SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summar
   return diagnostics;
 }
 
+SolverDiagnostics MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+    const std::string& variable_name,
+    const EtaContinuationPlan& plan) {
+  std::string summary =
+      std::string(kBootstrapSolverPrefix) +
+      " does not execute eta_continuation_plan on the default exact path; eta_symbol=" +
+      plan.eta_symbol + "; system_variable=" + variable_name;
+  summary += "; contour_fingerprint=" + plan.contour_fingerprint;
+  summary += "; default-solver complex contour execution remains deferred";
+  return MakeUnsupportedSolverPathDiagnostics(summary);
+}
+
 std::string BuildComplexEtaContinuationManifestRunId(const EtaContinuationPlan& plan) {
   constexpr std::size_t kFingerprintPrefixLength = 12;
   std::string run_id = "eta-generated-complex-continuation";
@@ -3955,6 +3967,10 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
   }
 
   const std::string& variable_name = live_request.system.variables.front().name;
+  if (live_request.eta_continuation_plan.has_value()) {
+    return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+        variable_name, *live_request.eta_continuation_plan);
+  }
   const NumericEvaluationPoint passive_bindings = BuildBootstrapPassiveBindings(live_request);
   const ExactRational start_value =
       ParsePointValue(variable_name,

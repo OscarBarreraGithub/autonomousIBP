@@ -12628,6 +12628,25 @@ void PrecisionRetryControllerPreservesNonRetryableFailureTest() {
          "precision retry controller should preserve non-retryable solver diagnostics unchanged");
 }
 
+amflow::EtaContinuationPlan MakeBootstrapEtaContinuationPlanForTests(
+    const std::string& start_location,
+    const std::string& target_location) {
+  amflow::EtaContinuationPlan plan;
+  amflow::ExactComplexRational start_point;
+  start_point.real = {"0", "1"};
+  start_point.imaginary = {"0", "1"};
+  amflow::ExactComplexRational target_point;
+  target_point.real = {"1", "1"};
+  target_point.imaginary = {"0", "1"};
+  plan.eta_symbol = "eta";
+  plan.start_location = start_location;
+  plan.target_location = target_location;
+  plan.half_plane = amflow::EtaContourHalfPlane::Upper;
+  plan.contour_points = {start_point, target_point};
+  plan.contour_fingerprint = "bootstrap-default-complex-plan";
+  return plan;
+}
+
 void BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -12640,6 +12659,40 @@ void BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest() {
       "malformed expression",
       "bootstrap solver should preserve malformed explicit boundary values as ordinary "
       "deterministic argument errors");
+}
+
+void BootstrapSeriesSolverRejectsEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap eta-continuation-plan coverage should keep the reviewed exact baseline "
+         "solve succeeding without a continuation plan");
+  Expect(!diagnostics.success,
+         "bootstrap eta-continuation-plan coverage should fail closed when the caller attaches "
+         "one reviewed eta_continuation_plan to the default exact solver");
+  Expect(diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap eta-continuation-plan coverage should surface unsupported_solver_path on the "
+         "default exact solver");
+  ExpectContains(diagnostics.summary,
+                 "eta_continuation_plan",
+                 "bootstrap eta-continuation-plan coverage should explain that the default exact "
+                 "solver does not execute eta_continuation_plan");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap eta-continuation-plan coverage should report the reviewed contour "
+                 "fingerprint");
+  ExpectContains(diagnostics.summary,
+                 "default-solver complex contour execution remains deferred",
+                 "bootstrap eta-continuation-plan coverage should keep the deferred complex "
+                 "execution status explicit");
 }
 
 void SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest() {
@@ -12751,6 +12804,23 @@ void SolveDifferentialEquationRejectsMalformedBoundaryValueExpressionLikeBootstr
   Expect(actual == expected,
          "standalone DE solver wrapper should preserve the exact malformed-boundary invalid_"
          "argument diagnostic");
+}
+
+void SolveDifferentialEquationRejectsEtaContinuationPlanLikeBootstrapSolverTest() {
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=2", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+
+  const amflow::SolverDiagnostics expected = amflow::BootstrapSeriesSolver().Solve(request);
+  const amflow::SolverDiagnostics actual = amflow::SolveDifferentialEquation(request);
+
+  Expect(expected.failure_code == "unsupported_solver_path" && !expected.success,
+         "direct bootstrap eta-continuation-plan coverage should fail closed on the default "
+         "exact solver");
+  Expect(SameSolverDiagnostics(actual, expected),
+         "standalone DE solver wrapper should preserve the default exact solver's explicit "
+         "eta_continuation_plan rejection diagnostics");
 }
 
 void SolveDifferentialEquationExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest() {
@@ -36559,6 +36629,7 @@ int main() {
     EvaluatePrecisionBudgetTreatsConfiguredCeilingAsHardCapTest();
     BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
+    BootstrapSeriesSolverRejectsEtaContinuationPlanOnDefaultExactPathTest();
     SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactUpperTriangularHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactMixedHappyPathMatchesBootstrapSolverTest();
@@ -36567,6 +36638,7 @@ int main() {
     SolveDifferentialEquationInsufficientPrecisionPassthroughTest();
     SolveDifferentialEquationMixedUnsupportedSolverPathPassthroughTest();
     SolveDifferentialEquationRejectsMalformedBoundaryValueExpressionLikeBootstrapSolverTest();
+    SolveDifferentialEquationRejectsEtaContinuationPlanLikeBootstrapSolverTest();
     SolveDifferentialEquationExactPathIgnoresPrecisionPolicyAndRequestedDigitsTest();
     SolveDifferentialEquationExactRequestedDigitsPassthroughTest();
     SolveDifferentialEquationExactSubsetRequestedDigitsMonotonicityTest();

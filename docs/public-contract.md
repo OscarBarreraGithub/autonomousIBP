@@ -218,9 +218,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   vocabulary `{quadratic, linear}`. On the current reviewed B64a surface it is preserved through
   file-backed YAML and resolved by `EffectivePropagatorVariant(...)`, but any explicit `variant`
   must still agree with the legacy `PropagatorKind`-backed linearity encoding because downstream
-  eta-mode and general Kira consumers have not yet migrated off `PropagatorKind::Linear`; the
-  reviewed automatic invariant seed / preparation / execution / `DESystem` / solver path now keys
-  on `EffectivePropagatorVariant(...)` for one invariant-independent linear-propagator subset only
+  eta-mode consumers have not yet migrated off `PropagatorKind::Linear`; the reviewed automatic
+  invariant seed / preparation / execution / `DESystem` / solver path now keys on
+  `EffectivePropagatorVariant(...)` for one invariant-independent linear-propagator subset only,
+  while general `KiraBackend` preparation is now the first non-invariant consumer of explicit
+  `variant: "linear"` on a stricter reviewed subset that requires the relevant external-symbol
+  scalar-product surface to stay on identifier-free rational-constant expressions with nonzero
+  denominators only
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -306,9 +310,12 @@ Within each propagator entry, the current reviewed B64a surface also accepts an 
 `variant` scalar with the frozen keywords `"quadratic"` or `"linear"`. The file-backed loader
 preserves that field through canonicalization, but loaded-spec validation still requires any
 explicit `variant` to agree with the legacy `kind`-backed linearity encoding because downstream
-runtime/reducer consumers still key on `PropagatorKind::Linear`, even though the reviewed
+eta-mode/runtime consumers still key on `PropagatorKind::Linear`, even though the reviewed
 automatic invariant seed / preparation / execution / `DESystem` / solver path now consumes
-`EffectivePropagatorVariant(...)` on one narrow linear subset.
+`EffectivePropagatorVariant(...)` on one narrow linear subset, and general `KiraBackend`
+preparation now consumes explicit `variant: "linear"` on a stricter reviewed subset whose
+relevant external-symbol scalar-product surface is limited to identifier-free rational-constant
+expressions with nonzero denominators.
 
 The file-backed loader applies two safety rules on top of that subset:
 
@@ -470,6 +477,7 @@ The first generated-target reducer preparation seam is also bootstrap-only:
 
 - `KiraBackend::PrepareForTargets(...)` prepares Kira files for an explicit override target list while leaving `Prepare(...)` unchanged on `ProblemSpec.targets`
 - explicit target lists must be non-empty, duplicate-free, family-consistent with `spec.family.name`, and arity-consistent with `family.propagators.size()`
+- the same general `KiraBackend` preparation path is now the first truthful non-invariant linear-propagator consumer after B64c, but only for propagators that explicitly declare `variant: "linear"`: on that narrow reviewed subset each accepted expression is an additive sum of rational constants plus loop-external bilinears such as `k*n`, and every external symbol that appears there has complete scalar-product-rule coverage whose entire declared external-pair surface stays on identifier-free rational-constant expressions with nonzero denominators; this is intentionally stricter than the reviewed one-invariant automatic path, and legacy kind-only linear metadata remains outside this claimed consumer surface
 - `PrepareEtaGeneratedReduction(...)` composes the reviewed eta insertion seam, eta-derivative generation seam, and explicit-target Kira preparation seam into one typed preparation bundle
 - eta-generated target preparation preserves the exact `reduction_targets` order from `GenerateEtaDerivativeVariable(...)`
 - eta-generated preparation rejects empty generated target lists locally before reducer execution

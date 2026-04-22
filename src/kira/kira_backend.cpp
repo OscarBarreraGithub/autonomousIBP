@@ -734,6 +734,253 @@ std::pair<std::string, std::string> ScalarProductRuleOperands(const std::string&
           NormalizeKiraExpression(factors.factors[1])};
 }
 
+bool ParseRationalLiteral(const std::string& expression) {
+  const std::string normalized = NormalizeKiraExpression(expression);
+  if (normalized.empty()) {
+    return false;
+  }
+
+  std::size_t index = 0;
+  if (normalized[index] == '+' || normalized[index] == '-') {
+    ++index;
+  }
+  const std::size_t numerator_begin = index;
+  while (index < normalized.size() &&
+         std::isdigit(static_cast<unsigned char>(normalized[index])) != 0) {
+    ++index;
+  }
+  if (index == numerator_begin) {
+    return false;
+  }
+  if (index == normalized.size()) {
+    return true;
+  }
+  if (normalized[index] != '/') {
+    return false;
+  }
+  ++index;
+  const std::size_t denominator_begin = index;
+  while (index < normalized.size() &&
+         std::isdigit(static_cast<unsigned char>(normalized[index])) != 0) {
+    ++index;
+  }
+  if (index != normalized.size() || index == denominator_begin) {
+    return false;
+  }
+
+  bool denominator_is_zero = true;
+  for (std::size_t digit = denominator_begin; digit < index; ++digit) {
+    if (normalized[digit] != '0') {
+      denominator_is_zero = false;
+      break;
+    }
+  }
+  return !denominator_is_zero;
+}
+
+bool IsZeroRationalLiteral(const std::string& expression) {
+  const std::string normalized = NormalizeKiraExpression(expression);
+  if (!ParseRationalLiteral(normalized)) {
+    return false;
+  }
+
+  std::size_t index = 0;
+  if (normalized[index] == '+' || normalized[index] == '-') {
+    ++index;
+  }
+  const std::size_t numerator_begin = index;
+  while (index < normalized.size() &&
+         std::isdigit(static_cast<unsigned char>(normalized[index])) != 0) {
+    ++index;
+  }
+
+  for (std::size_t digit = numerator_begin; digit < index; ++digit) {
+    if (normalized[digit] != '0') {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::pair<std::string, std::string> CanonicalPair(const std::string& left,
+                                                  const std::string& right) {
+  if (left <= right) {
+    return {left, right};
+  }
+  return {right, left};
+}
+
+bool IsReviewedLinearPropagatorConstantTerm(const std::string& term);
+
+bool IsReviewedKiraScalarRuleConstantExpression(const std::string& expression) {
+  const std::vector<std::string> terms =
+      SplitTopLevelTerms(expression, "Kira scalar-product-rule validation");
+  if (terms.empty()) {
+    return false;
+  }
+
+  for (const auto& term : terms) {
+    if (!IsReviewedLinearPropagatorConstantTerm(term)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::set<std::string> CollectInvariantIndependentExternalMomenta(const ProblemSpec& spec) {
+  std::set<std::string> external_momenta(spec.kinematics.incoming_momenta.begin(),
+                                         spec.kinematics.incoming_momenta.end());
+  external_momenta.insert(spec.kinematics.outgoing_momenta.begin(),
+                          spec.kinematics.outgoing_momenta.end());
+
+  std::map<std::pair<std::string, std::string>, bool> pair_is_invariant_independent;
+  for (const auto& rule : spec.kinematics.scalar_product_rules) {
+    const auto [left_operand, right_operand] = ScalarProductRuleOperands(rule.left);
+    if (external_momenta.count(left_operand) == 0 || external_momenta.count(right_operand) == 0) {
+      continue;
+    }
+    pair_is_invariant_independent[CanonicalPair(left_operand, right_operand)] =
+        IsReviewedKiraScalarRuleConstantExpression(rule.right);
+  }
+
+  std::set<std::string> invariant_independent_external_momenta;
+  for (const auto& external_symbol : external_momenta) {
+    bool all_pairs_are_known_invariant_independent = true;
+    for (const auto& other_external_symbol : external_momenta) {
+      const auto pair_it =
+          pair_is_invariant_independent.find(CanonicalPair(external_symbol, other_external_symbol));
+      if (pair_it == pair_is_invariant_independent.end() || !pair_it->second) {
+        all_pairs_are_known_invariant_independent = false;
+        break;
+      }
+    }
+    if (all_pairs_are_known_invariant_independent) {
+      invariant_independent_external_momenta.insert(external_symbol);
+    }
+  }
+
+  return invariant_independent_external_momenta;
+}
+
+bool IsReviewedLinearPropagatorConstantTerm(const std::string& term) {
+  const std::string body = SignedTermBody(term);
+  if (body.empty()) {
+    return false;
+  }
+
+  const FactorizedExpression factors =
+      SplitTopLevelFactors(body, "Kira linear propagator validation");
+  for (std::size_t index = 0; index < factors.factors.size(); ++index) {
+    const std::string factor = NormalizeKiraExpression(factors.factors[index]);
+    if (!ParseRationalLiteral(factor)) {
+      return false;
+    }
+    const char operator_before = index == 0 ? '*' : factors.operators[index - 1];
+    if (operator_before == '/' && IsZeroRationalLiteral(factor)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsReviewedLinearPropagatorBilinearTerm(
+    const std::string& term,
+    const std::set<std::string>& loop_momenta,
+    const std::set<std::string>& invariant_independent_external_momenta) {
+  const std::string body = SignedTermBody(term);
+  if (body.empty()) {
+    return false;
+  }
+
+  const FactorizedExpression factors =
+      SplitTopLevelFactors(body, "Kira linear propagator validation");
+  int loop_factor_count = 0;
+  int external_factor_count = 0;
+  for (std::size_t index = 0; index < factors.factors.size(); ++index) {
+    const std::string factor = NormalizeKiraExpression(factors.factors[index]);
+    const char operator_before = index == 0 ? '*' : factors.operators[index - 1];
+    if (ParseRationalLiteral(factor)) {
+      continue;
+    }
+    if (operator_before == '/') {
+      return false;
+    }
+    if (loop_momenta.count(factor) > 0) {
+      ++loop_factor_count;
+      continue;
+    }
+    if (invariant_independent_external_momenta.count(factor) > 0) {
+      ++external_factor_count;
+      continue;
+    }
+    return false;
+  }
+
+  return loop_factor_count == 1 && external_factor_count == 1;
+}
+
+bool IsReviewedLinearPropagatorExpression(
+    const std::string& expression,
+    const std::set<std::string>& loop_momenta,
+    const std::set<std::string>& invariant_independent_external_momenta) {
+  const std::string normalized = NormalizeKiraExpression(expression);
+  const std::vector<std::string> terms =
+      SplitTopLevelTerms(normalized, "Kira linear propagator validation");
+
+  bool saw_bilinear_term = false;
+  for (const auto& term : terms) {
+    if (IsReviewedLinearPropagatorConstantTerm(term)) {
+      continue;
+    }
+    if (!IsReviewedLinearPropagatorBilinearTerm(
+            term, loop_momenta, invariant_independent_external_momenta)) {
+      return false;
+    }
+    saw_bilinear_term = true;
+  }
+  return saw_bilinear_term;
+}
+
+std::vector<std::string> ValidateReviewedLinearPropagatorSubsetForKira(
+    const ProblemSpec& spec) {
+  std::vector<std::string> messages;
+  std::set<std::string> loop_momenta(spec.family.loop_momenta.begin(),
+                                     spec.family.loop_momenta.end());
+  std::set<std::string> invariant_independent_external_momenta;
+  try {
+    invariant_independent_external_momenta = CollectInvariantIndependentExternalMomenta(spec);
+  } catch (const std::exception& error) {
+    messages.emplace_back("KiraBackend linear propagator validation could not interpret the "
+                          "declared scalar-product-rule surface: " +
+                          std::string(error.what()));
+    return messages;
+  }
+
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const auto& propagator = spec.family.propagators[index];
+    if (!propagator.variant.has_value() || *propagator.variant != PropagatorVariant::Linear) {
+      continue;
+    }
+    bool supported = false;
+    try {
+      supported = IsReviewedLinearPropagatorExpression(
+          propagator.expression, loop_momenta, invariant_independent_external_momenta);
+    } catch (const std::exception& error) {
+      messages.emplace_back("KiraBackend linear propagator validation could not parse propagator " +
+                            std::to_string(index) + ": " + error.what());
+      continue;
+    }
+    if (!supported) {
+      messages.emplace_back(
+          "KiraBackend supports linear propagators only on the reviewed invariant-independent "
+          "loop-external subset under the declared scalar-product-rule surface; propagator " +
+          std::to_string(index) + " has expression " + Quote(propagator.expression));
+    }
+  }
+
+  return messages;
+}
+
 std::size_t FindTopLevelArrow(const std::string& rule_text, const std::string& context) {
   int parentheses_depth = 0;
   int bracket_depth = 0;
@@ -1805,6 +2052,8 @@ std::string KiraBackend::Name() const {
 std::vector<std::string> KiraBackend::Validate(const ProblemSpec& spec,
                                                const ReductionOptions& options) const {
   std::vector<std::string> messages = ValidateProblemSpec(spec);
+  const std::vector<std::string> linear_messages = ValidateReviewedLinearPropagatorSubsetForKira(spec);
+  messages.insert(messages.end(), linear_messages.begin(), linear_messages.end());
   if (options.ibp_reducer != "Kira") {
     messages.emplace_back("KiraBackend requires ReductionOptions.ibp_reducer == \"Kira\"");
   }

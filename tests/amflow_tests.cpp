@@ -2767,6 +2767,31 @@ amflow::ProblemSpec MakeAutoInvariantLinearProblemSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeUnsupportedKiraLinearProblemSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[1].expression = "k1*p1";
+  spec.family.propagators[1].mass = "-1";
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Linear;
+  spec.family.propagators[1].variant = amflow::PropagatorVariant::Linear;
+  return spec;
+}
+
+amflow::ProblemSpec MakeUnsupportedKiraLinearScalarRuleProblemSpec() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "n"},
+  };
+  return spec;
+}
+
+amflow::ProblemSpec MakeUnsupportedKiraLinearZeroDenominatorScalarRuleProblemSpec() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "1/0"},
+  };
+  return spec;
+}
+
 amflow::ParsedMasterList MakeAutoInvariantHappyMasterBasis() {
   amflow::ParsedMasterList master_basis;
   master_basis.family = "toy_auto_family";
@@ -6749,6 +6774,86 @@ void K0SmokeKiraPreparationFromFileSpecTest() {
          "sector and its r value");
   Expect(preparation.generated_files.at("preferred").empty(),
          "K0 smoke Kira preparation should not emit an invented preferred-master list");
+}
+
+void KiraPreparationSupportsReviewedLinearPropagatorSubsetTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-reviewed-linear-propagator"));
+
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(spec, MakeKiraReductionOptions(), layout);
+
+  Expect(preparation.validation_messages.empty(),
+         "Kira preparation should accept the reviewed linear propagator subset");
+  const auto family_yaml_it = preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.generated_files.end(),
+         "Kira preparation should still emit family YAML on the reviewed linear subset");
+  Expect(family_yaml_it->second.find("[\"k*n\", \"-1\"]") != std::string::npos,
+         "Kira family YAML should preserve the reviewed linear propagator expression and mass");
+  Expect(preparation.generated_files.at("config/kinematics.yaml")
+                 .find("    - [[n, n], 0]\n") != std::string::npos,
+         "Kira preparation should preserve the reviewed scalar-product rule surface for linear "
+         "propagators");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Kira preparation should not mutate reviewed linear subset inputs");
+}
+
+void KiraPreparationRejectsUnsupportedLinearPropagatorSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedKiraLinearProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-unsupported-linear-propagator"));
+
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(spec, MakeKiraReductionOptions(), layout);
+
+  Expect(ContainsSubstring(preparation.validation_messages,
+                           "reviewed invariant-independent loop-external subset") &&
+             ContainsSubstring(preparation.validation_messages, "\"k1*p1\""),
+         "Kira preparation should reject linear propagators outside the reviewed "
+         "invariant-independent loop-external subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Kira preparation should not mutate unsupported linear subset inputs");
+}
+
+void KiraPreparationRejectsNonConstantScalarRuleSurfaceForLinearVariantTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedKiraLinearScalarRuleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-linear-variant-nonconstant-scalar-rule"));
+
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(spec, MakeKiraReductionOptions(), layout);
+
+  Expect(ContainsSubstring(preparation.validation_messages,
+                           "reviewed invariant-independent loop-external subset") &&
+             ContainsSubstring(preparation.validation_messages, "\"k*n\""),
+         "Kira preparation should reject explicit linear variants whose scalar-product-rule "
+         "surface is not constant-only on the reviewed Kira subset");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Kira preparation should not mutate explicit linear variants rejected by non-constant "
+         "scalar-product-rule surfaces");
+}
+
+void KiraPreparationRejectsZeroDenominatorScalarRuleSurfaceForLinearVariantTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedKiraLinearZeroDenominatorScalarRuleProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-kira-linear-variant-zero-denominator-scalar-rule"));
+
+  amflow::KiraBackend backend;
+  const auto preparation = backend.Prepare(spec, MakeKiraReductionOptions(), layout);
+
+  Expect(ContainsSubstring(preparation.validation_messages,
+                           "reviewed invariant-independent loop-external subset") &&
+             ContainsSubstring(preparation.validation_messages, "\"k*n\""),
+         "Kira preparation should reject explicit linear variants whose scalar-product-rule "
+         "surface contains zero-denominator rational constants");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Kira preparation should not mutate explicit linear variants rejected by zero-"
+         "denominator scalar-product-rule surfaces");
 }
 
 void KiraPrepareForTargetsHappyPathTest() {
@@ -30708,6 +30813,10 @@ int main() {
     KiraInsertPrefactorsPublicEmissionRejectsInvalidExplicitRequestsTest();
     KiraPreparationFromFileSpecTest();
     K0SmokeKiraPreparationFromFileSpecTest();
+    KiraPreparationSupportsReviewedLinearPropagatorSubsetTest();
+    KiraPreparationRejectsUnsupportedLinearPropagatorSurfaceTest();
+    KiraPreparationRejectsNonConstantScalarRuleSurfaceForLinearVariantTest();
+    KiraPreparationRejectsZeroDenominatorScalarRuleSurfaceForLinearVariantTest();
     KiraPrepareForTargetsHappyPathTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanParityTest();
     KiraPrepareForTargetsMandatoryFamilyReductionSpanWideningTest();

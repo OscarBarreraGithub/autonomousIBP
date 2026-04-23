@@ -38057,6 +38057,147 @@ void ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest() {
                  "signoff blocked");
 }
 
+void ReleasePerformanceReviewSelfCheckProducesCompatibleSidecarTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-performance-review-self-check",
+      "tools/reference-harness/scripts/review_release_performance.py",
+      {"--self-check"},
+      "release performance-review self-check");
+  Expect(result.stderr_log.empty(),
+         "release performance-review self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"performance_review_required_inputs_preserved\": true",
+                 "release performance-review self-check should require the checklist to keep the "
+                 "mandatory timing, scope, and rebuild inputs visible");
+  ExpectContains(result.stdout_json, "\"benchmark_family_scope_reviewed\": true",
+                 "release performance-review self-check should audit benchmark-family scope from "
+                 "the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
+                 "release performance-review self-check should keep its sidecar compatible with "
+                 "release_signoff_readiness.py");
+  ExpectContains(result.stdout_json, "\"missing_timing_blocked\": true",
+                 "release performance-review self-check should block when mandatory timing "
+                 "evidence is absent");
+  ExpectContains(result.stdout_json, "\"clean_rebuild_review_blocked\": true",
+                 "release performance-review self-check should keep clean rebuild performance "
+                 "review as an explicit blocker");
+  ExpectContains(result.stdout_json, "\"incomplete_checklist_blocked\": true",
+                 "release performance-review self-check should block incomplete checklist input "
+                 "coverage");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release performance-review self-check should write the synthetic summary");
+}
+
+void ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-performance-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path performance_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-performance-sidecar") /
+      "performance-review.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-performance-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-performance-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff generated performance-review prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff generated performance-review prerequisite readiness summary should not "
+         "emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun performance_result = RunReferenceHarnessScript(
+      "amflow-release-performance-review-summary",
+      "tools/reference-harness/scripts/review_release_performance.py",
+      {"--summary-path", performance_summary_path.string()},
+      "release performance-review summary");
+  Expect(performance_result.stderr_log.empty(),
+         "release performance-review summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(performance_summary_path),
+         "release performance-review summary should write the requested sidecar");
+  ExpectContains(performance_result.stdout_json, "\"scope\": \"release-performance-review\"",
+                 "release performance-review summary should publish the sidecar scope");
+  ExpectContains(performance_result.stdout_json,
+                 "\"current_state\": \"blocked-on-unreviewed-benchmark-timings\"",
+                 "release performance-review summary should keep current performance review "
+                 "blocked until timing evidence exists");
+  ExpectContains(performance_result.stdout_json, "\"performance_review_complete\": false",
+                 "release performance-review summary should not overclaim performance review "
+                 "completion");
+  ExpectContains(performance_result.stdout_json,
+                 "\"performance_review_required_inputs_preserved\": true",
+                 "release performance-review summary should preserve checklist input coverage");
+  ExpectContains(performance_result.stdout_json, "\"benchmark_family_scope_reviewed\": true",
+                 "release performance-review summary should review benchmark-family scope even "
+                 "while timing evidence is missing");
+  ExpectContains(performance_result.stdout_json, "\"mandatory-benchmark-timings\"",
+                 "release performance-review summary should surface missing mandatory timing "
+                 "evidence");
+  ExpectContains(performance_result.stdout_json, "\"phase0:automatic_vs_manual\"",
+                 "release performance-review summary should keep phase-0 benchmark scope "
+                 "visible");
+  ExpectContains(performance_result.stdout_json, "\"case-study:ttbar-j\"",
+                 "release performance-review summary should keep case-study benchmark scope "
+                 "visible");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-performance-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--performance-review-summary",
+       performance_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "generated-performance-review-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "generated-performance-review-aware release signoff readiness summary should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "generated-performance-review-aware release signoff readiness should write the requested "
+         "summary file");
+  ExpectContains(release_result.stdout_json, "\"performance_review_evidence_present\": true",
+                 "generated-performance-review-aware release signoff readiness should record the "
+                 "producer sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"performance_review_current_state\": \"blocked-on-unreviewed-benchmark-timings\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the producer sidecar state");
+  ExpectContains(release_result.stdout_json, "\"performance_review_complete\": false",
+                 "generated-performance-review-aware release signoff readiness should keep "
+                 "performance review incomplete");
+  ExpectContains(release_result.stdout_json,
+                 "\"performance-path:mandatory-benchmark-timings\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the mandatory timing blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"performance-path:clean-rebuild-gate-output\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the clean rebuild review blocker");
+  ExpectContains(release_result.stdout_json, "\"id\": \"performance-review\"",
+                 "generated-performance-review-aware release signoff readiness should keep the "
+                 "performance-review checklist section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "generated-performance-review-aware release signoff readiness should keep the "
+                 "performance-review section blocked while producer evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "generated-performance-review-aware release signoff readiness should keep final "
+                 "release signoff blocked by the remaining prerequisites");
+}
+
 void ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
@@ -39245,6 +39386,8 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest();
+    ReleasePerformanceReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest();
     ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest();
     ReleaseDocsCompletionReviewSelfCheckProducesCompatibleSidecarTest();
     ReleaseSignoffReadinessConsumesGeneratedDocsCompletionReviewTest();

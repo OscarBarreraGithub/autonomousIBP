@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All sixteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All seventeen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
@@ -118,15 +118,19 @@ python3 tools/reference-harness/scripts/qualify_phase0_packet_set.py \
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 
+python3 tools/reference-harness/scripts/review_release_performance.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/review_release_docs_completion.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all sixteen helper self-checks through the configured
+`amflow-tests` now exercises all seventeen helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
 retained phase-0 packet-set qualification verdict, blocked release-readiness with
-performance-review and diagnostic-review sidecar preservation, docs-completion sidecar
+performance-review and diagnostic-review sidecar preservation, performance-review sidecar
+production, docs-completion sidecar
 production, the single-packet comparator, packet-level correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
 comparison and packet-set correct-digit scorer regression paths without needing a real benchmark

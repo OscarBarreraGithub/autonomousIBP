@@ -302,6 +302,12 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   correct-digit/failure-code blockers, performance-review blockers, and typed-failure
   diagnostic-review blockers, plus docs-alignment blockers when provided, visible without
   claiming `Milestone M6` or `Milestone M7` closure.
+- `tools/reference-harness/scripts/review_release_performance.py` is the first M7
+  performance-review sidecar producer. It audits the release-signoff checklist
+  performance-review required inputs/outputs and the qualification scaffold benchmark-family
+  scope, then writes one consumer-compatible `release-performance-review` summary for
+  `release_signoff_readiness.py` while keeping mandatory timing, clean-rebuild performance
+  review, and unstable-run review evidence explicitly blocked.
 - `tools/reference-harness/scripts/review_release_docs_completion.py` is the first M7
   docs-completion sidecar producer. It audits the release-signoff checklist source paths,
   docs-completion target set, target marker anchors, and explicit non-claims, then writes one
@@ -330,7 +336,9 @@ the retained artifacts and durable docs. The blocked release-readiness helper re
 planning-only category: it audits prerequisites, preserves phase-0 verdict blockers when provided,
 preserves performance-review, diagnostic-review, and docs-completion sidecar blockers when
 provided, and keeps withheld claims explicit, while the docs-completion producer only emits the
-`release-docs-completion` sidecar after its marker audit passes. Neither helper runs performance
-review, diagnostic review, parity sign-off, or qualification numerics.
+`release-docs-completion` sidecar after its marker audit passes. The performance-review producer
+emits only a blocked `release-performance-review` sidecar until mandatory timing, clean-rebuild
+performance-review, and unstable-run evidence are reviewed. These helpers do not run performance
+timings, diagnostic review, parity sign-off, or qualification numerics.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

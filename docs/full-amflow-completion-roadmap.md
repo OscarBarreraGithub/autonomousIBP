@@ -688,6 +688,15 @@ non-claims, then writes the `release-docs-completion` sidecar consumed by
 `release_signoff_readiness.py`. This remains release-prep evidence only and does not claim
 `Milestone M6`, `Milestone M7`, release readiness, new captured benchmark evidence, or runtime
 surface widening.
+The `Milestone M7 performance review release-readiness producer` is the first populated
+performance-review sidecar producer:
+`tools/reference-harness/scripts/review_release_performance.py` audits the live release checklist
+performance-review required inputs/outputs plus the qualification scaffold benchmark-family
+scope, then writes the blocked `release-performance-review` sidecar consumed by
+`release_signoff_readiness.py`. This remains release-prep evidence only: it does not run
+benchmark timings, does not review clean rebuild output for performance, does not close
+`Milestone M6` or `Milestone M7`, and does not claim release readiness or runtime surface
+widening.
 
 ## Acceptance Gates Per Phase
 

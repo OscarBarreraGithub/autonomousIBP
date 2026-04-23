@@ -38196,6 +38196,8 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
   const std::filesystem::path qualification_corpus_summary_path =
       FreshTempDir("amflow-release-qualification-corpus-retained-verdicts") /
       "qualification-corpus.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-retained-qualification-corpus") / "summary.json";
 
   std::vector<std::string> qualification_args = {
       "--root",
@@ -38366,6 +38368,67 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json,
                  "\"qualification_corpus_review_complete\": false",
                  "release qualification-corpus review should not overclaim review completion");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-retained-qualification-corpus",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--qualification-corpus-summary",
+       qualification_corpus_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "retained qualification-corpus sidecar release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "retained qualification-corpus sidecar release signoff readiness summary should not "
+         "emit stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "retained qualification-corpus sidecar release signoff readiness summary should write "
+         "the requested summary file");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_evidence_present\": true",
+                 "retained qualification-corpus sidecar release signoff readiness should record "
+                 "the producer sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_current_state\": "
+                 "\"blocked-on-qualification-corpus-closure\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve the producer sidecar state");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_blockers_preserved\": true",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve producer blockers");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve the retained phase-0 verdict blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:phase0-failure-code-audit\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve retained phase-0 failure-code audit blockers");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:case-study:blocked-on-runtime-lanes\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve the retained case-study verdict blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:case-study-runtime:one-singular-endpoint-case\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve the singular case-study runtime blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:case-study-numeric-evidence\"",
+                 "retained qualification-corpus sidecar release signoff readiness should "
+                 "preserve the missing case-study numeric-evidence blocker");
+  Expect(release_result.stdout_json.find("\"qualification-path:phase0-packet-set-verdict\"") ==
+             std::string::npos,
+         "retained qualification-corpus sidecar release signoff readiness should not report the "
+         "phase-0 verdict as missing after consuming the retained verdict");
+  Expect(release_result.stdout_json.find("\"qualification-path:case-study-family-verdict\"") ==
+             std::string::npos,
+         "retained qualification-corpus sidecar release signoff readiness should not report the "
+         "case-study verdict as missing after consuming the retained verdict");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "retained qualification-corpus sidecar release signoff readiness should keep "
+                 "final release signoff blocked");
 }
 
 void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {

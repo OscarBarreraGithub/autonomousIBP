@@ -38169,6 +38169,205 @@ void ReleaseQualificationCorpusReviewSelfCheckProducesCompatibleSidecarTest() {
                  "summary");
 }
 
+void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path comparison_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-compare") /
+      "comparison-summary.json";
+  const std::filesystem::path correct_digit_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-correct-digits") /
+      "correct-digits.json";
+  const std::filesystem::path failure_code_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-failure-codes") /
+      "failure-codes.json";
+  const std::filesystem::path phase0_qualification_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-phase0-verdict") /
+      "phase0-qualification.json";
+  const std::filesystem::path case_study_readiness_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-case-readiness") /
+      "case-study-readiness.json";
+  const std::filesystem::path case_study_qualification_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-case-verdict") /
+      "case-study-qualification.json";
+  const std::filesystem::path qualification_corpus_summary_path =
+      FreshTempDir("amflow-release-qualification-corpus-retained-verdicts") /
+      "qualification-corpus.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release qualification-corpus retained prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release qualification-corpus retained prerequisite readiness summary should not emit "
+         "stderr noise on success");
+
+  std::vector<std::string> comparison_args = {"--summary-path", comparison_summary_path.string()};
+  std::vector<std::string> correct_digit_args = {"--summary-path",
+                                                 correct_digit_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    const std::string pair = root.string() + "::" + root.string();
+    comparison_args.push_back("--packet-root-pair");
+    comparison_args.push_back(pair);
+    correct_digit_args.push_back("--packet-root-pair");
+    correct_digit_args.push_back(pair);
+  }
+
+  const ReferenceHarnessSelfCheckRun comparison_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-compare",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      comparison_args,
+      "release qualification-corpus retained packet-set comparison");
+  Expect(comparison_result.stderr_log.empty(),
+         "release qualification-corpus retained packet-set comparison should not emit stderr "
+         "noise on success");
+
+  const ReferenceHarnessSelfCheckRun correct_digit_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-correct-digits",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      correct_digit_args,
+      "release qualification-corpus retained packet-set correct digits");
+  Expect(correct_digit_result.stderr_log.empty(),
+         "release qualification-corpus retained packet-set correct-digit summary should not "
+         "emit stderr noise on success");
+
+  std::vector<std::string> failure_code_args = {"--summary-path",
+                                                failure_code_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    failure_code_args.push_back("--candidate-root");
+    failure_code_args.push_back(root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun failure_code_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-failure-codes",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      failure_code_args,
+      "release qualification-corpus retained packet-set failure-code audit");
+  Expect(failure_code_result.stderr_log.empty(),
+         "release qualification-corpus retained packet-set failure-code audit should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun phase0_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-phase0-verdict",
+      "tools/reference-harness/scripts/qualify_phase0_packet_set.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--packet-set-comparison-summary",
+       comparison_summary_path.string(),
+       "--packet-set-correct-digit-summary",
+       correct_digit_summary_path.string(),
+       "--packet-set-failure-code-summary",
+       failure_code_summary_path.string(),
+       "--summary-path",
+       phase0_qualification_summary_path.string()},
+      "release qualification-corpus retained phase-0 packet-set verdict");
+  Expect(phase0_result.stderr_log.empty(),
+         "release qualification-corpus retained phase-0 packet-set verdict should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun case_readiness_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-case-readiness",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", case_study_readiness_summary_path.string()},
+      "release qualification-corpus retained case-study readiness summary");
+  Expect(case_readiness_result.stderr_log.empty(),
+         "release qualification-corpus retained case-study readiness summary should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun case_qualification_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-case-verdict",
+      "tools/reference-harness/scripts/qualify_case_study_families.py",
+      {"--case-study-readiness-summary",
+       case_study_readiness_summary_path.string(),
+       "--summary-path",
+       case_study_qualification_summary_path.string()},
+      "release qualification-corpus retained case-study-family verdict");
+  Expect(case_qualification_result.stderr_log.empty(),
+         "release qualification-corpus retained case-study-family verdict should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-retained-verdicts",
+      "tools/reference-harness/scripts/review_release_qualification_corpus.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--phase0-qualification-summary",
+       phase0_qualification_summary_path.string(),
+       "--case-study-qualification-summary",
+       case_study_qualification_summary_path.string(),
+       "--summary-path",
+       qualification_corpus_summary_path.string()},
+      "release qualification-corpus retained verdict summary");
+  Expect(result.stderr_log.empty(),
+         "release qualification-corpus retained verdict summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(qualification_corpus_summary_path),
+         "release qualification-corpus retained verdict summary should write the requested "
+         "sidecar");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_verdict_present\": true",
+                 "release qualification-corpus review should record the retained phase-0 "
+                 "verdict sidecar");
+  ExpectContains(result.stdout_json, "\"case_study_verdict_present\": true",
+                 "release qualification-corpus review should record the retained case-study "
+                 "verdict sidecar");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
+                 "release qualification-corpus review should preserve the blocked phase-0 "
+                 "verdict state");
+  ExpectContains(result.stdout_json, "\"case_study_families_qualified\": false",
+                 "release qualification-corpus review should preserve the blocked case-study "
+                 "verdict state");
+  ExpectContains(result.stdout_json,
+                 "\"phase0-packet-set:blocked-on-correct-digit-thresholds\"",
+                 "release qualification-corpus review should preserve the retained phase-0 "
+                 "verdict blocker state");
+  ExpectContains(result.stdout_json, "\"phase0-failure-code-audit\"",
+                 "release qualification-corpus review should preserve retained phase-0 "
+                 "failure-code audit blockers");
+  ExpectContains(result.stdout_json, "\"phase0-required-failure-codes\"",
+                 "release qualification-corpus review should preserve retained phase-0 "
+                 "required failure-code blockers");
+  ExpectContains(result.stdout_json, "\"case-study:blocked-on-runtime-lanes\"",
+                 "release qualification-corpus review should preserve the retained case-study "
+                 "runtime-lane blocker state");
+  ExpectContains(result.stdout_json, "\"case-study-runtime:one-singular-endpoint-case\"",
+                 "release qualification-corpus review should preserve the singular case-study "
+                 "runtime blocker");
+  ExpectContains(result.stdout_json, "\"case-study-numeric-evidence\"",
+                 "release qualification-corpus review should preserve missing case-study "
+                 "numeric evidence");
+  ExpectContains(result.stdout_json, "\"case-study-requires-phase0-verdict\"",
+                 "release qualification-corpus review should preserve the cross-verdict "
+                 "phase-0 prerequisite blocker");
+  Expect(result.stdout_json.find("\"phase0-packet-set-verdict\"") == std::string::npos,
+         "release qualification-corpus review should not report the phase-0 verdict as missing "
+         "after consuming it");
+  Expect(result.stdout_json.find("\"case-study-family-verdict\"") == std::string::npos,
+         "release qualification-corpus review should not report the case-study verdict as "
+         "missing after consuming it");
+  ExpectContains(result.stdout_json,
+                 "\"closed_benchmark_family_coverage_statement_reviewed\": false",
+                 "release qualification-corpus review should keep closed corpus coverage "
+                 "blocked");
+  ExpectContains(result.stdout_json,
+                 "\"qualification_corpus_review_complete\": false",
+                 "release qualification-corpus review should not overclaim review completion");
+}
+
 void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
@@ -40119,6 +40318,7 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest();
     ReleaseQualificationCorpusReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest();
     ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseDiagnosticReviewSelfCheckProducesCompatibleSidecarTest();

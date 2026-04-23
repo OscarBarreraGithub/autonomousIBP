@@ -39018,6 +39018,65 @@ void ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest() {
   ExpectContains(performance_result.stdout_json, "\"mandatory-benchmark-timings\"",
                  "release performance-review summary should surface missing mandatory timing "
                  "evidence");
+  ExpectContains(performance_result.stdout_json, "\"unstable-performance-run-review\"",
+                 "release performance-review summary should preserve the generated unstable-run "
+                 "review blocker");
+  ExpectContains(performance_result.stdout_json, "\"blocking_reasons\": [",
+                 "release performance-review summary should preserve generated performance "
+                 "blocking reasons");
+  ExpectContains(
+      performance_result.stdout_json,
+      R"json("blocking_reasons": [
+    "mandatory benchmark timing evidence has not been reviewed",
+    "clean rebuild gate output has not been reviewed for performance",
+    "unstable or unreviewed performance run evidence remains open"
+  ])json",
+      "release performance-review summary should preserve the exact generated performance "
+      "blocking-reason list");
+  ExpectContains(performance_result.stdout_json,
+                 "\"mandatory benchmark timing evidence has not been reviewed\"",
+                 "release performance-review summary should preserve the mandatory timing "
+                 "blocking reason");
+  ExpectContains(performance_result.stdout_json,
+                 "\"clean rebuild gate output has not been reviewed for performance\"",
+                 "release performance-review summary should preserve the clean rebuild "
+                 "blocking reason");
+  ExpectContains(performance_result.stdout_json,
+                 "\"unstable or unreviewed performance run evidence remains open\"",
+                 "release performance-review summary should preserve the unstable-run review "
+                 "blocking reason");
+  ExpectContains(performance_result.stdout_json, "\"withheld_claims\": [",
+                 "release performance-review summary should preserve generated performance "
+                 "non-claims");
+  ExpectContains(
+      performance_result.stdout_json,
+      R"json("withheld_claims": [
+    "This summary does not claim performance review completion.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run benchmark timings or widen runtime behavior."
+  ])json",
+      "release performance-review summary should preserve the exact generated performance "
+      "non-claim list");
+  ExpectContains(performance_result.stdout_json,
+                 "\"This summary does not claim performance review completion.\"",
+                 "release performance-review summary should preserve the performance review "
+                 "completion non-claim");
+  ExpectContains(performance_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "release performance-review summary should preserve the Milestone M6 non-claim");
+  ExpectContains(performance_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "release performance-review summary should preserve the Milestone M7 non-claim");
+  ExpectContains(performance_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "release performance-review summary should preserve the release-readiness "
+                 "non-claim");
+  ExpectContains(performance_result.stdout_json,
+                 "\"This summary does not run benchmark timings or widen runtime behavior.\"",
+                 "release performance-review summary should preserve the runtime-widening "
+                 "non-claim");
   ExpectContains(performance_result.stdout_json, "\"phase0:automatic_vs_manual\"",
                  "release performance-review summary should keep phase-0 benchmark scope "
                  "visible");
@@ -39059,6 +39118,10 @@ void ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest() {
                  "\"performance-path:clean-rebuild-gate-output\"",
                  "generated-performance-review-aware release signoff readiness should preserve "
                  "the clean rebuild review blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"performance-path:unstable-performance-run-review\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the generated unstable-run review blocker");
   ExpectContains(
       release_result.stdout_json,
       "\"performance_reviewed_benchmark_families\": [",
@@ -39070,6 +39133,64 @@ void ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest() {
   ExpectContains(release_result.stdout_json, "\"case-study:one-singular-endpoint-case\"",
                  "generated-performance-review-aware release signoff readiness should preserve "
                  "the generated singular case-study benchmark scope");
+  ExpectContains(release_result.stdout_json, "\"performance_review_blocking_reasons\": [",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "generated performance blocking reasons");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("performance_review_blocking_reasons": [
+    "mandatory benchmark timing evidence has not been reviewed",
+    "clean rebuild gate output has not been reviewed for performance",
+    "unstable or unreviewed performance run evidence remains open"
+  ])json",
+      "generated-performance-review-aware release signoff readiness should preserve the exact "
+      "generated performance blocking-reason list");
+  ExpectContains(release_result.stdout_json,
+                 "\"mandatory benchmark timing evidence has not been reviewed\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the mandatory timing review reason");
+  ExpectContains(release_result.stdout_json,
+                 "\"clean rebuild gate output has not been reviewed for performance\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the clean rebuild review reason");
+  ExpectContains(release_result.stdout_json,
+                 "\"unstable or unreviewed performance run evidence remains open\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the generated unstable-run review reason");
+  ExpectContains(release_result.stdout_json, "\"performance_review_withheld_claims\": [",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "generated performance non-claims");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("performance_review_withheld_claims": [
+    "This summary does not claim performance review completion.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run benchmark timings or widen runtime behavior."
+  ])json",
+      "generated-performance-review-aware release signoff readiness should preserve the exact "
+      "generated performance non-claim list");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim performance review completion.\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "generated performance non-claims");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the Milestone M6 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the Milestone M7 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the release-readiness non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not run benchmark timings or widen runtime behavior.\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the runtime-widening non-claim");
   ExpectContains(release_result.stdout_json, "\"id\": \"performance-review\"",
                  "generated-performance-review-aware release signoff readiness should keep the "
                  "performance-review checklist section visible");

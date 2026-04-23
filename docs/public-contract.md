@@ -170,6 +170,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   harness/release-prep bookkeeping only: it does not run benchmark timings, does not review clean
   rebuild output for performance, does not claim `Milestone M6` closure, `Milestone M7` closure,
   release readiness, or any widened runtime/public behavior
+- current worktree now also carries the first diagnostic-review sidecar producer for that M7
+  scaffold only: `tools/reference-harness/scripts/review_release_diagnostic.py` audits the
+  release-signoff checklist diagnostic-review input/output contract plus the qualification
+  scaffold required failure-code and known-regression metadata, then writes the
+  consumer-compatible `release-diagnostic-review` summary for `release_signoff_readiness.py`.
+  This remains harness/release-prep bookkeeping only: it does not run runtime diagnostics, does
+  not review retained unstable-run evidence, does not claim `Milestone M6` closure,
+  `Milestone M7` closure, release readiness, or any widened runtime/public behavior
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

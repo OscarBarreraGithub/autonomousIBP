@@ -37946,6 +37946,154 @@ void ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest() {
                  "signoff blocked");
 }
 
+void ReleaseDiagnosticReviewSelfCheckProducesCompatibleSidecarTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-diagnostic-review-self-check",
+      "tools/reference-harness/scripts/review_release_diagnostic.py",
+      {"--self-check"},
+      "release diagnostic-review self-check");
+  Expect(result.stderr_log.empty(),
+         "release diagnostic-review self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"diagnostic_review_required_inputs_preserved\": true",
+                 "release diagnostic-review self-check should require the checklist to keep "
+                 "failure-code, unstable-run, and regression inputs visible");
+  ExpectContains(result.stdout_json, "\"required_failure_code_profiles_reviewed\": true",
+                 "release diagnostic-review self-check should audit required failure-code "
+                 "profiles from the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"known_regression_outcomes_reviewed\": true",
+                 "release diagnostic-review self-check should audit known-regression metadata "
+                 "from the qualification scaffold");
+  ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
+                 "release diagnostic-review self-check should keep its sidecar compatible with "
+                 "release_signoff_readiness.py");
+  ExpectContains(result.stdout_json, "\"typed_failure_paths_blocked\": true",
+                 "release diagnostic-review self-check should block until typed failure-path "
+                 "review evidence exists");
+  ExpectContains(result.stdout_json, "\"unstable_run_evidence_blocked\": true",
+                 "release diagnostic-review self-check should block until retained unstable-run "
+                 "diagnostic evidence exists");
+  ExpectContains(result.stdout_json, "\"incomplete_checklist_blocked\": true",
+                 "release diagnostic-review self-check should block incomplete checklist input "
+                 "coverage");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release diagnostic-review self-check should write the synthetic summary");
+}
+
+void ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-diagnostic-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path diagnostic_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-diagnostic-sidecar") /
+      "diagnostic-review.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-diagnostic-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-diagnostic-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff generated diagnostic-review prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff generated diagnostic-review prerequisite readiness summary should not "
+         "emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun diagnostic_result = RunReferenceHarnessScript(
+      "amflow-release-diagnostic-review-summary",
+      "tools/reference-harness/scripts/review_release_diagnostic.py",
+      {"--summary-path", diagnostic_summary_path.string()},
+      "release diagnostic-review summary");
+  Expect(diagnostic_result.stderr_log.empty(),
+         "release diagnostic-review summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(diagnostic_summary_path),
+         "release diagnostic-review summary should write the requested sidecar");
+  ExpectContains(diagnostic_result.stdout_json, "\"scope\": \"release-diagnostic-review\"",
+                 "release diagnostic-review summary should publish the sidecar scope");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"current_state\": \"blocked-on-missing-typed-failure-review\"",
+                 "release diagnostic-review summary should keep current diagnostic review "
+                 "blocked until typed failure-path evidence exists");
+  ExpectContains(diagnostic_result.stdout_json, "\"diagnostic_review_complete\": false",
+                 "release diagnostic-review summary should not overclaim diagnostic review "
+                 "completion");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"diagnostic_review_required_inputs_preserved\": true",
+                 "release diagnostic-review summary should preserve checklist input coverage");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"required_failure_code_profiles_reviewed\": true",
+                 "release diagnostic-review summary should review required failure-code profile "
+                 "metadata");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"known_regression_outcomes_reviewed\": true",
+                 "release diagnostic-review summary should review known-regression metadata");
+  ExpectContains(diagnostic_result.stdout_json, "\"typed-failure-path-review\"",
+                 "release diagnostic-review summary should surface missing typed failure-path "
+                 "evidence");
+  ExpectContains(diagnostic_result.stdout_json, "\"retained-unstable-run-evidence\"",
+                 "release diagnostic-review summary should surface missing retained unstable-run "
+                 "diagnostic evidence");
+  ExpectContains(diagnostic_result.stdout_json, "\"boundary_unsolved\"",
+                 "release diagnostic-review summary should keep required failure-code scope "
+                 "visible");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-diagnostic-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--diagnostic-review-summary",
+       diagnostic_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "generated-diagnostic-review-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "generated-diagnostic-review-aware release signoff readiness summary should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "generated-diagnostic-review-aware release signoff readiness should write the requested "
+         "summary file");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_evidence_present\": true",
+                 "generated-diagnostic-review-aware release signoff readiness should record the "
+                 "producer sidecar");
+  ExpectContains(
+      release_result.stdout_json,
+      "\"diagnostic_review_current_state\": \"blocked-on-missing-typed-failure-review\"",
+      "generated-diagnostic-review-aware release signoff readiness should preserve the producer "
+      "sidecar state");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_complete\": false",
+                 "generated-diagnostic-review-aware release signoff readiness should keep "
+                 "diagnostic review incomplete");
+  ExpectContains(release_result.stdout_json, "\"diagnostic-path:typed-failure-path-review\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the typed failure-path blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"diagnostic-path:retained-unstable-run-evidence\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the retained unstable-run evidence blocker");
+  ExpectContains(release_result.stdout_json, "\"id\": \"diagnostic-review\"",
+                 "generated-diagnostic-review-aware release signoff readiness should keep the "
+                 "diagnostic-review checklist section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "generated-diagnostic-review-aware release signoff readiness should keep the "
+                 "diagnostic-review section blocked while producer evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "generated-diagnostic-review-aware release signoff readiness should keep final "
+                 "release signoff blocked by the remaining prerequisites");
+}
+
 void ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
@@ -39385,6 +39533,8 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
+    ReleaseDiagnosticReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest();
     ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest();
     ReleasePerformanceReviewSelfCheckProducesCompatibleSidecarTest();
     ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest();

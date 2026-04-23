@@ -58,7 +58,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All seventeen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All eighteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
@@ -121,17 +121,20 @@ python3 tools/reference-harness/scripts/release_signoff_readiness.py \
 python3 tools/reference-harness/scripts/review_release_performance.py \
   --self-check
 
+python3 tools/reference-harness/scripts/review_release_diagnostic.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/review_release_docs_completion.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all seventeen helper self-checks through the configured
+`amflow-tests` now exercises all eighteen helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
 retained phase-0 packet-set qualification verdict, blocked release-readiness with
 performance-review and diagnostic-review sidecar preservation, performance-review sidecar
-production, docs-completion sidecar
-production, the single-packet comparator, packet-level correct-digit scorer, packet-level
+production, diagnostic-review sidecar production, docs-completion sidecar production, the
+single-packet comparator, packet-level correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
 comparison and packet-set correct-digit scorer regression paths without needing a real benchmark
 packet.
@@ -362,6 +365,21 @@ plus performance-review, diagnostic-review, and docs-completion sidecar blockers
 and writes one blocked release-readiness summary without claiming that `Milestone M6` or
 `Milestone M7` is closed.
 
+To produce the first machine-readable M7 diagnostic-review sidecar consumed by that readiness
+helper:
+
+```bash
+python3 tools/reference-harness/scripts/review_release_diagnostic.py \
+  --summary-path /tmp/diagnostic-review.json
+```
+
+The producer audits `templates/release-signoff-checklist.json`, verifies that the diagnostic-review
+section keeps required failure-code, retained unstable-run, and known-regression inputs visible,
+checks the qualification scaffold's required failure-code and known-regression metadata, and emits
+one blocked `release-diagnostic-review` sidecar for `release_signoff_readiness.py`. It does not run
+runtime diagnostics, review retained unstable-run evidence, close `Milestone M6` or
+`Milestone M7`, or claim release readiness.
+
 To produce the first machine-readable M7 docs-completion sidecar consumed by that readiness
 helper:
 
@@ -452,6 +470,10 @@ The capture script writes:
   `next_runtime_lane` frontier, can preserve optional phase-0 qualification, performance-review,
   diagnostic-review, and docs-completion sidecar blockers, and writes one blocked
   release-readiness summary without overclaiming qualified release evidence.
+- `review_release_diagnostic.py` is the first M7 diagnostic-review sidecar producer: it audits the
+  release-signoff checklist diagnostic-review section plus qualification-scaffold failure-code and
+  regression metadata, then writes the blocked `release-diagnostic-review` summary consumed by
+  `release_signoff_readiness.py`.
 - `review_release_docs_completion.py` is the first M7 docs-completion sidecar producer: it audits
   the release-signoff checklist source paths, docs-completion target set, target marker anchors,
   and explicit non-claims, then writes the `release-docs-completion` summary consumed by
@@ -505,6 +527,11 @@ The capture script writes:
   and diagnostic-review sidecars, covering withheld release claims, visible runtime-lane blockers,
   preserved performance and typed-failure diagnostic blockers, checklist/doc-path auditing, and the
   docs-completion review path that is ready to audit before signoff itself is allowed to proceed.
+- `review_release_diagnostic.py --self-check` exercises the first M7
+  `release-diagnostic-review` sidecar producer against synthetic release inputs, covering
+  checklist input drift, required failure-code profile metadata, known-regression metadata, typed
+  failure-path blocking, retained unstable-run evidence blocking, and compatibility with
+  `release_signoff_readiness.py`.
 - `review_release_docs_completion.py --self-check` exercises the first M7
   `release-docs-completion` sidecar producer against synthetic docs, covering target-marker drift,
   incomplete release non-claims, and compatibility with `release_signoff_readiness.py`.

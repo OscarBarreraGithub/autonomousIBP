@@ -41,6 +41,14 @@ PARITY_SIGNOFF_REQUIRED_WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not widen runtime or public behavior.",
 )
 
+QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS: tuple[str, ...] = (
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior.",
+)
+
 
 def normalize_string_list(raw: Any, label: str) -> list[str]:
     if raw is None:
@@ -489,6 +497,140 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_qualification_corpus_review_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(
+        summary.get("schema_version") == 1,
+        "qualification-corpus review summary schema_version must be 1",
+    )
+    expect(
+        summary.get("scope") == "release-qualification-corpus",
+        "qualification-corpus review summary scope must be release-qualification-corpus",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "qualification-corpus review summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "qualification_corpus_review_complete",
+        "qualification_corpus_required_inputs_preserved",
+        "qualification_corpus_required_outputs_preserved",
+        "qualification_evidence_coherent",
+        "phase0_packet_set_verdict_present",
+        "phase0_packet_set_qualified",
+        "case_study_verdict_present",
+        "case_study_families_qualified",
+        "closed_benchmark_family_coverage_statement_reviewed",
+        "residual_blockers_or_carveouts_preserved",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"qualification-corpus review summary {field} must be a bool")
+
+    reviewed_phase0_ids = normalize_string_list(
+        summary.get("reviewed_phase0_ids", []),
+        "qualification-corpus review summary reviewed_phase0_ids",
+    )
+    pending_phase0_ids = normalize_string_list(
+        summary.get("pending_phase0_ids", []),
+        "qualification-corpus review summary pending_phase0_ids",
+    )
+    blocked_case_study_ids = normalize_string_list(
+        summary.get("blocked_case_study_ids", []),
+        "qualification-corpus review summary blocked_case_study_ids",
+    )
+    phase0_failure_code_blockers = normalize_string_list(
+        summary.get("phase0_failure_code_blockers", []),
+        "qualification-corpus review summary phase0_failure_code_blockers",
+    )
+    case_study_qualification_blockers = normalize_string_list(
+        summary.get("case_study_qualification_blockers", []),
+        "qualification-corpus review summary case_study_qualification_blockers",
+    )
+    missing_or_blocked_qualification_paths = normalize_string_list(
+        summary.get("missing_or_blocked_qualification_paths", []),
+        "qualification-corpus review summary missing_or_blocked_qualification_paths",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "qualification-corpus review summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "qualification-corpus review summary withheld_claims",
+    )
+
+    for label, values in [
+        ("qualification-corpus review summary reviewed_phase0_ids", reviewed_phase0_ids),
+        ("qualification-corpus review summary pending_phase0_ids", pending_phase0_ids),
+        (
+            "qualification-corpus review summary blocked_case_study_ids",
+            blocked_case_study_ids,
+        ),
+        (
+            "qualification-corpus review summary phase0_failure_code_blockers",
+            phase0_failure_code_blockers,
+        ),
+        (
+            "qualification-corpus review summary case_study_qualification_blockers",
+            case_study_qualification_blockers,
+        ),
+        (
+            "qualification-corpus review summary missing_or_blocked_qualification_paths",
+            missing_or_blocked_qualification_paths,
+        ),
+        ("qualification-corpus review summary withheld_claims", withheld_claims),
+    ]:
+        expect_unique(values, label)
+
+    expect(
+        withheld_claims == list(QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS),
+        "qualification-corpus review summary withheld_claims must preserve the exact release "
+        "non-claims",
+    )
+    if summary["qualification_corpus_review_complete"]:
+        expect(
+            summary["qualification_corpus_required_inputs_preserved"]
+            and summary["qualification_corpus_required_outputs_preserved"]
+            and summary["qualification_evidence_coherent"]
+            and summary["phase0_packet_set_verdict_present"]
+            and summary["phase0_packet_set_qualified"]
+            and summary["case_study_verdict_present"]
+            and summary["case_study_families_qualified"]
+            and summary["closed_benchmark_family_coverage_statement_reviewed"]
+            and summary["residual_blockers_or_carveouts_preserved"],
+            "complete qualification-corpus review summary must report every prerequisite and "
+            "guardrail as reviewed",
+        )
+        expect(
+            not pending_phase0_ids
+            and not blocked_case_study_ids
+            and not phase0_failure_code_blockers
+            and not case_study_qualification_blockers
+            and not missing_or_blocked_qualification_paths
+            and not blocking_reasons,
+            "complete qualification-corpus review summary must not report blockers",
+        )
+    else:
+        expect(
+            bool(missing_or_blocked_qualification_paths) or bool(blocking_reasons),
+            "incomplete qualification-corpus review summary must report a blocker",
+        )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "reviewed_phase0_ids": reviewed_phase0_ids,
+        "pending_phase0_ids": pending_phase0_ids,
+        "blocked_case_study_ids": blocked_case_study_ids,
+        "phase0_failure_code_blockers": phase0_failure_code_blockers,
+        "case_study_qualification_blockers": case_study_qualification_blockers,
+        "missing_or_blocked_qualification_paths": missing_or_blocked_qualification_paths,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def load_diagnostic_review_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "diagnostic review summary schema_version must be 1")
@@ -826,6 +968,49 @@ def case_study_qualification_blockers(
     return deduplicated
 
 
+def qualification_corpus_review_blockers(
+    qualification_corpus_summary: dict[str, Any] | None,
+) -> list[str]:
+    if qualification_corpus_summary is None:
+        return []
+
+    blockers: list[str] = []
+    if not qualification_corpus_summary["qualification_corpus_review_complete"]:
+        blockers.append("qualification-corpus-review-incomplete")
+    if not qualification_corpus_summary["qualification_corpus_required_inputs_preserved"]:
+        blockers.append("qualification-corpus-required-inputs")
+    if not qualification_corpus_summary["qualification_corpus_required_outputs_preserved"]:
+        blockers.append("qualification-corpus-required-outputs")
+    if not qualification_corpus_summary["qualification_evidence_coherent"]:
+        blockers.append("qualification-corpus-evidence")
+    if not qualification_corpus_summary["phase0_packet_set_verdict_present"]:
+        blockers.append("qualification-corpus-phase0-verdict")
+    if not qualification_corpus_summary["phase0_packet_set_qualified"]:
+        blockers.append("qualification-corpus-phase0-qualified")
+    if not qualification_corpus_summary["case_study_verdict_present"]:
+        blockers.append("qualification-corpus-case-study-verdict")
+    if not qualification_corpus_summary["case_study_families_qualified"]:
+        blockers.append("qualification-corpus-case-study-qualified")
+    if not qualification_corpus_summary[
+        "closed_benchmark_family_coverage_statement_reviewed"
+    ]:
+        blockers.append("qualification-corpus-closed-coverage-statement")
+    if not qualification_corpus_summary["residual_blockers_or_carveouts_preserved"]:
+        blockers.append("qualification-corpus-residual-blockers")
+    blockers.extend(
+        f"qualification-path:{path}"
+        for path in qualification_corpus_summary["missing_or_blocked_qualification_paths"]
+    )
+
+    deduplicated: list[str] = []
+    seen: set[str] = set()
+    for blocker in blockers:
+        if blocker not in seen:
+            deduplicated.append(blocker)
+            seen.add(blocker)
+    return deduplicated
+
+
 def performance_review_blockers(performance_summary: dict[str, Any] | None) -> list[str]:
     if performance_summary is None:
         return ["performance-review-summary"]
@@ -958,6 +1143,7 @@ def summarize_release_readiness(
     *,
     checklist_path: Path,
     qualification_summary_path: Path,
+    qualification_corpus_summary_path: Path | None = None,
     phase0_qualification_summary_path: Path | None = None,
     case_study_qualification_summary_path: Path | None = None,
     performance_review_summary_path: Path | None = None,
@@ -970,6 +1156,11 @@ def summarize_release_readiness(
     expect_path_within_root(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
     qualification_summary = load_qualification_summary(qualification_summary_path)
+    qualification_corpus_summary = (
+        load_qualification_corpus_review_summary(qualification_corpus_summary_path)
+        if qualification_corpus_summary_path is not None
+        else None
+    )
     phase0_qualification_summary = (
         load_phase0_qualification_summary(phase0_qualification_summary_path)
         if phase0_qualification_summary_path is not None
@@ -1080,6 +1271,9 @@ def summarize_release_readiness(
         )
     ):
         case_study_blockers.append("case-study-requires-phase0-verdict")
+    qualification_corpus_blockers = qualification_corpus_review_blockers(
+        qualification_corpus_summary
+    )
     performance_blockers = performance_review_blockers(performance_review_summary)
     diagnostic_blockers = diagnostic_review_blockers(diagnostic_review_summary)
     docs_blockers = docs_completion_blockers(docs_completion_summary)
@@ -1159,13 +1353,24 @@ def summarize_release_readiness(
         blockers: list[str] = []
 
         if section_id == "qualification-corpus":
-            blockers = (
-                phase0_pending_ids
-                + blocked_case_study_ids
-                + phase0_packet_set_blockers
-                + case_study_blockers
-            )
-            status = "blocked"
+            if qualification_corpus_summary is None:
+                blockers = (
+                    phase0_pending_ids
+                    + blocked_case_study_ids
+                    + phase0_packet_set_blockers
+                    + case_study_blockers
+                )
+                status = "blocked"
+            else:
+                blockers = list(qualification_corpus_blockers)
+                status = (
+                    "reviewed"
+                    if qualification_corpus_summary[
+                        "qualification_corpus_review_complete"
+                    ]
+                    and not blockers
+                    else "blocked"
+                )
         elif section_id == "performance-review":
             blockers = list(performance_blockers)
             if milestone_m6_blocked or phase0_packet_set_blockers or case_study_blockers:
@@ -1249,6 +1454,56 @@ def summarize_release_readiness(
         "blocked_phase0_examples": qualification_summary["blocked_phase0_examples"],
         "blocked_case_study_families": qualification_summary["blocked_case_study_families"],
         "blocked_runtime_lanes": blocked_runtime_lanes,
+        "qualification_corpus_summary_path": (
+            str(qualification_corpus_summary_path)
+            if qualification_corpus_summary_path is not None
+            else ""
+        ),
+        "qualification_corpus_evidence_present": qualification_corpus_summary is not None,
+        "qualification_corpus_current_state": (
+            qualification_corpus_summary["current_state"]
+            if qualification_corpus_summary is not None
+            else "not-provided"
+        ),
+        "qualification_corpus_review_complete": (
+            qualification_corpus_summary["qualification_corpus_review_complete"]
+            if qualification_corpus_summary is not None
+            else False
+        ),
+        "qualification_corpus_blockers": qualification_corpus_blockers,
+        "qualification_corpus_blockers_preserved": (
+            qualification_corpus_summary is not None and bool(qualification_corpus_blockers)
+        ),
+        "qualification_corpus_reviewed_phase0_ids": (
+            qualification_corpus_summary["reviewed_phase0_ids"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
+        "qualification_corpus_pending_phase0_ids": (
+            qualification_corpus_summary["pending_phase0_ids"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
+        "qualification_corpus_blocked_case_study_ids": (
+            qualification_corpus_summary["blocked_case_study_ids"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
+        "qualification_corpus_missing_or_blocked_paths": (
+            qualification_corpus_summary["missing_or_blocked_qualification_paths"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
+        "qualification_corpus_blocking_reasons": (
+            qualification_corpus_summary["blocking_reasons"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
+        "qualification_corpus_withheld_claims": (
+            qualification_corpus_summary["withheld_claims"]
+            if qualification_corpus_summary is not None
+            else []
+        ),
         "phase0_qualification_summary_path": (
             str(phase0_qualification_summary_path)
             if phase0_qualification_summary_path is not None
@@ -1677,6 +1932,68 @@ def write_synthetic_case_study_qualification_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_qualification_corpus_review_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "release-qualification-corpus",
+            "current_state": "blocked-on-qualification-corpus-closure",
+            "qualification_corpus_review_complete": False,
+            "qualification_corpus_required_inputs_preserved": True,
+            "qualification_corpus_required_outputs_preserved": True,
+            "qualification_evidence_coherent": True,
+            "phase0_packet_set_verdict_present": True,
+            "phase0_packet_set_qualified": False,
+            "case_study_verdict_present": True,
+            "case_study_families_qualified": False,
+            "closed_benchmark_family_coverage_statement_reviewed": False,
+            "residual_blockers_or_carveouts_preserved": True,
+            "reviewed_phase0_ids": [
+                "automatic_loop",
+                "automatic_vs_manual",
+                "differential_equation_solver",
+                "spacetime_dimension",
+                "user_defined_amfmode",
+                "user_defined_ending",
+            ],
+            "pending_phase0_ids": [
+                "automatic_phasespace",
+                "complex_kinematics",
+                "feynman_prescription",
+                "linear_propagator",
+            ],
+            "blocked_case_study_ids": ["one-singular-endpoint-case"],
+            "phase0_failure_code_blockers": [
+                "phase0-failure-code-audit",
+                "phase0-required-failure-codes",
+            ],
+            "case_study_qualification_blockers": [
+                "case-study:blocked-on-runtime-lanes",
+                "case-study-runtime:one-singular-endpoint-case",
+                "case-study-numeric-evidence",
+                "case-study-requires-phase0-verdict",
+            ],
+            "missing_or_blocked_qualification_paths": [
+                "phase0-pending:automatic_phasespace",
+                "phase0-pending:complex_kinematics",
+                "phase0-pending:feynman_prescription",
+                "phase0-pending:linear_propagator",
+                "phase0-packet-set:blocked-on-failure-code-audit",
+                "case-study:blocked-on-runtime-lanes",
+                "case-study-runtime:one-singular-endpoint-case",
+                "case-study-numeric-evidence",
+            ],
+            "blocking_reasons": [
+                "phase-0 packet set is not qualified",
+                "case-study families are not qualified",
+                "closed benchmark-family coverage statement is not reviewed",
+            ],
+            "withheld_claims": list(QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS),
+        },
+    )
+
+
 def write_synthetic_diagnostic_review_summary(path: Path) -> None:
     write_json(
         path,
@@ -1822,6 +2139,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
+        qualification_corpus_summary_path = temp_root / "qualification-corpus-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         case_study_qualification_summary_path = (
             temp_root / "case-study-qualification-summary.json"
@@ -1833,6 +2151,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
+        write_synthetic_qualification_corpus_review_summary(qualification_corpus_summary_path)
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
         write_synthetic_case_study_qualification_summary(case_study_qualification_summary_path)
         write_synthetic_performance_review_summary(performance_review_summary_path)
@@ -1894,6 +2213,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         summary = summarize_release_readiness(
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
+            qualification_corpus_summary_path=qualification_corpus_summary_path,
             phase0_qualification_summary_path=phase0_qualification_summary_path,
             case_study_qualification_summary_path=case_study_qualification_summary_path,
             performance_review_summary_path=performance_review_summary_path,
@@ -1923,6 +2243,37 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 }
                 for prerequisite in summary["release_prerequisites"]
             ),
+            "qualification_corpus_evidence_consumed": summary[
+                "qualification_corpus_evidence_present"
+            ],
+            "qualification_corpus_blockers_preserved": (
+                summary["qualification_corpus_blockers"]
+                == [
+                    "qualification-corpus-review-incomplete",
+                    "qualification-corpus-phase0-qualified",
+                    "qualification-corpus-case-study-qualified",
+                    "qualification-corpus-closed-coverage-statement",
+                    "qualification-path:phase0-pending:automatic_phasespace",
+                    "qualification-path:phase0-pending:complex_kinematics",
+                    "qualification-path:phase0-pending:feynman_prescription",
+                    "qualification-path:phase0-pending:linear_propagator",
+                    "qualification-path:phase0-packet-set:blocked-on-failure-code-audit",
+                    "qualification-path:case-study:blocked-on-runtime-lanes",
+                    "qualification-path:case-study-runtime:one-singular-endpoint-case",
+                    "qualification-path:case-study-numeric-evidence",
+                ]
+            ),
+            "qualification_corpus_section_blocked": any(
+                section["id"] == "qualification-corpus"
+                and section["status"] == "blocked"
+                and "qualification-path:case-study-runtime:one-singular-endpoint-case"
+                in section["blockers"]
+                for section in summary["review_sections"]
+            ),
+            "qualification_corpus_withheld_claims_preserved": (
+                summary["qualification_corpus_withheld_claims"]
+                == list(QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS)
+            ),
             "phase0_verdict_consumed": summary["phase0_qualification_evidence_present"],
             "phase0_failure_code_blockers_preserved": (
                 summary["phase0_failure_code_blockers"]
@@ -1947,6 +2298,12 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             "case_study_qualification_section_blocked": any(
                 section["id"] == "qualification-corpus"
                 and "case-study-runtime:one-singular-endpoint-case" in section["blockers"]
+                for section in summary["review_sections"]
+            )
+            or any(
+                section["id"] == "qualification-corpus"
+                and "qualification-path:case-study-runtime:one-singular-endpoint-case"
+                in section["blockers"]
                 for section in summary["review_sections"]
             ),
             "performance_review_evidence_consumed": summary["performance_review_evidence_present"],
@@ -2070,6 +2427,11 @@ def parse_args() -> argparse.Namespace:
         help="Release-signoff checklist JSON path",
     )
     parser.add_argument(
+        "--qualification-corpus-summary",
+        type=Path,
+        help="Optional path to the M7 qualification-corpus review summary",
+    )
+    parser.add_argument(
         "--phase0-qualification-summary",
         type=Path,
         help="Optional path to the phase-0 packet-set qualification verdict summary",
@@ -2131,6 +2493,7 @@ def main() -> int:
     summary = summarize_release_readiness(
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
+        qualification_corpus_summary_path=args.qualification_corpus_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,
         case_study_qualification_summary_path=args.case_study_qualification_summary,
         performance_review_summary_path=args.performance_review_summary,

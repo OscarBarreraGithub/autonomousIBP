@@ -37664,6 +37664,19 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
                  "\"retained_reference_evidence_not_overclaimed\": true",
                  "release signoff readiness self-check should keep captured retained evidence "
                  "short of qualified release evidence");
+  ExpectContains(result.stdout_json, "\"qualification_corpus_evidence_consumed\": true",
+                 "release signoff readiness self-check should consume the qualification-corpus "
+                 "review summary");
+  ExpectContains(result.stdout_json, "\"qualification_corpus_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve qualification-corpus "
+                 "review blockers");
+  ExpectContains(result.stdout_json,
+                 "\"qualification_corpus_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve qualification-corpus "
+                 "withheld claims");
+  ExpectContains(result.stdout_json, "\"qualification_corpus_section_blocked\": true",
+                 "release signoff readiness self-check should keep the qualification-corpus "
+                 "section blocked when the sidecar is incomplete");
   ExpectContains(result.stdout_json, "\"phase0_verdict_consumed\": true",
                  "release signoff readiness self-check should consume the phase-0 qualification "
                  "verdict summary");
@@ -38107,6 +38120,154 @@ void ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest() {
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "case-study-aware release signoff readiness should keep final release signoff "
                  "blocked");
+}
+
+void ReleaseQualificationCorpusReviewSelfCheckProducesCompatibleSidecarTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-review-self-check",
+      "tools/reference-harness/scripts/review_release_qualification_corpus.py",
+      {"--self-check"},
+      "release qualification-corpus review self-check");
+  Expect(result.stderr_log.empty(),
+         "release qualification-corpus review self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json,
+                 "\"qualification_corpus_required_inputs_preserved\": true",
+                 "release qualification-corpus review self-check should require checklist "
+                 "inputs to stay visible");
+  ExpectContains(result.stdout_json,
+                 "\"qualification_corpus_required_outputs_preserved\": true",
+                 "release qualification-corpus review self-check should require checklist "
+                 "outputs to stay visible");
+  ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
+                 "release qualification-corpus review self-check should keep its sidecar "
+                 "compatible with release_signoff_readiness.py");
+  ExpectContains(result.stdout_json, "\"phase0_verdict_blocked\": true",
+                 "release qualification-corpus review self-check should keep phase-0 verdict "
+                 "blockers visible");
+  ExpectContains(result.stdout_json, "\"case_study_verdict_blocked\": true",
+                 "release qualification-corpus review self-check should keep case-study "
+                 "verdict blockers visible");
+  ExpectContains(result.stdout_json, "\"closed_coverage_statement_blocked\": true",
+                 "release qualification-corpus review self-check should block until closed "
+                 "benchmark-family coverage is reviewed");
+  ExpectContains(result.stdout_json, "\"incomplete_checklist_blocked\": true",
+                 "release qualification-corpus review self-check should block incomplete "
+                 "checklist input coverage");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release qualification-corpus review self-check should write the synthetic "
+                 "summary");
+}
+
+void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-qualification-corpus-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path qualification_corpus_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-qualification-corpus-sidecar") /
+      "qualification-corpus.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-qualification-corpus-summary") /
+      "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-qualification-corpus-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff generated qualification-corpus prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff generated qualification-corpus prerequisite readiness summary should "
+         "not emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun corpus_result = RunReferenceHarnessScript(
+      "amflow-release-qualification-corpus-review-summary",
+      "tools/reference-harness/scripts/review_release_qualification_corpus.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--summary-path",
+       qualification_corpus_summary_path.string()},
+      "release qualification-corpus review summary");
+  Expect(corpus_result.stderr_log.empty(),
+         "release qualification-corpus review summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(qualification_corpus_summary_path),
+         "release qualification-corpus review summary should write the requested sidecar");
+  ExpectContains(corpus_result.stdout_json, "\"scope\": \"release-qualification-corpus\"",
+                 "release qualification-corpus review summary should publish the sidecar "
+                 "scope");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"current_state\": \"blocked-on-qualification-corpus-closure\"",
+                 "release qualification-corpus review summary should keep corpus closure "
+                 "blocked");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"qualification_corpus_review_complete\": false",
+                 "release qualification-corpus review summary should not overclaim corpus "
+                 "review completion");
+  ExpectContains(corpus_result.stdout_json, "\"phase0-packet-set-verdict\"",
+                 "release qualification-corpus review summary should surface the missing "
+                 "phase-0 verdict");
+  ExpectContains(corpus_result.stdout_json, "\"case-study-family-verdict\"",
+                 "release qualification-corpus review summary should surface the missing "
+                 "case-study verdict");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-qualification-corpus-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--qualification-corpus-summary",
+       qualification_corpus_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "generated-qualification-corpus-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "generated-qualification-corpus-aware release signoff readiness summary should not "
+         "emit stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "generated-qualification-corpus-aware release signoff readiness summary should write "
+         "the requested summary file");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_evidence_present\": true",
+                 "generated-qualification-corpus-aware release signoff readiness should record "
+                 "the producer sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_current_state\": "
+                 "\"blocked-on-qualification-corpus-closure\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the producer sidecar state");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_review_complete\": false",
+                 "generated-qualification-corpus-aware release signoff readiness should keep "
+                 "corpus review incomplete");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:phase0-packet-set-verdict\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the phase-0 verdict blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:case-study-family-verdict\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the case-study verdict blocker");
+  ExpectContains(release_result.stdout_json, "\"id\": \"qualification-corpus\"",
+                 "generated-qualification-corpus-aware release signoff readiness should keep "
+                 "the qualification-corpus checklist section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "generated-qualification-corpus-aware release signoff readiness should keep "
+                 "qualification-corpus blocked while producer evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "generated-qualification-corpus-aware release signoff readiness should keep "
+                 "final release signoff blocked by the remaining prerequisites");
 }
 
 void ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest() {
@@ -39946,6 +40107,8 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest();
+    ReleaseQualificationCorpusReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseDiagnosticReviewSelfCheckProducesCompatibleSidecarTest();
     ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest();

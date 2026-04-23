@@ -305,13 +305,19 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
   can also consume the retained phase-0 packet-set qualification verdict, the retained
-  case-study-family qualification verdict, plus performance-review, diagnostic-review,
-  docs-completion, and parity-signoff summary sidecars, audits the checklist source/docs
+  case-study-family qualification verdict, plus qualification-corpus, performance-review,
+  diagnostic-review, docs-completion, and parity-signoff summary sidecars, audits the checklist source/docs
   targets, and writes one blocked release-readiness summary that keeps the current runtime-lane
   frontier, phase-0 correct-digit/failure-code blockers, case-study runtime/numeric blockers,
-  performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
-  and final parity-signoff blockers when provided, visible without
+  qualification-corpus blockers, performance-review blockers, typed-failure diagnostic-review
+  blockers, docs-alignment blockers, and final parity-signoff blockers when provided, visible without
   claiming `Milestone M6` or `Milestone M7` closure.
+- `tools/reference-harness/scripts/review_release_qualification_corpus.py` is the first M7
+  qualification-corpus sidecar producer. It audits the release-signoff checklist
+  qualification-corpus required inputs/outputs, consumes one retained M6 readiness summary plus
+  optional phase-0 and case-study verdicts, then writes one consumer-compatible
+  `release-qualification-corpus` summary for `release_signoff_readiness.py` while keeping closed
+  benchmark-family coverage and residual qualification blockers explicit.
 - `tools/reference-harness/scripts/review_release_performance.py` is the first M7
   performance-review sidecar producer. It audits the release-signoff checklist
   performance-review required inputs/outputs and the qualification scaffold benchmark-family
@@ -352,13 +358,15 @@ The release-signoff scaffold is planning metadata only as well: it does not clai
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in
 the retained artifacts and durable docs. The blocked release-readiness helper remains in that same
 planning-only category: it audits prerequisites, preserves phase-0 verdict blockers when provided,
-preserves performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar
-blockers when provided, and keeps withheld claims explicit, while the docs-completion producer
-only emits the `release-docs-completion` sidecar after its marker audit passes. The
-performance-review producer emits only a blocked `release-performance-review` sidecar until
-mandatory timing, clean-rebuild performance-review, and unstable-run evidence are reviewed. The
-diagnostic-review producer emits only a blocked `release-diagnostic-review` sidecar until typed
-failure-path preservation and retained unstable-run diagnostic evidence are reviewed. The
+preserves qualification-corpus, performance-review, diagnostic-review, docs-completion, and
+parity-signoff sidecar blockers when provided, and keeps withheld claims explicit, while the
+qualification-corpus producer emits only a blocked `release-qualification-corpus` sidecar until
+phase-0 and case-study verdicts plus closed benchmark-family coverage are reviewed. The
+docs-completion producer only emits the `release-docs-completion` sidecar after its marker audit
+passes. The performance-review producer emits only a blocked `release-performance-review` sidecar
+until mandatory timing, clean-rebuild performance-review, and unstable-run evidence are reviewed.
+The diagnostic-review producer emits only a blocked `release-diagnostic-review` sidecar until
+typed failure-path preservation and retained unstable-run diagnostic evidence are reviewed. The
 parity-signoff producer emits only a blocked `release-parity-signoff` sidecar until qualification
 closure, performance review, diagnostic review, and docs completion are all reviewed. These
 helpers do not run performance timings, diagnostic review, parity sign-off, or qualification

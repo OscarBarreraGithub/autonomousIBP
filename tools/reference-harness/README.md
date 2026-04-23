@@ -58,12 +58,12 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All twenty harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All twenty-one harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
-qualification verdict, plus the blocked M7 release-readiness audit:
+qualification verdict, plus the blocked M7 release-readiness and qualification-corpus audits:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -134,14 +134,15 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all twenty helper self-checks through the configured
+`amflow-tests` now exercises all twenty-one helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
 retained phase-0 packet-set qualification verdict, the blocked/pass case-study-family
 qualification verdict, blocked release-readiness with
-performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar preservation,
-performance-review sidecar production, diagnostic-review sidecar production, docs-completion
-sidecar production, parity-signoff sidecar production, the single-packet comparator, packet-level
+qualification-corpus, performance-review, diagnostic-review, docs-completion, and parity-signoff
+sidecar preservation, qualification-corpus sidecar production, performance-review sidecar
+production, diagnostic-review sidecar production, docs-completion sidecar production,
+parity-signoff sidecar production, the single-packet comparator, packet-level
 correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
 comparison and packet-set correct-digit scorer regression paths without needing a real benchmark
@@ -375,6 +376,7 @@ To turn one retained M6 readiness summary into the first blocked M7 release-read
 ```bash
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --qualification-summary /tmp/qualification-readiness.json \
+  --qualification-corpus-summary /tmp/qualification-corpus.json \
   --phase0-qualification-summary /tmp/phase0-qualification.json \
   --case-study-qualification-summary /tmp/case-study-qualification.json \
   --performance-review-summary /tmp/performance-review.json \
@@ -387,9 +389,26 @@ Add `--summary-path` if you want the JSON report written to disk as well as prin
 This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
 and docs-completion targets, keeps the current blocked `b61n` / `b62n` / `b63k` / `b64k`
 frontier visible from the retained M6 evidence packet, preserves optional phase-0 qualification
-and case-study-family qualification verdict blockers plus performance-review, diagnostic-review,
-docs-completion, and parity-signoff sidecar blockers when provided, and writes one blocked
-release-readiness summary without claiming that `Milestone M6` or `Milestone M7` is closed.
+and case-study-family qualification verdict blockers plus qualification-corpus,
+performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar blockers when
+provided, and writes one blocked release-readiness summary without claiming that `Milestone M6`
+or `Milestone M7` is closed.
+
+To produce the first machine-readable M7 qualification-corpus sidecar consumed by that readiness
+helper:
+
+```bash
+python3 tools/reference-harness/scripts/review_release_qualification_corpus.py \
+  --qualification-summary /tmp/qualification-readiness.json \
+  --phase0-qualification-summary /tmp/phase0-qualification.json \
+  --case-study-qualification-summary /tmp/case-study-qualification.json \
+  --summary-path /tmp/qualification-corpus.json
+```
+
+The producer audits `templates/release-signoff-checklist.json`, consumes the retained M6
+readiness summary plus optional phase-0 and case-study verdicts, and emits one blocked
+`release-qualification-corpus` sidecar for `release_signoff_readiness.py`. It does not rerun
+qualification numerics, close `Milestone M6` or `Milestone M7`, or claim release readiness.
 
 To produce the first machine-readable M7 diagnostic-review sidecar consumed by that readiness
 helper:
@@ -508,9 +527,14 @@ The capture script writes:
   machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
   audits that the checklist source/doc paths exist inside the repo, preserves the blocked
   `next_runtime_lane` frontier, can preserve optional phase-0 qualification, case-study-family
-  qualification, performance-review, diagnostic-review, docs-completion, and parity-signoff
-  sidecar blockers, and writes one blocked release-readiness summary without overclaiming
+  qualification, qualification-corpus review, performance-review, diagnostic-review,
+  docs-completion, and parity-signoff sidecar blockers, and writes one blocked
+  release-readiness summary without overclaiming
   qualified release evidence.
+- `review_release_qualification_corpus.py` is the first M7 qualification-corpus sidecar
+  producer: it audits the release-signoff checklist qualification-corpus section, consumes the
+  retained M6 readiness summary plus optional phase-0 and case-study verdicts, and writes the
+  blocked `release-qualification-corpus` summary consumed by `release_signoff_readiness.py`.
 - `review_release_parity_signoff.py` is the first M7 parity-signoff sidecar producer: it audits
   the release-signoff checklist parity-signoff section plus explicit non-claims, then writes the
   blocked `release-parity-signoff` summary consumed by `release_signoff_readiness.py`.
@@ -567,11 +591,16 @@ The capture script writes:
   summary against synthetic selected-benchmark anchors, stronger-threshold inheritance, the
   reviewed singular blocker lane, and the recorded predecessor batch.
 - `release_signoff_readiness.py --self-check` exercises the first blocked M7 release-readiness
-  audit against one synthetic M6 summary plus synthetic phase-0 qualification, performance-review,
-  diagnostic-review, docs-completion, and parity-signoff sidecars, covering withheld release
-  claims, visible runtime-lane blockers, preserved performance and typed-failure diagnostic
-  blockers, checklist/doc-path auditing, docs-completion blockers, and the final parity-signoff
-  blocker path before signoff itself is allowed to proceed.
+  audit against one synthetic M6 summary plus synthetic phase-0 qualification,
+  qualification-corpus, performance-review, diagnostic-review, docs-completion, and
+  parity-signoff sidecars, covering withheld release claims, visible runtime-lane blockers,
+  preserved qualification-corpus, performance, and typed-failure diagnostic blockers,
+  checklist/doc-path auditing, docs-completion blockers, and the final parity-signoff blocker
+  path before signoff itself is allowed to proceed.
+- `review_release_qualification_corpus.py --self-check` exercises the first M7
+  `release-qualification-corpus` sidecar producer against synthetic retained qualification
+  evidence, covering checklist input drift, phase-0 and case-study verdict blockers, closed
+  coverage statement blocking, and compatibility with `release_signoff_readiness.py`.
 - `review_release_diagnostic.py --self-check` exercises the first M7
   `release-diagnostic-review` sidecar producer against synthetic release inputs, covering
   checklist input drift, required failure-code profile metadata, known-regression metadata, typed

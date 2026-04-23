@@ -156,14 +156,23 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
   phase-0 correct-digit and failure-code blockers explicitly, the retained case-study-family
   qualification verdict so the singular runtime-lane blocker and missing case-study numeric
-  evidence remain visible to M7, plus one performance-review summary sidecar so timing/scope/
-  rebuild review blockers remain visible to M7, plus one diagnostic-review summary sidecar so
-  typed-failure review blockers remain visible to M7, plus one docs-completion sidecar so
-  docs-alignment blockers remain visible to M7, plus one parity-signoff sidecar so final signoff
+  evidence remain visible to M7, plus one qualification-corpus sidecar so closed-corpus blockers
+  remain visible to M7, plus one performance-review summary sidecar so timing/scope/rebuild
+  review blockers remain visible to M7, plus one diagnostic-review summary sidecar so typed-
+  failure review blockers remain visible to M7, plus one docs-completion sidecar so docs-
+  alignment blockers remain visible to M7, plus one parity-signoff sidecar so final signoff
   blockers remain visible to M7. This remains
   release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does
-  not run performance, diagnostic, docs completion, or parity signoff review, and does not widen
-  the last fully accepted public/runtime contract
+  not run qualification, performance, diagnostic, docs completion, or parity signoff review, and
+  does not widen the last fully accepted public/runtime contract
+- current worktree now also carries the first qualification-corpus sidecar producer for that M7
+  scaffold only: `tools/reference-harness/scripts/review_release_qualification_corpus.py`
+  audits the release-signoff checklist qualification-corpus input/output contract, consumes one
+  retained M6 readiness summary plus optional phase-0 and case-study verdicts, then writes the
+  consumer-compatible blocked `release-qualification-corpus` summary for
+  `release_signoff_readiness.py`. This remains harness/release-prep bookkeeping only: it does
+  not rerun qualification numerics, claim `Milestone M6` closure, `Milestone M7` closure,
+  release readiness, or any widened runtime/public behavior
 - current worktree now also carries the first docs-completion sidecar producer for that M7
   scaffold only: `tools/reference-harness/scripts/review_release_docs_completion.py` audits the
   release-signoff checklist source paths, docs-completion target set, target marker anchors, and

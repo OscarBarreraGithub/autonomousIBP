@@ -6,6 +6,7 @@
     "qualification_scaffold": "tools/reference-harness/templates/qualification-benchmarks.json",
     "qualification_readiness_helper": "tools/reference-harness/scripts/qualification_readiness.py",
     "release_readiness_helper": "tools/reference-harness/scripts/release_signoff_readiness.py",
+    "qualification_corpus_review_helper": "tools/reference-harness/scripts/review_release_qualification_corpus.py",
     "diagnostic_review_helper": "tools/reference-harness/scripts/review_release_diagnostic.py",
     "docs_completion_review_helper": "tools/reference-harness/scripts/review_release_docs_completion.py",
     "parity_signoff_review_helper": "tools/reference-harness/scripts/review_release_parity_signoff.py",

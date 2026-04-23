@@ -681,14 +681,23 @@ The first executable M7 helper then stays blocked on purpose:
 `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
 machine-readable `qualification_readiness.py` summary plus that checklist,
 can also consume the retained phase-0 packet-set qualification verdict, the retained
-case-study-family qualification verdict, plus one performance-review summary sidecar, one
-diagnostic-review summary sidecar, one docs-completion summary sidecar, and one parity-signoff
-summary sidecar, audits the durable checklist/doc targets, and writes one blocked
+case-study-family qualification verdict, plus one qualification-corpus summary sidecar, one
+performance-review summary sidecar, one diagnostic-review summary sidecar, one docs-completion
+summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets, and writes one blocked
 release-readiness summary that keeps the current
 `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
-blockers, case-study runtime/numeric blockers, performance-review blockers, typed-failure
-diagnostic-review blockers, docs-alignment blockers, and the final parity-signoff blocker path
-visible without claiming that `Milestone M6` or `Milestone M7` has closed.
+blockers, case-study runtime/numeric blockers, qualification-corpus blockers,
+performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
+and the final parity-signoff blocker path visible without claiming that `Milestone M6` or
+`Milestone M7` has closed.
+The `Milestone M7 qualification-corpus release-readiness producer` is the first populated
+qualification-corpus sidecar producer:
+`tools/reference-harness/scripts/review_release_qualification_corpus.py` audits the live release
+checklist qualification-corpus required inputs/outputs, consumes retained M6 readiness plus
+optional phase-0 and case-study verdicts, then writes the blocked
+`release-qualification-corpus` sidecar consumed by `release_signoff_readiness.py`. This remains
+release-prep evidence only: it does not rerun qualification numerics, close `Milestone M6` or
+`Milestone M7`, or claim release readiness or runtime surface widening.
 The `Milestone M7 docs-completion release-readiness producer` is the first populated
 docs-completion sidecar producer:
 `tools/reference-harness/scripts/review_release_docs_completion.py` audits the live release

@@ -146,9 +146,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `qualification_readiness.py` summary plus the release-signoff checklist, audits the checklist
   source/doc targets inside the repo, preserves the blocked `b61n` / `b62n` / `b63k` / `b64k`
   runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
-  release-readiness summary. This remains release-prep plumbing only: it does not mark
-  `Milestone M6` or `Milestone M7` complete, does not run performance or diagnostic review, and
-  does not widen the last fully accepted public/runtime contract
+  release-readiness summary. The current worktree now also lets that helper optionally consume
+  the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
+  phase-0 correct-digit and failure-code blockers explicitly. This remains release-prep plumbing
+  only: it does not mark `Milestone M6` or `Milestone M7` complete, does not run performance or
+  diagnostic review, and does not widen the last fully accepted public/runtime contract
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

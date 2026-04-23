@@ -211,16 +211,114 @@ def load_qualification_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "phase-0 qualification summary schema_version must be 1")
+    expect(
+        summary.get("scope") == "phase0-packet-set-only",
+        "phase-0 qualification summary scope must be phase0-packet-set-only",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "phase-0 qualification summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "qualification_evidence_coherent",
+        "packet_set_reference_comparison_passed",
+        "packet_set_correct_digits_passed",
+        "packet_set_failure_code_metadata_coherent",
+        "packet_set_failure_code_audits_complete",
+        "packet_set_required_failure_codes_satisfied",
+        "packet_set_unexpected_failure_codes_absent",
+        "phase0_packet_set_qualified",
+        "milestone_m6_ready",
+        "milestone_m6_requires_case_study_numerics",
+        "digit_threshold_profiles_reported",
+        "required_failure_code_profiles_reported",
+        "regression_profiles_reported",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"phase-0 qualification summary {field} must be a bool")
+
+    phase0_reference_captured_ids = normalize_string_list(
+        summary.get("phase0_reference_captured_ids", []),
+        "phase-0 qualification summary phase0_reference_captured_ids",
+    )
+    phase0_pending_ids = normalize_string_list(
+        summary.get("phase0_pending_ids", []),
+        "phase-0 qualification summary phase0_pending_ids",
+    )
+    reference_packet_labels = normalize_string_list(
+        summary.get("reference_packet_labels", []),
+        "phase-0 qualification summary reference_packet_labels",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "phase-0 qualification summary blocking_reasons",
+    )
+    missing_required_failure_codes = normalize_string_list(
+        summary.get("missing_required_failure_codes_across_packet_set", []),
+        "phase-0 qualification summary missing_required_failure_codes_across_packet_set",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "phase-0 qualification summary withheld_claims",
+    )
+    expect_unique(
+        phase0_reference_captured_ids,
+        "phase-0 qualification summary phase0_reference_captured_ids",
+    )
+    expect_unique(phase0_pending_ids, "phase-0 qualification summary phase0_pending_ids")
+    expect_unique(reference_packet_labels, "phase-0 qualification summary reference_packet_labels")
+    expect_unique(
+        missing_required_failure_codes,
+        "phase-0 qualification summary missing_required_failure_codes_across_packet_set",
+    )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "phase0_reference_captured_ids": phase0_reference_captured_ids,
+        "phase0_pending_ids": phase0_pending_ids,
+        "reference_packet_labels": reference_packet_labels,
+        "blocking_reasons": blocking_reasons,
+        "missing_required_failure_codes_across_packet_set": missing_required_failure_codes,
+        "withheld_claims": withheld_claims,
+    }
+
+
+def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[str]:
+    if phase0_summary is None:
+        return []
+    blockers: list[str] = []
+    if not phase0_summary["packet_set_failure_code_metadata_coherent"]:
+        blockers.append("phase0-failure-code-metadata")
+    if not phase0_summary["packet_set_failure_code_audits_complete"]:
+        blockers.append("phase0-failure-code-audit")
+    if not phase0_summary["packet_set_required_failure_codes_satisfied"]:
+        blockers.append("phase0-required-failure-codes")
+    if not phase0_summary["packet_set_unexpected_failure_codes_absent"]:
+        blockers.append("phase0-unexpected-failure-codes")
+    return blockers
+
+
 def summarize_release_readiness(
     *,
     checklist_path: Path,
     qualification_summary_path: Path,
+    phase0_qualification_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = repo_root()
     checklist_path = checklist_path.resolve(strict=False)
     expect_path_within_root(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
     qualification_summary = load_qualification_summary(qualification_summary_path)
+    phase0_qualification_summary = (
+        load_phase0_qualification_summary(phase0_qualification_summary_path)
+        if phase0_qualification_summary_path is not None
+        else None
+    )
 
     checklist_sources: list[dict[str, Any]] = []
     checklist_sources_present = True
@@ -290,6 +388,16 @@ def summarize_release_readiness(
         or bool(blocked_case_study_ids)
     )
     phase_f_blocked = bool(blocked_runtime_lanes)
+    phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
+    phase0_packet_set_blockers: list[str] = []
+    if phase0_qualification_summary is not None:
+        if not phase0_qualification_summary["phase0_packet_set_qualified"]:
+            phase0_packet_set_blockers.append(
+                "phase0:" + phase0_qualification_summary["current_state"]
+            )
+        phase0_packet_set_blockers.extend(phase0_failure_blockers)
+        if phase0_qualification_summary["milestone_m6_requires_case_study_numerics"]:
+            phase0_packet_set_blockers.append("case-study-numerics")
 
     release_prerequisites: list[dict[str, Any]] = []
     for prerequisite in checklist["release_prerequisites"]:
@@ -299,10 +407,11 @@ def summarize_release_readiness(
         satisfied = False
 
         if prerequisite_id == "milestone-m6":
-            blockers = phase0_pending_ids + blocked_case_study_ids
+            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
             current_state = (
                 "blocked-on-qualification-closure"
                 if milestone_m6_blocked
+                or bool(phase0_packet_set_blockers)
                 else "awaiting-reviewed-and-accepted-m6-packet"
             )
         elif prerequisite_id == "phase-f-feature-parity":
@@ -313,12 +422,13 @@ def summarize_release_readiness(
                 else "awaiting-reviewed-and-accepted-m5-packet"
             )
         elif prerequisite_id == "retained-reference-evidence":
-            blockers = phase0_pending_ids + blocked_case_study_ids
-            current_state = (
-                "captured-but-not-qualified"
-                if qualification_evidence_coherent
-                else "incoherent-retained-evidence"
-            )
+            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
+            if not qualification_evidence_coherent:
+                current_state = "incoherent-retained-evidence"
+            elif phase0_packet_set_blockers:
+                current_state = "captured-but-phase0-not-qualified"
+            else:
+                current_state = "captured-but-not-qualified"
         else:
             blockers = ["unknown-prerequisite"]
             current_state = "unknown-prerequisite"
@@ -341,7 +451,7 @@ def summarize_release_readiness(
         blockers: list[str] = []
 
         if section_id == "qualification-corpus":
-            blockers = phase0_pending_ids + blocked_case_study_ids
+            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
             status = "blocked"
         elif section_id == "performance-review":
             blockers = ["milestone-m6"]
@@ -390,6 +500,39 @@ def summarize_release_readiness(
         "blocked_phase0_examples": qualification_summary["blocked_phase0_examples"],
         "blocked_case_study_families": qualification_summary["blocked_case_study_families"],
         "blocked_runtime_lanes": blocked_runtime_lanes,
+        "phase0_qualification_summary_path": (
+            str(phase0_qualification_summary_path)
+            if phase0_qualification_summary_path is not None
+            else ""
+        ),
+        "phase0_qualification_evidence_present": phase0_qualification_summary is not None,
+        "phase0_packet_set_current_state": (
+            phase0_qualification_summary["current_state"]
+            if phase0_qualification_summary is not None
+            else "not-provided"
+        ),
+        "phase0_packet_set_qualified": (
+            phase0_qualification_summary["phase0_packet_set_qualified"]
+            if phase0_qualification_summary is not None
+            else False
+        ),
+        "phase0_failure_code_blockers": phase0_failure_blockers,
+        "phase0_failure_code_blockers_preserved": bool(phase0_failure_blockers),
+        "phase0_packet_set_blocking_reasons": (
+            phase0_qualification_summary["blocking_reasons"]
+            if phase0_qualification_summary is not None
+            else []
+        ),
+        "phase0_missing_required_failure_codes": (
+            phase0_qualification_summary["missing_required_failure_codes_across_packet_set"]
+            if phase0_qualification_summary is not None
+            else []
+        ),
+        "phase0_withheld_claims": (
+            phase0_qualification_summary["withheld_claims"]
+            if phase0_qualification_summary is not None
+            else []
+        ),
         "release_prerequisites": release_prerequisites,
         "review_sections": review_sections,
         "withheld_claims": checklist["explicit_non_claims"],
@@ -454,16 +597,70 @@ def write_synthetic_qualification_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_phase0_qualification_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "phase0-packet-set-only",
+            "current_state": "blocked-on-failure-code-audit",
+            "phase0_reference_captured_ids": [
+                "automatic_loop",
+                "automatic_vs_manual",
+                "differential_equation_solver",
+                "spacetime_dimension",
+                "user_defined_amfmode",
+                "user_defined_ending",
+            ],
+            "phase0_pending_ids": [
+                "automatic_phasespace",
+                "complex_kinematics",
+                "feynman_prescription",
+                "linear_propagator",
+            ],
+            "reference_packet_labels": ["de-d0-pair", "required-set", "user-hook-pair"],
+            "qualification_evidence_coherent": True,
+            "packet_set_reference_comparison_passed": True,
+            "packet_set_correct_digits_passed": True,
+            "packet_set_failure_code_metadata_coherent": True,
+            "packet_set_failure_code_audits_complete": False,
+            "packet_set_required_failure_codes_satisfied": False,
+            "packet_set_unexpected_failure_codes_absent": True,
+            "missing_required_failure_codes_across_packet_set": [
+                "boundary_unsolved",
+                "continuation_budget_exhausted",
+            ],
+            "digit_threshold_profiles_reported": True,
+            "required_failure_code_profiles_reported": True,
+            "regression_profiles_reported": True,
+            "phase0_packet_set_qualified": False,
+            "milestone_m6_ready": False,
+            "milestone_m6_requires_case_study_numerics": True,
+            "blocking_reasons": [
+                "retained packet-set is missing published failure-code audits",
+                "retained packet-set is missing required typed failure codes",
+            ],
+            "withheld_claims": [
+                "This summary does not compare retained case-study numerics.",
+                "This summary does not by itself claim Milestone M6 closure.",
+            ],
+        },
+    )
+
+
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
+        phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
+        write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
         summary = summarize_release_readiness(
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
         )
         write_json(summary_path, summary)
 
@@ -480,9 +677,19 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             ),
             "retained_reference_evidence_not_overclaimed": any(
                 prerequisite["id"] == "retained-reference-evidence"
-                and prerequisite["current_state"] == "captured-but-not-qualified"
+                and prerequisite["current_state"] in {
+                    "captured-but-not-qualified",
+                    "captured-but-phase0-not-qualified",
+                    "incoherent-retained-evidence",
+                }
                 for prerequisite in summary["release_prerequisites"]
             ),
+            "phase0_verdict_consumed": summary["phase0_qualification_evidence_present"],
+            "phase0_failure_code_blockers_preserved": (
+                summary["phase0_failure_code_blockers"]
+                == ["phase0-failure-code-audit", "phase0-required-failure-codes"]
+            ),
+            "phase0_withheld_claims_preserved": len(summary["phase0_withheld_claims"]) >= 2,
             "docs_completion_targets_present": summary["docs_completion_targets_present"],
             "docs_completion_section_ready_to_audit": any(
                 section["id"] == "docs-completion" and section["status"] == "ready-to-audit"
@@ -508,6 +715,11 @@ def parse_args() -> argparse.Namespace:
         "--checklist-path",
         type=Path,
         help="Release-signoff checklist JSON path",
+    )
+    parser.add_argument(
+        "--phase0-qualification-summary",
+        type=Path,
+        help="Optional path to the phase-0 packet-set qualification verdict summary",
     )
     parser.add_argument(
         "--summary-path",
@@ -541,6 +753,7 @@ def main() -> int:
     summary = summarize_release_readiness(
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
+        phase0_qualification_summary_path=args.phase0_qualification_summary,
     )
     if args.summary_path is not None:
         write_json(args.summary_path, summary)

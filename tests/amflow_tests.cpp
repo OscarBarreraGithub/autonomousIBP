@@ -37551,6 +37551,15 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
                  "\"retained_reference_evidence_not_overclaimed\": true",
                  "release signoff readiness self-check should keep captured retained evidence "
                  "short of qualified release evidence");
+  ExpectContains(result.stdout_json, "\"phase0_verdict_consumed\": true",
+                 "release signoff readiness self-check should consume the phase-0 qualification "
+                 "verdict summary");
+  ExpectContains(result.stdout_json, "\"phase0_failure_code_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve phase-0 failure-code "
+                 "blockers for M7");
+  ExpectContains(result.stdout_json, "\"phase0_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve phase-0 verdict "
+                 "withheld claims");
   ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
                  "release signoff readiness self-check should require the checklist docs targets "
                  "to exist");
@@ -37641,6 +37650,154 @@ void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
                  "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b62n\",\n    \"b63k\",\n    \"b64k\"\n  ]",
                  "release signoff readiness summary should keep the current blocked runtime-lane "
                  "frontier visible");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-verdict-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path comparison_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-verdict-compare") / "comparison-summary.json";
+  const std::filesystem::path correct_digit_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-verdict-correct-digits") /
+      "correct-digits.json";
+  const std::filesystem::path failure_code_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-verdict-failure-codes") /
+      "failure-codes.json";
+  const std::filesystem::path phase0_qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-verdict-summary") /
+      "phase0-qualification.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-phase0-aware-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-verdict-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff phase-0 verdict prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff phase-0 verdict prerequisite readiness summary should not emit stderr "
+         "noise on success");
+
+  std::vector<std::string> comparison_args = {"--summary-path", comparison_summary_path.string()};
+  std::vector<std::string> correct_digit_args = {"--summary-path",
+                                                 correct_digit_summary_path.string()};
+  std::vector<std::string> failure_code_args = {"--summary-path",
+                                                failure_code_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    const std::string pair = root.string() + "::" + root.string();
+    comparison_args.push_back("--packet-root-pair");
+    comparison_args.push_back(pair);
+    correct_digit_args.push_back("--packet-root-pair");
+    correct_digit_args.push_back(pair);
+    failure_code_args.push_back("--candidate-root");
+    failure_code_args.push_back(root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun comparison_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-verdict-compare",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      comparison_args,
+      "release signoff phase-0 verdict prerequisite comparison summary");
+  Expect(comparison_result.stderr_log.empty(),
+         "release signoff phase-0 verdict prerequisite comparison summary should not emit stderr "
+         "noise on success");
+
+  const ReferenceHarnessSelfCheckRun correct_digit_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-verdict-correct-digits",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      correct_digit_args,
+      "release signoff phase-0 verdict prerequisite correct-digit summary");
+  Expect(correct_digit_result.stderr_log.empty(),
+         "release signoff phase-0 verdict prerequisite correct-digit summary should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun failure_code_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-verdict-failure-codes",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      failure_code_args,
+      "release signoff phase-0 verdict prerequisite failure-code summary");
+  Expect(failure_code_result.stderr_log.empty(),
+         "release signoff phase-0 verdict prerequisite failure-code summary should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun phase0_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-verdict-summary",
+      "tools/reference-harness/scripts/qualify_phase0_packet_set.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--packet-set-comparison-summary",
+       comparison_summary_path.string(),
+       "--packet-set-correct-digit-summary",
+       correct_digit_summary_path.string(),
+       "--packet-set-failure-code-summary",
+       failure_code_summary_path.string(),
+       "--summary-path",
+       phase0_qualification_summary_path.string()},
+      "release signoff phase-0 qualification verdict summary");
+  Expect(phase0_result.stderr_log.empty(),
+         "release signoff phase-0 qualification verdict summary should not emit stderr noise on "
+         "success");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-phase0-aware-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--phase0-qualification-summary",
+       phase0_qualification_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "phase-0-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "phase-0-aware release signoff readiness summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "phase-0-aware release signoff readiness summary should write the requested summary "
+         "file");
+  ExpectContains(release_result.stdout_json, "\"phase0_qualification_evidence_present\": true",
+                 "phase-0-aware release signoff readiness should record the consumed phase-0 "
+                 "verdict");
+  ExpectContains(release_result.stdout_json,
+                 "\"phase0_packet_set_current_state\": \"blocked-on-correct-digit-thresholds\"",
+                 "phase-0-aware release signoff readiness should preserve the retained phase-0 "
+                 "verdict state");
+  ExpectContains(release_result.stdout_json, "\"phase0_packet_set_qualified\": false",
+                 "phase-0-aware release signoff readiness should not overclaim phase-0 "
+                 "qualification");
+  ExpectContains(release_result.stdout_json,
+                 "\"phase0_failure_code_blockers_preserved\": true",
+                 "phase-0-aware release signoff readiness should keep failure-code blockers "
+                 "visible for M7");
+  ExpectContains(release_result.stdout_json, "\"phase0-failure-code-audit\"",
+                 "phase-0-aware release signoff readiness should surface missing failure-code "
+                 "audit sidecars");
+  ExpectContains(release_result.stdout_json, "\"phase0-required-failure-codes\"",
+                 "phase-0-aware release signoff readiness should surface missing required "
+                 "failure-code coverage");
+  ExpectContains(release_result.stdout_json,
+                 "\"retained packet-set is missing published failure-code audits\"",
+                 "phase-0-aware release signoff readiness should preserve phase-0 blocking "
+                 "reasons");
+  ExpectContains(release_result.stdout_json, "\"case-study-numerics\"",
+                 "phase-0-aware release signoff readiness should keep case-study numerics as an "
+                 "M6 blocker");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "phase-0-aware release signoff readiness should keep final release signoff "
+                 "blocked");
 }
 
 void OptionDefaultsTest() {
@@ -38584,6 +38741,7 @@ int main() {
     Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
+    ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

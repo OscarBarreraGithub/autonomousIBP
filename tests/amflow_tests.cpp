@@ -37776,6 +37776,16 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
                  "release signoff readiness self-check should write the synthetic summary output");
 }
 
+void ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest() {
+  const std::string readme =
+      ReadFile(std::filesystem::path(AMFLOW_SOURCE_DIR) / "tools/reference-harness/README.md");
+  ExpectContains(
+      readme,
+      R"(python3 tools/reference-harness/scripts/review_release_qualification_corpus.py \
+  --self-check)",
+      "reference harness README should list the qualification-corpus review self-check command");
+}
+
 void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
@@ -40104,6 +40114,7 @@ int main() {
     CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest();
     CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersVisibleTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
+    ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest();

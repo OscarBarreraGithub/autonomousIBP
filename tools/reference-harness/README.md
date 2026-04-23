@@ -121,6 +121,9 @@ python3 tools/reference-harness/scripts/qualify_case_study_families.py \
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 
+python3 tools/reference-harness/scripts/review_release_qualification_corpus.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/review_release_performance.py \
   --self-check
 

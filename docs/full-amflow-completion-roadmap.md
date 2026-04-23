@@ -680,6 +680,14 @@ and writes one blocked release-readiness summary that keeps the current
 blockers, performance-review blockers, typed-failure diagnostic-review blockers, and
 docs-alignment blockers visible without claiming that `Milestone M6` or `Milestone M7` has
 closed.
+The `Milestone M7 docs-completion release-readiness producer` is the first populated
+docs-completion sidecar producer:
+`tools/reference-harness/scripts/review_release_docs_completion.py` audits the live release
+checklist source paths, docs-completion target set, target marker anchors, and explicit
+non-claims, then writes the `release-docs-completion` sidecar consumed by
+`release_signoff_readiness.py`. This remains release-prep evidence only and does not claim
+`Milestone M6`, `Milestone M7`, release readiness, new captured benchmark evidence, or runtime
+surface widening.
 
 ## Acceptance Gates Per Phase
 

@@ -302,6 +302,12 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   correct-digit/failure-code blockers, performance-review blockers, and typed-failure
   diagnostic-review blockers, plus docs-alignment blockers when provided, visible without
   claiming `Milestone M6` or `Milestone M7` closure.
+- `tools/reference-harness/scripts/review_release_docs_completion.py` is the first M7
+  docs-completion sidecar producer. It audits the release-signoff checklist source paths,
+  docs-completion target set, target marker anchors, and explicit non-claims, then writes one
+  consumer-compatible `release-docs-completion` summary for `release_signoff_readiness.py`
+  without running qualification, performance review, diagnostic review, parity sign-off, or any
+  runtime numerics.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py` audits retained phase-0
   packet roots against that scaffold and reports benchmark-level readiness while keeping packet-
   level `bootstrap-only` versus `reference-captured` truthfulness explicit.
@@ -323,7 +329,8 @@ closure, release readiness, or any broader parity surface beyond the evidence al
 the retained artifacts and durable docs. The blocked release-readiness helper remains in that same
 planning-only category: it audits prerequisites, preserves phase-0 verdict blockers when provided,
 preserves performance-review, diagnostic-review, and docs-completion sidecar blockers when
-provided, and keeps withheld claims explicit, but it does not run performance review, diagnostic
-review, docs completion review, or parity sign-off.
+provided, and keeps withheld claims explicit, while the docs-completion producer only emits the
+`release-docs-completion` sidecar after its marker audit passes. Neither helper runs performance
+review, diagnostic review, parity sign-off, or qualification numerics.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

@@ -38181,6 +38181,126 @@ void ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest() {
                  "signoff blocked");
 }
 
+void ReleaseDocsCompletionReviewSelfCheckProducesCompatibleSidecarTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-docs-completion-review-self-check",
+      "tools/reference-harness/scripts/review_release_docs_completion.py",
+      {"--self-check"},
+      "release docs-completion review self-check");
+  Expect(result.stderr_log.empty(),
+         "release docs-completion review self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"docs_completion_review_complete\": true",
+                 "release docs-completion review self-check should produce a complete synthetic "
+                 "docs-completion sidecar");
+  ExpectContains(result.stdout_json, "\"docs_completion_target_markers_preserved\": true",
+                 "release docs-completion review self-check should require the target docs to "
+                 "carry the producer and release-readiness markers");
+  ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
+                 "release docs-completion review self-check should keep its sidecar compatible "
+                 "with release_signoff_readiness.py");
+  ExpectContains(result.stdout_json, "\"missing_marker_blocked\": true",
+                 "release docs-completion review self-check should block stale target docs");
+  ExpectContains(result.stdout_json, "\"explicit_non_claims_reviewed\": true",
+                 "release docs-completion review self-check should audit release non-claims");
+  ExpectContains(result.stdout_json, "\"incomplete_non_claims_blocked\": true",
+                 "release docs-completion review self-check should block incomplete non-claims");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release docs-completion review self-check should write the synthetic summary");
+}
+
+void ReleaseSignoffReadinessConsumesGeneratedDocsCompletionReviewTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-docs-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path docs_completion_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-docs-sidecar") / "docs-completion.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-docs-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-docs-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff generated docs-completion prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff generated docs-completion prerequisite readiness summary should not "
+         "emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun docs_result = RunReferenceHarnessScript(
+      "amflow-release-docs-completion-review-summary",
+      "tools/reference-harness/scripts/review_release_docs_completion.py",
+      {"--summary-path", docs_completion_summary_path.string()},
+      "release docs-completion review summary");
+  Expect(docs_result.stderr_log.empty(),
+         "release docs-completion review summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(docs_completion_summary_path),
+         "release docs-completion review summary should write the requested sidecar");
+  ExpectContains(docs_result.stdout_json, "\"scope\": \"release-docs-completion\"",
+                 "release docs-completion review summary should publish the sidecar scope");
+  ExpectContains(docs_result.stdout_json,
+                 "\"current_state\": \"docs-completion-reviewed\"",
+                 "release docs-completion review summary should mark the current docs targets as "
+                 "reviewed when the marker audit passes");
+  ExpectContains(docs_result.stdout_json, "\"docs_completion_review_complete\": true",
+                 "release docs-completion review summary should produce a complete docs review "
+                 "sidecar on the current docs target set");
+  ExpectContains(docs_result.stdout_json, "\"missing_or_stale_doc_paths\": []",
+                 "release docs-completion review summary should not report stale docs on the "
+                 "current reviewed target set");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-docs-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--docs-completion-summary",
+       docs_completion_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "generated-docs-completion-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "generated-docs-completion-aware release signoff readiness summary should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "generated-docs-completion-aware release signoff readiness summary should write the "
+         "requested summary file");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_evidence_present\": true",
+                 "generated-docs-completion-aware release signoff readiness should record the "
+                 "producer sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"docs_completion_current_state\": \"docs-completion-reviewed\"",
+                 "generated-docs-completion-aware release signoff readiness should preserve the "
+                 "producer sidecar state");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_review_complete\": true",
+                 "generated-docs-completion-aware release signoff readiness should consume the "
+                 "producer sidecar as complete");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_blockers\": []",
+                 "generated-docs-completion-aware release signoff readiness should not invent "
+                 "docs blockers after the producer passes");
+  ExpectContains(release_result.stdout_json, "\"id\": \"docs-completion\"",
+                 "generated-docs-completion-aware release signoff readiness should keep the "
+                 "docs-completion checklist section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"reviewed\"",
+                 "generated-docs-completion-aware release signoff readiness should mark the "
+                 "docs-completion section reviewed when the generated sidecar is complete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "generated-docs-completion-aware release signoff readiness should keep final "
+                 "release signoff blocked by the remaining prerequisites");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -39126,6 +39246,8 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest();
     ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest();
+    ReleaseDocsCompletionReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseSignoffReadinessConsumesGeneratedDocsCompletionReviewTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

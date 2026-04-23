@@ -155,6 +155,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does
   not run performance, diagnostic, or docs completion review, and does not widen the last fully
   accepted public/runtime contract
+- current worktree now also carries the first docs-completion sidecar producer for that M7
+  scaffold only: `tools/reference-harness/scripts/review_release_docs_completion.py` audits the
+  release-signoff checklist source paths, docs-completion target set, target marker anchors, and
+  explicit non-claims, then writes the consumer-compatible `release-docs-completion` summary for
+  `release_signoff_readiness.py`. This remains harness/release-prep bookkeeping only: it does
+  not claim `Milestone M6` closure, `Milestone M7` closure, release readiness, new captured
+  benchmark evidence, or any widened runtime/public behavior
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

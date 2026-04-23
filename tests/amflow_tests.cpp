@@ -39424,6 +39424,16 @@ void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
   ExpectContains(parity_result.stdout_json, "\"docs-completion-note\"",
                  "release parity-signoff review summary should surface the missing docs "
                  "completion note");
+  ExpectContains(parity_result.stdout_json, "\"missing_or_blocked_parity_paths\": [",
+                 "release parity-signoff review summary should preserve the generated parity "
+                 "blocker path list");
+  ExpectContains(parity_result.stdout_json, "\"blocking_reasons\": [",
+                 "release parity-signoff review summary should preserve the generated parity "
+                 "blocking reasons");
+  ExpectContains(parity_result.stdout_json,
+                 "\"performance review summary has not been reviewed\"",
+                 "release parity-signoff review summary should preserve the human-readable "
+                 "performance review blocker");
   ExpectContains(parity_result.stdout_json, "\"required_release_review_sections\": [",
                  "release parity-signoff review summary should keep prerequisite review-section "
                  "scope visible");
@@ -39475,6 +39485,16 @@ void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
   ExpectContains(release_result.stdout_json, "\"parity-path:docs-completion-note\"",
                  "generated-parity-signoff-aware release signoff readiness should preserve the "
                  "docs completion blocker");
+  ExpectContains(release_result.stdout_json, "\"parity_missing_or_blocked_paths\": [",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "generated parity blocker path list");
+  ExpectContains(release_result.stdout_json, "\"parity_signoff_blocking_reasons\": [",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "generated parity blocking reasons");
+  ExpectContains(release_result.stdout_json,
+                 "\"performance review summary has not been reviewed\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "generated parity blocking reasons");
   ExpectContains(
       release_result.stdout_json,
       "\"parity_required_release_review_sections\": [",

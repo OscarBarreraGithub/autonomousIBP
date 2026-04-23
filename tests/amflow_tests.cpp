@@ -38487,12 +38487,86 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
                  "\"qualification_corpus_review_complete\": false",
                  "release qualification-corpus review summary should not overclaim corpus "
                  "review completion");
+  ExpectContains(corpus_result.stdout_json, "\"missing_or_blocked_qualification_paths\": [",
+                 "release qualification-corpus review summary should preserve generated "
+                 "missing-or-blocked qualification paths");
+  ExpectContains(
+      corpus_result.stdout_json,
+      R"json("missing_or_blocked_qualification_paths": [
+    "phase0-pending:automatic_phasespace",
+    "phase0-pending:complex_kinematics",
+    "phase0-pending:feynman_prescription",
+    "phase0-pending:linear_propagator",
+    "case-study-runtime:one-singular-endpoint-case",
+    "phase0-packet-set-verdict",
+    "case-study-family-verdict"
+  ])json",
+      "release qualification-corpus review summary should preserve the exact generated "
+      "missing-or-blocked qualification path list");
   ExpectContains(corpus_result.stdout_json, "\"phase0-packet-set-verdict\"",
                  "release qualification-corpus review summary should surface the missing "
                  "phase-0 verdict");
   ExpectContains(corpus_result.stdout_json, "\"case-study-family-verdict\"",
                  "release qualification-corpus review summary should surface the missing "
                  "case-study verdict");
+  ExpectContains(corpus_result.stdout_json, "\"blocking_reasons\": [",
+                 "release qualification-corpus review summary should preserve generated "
+                 "qualification-corpus blocking reasons");
+  ExpectContains(
+      corpus_result.stdout_json,
+      R"json("blocking_reasons": [
+    "phase-0 packet-set qualification verdict is not provided",
+    "case-study-family qualification verdict is not provided",
+    "closed benchmark-family coverage statement is not reviewed"
+  ])json",
+      "release qualification-corpus review summary should preserve the exact generated "
+      "qualification-corpus blocking-reason list");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"phase-0 packet-set qualification verdict is not provided\"",
+                 "release qualification-corpus review summary should preserve the phase-0 "
+                 "verdict blocking reason");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"case-study-family qualification verdict is not provided\"",
+                 "release qualification-corpus review summary should preserve the case-study "
+                 "verdict blocking reason");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"closed benchmark-family coverage statement is not reviewed\"",
+                 "release qualification-corpus review summary should preserve the closed "
+                 "benchmark-family coverage blocker");
+  ExpectContains(corpus_result.stdout_json, "\"withheld_claims\": [",
+                 "release qualification-corpus review summary should preserve generated "
+                 "qualification-corpus non-claims");
+  ExpectContains(
+      corpus_result.stdout_json,
+      R"json("withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ])json",
+      "release qualification-corpus review summary should preserve the exact generated "
+      "qualification-corpus non-claim list");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"This summary does not claim qualification-corpus closure.\"",
+                 "release qualification-corpus review summary should preserve the "
+                 "qualification-corpus closure non-claim");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "release qualification-corpus review summary should preserve the Milestone M6 "
+                 "non-claim");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "release qualification-corpus review summary should preserve the Milestone M7 "
+                 "non-claim");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "release qualification-corpus review summary should preserve the "
+                 "release-readiness non-claim");
+  ExpectContains(corpus_result.stdout_json,
+                 "\"This summary does not widen runtime or public behavior.\"",
+                 "release qualification-corpus review summary should preserve the "
+                 "runtime-widening non-claim");
 
   const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
       "amflow-release-signoff-generated-qualification-corpus-summary",
@@ -38523,14 +38597,119 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
                  "\"qualification_corpus_review_complete\": false",
                  "generated-qualification-corpus-aware release signoff readiness should keep "
                  "corpus review incomplete");
+  ExpectContains(release_result.stdout_json, "\"qualification_corpus_blockers\": [",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the translated qualification-corpus blocker list");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("qualification_corpus_blockers": [
+    "qualification-corpus-review-incomplete",
+    "qualification-corpus-phase0-verdict",
+    "qualification-corpus-phase0-qualified",
+    "qualification-corpus-case-study-verdict",
+    "qualification-corpus-case-study-qualified",
+    "qualification-corpus-closed-coverage-statement",
+    "qualification-path:phase0-pending:automatic_phasespace",
+    "qualification-path:phase0-pending:complex_kinematics",
+    "qualification-path:phase0-pending:feynman_prescription",
+    "qualification-path:phase0-pending:linear_propagator",
+    "qualification-path:case-study-runtime:one-singular-endpoint-case",
+    "qualification-path:phase0-packet-set-verdict",
+    "qualification-path:case-study-family-verdict"
+  ])json",
+      "generated-qualification-corpus-aware release signoff readiness should preserve the "
+      "exact translated qualification-corpus blocker list");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification_corpus_missing_or_blocked_paths\": [",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve generated qualification-corpus missing paths");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("qualification_corpus_missing_or_blocked_paths": [
+    "phase0-pending:automatic_phasespace",
+    "phase0-pending:complex_kinematics",
+    "phase0-pending:feynman_prescription",
+    "phase0-pending:linear_propagator",
+    "case-study-runtime:one-singular-endpoint-case",
+    "phase0-packet-set-verdict",
+    "case-study-family-verdict"
+  ])json",
+      "generated-qualification-corpus-aware release signoff readiness should preserve the "
+      "exact generated qualification-corpus missing-path list");
   ExpectContains(release_result.stdout_json,
                  "\"qualification-path:phase0-packet-set-verdict\"",
                  "generated-qualification-corpus-aware release signoff readiness should "
                  "preserve the phase-0 verdict blocker");
   ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:phase0-pending:automatic_phasespace\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve generated pending phase-0 blockers");
+  ExpectContains(release_result.stdout_json,
+                 "\"qualification-path:case-study-runtime:one-singular-endpoint-case\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve generated case-study runtime blockers");
+  ExpectContains(release_result.stdout_json,
                  "\"qualification-path:case-study-family-verdict\"",
                  "generated-qualification-corpus-aware release signoff readiness should "
                  "preserve the case-study verdict blocker");
+  ExpectContains(release_result.stdout_json, "\"qualification_corpus_blocking_reasons\": [",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve generated qualification-corpus blocking reasons");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("qualification_corpus_blocking_reasons": [
+    "phase-0 packet-set qualification verdict is not provided",
+    "case-study-family qualification verdict is not provided",
+    "closed benchmark-family coverage statement is not reviewed"
+  ])json",
+      "generated-qualification-corpus-aware release signoff readiness should preserve the "
+      "exact generated qualification-corpus blocking-reason list");
+  ExpectContains(release_result.stdout_json,
+                 "\"phase-0 packet-set qualification verdict is not provided\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the phase-0 verdict reason");
+  ExpectContains(release_result.stdout_json,
+                 "\"case-study-family qualification verdict is not provided\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the case-study verdict reason");
+  ExpectContains(release_result.stdout_json,
+                 "\"closed benchmark-family coverage statement is not reviewed\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the closed benchmark-family coverage reason");
+  ExpectContains(release_result.stdout_json, "\"qualification_corpus_withheld_claims\": [",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve generated qualification-corpus non-claims");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("qualification_corpus_withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ])json",
+      "generated-qualification-corpus-aware release signoff readiness should preserve the "
+      "exact generated qualification-corpus non-claim list");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim qualification-corpus closure.\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the qualification-corpus closure non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the Milestone M6 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the Milestone M7 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the release-readiness non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not widen runtime or public behavior.\"",
+                 "generated-qualification-corpus-aware release signoff readiness should "
+                 "preserve the runtime-widening non-claim");
   ExpectContains(release_result.stdout_json, "\"id\": \"qualification-corpus\"",
                  "generated-qualification-corpus-aware release signoff readiness should keep "
                  "the qualification-corpus checklist section visible");

@@ -250,6 +250,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   release-sign-off packets have one checklist for candidate metadata,
   prerequisite gates, diagnostics/performance review, docs/parity review, and
   final dispositions without claiming that qualification or release is complete
+- blocked `release-parity-signoff` sidecar production and release-readiness consumption so final
+  parity signoff preserves qualification, performance, diagnostic, docs-completion, and
+  withheld-claim blockers without claiming `Milestone M6`, `Milestone M7`, or release readiness
 
 ## Batch-2 Reviewable Artifacts
 
@@ -340,13 +343,16 @@ The release-signoff scaffold is planning metadata only as well: it does not clai
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in
 the retained artifacts and durable docs. The blocked release-readiness helper remains in that same
 planning-only category: it audits prerequisites, preserves phase-0 verdict blockers when provided,
-preserves performance-review, diagnostic-review, and docs-completion sidecar blockers when
-provided, and keeps withheld claims explicit, while the docs-completion producer only emits the
-`release-docs-completion` sidecar after its marker audit passes. The performance-review producer
-emits only a blocked `release-performance-review` sidecar until mandatory timing, clean-rebuild
-performance-review, and unstable-run evidence are reviewed. The diagnostic-review producer emits
-only a blocked `release-diagnostic-review` sidecar until typed failure-path preservation and
-retained unstable-run diagnostic evidence are reviewed. These helpers do not run performance
-timings, diagnostic review, parity sign-off, or qualification numerics.
+preserves performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar
+blockers when provided, and keeps withheld claims explicit, while the docs-completion producer
+only emits the `release-docs-completion` sidecar after its marker audit passes. The
+performance-review producer emits only a blocked `release-performance-review` sidecar until
+mandatory timing, clean-rebuild performance-review, and unstable-run evidence are reviewed. The
+diagnostic-review producer emits only a blocked `release-diagnostic-review` sidecar until typed
+failure-path preservation and retained unstable-run diagnostic evidence are reviewed. The
+parity-signoff producer emits only a blocked `release-parity-signoff` sidecar until qualification
+closure, performance review, diagnostic review, and docs completion are all reviewed. These
+helpers do not run performance timings, diagnostic review, parity sign-off, or qualification
+numerics.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

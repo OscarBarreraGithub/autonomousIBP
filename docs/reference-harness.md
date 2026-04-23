@@ -187,10 +187,11 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/audit_phase0_failure_codes.py`: first packet-level M6 candidate failure-code audit. It consumes one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema plus one optional `results/phase0/<benchmark>/failure-code-audit.json` sidecar per benchmark, surfaces the frozen required failure-code profile from the qualification scaffold, and reports which required codes are still missing or unexpectedly extra on the published candidate audit path. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py`: first packet-set M6 candidate failure-code audit. It consumes one or more `--candidate-root` packet roots, composes the reviewed packet-level failure-code audit across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique candidate packet label per root, requires each candidate packet root to publish exactly the packet-summary benchmark split for that packet, and fails closed unless the audited benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, does not compare case-study numerics, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/qualify_phase0_packet_set.py`: first retained phase-0 packet-set qualification verdict. It consumes one `qualification_readiness.py` summary plus the packet-set comparison, correct-digit, and failure-code summaries, fail-closes unless their retained packet labels and captured phase-0 ids stay synchronized, and writes one blocked/pass verdict over the reviewed phase-0 packet set only. This remains phase-0-only qualification plumbing: it does not compare retained case-study numerics, does not mark `Milestone M6` complete, and does not widen into M7 sign-off behavior.
-- `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. It may now also consume the phase-0 packet-set qualification verdict from `qualify_phase0_packet_set.py` so M7 readiness keeps the retained correct-digit and failure-code blockers visible instead of collapsing them into a generic qualification blocker, one performance-review sidecar so timing/scope/rebuild blockers stay visible, one diagnostic-review sidecar so typed-failure review blockers stay visible, and one docs-completion sidecar so docs-alignment blockers stay visible in the M7 summary. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not run performance, diagnostic, or docs completion review, and does not claim release readiness.
+- `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. It may now also consume the phase-0 packet-set qualification verdict from `qualify_phase0_packet_set.py` so M7 readiness keeps the retained correct-digit and failure-code blockers visible instead of collapsing them into a generic qualification blocker, one performance-review sidecar so timing/scope/rebuild blockers stay visible, one diagnostic-review sidecar so typed-failure review blockers stay visible, one docs-completion sidecar so docs-alignment blockers stay visible, and one parity-signoff sidecar so final signoff blockers stay visible in the M7 summary. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not run performance, diagnostic, docs completion, or parity signoff review, and does not claim release readiness.
 - `tools/reference-harness/scripts/review_release_performance.py`: first M7 performance-review sidecar producer. It consumes `templates/release-signoff-checklist.json` and the qualification scaffold, verifies that the performance-review checklist keeps mandatory timing, benchmark-family scope, and clean-rebuild inputs visible, publishes the reviewed phase-0 and case-study family scope, and writes one blocked `release-performance-review` sidecar that `release_signoff_readiness.py` can consume directly. This remains release-prep plumbing only: it does not run benchmark timings, does not review clean rebuild output for performance, does not mark `Milestone M6` or `Milestone M7` closed, and does not claim release readiness.
 - `tools/reference-harness/scripts/review_release_diagnostic.py`: first M7 diagnostic-review sidecar producer. It consumes `templates/release-signoff-checklist.json` and the qualification scaffold, verifies that the diagnostic-review checklist keeps required failure-code, retained unstable-run, and known-regression inputs visible, publishes the reviewed required failure-code profile scope, and writes one blocked `release-diagnostic-review` sidecar that `release_signoff_readiness.py` can consume directly. This remains release-prep plumbing only: it does not run runtime diagnostics, does not review retained unstable-run evidence, does not mark `Milestone M6` or `Milestone M7` closed, and does not claim release readiness.
 - `tools/reference-harness/scripts/review_release_docs_completion.py`: first M7 docs-completion sidecar producer. It consumes `templates/release-signoff-checklist.json`, audits the checklist source paths, docs-completion target set, target marker anchors, and explicit non-claims, and writes one `release-docs-completion` sidecar that `release_signoff_readiness.py` can consume directly. This remains release-prep plumbing only: it does not run qualification, performance review, diagnostic review, parity sign-off, or runtime numerics, and it does not claim `Milestone M6`, `Milestone M7`, or release readiness.
+- `tools/reference-harness/scripts/review_release_parity_signoff.py`: first M7 parity-signoff sidecar producer. It consumes `templates/release-signoff-checklist.json`, audits that the parity-signoff section preserves qualification closure, performance review, diagnostic review, and docs completion inputs plus final signoff/withheld-claim outputs, and writes one blocked `release-parity-signoff` sidecar that `release_signoff_readiness.py` can consume directly. This remains release-prep plumbing only: it does not run qualification, complete earlier release-review sections, close `Milestone M6` or `Milestone M7`, or claim release readiness.
 
 ## Qualification Scaffold
 
@@ -290,18 +291,19 @@ retained outputs and rerun evidence.
   future M7 helpers at `docs/release-signoff-checklist.md`,
   `templates/qualification-benchmarks.json`,
   `tools/reference-harness/scripts/qualification_readiness.py`,
-  `tools/reference-harness/scripts/release_signoff_readiness.py`, the parity matrix, and the
+  `tools/reference-harness/scripts/release_signoff_readiness.py`,
+  `tools/reference-harness/scripts/review_release_parity_signoff.py`, the parity matrix, and the
   durable docs as the inputs that must already be coherent before release review can start.
 - The first executable M7 helper is
   `tools/reference-harness/scripts/release_signoff_readiness.py`. It consumes one retained
   M6-readiness summary instead of re-running qualification, can also consume the retained
-  phase-0 packet-set qualification verdict plus performance-review, diagnostic-review, and
-  docs-completion summary sidecars, audits the checklist source/doc paths, and writes one blocked
-  release-readiness summary that keeps the
+  phase-0 packet-set qualification verdict plus performance-review, diagnostic-review,
+  docs-completion, and parity-signoff summary sidecars, audits the checklist source/doc paths, and
+  writes one blocked release-readiness summary that keeps the
   current `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
   blockers, performance-review blockers, typed-failure diagnostic-review blockers, and
-  docs-alignment blockers visible while `Milestone M6` and the later release-review sections
-  remain open.
+  docs-alignment blockers plus the final parity-signoff blocker path visible while
+  `Milestone M6` and the later release-review sections remain open.
 - The first docs-completion sidecar producer is
   `tools/reference-harness/scripts/review_release_docs_completion.py`. It checks the live
   release checklist and durable docs for the expected M7 target markers, emits the
@@ -320,25 +322,33 @@ retained outputs and rerun evidence.
   regression metadata, emits the blocked `release-diagnostic-review` summary that
   `release_signoff_readiness.py` already validates, and keeps typed failure-path preservation plus
   retained unstable-run evidence visible as release blockers.
+- The first parity-signoff sidecar producer is
+  `tools/reference-harness/scripts/review_release_parity_signoff.py`. It checks the live release
+  checklist parity-signoff section plus explicit non-claims, emits the blocked
+  `release-parity-signoff` summary that `release_signoff_readiness.py` already validates, and
+  keeps qualification closure, performance review, diagnostic review, and docs completion visible
+  as final signoff blockers.
 - The scaffold is planning metadata only. Adding or editing it does not run qualification,
-  performance, diagnostic, or docs completion review; does not claim `Milestone M6` or
-  `Milestone M7` is closed; and does not claim release readiness.
+  performance, diagnostic, docs completion, or parity signoff review; does not claim
+  `Milestone M6` or `Milestone M7` is closed; and does not claim release readiness.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
-the retained-golden promotion path. All eighteen helpers expose `--self-check` modes so the repo
+the retained-golden promotion path. All nineteen helpers expose `--self-check` modes so the repo
 can rerun the bootstrap, catalog/scaffold coherence, retained-capture regression scenarios,
 scaffold validation, qualification-readiness, case-study-family readiness, the retained phase-0
-packet-set qualification verdict, blocked release-readiness with performance-review and
-diagnostic-review sidecar preservation, performance-review sidecar production,
-diagnostic-review sidecar production, docs-completion sidecar production, the packet-level and
-packet-set candidate failure-code audits, and the
+packet-set qualification verdict, blocked release-readiness with performance-review,
+diagnostic-review, docs-completion, and parity-signoff sidecar preservation, performance-review
+sidecar production, diagnostic-review sidecar production, docs-completion sidecar production,
+parity-signoff sidecar production, the packet-level and packet-set candidate failure-code audits,
+and the
 single-packet plus packet-set retained-reference
 comparators and correct-digit scorers without needing a full benchmark packet. `amflow-tests`
 now drives those bootstrap, fetch, placeholder-freeze, retained-capture, scaffold-validation,
 qualification-readiness, case-study-family readiness, the retained phase-0 packet-set
-qualification verdict, blocked release-readiness with performance-review and diagnostic-review
-sidecar preservation, performance-review sidecar production, diagnostic-review sidecar production,
-docs-completion sidecar production, the
+qualification verdict, blocked release-readiness with performance-review, diagnostic-review,
+docs-completion, and parity-signoff sidecar preservation, performance-review sidecar production,
+diagnostic-review sidecar production, docs-completion sidecar production, parity-signoff sidecar
+production, the
 retained single-packet comparator,
 packet-level correct-digit scorer, packet-level failure-code audit, packet-set failure-code
 audit, packet-set comparator, and packet-set correct-digit scorer self-checks through the

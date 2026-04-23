@@ -37596,6 +37596,29 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   ExpectContains(result.stdout_json, "\"docs_completion_section_blocked\": true",
                  "release signoff readiness self-check should keep docs-completion blocked "
                  "when the sidecar is incomplete");
+  ExpectContains(result.stdout_json, "\"parity_signoff_evidence_consumed\": true",
+                 "release signoff readiness self-check should consume the parity-signoff "
+                 "summary");
+  ExpectContains(result.stdout_json, "\"parity_signoff_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve parity-signoff "
+                 "blockers");
+  ExpectContains(result.stdout_json, "\"parity_signoff_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve parity-signoff "
+                 "withheld claims");
+  ExpectContains(result.stdout_json,
+                 "\"parity_signoff_required_sections_schema_rejected\": true",
+                 "release signoff readiness self-check should reject parity-signoff sidecars "
+                 "that drop prerequisite review sections");
+  ExpectContains(result.stdout_json,
+                 "\"parity_signoff_withheld_claims_schema_rejected\": true",
+                 "release signoff readiness self-check should reject parity-signoff sidecars "
+                 "that drop release non-claims");
+  ExpectContains(result.stdout_json, "\"parity_signoff_guardrail_schema_rejected\": true",
+                 "release signoff readiness self-check should reject complete parity-signoff "
+                 "sidecars that drop producer guardrails");
+  ExpectContains(result.stdout_json, "\"parity_signoff_section_blocked\": true",
+                 "release signoff readiness self-check should keep parity signoff blocked when "
+                 "the sidecar is incomplete");
   ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
                  "release signoff readiness self-check should require the checklist docs targets "
                  "to exist");
@@ -38590,6 +38613,144 @@ void ReleaseSignoffReadinessConsumesGeneratedDocsCompletionReviewTest() {
                  "release signoff blocked by the remaining prerequisites");
 }
 
+void ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-parity-signoff-review-self-check",
+      "tools/reference-harness/scripts/review_release_parity_signoff.py",
+      {"--self-check"},
+      "release parity-signoff review self-check");
+  Expect(result.stderr_log.empty(),
+         "release parity-signoff review self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"parity_signoff_required_inputs_preserved\": true",
+                 "release parity-signoff review self-check should require the checklist to keep "
+                 "qualification, performance, diagnostic, and docs inputs visible");
+  ExpectContains(result.stdout_json, "\"parity_signoff_required_outputs_preserved\": true",
+                 "release parity-signoff review self-check should require final signoff outputs "
+                 "and withheld claims to remain visible");
+  ExpectContains(result.stdout_json, "\"prerequisite_review_sections_preserved\": true",
+                 "release parity-signoff review self-check should preserve prerequisite release "
+                 "review sections");
+  ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
+                 "release parity-signoff review self-check should keep its sidecar compatible "
+                 "with release_signoff_readiness.py");
+  ExpectContains(result.stdout_json, "\"prerequisite_reviews_blocked\": true",
+                 "release parity-signoff review self-check should block until prerequisite "
+                 "release reviews are complete");
+  ExpectContains(result.stdout_json, "\"incomplete_checklist_blocked\": true",
+                 "release parity-signoff review self-check should block incomplete checklist "
+                 "input coverage");
+  ExpectContains(result.stdout_json, "\"incomplete_non_claims_blocked\": true",
+                 "release parity-signoff review self-check should block incomplete release "
+                 "non-claims");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "release parity-signoff review self-check should write the synthetic summary");
+}
+
+void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-parity-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path parity_signoff_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-parity-sidecar") /
+      "parity-signoff.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-generated-parity-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-parity-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff generated parity-signoff prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff generated parity-signoff prerequisite readiness summary should not "
+         "emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun parity_result = RunReferenceHarnessScript(
+      "amflow-release-parity-signoff-review-summary",
+      "tools/reference-harness/scripts/review_release_parity_signoff.py",
+      {"--summary-path", parity_signoff_summary_path.string()},
+      "release parity-signoff review summary");
+  Expect(parity_result.stderr_log.empty(),
+         "release parity-signoff review summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(parity_signoff_summary_path),
+         "release parity-signoff review summary should write the requested sidecar");
+  ExpectContains(parity_result.stdout_json, "\"scope\": \"release-parity-signoff\"",
+                 "release parity-signoff review summary should publish the sidecar scope");
+  ExpectContains(parity_result.stdout_json,
+                 "\"current_state\": \"blocked-on-prerequisite-release-reviews\"",
+                 "release parity-signoff review summary should keep final signoff blocked until "
+                 "prerequisite review sections complete");
+  ExpectContains(parity_result.stdout_json, "\"parity_signoff_complete\": false",
+                 "release parity-signoff review summary should not overclaim parity signoff "
+                 "completion");
+  ExpectContains(parity_result.stdout_json,
+                 "\"parity_signoff_required_inputs_preserved\": true",
+                 "release parity-signoff review summary should preserve checklist input "
+                 "coverage");
+  ExpectContains(parity_result.stdout_json, "\"qualification-closure-note\"",
+                 "release parity-signoff review summary should surface the missing "
+                 "qualification closure note");
+  ExpectContains(parity_result.stdout_json, "\"docs-completion-note\"",
+                 "release parity-signoff review summary should surface the missing docs "
+                 "completion note");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-generated-parity-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--parity-signoff-summary",
+       parity_signoff_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "generated-parity-signoff-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "generated-parity-signoff-aware release signoff readiness summary should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "generated-parity-signoff-aware release signoff readiness summary should write the "
+         "requested summary file");
+  ExpectContains(release_result.stdout_json, "\"parity_signoff_evidence_present\": true",
+                 "generated-parity-signoff-aware release signoff readiness should record the "
+                 "producer sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"parity_signoff_current_state\": \"blocked-on-prerequisite-release-reviews\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "producer sidecar state");
+  ExpectContains(release_result.stdout_json, "\"parity_signoff_complete\": false",
+                 "generated-parity-signoff-aware release signoff readiness should keep parity "
+                 "signoff incomplete");
+  ExpectContains(release_result.stdout_json,
+                 "\"parity-path:qualification-closure-note\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "qualification closure blocker");
+  ExpectContains(release_result.stdout_json, "\"parity-path:docs-completion-note\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "docs completion blocker");
+  ExpectContains(release_result.stdout_json, "\"id\": \"parity-signoff\"",
+                 "generated-parity-signoff-aware release signoff readiness should keep the "
+                 "parity-signoff checklist section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "generated-parity-signoff-aware release signoff readiness should keep "
+                 "parity-signoff blocked while producer evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "generated-parity-signoff-aware release signoff readiness should keep final "
+                 "release signoff blocked by the remaining prerequisites");
+}
+
 void OptionDefaultsTest() {
   const auto amf_yaml = amflow::SerializeAmfOptionsYaml(amflow::AmfOptions{});
   const auto reduction_yaml = amflow::SerializeReductionOptionsYaml(amflow::ReductionOptions{});
@@ -39541,6 +39702,8 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest();
     ReleaseDocsCompletionReviewSelfCheckProducesCompatibleSidecarTest();
     ReleaseSignoffReadinessConsumesGeneratedDocsCompletionReviewTest();
+    ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest();
+    ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

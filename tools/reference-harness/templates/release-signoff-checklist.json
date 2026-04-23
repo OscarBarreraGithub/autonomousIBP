@@ -8,6 +8,7 @@
     "release_readiness_helper": "tools/reference-harness/scripts/release_signoff_readiness.py",
     "diagnostic_review_helper": "tools/reference-harness/scripts/review_release_diagnostic.py",
     "docs_completion_review_helper": "tools/reference-harness/scripts/review_release_docs_completion.py",
+    "parity_signoff_review_helper": "tools/reference-harness/scripts/review_release_parity_signoff.py",
     "parity_matrix": "specs/parity-matrix.yaml",
     "verification_strategy": "docs/verification-strategy.md",
     "roadmap": "docs/full-amflow-completion-roadmap.md",

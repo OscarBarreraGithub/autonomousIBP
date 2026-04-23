@@ -673,13 +673,13 @@ The first executable M7 helper then stays blocked on purpose:
 `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
 machine-readable `qualification_readiness.py` summary plus that checklist,
 can also consume the retained phase-0 packet-set qualification verdict plus one
-performance-review summary sidecar, one diagnostic-review summary sidecar, and one docs-completion
-summary sidecar, audits the durable checklist/doc targets,
+performance-review summary sidecar, one diagnostic-review summary sidecar, one docs-completion
+summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets,
 and writes one blocked release-readiness summary that keeps the current
 `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
-blockers, performance-review blockers, typed-failure diagnostic-review blockers, and
-docs-alignment blockers visible without claiming that `Milestone M6` or `Milestone M7` has
-closed.
+blockers, performance-review blockers, typed-failure diagnostic-review blockers,
+docs-alignment blockers, and the final parity-signoff blocker path visible without claiming that
+`Milestone M6` or `Milestone M7` has closed.
 The `Milestone M7 docs-completion release-readiness producer` is the first populated
 docs-completion sidecar producer:
 `tools/reference-harness/scripts/review_release_docs_completion.py` audits the live release
@@ -706,6 +706,14 @@ consumed by `release_signoff_readiness.py`. This remains release-prep evidence o
 run runtime diagnostics, does not review retained unstable-run evidence, does not close
 `Milestone M6` or `Milestone M7`, and does not claim release readiness or runtime surface
 widening.
+The `Milestone M7 parity-signoff release-readiness producer` is the first populated
+parity-signoff sidecar producer:
+`tools/reference-harness/scripts/review_release_parity_signoff.py` audits the live release
+checklist parity-signoff required inputs/outputs plus explicit non-claims, then writes the
+blocked `release-parity-signoff` sidecar consumed by `release_signoff_readiness.py`. This
+remains release-prep evidence only: it does not complete qualification closure, performance
+review, diagnostic review, or docs completion, does not close `Milestone M6` or `Milestone M7`,
+and does not claim release readiness or runtime surface widening.
 
 ## Acceptance Gates Per Phase
 

@@ -151,10 +151,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   phase-0 correct-digit and failure-code blockers explicitly, plus one performance-review summary
   sidecar so timing/scope/rebuild review blockers remain visible to M7, plus one
   diagnostic-review summary sidecar so typed-failure review blockers remain visible to M7, plus
-  one docs-completion sidecar so docs-alignment blockers remain visible to M7. This remains
+  one docs-completion sidecar so docs-alignment blockers remain visible to M7, plus one
+  parity-signoff sidecar so final signoff blockers remain visible to M7. This remains
   release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does
-  not run performance, diagnostic, or docs completion review, and does not widen the last fully
-  accepted public/runtime contract
+  not run performance, diagnostic, docs completion, or parity signoff review, and does not widen
+  the last fully accepted public/runtime contract
 - current worktree now also carries the first docs-completion sidecar producer for that M7
   scaffold only: `tools/reference-harness/scripts/review_release_docs_completion.py` audits the
   release-signoff checklist source paths, docs-completion target set, target marker anchors, and
@@ -178,6 +179,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   This remains harness/release-prep bookkeeping only: it does not run runtime diagnostics, does
   not review retained unstable-run evidence, does not claim `Milestone M6` closure,
   `Milestone M7` closure, release readiness, or any widened runtime/public behavior
+- current worktree now also carries the first parity-signoff sidecar producer for that M7
+  scaffold only: `tools/reference-harness/scripts/review_release_parity_signoff.py` audits the
+  release-signoff checklist parity-signoff input/output contract plus explicit non-claims, then
+  writes the consumer-compatible blocked `release-parity-signoff` summary for
+  `release_signoff_readiness.py`. This remains harness/release-prep bookkeeping only: it does
+  not run qualification, complete performance/diagnostic/docs review, close `Milestone M6` or
+  `Milestone M7`, claim release readiness, or widen runtime/public behavior
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

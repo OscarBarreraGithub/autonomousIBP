@@ -295,11 +295,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   `Milestone M6` closure withheld explicitly.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
-  can also consume the retained phase-0 packet-set qualification verdict plus one
-  diagnostic-review summary sidecar, audits the checklist source/docs targets, and writes one
+  can also consume the retained phase-0 packet-set qualification verdict plus performance-review
+  and diagnostic-review summary sidecars, audits the checklist source/docs targets, and writes one
   blocked release-readiness summary that keeps the current runtime-lane frontier, phase-0
-  correct-digit/failure-code blockers, and typed-failure diagnostic-review blockers visible
-  without claiming `Milestone M6` or `Milestone M7` closure.
+  correct-digit/failure-code blockers, performance-review blockers, and typed-failure
+  diagnostic-review blockers visible without claiming `Milestone M6` or `Milestone M7` closure.
 - `tools/reference-harness/scripts/validate_qualification_scaffold.py` audits retained phase-0
   packet roots against that scaffold and reports benchmark-level readiness while keeping packet-
   level `bootstrap-only` versus `reference-captured` truthfulness explicit.
@@ -320,7 +320,8 @@ The release-signoff scaffold is planning metadata only as well: it does not clai
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in
 the retained artifacts and durable docs. The blocked release-readiness helper remains in that same
 planning-only category: it audits prerequisites, preserves phase-0 verdict blockers when provided,
-preserves diagnostic-review sidecar blockers when provided, and keeps withheld claims explicit,
-but it does not run performance review, diagnostic review, or parity sign-off.
+preserves performance-review and diagnostic-review sidecar blockers when provided, and keeps
+withheld claims explicit, but it does not run performance review, diagnostic review, or parity
+sign-off.
 
 The durable staged plan for building that qualification suite from the current reviewed bootstrap state is frozen in `docs/full-amflow-completion-roadmap.md`.

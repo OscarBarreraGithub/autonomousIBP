@@ -350,6 +350,68 @@ def load_diagnostic_review_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_performance_review_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "performance review summary schema_version must be 1")
+    expect(
+        summary.get("scope") == "release-performance-review",
+        "performance review summary scope must be release-performance-review",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "performance review summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "performance_review_complete",
+        "mandatory_benchmark_timings_reviewed",
+        "benchmark_family_scope_reviewed",
+        "clean_rebuild_gate_reviewed",
+        "unstable_performance_runs_reviewed",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"performance review summary {field} must be a bool")
+
+    reviewed_benchmark_families = normalize_string_list(
+        summary.get("reviewed_benchmark_families", []),
+        "performance review summary reviewed_benchmark_families",
+    )
+    missing_or_unreviewed_performance_paths = normalize_string_list(
+        summary.get("missing_or_unreviewed_performance_paths", []),
+        "performance review summary missing_or_unreviewed_performance_paths",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "performance review summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "performance review summary withheld_claims",
+    )
+    expect_unique(
+        reviewed_benchmark_families,
+        "performance review summary reviewed_benchmark_families",
+    )
+    expect_unique(
+        missing_or_unreviewed_performance_paths,
+        "performance review summary missing_or_unreviewed_performance_paths",
+    )
+    if not summary["performance_review_complete"]:
+        expect(
+            bool(missing_or_unreviewed_performance_paths) or bool(blocking_reasons),
+            "incomplete performance review summary must report a blocker",
+        )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "reviewed_benchmark_families": reviewed_benchmark_families,
+        "missing_or_unreviewed_performance_paths": missing_or_unreviewed_performance_paths,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[str]:
     if phase0_summary is None:
         return []
@@ -363,6 +425,35 @@ def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[
     if not phase0_summary["packet_set_unexpected_failure_codes_absent"]:
         blockers.append("phase0-unexpected-failure-codes")
     return blockers
+
+
+def performance_review_blockers(performance_summary: dict[str, Any] | None) -> list[str]:
+    if performance_summary is None:
+        return ["performance-review-summary"]
+
+    blockers: list[str] = []
+    if not performance_summary["performance_review_complete"]:
+        blockers.append("performance-review-incomplete")
+    if not performance_summary["mandatory_benchmark_timings_reviewed"]:
+        blockers.append("performance-mandatory-benchmark-timings")
+    if not performance_summary["benchmark_family_scope_reviewed"]:
+        blockers.append("performance-benchmark-family-scope")
+    if not performance_summary["clean_rebuild_gate_reviewed"]:
+        blockers.append("performance-clean-rebuild-gate")
+    if not performance_summary["unstable_performance_runs_reviewed"]:
+        blockers.append("performance-unstable-run-evidence")
+    blockers.extend(
+        f"performance-path:{path}"
+        for path in performance_summary["missing_or_unreviewed_performance_paths"]
+    )
+
+    deduplicated: list[str] = []
+    seen: set[str] = set()
+    for blocker in blockers:
+        if blocker not in seen:
+            deduplicated.append(blocker)
+            seen.add(blocker)
+    return deduplicated
 
 
 def diagnostic_review_blockers(diagnostic_summary: dict[str, Any] | None) -> list[str]:
@@ -399,6 +490,7 @@ def summarize_release_readiness(
     checklist_path: Path,
     qualification_summary_path: Path,
     phase0_qualification_summary_path: Path | None = None,
+    performance_review_summary_path: Path | None = None,
     diagnostic_review_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = repo_root()
@@ -409,6 +501,11 @@ def summarize_release_readiness(
     phase0_qualification_summary = (
         load_phase0_qualification_summary(phase0_qualification_summary_path)
         if phase0_qualification_summary_path is not None
+        else None
+    )
+    performance_review_summary = (
+        load_performance_review_summary(performance_review_summary_path)
+        if performance_review_summary_path is not None
         else None
     )
     diagnostic_review_summary = (
@@ -486,6 +583,7 @@ def summarize_release_readiness(
     )
     phase_f_blocked = bool(blocked_runtime_lanes)
     phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
+    performance_blockers = performance_review_blockers(performance_review_summary)
     diagnostic_blockers = diagnostic_review_blockers(diagnostic_review_summary)
     phase0_packet_set_blockers: list[str] = []
     if phase0_qualification_summary is not None:
@@ -552,8 +650,16 @@ def summarize_release_readiness(
             blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
             status = "blocked"
         elif section_id == "performance-review":
-            blockers = ["milestone-m6"]
-            status = "blocked"
+            blockers = list(performance_blockers)
+            if milestone_m6_blocked or phase0_packet_set_blockers:
+                blockers.insert(0, "milestone-m6")
+            status = (
+                "reviewed"
+                if performance_review_summary is not None
+                and performance_review_summary["performance_review_complete"]
+                and not blockers
+                else "blocked"
+            )
         elif section_id == "diagnostic-review":
             blockers = diagnostic_blockers
             status = (
@@ -635,6 +741,46 @@ def summarize_release_readiness(
         "phase0_withheld_claims": (
             phase0_qualification_summary["withheld_claims"]
             if phase0_qualification_summary is not None
+            else []
+        ),
+        "performance_review_summary_path": (
+            str(performance_review_summary_path)
+            if performance_review_summary_path is not None
+            else ""
+        ),
+        "performance_review_evidence_present": performance_review_summary is not None,
+        "performance_review_current_state": (
+            performance_review_summary["current_state"]
+            if performance_review_summary is not None
+            else "not-provided"
+        ),
+        "performance_review_complete": (
+            performance_review_summary["performance_review_complete"]
+            if performance_review_summary is not None
+            else False
+        ),
+        "performance_review_blockers": performance_blockers,
+        "performance_review_blockers_preserved": (
+            performance_review_summary is not None and bool(performance_blockers)
+        ),
+        "performance_missing_or_unreviewed_paths": (
+            performance_review_summary["missing_or_unreviewed_performance_paths"]
+            if performance_review_summary is not None
+            else []
+        ),
+        "performance_review_blocking_reasons": (
+            performance_review_summary["blocking_reasons"]
+            if performance_review_summary is not None
+            else []
+        ),
+        "performance_reviewed_benchmark_families": (
+            performance_review_summary["reviewed_benchmark_families"]
+            if performance_review_summary is not None
+            else []
+        ),
+        "performance_review_withheld_claims": (
+            performance_review_summary["withheld_claims"]
+            if performance_review_summary is not None
             else []
         ),
         "diagnostic_review_summary_path": (
@@ -825,21 +971,56 @@ def write_synthetic_diagnostic_review_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_performance_review_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "release-performance-review",
+            "current_state": "blocked-on-unreviewed-benchmark-timings",
+            "performance_review_complete": False,
+            "mandatory_benchmark_timings_reviewed": False,
+            "benchmark_family_scope_reviewed": True,
+            "clean_rebuild_gate_reviewed": True,
+            "unstable_performance_runs_reviewed": False,
+            "reviewed_benchmark_families": [
+                "phase0-required-set",
+                "phase0-d0-user-hook-pairs",
+            ],
+            "missing_or_unreviewed_performance_paths": [
+                "mandatory-case-study-timings",
+                "unstable-runtime-lane-timings",
+            ],
+            "blocking_reasons": [
+                "mandatory benchmark timings have not been reviewed",
+                "unstable runtime-lane timing evidence has not been reviewed",
+            ],
+            "withheld_claims": [
+                "This summary does not claim performance review completion.",
+                "This summary does not claim release readiness.",
+            ],
+        },
+    )
+
+
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
+        performance_review_summary_path = temp_root / "performance-review-summary.json"
         diagnostic_review_summary_path = temp_root / "diagnostic-review-summary.json"
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
+        write_synthetic_performance_review_summary(performance_review_summary_path)
         write_synthetic_diagnostic_review_summary(diagnostic_review_summary_path)
         summary = summarize_release_readiness(
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
             phase0_qualification_summary_path=phase0_qualification_summary_path,
+            performance_review_summary_path=performance_review_summary_path,
             diagnostic_review_summary_path=diagnostic_review_summary_path,
         )
         write_json(summary_path, summary)
@@ -870,6 +1051,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 == ["phase0-failure-code-audit", "phase0-required-failure-codes"]
             ),
             "phase0_withheld_claims_preserved": len(summary["phase0_withheld_claims"]) >= 2,
+            "performance_review_evidence_consumed": summary["performance_review_evidence_present"],
+            "performance_review_blockers_preserved": summary["performance_review_blockers"]
+            == [
+                "performance-review-incomplete",
+                "performance-mandatory-benchmark-timings",
+                "performance-unstable-run-evidence",
+                "performance-path:mandatory-case-study-timings",
+                "performance-path:unstable-runtime-lane-timings",
+            ],
+            "performance_review_withheld_claims_preserved": (
+                len(summary["performance_review_withheld_claims"]) >= 2
+            ),
+            "performance_review_section_blocked": any(
+                section["id"] == "performance-review"
+                and section["status"] == "blocked"
+                and "performance-path:mandatory-case-study-timings" in section["blockers"]
+                for section in summary["review_sections"]
+            ),
             "diagnostic_review_evidence_consumed": summary["diagnostic_review_evidence_present"],
             "diagnostic_review_blockers_preserved": summary["diagnostic_review_blockers"]
             == [
@@ -920,6 +1119,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to the phase-0 packet-set qualification verdict summary",
     )
     parser.add_argument(
+        "--performance-review-summary",
+        type=Path,
+        help="Optional path to the M7 performance-review summary",
+    )
+    parser.add_argument(
         "--diagnostic-review-summary",
         type=Path,
         help="Optional path to the M7 diagnostic-review summary",
@@ -957,6 +1161,7 @@ def main() -> int:
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,
+        performance_review_summary_path=args.performance_review_summary,
         diagnostic_review_summary_path=args.diagnostic_review_summary,
     )
     if args.summary_path is not None:

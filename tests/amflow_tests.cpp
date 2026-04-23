@@ -39415,9 +39415,24 @@ void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
   ExpectContains(parity_result.stdout_json, "\"qualification-closure-note\"",
                  "release parity-signoff review summary should surface the missing "
                  "qualification closure note");
+  ExpectContains(parity_result.stdout_json, "\"performance-review-summary\"",
+                 "release parity-signoff review summary should surface the missing "
+                 "performance review summary");
+  ExpectContains(parity_result.stdout_json, "\"diagnostic-review-summary\"",
+                 "release parity-signoff review summary should surface the missing "
+                 "diagnostic review summary");
   ExpectContains(parity_result.stdout_json, "\"docs-completion-note\"",
                  "release parity-signoff review summary should surface the missing docs "
                  "completion note");
+  ExpectContains(parity_result.stdout_json, "\"required_release_review_sections\": [",
+                 "release parity-signoff review summary should keep prerequisite review-section "
+                 "scope visible");
+  ExpectContains(parity_result.stdout_json, "\"diagnostic-review\"",
+                 "release parity-signoff review summary should keep the diagnostic prerequisite "
+                 "section visible");
+  ExpectContains(parity_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "release parity-signoff review summary should preserve release non-claims");
 
   const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
       "amflow-release-signoff-generated-parity-summary",
@@ -39449,9 +39464,33 @@ void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
                  "\"parity-path:qualification-closure-note\"",
                  "generated-parity-signoff-aware release signoff readiness should preserve the "
                  "qualification closure blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"parity-path:performance-review-summary\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "performance-review prerequisite blocker");
+  ExpectContains(release_result.stdout_json,
+                 "\"parity-path:diagnostic-review-summary\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "diagnostic-review prerequisite blocker");
   ExpectContains(release_result.stdout_json, "\"parity-path:docs-completion-note\"",
                  "generated-parity-signoff-aware release signoff readiness should preserve the "
                  "docs completion blocker");
+  ExpectContains(
+      release_result.stdout_json,
+      "\"parity_required_release_review_sections\": [",
+      "generated-parity-signoff-aware release signoff readiness should preserve prerequisite "
+      "review-section scope");
+  ExpectContains(release_result.stdout_json, "\"performance-review\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve the "
+                 "performance prerequisite section");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim final parity sign-off.\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve "
+                 "parity withheld claims");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not widen runtime or public behavior.\"",
+                 "generated-parity-signoff-aware release signoff readiness should preserve "
+                 "runtime/public non-claims");
   ExpectContains(release_result.stdout_json, "\"id\": \"parity-signoff\"",
                  "generated-parity-signoff-aware release signoff readiness should keep the "
                  "parity-signoff checklist section visible");

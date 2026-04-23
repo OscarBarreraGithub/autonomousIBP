@@ -375,6 +375,8 @@ To turn one retained M6 readiness summary into the first blocked M7 release-read
 ```bash
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --qualification-summary /tmp/qualification-readiness.json \
+  --phase0-qualification-summary /tmp/phase0-qualification.json \
+  --case-study-qualification-summary /tmp/case-study-qualification.json \
   --performance-review-summary /tmp/performance-review.json \
   --diagnostic-review-summary /tmp/diagnostic-review.json \
   --docs-completion-summary /tmp/docs-completion.json \
@@ -385,9 +387,9 @@ Add `--summary-path` if you want the JSON report written to disk as well as prin
 This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
 and docs-completion targets, keeps the current blocked `b61n` / `b62n` / `b63k` / `b64k`
 frontier visible from the retained M6 evidence packet, preserves optional phase-0 qualification
-plus performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar blockers
-when provided, and writes one blocked release-readiness summary without claiming that
-`Milestone M6` or `Milestone M7` is closed.
+and case-study-family qualification verdict blockers plus performance-review, diagnostic-review,
+docs-completion, and parity-signoff sidecar blockers when provided, and writes one blocked
+release-readiness summary without claiming that `Milestone M6` or `Milestone M7` is closed.
 
 To produce the first machine-readable M7 diagnostic-review sidecar consumed by that readiness
 helper:
@@ -505,9 +507,10 @@ The capture script writes:
 - `release_signoff_readiness.py` is the first executable M7 helper: it consumes one
   machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
   audits that the checklist source/doc paths exist inside the repo, preserves the blocked
-  `next_runtime_lane` frontier, can preserve optional phase-0 qualification, performance-review,
-  diagnostic-review, docs-completion, and parity-signoff sidecar blockers, and writes one blocked
-  release-readiness summary without overclaiming qualified release evidence.
+  `next_runtime_lane` frontier, can preserve optional phase-0 qualification, case-study-family
+  qualification, performance-review, diagnostic-review, docs-completion, and parity-signoff
+  sidecar blockers, and writes one blocked release-readiness summary without overclaiming
+  qualified release evidence.
 - `review_release_parity_signoff.py` is the first M7 parity-signoff sidecar producer: it audits
   the release-signoff checklist parity-signoff section plus explicit non-claims, then writes the
   blocked `release-parity-signoff` summary consumed by `release_signoff_readiness.py`.

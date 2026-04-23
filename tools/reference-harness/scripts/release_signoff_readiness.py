@@ -304,6 +304,191 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def parse_case_study_blocked_entries(raw: Any, label: str) -> list[dict[str, str]]:
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} must be a list")
+    entries: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise TypeError(f"{label} entries must be objects")
+        entry_id_raw = entry.get("id")
+        next_runtime_lane_raw = entry.get("next_runtime_lane", "")
+        landed_runtime_predecessor_raw = entry.get("landed_runtime_predecessor", "")
+        if not isinstance(entry_id_raw, str):
+            raise TypeError(f"{label} id must be a string")
+        if not isinstance(next_runtime_lane_raw, str):
+            raise TypeError(f"{label} next_runtime_lane must be a string")
+        if not isinstance(landed_runtime_predecessor_raw, str):
+            raise TypeError(f"{label} landed_runtime_predecessor must be a string")
+        entry_id = entry_id_raw.strip()
+        next_runtime_lane = next_runtime_lane_raw.strip()
+        landed_runtime_predecessor = landed_runtime_predecessor_raw.strip()
+        if not entry_id:
+            raise ValueError(f"{label} id must not be empty")
+        if entry_id in seen_ids:
+            raise ValueError(f"duplicate {label} id: {entry_id}")
+        if not next_runtime_lane:
+            raise ValueError(f"{label} next_runtime_lane must not be empty")
+        seen_ids.add(entry_id)
+        entries.append(
+            {
+                "id": entry_id,
+                "next_runtime_lane": next_runtime_lane,
+                "landed_runtime_predecessor": landed_runtime_predecessor,
+            }
+        )
+    return entries
+
+
+def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(
+        summary.get("schema_version") == 1,
+        "case-study qualification summary schema_version must be 1",
+    )
+    expect(
+        summary.get("scope") == "case-study-families-only",
+        "case-study qualification summary scope must be case-study-families-only",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "case-study qualification summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "readiness_contract_coherent",
+        "case_study_numeric_evidence_present",
+        "case_study_numeric_comparison_passed",
+        "all_case_studies_meet_digit_thresholds",
+        "numeric_metadata_coherent",
+        "digit_threshold_profiles_reported",
+        "required_failure_code_profiles_reported",
+        "regression_profiles_reported",
+        "case_study_families_qualified",
+        "milestone_m6_ready",
+        "milestone_m6_requires_phase0_verdict",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"case-study qualification summary {field} must be a bool")
+
+    case_study_ids = normalize_string_list(
+        summary.get("case_study_ids", []),
+        "case-study qualification summary case_study_ids",
+    )
+    literature_anchor_case_study_ids = normalize_string_list(
+        summary.get("literature_anchor_case_study_ids", []),
+        "case-study qualification summary literature_anchor_case_study_ids",
+    )
+    matrix_only_case_study_ids = normalize_string_list(
+        summary.get("matrix_only_case_study_ids", []),
+        "case-study qualification summary matrix_only_case_study_ids",
+    )
+    runtime_blocked_case_study_ids = normalize_string_list(
+        summary.get("runtime_blocked_case_study_ids", []),
+        "case-study qualification summary runtime_blocked_case_study_ids",
+    )
+    strong_precision_case_study_ids = normalize_string_list(
+        summary.get("strong_precision_case_study_ids", []),
+        "case-study qualification summary strong_precision_case_study_ids",
+    )
+    compared_case_study_ids = normalize_string_list(
+        summary.get("compared_case_study_ids", []),
+        "case-study qualification summary compared_case_study_ids",
+    )
+    missing_case_study_numeric_ids = normalize_string_list(
+        summary.get("missing_case_study_numeric_ids", []),
+        "case-study qualification summary missing_case_study_numeric_ids",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "case-study qualification summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "case-study qualification summary withheld_claims",
+    )
+    blocked_case_study_families = parse_case_study_blocked_entries(
+        summary.get("blocked_case_study_families", []),
+        "case-study qualification summary blocked_case_study_families",
+    )
+
+    for label, values in [
+        ("case-study qualification summary case_study_ids", case_study_ids),
+        (
+            "case-study qualification summary literature_anchor_case_study_ids",
+            literature_anchor_case_study_ids,
+        ),
+        (
+            "case-study qualification summary matrix_only_case_study_ids",
+            matrix_only_case_study_ids,
+        ),
+        (
+            "case-study qualification summary runtime_blocked_case_study_ids",
+            runtime_blocked_case_study_ids,
+        ),
+        (
+            "case-study qualification summary strong_precision_case_study_ids",
+            strong_precision_case_study_ids,
+        ),
+        (
+            "case-study qualification summary compared_case_study_ids",
+            compared_case_study_ids,
+        ),
+        (
+            "case-study qualification summary missing_case_study_numeric_ids",
+            missing_case_study_numeric_ids,
+        ),
+        ("case-study qualification summary withheld_claims", withheld_claims),
+    ]:
+        expect_unique(values, label)
+
+    expect(
+        set(runtime_blocked_case_study_ids)
+        == {entry["id"] for entry in blocked_case_study_families},
+        "case-study qualification summary runtime-blocked ids must match blocked families",
+    )
+    expect(
+        set(missing_case_study_numeric_ids).issubset(set(case_study_ids)),
+        "case-study qualification summary missing numeric ids must be selected case-study ids",
+    )
+    if not summary["case_study_families_qualified"]:
+        expect(
+            bool(blocking_reasons),
+            "incomplete case-study qualification summary must report a blocker",
+        )
+    else:
+        expect(
+            summary["readiness_contract_coherent"]
+            and summary["case_study_numeric_evidence_present"]
+            and summary["case_study_numeric_comparison_passed"]
+            and summary["all_case_studies_meet_digit_thresholds"]
+            and summary["numeric_metadata_coherent"]
+            and not runtime_blocked_case_study_ids
+            and not missing_case_study_numeric_ids,
+            "qualified case-study summary must report coherent complete numeric evidence",
+        )
+    expect(
+        not summary["milestone_m6_ready"] and summary["milestone_m6_requires_phase0_verdict"],
+        "case-study qualification summary must keep the phase-0 verdict prerequisite separate",
+    )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "case_study_ids": case_study_ids,
+        "literature_anchor_case_study_ids": literature_anchor_case_study_ids,
+        "matrix_only_case_study_ids": matrix_only_case_study_ids,
+        "runtime_blocked_case_study_ids": runtime_blocked_case_study_ids,
+        "strong_precision_case_study_ids": strong_precision_case_study_ids,
+        "compared_case_study_ids": compared_case_study_ids,
+        "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
+        "blocked_case_study_families": blocked_case_study_families,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def load_diagnostic_review_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "diagnostic review summary schema_version must be 1")
@@ -600,6 +785,47 @@ def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[
     return blockers
 
 
+def case_study_qualification_blockers(
+    case_study_summary: dict[str, Any] | None,
+) -> list[str]:
+    if case_study_summary is None:
+        return []
+
+    blockers: list[str] = []
+    if not case_study_summary["case_study_families_qualified"]:
+        blockers.append("case-study:" + case_study_summary["current_state"])
+    if not case_study_summary["readiness_contract_coherent"]:
+        blockers.append("case-study-readiness")
+    blockers.extend(
+        f"case-study-runtime:{family_id}"
+        for family_id in case_study_summary["runtime_blocked_case_study_ids"]
+    )
+    if (
+        not case_study_summary["case_study_numeric_evidence_present"]
+        or case_study_summary["missing_case_study_numeric_ids"]
+    ):
+        blockers.append("case-study-numeric-evidence")
+    if not case_study_summary["numeric_metadata_coherent"]:
+        blockers.append("case-study-metadata")
+    if (
+        case_study_summary["case_study_numeric_evidence_present"]
+        and not case_study_summary["case_study_numeric_comparison_passed"]
+    ):
+        blockers.append("case-study-comparison")
+    if (
+        case_study_summary["case_study_numeric_evidence_present"]
+        and not case_study_summary["all_case_studies_meet_digit_thresholds"]
+    ):
+        blockers.append("case-study-correct-digits")
+    deduplicated: list[str] = []
+    seen: set[str] = set()
+    for blocker in blockers:
+        if blocker not in seen:
+            deduplicated.append(blocker)
+            seen.add(blocker)
+    return deduplicated
+
+
 def performance_review_blockers(performance_summary: dict[str, Any] | None) -> list[str]:
     if performance_summary is None:
         return ["performance-review-summary"]
@@ -733,6 +959,7 @@ def summarize_release_readiness(
     checklist_path: Path,
     qualification_summary_path: Path,
     phase0_qualification_summary_path: Path | None = None,
+    case_study_qualification_summary_path: Path | None = None,
     performance_review_summary_path: Path | None = None,
     diagnostic_review_summary_path: Path | None = None,
     docs_completion_summary_path: Path | None = None,
@@ -746,6 +973,11 @@ def summarize_release_readiness(
     phase0_qualification_summary = (
         load_phase0_qualification_summary(phase0_qualification_summary_path)
         if phase0_qualification_summary_path is not None
+        else None
+    )
+    case_study_qualification_summary = (
+        load_case_study_qualification_summary(case_study_qualification_summary_path)
+        if case_study_qualification_summary_path is not None
         else None
     )
     performance_review_summary = (
@@ -838,6 +1070,16 @@ def summarize_release_readiness(
     )
     phase_f_blocked = bool(blocked_runtime_lanes)
     phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
+    case_study_blockers = case_study_qualification_blockers(case_study_qualification_summary)
+    if (
+        case_study_qualification_summary is not None
+        and case_study_qualification_summary["milestone_m6_requires_phase0_verdict"]
+        and (
+            phase0_qualification_summary is None
+            or not phase0_qualification_summary["phase0_packet_set_qualified"]
+        )
+    ):
+        case_study_blockers.append("case-study-requires-phase0-verdict")
     performance_blockers = performance_review_blockers(performance_review_summary)
     diagnostic_blockers = diagnostic_review_blockers(diagnostic_review_summary)
     docs_blockers = docs_completion_blockers(docs_completion_summary)
@@ -860,11 +1102,17 @@ def summarize_release_readiness(
         satisfied = False
 
         if prerequisite_id == "milestone-m6":
-            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
+            blockers = (
+                phase0_pending_ids
+                + blocked_case_study_ids
+                + phase0_packet_set_blockers
+                + case_study_blockers
+            )
             current_state = (
                 "blocked-on-qualification-closure"
                 if milestone_m6_blocked
                 or bool(phase0_packet_set_blockers)
+                or bool(case_study_blockers)
                 else "awaiting-reviewed-and-accepted-m6-packet"
             )
         elif prerequisite_id == "phase-f-feature-parity":
@@ -875,11 +1123,18 @@ def summarize_release_readiness(
                 else "awaiting-reviewed-and-accepted-m5-packet"
             )
         elif prerequisite_id == "retained-reference-evidence":
-            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
+            blockers = (
+                phase0_pending_ids
+                + blocked_case_study_ids
+                + phase0_packet_set_blockers
+                + case_study_blockers
+            )
             if not qualification_evidence_coherent:
                 current_state = "incoherent-retained-evidence"
             elif phase0_packet_set_blockers:
                 current_state = "captured-but-phase0-not-qualified"
+            elif case_study_blockers:
+                current_state = "captured-but-case-study-not-qualified"
             else:
                 current_state = "captured-but-not-qualified"
         else:
@@ -904,11 +1159,16 @@ def summarize_release_readiness(
         blockers: list[str] = []
 
         if section_id == "qualification-corpus":
-            blockers = phase0_pending_ids + blocked_case_study_ids + phase0_packet_set_blockers
+            blockers = (
+                phase0_pending_ids
+                + blocked_case_study_ids
+                + phase0_packet_set_blockers
+                + case_study_blockers
+            )
             status = "blocked"
         elif section_id == "performance-review":
             blockers = list(performance_blockers)
-            if milestone_m6_blocked or phase0_packet_set_blockers:
+            if milestone_m6_blocked or phase0_packet_set_blockers or case_study_blockers:
                 blockers.insert(0, "milestone-m6")
             status = (
                 "reviewed"
@@ -1020,6 +1280,68 @@ def summarize_release_readiness(
         "phase0_withheld_claims": (
             phase0_qualification_summary["withheld_claims"]
             if phase0_qualification_summary is not None
+            else []
+        ),
+        "case_study_qualification_summary_path": (
+            str(case_study_qualification_summary_path)
+            if case_study_qualification_summary_path is not None
+            else ""
+        ),
+        "case_study_qualification_evidence_present": (
+            case_study_qualification_summary is not None
+        ),
+        "case_study_family_current_state": (
+            case_study_qualification_summary["current_state"]
+            if case_study_qualification_summary is not None
+            else "not-provided"
+        ),
+        "case_study_families_qualified": (
+            case_study_qualification_summary["case_study_families_qualified"]
+            if case_study_qualification_summary is not None
+            else False
+        ),
+        "case_study_qualification_blockers": case_study_blockers,
+        "case_study_qualification_blockers_preserved": (
+            case_study_qualification_summary is not None and bool(case_study_blockers)
+        ),
+        "case_study_qualification_blocking_reasons": (
+            case_study_qualification_summary["blocking_reasons"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_runtime_blocked_ids": (
+            case_study_qualification_summary["runtime_blocked_case_study_ids"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_missing_numeric_ids": (
+            case_study_qualification_summary["missing_case_study_numeric_ids"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_compared_ids": (
+            case_study_qualification_summary["compared_case_study_ids"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_literature_anchor_ids": (
+            case_study_qualification_summary["literature_anchor_case_study_ids"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_strong_precision_ids": (
+            case_study_qualification_summary["strong_precision_case_study_ids"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_blocked_families_from_verdict": (
+            case_study_qualification_summary["blocked_case_study_families"]
+            if case_study_qualification_summary is not None
+            else []
+        ),
+        "case_study_withheld_claims": (
+            case_study_qualification_summary["withheld_claims"]
+            if case_study_qualification_summary is not None
             else []
         ),
         "performance_review_summary_path": (
@@ -1297,6 +1619,64 @@ def write_synthetic_phase0_qualification_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_case_study_qualification_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "case-study-families-only",
+            "current_state": "blocked-on-runtime-lanes",
+            "case_study_readiness_summary_path": "synthetic-case-study-readiness.json",
+            "case_study_numeric_summary_path": "",
+            "case_study_ids": [
+                "ttbar-h",
+                "package-double-box",
+                "one-singular-endpoint-case",
+            ],
+            "literature_anchor_case_study_ids": ["ttbar-h"],
+            "matrix_only_case_study_ids": ["package-double-box"],
+            "runtime_blocked_case_study_ids": ["one-singular-endpoint-case"],
+            "strong_precision_case_study_ids": ["ttbar-h"],
+            "readiness_contract_coherent": True,
+            "case_study_numeric_evidence_present": False,
+            "compared_case_study_ids": [],
+            "case_study_numeric_comparison_passed": False,
+            "all_case_studies_meet_digit_thresholds": False,
+            "minimum_observed_correct_digits_by_case_study": {},
+            "missing_case_study_numeric_ids": [
+                "ttbar-h",
+                "package-double-box",
+                "one-singular-endpoint-case",
+            ],
+            "numeric_metadata_coherent": True,
+            "digit_threshold_profiles_reported": False,
+            "required_failure_code_profiles_reported": False,
+            "regression_profiles_reported": False,
+            "case_study_families_qualified": False,
+            "milestone_m6_ready": False,
+            "milestone_m6_requires_phase0_verdict": True,
+            "blocked_case_study_families": [
+                {
+                    "id": "one-singular-endpoint-case",
+                    "next_runtime_lane": "b62n",
+                    "landed_runtime_predecessor": "b62m",
+                }
+            ],
+            "case_study_families": [],
+            "blocking_reasons": [
+                "case-study family one-singular-endpoint-case is still blocked on a runtime lane",
+                "case-study numerics are not yet compared",
+            ],
+            "withheld_claims": [
+                "This summary does not launch the C++ runtime or create new retained captures.",
+                "This summary does not compare phase-0 packet-set evidence.",
+                "This summary does not by itself claim Milestone M6 closure.",
+                "This summary does not mark Milestone M7 or release readiness.",
+            ],
+        },
+    )
+
+
 def write_synthetic_diagnostic_review_summary(path: Path) -> None:
     write_json(
         path,
@@ -1443,6 +1823,9 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
+        case_study_qualification_summary_path = (
+            temp_root / "case-study-qualification-summary.json"
+        )
         performance_review_summary_path = temp_root / "performance-review-summary.json"
         diagnostic_review_summary_path = temp_root / "diagnostic-review-summary.json"
         docs_completion_summary_path = temp_root / "docs-completion-summary.json"
@@ -1451,6 +1834,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
+        write_synthetic_case_study_qualification_summary(case_study_qualification_summary_path)
         write_synthetic_performance_review_summary(performance_review_summary_path)
         write_synthetic_diagnostic_review_summary(diagnostic_review_summary_path)
         write_synthetic_docs_completion_summary(docs_completion_summary_path)
@@ -1511,6 +1895,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
             phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
             performance_review_summary_path=performance_review_summary_path,
             diagnostic_review_summary_path=diagnostic_review_summary_path,
             docs_completion_summary_path=docs_completion_summary_path,
@@ -1544,6 +1929,26 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 == ["phase0-failure-code-audit", "phase0-required-failure-codes"]
             ),
             "phase0_withheld_claims_preserved": len(summary["phase0_withheld_claims"]) >= 2,
+            "case_study_verdict_consumed": summary[
+                "case_study_qualification_evidence_present"
+            ],
+            "case_study_qualification_blockers_preserved": (
+                summary["case_study_qualification_blockers"]
+                == [
+                    "case-study:blocked-on-runtime-lanes",
+                    "case-study-runtime:one-singular-endpoint-case",
+                    "case-study-numeric-evidence",
+                    "case-study-requires-phase0-verdict",
+                ]
+            ),
+            "case_study_withheld_claims_preserved": (
+                len(summary["case_study_withheld_claims"]) >= 4
+            ),
+            "case_study_qualification_section_blocked": any(
+                section["id"] == "qualification-corpus"
+                and "case-study-runtime:one-singular-endpoint-case" in section["blockers"]
+                for section in summary["review_sections"]
+            ),
             "performance_review_evidence_consumed": summary["performance_review_evidence_present"],
             "performance_review_blockers_preserved": summary["performance_review_blockers"]
             == [
@@ -1670,6 +2075,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to the phase-0 packet-set qualification verdict summary",
     )
     parser.add_argument(
+        "--case-study-qualification-summary",
+        type=Path,
+        help="Optional path to the case-study-family qualification verdict summary",
+    )
+    parser.add_argument(
         "--performance-review-summary",
         type=Path,
         help="Optional path to the M7 performance-review summary",
@@ -1722,6 +2132,7 @@ def main() -> int:
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,
+        case_study_qualification_summary_path=args.case_study_qualification_summary,
         performance_review_summary_path=args.performance_review_summary,
         diagnostic_review_summary_path=args.diagnostic_review_summary,
         docs_completion_summary_path=args.docs_completion_summary,

@@ -37673,6 +37673,20 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   ExpectContains(result.stdout_json, "\"phase0_withheld_claims_preserved\": true",
                  "release signoff readiness self-check should preserve phase-0 verdict "
                  "withheld claims");
+  ExpectContains(result.stdout_json, "\"case_study_verdict_consumed\": true",
+                 "release signoff readiness self-check should consume the case-study-family "
+                 "qualification verdict summary");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_qualification_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve case-study qualification "
+                 "blockers for M7");
+  ExpectContains(result.stdout_json, "\"case_study_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve case-study verdict "
+                 "withheld claims");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_qualification_section_blocked\": true",
+                 "release signoff readiness self-check should keep qualification corpus blocked "
+                 "when the case-study verdict is incomplete");
   ExpectContains(result.stdout_json, "\"performance_review_evidence_consumed\": true",
                  "release signoff readiness self-check should consume the performance-review "
                  "summary");
@@ -37969,6 +37983,129 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
                  "M6 blocker");
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "phase-0-aware release signoff readiness should keep final release signoff "
+                 "blocked");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-case-study-verdict-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path case_study_readiness_summary_path =
+      FreshTempDir("amflow-release-signoff-case-study-verdict-prereq") /
+      "case-study-readiness.json";
+  const std::filesystem::path case_study_qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-case-study-verdict-summary") /
+      "case-study-qualification.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-case-study-aware-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-case-study-verdict-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff case-study verdict prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff case-study verdict prerequisite readiness summary should not emit "
+         "stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun case_study_readiness_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-case-study-verdict-prereq",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", case_study_readiness_summary_path.string()},
+      "release signoff case-study verdict prerequisite case-study readiness summary");
+  Expect(case_study_readiness_result.stderr_log.empty(),
+         "release signoff case-study verdict prerequisite case-study readiness summary should "
+         "not emit stderr noise on success");
+  Expect(std::filesystem::exists(case_study_readiness_summary_path),
+         "release signoff case-study verdict prerequisite case-study readiness summary should "
+         "write the requested file");
+
+  const ReferenceHarnessSelfCheckRun case_study_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-case-study-verdict-summary",
+      "tools/reference-harness/scripts/qualify_case_study_families.py",
+      {"--case-study-readiness-summary",
+       case_study_readiness_summary_path.string(),
+       "--summary-path",
+       case_study_qualification_summary_path.string()},
+      "release signoff case-study qualification verdict summary");
+  Expect(case_study_result.stderr_log.empty(),
+         "release signoff case-study qualification verdict summary should not emit stderr noise "
+         "on success");
+  Expect(std::filesystem::exists(case_study_qualification_summary_path),
+         "release signoff case-study qualification verdict summary should write the requested "
+         "file");
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-case-study-aware-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--case-study-qualification-summary",
+       case_study_qualification_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "case-study-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "case-study-aware release signoff readiness summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "case-study-aware release signoff readiness summary should write the requested summary "
+         "file");
+  ExpectContains(release_result.stdout_json,
+                 "\"case_study_qualification_evidence_present\": true",
+                 "case-study-aware release signoff readiness should record the consumed "
+                 "case-study verdict");
+  ExpectContains(release_result.stdout_json,
+                 "\"case_study_family_current_state\": \"blocked-on-runtime-lanes\"",
+                 "case-study-aware release signoff readiness should preserve the retained "
+                 "case-study verdict state");
+  ExpectContains(release_result.stdout_json, "\"case_study_families_qualified\": false",
+                 "case-study-aware release signoff readiness should not overclaim case-study "
+                 "qualification");
+  ExpectContains(release_result.stdout_json,
+                 "\"case_study_qualification_blockers_preserved\": true",
+                 "case-study-aware release signoff readiness should preserve case-study "
+                 "qualification blockers");
+  ExpectContains(release_result.stdout_json,
+                 "\"case-study-runtime:one-singular-endpoint-case\"",
+                 "case-study-aware release signoff readiness should surface the retained "
+                 "singular case-study runtime blocker");
+  ExpectContains(release_result.stdout_json, "\"case-study-numeric-evidence\"",
+                 "case-study-aware release signoff readiness should surface missing case-study "
+                 "numeric evidence");
+  ExpectContains(release_result.stdout_json,
+                 "\"case-study family one-singular-endpoint-case is still blocked on a runtime "
+                 "lane\"",
+                 "case-study-aware release signoff readiness should preserve case-study "
+                 "blocking reasons");
+  ExpectContains(release_result.stdout_json, "\"case_study_missing_numeric_ids\": [",
+                 "case-study-aware release signoff readiness should keep missing numeric ids "
+                 "visible");
+  ExpectContains(release_result.stdout_json, "\"diphoton-heavy-quark-form-factors\"",
+                 "case-study-aware release signoff readiness should preserve strong-precision "
+                 "case-study anchors");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not mark Milestone M7 or release readiness.\"",
+                 "case-study-aware release signoff readiness should preserve case-study "
+                 "withheld claims");
+  ExpectContains(release_result.stdout_json, "\"id\": \"qualification-corpus\"",
+                 "case-study-aware release signoff readiness should keep the qualification "
+                 "corpus section visible");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "case-study-aware release signoff readiness should keep final release signoff "
                  "blocked");
 }
 
@@ -39808,6 +39945,7 @@ int main() {
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
+    ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseDiagnosticReviewSelfCheckProducesCompatibleSidecarTest();
     ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest();

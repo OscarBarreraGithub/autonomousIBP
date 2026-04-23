@@ -680,14 +680,15 @@ that release sign-off is complete.
 The first executable M7 helper then stays blocked on purpose:
 `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
 machine-readable `qualification_readiness.py` summary plus that checklist,
-can also consume the retained phase-0 packet-set qualification verdict plus one
-performance-review summary sidecar, one diagnostic-review summary sidecar, one docs-completion
-summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets,
-and writes one blocked release-readiness summary that keeps the current
+can also consume the retained phase-0 packet-set qualification verdict, the retained
+case-study-family qualification verdict, plus one performance-review summary sidecar, one
+diagnostic-review summary sidecar, one docs-completion summary sidecar, and one parity-signoff
+summary sidecar, audits the durable checklist/doc targets, and writes one blocked
+release-readiness summary that keeps the current
 `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
-blockers, performance-review blockers, typed-failure diagnostic-review blockers,
-docs-alignment blockers, and the final parity-signoff blocker path visible without claiming that
-`Milestone M6` or `Milestone M7` has closed.
+blockers, case-study runtime/numeric blockers, performance-review blockers, typed-failure
+diagnostic-review blockers, docs-alignment blockers, and the final parity-signoff blocker path
+visible without claiming that `Milestone M6` or `Milestone M7` has closed.
 The `Milestone M7 docs-completion release-readiness producer` is the first populated
 docs-completion sidecar producer:
 `tools/reference-harness/scripts/review_release_docs_completion.py` audits the live release

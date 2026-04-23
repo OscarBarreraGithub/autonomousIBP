@@ -38754,6 +38754,15 @@ void ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest() {
   ExpectContains(diagnostic_result.stdout_json, "\"boundary_unsolved\"",
                  "release diagnostic-review summary should keep required failure-code scope "
                  "visible");
+  ExpectContains(diagnostic_result.stdout_json, "\"continuation_budget_exhausted\"",
+                 "release diagnostic-review summary should keep continuation-budget failure-code "
+                 "scope visible");
+  ExpectContains(diagnostic_result.stdout_json, "\"insufficient_precision\"",
+                 "release diagnostic-review summary should keep insufficient-precision "
+                 "failure-code scope visible");
+  ExpectContains(diagnostic_result.stdout_json, "\"master_set_instability\"",
+                 "release diagnostic-review summary should keep master-set-instability "
+                 "failure-code scope visible");
 
   const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
       "amflow-release-signoff-generated-diagnostic-summary",
@@ -38789,6 +38798,15 @@ void ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest() {
                  "\"diagnostic-path:retained-unstable-run-evidence\"",
                  "generated-diagnostic-review-aware release signoff readiness should preserve "
                  "the retained unstable-run evidence blocker");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_reviewed_failure_code_profiles\": [",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the generated diagnostic failure-code scope");
+  ExpectContains(release_result.stdout_json, "\"insufficient_precision\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the generated insufficient-precision failure-code scope");
+  ExpectContains(release_result.stdout_json, "\"master_set_instability\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the generated master-set-instability failure-code scope");
   ExpectContains(release_result.stdout_json, "\"id\": \"diagnostic-review\"",
                  "generated-diagnostic-review-aware release signoff readiness should keep the "
                  "diagnostic-review checklist section visible");

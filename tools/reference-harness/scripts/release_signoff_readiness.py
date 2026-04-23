@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the M7 release-signoff scaffold against retained M6 readiness evidence."""
+"""Audit the M7 release-signoff scaffold against retained readiness evidence."""
 
 from __future__ import annotations
 
@@ -288,6 +288,68 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_diagnostic_review_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "diagnostic review summary schema_version must be 1")
+    expect(
+        summary.get("scope") == "release-diagnostic-review",
+        "diagnostic review summary scope must be release-diagnostic-review",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "diagnostic review summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "diagnostic_review_complete",
+        "required_failure_code_profiles_reviewed",
+        "typed_failure_paths_preserved",
+        "unstable_run_evidence_reviewed",
+        "known_regression_outcomes_reviewed",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"diagnostic review summary {field} must be a bool")
+
+    reviewed_failure_code_profiles = normalize_string_list(
+        summary.get("reviewed_failure_code_profiles", []),
+        "diagnostic review summary reviewed_failure_code_profiles",
+    )
+    missing_or_degraded_diagnostic_paths = normalize_string_list(
+        summary.get("missing_or_degraded_diagnostic_paths", []),
+        "diagnostic review summary missing_or_degraded_diagnostic_paths",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "diagnostic review summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "diagnostic review summary withheld_claims",
+    )
+    expect_unique(
+        reviewed_failure_code_profiles,
+        "diagnostic review summary reviewed_failure_code_profiles",
+    )
+    expect_unique(
+        missing_or_degraded_diagnostic_paths,
+        "diagnostic review summary missing_or_degraded_diagnostic_paths",
+    )
+    if not summary["diagnostic_review_complete"]:
+        expect(
+            bool(missing_or_degraded_diagnostic_paths) or bool(blocking_reasons),
+            "incomplete diagnostic review summary must report a blocker",
+        )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "reviewed_failure_code_profiles": reviewed_failure_code_profiles,
+        "missing_or_degraded_diagnostic_paths": missing_or_degraded_diagnostic_paths,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[str]:
     if phase0_summary is None:
         return []
@@ -303,11 +365,41 @@ def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[
     return blockers
 
 
+def diagnostic_review_blockers(diagnostic_summary: dict[str, Any] | None) -> list[str]:
+    if diagnostic_summary is None:
+        return ["diagnostic-review-summary"]
+
+    blockers: list[str] = []
+    if not diagnostic_summary["diagnostic_review_complete"]:
+        blockers.append("diagnostic-review-incomplete")
+    if not diagnostic_summary["required_failure_code_profiles_reviewed"]:
+        blockers.append("diagnostic-required-failure-code-profiles")
+    if not diagnostic_summary["typed_failure_paths_preserved"]:
+        blockers.append("diagnostic-typed-failure-paths")
+    if not diagnostic_summary["unstable_run_evidence_reviewed"]:
+        blockers.append("diagnostic-unstable-run-evidence")
+    if not diagnostic_summary["known_regression_outcomes_reviewed"]:
+        blockers.append("diagnostic-known-regression-outcomes")
+    blockers.extend(
+        f"diagnostic-path:{path}"
+        for path in diagnostic_summary["missing_or_degraded_diagnostic_paths"]
+    )
+
+    deduplicated: list[str] = []
+    seen: set[str] = set()
+    for blocker in blockers:
+        if blocker not in seen:
+            deduplicated.append(blocker)
+            seen.add(blocker)
+    return deduplicated
+
+
 def summarize_release_readiness(
     *,
     checklist_path: Path,
     qualification_summary_path: Path,
     phase0_qualification_summary_path: Path | None = None,
+    diagnostic_review_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = repo_root()
     checklist_path = checklist_path.resolve(strict=False)
@@ -317,6 +409,11 @@ def summarize_release_readiness(
     phase0_qualification_summary = (
         load_phase0_qualification_summary(phase0_qualification_summary_path)
         if phase0_qualification_summary_path is not None
+        else None
+    )
+    diagnostic_review_summary = (
+        load_diagnostic_review_summary(diagnostic_review_summary_path)
+        if diagnostic_review_summary_path is not None
         else None
     )
 
@@ -389,6 +486,7 @@ def summarize_release_readiness(
     )
     phase_f_blocked = bool(blocked_runtime_lanes)
     phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
+    diagnostic_blockers = diagnostic_review_blockers(diagnostic_review_summary)
     phase0_packet_set_blockers: list[str] = []
     if phase0_qualification_summary is not None:
         if not phase0_qualification_summary["phase0_packet_set_qualified"]:
@@ -457,8 +555,14 @@ def summarize_release_readiness(
             blockers = ["milestone-m6"]
             status = "blocked"
         elif section_id == "diagnostic-review":
-            blockers = ["milestone-m6"]
-            status = "blocked"
+            blockers = diagnostic_blockers
+            status = (
+                "reviewed"
+                if diagnostic_review_summary is not None
+                and diagnostic_review_summary["diagnostic_review_complete"]
+                and not blockers
+                else "blocked"
+            )
         elif section_id == "docs-completion":
             blockers = []
             if not checklist_sources_present:
@@ -531,6 +635,46 @@ def summarize_release_readiness(
         "phase0_withheld_claims": (
             phase0_qualification_summary["withheld_claims"]
             if phase0_qualification_summary is not None
+            else []
+        ),
+        "diagnostic_review_summary_path": (
+            str(diagnostic_review_summary_path)
+            if diagnostic_review_summary_path is not None
+            else ""
+        ),
+        "diagnostic_review_evidence_present": diagnostic_review_summary is not None,
+        "diagnostic_review_current_state": (
+            diagnostic_review_summary["current_state"]
+            if diagnostic_review_summary is not None
+            else "not-provided"
+        ),
+        "diagnostic_review_complete": (
+            diagnostic_review_summary["diagnostic_review_complete"]
+            if diagnostic_review_summary is not None
+            else False
+        ),
+        "diagnostic_review_blockers": diagnostic_blockers,
+        "diagnostic_review_blockers_preserved": (
+            diagnostic_review_summary is not None and bool(diagnostic_blockers)
+        ),
+        "diagnostic_missing_or_degraded_paths": (
+            diagnostic_review_summary["missing_or_degraded_diagnostic_paths"]
+            if diagnostic_review_summary is not None
+            else []
+        ),
+        "diagnostic_review_blocking_reasons": (
+            diagnostic_review_summary["blocking_reasons"]
+            if diagnostic_review_summary is not None
+            else []
+        ),
+        "diagnostic_reviewed_failure_code_profiles": (
+            diagnostic_review_summary["reviewed_failure_code_profiles"]
+            if diagnostic_review_summary is not None
+            else []
+        ),
+        "diagnostic_review_withheld_claims": (
+            diagnostic_review_summary["withheld_claims"]
+            if diagnostic_review_summary is not None
             else []
         ),
         "release_prerequisites": release_prerequisites,
@@ -648,19 +792,55 @@ def write_synthetic_phase0_qualification_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_diagnostic_review_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "release-diagnostic-review",
+            "current_state": "blocked-on-missing-typed-failure-review",
+            "diagnostic_review_complete": False,
+            "required_failure_code_profiles_reviewed": True,
+            "typed_failure_paths_preserved": False,
+            "unstable_run_evidence_reviewed": False,
+            "known_regression_outcomes_reviewed": True,
+            "reviewed_failure_code_profiles": [
+                "boundary_unsolved",
+                "continuation_budget_exhausted",
+                "unsupported_solver_path",
+            ],
+            "missing_or_degraded_diagnostic_paths": [
+                "unsupported_solver_path",
+                "continuation_budget_exhausted",
+            ],
+            "blocking_reasons": [
+                "typed failure-path review is not complete",
+                "unstable-run evidence has not been reviewed",
+            ],
+            "withheld_claims": [
+                "This summary does not claim diagnostic review completion.",
+                "This summary does not claim release readiness.",
+            ],
+        },
+    )
+
+
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
+        diagnostic_review_summary_path = temp_root / "diagnostic-review-summary.json"
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
+        write_synthetic_diagnostic_review_summary(diagnostic_review_summary_path)
         summary = summarize_release_readiness(
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
             phase0_qualification_summary_path=phase0_qualification_summary_path,
+            diagnostic_review_summary_path=diagnostic_review_summary_path,
         )
         write_json(summary_path, summary)
 
@@ -690,6 +870,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 == ["phase0-failure-code-audit", "phase0-required-failure-codes"]
             ),
             "phase0_withheld_claims_preserved": len(summary["phase0_withheld_claims"]) >= 2,
+            "diagnostic_review_evidence_consumed": summary["diagnostic_review_evidence_present"],
+            "diagnostic_review_blockers_preserved": summary["diagnostic_review_blockers"]
+            == [
+                "diagnostic-review-incomplete",
+                "diagnostic-typed-failure-paths",
+                "diagnostic-unstable-run-evidence",
+                "diagnostic-path:unsupported_solver_path",
+                "diagnostic-path:continuation_budget_exhausted",
+            ],
+            "diagnostic_review_withheld_claims_preserved": (
+                len(summary["diagnostic_review_withheld_claims"]) >= 2
+            ),
+            "diagnostic_review_section_blocked": any(
+                section["id"] == "diagnostic-review"
+                and section["status"] == "blocked"
+                and "diagnostic-path:unsupported_solver_path" in section["blockers"]
+                for section in summary["review_sections"]
+            ),
             "docs_completion_targets_present": summary["docs_completion_targets_present"],
             "docs_completion_section_ready_to_audit": any(
                 section["id"] == "docs-completion" and section["status"] == "ready-to-audit"
@@ -720,6 +918,11 @@ def parse_args() -> argparse.Namespace:
         "--phase0-qualification-summary",
         type=Path,
         help="Optional path to the phase-0 packet-set qualification verdict summary",
+    )
+    parser.add_argument(
+        "--diagnostic-review-summary",
+        type=Path,
+        help="Optional path to the M7 diagnostic-review summary",
     )
     parser.add_argument(
         "--summary-path",
@@ -754,6 +957,7 @@ def main() -> int:
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,
+        diagnostic_review_summary_path=args.diagnostic_review_summary,
     )
     if args.summary_path is not None:
         write_json(args.summary_path, summary)

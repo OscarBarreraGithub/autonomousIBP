@@ -37560,6 +37560,18 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   ExpectContains(result.stdout_json, "\"phase0_withheld_claims_preserved\": true",
                  "release signoff readiness self-check should preserve phase-0 verdict "
                  "withheld claims");
+  ExpectContains(result.stdout_json, "\"diagnostic_review_evidence_consumed\": true",
+                 "release signoff readiness self-check should consume the diagnostic-review "
+                 "summary");
+  ExpectContains(result.stdout_json, "\"diagnostic_review_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve diagnostic-review "
+                 "blockers");
+  ExpectContains(result.stdout_json, "\"diagnostic_review_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve diagnostic-review "
+                 "withheld claims");
+  ExpectContains(result.stdout_json, "\"diagnostic_review_section_blocked\": true",
+                 "release signoff readiness self-check should keep the diagnostic-review "
+                 "section blocked when the sidecar is incomplete");
   ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
                  "release signoff readiness self-check should require the checklist docs targets "
                  "to exist");
@@ -37798,6 +37810,116 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "phase-0-aware release signoff readiness should keep final release signoff "
                  "blocked");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-diagnostic-review-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path diagnostic_review_summary_path =
+      FreshTempDir("amflow-release-signoff-diagnostic-review-sidecar") /
+      "diagnostic-review.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-diagnostic-review-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-diagnostic-review-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff diagnostic-review prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff diagnostic-review prerequisite readiness summary should not emit "
+         "stderr noise on success");
+
+  {
+    std::ofstream stream(diagnostic_review_summary_path);
+    stream << R"json({
+  "schema_version": 1,
+  "scope": "release-diagnostic-review",
+  "current_state": "blocked-on-typed-diagnostic-review",
+  "diagnostic_review_complete": false,
+  "required_failure_code_profiles_reviewed": true,
+  "typed_failure_paths_preserved": false,
+  "unstable_run_evidence_reviewed": true,
+  "known_regression_outcomes_reviewed": true,
+  "reviewed_failure_code_profiles": [
+    "boundary_unsolved",
+    "unsupported_solver_path"
+  ],
+  "missing_or_degraded_diagnostic_paths": [
+    "unsupported_solver_path"
+  ],
+  "blocking_reasons": [
+    "typed failure-path review is not complete"
+  ],
+  "withheld_claims": [
+    "This summary does not claim diagnostic review completion.",
+    "This summary does not claim release readiness."
+  ]
+}
+)json";
+  }
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-diagnostic-review-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--diagnostic-review-summary",
+       diagnostic_review_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "diagnostic-review-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "diagnostic-review-aware release signoff readiness summary should not emit stderr noise "
+         "on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "diagnostic-review-aware release signoff readiness summary should write the requested "
+         "summary file");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_evidence_present\": true",
+                 "diagnostic-review-aware release signoff readiness should record the consumed "
+                 "diagnostic review sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"diagnostic_review_current_state\": \"blocked-on-typed-diagnostic-review\"",
+                 "diagnostic-review-aware release signoff readiness should preserve the "
+                 "diagnostic review state");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_blockers_preserved\": true",
+                 "diagnostic-review-aware release signoff readiness should preserve "
+                 "diagnostic-review blockers");
+  ExpectContains(release_result.stdout_json, "\"diagnostic-path:unsupported_solver_path\"",
+                 "diagnostic-review-aware release signoff readiness should surface missing typed "
+                 "failure-path review");
+  ExpectContains(release_result.stdout_json, "\"typed failure-path review is not complete\"",
+                 "diagnostic-review-aware release signoff readiness should preserve diagnostic "
+                 "review blocking reasons");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_reviewed_failure_code_profiles\": [",
+                 "diagnostic-review-aware release signoff readiness should keep reviewed "
+                 "failure-code profiles visible");
+  ExpectContains(release_result.stdout_json, "\"unsupported_solver_path\"",
+                 "diagnostic-review-aware release signoff readiness should keep the reviewed "
+                 "unsupported-solver-path profile visible");
+  ExpectContains(release_result.stdout_json, "\"id\": \"diagnostic-review\"",
+                 "diagnostic-review-aware release signoff readiness should keep the checklist "
+                 "diagnostic section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "diagnostic-review-aware release signoff readiness should keep diagnostic "
+                 "review blocked when sidecar evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "diagnostic-review-aware release signoff readiness should keep final release "
+                 "signoff blocked");
 }
 
 void OptionDefaultsTest() {
@@ -38742,6 +38864,7 @@ int main() {
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
+    ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

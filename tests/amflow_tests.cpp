@@ -38763,6 +38763,67 @@ void ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest() {
   ExpectContains(diagnostic_result.stdout_json, "\"master_set_instability\"",
                  "release diagnostic-review summary should keep master-set-instability "
                  "failure-code scope visible");
+  ExpectContains(diagnostic_result.stdout_json, "\"missing_or_degraded_diagnostic_paths\": [",
+                 "release diagnostic-review summary should preserve generated diagnostic "
+                 "degraded-path scope");
+  ExpectContains(
+      diagnostic_result.stdout_json,
+      R"json("missing_or_degraded_diagnostic_paths": [
+    "retained-unstable-run-evidence",
+    "typed-failure-path-review"
+  ])json",
+      "release diagnostic-review summary should preserve the exact generated degraded-path list");
+  ExpectContains(diagnostic_result.stdout_json, "\"blocking_reasons\": [",
+                 "release diagnostic-review summary should preserve generated diagnostic "
+                 "blocking reasons");
+  ExpectContains(
+      diagnostic_result.stdout_json,
+      R"json("blocking_reasons": [
+    "typed failure-path preservation review is not complete",
+    "retained unstable-run diagnostic evidence has not been reviewed"
+  ])json",
+      "release diagnostic-review summary should preserve the exact generated diagnostic "
+      "blocking-reason list");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"typed failure-path preservation review is not complete\"",
+                 "release diagnostic-review summary should preserve the typed failure-path "
+                 "blocking reason");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"retained unstable-run diagnostic evidence has not been reviewed\"",
+                 "release diagnostic-review summary should preserve the unstable-run "
+                 "blocking reason");
+  ExpectContains(diagnostic_result.stdout_json, "\"withheld_claims\": [",
+                 "release diagnostic-review summary should preserve generated diagnostic "
+                 "non-claims");
+  ExpectContains(
+      diagnostic_result.stdout_json,
+      R"json("withheld_claims": [
+    "This summary does not claim diagnostic review completion.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run runtime diagnostics or widen runtime behavior."
+  ])json",
+      "release diagnostic-review summary should preserve the exact generated diagnostic "
+      "non-claim list");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"This summary does not claim diagnostic review completion.\"",
+                 "release diagnostic-review summary should preserve the diagnostic-review "
+                 "completion non-claim");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "release diagnostic-review summary should preserve the Milestone M6 non-claim");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "release diagnostic-review summary should preserve the Milestone M7 non-claim");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "release diagnostic-review summary should preserve the release-readiness "
+                 "non-claim");
+  ExpectContains(diagnostic_result.stdout_json,
+                 "\"This summary does not run runtime diagnostics or widen runtime behavior.\"",
+                 "release diagnostic-review summary should preserve the runtime-widening "
+                 "non-claim");
 
   const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
       "amflow-release-signoff-generated-diagnostic-summary",
@@ -38807,6 +38868,70 @@ void ReleaseSignoffReadinessConsumesGeneratedDiagnosticReviewTest() {
   ExpectContains(release_result.stdout_json, "\"master_set_instability\"",
                  "generated-diagnostic-review-aware release signoff readiness should preserve "
                  "the generated master-set-instability failure-code scope");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_missing_or_degraded_paths\": [",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "generated diagnostic degraded-path scope");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("diagnostic_missing_or_degraded_paths": [
+    "retained-unstable-run-evidence",
+    "typed-failure-path-review"
+  ])json",
+      "generated-diagnostic-review-aware release signoff readiness should preserve the exact "
+      "generated diagnostic degraded-path list");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_blocking_reasons\": [",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "generated diagnostic blocking reasons");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("diagnostic_review_blocking_reasons": [
+    "typed failure-path preservation review is not complete",
+    "retained unstable-run diagnostic evidence has not been reviewed"
+  ])json",
+      "generated-diagnostic-review-aware release signoff readiness should preserve the exact "
+      "generated diagnostic blocking-reason list");
+  ExpectContains(release_result.stdout_json,
+                 "\"typed failure-path preservation review is not complete\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the typed failure-path review reason");
+  ExpectContains(release_result.stdout_json,
+                 "\"retained unstable-run diagnostic evidence has not been reviewed\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the unstable-run review reason");
+  ExpectContains(release_result.stdout_json, "\"diagnostic_review_withheld_claims\": [",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "generated diagnostic non-claims");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("diagnostic_review_withheld_claims": [
+    "This summary does not claim diagnostic review completion.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run runtime diagnostics or widen runtime behavior."
+  ])json",
+      "generated-diagnostic-review-aware release signoff readiness should preserve the exact "
+      "generated diagnostic non-claim list");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim diagnostic review completion.\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "generated diagnostic non-claims");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the Milestone M6 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim Milestone M7 closure.\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the Milestone M7 non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not claim release readiness.\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the release-readiness non-claim");
+  ExpectContains(release_result.stdout_json,
+                 "\"This summary does not run runtime diagnostics or widen runtime behavior.\"",
+                 "generated-diagnostic-review-aware release signoff readiness should preserve "
+                 "the runtime-widening non-claim");
   ExpectContains(release_result.stdout_json, "\"id\": \"diagnostic-review\"",
                  "generated-diagnostic-review-aware release signoff readiness should keep the "
                  "diagnostic-review checklist section visible");

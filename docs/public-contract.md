@@ -128,12 +128,18 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
   singular `next_runtime_lane` blocker plus its landed predecessor anchor against the frozen
   sources before later case-study qualification lanes widen into real numerics.
+  `tools/reference-harness/scripts/qualify_case_study_families.py` now consumes that readiness
+  summary plus an optional future case-study numeric summary and writes one blocked/pass
+  case-study-family qualification verdict. In the current retained repo state it keeps the
+  singular case-study runtime-lane blocker and the absence of compared case-study numerics
+  explicit, keeps the phase-0 verdict prerequisite separate, and does not mark `Milestone M6`
+  complete.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, the comparator
   and scorer helpers still do not inspect candidate failure-code behavior, the packet-level and
   packet-set failure-code audits check only published audit sidecars against the frozen scaffold,
-  the retained phase-0 packet-set qualification verdict keeps case-study numerics and full
-  `Milestone M6` closure explicitly withheld, and none of them claim that `Milestone M6` is
-  passing
+  the retained phase-0 packet-set qualification verdict keeps case-study numerics withheld, the
+  retained case-study-family qualification verdict keeps phase-0 closure separate, and none of
+  them claim that `Milestone M6` is passing
 - current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
   `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed
   `docs/release-signoff-checklist.md` packet with the first machine-readable prerequisite/docs/

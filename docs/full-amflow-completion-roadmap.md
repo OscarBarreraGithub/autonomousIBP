@@ -660,6 +660,14 @@ dependency change.
 | `Milestone M6` | qualification corpus over the parity-matrix benchmarks and upstream regression families, using already captured upstream goldens | `Milestone M5`, `Milestone M0b` |
 | `Milestone M7` | release gate: performance review, diagnostic review, docs completion, and parity sign-off | `Milestone M6` |
 
+The first case-study-family qualification verdict remains blocked on purpose:
+`tools/reference-harness/scripts/qualify_case_study_families.py` consumes the
+machine-readable case-study readiness summary, can consume one future case-study numeric
+comparison summary, and writes one blocked/pass case-study-family verdict. In the current
+retained repo state it preserves the singular case-study `b62n` runtime-lane blocker and the
+missing case-study numeric comparison evidence, keeps the phase-0 packet-set verdict as a
+separate prerequisite, and does not claim that `Milestone M6` has closed.
+
 The first `Milestone M7` groundwork packet is documentation-only:
 `docs/release-signoff-checklist.md` records the exact evidence buckets,
 mandatory release-note prompts, and reviewer dispositions that a future release

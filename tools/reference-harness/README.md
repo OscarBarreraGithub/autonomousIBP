@@ -58,12 +58,12 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All nineteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All twenty harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
-`user-hook-pair`, the retained phase-0 packet-set qualification verdict, plus the blocked M7
-release-readiness audit:
+`user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
+qualification verdict, plus the blocked M7 release-readiness audit:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -115,6 +115,9 @@ python3 tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py
 python3 tools/reference-harness/scripts/qualify_phase0_packet_set.py \
   --self-check
 
+python3 tools/reference-harness/scripts/qualify_case_study_families.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 
@@ -131,10 +134,11 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all nineteen helper self-checks through the configured
+`amflow-tests` now exercises all twenty helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
-retained phase-0 packet-set qualification verdict, blocked release-readiness with
+retained phase-0 packet-set qualification verdict, the blocked/pass case-study-family
+qualification verdict, blocked release-readiness with
 performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar preservation,
 performance-review sidecar production, diagnostic-review sidecar production, docs-completion
 sidecar production, parity-signoff sidecar production, the single-packet comparator, packet-level
@@ -228,6 +232,21 @@ against `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.y
 `next_runtime_lane` blocker plus its landed predecessor anchor visible. This is still
 evidence/planning only: it does not compare retained case-study numerics and does not claim that
 `Milestone M6` is passing.
+
+To turn that case-study readiness summary into the first blocked/pass case-study-family
+qualification verdict:
+
+```bash
+python3 tools/reference-harness/scripts/qualify_case_study_families.py \
+  --case-study-readiness-summary /tmp/case-study-readiness.json
+```
+
+Add `--case-study-numeric-summary` for a future case-study numeric comparison summary and
+`--summary-path` if you want the JSON verdict written to disk as well as printed to stdout.
+The helper fail-closes if the case-study ids drift across the readiness and numeric summaries.
+In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
+absence of compared case-study numerics visible, keeps the phase-0 verdict prerequisite separate,
+and does not claim that `Milestone M6` is passing.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

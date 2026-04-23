@@ -39041,6 +39041,17 @@ void ReleaseSignoffReadinessConsumesGeneratedPerformanceReviewTest() {
                  "\"performance-path:clean-rebuild-gate-output\"",
                  "generated-performance-review-aware release signoff readiness should preserve "
                  "the clean rebuild review blocker");
+  ExpectContains(
+      release_result.stdout_json,
+      "\"performance_reviewed_benchmark_families\": [",
+      "generated-performance-review-aware release signoff readiness should preserve the "
+      "generated performance benchmark-family scope");
+  ExpectContains(release_result.stdout_json, "\"phase0:spacetime_dimension\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the generated optional phase-0 benchmark scope");
+  ExpectContains(release_result.stdout_json, "\"case-study:one-singular-endpoint-case\"",
+                 "generated-performance-review-aware release signoff readiness should preserve "
+                 "the generated singular case-study benchmark scope");
   ExpectContains(release_result.stdout_json, "\"id\": \"performance-review\"",
                  "generated-performance-review-aware release signoff readiness should keep the "
                  "performance-review checklist section visible");

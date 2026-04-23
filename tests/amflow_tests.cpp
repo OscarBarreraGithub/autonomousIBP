@@ -16,6 +16,7 @@
 
 #include "amflow/core/options.hpp"
 #include "amflow/core/problem_spec.hpp"
+#include "amflow/de/lightlike_linear_derivative_generation.hpp"
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/eta_reduction_preparation.hpp"
 #include "amflow/de/invariant_derivative_generation.hpp"
@@ -3056,6 +3057,12 @@ amflow::ParsedMasterList MakeAutoInvariantLinearMasterBasis() {
       {"toy_auto_linear_family", {1, 1, 1}},
   };
   return master_basis;
+}
+
+amflow::LightlikeLinearAuxiliaryTransformResult
+MakeReviewedLightlikeLinearDerivativeHappyTransform() {
+  return amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(
+      MakeAutoInvariantLinearProblemSpec(), 2, " x ");
 }
 
 amflow::ParsedMasterList MakeAutoInvariantMixedZeroMasterBasis() {
@@ -16078,6 +16085,203 @@ void EtaDerivativeGenerationRejectsInconsistentParsedMasterListFamilyTest() {
       },
       "requires ParsedMasterList.family",
       "eta derivative generation should reject an inconsistent ParsedMasterList family header");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationHappyPathTest() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 1}},
+      {"toy_auto_linear_family", {1, 1, 0}},
+      {"toy_auto_linear_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, MakeReviewedLightlikeLinearDerivativeHappyTransform());
+
+  Expect(generated_variable.variable.name == "x",
+         "reviewed lightlike linear auxiliary derivative generation should preserve the trimmed "
+         "x symbol");
+  Expect(generated_variable.variable.kind == amflow::DifferentiationVariableKind::Auxiliary,
+         "reviewed lightlike linear auxiliary derivative generation should expose auxiliary "
+         "variable kind");
+  Expect(generated_variable.rows.size() == 3,
+         "reviewed lightlike linear auxiliary derivative generation should emit one row per "
+         "master");
+  Expect(generated_variable.rows[0].source_master.Label() == "toy_auto_linear_family[1,1,1]",
+         "reviewed lightlike linear auxiliary derivative generation should preserve the first "
+         "source master");
+  Expect(generated_variable.rows[0].terms.size() == 1 &&
+             generated_variable.rows[0].terms[0].coefficient == "-1" &&
+             generated_variable.rows[0].terms[0].target.Label() ==
+                 "toy_auto_linear_family[0,1,2]",
+         "reviewed lightlike linear auxiliary derivative generation should increment the "
+         "rewritten propagator index and consume the matched quadratic driver under the "
+         "reviewed local x rule");
+  Expect(generated_variable.rows[1].terms.empty(),
+         "reviewed lightlike linear auxiliary derivative generation should omit zero-exponent "
+         "terms");
+  Expect(generated_variable.rows[2].terms.size() == 1 &&
+             generated_variable.rows[2].terms[0].target.Label() ==
+                 "toy_auto_linear_family[0,1,2]",
+         "reviewed lightlike linear auxiliary derivative generation should preserve repeated row "
+         "targets");
+  Expect(generated_variable.reduction_targets.size() == 1 &&
+             generated_variable.reduction_targets[0].Label() ==
+                 "toy_auto_linear_family[0,1,2]",
+         "reviewed lightlike linear auxiliary derivative generation should deduplicate global "
+         "generated reduction targets in first-appearance order");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationNegativeExponentTest() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, -2}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, MakeReviewedLightlikeLinearDerivativeHappyTransform());
+
+  Expect(generated_variable.rows.size() == 1,
+         "negative-exponent reviewed lightlike linear auxiliary generation should still emit "
+         "one row");
+  Expect(generated_variable.rows[0].terms.size() == 1,
+         "negative-exponent reviewed lightlike linear auxiliary generation should still emit "
+         "the shifted target");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "2",
+         "negative rewritten exponents should flip sign under the reviewed local x rule");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_auto_linear_family[0,1,-1]",
+         "negative rewritten exponents should still increment the reviewed rewritten "
+         "propagator index while consuming the matched quadratic driver");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoefficientTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "1/2 + 3*k*n";
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should emit one scaled "
+         "quadratic-driver term on the reviewed coefficient subset");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "(-1)*(9)",
+         "reviewed lightlike linear auxiliary derivative generation should fold the matched "
+         "quadratic-driver coefficient into the generated row");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_auto_linear_family[0,1,2]",
+         "reviewed lightlike linear auxiliary derivative generation should still shift the "
+         "matched driver slot and rewritten propagator slot together on the reviewed "
+         "coefficient subset");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k*n + 2*k*n";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            MakeAutoInvariantLinearMasterBasis(),
+            amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
+      },
+      "supports only unscaled or globally-scaled one-term quadratic drivers",
+      "reviewed lightlike linear auxiliary derivative generation should fail close on summed "
+      "quadratic drivers pending dedicated canonicalization");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[0].expression = "(k+n)^2";
+  spec.family.propagators[1].expression = "(-s)*((k+n)^2)";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            MakeAutoInvariantLinearMasterBasis(),
+            amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
+      },
+      "requires the extracted quadratic driver to match an existing transformed-family "
+      "propagator factor",
+      "reviewed lightlike linear auxiliary derivative generation should fail with a helper-local "
+      "diagnostic when no transformed propagator matches the extracted driver");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsArityMismatchTest() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1}},
+  };
+
+  ExpectRuntimeError(
+      [&master_basis]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            master_basis, MakeReviewedLightlikeLinearDerivativeHappyTransform()));
+      },
+      "master index count to match the transformed family propagator count",
+      "reviewed lightlike linear auxiliary derivative generation should reject masters whose "
+      "arity mismatches the transformed family");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsFamilyMismatchTest() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"wrong_family", {1, 1, 1}},
+  };
+
+  ExpectRuntimeError(
+      [&master_basis]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            master_basis, MakeReviewedLightlikeLinearDerivativeHappyTransform()));
+      },
+      "requires master family",
+      "reviewed lightlike linear auxiliary derivative generation should reject masters from the "
+      "wrong family");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsInconsistentParsedMasterListFamilyTest() {
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "wrong_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 1}},
+  };
+
+  ExpectRuntimeError(
+      [&master_basis]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            master_basis, MakeReviewedLightlikeLinearDerivativeHappyTransform()));
+      },
+      "requires ParsedMasterList.family",
+      "reviewed lightlike linear auxiliary derivative generation should reject an inconsistent "
+      "ParsedMasterList family header");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsOutOfRangeRewrittenIndexTest() {
+  amflow::LightlikeLinearAuxiliaryTransformResult transform =
+      MakeReviewedLightlikeLinearDerivativeHappyTransform();
+  transform.rewritten_propagator_index = transform.transformed_spec.family.propagators.size();
+
+  ExpectRuntimeError(
+      [&transform]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            MakeAutoInvariantLinearMasterBasis(), transform));
+      },
+      "out-of-range rewritten propagator index",
+      "reviewed lightlike linear auxiliary derivative generation should reject rewritten "
+      "propagator indices outside the transformed family");
 }
 
 void InvariantDerivativeGenerationHappyPathTest() {
@@ -40893,6 +41097,15 @@ int main() {
     EtaDerivativeGenerationRejectsArityMismatchTest();
     EtaDerivativeGenerationRejectsFamilyMismatchTest();
     EtaDerivativeGenerationRejectsInconsistentParsedMasterListFamilyTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationHappyPathTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationNegativeExponentTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoefficientTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsArityMismatchTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsFamilyMismatchTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsInconsistentParsedMasterListFamilyTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsOutOfRangeRewrittenIndexTest();
     InvariantDerivativeGenerationHappyPathTest();
     InvariantDerivativeGenerationNegativeExponentTest();
     InvariantDerivativeGenerationRejectsVariableKindMismatchTest();

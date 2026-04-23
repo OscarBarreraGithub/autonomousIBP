@@ -37319,6 +37319,214 @@ void Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest() {
          "missing explicit audit sidecars");
 }
 
+void Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-packet-set-self-check",
+      "tools/reference-harness/scripts/qualify_phase0_packet_set.py",
+      {"--self-check"},
+      "phase-0 qualification packet-set self-check");
+  Expect(result.stderr_log.empty(),
+         "phase-0 qualification packet-set self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_phase0_packet_set_qualified\": true",
+                 "phase-0 qualification packet-set self-check should keep matching retained "
+                 "packet-set evidence on the qualified phase-0 path");
+  ExpectContains(result.stdout_json,
+                 "\"milestone_m6_still_withheld_without_case_studies\": true",
+                 "phase-0 qualification packet-set self-check should keep full M6 closure "
+                 "withheld even when the reviewed phase-0 packet set qualifies");
+  ExpectContains(result.stdout_json,
+                 "\"missing_failure_code_audits_block_phase0_qualification\": true",
+                 "phase-0 qualification packet-set self-check should keep missing packet-set "
+                 "failure-code audits on the explicit blocker path");
+  ExpectContains(result.stdout_json,
+                 "\"correct_digit_thresholds_block_phase0_qualification\": true",
+                 "phase-0 qualification packet-set self-check should keep correct-digit "
+                 "threshold failures on the explicit blocker path");
+  ExpectContains(result.stdout_json,
+                 "\"failure_code_metadata_blocks_phase0_qualification\": true",
+                 "phase-0 qualification packet-set self-check should fail closed when "
+                 "failure-code summary metadata is not coherent");
+  ExpectContains(result.stdout_json,
+                 "\"unexpected_failure_codes_block_phase0_qualification\": true",
+                 "phase-0 qualification packet-set self-check should block on unexpected "
+                 "failure-code drift");
+  ExpectContains(result.stdout_json, "\"phase0_id_drift_rejected\": true",
+                 "phase-0 qualification packet-set self-check should reject drift in the "
+                 "captured phase-0 ids across prerequisite summaries");
+  ExpectContains(result.stdout_json, "\"packet_label_drift_rejected\": true",
+                 "phase-0 qualification packet-set self-check should reject drift in the "
+                 "retained packet labels across prerequisite summaries");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "phase-0 qualification packet-set self-check should write the synthetic "
+                 "summary output");
+}
+
+void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-phase0-qualification-prereq-readiness") / "qualification-summary.json";
+  const std::filesystem::path comparison_summary_path =
+      FreshTempDir("amflow-phase0-qualification-prereq-compare") / "comparison-summary.json";
+  const std::filesystem::path correct_digit_summary_path =
+      FreshTempDir("amflow-phase0-qualification-prereq-correct-digits") / "correct-digits.json";
+  const std::filesystem::path failure_code_summary_path =
+      FreshTempDir("amflow-phase0-qualification-prereq-failure-codes") / "failure-codes.json";
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-phase0-qualification-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "phase-0 qualification prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "phase-0 qualification prerequisite readiness summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(qualification_summary_path),
+         "phase-0 qualification prerequisite readiness summary should write the requested "
+         "summary file");
+
+  std::vector<std::string> comparison_args = {"--summary-path", comparison_summary_path.string()};
+  std::vector<std::string> correct_digit_args = {"--summary-path",
+                                                 correct_digit_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    const std::string pair = root.string() + "::" + root.string();
+    comparison_args.push_back("--packet-root-pair");
+    comparison_args.push_back(pair);
+    correct_digit_args.push_back("--packet-root-pair");
+    correct_digit_args.push_back(pair);
+  }
+
+  const ReferenceHarnessSelfCheckRun comparison_result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-prereq-compare",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      comparison_args,
+      "phase-0 qualification prerequisite packet-set comparison");
+  Expect(comparison_result.stderr_log.empty(),
+         "phase-0 qualification prerequisite packet-set comparison should not emit stderr noise "
+         "on success");
+  Expect(std::filesystem::exists(comparison_summary_path),
+         "phase-0 qualification prerequisite packet-set comparison should write the requested "
+         "summary file");
+
+  const ReferenceHarnessSelfCheckRun correct_digit_result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-prereq-correct-digits",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      correct_digit_args,
+      "phase-0 qualification prerequisite packet-set correct digits");
+  Expect(correct_digit_result.stderr_log.empty(),
+         "phase-0 qualification prerequisite packet-set correct-digit summary should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(correct_digit_summary_path),
+         "phase-0 qualification prerequisite packet-set correct-digit summary should write the "
+         "requested summary file");
+
+  std::vector<std::string> failure_code_args = {"--summary-path", failure_code_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    failure_code_args.push_back("--candidate-root");
+    failure_code_args.push_back(root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun failure_code_result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-prereq-failure-codes",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      failure_code_args,
+      "phase-0 qualification prerequisite packet-set failure-code audit");
+  Expect(failure_code_result.stderr_log.empty(),
+         "phase-0 qualification prerequisite packet-set failure-code audit should not emit "
+         "stderr noise on success");
+  Expect(std::filesystem::exists(failure_code_summary_path),
+         "phase-0 qualification prerequisite packet-set failure-code audit should write the "
+         "requested summary file");
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-phase0-qualification-summary",
+      "tools/reference-harness/scripts/qualify_phase0_packet_set.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--packet-set-comparison-summary",
+       comparison_summary_path.string(),
+       "--packet-set-correct-digit-summary",
+       correct_digit_summary_path.string(),
+       "--packet-set-failure-code-summary",
+       failure_code_summary_path.string(),
+       "--summary-path",
+       summary_path.string()},
+      "phase-0 qualification packet-set summary");
+  Expect(result.stderr_log.empty(),
+         "phase-0 qualification packet-set summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "phase-0 qualification packet-set summary should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"qualification_evidence_coherent\": true",
+                 "phase-0 qualification packet-set summary should require coherent retained "
+                 "phase-0 readiness evidence");
+  ExpectContains(result.stdout_json, "\"packet_set_reference_comparison_passed\": true",
+                 "phase-0 qualification packet-set summary should preserve the retained "
+                 "reference comparison pass");
+  ExpectContains(result.stdout_json, "\"packet_set_correct_digits_passed\": false",
+                 "phase-0 qualification packet-set summary should preserve the retained "
+                 "correct-digit blocker");
+  ExpectContains(result.stdout_json,
+                 "\"minimum_observed_correct_digits_across_packet_set\": 18",
+                 "phase-0 qualification packet-set summary should keep the retained "
+                 "minimum correct-digit score visible");
+  ExpectContains(result.stdout_json, "\"packet_set_failure_code_metadata_coherent\": true",
+                 "phase-0 qualification packet-set summary should preserve coherent retained "
+                 "failure-code metadata before evaluating audit sidecars");
+  ExpectContains(result.stdout_json, "\"packet_set_failure_code_audits_complete\": false",
+                 "phase-0 qualification packet-set summary should keep retained missing "
+                 "failure-code audits on the blocker path");
+  ExpectContains(result.stdout_json,
+                 "\"packet_set_required_failure_codes_satisfied\": false",
+                 "phase-0 qualification packet-set summary should keep retained failure-code "
+                 "coverage blocked without audit sidecars");
+  ExpectContains(result.stdout_json,
+                 "\"current_state\": \"blocked-on-correct-digit-thresholds\"",
+                 "phase-0 qualification packet-set summary should keep the retained packet split "
+                 "blocked on the first unpassed prerequisite");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
+                 "phase-0 qualification packet-set summary should not overclaim retained "
+                 "phase-0 qualification while audits are missing");
+  ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
+                 "phase-0 qualification packet-set summary should not claim full M6 closure");
+  ExpectContains(result.stdout_json,
+                 "\"milestone_m6_requires_case_study_numerics\": true",
+                 "phase-0 qualification packet-set summary should keep case-study numerics "
+                 "explicitly out of scope");
+  ExpectContains(result.stdout_json, "\"required-set\"",
+                 "phase-0 qualification packet-set summary should keep the retained required "
+                 "packet label visible");
+  ExpectContains(result.stdout_json, "\"de-d0-pair\"",
+                 "phase-0 qualification packet-set summary should keep the retained D0 packet "
+                 "label visible");
+  ExpectContains(result.stdout_json, "\"user-hook-pair\"",
+                 "phase-0 qualification packet-set summary should keep the retained user-hook "
+                 "packet label visible");
+  ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
+                 "phase-0 qualification packet-set summary should keep the retained required "
+                 "benchmark visible");
+  ExpectContains(result.stdout_json,
+                 "\"retained packet-set is missing published failure-code audits\"",
+                 "phase-0 qualification packet-set summary should report the missing packet-set "
+                 "failure-code blocker explicitly");
+  ExpectContains(result.stdout_json,
+                 "\"retained packet-set correct-digit scoring has not fully passed\"",
+                 "phase-0 qualification packet-set summary should report the retained "
+                 "correct-digit blocker explicitly");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -38372,6 +38580,8 @@ int main() {
     Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest();
     Phase0FailureCodePacketSetAuditSelfCheckAggregatesRetainedPacketRootsTest();
     Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest();
+    Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest();
+    Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
     OptionDefaultsTest();

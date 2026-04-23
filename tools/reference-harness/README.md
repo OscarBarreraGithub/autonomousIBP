@@ -58,11 +58,12 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All fourteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All fifteen harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
-`user-hook-pair`, plus the blocked M7 release-readiness audit:
+`user-hook-pair`, the retained phase-0 packet-set qualification verdict, plus the blocked M7
+release-readiness audit:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -111,17 +112,20 @@ python3 tools/reference-harness/scripts/audit_phase0_failure_codes.py \
 python3 tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py \
   --self-check
 
+python3 tools/reference-harness/scripts/qualify_phase0_packet_set.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all fourteen helper self-checks through the configured
+`amflow-tests` now exercises all fifteen helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
-retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness,
-blocked release-readiness, the single-packet comparator, packet-level correct-digit scorer,
-packet-level failure-code audit, packet-set failure-code audit, plus the packet-set
-retained-reference comparison and packet-set correct-digit scorer regression paths without
-needing a real benchmark packet.
+retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
+retained phase-0 packet-set qualification verdict, blocked release-readiness, the single-packet
+comparator, packet-level correct-digit scorer, packet-level failure-code audit, packet-set
+failure-code audit, plus the packet-set retained-reference comparison and packet-set correct-digit
+scorer regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -314,6 +318,23 @@ qualification plumbing: it does not launch the C++ runtime, does not compare can
 correct digits, does not compare case-study numerics, and does not by itself claim that
 `Milestone M6` is passing.
 
+To aggregate the retained phase-0 packet-set evidence into the first blocked/pass phase-0
+qualification verdict:
+
+```bash
+python3 tools/reference-harness/scripts/qualify_phase0_packet_set.py \
+  --qualification-summary /tmp/qualification-readiness.json \
+  --packet-set-comparison-summary /tmp/packet-set-comparison.json \
+  --packet-set-correct-digit-summary /tmp/packet-set-correct-digits.json \
+  --packet-set-failure-code-summary /tmp/packet-set-failure-codes.json
+```
+
+This helper consumes the reviewed retained phase-0 readiness, comparison, correct-digit, and
+failure-code summaries, fail-closes unless their packet labels and captured phase-0 ids stay
+synchronized, and writes one blocked/pass verdict over the reviewed phase-0 packet set only. It
+remains phase-0-only qualification plumbing: it does not compare retained case-study numerics,
+does not mark `Milestone M6` complete, and does not widen into M7 sign-off behavior.
+
 To turn one retained M6 readiness summary into the first blocked M7 release-readiness report:
 
 ```bash
@@ -392,6 +413,11 @@ The capture script writes:
   validates the selected literature anchors, parity labels, digit floors, failure/regression
   profiles, and the reviewed singular blocker hint against the frozen sources and emits one
   machine-readable family-readiness summary without comparing case-study numerics.
+- `qualify_phase0_packet_set.py` is the first retained phase-0 packet-set qualification verdict:
+  it consumes one `qualification_readiness.py` summary plus the packet-set comparison,
+  correct-digit, and failure-code summaries, fail-closes unless their retained packet labels and
+  captured phase-0 ids stay synchronized, and writes one blocked/pass verdict over the reviewed
+  phase-0 packet set only.
 - `release_signoff_readiness.py` is the first executable M7 helper: it consumes one
   machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
   audits that the checklist source/doc paths exist inside the repo, preserves the blocked
@@ -467,3 +493,8 @@ The capture script writes:
   audit against one synthetic candidate packet, covering missing audit sidecars, malformed
   audit rejection, incomplete required-code coverage, duplicate observed-code rejection, and
   missing-result-manifest rejection on the published candidate path.
+- `qualify_phase0_packet_set.py --self-check` exercises the first retained phase-0 packet-set
+  qualification verdict against synthetic prerequisite summaries, covering the qualified phase-0
+  path, correct-digit-threshold blocking, failure-code metadata blocking, missing-audit blocking,
+  unexpected-failure-code blocking, and packet-label / phase-0-id drift rejection while keeping
+  full `Milestone M6` closure withheld.

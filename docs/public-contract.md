@@ -117,6 +117,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   packet, and requiring the audited benchmark ids to match the scaffold's full current
   `reference-captured` phase-0 set exactly while preserving the same threshold/failure/regression
   metadata.
+  `tools/reference-harness/scripts/qualify_phase0_packet_set.py` is then the first retained
+  phase-0 packet-set qualification verdict over that same reviewed split: it consumes the
+  reviewed `qualification_readiness.py` summary plus the packet-set comparison, correct-digit,
+  and failure-code summaries, fail-closes unless the retained packet labels and captured phase-0
+  ids stay synchronized across those prerequisite reports, and writes one blocked/pass verdict
+  over the reviewed phase-0 packet set only.
   `tools/reference-harness/scripts/qualification_case_study_readiness.py` is then the first
   machine-readable case-study-family consumer of the same scaffold: it validates the selected
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
@@ -125,8 +131,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, the comparator
   and scorer helpers still do not inspect candidate failure-code behavior, the packet-level and
   packet-set failure-code audits check only published audit sidecars against the frozen scaffold,
-  none of them compare retained case-study numerics, none elevate retained packet-set
-  aggregation into a full qualification verdict, and none claim that `Milestone M6` is passing
+  the retained phase-0 packet-set qualification verdict keeps case-study numerics and full
+  `Milestone M6` closure explicitly withheld, and none of them claim that `Milestone M6` is
+  passing
 - current worktree now also carries a narrow M7-groundwork follow-on release scaffold only:
   `tools/reference-harness/templates/release-signoff-checklist.json` extends the landed
   `docs/release-signoff-checklist.md` packet with the first machine-readable prerequisite/docs/

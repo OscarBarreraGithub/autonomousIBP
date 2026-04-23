@@ -41,13 +41,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64k`; latest head commit
+  not-yet-accepted public/runtime seams described below through `Batch 64m`; latest head commit
   `2125db5` is the narrow `Batch 62i` raw `t`-segment continuation guardrail packet and does not
   widen the last fully accepted public/runtime contract;
   the current worktree now also carries the local-only narrow `Batch 62j` raw single-invariant
   `msq`-segment singular-crossing continuation guardrail packet, which likewise does not widen
   the last fully accepted public/runtime contract;
-  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64k`
+  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64m`
   linear-propagator packets, which likewise stay below the last fully accepted public/runtime
   contract;
   local tracking `origin/main` matches that same head;
@@ -345,7 +345,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61a` through `Batch 64k` are still narrow: explicit complex kinematics
+- current worktree `Batch 61a` through `Batch 64m` are still narrow: explicit complex kinematics
   now stop at exact-complex evaluation plus reviewed contour-plan persistence; any non-opt-in
   solver surface still defers with explicit `unsupported_solver_path` diagnostics, and the
   reviewed helper deferred/cache replay remains limited to that non-opt-in subset, while the
@@ -371,16 +371,18 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `Prescription` wrapper surface through direct builtin, builtin-list, builtin-only `AmfOptions`,
   mixed/user-defined `AmfOptions` fallback, and the matching planned-`AmfOptions` helper tail on
   that same reviewed subset, plus one pure
-  `BuildReviewedLightlikeLinearAuxiliaryPropagator(...)` helper plus the new
+  `BuildReviewedLightlikeLinearAuxiliaryPropagator(...)` helper, the
   `ApplyReviewedLightlikeLinearAuxiliaryTransform(...)` full-spec transform that rewrites one
   explicit `variant: "linear"` propagator on the one-external lightlike `n*n = 0` subset into
-  one quadratic `x*((L)^2) + (original)` driver, preserves the original mass/prescription and
-  every non-targeted `ProblemSpec` field, and appends the chosen `x` invariant only when absent
-  while leaving the input `ProblemSpec` unchanged. Live complex contour execution, broader
-  phase-space topology/provider behavior, broader non-invariant linear solver behavior, any
-  Kira/preparation/reduction/solver-path consumer of that lightlike linear-driver transform,
-  broader AMFlow-faithful `x` / gauge-link linear-driver parity, and wider symbolic runtime
-  parity remain deferred
+  one quadratic `x*((L)^2) + (original)` driver while preserving the original
+  mass/prescription and every non-targeted `ProblemSpec` field, and the first
+  `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)` Kira-preparation helper that applies
+  that transform then delegates to `KiraBackend::Prepare(...)` over the retained
+  `ProblemSpec.targets` surface. Live complex contour execution, broader phase-space
+  topology/provider behavior, broader non-invariant linear solver behavior, any generated-`x`
+  reduction-target, reduction-execution, or solver-path consumer of that lightlike
+  linear-driver transform, broader AMFlow-faithful `x` / gauge-link linear-driver parity, and
+  wider symbolic runtime parity remain deferred
 
 ## Core Types
 
@@ -479,6 +481,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `EtaInsertionDecision` plus `ApplyEtaInsertion(...)`: the first typed auxiliary-family transformation seam from an immutable `ProblemSpec` to an eta-shifted auxiliary family
 - `BuildReviewedLightlikeLinearAuxiliaryPropagator(...)`: the first pure one-propagator lightlike gauge-link linear-driver helper in `runtime/auxiliary_family`, rewriting one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset into one quadratic auxiliary-family driver without mutating the input `ProblemSpec`
 - `ApplyReviewedLightlikeLinearAuxiliaryTransform(...)`: the first full-spec consumer of that same reviewed helper, rewriting one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset, preserving all non-targeted `ProblemSpec` fields, recording the rewritten propagator index plus trimmed `x_symbol`, and appending that invariant only when absent without mutating the input `ProblemSpec`
+- `LightlikeLinearAuxiliaryReductionPreparation` plus `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)`: the first Kira-preparation consumer of that same reviewed helper/transform seam, applying the full-spec lightlike rewrite over one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset and then delegating to `KiraBackend::Prepare(...)` over the retained `ProblemSpec.targets` surface without mutating the input `ProblemSpec`
 
 ## Runtime Boundaries
 
@@ -1343,7 +1346,8 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - builtin eta mode `All` selects all non-auxiliary propagators by index; builtin mode `Prescription` is now the first truthful `Propagator::prescription` consumer on the reviewed local phase-space subset only: it validates the frozen raw `-1/0/1` vocabulary across the current propagator table, then scans the current declaration-order surface and selects only standard uncut `-i0` propagators. It preserves `mode_name == "Prescription"` and uses a distinct explanation string for that filtered subset. On the reviewed passive-linear subset inherited from `Batch 64f`, the same builtin planner now also stays truthful when one explicit `variant: "linear"` propagator remains in the family: it still selects only the standard uncut `-i0` quadratic slots, leaves the explicit linear slot passive, the direct `SolveBuiltinEtaModeSeries(...)` wrapper and `SolveBuiltinEtaModeListSeries(...)` forward the resulting eta-generated `DESystem`, locations, precision policy, requested digits, and solver diagnostics unchanged on that one-master fixture when `Prescription` is the selected builtin, the builtin-only `SolveAmfOptionsEtaModeSeries(...)` wrapper forwards that same reviewed passive-linear `DESystem`, locations, requested digits, and solver diagnostics unchanged while preserving the already-reviewed wrapper-owned live precision/runtime policy plus requested-`D0` / dimension-carrier metadata, and the mixed/user-defined `SolveAmfOptionsEtaModeSeries(...)` overload now matches the planned-`AmfOptions` helper tail on that same passive-linear solve path after ordered fallback from reviewed user-defined planning failures into builtin `Prescription`. This does not yet claim top-sector-aware or loop-derived upstream `AMFlowInfo["Prescription"]` parity, any linear rewrite semantics for the selected set itself, broader linear-propagator support, broader phase-space boundary semantics, or broader AMFlow-faithful `x` / gauge-link driver parity
 - `BuildReviewedLightlikeLinearAuxiliaryPropagator(...)` is a second still-narrower helper in the same runtime surface: it takes one explicit `variant: "linear"` propagator index on the reviewed one-external lightlike subset only, requires exactly one declared external momentum symbol together with one unique exact-zero `n*n` rule for that symbol, parses only rational constants plus loop-`n` bilinears with rational coefficient factors, and returns one rewritten quadratic `Standard` propagator of the form `x*((L)^2) + (original)` while preserving the original mass literal and raw prescription and leaving the input `ProblemSpec` unchanged
 - `ApplyReviewedLightlikeLinearAuxiliaryTransform(...)` is the first still-narrow full-spec consumer of that helper: on the same reviewed one-external lightlike subset it rewrites exactly one selected propagator through the helper, preserves every non-targeted `ProblemSpec` field, records the rewritten index plus trimmed `x_symbol`, and appends that invariant only when absent while leaving the input `ProblemSpec` unchanged
-- neither the helper nor the full-spec transform touches eta planning, Kira preparation, reduction execution, or solver/wrapper behavior, and neither claims broader multi-external grammar, loop/external denominators, or otherwise more general AMFlow-faithful linear-driver parity
+- `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)` is the first still-narrow Kira-preparation consumer of that helper/transform seam: on that same reviewed one-external lightlike subset it applies the full-spec transform, preserves the transformed `x_symbol` and rewritten propagator index in the returned typed result, and then delegates to `KiraBackend::Prepare(...)` so emitted `integralfamilies.yaml` reflects the rewritten quadratic driver, emitted `kinematics.yaml` mirrors the transformed invariant surface on that reviewed subset, and emitted `target` stays on the retained `ProblemSpec.targets` surface
+- the pure helper and full-spec transform still do not touch eta planning, and the new preparation helper still does not add explicit-target preparation, generated-`x` reduction targets, reduction execution, solver/wrapper behavior, broader multi-external grammar, loop/external denominators, or otherwise more general AMFlow-faithful linear-driver parity
 - on the current reviewed local phase-space subset, `KiraBackend` family YAML is now the first truthful Kira cut-surface consumer: emitted `integralfamilies.yaml` always carries an explicit 1-based `cut_propagators` list derived from `PropagatorKind::Cut`, including after the reviewed `Prescription` eta-insertion path, while reviewed loop-only surfaces stay on the explicit empty list. This still does not widen into Cutkosky boundary generation, phase-space boundary attachment, or broader upstream AMFlow/Kira parity
 - builtin mode `Propagator` is a narrow bootstrap structural selector on the current reviewed subset only: it selects all non-auxiliary propagators in declaration order, preserves `mode_name == "Propagator"`, carries matching informational propagator-expression copies, and fails deterministically when that structural selection is empty; on the reviewed eta-generated path it now reuses the widened `ApplyEtaInsertion(...)` transform, including the same selected-propagator outer-whitespace trim on emitted mass literals and no broader mass canonicalization claim
 - builtin mode `Mass` is a narrow bootstrap selector on the current reviewed subset only: it starts from the current local non-auxiliary declaration-order candidate surface, groups propagators by exact trimmed equal nonzero `mass` string, and then uses a narrow local syntactic analogue of the recovered upstream reduced-variable preference rather than full semantic analysis. Concretely, it tokenizes `scalar_product_rules` right-hand sides, prefers groups whose `mass` expression does not depend on those RHS identifiers after carving out exact standalone nonzero propagator-mass labels as local mass-parameter-like tokens, preserves declaration order within the chosen group, preserves `mode_name == "Mass"` plus matching informational propagator-expression copies, and falls back deterministically to the first equal nonzero group when no such locally independent group exists

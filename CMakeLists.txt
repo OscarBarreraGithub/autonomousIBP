@@ -19,6 +19,7 @@ add_library(amflow
   src/de/eta_reduction_preparation.cpp
   src/de/invariant_reduction_execution.cpp
   src/de/invariant_reduction_preparation.cpp
+  src/de/lightlike_linear_reduction_preparation.cpp
   src/de/reduction_assembly.cpp
   src/io/problem_spec_io.cpp
   src/io/sample_data.cpp

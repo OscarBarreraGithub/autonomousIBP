@@ -342,16 +342,17 @@ To turn one retained M6 readiness summary into the first blocked M7 release-read
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --qualification-summary /tmp/qualification-readiness.json \
   --performance-review-summary /tmp/performance-review.json \
-  --diagnostic-review-summary /tmp/diagnostic-review.json
+  --diagnostic-review-summary /tmp/diagnostic-review.json \
+  --docs-completion-summary /tmp/docs-completion.json
 ```
 
 Add `--summary-path` if you want the JSON report written to disk as well as printed to stdout.
 This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
 and docs-completion targets, keeps the current blocked `b61n` / `b62n` / `b63k` / `b64k`
 frontier visible from the retained M6 evidence packet, preserves optional phase-0 qualification
-plus performance-review and diagnostic-review sidecar blockers when provided, and writes one
-blocked release-readiness summary without claiming that `Milestone M6` or `Milestone M7` is
-closed.
+plus performance-review, diagnostic-review, and docs-completion sidecar blockers when provided,
+and writes one blocked release-readiness summary without claiming that `Milestone M6` or
+`Milestone M7` is closed.
 
 The capture script writes:
 

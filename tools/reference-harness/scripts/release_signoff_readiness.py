@@ -412,6 +412,69 @@ def load_performance_review_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_docs_completion_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "docs completion summary schema_version must be 1")
+    expect(
+        summary.get("scope") == "release-docs-completion",
+        "docs completion summary scope must be release-docs-completion",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "docs completion summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "docs_completion_review_complete",
+        "docs_targets_reviewed",
+        "public_contract_aligned",
+        "implementation_ledger_aligned",
+        "verification_strategy_aligned",
+        "reference_harness_guide_aligned",
+        "reference_harness_readme_aligned",
+        "completion_roadmap_aligned",
+        "explicit_non_claims_reviewed",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"docs completion summary {field} must be a bool")
+
+    reviewed_doc_targets = normalize_string_list(
+        summary.get("reviewed_doc_targets", []),
+        "docs completion summary reviewed_doc_targets",
+    )
+    missing_or_stale_doc_paths = normalize_string_list(
+        summary.get("missing_or_stale_doc_paths", []),
+        "docs completion summary missing_or_stale_doc_paths",
+    )
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "docs completion summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "docs completion summary withheld_claims",
+    )
+    expect_unique(reviewed_doc_targets, "docs completion summary reviewed_doc_targets")
+    expect_unique(
+        missing_or_stale_doc_paths,
+        "docs completion summary missing_or_stale_doc_paths",
+    )
+    if not summary["docs_completion_review_complete"]:
+        expect(
+            bool(missing_or_stale_doc_paths) or bool(blocking_reasons),
+            "incomplete docs completion summary must report a blocker",
+        )
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "reviewed_doc_targets": reviewed_doc_targets,
+        "missing_or_stale_doc_paths": missing_or_stale_doc_paths,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[str]:
     if phase0_summary is None:
         return []
@@ -485,6 +548,40 @@ def diagnostic_review_blockers(diagnostic_summary: dict[str, Any] | None) -> lis
     return deduplicated
 
 
+def docs_completion_blockers(docs_summary: dict[str, Any] | None) -> list[str]:
+    if docs_summary is None:
+        return []
+
+    blockers: list[str] = []
+    if not docs_summary["docs_completion_review_complete"]:
+        blockers.append("docs-completion-review-incomplete")
+    if not docs_summary["docs_targets_reviewed"]:
+        blockers.append("docs-targets-not-reviewed")
+    if not docs_summary["public_contract_aligned"]:
+        blockers.append("docs-public-contract-drift")
+    if not docs_summary["implementation_ledger_aligned"]:
+        blockers.append("docs-implementation-ledger-drift")
+    if not docs_summary["verification_strategy_aligned"]:
+        blockers.append("docs-verification-strategy-drift")
+    if not docs_summary["reference_harness_guide_aligned"]:
+        blockers.append("docs-reference-harness-guide-drift")
+    if not docs_summary["reference_harness_readme_aligned"]:
+        blockers.append("docs-reference-harness-readme-drift")
+    if not docs_summary["completion_roadmap_aligned"]:
+        blockers.append("docs-completion-roadmap-drift")
+    if not docs_summary["explicit_non_claims_reviewed"]:
+        blockers.append("docs-explicit-non-claims")
+    blockers.extend(f"docs-path:{path}" for path in docs_summary["missing_or_stale_doc_paths"])
+
+    deduplicated: list[str] = []
+    seen: set[str] = set()
+    for blocker in blockers:
+        if blocker not in seen:
+            deduplicated.append(blocker)
+            seen.add(blocker)
+    return deduplicated
+
+
 def summarize_release_readiness(
     *,
     checklist_path: Path,
@@ -492,6 +589,7 @@ def summarize_release_readiness(
     phase0_qualification_summary_path: Path | None = None,
     performance_review_summary_path: Path | None = None,
     diagnostic_review_summary_path: Path | None = None,
+    docs_completion_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = repo_root()
     checklist_path = checklist_path.resolve(strict=False)
@@ -511,6 +609,11 @@ def summarize_release_readiness(
     diagnostic_review_summary = (
         load_diagnostic_review_summary(diagnostic_review_summary_path)
         if diagnostic_review_summary_path is not None
+        else None
+    )
+    docs_completion_summary = (
+        load_docs_completion_summary(docs_completion_summary_path)
+        if docs_completion_summary_path is not None
         else None
     )
 
@@ -585,6 +688,7 @@ def summarize_release_readiness(
     phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
     performance_blockers = performance_review_blockers(performance_review_summary)
     diagnostic_blockers = diagnostic_review_blockers(diagnostic_review_summary)
+    docs_blockers = docs_completion_blockers(docs_completion_summary)
     phase0_packet_set_blockers: list[str] = []
     if phase0_qualification_summary is not None:
         if not phase0_qualification_summary["phase0_packet_set_qualified"]:
@@ -670,14 +774,27 @@ def summarize_release_readiness(
                 else "blocked"
             )
         elif section_id == "docs-completion":
-            blockers = []
+            blockers = list(docs_blockers)
             if not checklist_sources_present:
                 blockers.append("missing-checklist-source")
             if not docs_completion_targets_present:
                 blockers.append("missing-doc-target")
-            status = "ready-to-audit" if not blockers else "blocked"
+            if docs_completion_summary is None:
+                status = "ready-to-audit" if not blockers else "blocked"
+            else:
+                status = (
+                    "reviewed"
+                    if docs_completion_summary["docs_completion_review_complete"]
+                    and not blockers
+                    else "blocked"
+                )
         elif section_id == "parity-signoff":
-            blockers = ["qualification-corpus", "performance-review", "diagnostic-review"]
+            blockers = [
+                "qualification-corpus",
+                "performance-review",
+                "diagnostic-review",
+                "docs-completion",
+            ]
             status = "blocked"
         else:
             blockers = ["unknown-review-section"]
@@ -821,6 +938,46 @@ def summarize_release_readiness(
         "diagnostic_review_withheld_claims": (
             diagnostic_review_summary["withheld_claims"]
             if diagnostic_review_summary is not None
+            else []
+        ),
+        "docs_completion_summary_path": (
+            str(docs_completion_summary_path)
+            if docs_completion_summary_path is not None
+            else ""
+        ),
+        "docs_completion_evidence_present": docs_completion_summary is not None,
+        "docs_completion_current_state": (
+            docs_completion_summary["current_state"]
+            if docs_completion_summary is not None
+            else "not-provided"
+        ),
+        "docs_completion_review_complete": (
+            docs_completion_summary["docs_completion_review_complete"]
+            if docs_completion_summary is not None
+            else False
+        ),
+        "docs_completion_blockers": docs_blockers,
+        "docs_completion_blockers_preserved": (
+            docs_completion_summary is not None and bool(docs_blockers)
+        ),
+        "docs_completion_reviewed_targets": (
+            docs_completion_summary["reviewed_doc_targets"]
+            if docs_completion_summary is not None
+            else []
+        ),
+        "docs_missing_or_stale_paths": (
+            docs_completion_summary["missing_or_stale_doc_paths"]
+            if docs_completion_summary is not None
+            else []
+        ),
+        "docs_completion_blocking_reasons": (
+            docs_completion_summary["blocking_reasons"]
+            if docs_completion_summary is not None
+            else []
+        ),
+        "docs_completion_withheld_claims": (
+            docs_completion_summary["withheld_claims"]
+            if docs_completion_summary is not None
             else []
         ),
         "release_prerequisites": release_prerequisites,
@@ -1003,6 +1160,46 @@ def write_synthetic_performance_review_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_docs_completion_summary(path: Path) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "release-docs-completion",
+            "current_state": "blocked-on-public-doc-alignment",
+            "docs_completion_review_complete": False,
+            "docs_targets_reviewed": True,
+            "public_contract_aligned": False,
+            "implementation_ledger_aligned": True,
+            "verification_strategy_aligned": True,
+            "reference_harness_guide_aligned": True,
+            "reference_harness_readme_aligned": True,
+            "completion_roadmap_aligned": False,
+            "explicit_non_claims_reviewed": True,
+            "reviewed_doc_targets": [
+                "docs/public-contract.md",
+                "docs/implementation-ledger.md",
+                "docs/verification-strategy.md",
+                "docs/reference-harness.md",
+                "tools/reference-harness/README.md",
+                "docs/full-amflow-completion-roadmap.md",
+            ],
+            "missing_or_stale_doc_paths": [
+                "docs/public-contract.md",
+                "docs/full-amflow-completion-roadmap.md",
+            ],
+            "blocking_reasons": [
+                "public contract release-readiness caveats need review",
+                "completion roadmap M7 blocker language needs review",
+            ],
+            "withheld_claims": [
+                "This summary does not claim docs completion.",
+                "This summary does not claim release readiness.",
+            ],
+        },
+    )
+
+
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
@@ -1010,18 +1207,21 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         performance_review_summary_path = temp_root / "performance-review-summary.json"
         diagnostic_review_summary_path = temp_root / "diagnostic-review-summary.json"
+        docs_completion_summary_path = temp_root / "docs-completion-summary.json"
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
         write_synthetic_performance_review_summary(performance_review_summary_path)
         write_synthetic_diagnostic_review_summary(diagnostic_review_summary_path)
+        write_synthetic_docs_completion_summary(docs_completion_summary_path)
         summary = summarize_release_readiness(
             checklist_path=checklist_path,
             qualification_summary_path=qualification_summary_path,
             phase0_qualification_summary_path=phase0_qualification_summary_path,
             performance_review_summary_path=performance_review_summary_path,
             diagnostic_review_summary_path=diagnostic_review_summary_path,
+            docs_completion_summary_path=docs_completion_summary_path,
         )
         write_json(summary_path, summary)
 
@@ -1087,6 +1287,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 and "diagnostic-path:unsupported_solver_path" in section["blockers"]
                 for section in summary["review_sections"]
             ),
+            "docs_completion_evidence_consumed": summary["docs_completion_evidence_present"],
+            "docs_completion_blockers_preserved": summary["docs_completion_blockers"]
+            == [
+                "docs-completion-review-incomplete",
+                "docs-public-contract-drift",
+                "docs-completion-roadmap-drift",
+                "docs-path:docs/public-contract.md",
+                "docs-path:docs/full-amflow-completion-roadmap.md",
+            ],
+            "docs_completion_withheld_claims_preserved": (
+                len(summary["docs_completion_withheld_claims"]) >= 2
+            ),
+            "docs_completion_section_blocked": any(
+                section["id"] == "docs-completion"
+                and section["status"] == "blocked"
+                and "docs-path:docs/public-contract.md" in section["blockers"]
+                for section in summary["review_sections"]
+            ),
             "docs_completion_targets_present": summary["docs_completion_targets_present"],
             "docs_completion_section_ready_to_audit": any(
                 section["id"] == "docs-completion" and section["status"] == "ready-to-audit"
@@ -1094,6 +1312,10 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             ),
             "final_parity_signoff_blocked": any(
                 section["id"] == "parity-signoff" and section["status"] == "blocked"
+                for section in summary["review_sections"]
+            ),
+            "final_parity_signoff_waits_for_docs_completion": any(
+                section["id"] == "parity-signoff" and "docs-completion" in section["blockers"]
                 for section in summary["review_sections"]
             ),
             "withheld_claims_preserved": len(summary["withheld_claims"]) >= 5,
@@ -1127,6 +1349,11 @@ def parse_args() -> argparse.Namespace:
         "--diagnostic-review-summary",
         type=Path,
         help="Optional path to the M7 diagnostic-review summary",
+    )
+    parser.add_argument(
+        "--docs-completion-summary",
+        type=Path,
+        help="Optional path to the M7 docs-completion summary",
     )
     parser.add_argument(
         "--summary-path",
@@ -1163,6 +1390,7 @@ def main() -> int:
         phase0_qualification_summary_path=args.phase0_qualification_summary,
         performance_review_summary_path=args.performance_review_summary,
         diagnostic_review_summary_path=args.diagnostic_review_summary,
+        docs_completion_summary_path=args.docs_completion_summary,
     )
     if args.summary_path is not None:
         write_json(args.summary_path, summary)

@@ -673,12 +673,13 @@ The first executable M7 helper then stays blocked on purpose:
 `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
 machine-readable `qualification_readiness.py` summary plus that checklist,
 can also consume the retained phase-0 packet-set qualification verdict plus one
-performance-review summary sidecar and one diagnostic-review summary sidecar, audits the durable
-checklist/doc targets,
+performance-review summary sidecar, one diagnostic-review summary sidecar, and one docs-completion
+summary sidecar, audits the durable checklist/doc targets,
 and writes one blocked release-readiness summary that keeps the current
 `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
-blockers, performance-review blockers, and typed-failure diagnostic-review blockers visible
-without claiming that `Milestone M6` or `Milestone M7` has closed.
+blockers, performance-review blockers, typed-failure diagnostic-review blockers, and
+docs-alignment blockers visible without claiming that `Milestone M6` or `Milestone M7` has
+closed.
 
 ## Acceptance Gates Per Phase
 

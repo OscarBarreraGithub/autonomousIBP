@@ -37584,16 +37584,28 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   ExpectContains(result.stdout_json, "\"diagnostic_review_section_blocked\": true",
                  "release signoff readiness self-check should keep the diagnostic-review "
                  "section blocked when the sidecar is incomplete");
+  ExpectContains(result.stdout_json, "\"docs_completion_evidence_consumed\": true",
+                 "release signoff readiness self-check should consume the docs-completion "
+                 "summary");
+  ExpectContains(result.stdout_json, "\"docs_completion_blockers_preserved\": true",
+                 "release signoff readiness self-check should preserve docs-completion "
+                 "blockers");
+  ExpectContains(result.stdout_json, "\"docs_completion_withheld_claims_preserved\": true",
+                 "release signoff readiness self-check should preserve docs-completion "
+                 "withheld claims");
+  ExpectContains(result.stdout_json, "\"docs_completion_section_blocked\": true",
+                 "release signoff readiness self-check should keep docs-completion blocked "
+                 "when the sidecar is incomplete");
   ExpectContains(result.stdout_json, "\"docs_completion_targets_present\": true",
                  "release signoff readiness self-check should require the checklist docs targets "
                  "to exist");
-  ExpectContains(result.stdout_json,
-                 "\"docs_completion_section_ready_to_audit\": true",
-                 "release signoff readiness self-check should keep docs-completion audit-ready "
-                 "even while signoff stays blocked");
   ExpectContains(result.stdout_json, "\"final_parity_signoff_blocked\": true",
                  "release signoff readiness self-check should keep the final parity signoff "
                  "blocked while upstream prerequisites remain open");
+  ExpectContains(result.stdout_json,
+                 "\"final_parity_signoff_waits_for_docs_completion\": true",
+                 "release signoff readiness self-check should keep docs completion visible as a "
+                 "final parity signoff prerequisite");
   ExpectContains(result.stdout_json, "\"withheld_claims_preserved\": true",
                  "release signoff readiness self-check should preserve the explicit non-claims "
                  "from the M7 scaffold");
@@ -38042,6 +38054,130 @@ void ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest() {
                  "review blocked when sidecar evidence is incomplete");
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "performance-review-aware release signoff readiness should keep final release "
+                 "signoff blocked");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-release-signoff-docs-completion-readiness") /
+      "qualification-summary.json";
+  const std::filesystem::path docs_completion_summary_path =
+      FreshTempDir("amflow-release-signoff-docs-completion-sidecar") / "docs-completion.json";
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-docs-completion-summary") / "summary.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-docs-completion-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "release signoff docs-completion prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "release signoff docs-completion prerequisite readiness summary should not emit stderr "
+         "noise on success");
+
+  {
+    std::ofstream stream(docs_completion_summary_path);
+    stream << R"json({
+  "schema_version": 1,
+  "scope": "release-docs-completion",
+  "current_state": "blocked-on-doc-alignment-review",
+  "docs_completion_review_complete": false,
+  "docs_targets_reviewed": true,
+  "public_contract_aligned": true,
+  "implementation_ledger_aligned": false,
+  "verification_strategy_aligned": true,
+  "reference_harness_guide_aligned": true,
+  "reference_harness_readme_aligned": false,
+  "completion_roadmap_aligned": true,
+  "explicit_non_claims_reviewed": true,
+  "reviewed_doc_targets": [
+    "docs/public-contract.md",
+    "docs/implementation-ledger.md",
+    "docs/verification-strategy.md",
+    "docs/reference-harness.md",
+    "tools/reference-harness/README.md",
+    "docs/full-amflow-completion-roadmap.md"
+  ],
+  "missing_or_stale_doc_paths": [
+    "docs/implementation-ledger.md",
+    "tools/reference-harness/README.md"
+  ],
+  "blocking_reasons": [
+    "implementation ledger evidence row still needs docs-completion disposition",
+    "reference-harness README release-readiness text needs review"
+  ],
+  "withheld_claims": [
+    "This summary does not claim docs completion.",
+    "This summary does not claim release readiness."
+  ]
+}
+)json";
+  }
+
+  const ReferenceHarnessSelfCheckRun release_result = RunReferenceHarnessScript(
+      "amflow-release-signoff-docs-completion-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--docs-completion-summary",
+       docs_completion_summary_path.string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "docs-completion-aware release signoff readiness summary");
+  Expect(release_result.stderr_log.empty(),
+         "docs-completion-aware release signoff readiness summary should not emit stderr noise "
+         "on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "docs-completion-aware release signoff readiness summary should write the requested "
+         "summary file");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_evidence_present\": true",
+                 "docs-completion-aware release signoff readiness should record the consumed "
+                 "docs-completion sidecar");
+  ExpectContains(release_result.stdout_json,
+                 "\"docs_completion_current_state\": \"blocked-on-doc-alignment-review\"",
+                 "docs-completion-aware release signoff readiness should preserve the docs "
+                 "completion state");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_blockers_preserved\": true",
+                 "docs-completion-aware release signoff readiness should preserve docs "
+                 "completion blockers");
+  ExpectContains(release_result.stdout_json, "\"docs-implementation-ledger-drift\"",
+                 "docs-completion-aware release signoff readiness should surface ledger docs "
+                 "alignment drift");
+  ExpectContains(release_result.stdout_json,
+                 "\"docs-path:tools/reference-harness/README.md\"",
+                 "docs-completion-aware release signoff readiness should surface stale "
+                 "reference-harness README review paths");
+  ExpectContains(release_result.stdout_json,
+                 "\"implementation ledger evidence row still needs docs-completion disposition\"",
+                 "docs-completion-aware release signoff readiness should preserve docs "
+                 "completion blocking reasons");
+  ExpectContains(release_result.stdout_json, "\"docs_completion_reviewed_targets\": [",
+                 "docs-completion-aware release signoff readiness should keep reviewed doc "
+                 "targets visible");
+  ExpectContains(release_result.stdout_json, "\"docs/implementation-ledger.md\"",
+                 "docs-completion-aware release signoff readiness should keep the reviewed "
+                 "ledger path visible");
+  ExpectContains(release_result.stdout_json, "\"id\": \"docs-completion\"",
+                 "docs-completion-aware release signoff readiness should keep the checklist docs "
+                 "completion section visible");
+  ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
+                 "docs-completion-aware release signoff readiness should keep docs completion "
+                 "blocked when sidecar evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
+                 "docs-completion-aware release signoff readiness should keep final release "
                  "signoff blocked");
 }
 
@@ -38989,6 +39125,7 @@ int main() {
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesDiagnosticReviewEvidenceTest();
     ReleaseSignoffReadinessSummaryConsumesPerformanceReviewEvidenceTest();
+    ReleaseSignoffReadinessSummaryConsumesDocsCompletionEvidenceTest();
     OptionDefaultsTest();
     AmfOptionsSerializationIncludesFixedEpsTest();
     ReductionOptionsSerializationIncludesKiraInsertPrefactorsSurfaceTest();

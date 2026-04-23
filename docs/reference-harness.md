@@ -187,7 +187,7 @@ retained outputs and rerun evidence.
 - `tools/reference-harness/scripts/audit_phase0_failure_codes.py`: first packet-level M6 candidate failure-code audit. It consumes one candidate packet root that publishes the existing `result-manifest.json` and primary `run-manifest.json` schema plus one optional `results/phase0/<benchmark>/failure-code-audit.json` sidecar per benchmark, surfaces the frozen required failure-code profile from the qualification scaffold, and reports which required codes are still missing or unexpectedly extra on the published candidate audit path. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py`: first packet-set M6 candidate failure-code audit. It consumes one or more `--candidate-root` packet roots, composes the reviewed packet-level failure-code audit across the accepted `required-set`, `de-d0-pair`, and `user-hook-pair` split, requires one unique candidate packet label per root, requires each candidate packet root to publish exactly the packet-summary benchmark split for that packet, and fails closed unless the audited benchmark ids match the scaffold's full current `reference-captured` phase-0 set exactly. This is still qualification plumbing only: it does not launch the C++ runtime, does not compare canonical outputs or correct digits, does not compare case-study numerics, and does not claim `Milestone M6` is passing.
 - `tools/reference-harness/scripts/qualify_phase0_packet_set.py`: first retained phase-0 packet-set qualification verdict. It consumes one `qualification_readiness.py` summary plus the packet-set comparison, correct-digit, and failure-code summaries, fail-closes unless their retained packet labels and captured phase-0 ids stay synchronized, and writes one blocked/pass verdict over the reviewed phase-0 packet set only. This remains phase-0-only qualification plumbing: it does not compare retained case-study numerics, does not mark `Milestone M6` complete, and does not widen into M7 sign-off behavior.
-- `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. It may now also consume the phase-0 packet-set qualification verdict from `qualify_phase0_packet_set.py` so M7 readiness keeps the retained correct-digit and failure-code blockers visible instead of collapsing them into a generic qualification blocker, one performance-review sidecar so timing/scope/rebuild blockers stay visible, and one diagnostic-review sidecar so typed-failure review blockers stay visible in the M7 summary. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not run performance or diagnostic review, and does not claim release readiness.
+- `tools/reference-harness/scripts/release_signoff_readiness.py`: first executable M7 helper. It consumes one machine-readable `qualification_readiness.py` summary plus `templates/release-signoff-checklist.json`, audits that the checklist source/docs targets exist inside the repo, preserves the blocked `next_runtime_lane` frontier from the M6 evidence packet, and writes one blocked release-readiness summary that keeps `Milestone M6`, feature-parity closure, retained-reference qualification, and final parity sign-off withheld explicitly. It may now also consume the phase-0 packet-set qualification verdict from `qualify_phase0_packet_set.py` so M7 readiness keeps the retained correct-digit and failure-code blockers visible instead of collapsing them into a generic qualification blocker, one performance-review sidecar so timing/scope/rebuild blockers stay visible, one diagnostic-review sidecar so typed-failure review blockers stay visible, and one docs-completion sidecar so docs-alignment blockers stay visible in the M7 summary. This is still release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` closed, does not run performance, diagnostic, or docs completion review, and does not claim release readiness.
 
 ## Qualification Scaffold
 
@@ -292,15 +292,16 @@ retained outputs and rerun evidence.
 - The first executable M7 helper is
   `tools/reference-harness/scripts/release_signoff_readiness.py`. It consumes one retained
   M6-readiness summary instead of re-running qualification, can also consume the retained
-  phase-0 packet-set qualification verdict plus performance-review and diagnostic-review
-  summary sidecars, audits the
-  checklist source/doc paths, and writes one blocked release-readiness summary that keeps the
+  phase-0 packet-set qualification verdict plus performance-review, diagnostic-review, and
+  docs-completion summary sidecars, audits the checklist source/doc paths, and writes one blocked
+  release-readiness summary that keeps the
   current `b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
-  blockers, performance-review blockers, and typed-failure diagnostic-review blockers visible
-  while `Milestone M6` and the later release-review sections remain open.
+  blockers, performance-review blockers, typed-failure diagnostic-review blockers, and
+  docs-alignment blockers visible while `Milestone M6` and the later release-review sections
+  remain open.
 - The scaffold is planning metadata only. Adding or editing it does not run qualification,
-  performance, or diagnostic review; does not claim `Milestone M6` or `Milestone M7` is closed;
-  and does not claim release readiness.
+  performance, diagnostic, or docs completion review; does not claim `Milestone M6` or
+  `Milestone M7` is closed; and does not claim release readiness.
 
 The scripts under `tools/reference-harness/` now implement both the real repo-local bootstrap and
 the retained-golden promotion path. All fifteen helpers expose `--self-check` modes so the repo

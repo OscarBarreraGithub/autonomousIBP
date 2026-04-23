@@ -150,11 +150,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
   phase-0 correct-digit and failure-code blockers explicitly, plus one performance-review summary
   sidecar so timing/scope/rebuild review blockers remain visible to M7, plus one
-  diagnostic-review summary sidecar so typed-failure review blockers remain visible to M7. This
-  remains release-prep
-  plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does not run
-  performance or diagnostic review, and does not widen the last fully accepted public/runtime
-  contract
+  diagnostic-review summary sidecar so typed-failure review blockers remain visible to M7, plus
+  one docs-completion sidecar so docs-alignment blockers remain visible to M7. This remains
+  release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does
+  not run performance, diagnostic, or docs completion review, and does not widen the last fully
+  accepted public/runtime contract
 - `Operational Gate B0/G1` is accepted; GNU 8 `std::filesystem` linkage is restored and the clean
   `sapphire` build/test gate is green
 - `K0-pre-spec` is accepted as a repo-local K0 smoke fixture freeze derived from preserved input;

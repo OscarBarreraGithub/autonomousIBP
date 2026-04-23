@@ -37525,6 +37525,44 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
                  "\"retained packet-set correct-digit scoring has not fully passed\"",
                  "phase-0 qualification packet-set summary should report the retained "
                  "correct-digit blocker explicitly");
+  ExpectContains(result.stdout_json, "\"blocking_reasons\": [",
+                 "phase-0 qualification packet-set summary should preserve the retained "
+                 "blocking-reason list");
+  ExpectContains(
+      result.stdout_json,
+      R"json("blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes"
+  ])json",
+      "phase-0 qualification packet-set summary should preserve the exact retained "
+      "blocking-reason list");
+  ExpectContains(result.stdout_json, "\"missing_required_failure_codes_across_packet_set\": [",
+                 "phase-0 qualification packet-set summary should preserve the retained "
+                 "missing required failure-code list");
+  ExpectContains(
+      result.stdout_json,
+      R"json("missing_required_failure_codes_across_packet_set": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ])json",
+      "phase-0 qualification packet-set summary should preserve the exact retained missing "
+      "required failure-code list");
+  ExpectContains(result.stdout_json, "\"withheld_claims\": [",
+                 "phase-0 qualification packet-set summary should preserve the retained "
+                 "withheld-claim list");
+  ExpectContains(
+      result.stdout_json,
+      R"json("withheld_claims": [
+    "This summary does not compare retained case-study numerics.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness.",
+    "This summary does not launch the C++ runtime or create new retained captures."
+  ])json",
+      "phase-0 qualification packet-set summary should preserve the exact retained "
+      "withheld-claim list");
 }
 
 void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest() {
@@ -37997,13 +38035,62 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
   ExpectContains(release_result.stdout_json, "\"phase0-required-failure-codes\"",
                  "phase-0-aware release signoff readiness should surface missing required "
                  "failure-code coverage");
+  ExpectContains(release_result.stdout_json, "\"phase0_failure_code_blockers\": [",
+                 "phase-0-aware release signoff readiness should preserve the phase-0 "
+                 "failure-code blocker list");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("phase0_failure_code_blockers": [
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes"
+  ])json",
+      "phase-0-aware release signoff readiness should preserve the exact phase-0 "
+      "failure-code blocker list");
   ExpectContains(release_result.stdout_json,
                  "\"retained packet-set is missing published failure-code audits\"",
                  "phase-0-aware release signoff readiness should preserve phase-0 blocking "
                  "reasons");
+  ExpectContains(release_result.stdout_json, "\"phase0_packet_set_blocking_reasons\": [",
+                 "phase-0-aware release signoff readiness should preserve the phase-0 "
+                 "blocking-reason list");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("phase0_packet_set_blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes"
+  ])json",
+      "phase-0-aware release signoff readiness should preserve the exact phase-0 "
+      "blocking-reason list");
+  ExpectContains(release_result.stdout_json, "\"phase0_missing_required_failure_codes\": [",
+                 "phase-0-aware release signoff readiness should preserve the phase-0 missing "
+                 "required failure-code list");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("phase0_missing_required_failure_codes": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ])json",
+      "phase-0-aware release signoff readiness should preserve the exact phase-0 missing "
+      "required failure-code list");
   ExpectContains(release_result.stdout_json, "\"case-study-numerics\"",
                  "phase-0-aware release signoff readiness should keep case-study numerics as an "
                  "M6 blocker");
+  ExpectContains(release_result.stdout_json, "\"phase0_withheld_claims\": [",
+                 "phase-0-aware release signoff readiness should preserve the phase-0 "
+                 "withheld-claim list");
+  ExpectContains(
+      release_result.stdout_json,
+      R"json("phase0_withheld_claims": [
+    "This summary does not compare retained case-study numerics.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness.",
+    "This summary does not launch the C++ runtime or create new retained captures."
+  ])json",
+      "phase-0-aware release signoff readiness should preserve the exact phase-0 "
+      "withheld-claim list");
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "phase-0-aware release signoff readiness should keep final release signoff "
                  "blocked");

@@ -41,12 +41,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64q`, all of which stay
+  not-yet-accepted public/runtime seams described below through `Batch 64r`, all of which stay
   below the last fully accepted public/runtime contract;
   the current worktree now also carries the local-only narrow `Batch 62j` raw single-invariant
   `msq`-segment singular-crossing continuation guardrail packet, which likewise does not widen
   the last fully accepted public/runtime contract;
-  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64q`
+  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64r`
   linear-propagator packets, which likewise stay below the last fully accepted public/runtime
   contract;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
@@ -383,13 +383,16 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   first `RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)` generated-`x`
   reduction-execution wrapper that runs that prepared packet on the same reviewed subset, records
   the reducer working-directory artifact root, and parses reducer outputs while preserving
-  identity-fallback reduction results, and the first
+  identity-fallback reduction results, the first
+  `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)` library-only DE-assembly
+  consumer that composes that reviewed generated-`x` execution seam with generated-row
+  reduction assembly on the same one-external lightlike subset, and the first
   `RunReviewedLightlikeLinearAuxiliaryReduction(...)` reduction-execution wrapper that runs the
   retained-target prepared packet on the same reviewed subset, records the reducer working-
   directory artifact root, and parses reducer outputs while preserving identity-fallback
   reduction results. Live complex contour execution, broader phase-space topology/provider
-  behavior, broader non-invariant linear solver behavior, DE-assembly or solver-path consumers of
-  that generated-`x` lightlike linear-driver transform, broader AMFlow-faithful `x` / gauge-link
+  behavior, broader non-invariant linear solver behavior, solver-path consumers of that
+  generated-`x` lightlike linear-driver transform, broader AMFlow-faithful `x` / gauge-link
   linear-driver parity, and wider symbolic runtime parity remain deferred
 
 ## Core Types
@@ -493,6 +496,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `LightlikeLinearAuxiliaryReductionPreparation` plus `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)`: the first Kira-preparation consumer of that same reviewed helper/transform seam, applying the full-spec lightlike rewrite over one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset and then delegating to `KiraBackend::Prepare(...)` over the retained `ProblemSpec.targets` surface without mutating the input `ProblemSpec`
 - `LightlikeLinearAuxiliaryDerivativeReductionPreparation` plus `PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)`: the first explicit-target Kira-preparation consumer of that same reviewed generated-`x` helper/transform seam, applying the full-spec lightlike rewrite over one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset, synthesizing the reviewed auxiliary generated-`x` target list, and then delegating to `KiraBackend::PrepareForTargets(...)` over those generated targets without mutating the input `ProblemSpec`
 - `LightlikeLinearAuxiliaryDerivativeReductionExecution` plus `RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)`: typed execution-only orchestration over that same reviewed generated-`x` preparation seam, reducer launch, and parsed-result ingestion, preserving the transformed preparation metadata and parsed identity-fallback results while still deferring DE assembly and solver behavior
+- `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)`: the first library-only DE-assembly consumer over that same reviewed generated-`x` execution seam, requiring successful reducer execution, preserving the transformed generated-`x` variable and master basis, and assembling one `DESystem` through the ordinary generated-row reduction path while still deferring solver behavior
 - `LightlikeLinearAuxiliaryReductionExecution` plus `RunReviewedLightlikeLinearAuxiliaryReduction(...)`: typed execution-only orchestration over that same reviewed lightlike-linear preparation seam, reducer launch, and parsed-result ingestion, preserving the transformed preparation metadata and parsed identity-fallback results while still deferring generated-`x` target synthesis, DE assembly, and solver behavior
 
 ## Runtime Boundaries

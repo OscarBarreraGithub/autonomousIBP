@@ -3326,6 +3326,12 @@ std::string MakeAutoInvariantLinearRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantLinearDerivativeRuleFile() {
+  return "{\n"
+         "  toy_auto_linear_family[0,1,2] -> 3*toy_auto_linear_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoEtaLinearRuleFile() {
   return "{\n"
          "  toy_auto_linear_family[2,1,1] -> 3*toy_auto_linear_family[1,1,1]\n"
@@ -17451,7 +17457,7 @@ void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest() {
   std::filesystem::create_directories(kira_path.parent_path());
   WriteExecutableScript(
       kira_path,
-      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearDerivativeRuleFile()));
   WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
 
   const amflow::LightlikeLinearAuxiliaryDerivativeReductionPreparation baseline_preparation =
@@ -17595,6 +17601,155 @@ void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesIdentityFall
                  "toy_auto_linear_family[1,1,1]",
          "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
          "parsed identity-fallback results instead of rejecting them");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-desystem-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-auto-linear-derivative-desystem.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionExecution baseline_execution =
+      amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path);
+  Expect(baseline_execution.parsed_reduction_result.has_value(),
+         "reviewed lightlike linear auxiliary derivative DE consumer baseline should expose the "
+         "parsed reduction result");
+
+  amflow::GeneratedDerivativeVariableReductionInput baseline_input;
+  baseline_input.generated_variable = baseline_execution.preparation.generated_variable;
+  baseline_input.reduction_result = *baseline_execution.parsed_reduction_result;
+  const amflow::DESystem baseline_system =
+      amflow::AssembleGeneratedDerivativeDESystem(master_basis, {baseline_input});
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-desystem"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-linear-derivative-desystem.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system = amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+      spec, master_basis, 2, MakeKiraReductionOptions(), layout, kira_path, fermat_path, " x ");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative DE consumer should not mutate the "
+         "input problem spec");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "reviewed lightlike linear auxiliary derivative DE consumer should return a valid "
+         "DESystem");
+  Expect(system.masters.size() == baseline_system.masters.size() && system.masters.size() == 1 &&
+             system.masters.front().label == "toy_auto_linear_family[1,1,1]",
+         "reviewed lightlike linear auxiliary derivative DE consumer should preserve the "
+         "reviewed generated-x master basis");
+  Expect(system.variables.size() == baseline_system.variables.size() &&
+             system.variables.size() == 1 && system.variables.front().name == "x" &&
+             system.variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "reviewed lightlike linear auxiliary derivative DE consumer should preserve the "
+         "reviewed generated-x variable");
+  const auto matrix_it = system.coefficient_matrices.find("x");
+  Expect(matrix_it != system.coefficient_matrices.end(),
+         "reviewed lightlike linear auxiliary derivative DE consumer should populate the x "
+         "coefficient matrix");
+  Expect(matrix_it->second == baseline_system.coefficient_matrices.at("x") &&
+             matrix_it->second.size() == 1 && matrix_it->second.front().size() == 1 &&
+             matrix_it->second.front().front() == "(-1)*(3)",
+         "reviewed lightlike linear auxiliary derivative DE consumer should return the reviewed "
+         "generated-x matrix entry unchanged");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemExecutionFailureTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-desystem-exec-failure"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-desystem-fail.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"expected-lightlike-derivative-desystem-failure\" 1>&2\n"
+      "exit 9\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&layout, &kira_path, &fermat_path]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+            MakeAutoInvariantLinearProblemSpec(),
+            MakeAutoInvariantLinearMasterBasis(),
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path));
+      },
+      "reviewed lightlike linear auxiliary derivative DE consumer should throw after reducer "
+      "execution failure");
+
+  Expect(message.find(
+             "reviewed lightlike-linear auxiliary derivative DE construction requires "
+             "successful reducer execution") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative DE consumer should report reducer "
+         "execution failure");
+  Expect(message.find("status=completed") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative DE consumer should preserve the "
+         "execution status in the failure message");
+  Expect(message.find("exit_code=9") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative DE consumer should preserve the "
+         "reducer exit code in the failure message");
+  Expect(message.find("stderr_log=") != std::string::npos &&
+             message.find(layout.logs_dir.string()) != std::string::npos &&
+             message.find(".stderr.log") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative DE consumer should preserve the stderr "
+         "log path in the failure message");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallbackResultsTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-desystem-identity-fallback"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-linear-derivative-identity-fallback.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantLinearResultScript(false, ""));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  ExpectRuntimeError(
+      [&layout, &kira_path, &fermat_path]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+            MakeAutoInvariantLinearProblemSpec(),
+            MakeAutoInvariantLinearMasterBasis(),
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path));
+      },
+      "requires explicit reduction rules for generated targets",
+      "reviewed lightlike linear auxiliary derivative DE consumer should preserve identity-"
+      "fallback parse and assembly diagnostics");
 }
 
 void PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest() {
@@ -41523,6 +41678,9 @@ int main() {
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest();
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionExecutionFailureTest();
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesIdentityFallbackResultsTest();
+    BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemHappyPathTest();
+    BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemExecutionFailureTest();
+    BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallbackResultsTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionPreservesHelperRejectionSurfaceTest();

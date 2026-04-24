@@ -17,6 +17,7 @@
 #include "amflow/core/options.hpp"
 #include "amflow/core/problem_spec.hpp"
 #include "amflow/de/lightlike_linear_derivative_generation.hpp"
+#include "amflow/de/lightlike_linear_derivative_reduction_execution.hpp"
 #include "amflow/de/lightlike_linear_derivative_reduction_preparation.hpp"
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/eta_reduction_preparation.hpp"
@@ -17434,6 +17435,166 @@ void PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesHelperRe
       "to carry explicit variant \"linear\" on kind \"linear\"",
       "reviewed lightlike linear auxiliary derivative reduction preparation should preserve the "
       "reviewed helper rejection surface");
+}
+
+void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-run"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-run-baseline"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-linear-derivative-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionPreparation baseline_preparation =
+      amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, 2, MakeKiraReductionOptions(), baseline_layout, "x");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionExecution execution =
+      amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, 2, MakeKiraReductionOptions(), layout, kira_path, fermat_path, " x ");
+
+  Expect(execution.execution_result.Succeeded(),
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "successful reducer execution");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative reduction execution should not mutate "
+         "the input problem spec");
+  Expect(execution.preparation.auxiliary_family.x_symbol == "x",
+         "reviewed lightlike linear auxiliary derivative reduction execution should trim and "
+         "record the chosen x symbol");
+  Expect(execution.preparation.auxiliary_family.rewritten_propagator_index == 2,
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve the "
+         "rewritten propagator index");
+  Expect(execution.execution_result.working_directory == layout.generated_config_dir,
+         "reviewed lightlike linear auxiliary derivative reduction execution should record the "
+         "reducer working-directory artifact root");
+  Expect(execution.parsed_reduction_result.has_value(),
+         "reviewed lightlike linear auxiliary derivative reduction execution should expose the "
+         "parsed reduction result on success");
+  Expect(execution.parsed_reduction_result->master_list.source_path ==
+             execution.execution_result.working_directory /
+                 "results/toy_auto_linear_family/masters",
+         "reviewed lightlike linear auxiliary derivative reduction execution should parse "
+         "reviewed generated-x results from the recorded working-directory artifact root");
+  Expect(execution.preparation.generated_variable.variable.name == "x" &&
+             execution.preparation.generated_variable.variable.kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "the reviewed generated-x variable");
+  Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
+             baseline_preparation.backend_preparation.generated_files.at("target") &&
+             execution.preparation.backend_preparation.generated_files.at("target") ==
+                 "toy_auto_linear_family[0,1,2]\n",
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "generated-x target order through preparation");
+
+  const auto family_yaml_it = execution.preparation.backend_preparation.generated_files.find(
+      "config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(
+      family_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+          baseline_family_yaml_it != baseline_preparation.backend_preparation.generated_files.end() &&
+          family_yaml_it->second == baseline_family_yaml_it->second &&
+          family_yaml_it->second.find("[\"x*((k)^2) + (k*n)\", \"-1\"]") != std::string::npos,
+      "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+      "transformed family YAML");
+
+  const auto kinematics_yaml_it =
+      execution.preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != execution.preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.backend_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "transformed kinematics YAML");
+
+  Expect(execution.parsed_reduction_result->status == amflow::ParsedReductionStatus::ParsedRules &&
+             execution.parsed_reduction_result->explicit_rule_count == 1 &&
+             execution.parsed_reduction_result->rules.size() == 2,
+         "reviewed lightlike linear auxiliary derivative reduction execution should parse one "
+         "explicit reviewed generated-x Kira rule");
+}
+
+void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionExecutionFailureTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-run-exec-failure"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-fail.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"expected-lightlike-derivative-wrapper-failure\" 1>&2\n"
+      "exit 9\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionExecution execution =
+      amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          MakeAutoInvariantLinearProblemSpec(),
+          MakeAutoInvariantLinearMasterBasis(),
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path);
+
+  Expect(execution.execution_result.status == amflow::CommandExecutionStatus::Completed,
+         "reviewed lightlike linear auxiliary derivative reduction execution should surface "
+         "reducer process failures as completed exits");
+  Expect(execution.execution_result.exit_code == 9,
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "the reducer exit code");
+  Expect(!execution.parsed_reduction_result.has_value(),
+         "reviewed lightlike linear auxiliary derivative reduction execution should not parse "
+         "results after reducer execution failure");
+  Expect(ReadFile(execution.execution_result.stderr_log_path).find(
+             "expected-lightlike-derivative-wrapper-failure") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "reducer stderr on execution failure");
+}
+
+void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesIdentityFallbackResultsTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-run-identity-fallback"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-linear-derivative-identity-fallback.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeAutoInvariantLinearResultScript(false, ""));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionExecution execution =
+      amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, 2, MakeKiraReductionOptions(), layout, kira_path, fermat_path);
+
+  Expect(execution.execution_result.Succeeded(),
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "successful reducer execution on identity-fallback outputs");
+  Expect(execution.parsed_reduction_result.has_value(),
+         "reviewed lightlike linear auxiliary derivative reduction execution should still expose "
+         "parsed results on identity-fallback outputs");
+  Expect(execution.parsed_reduction_result->status ==
+                 amflow::ParsedReductionStatus::IdentityFallback &&
+             execution.parsed_reduction_result->explicit_rule_count == 0 &&
+             execution.parsed_reduction_result->rules.size() == 1 &&
+             execution.parsed_reduction_result->rules.front().target.Label() ==
+                 "toy_auto_linear_family[1,1,1]",
+         "reviewed lightlike linear auxiliary derivative reduction execution should preserve "
+         "parsed identity-fallback results instead of rejecting them");
 }
 
 void PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest() {
@@ -41359,6 +41520,9 @@ int main() {
     PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionDoesNotDuplicateInvariantTest();
     PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionRejectsEmptyGeneratedTargetsTest();
     PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesHelperRejectionSurfaceTest();
+    RunReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest();
+    RunReviewedLightlikeLinearAuxiliaryDerivativeReductionExecutionFailureTest();
+    RunReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesIdentityFallbackResultsTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionPreservesHelperRejectionSurfaceTest();

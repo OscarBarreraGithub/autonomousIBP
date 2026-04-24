@@ -17,6 +17,7 @@
 #include "amflow/core/options.hpp"
 #include "amflow/core/problem_spec.hpp"
 #include "amflow/de/lightlike_linear_derivative_generation.hpp"
+#include "amflow/de/lightlike_linear_derivative_reduction_preparation.hpp"
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/eta_reduction_preparation.hpp"
 #include "amflow/de/invariant_derivative_generation.hpp"
@@ -17261,6 +17262,178 @@ void PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest() {
   Expect(CountSubstringOccurrences(kinematics_yaml_it->second, "[\"x\", 2]") == 1,
          "reviewed lightlike linear reduction preparation should append the x invariant exactly "
          "once in emitted Kira kinematics");
+}
+
+void PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest() {
+  amflow::KiraBackend backend;
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare-baseline"));
+  const amflow::LightlikeLinearAuxiliaryTransformResult baseline_transform =
+      amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x");
+  const amflow::GeneratedDerivativeVariable baseline_generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(master_basis,
+                                                                        baseline_transform);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.PrepareForTargets(baseline_transform.transformed_spec,
+                                MakeKiraReductionOptions(),
+                                baseline_layout,
+                                baseline_generated_variable.reduction_targets);
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionPreparation preparation =
+      amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, 2, MakeKiraReductionOptions(), layout, " x ");
+
+  Expect(preparation.auxiliary_family.x_symbol == "x",
+         "reviewed lightlike linear auxiliary derivative reduction preparation should trim and "
+         "record the chosen x symbol");
+  Expect(preparation.auxiliary_family.rewritten_propagator_index == 2,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "the rewritten propagator index");
+  Expect(amflow::SerializeProblemSpecYaml(preparation.auxiliary_family.transformed_spec) ==
+             amflow::SerializeProblemSpecYaml(baseline_transform.transformed_spec),
+         "reviewed lightlike linear auxiliary derivative reduction preparation should expose "
+         "the transformed spec unchanged from the reviewed full-spec helper");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should not "
+         "mutate the input problem spec");
+  Expect(preparation.generated_variable.variable.name == "x" &&
+             preparation.generated_variable.variable.kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should expose "
+         "the reviewed generated-x variable");
+  Expect(preparation.generated_variable.reduction_targets.size() ==
+                 baseline_generated_variable.reduction_targets.size() &&
+             preparation.generated_variable.reduction_targets.size() == 1 &&
+             preparation.generated_variable.reduction_targets.front().Label() ==
+                 baseline_generated_variable.reduction_targets.front().Label() &&
+             preparation.generated_variable.reduction_targets.front().Label() ==
+                 "toy_auto_linear_family[0,1,2]",
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "generated-target order");
+  Expect(preparation.backend_preparation.validation_messages.empty(),
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "an empty Kira validation result on the reviewed subset");
+  Expect(preparation.backend_preparation.generated_files.at("target") ==
+             baseline_preparation.generated_files.at("target") &&
+             preparation.backend_preparation.generated_files.at("target") ==
+                 "toy_auto_linear_family[0,1,2]\n",
+         "reviewed lightlike linear auxiliary derivative reduction preparation should prepare "
+         "the generated-x target list instead of the retained ProblemSpec target surface");
+
+  const auto family_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/integralfamilies.yaml");
+  const auto baseline_family_yaml_it =
+      baseline_preparation.generated_files.find("config/integralfamilies.yaml");
+  Expect(family_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_family_yaml_it != baseline_preparation.generated_files.end() &&
+             family_yaml_it->second == baseline_family_yaml_it->second,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "transformed family YAML");
+  Expect(family_yaml_it->second.find("[\"x*((k)^2) + (k*n)\", \"-1\"]") != std::string::npos &&
+             family_yaml_it->second.find("[\"k*n\", \"-1\"]") == std::string::npos,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should expose "
+         "the rewritten quadratic driver instead of the original linear propagator");
+
+  const auto kinematics_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "transformed kinematics YAML");
+  Expect(CountSubstringOccurrences(kinematics_yaml_it->second, "[\"x\", 2]") == 1,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should append "
+         "the x invariant exactly once in emitted Kira kinematics");
+}
+
+void PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionDoesNotDuplicateInvariantTest() {
+  amflow::KiraBackend backend;
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.invariants.push_back("x");
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare-no-dup"));
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare-no-dup-baseline"));
+  const amflow::LightlikeLinearAuxiliaryTransformResult baseline_transform =
+      amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x");
+  const amflow::GeneratedDerivativeVariable baseline_generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(master_basis,
+                                                                        baseline_transform);
+  const amflow::BackendPreparation baseline_preparation =
+      backend.PrepareForTargets(baseline_transform.transformed_spec,
+                                MakeKiraReductionOptions(),
+                                baseline_layout,
+                                baseline_generated_variable.reduction_targets);
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionPreparation preparation =
+      amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, 2, MakeKiraReductionOptions(), layout, "x");
+
+  Expect(std::count(preparation.auxiliary_family.transformed_spec.kinematics.invariants.begin(),
+                    preparation.auxiliary_family.transformed_spec.kinematics.invariants.end(),
+                    std::string("x")) == 1,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should keep the "
+         "transformed invariant surface deduplicated");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should not "
+         "mutate the input problem spec when x is already declared");
+  const auto kinematics_yaml_it =
+      preparation.backend_preparation.generated_files.find("config/kinematics.yaml");
+  const auto baseline_kinematics_yaml_it =
+      baseline_preparation.generated_files.find("config/kinematics.yaml");
+  Expect(kinematics_yaml_it != preparation.backend_preparation.generated_files.end() &&
+             baseline_kinematics_yaml_it != baseline_preparation.generated_files.end() &&
+             kinematics_yaml_it->second == baseline_kinematics_yaml_it->second,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should preserve "
+         "emitted kinematics YAML when x is already declared");
+  Expect(CountSubstringOccurrences(kinematics_yaml_it->second, "[\"x\", 2]") == 1,
+         "reviewed lightlike linear auxiliary derivative reduction preparation should emit the "
+         "x invariant once even when it is already present on the input spec");
+}
+
+void PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionRejectsEmptyGeneratedTargetsTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 0}},
+  };
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare-empty-targets"));
+
+  ExpectRuntimeError(
+      [&spec, &master_basis, &layout]() {
+        static_cast<void>(amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+            spec, master_basis, 2, MakeKiraReductionOptions(), layout));
+      },
+      "requires at least one generated reduction target",
+      "reviewed lightlike linear auxiliary derivative reduction preparation should reject "
+      "generated-x rows that need no reducer targets");
+}
+
+void PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesHelperRejectionSurfaceTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].variant.reset();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-prepare-rejection"));
+
+  ExpectRuntimeError(
+      [&spec, &layout]() {
+        static_cast<void>(amflow::PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+            spec, MakeAutoInvariantLinearMasterBasis(), 2, MakeKiraReductionOptions(), layout));
+      },
+      "to carry explicit variant \"linear\" on kind \"linear\"",
+      "reviewed lightlike linear auxiliary derivative reduction preparation should preserve the "
+      "reviewed helper rejection surface");
 }
 
 void PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest() {
@@ -41182,6 +41355,10 @@ int main() {
     PrepareEtaGeneratedReductionRejectsInsertPrefactorsForMultipleGeneratedTargetsTest();
     PrepareEtaGeneratedReductionRejectsEmptyGeneratedTargetsTest();
     PrepareEtaGeneratedReductionFakeExecutionSmokeTest();
+    PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest();
+    PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionDoesNotDuplicateInvariantTest();
+    PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionRejectsEmptyGeneratedTargetsTest();
+    PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesHelperRejectionSurfaceTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionPreservesHelperRejectionSurfaceTest();

@@ -16,6 +16,7 @@ add_library(amflow
   src/de/eta_derivative_generation.cpp
   src/de/invariant_derivative_generation.cpp
   src/de/lightlike_linear_derivative_generation.cpp
+  src/de/lightlike_linear_derivative_reduction_preparation.cpp
   src/de/eta_reduction_execution.cpp
   src/de/eta_reduction_preparation.cpp
   src/de/invariant_reduction_execution.cpp

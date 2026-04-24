@@ -3,12 +3,38 @@
 #include "amflow/de/invariant_derivative_generation.hpp"
 #include "amflow/solver/coefficient_evaluator.hpp"
 
+#include <cctype>
 #include <stdexcept>
 #include <string>
 
 namespace amflow {
 
 namespace {
+
+bool ContainsStandaloneIdentifier(const std::string& value, const std::string& identifier) {
+  if (identifier.empty()) {
+    return false;
+  }
+
+  for (std::size_t index = 0; index + identifier.size() <= value.size(); ++index) {
+    if (value.compare(index, identifier.size(), identifier) != 0) {
+      continue;
+    }
+
+    const bool has_left_identifier =
+        index > 0 &&
+        (std::isalnum(static_cast<unsigned char>(value[index - 1])) != 0 ||
+         value[index - 1] == '_');
+    const std::size_t end = index + identifier.size();
+    const bool has_right_identifier =
+        end < value.size() &&
+        (std::isalnum(static_cast<unsigned char>(value[end])) != 0 || value[end] == '_');
+    if (!has_left_identifier && !has_right_identifier) {
+      return true;
+    }
+  }
+  return false;
+}
 
 std::string StripOneOuterParenthesisPair(const std::string& value) {
   if (value.size() < 2 || value.front() != '(' || value.back() != ')') {
@@ -180,6 +206,32 @@ GeneratedDerivativeVariable GenerateReviewedLightlikeLinearAuxiliaryDerivativeVa
   }
 
   const std::string x_symbol = auxiliary_family.x_symbol.empty() ? "x" : auxiliary_family.x_symbol;
+  const std::string injected_prefix = x_symbol + "*(";
+  const std::string& rewritten_expression =
+      auxiliary_family.transformed_spec.family
+          .propagators[auxiliary_family.rewritten_propagator_index]
+          .expression;
+  if (rewritten_expression.compare(0, injected_prefix.size(), injected_prefix) == 0 &&
+      ContainsStandaloneIdentifier(rewritten_expression.substr(injected_prefix.size()), x_symbol)) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary derivative generation requires the chosen x "
+        "symbol to remain exclusive to the injected rewritten x prefix across the transformed "
+        "family");
+  }
+  for (std::size_t index = 0; index < auxiliary_family.transformed_spec.family.propagators.size();
+       ++index) {
+    if (index == auxiliary_family.rewritten_propagator_index) {
+      continue;
+    }
+    if (ContainsStandaloneIdentifier(
+            auxiliary_family.transformed_spec.family.propagators[index].expression, x_symbol)) {
+      throw std::runtime_error(
+          "reviewed lightlike linear auxiliary derivative generation requires the chosen x "
+          "symbol to remain exclusive to the injected rewritten x prefix across the transformed "
+          "family");
+    }
+  }
+
   ProblemSpec seed_spec = auxiliary_family.transformed_spec;
   seed_spec.family.propagators[auxiliary_family.rewritten_propagator_index].expression =
       x_symbol + "*(" +

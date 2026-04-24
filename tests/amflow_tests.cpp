@@ -16218,6 +16218,38 @@ void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriver
       "diagnostic when no transformed propagator matches the extracted driver");
 }
 
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolOutsideRewrittenPropagatorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.invariants.push_back("x");
+  spec.family.propagators[0].expression = "x*((k)^2)";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            MakeAutoInvariantLinearMasterBasis(),
+            amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
+      },
+      "requires the chosen x symbol to remain exclusive to the injected rewritten x prefix "
+      "across the transformed family",
+      "reviewed lightlike linear auxiliary derivative generation should reject reused x symbols "
+      "outside the rewritten transformed propagator");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolInsideRewrittenTailTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            MakeAutoInvariantLinearMasterBasis(),
+            amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "n")));
+      },
+      "requires the chosen x symbol to remain exclusive to the injected rewritten x prefix "
+      "across the transformed family",
+      "reviewed lightlike linear auxiliary derivative generation should reject chosen symbols "
+      "that also appear in the rewritten propagator tail");
+}
+
 void LightlikeLinearAuxiliaryDerivativeGenerationRejectsArityMismatchTest() {
   amflow::ParsedMasterList master_basis;
   master_basis.family = "toy_auto_linear_family";
@@ -41102,6 +41134,8 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoefficientTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolOutsideRewrittenPropagatorTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolInsideRewrittenTailTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsArityMismatchTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsFamilyMismatchTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsInconsistentParsedMasterListFamilyTest();

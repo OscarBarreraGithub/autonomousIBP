@@ -24872,6 +24872,108 @@ void SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest() {
          "eta solver handoff should return reviewed linear-subset solver diagnostics verbatim");
 }
 
+void SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivativeTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "DirectLinear";
+  decision.selected_propagator_indices = {2};
+  decision.selected_propagators = {spec.family.propagators[2].expression};
+  decision.explanation = "direct reviewed single explicit linear propagator";
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "x=1/11";
+  const std::string target_location = "x=3/11";
+  const int requested_digits = 71;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-direct-lightlike-baseline.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path,
+          "x",
+          std::optional<std::string>{"5"});
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-direct-lightlike.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0078125;
+  solver.returned_diagnostics.overlap_mismatch = 0.015625;
+  solver.returned_diagnostics.summary = "recorded direct single-linear lightlike solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      start_location,
+                                      target_location,
+                                      precision_policy,
+                                      requested_digits,
+                                      " x ",
+                                      std::optional<std::string>{"10/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "direct single-linear route should not mutate reviewed inputs");
+  Expect(solver.call_count() == 1,
+         "direct single-linear route should call the supplied solver exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "direct single-linear route should forward the reviewed lightlike generated-x "
+         "DESystem");
+  Expect(request.system.variables.size() == 1 && request.system.variables.front().name == "x" &&
+             request.system.variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "direct single-linear route should use the reviewed auxiliary x variable rather than "
+         "the ordinary eta variable");
+  Expect(request.system.coefficient_matrices.at("x").size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0][0] == "(-1)*(3)",
+         "direct single-linear route should preserve the reviewed lightlike matrix entry");
+  Expect(request.start_location == start_location && request.target_location == target_location,
+         "direct single-linear route should preserve continuation endpoints");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "direct single-linear route should preserve the caller precision policy");
+  Expect(request.requested_digits == requested_digits,
+         "direct single-linear route should preserve requested_digits");
+  Expect(request.amf_requested_dimension_expression == std::optional<std::string>{"5"},
+         "direct single-linear route should preserve the normalized public dimension "
+         "expression on the lightlike request");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "direct single-linear route should return solver diagnostics verbatim");
+}
+
 void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -43656,6 +43758,7 @@ int main() {
     SolveInvariantGeneratedSeriesListAutomaticRejectsUnknownInvariantNameTest();
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest();
+    SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivativeTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();

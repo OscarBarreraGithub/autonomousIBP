@@ -887,6 +887,13 @@ The first eta-generated solver handoff remains narrow:
   locations, precision policy, requested digits, and injected solver diagnostics unchanged when a
   caller-supplied direct eta decision rewrites only reviewed quadratic propagators and leaves the
   explicit linear slot passive
+- on the reviewed lightlike-linear generated-`x` subset, the same direct solver wrapper now routes
+  a caller-supplied decision that selects exactly one in-range explicit `kind: "linear"` /
+  `variant: "linear"` propagator and carries no complex numeric substitutions through
+  `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)` instead of the ordinary
+  eta-generated path, preserving the caller's continuation endpoints, precision policy, requested
+  digits, optional public dimension expression, and injected solver diagnostics on the reviewed
+  auxiliary-`x` request
 - on retryable `failure_code == "insufficient_precision"`, the same internal loop keeps `requested_digits` fixed, retries only when `EvaluatePrecision(...)` suggests a larger `working_precision` or `x_order`, and otherwise stops deterministically when the request is already covered or escalation is rejected (`src/solver/series_solver.cpp:1904-1928`, `src/solver/precision_policy.cpp:8-37`)
 - pre-solver failures preserve the existing `BuildEtaGeneratedDESystem(...)` diagnostics unchanged and do not invoke the supplied solver
 - malformed or exact-arithmetic-invalid public dimension expressions still fail explicitly with
@@ -925,6 +932,9 @@ The first eta-mode-planned solver handoff stays narrow:
   forwards the assembled one-variable eta `DESystem`, start/target locations, precision policy,
   requested digits, and injected solver diagnostics unchanged when that planned decision rewrites
   only reviewed quadratic propagators and leaves the explicit linear slot passive
+- when that one retained plan instead selects exactly one explicit lightlike-linear propagator on
+  the reviewed no-complex-numeric-substitution subset, the wrapper inherits the direct
+  eta-generated auxiliary-`x` route without re-planning the selected mode
 - malformed or exact-arithmetic-invalid public dimension expressions still fail downstream after
   exactly one `EtaMode::Plan(spec)` call and still do not invoke the supplied solver
 - this batch does not add new builtin eta-mode semantics for linear propagators, cache policy,

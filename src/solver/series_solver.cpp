@@ -5719,6 +5719,25 @@ SolverDiagnostics SolveEtaGeneratedSeries(
   ValidateComplexEtaGeneratedWrapperBindings(spec);
   const std::optional<std::string> normalized_dimension_expression =
       NormalizePublicDimensionExpression(exact_dimension_override);
+  const std::optional<std::size_t> reviewed_linear_index =
+      SelectReviewedSingleExplicitLinearDecisionIndex(spec, decision);
+  if (reviewed_linear_index.has_value()) {
+    return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                                 master_basis,
+                                                                 *reviewed_linear_index,
+                                                                 options,
+                                                                 layout,
+                                                                 kira_executable,
+                                                                 fermat_executable,
+                                                                 solver,
+                                                                 start_location,
+                                                                 target_location,
+                                                                 precision_policy,
+                                                                 requested_digits,
+                                                                 eta_symbol,
+                                                                 normalized_dimension_expression);
+  }
+
   const std::optional<std::string> normalized_exact_dimension_override =
       ResolveExactDimensionOverride(normalized_dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =

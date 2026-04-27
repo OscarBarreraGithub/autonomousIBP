@@ -18274,6 +18274,211 @@ void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTe
          "solver diagnostics verbatim");
 }
 
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-use-cache"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-use-cache.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.0625;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.125;
+  seed_solver.returned_diagnostics.summary =
+      "seeded lightlike-linear derivative solved-path cache diagnostic";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          seed_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          "x",
+          std::optional<std::string>{"5"},
+          std::optional<std::string>{"7"},
+          std::optional<amflow::AmfSolveRuntimePolicy>{},
+          true);
+
+  Expect(seed_solver.call_count() == 1,
+         "reviewed lightlike linear derivative UseCache seeding should call the solver once");
+  const std::string seeded_manifest =
+      ReadFile(RequireOnlySolvedPathCacheManifestPath(
+          layout,
+          "reviewed lightlike linear derivative UseCache seeding should write one solved-path "
+          "cache manifest"));
+  ExpectContains(seeded_manifest,
+                 "solve_kind: \"lightlike-linear-auxiliary-derivative-series\"",
+                 "reviewed lightlike linear derivative UseCache manifest should preserve the "
+                 "lightlike solve-kind identity");
+  ExpectContains(seeded_manifest,
+                 "amf_requested_d0=7",
+                 "reviewed lightlike linear derivative UseCache manifest should summarize the "
+                 "D0 carrier");
+  ExpectContains(seeded_manifest,
+                 "amf_requested_dimension_expression=5",
+                 "reviewed lightlike linear derivative UseCache manifest should summarize the "
+                 "dimension carrier");
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"cache replay should avoid live lightlike reduction\" 1>&2\n"
+      "exit 19\n");
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.summary =
+      "live solver should not be called on matching lightlike cache replay";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          replay_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          "x",
+          std::optional<std::string>{"5"},
+          std::optional<std::string>{"7"},
+          std::optional<amflow::AmfSolveRuntimePolicy>{},
+          true);
+
+  Expect(replay_solver.call_count() == 0,
+         "reviewed lightlike linear derivative UseCache replay should return the cached "
+         "diagnostics without invoking the reducer or solver");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seeded_diagnostics),
+         "reviewed lightlike linear derivative UseCache replay should return the seeded cached "
+         "diagnostics exactly");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesChangedRuntimePolicyTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  amflow::AmfSolveRuntimePolicy seed_runtime_policy;
+  seed_runtime_policy.extra_x_order = 3;
+  seed_runtime_policy.learn_x_order = 5;
+  seed_runtime_policy.test_x_order = 7;
+  seed_runtime_policy.run_length = 101;
+
+  amflow::AmfSolveRuntimePolicy live_runtime_policy;
+  live_runtime_policy.extra_x_order = 11;
+  live_runtime_policy.learn_x_order = 13;
+  live_runtime_policy.test_x_order = 17;
+  live_runtime_policy.run_length = 1009;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-use-cache-runtime"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-use-cache-runtime.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "seeded lightlike-linear derivative runtime-policy cache diagnostic";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{seed_runtime_policy},
+      true));
+  Expect(seed_solver.call_count() == 1,
+         "reviewed lightlike linear derivative runtime-policy cache seeding should call the "
+         "solver once");
+
+  RecordingSeriesSolver live_solver;
+  live_solver.returned_diagnostics.success = true;
+  live_solver.returned_diagnostics.summary =
+      "live lightlike-linear derivative runtime-policy cache diagnostic";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          live_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          "x",
+          std::optional<std::string>{"5"},
+          std::optional<std::string>{"7"},
+          std::optional<amflow::AmfSolveRuntimePolicy>{live_runtime_policy},
+          true);
+
+  Expect(live_solver.call_count() == 1,
+         "reviewed lightlike linear derivative UseCache should reject stale cache entries when "
+         "the AMF runtime policy changes");
+  Expect(SameSolverDiagnostics(diagnostics, live_solver.returned_diagnostics),
+         "reviewed lightlike linear derivative UseCache should return the live diagnostics after "
+         "runtime-policy invalidation");
+  Expect(live_solver.last_request().amf_runtime_policy.has_value() &&
+             SameAmfSolveRuntimePolicy(*live_solver.last_request().amf_runtime_policy,
+                                       live_runtime_policy),
+         "reviewed lightlike linear derivative UseCache invalidation should still forward the "
+         "changed runtime policy onto the live SolveRequest");
+  const std::string refreshed_manifest =
+      ReadFile(RequireOnlySolvedPathCacheManifestPath(
+          layout,
+          "reviewed lightlike linear derivative runtime-policy invalidation should keep one "
+          "refreshed solved-path cache manifest"));
+  ExpectContains(refreshed_manifest,
+                 "run_length=1009",
+                 "reviewed lightlike linear derivative runtime-policy invalidation should "
+                 "refresh the manifest request summary with the live runtime policy");
+}
+
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-exec-failure"));
@@ -42386,6 +42591,8 @@ int main() {
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressionTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesD0ForExactEpsBindingTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesChangedRuntimePolicyTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();

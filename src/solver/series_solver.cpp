@@ -3077,6 +3077,47 @@ std::string BuildEtaGeneratedSolveInputFingerprint(
   return ComputeArtifactFingerprint(out.str());
 }
 
+std::string BuildLightlikeLinearAuxiliaryDerivativeSolveInputFingerprint(
+    const std::string& solve_kind,
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<std::string>& dimension_expression,
+    const int requested_digits,
+    const std::string& x_symbol) {
+  std::ostringstream out;
+  out << "solve_kind=" << solve_kind << "\n";
+  out << "spec_yaml:\n" << SerializeProblemSpecYaml(spec) << "\n";
+  out << "master_basis:\n" << SerializeParsedMasterListForFingerprint(master_basis);
+  out << "propagator_index=" << propagator_index << "\n";
+  out << "reduction_options:\n" << SerializeReductionOptionsYaml(options) << "\n";
+  out << "solver_replay_fingerprint=" << BuildSeriesSolverReplayFingerprint(solver) << "\n";
+  out << "start_location=" << start_location << "\n";
+  out << "target_location=" << target_location << "\n";
+  out << "requested_digits=" << requested_digits << "\n";
+  out << "x_symbol=" << x_symbol << "\n";
+  out << "precision_policy:\n" << SerializePrecisionPolicyForFingerprint(precision_policy);
+  out << "amf_runtime_policy:\n"
+      << SerializeOptionalAmfSolveRuntimePolicyForFingerprint(amf_runtime_policy);
+  out << "amf_requested_d0:\n"
+      << SerializeOptionalAmfRequestedD0ForFingerprint(amf_requested_d0);
+  out << "dimension_expression:\n"
+      << SerializeOptionalAmfRequestedDimensionExpressionForFingerprint(dimension_expression);
+  out << "symbolic_dimension_rewrite_epoch="
+      << (HasSymbolicPublicDimensionExpression(dimension_expression)
+              ? SymbolicDimensionRewriteCacheEpoch()
+              : "none")
+      << "\n";
+  return ComputeArtifactFingerprint(out.str());
+}
+
 std::string SanitizeCacheSlotComponent(const std::string& value) {
   std::string sanitized;
   sanitized.reserve(value.size());
@@ -3088,6 +3129,28 @@ std::string SanitizeCacheSlotComponent(const std::string& value) {
     sanitized.push_back(safe ? character : '-');
   }
   return sanitized.empty() ? "unnamed" : sanitized;
+}
+
+std::string MakeLightlikeLinearAuxiliaryDerivativeSolvedPathCacheSlotName(
+    const std::string& solve_kind,
+    const ProblemSpec& spec,
+    const std::size_t propagator_index,
+    const std::string& x_symbol,
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<std::string>& dimension_expression) {
+  std::string slot_name = solve_kind + "-" + SanitizeCacheSlotComponent(spec.family.name) +
+                          "-p" + std::to_string(propagator_index) + "-" +
+                          SanitizeCacheSlotComponent(x_symbol);
+  if (amf_requested_d0.has_value()) {
+    slot_name += "-" + SanitizeCacheSlotComponent(*amf_requested_d0);
+  }
+  if (dimension_expression.has_value()) {
+    slot_name += "-dimension-" + SanitizeCacheSlotComponent(*dimension_expression);
+    if (HasSymbolicPublicDimensionExpression(dimension_expression)) {
+      slot_name += "-" + std::string(SymbolicDimensionRewriteCacheEpoch());
+    }
+  }
+  return slot_name;
 }
 
 std::string MakeSolvedPathCacheSlotName(const std::string& solve_kind,
@@ -5016,12 +5079,84 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     const std::optional<std::string>& dimension_expression,
     const std::optional<std::string>& amf_requested_d0,
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy) {
+  return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                               master_basis,
+                                                               propagator_index,
+                                                               options,
+                                                               layout,
+                                                               kira_executable,
+                                                               fermat_executable,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               x_symbol,
+                                                               dimension_expression,
+                                                               amf_requested_d0,
+                                                               amf_runtime_policy,
+                                                               false);
+}
+
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression,
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
+    const bool use_cache) {
   const std::optional<std::string> normalized_dimension_expression =
       NormalizeLightlikeLinearDimensionExpression(dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessGeneratedSolvePhysicalKinematics(spec);
       diagnostics.has_value()) {
     return *diagnostics;
+  }
+
+  SolvedPathCacheContext cache_context;
+  if (use_cache) {
+    cache_context.replay_enabled = true;
+    cache_context.solve_kind = "lightlike-linear-auxiliary-derivative-series";
+    cache_context.slot_name =
+        MakeLightlikeLinearAuxiliaryDerivativeSolvedPathCacheSlotName(
+            cache_context.solve_kind,
+            spec,
+            propagator_index,
+            x_symbol,
+            amf_requested_d0,
+            normalized_dimension_expression);
+    cache_context.input_fingerprint =
+        BuildLightlikeLinearAuxiliaryDerivativeSolveInputFingerprint(
+            cache_context.solve_kind,
+            spec,
+            master_basis,
+            propagator_index,
+            options,
+            solver,
+            start_location,
+            target_location,
+            precision_policy,
+            amf_runtime_policy,
+            amf_requested_d0,
+            normalized_dimension_expression,
+            requested_digits,
+            x_symbol);
+    const SolvedPathCacheReplayResult replay =
+        TryReplaySolvedPathCache(layout, cache_context);
+    if (replay.status == SolvedPathCacheReplayStatus::Hit && replay.diagnostics->success) {
+      return *replay.diagnostics;
+    }
   }
 
   SolveRequest request;
@@ -5046,7 +5181,11 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
                                       amf_requested_d0,
                                       normalized_dimension_expression,
                                       requested_digits);
-  return SolveWithPrecisionRetry(solver, std::move(request));
+  const SolverDiagnostics diagnostics = SolveWithPrecisionRetry(solver, request);
+  if (use_cache && diagnostics.success) {
+    PersistSolvedPathCacheManifest(layout, cache_context, request, diagnostics);
+  }
+  return diagnostics;
 }
 
 SolverDiagnostics SolveEtaGeneratedSeries(

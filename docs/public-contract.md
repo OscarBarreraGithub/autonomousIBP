@@ -41,12 +41,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64u`, all of which stay
+  not-yet-accepted public/runtime seams described below through `Batch 64x`, all of which stay
   below the last fully accepted public/runtime contract;
   the current worktree now also carries the local-only narrow `Batch 62j` raw single-invariant
   `msq`-segment singular-crossing continuation guardrail packet, which likewise does not widen
   the last fully accepted public/runtime contract;
-  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64u`
+  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64x`
   linear-propagator packets, which likewise stay below the last fully accepted public/runtime
   contract;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
@@ -386,13 +386,16 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   identity-fallback reduction results, the first
   `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)` library-only DE-assembly
   consumer that composes that reviewed generated-`x` execution seam with generated-row
-  reduction assembly on the same one-external lightlike subset, and the first
+  reduction assembly on the same one-external lightlike subset, the first
+  `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)` injected-solver handoff with
+  optional dimension-expression, D0, runtime-policy, and explicit solved-path cache carriers, and
+  the first
   `RunReviewedLightlikeLinearAuxiliaryReduction(...)` reduction-execution wrapper that runs the
   retained-target prepared packet on the same reviewed subset, records the reducer working-
   directory artifact root, and parses reducer outputs while preserving identity-fallback
   reduction results. Live complex contour execution, broader phase-space topology/provider
-  behavior, broader non-invariant linear solver behavior, solver-path consumers of that
-  generated-`x` lightlike linear-driver transform, broader AMFlow-faithful `x` / gauge-link
+  behavior, broader non-invariant linear solver behavior, `AmfOptions` selection for the
+  lightlike-linear driver, `skip_reduction` replay, broader AMFlow-faithful `x` / gauge-link
   linear-driver parity, and wider symbolic runtime parity remain deferred
 
 ## Core Types
@@ -497,7 +500,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `LightlikeLinearAuxiliaryDerivativeReductionPreparation` plus `PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)`: the first explicit-target Kira-preparation consumer of that same reviewed generated-`x` helper/transform seam, applying the full-spec lightlike rewrite over one explicit `variant: "linear"` propagator on the reviewed one-external `n*n = 0` subset, synthesizing the reviewed auxiliary generated-`x` target list, and then delegating to `KiraBackend::PrepareForTargets(...)` over those generated targets without mutating the input `ProblemSpec`
 - `LightlikeLinearAuxiliaryDerivativeReductionExecution` plus `RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)`: typed execution-only orchestration over that same reviewed generated-`x` preparation seam, reducer launch, and parsed-result ingestion, preserving the transformed preparation metadata and parsed identity-fallback results while still deferring DE assembly and solver behavior; the optional dimension-expression overload canonicalizes exactly evaluable values into the leading reducer `-sd=<dimension>` argument and leaves symbolic values for downstream DE substitution
 - `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)`: the first library-only DE-assembly consumer over that same reviewed generated-`x` execution seam, requiring successful reducer execution, preserving the transformed generated-`x` variable and master basis, and assembling one `DESystem` through the ordinary generated-row reduction path while still deferring solver behavior; the optional dimension-expression overload mirrors the generated-eta exact `-sd=<dimension>` / symbolic standalone-`dimension` rewrite split
-- `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)`: the first library-only solver handoff over the reviewed generated-`x` lightlike-linear DE consumer, forwarding the assembled auxiliary-`x` `DESystem`, continuation endpoints, precision policy, requested digits, optional normalized public dimension expression, optional requested-`D0` metadata, and optional AMF runtime-policy metadata into an injected `SeriesSolver` while classifying reducer master-basis drift as `master_set_instability`; the metadata-only runtime-policy carrier does not add `AmfOptions` selection, solved-path cache behavior, or `skip_reduction` replay on this helper
+- `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)`: the first library-only solver handoff over the reviewed generated-`x` lightlike-linear DE consumer, forwarding the assembled auxiliary-`x` `DESystem`, continuation endpoints, precision policy, requested digits, optional normalized public dimension expression, optional requested-`D0` metadata, and optional AMF runtime-policy metadata into an injected `SeriesSolver` while classifying reducer master-basis drift as `master_set_instability`; the matching explicit `use_cache` overload opts into the existing solved-path cache manifest surface for successful diagnostics only, keyed by the reviewed lightlike solve identity, spec, master basis, selected propagator, reduction options, solver type, endpoints, precision policy, runtime policy, D0, dimension expression, requested digits, and `x_symbol`. This remains helper-local cache replay only and does not add `AmfOptions` selection or `skip_reduction` replay
 - `LightlikeLinearAuxiliaryReductionExecution` plus `RunReviewedLightlikeLinearAuxiliaryReduction(...)`: typed execution-only orchestration over that same reviewed lightlike-linear preparation seam, reducer launch, and parsed-result ingestion, preserving the transformed preparation metadata and parsed identity-fallback results while still deferring generated-`x` target synthesis, DE assembly, and solver behavior
 
 ## Runtime Boundaries
@@ -586,22 +589,33 @@ The solved-path cache surface is also intentionally narrow:
   `SolvedPathCacheManifest` under `layout.root/cache/solved-paths/<slot>.yaml`; on the current
   worktree, the shared planned helper and the direct eta-generated complex deferral path also
   persist one reviewed deferred complex-continuation diagnostic there on distinct complex-only
-  slots
-- the slot is deterministic from the wrapper kind, `spec.family.name`, the selected
+  slots, and the explicit `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(..., use_cache)`
+  overload uses the same manifest type for successful reviewed lightlike-linear generated-`x`
+  solve diagnostics only
+- the eta-wrapper slot is deterministic from the wrapper kind, `spec.family.name`, the selected
   `EtaInsertionDecision.mode_name`, `eta_symbol`, and optional wrapper-owned
   `amf_requested_d0`, so D0-only changes do not alias the same solved-path cache slot; the
   reviewed deferred complex-continuation helper path also appends the dedicated
   `complex-continuation-deferred-v1` cache epoch so those deferred complex artifacts do not alias
   the live real-kinematics slots, and that epoch is the explicit replay-version fence for later
   replay-affecting contour-planning or eta-generated-system changes on the non-`skip_reduction`
-  deferred-complex path
-- the manifest records an input fingerprint over the actual wrapper-owned solve inputs:
+  deferred-complex path. The lightlike-linear slot is separately deterministic from the
+  lightlike solve kind, `spec.family.name`, selected propagator index, `x_symbol`, optional D0,
+  and optional dimension expression, with the symbolic-dimension rewrite epoch appended only for
+  symbolic dimension carriers
+- the eta manifest records an input fingerprint over the actual wrapper-owned solve inputs:
   `ProblemSpec`, the ordered parsed master basis, the selected `EtaInsertionDecision`,
   `ReductionOptions`, the concrete supplied `SeriesSolver` type used for replay, start and target
   locations, `requested_digits`, the full live `PrecisionPolicy`, and the optional live
   `AmfSolveRuntimePolicy`; it also records a post-build `SolveRequest` fingerprint plus a short
   request summary that stay truthful to wrapper-owned requested-`D0` metadata, and the reviewed
-  deferred complex helper path additionally folds in the planned contour fingerprint before replay
+  deferred complex helper path additionally folds in the planned contour fingerprint before
+  replay. The lightlike-linear `use_cache` overload instead fingerprints the reviewed lightlike
+  solve kind, `ProblemSpec`, ordered parsed master basis, selected propagator index,
+  `ReductionOptions`, concrete supplied `SeriesSolver` type, start and target locations,
+  `requested_digits`, `x_symbol`, full `PrecisionPolicy`, optional `AmfSolveRuntimePolicy`,
+  optional requested D0, optional normalized dimension expression, and the symbolic-dimension
+  rewrite epoch before replay
 - `amf_options.use_cache == true` enables replay only on those two `AmfOptions` eta wrappers:
   matching successful manifests replay the stored `SolverDiagnostics` without invoking the
   supplied solver; on the current reviewed deferred complex-continuation subset, the same cache
@@ -614,6 +628,9 @@ The solved-path cache surface is also intentionally narrow:
   `SolveEtaGeneratedSeries(...)` complex-deferral path now reuses the same deferred-diagnostic
   replay shape unconditionally on matching complex-only cache artifacts because that direct public
   handoff has no separate cache-control flag
+- the explicit lightlike-linear `use_cache` overload enables replay only for matching successful
+  diagnostics on its helper-local lightlike slot; stale, failed, or eta-shaped deferred-complex
+  diagnostics on that slot fall back to live lightlike reduction and solver execution
 - when `amf_options.skip_reduction == true` is also set on those wrappers, replay is still gated
   on rebuilding and validating the current wrapper-owned prepared state first, so missing or
   mismatched prepared reducer inputs or reduction artifacts fail explicitly instead of replaying
@@ -1366,7 +1383,7 @@ The first auxiliary-family transformation seam is also intentionally narrow:
 - `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)` is the first still-narrow Kira-preparation consumer of that helper/transform seam: on that same reviewed one-external lightlike subset it applies the full-spec transform, preserves the transformed `x_symbol` and rewritten propagator index in the returned typed result, and then delegates to `KiraBackend::Prepare(...)` so emitted `integralfamilies.yaml` reflects the rewritten quadratic driver, emitted `kinematics.yaml` mirrors the transformed invariant surface on that reviewed subset, and emitted `target` stays on the retained `ProblemSpec.targets` surface
 - `PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)` is the first still-narrow explicit-target Kira-preparation consumer of that same generated-`x` helper/transform seam: on the same reviewed one-external lightlike subset it applies the full-spec transform, synthesizes the reviewed generated auxiliary `x` variable through `GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(...)`, rejects the empty-generated-target case locally, preserves the transformed `x_symbol` and rewritten propagator index in the returned typed result, and then delegates to `KiraBackend::PrepareForTargets(...)` so emitted `integralfamilies.yaml` and `kinematics.yaml` stay on the transformed reviewed subset while emitted `target` becomes the generated-`x` target list rather than the retained `ProblemSpec.targets` surface
 - `RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)` is the next still-narrow live reducer consumer of that explicit-target generated-`x` seam: on the same reviewed one-external lightlike subset it reuses `PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(...)`, executes the prepared reducer packet, requires a recorded execution working-directory artifact root on success, and parses reduction results from that recorded root while preserving `ParsedReductionStatus::IdentityFallback` when the reducer emits no explicit rules. Its matching dimension-expression overload mirrors the reviewed generated-eta surface: exactly evaluable expressions are canonicalized into a leading `-sd=<dimension>` Kira argument, while symbolic expressions leave reducer launch unchanged for later DE-level substitution.
-- `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)` and `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)` now carry that same reviewed generated-`x` seam through library-only DE assembly and then an injected-solver handoff: the solver wrapper forwards only the assembled auxiliary-`x` `DESystem`, caller continuation endpoints, precision policy, and requested digits into `SolveWithPrecisionRetry(...)`, preserves upstream reducer/assembly failures without invoking the solver, maps reducer master-basis drift onto the reviewed `master_set_instability` diagnostic, and on the optional dimension-expression overload records the normalized public dimension expression on the forwarded `SolveRequest` while using exact `-sd=<dimension>` reducer execution or symbolic standalone-`dimension` substitution in the assembled `DESystem`. This remains a narrow solver handoff only, not broader AMFlow-faithful lightlike gauge-link parity or wrapper/cache behavior
+- `BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(...)` and `SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(...)` now carry that same reviewed generated-`x` seam through library-only DE assembly and then an injected-solver handoff: the solver wrapper forwards only the assembled auxiliary-`x` `DESystem`, caller continuation endpoints, precision policy, and requested digits into `SolveWithPrecisionRetry(...)`, preserves upstream reducer/assembly failures without invoking the solver, maps reducer master-basis drift onto the reviewed `master_set_instability` diagnostic, and on the optional dimension-expression overload records the normalized public dimension expression on the forwarded `SolveRequest` while using exact `-sd=<dimension>` reducer execution or symbolic standalone-`dimension` substitution in the assembled `DESystem`. Its explicit `use_cache` overload opts into the existing solved-path cache manifest/replay surface for successful diagnostics and fingerprints the reviewed lightlike solve inputs plus D0, dimension, and runtime-policy carriers before replay. This remains a narrow helper-local solver handoff/cache path only, not broader AMFlow-faithful lightlike gauge-link parity, `AmfOptions` selection, or `skip_reduction` behavior
 - `RunReviewedLightlikeLinearAuxiliaryReduction(...)` is the first still-narrow live reducer consumer of that helper/transform seam: on the same reviewed one-external lightlike subset it reuses `PrepareReviewedLightlikeLinearAuxiliaryReduction(...)`, executes the prepared reducer packet, requires a recorded execution working-directory artifact root on success, and parses reduction results from that recorded root while preserving `ParsedReductionStatus::IdentityFallback` when the reducer emits no explicit rules
 - `GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(...)` is the first still-narrow generated-`x` consumer of that helper/transform seam: on the same reviewed one-external lightlike subset it preserves the trimmed `x_symbol`, requires that symbol to remain exclusive to the injected rewritten `x` prefix across the transformed family, extracts the rewritten quadratic driver, and routes the current matched one-term drivers plus matched integer-coefficient loop-linear driver combinations through the reviewed invariant factor-matching path for that symbol before retagging the resulting variable as `DifferentiationVariableKind::Auxiliary`; generated targets then raise the rewritten slot, consume the matched quadratic-driver slot, and fold any matched driver coefficient into the row coefficient while deduplicating generated reduction targets in first-appearance order without mutating either input. Wholly grouped global rational scaling stays on the existing normalization path, while broader ungrouped rational-coefficient sums, extracted-driver no-match cases, and broader reused-`x` surfaces remain deferred and currently fail closed with deterministic helper-local diagnostics
 - the pure helper and full-spec transform still do not touch eta planning, the retained preparation/execution helper pair still does not add generated-`x` preparation, and the explicit-target generated-`x` DE/solver seam still does not add broader wrapper/cache behavior, broader multi-external grammar, loop/external denominators, live `AmfOptions` integration, or otherwise more general AMFlow-faithful linear-driver parity

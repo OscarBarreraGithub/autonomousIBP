@@ -3332,6 +3332,13 @@ std::string MakeAutoInvariantLinearDerivativeRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantLinearDerivativeEpsRuleFile() {
+  return "{\n"
+         "  toy_auto_linear_family[0,1,2] -> "
+         "(2*eps-1)*toy_auto_linear_family[1,1,1]\n"
+         "}\n";
+}
+
 std::string MakeAutoEtaLinearRuleFile() {
   return "{\n"
          "  toy_auto_linear_family[2,1,1] -> 3*toy_auto_linear_family[1,1,1]\n"
@@ -18079,6 +18086,68 @@ void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressio
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
          "return solver diagnostics verbatim");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesD0ForExactEpsBindingTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-d0"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-d0.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeEpsRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative D0/dimension-expression solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          61,
+          "x",
+          std::optional<std::string>{"5"},
+          std::optional<std::string>{"6"});
+
+  Expect(solver.call_count() == 1,
+         "reviewed lightlike linear auxiliary derivative D0 solver should call the supplied "
+         "solver once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(request.amf_requested_d0 == std::optional<std::string>{"6"},
+         "reviewed lightlike linear auxiliary derivative D0 solver should preserve the "
+         "caller-supplied D0 carrier on SolveRequest");
+  Expect(request.amf_requested_dimension_expression == std::optional<std::string>{"5"},
+         "reviewed lightlike linear auxiliary derivative D0 solver should preserve the "
+         "canonical exact dimension expression on SolveRequest");
+  Expect(request.system.coefficient_matrices.at("x").front().front().find("eps") !=
+             std::string::npos,
+         "reviewed lightlike linear auxiliary derivative D0 solver should leave eps-sensitive "
+         "generated-x coefficients for the solver request binding surface");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "reviewed lightlike linear auxiliary derivative D0 solver should preserve the "
+         "precision policy");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "reviewed lightlike linear auxiliary derivative D0 solver should return solver "
+         "diagnostics verbatim");
 }
 
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest() {
@@ -42190,6 +42259,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallbackResultsTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesHappyPathTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressionTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesD0ForExactEpsBindingTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();

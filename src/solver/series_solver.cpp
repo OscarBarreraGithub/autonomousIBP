@@ -4947,6 +4947,39 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     const int requested_digits,
     const std::string& x_symbol,
     const std::optional<std::string>& dimension_expression) {
+  return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                               master_basis,
+                                                               propagator_index,
+                                                               options,
+                                                               layout,
+                                                               kira_executable,
+                                                               fermat_executable,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               x_symbol,
+                                                               dimension_expression,
+                                                               std::nullopt);
+}
+
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression,
+    const std::optional<std::string>& amf_requested_d0) {
   const std::optional<std::string> normalized_dimension_expression =
       NormalizeLightlikeLinearDimensionExpression(dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
@@ -4972,6 +5005,7 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;
+  request.amf_requested_d0 = amf_requested_d0;
   request.amf_requested_dimension_expression = normalized_dimension_expression;
   request.requested_digits = requested_digits;
   return SolveWithPrecisionRetry(solver, std::move(request));

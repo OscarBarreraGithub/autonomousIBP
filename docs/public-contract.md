@@ -41,12 +41,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Kira rational-function prefactor surface at `ab4a311`, the landed xints `insert_prefactors`
   packet at `b367daf`, landed `Batch 58h` at `53a6630`, landed `Batch 58i` at `9b619f1`, and the
   landed narrow `Milestone M3` closure packet at `7dee2a0`, plus the later landed narrow
-  not-yet-accepted public/runtime seams described below through `Batch 64s`, all of which stay
+  not-yet-accepted public/runtime seams described below through `Batch 64u`, all of which stay
   below the last fully accepted public/runtime contract;
   the current worktree now also carries the local-only narrow `Batch 62j` raw single-invariant
   `msq`-segment singular-crossing continuation guardrail packet, which likewise does not widen
   the last fully accepted public/runtime contract;
-  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64s`
+  the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64u`
   linear-propagator packets, which likewise stay below the last fully accepted public/runtime
   contract;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate

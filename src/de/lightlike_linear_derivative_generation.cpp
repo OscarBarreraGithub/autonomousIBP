@@ -4,8 +4,10 @@
 #include "amflow/solver/coefficient_evaluator.hpp"
 
 #include <cctype>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace amflow {
 
@@ -54,6 +56,173 @@ std::string StripOneOuterParenthesisPair(const std::string& value) {
     }
   }
   return value.substr(1, value.size() - 2);
+}
+
+std::string TrimWhitespace(const std::string& value) {
+  const std::size_t first = value.find_first_not_of(" \t\r\n");
+  if (first == std::string::npos) {
+    return "";
+  }
+  const std::size_t last = value.find_last_not_of(" \t\r\n");
+  return value.substr(first, last - first + 1);
+}
+
+std::optional<std::size_t> FindFirstTopLevelMultiplication(const std::string& value) {
+  int depth = 0;
+  for (std::size_t index = 0; index < value.size(); ++index) {
+    const char ch = value[index];
+    if (ch == '(') {
+      ++depth;
+      continue;
+    }
+    if (ch == ')') {
+      --depth;
+      continue;
+    }
+    if (ch == '*' && depth == 0) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+std::vector<std::string> SplitTopLevelAdditiveTerms(const std::string& value) {
+  std::vector<std::string> terms;
+  std::size_t begin = 0;
+  int depth = 0;
+  for (std::size_t index = 0; index < value.size(); ++index) {
+    const char ch = value[index];
+    if (ch == '(') {
+      ++depth;
+      continue;
+    }
+    if (ch == ')') {
+      --depth;
+      continue;
+    }
+    if (depth == 0 && (ch == '+' || ch == '-') && index != begin) {
+      terms.push_back(value.substr(begin, index - begin));
+      begin = index;
+    }
+  }
+  terms.push_back(value.substr(begin));
+  return terms;
+}
+
+std::string AbsoluteRationalString(const ExactRational& value) {
+  std::string numerator = value.numerator;
+  if (!numerator.empty() && numerator.front() == '-') {
+    numerator.erase(numerator.begin());
+  }
+  if (value.denominator == "1") {
+    return numerator;
+  }
+  return numerator + "/" + value.denominator;
+}
+
+bool IsNegativeRational(const ExactRational& value) {
+  return !value.numerator.empty() && value.numerator.front() == '-';
+}
+
+struct AdditiveDriverTerm {
+  std::string magnitude;
+  bool negative = false;
+  std::string body;
+};
+
+std::optional<AdditiveDriverTerm> ParseCommonCoefficientAdditiveDriverTerm(
+    const std::string& raw_term) {
+  std::string term = TrimWhitespace(raw_term);
+  if (term.empty()) {
+    return std::nullopt;
+  }
+
+  bool leading_negative = false;
+  if (term.front() == '+' || term.front() == '-') {
+    leading_negative = term.front() == '-';
+    term = TrimWhitespace(term.substr(1));
+  }
+
+  const std::optional<std::size_t> split = FindFirstTopLevelMultiplication(term);
+  if (!split.has_value()) {
+    return std::nullopt;
+  }
+
+  const std::string coefficient = TrimWhitespace(term.substr(0, *split));
+  const std::string body = TrimWhitespace(term.substr(*split + 1));
+  if (coefficient.empty() || body.empty()) {
+    return std::nullopt;
+  }
+
+  try {
+    const ExactRational signed_coefficient = EvaluateCoefficientExpression(
+        leading_negative ? "(-1)*(" + coefficient + ")" : coefficient,
+        NumericEvaluationPoint{});
+    if (signed_coefficient.IsZero()) {
+      return std::nullopt;
+    }
+    return AdditiveDriverTerm{
+        AbsoluteRationalString(signed_coefficient),
+        IsNegativeRational(signed_coefficient),
+        body,
+    };
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+std::optional<std::string> NormalizeCommonCoefficientAdditiveQuadraticDriver(
+    const std::string& inner) {
+  const std::vector<std::string> raw_terms = SplitTopLevelAdditiveTerms(inner);
+  if (raw_terms.size() < 2) {
+    return std::nullopt;
+  }
+
+  std::vector<AdditiveDriverTerm> terms;
+  terms.reserve(raw_terms.size());
+  std::string common_magnitude;
+  for (const std::string& raw_term : raw_terms) {
+    const std::optional<AdditiveDriverTerm> term =
+        ParseCommonCoefficientAdditiveDriverTerm(raw_term);
+    if (!term.has_value()) {
+      return std::nullopt;
+    }
+    if (common_magnitude.empty()) {
+      common_magnitude = term->magnitude;
+    } else if (term->magnitude != common_magnitude) {
+      return std::nullopt;
+    }
+    terms.push_back(*term);
+  }
+
+  std::string normalized_inner;
+  for (std::size_t index = 0; index < terms.size(); ++index) {
+    const AdditiveDriverTerm& term = terms[index];
+    if (index == 0) {
+      if (term.negative) {
+        normalized_inner += "-";
+      }
+    } else {
+      normalized_inner += term.negative ? "-" : "+";
+    }
+    normalized_inner += term.body;
+  }
+  if (normalized_inner.empty()) {
+    return std::nullopt;
+  }
+
+  try {
+    const std::string squared_coefficient =
+        EvaluateCoefficientExpression("(" + common_magnitude + ")*(" + common_magnitude + ")",
+                                      NumericEvaluationPoint{})
+            .ToString();
+    if (squared_coefficient == "1") {
+      return "(" + normalized_inner + ")^2";
+    }
+    return "(" + squared_coefficient + ")*((" + normalized_inner + ")^2)";
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
 }
 
 std::string ExtractReviewedLightlikeQuadraticDriver(
@@ -121,6 +290,11 @@ std::string NormalizeReviewedLightlikeQuadraticDriverForSeed(const std::string& 
       continue;
     }
     if (additive_depth == 0 && (ch == '+' || ch == '-')) {
+      if (const std::optional<std::string> normalized =
+              NormalizeCommonCoefficientAdditiveQuadraticDriver(inner);
+          normalized.has_value()) {
+        return *normalized;
+      }
       return driver_expression;
     }
   }

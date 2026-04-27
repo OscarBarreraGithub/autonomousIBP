@@ -3398,6 +3398,39 @@ std::string MakeAutoInvariantLinearResultScript(const bool write_rule_file,
   return script.str();
 }
 
+std::string MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+    const std::string& expected_argument,
+    const bool write_rule_file,
+    const std::string& rule_file_contents,
+    const bool write_stdout = true,
+    const int exit_code = 0) {
+  std::ostringstream script;
+  script << "#!/bin/sh\n";
+  script << "set -eu\n";
+  script << "if [ \"$1\" != " << ShellSingleQuote(expected_argument) << " ]; then\n";
+  script << "  echo \"expected-leading-arg:" << expected_argument << "; actual:$1\" 1>&2\n";
+  script << "  exit 13\n";
+  script << "fi\n";
+  script << "shift\n";
+  script << "dest=\"$PWD/results/toy_auto_linear_family\"\n";
+  script << "mkdir -p \"$dest\"\n";
+  script << "cat > \"$dest/masters\" <<'EOF'\n";
+  script << "toy_auto_linear_family[1,1,1] 0\n";
+  script << "EOF\n";
+  if (write_rule_file) {
+    script << "cat > \"$dest/kira_target.m\" <<'EOF'\n";
+    script << rule_file_contents;
+    script << "EOF\n";
+  } else {
+    script << "rm -f \"$dest/kira_target.m\"\n";
+  }
+  if (write_stdout) {
+    script << "echo \"auto-invariant-linear:$1\"\n";
+  }
+  script << "exit " << exit_code << "\n";
+  return script.str();
+}
+
 std::string MakeAutoEtaLinearResultScript(const bool write_rule_file,
                                           const std::string& rule_file_contents,
                                           const bool write_stdout = true,
@@ -17677,7 +17710,119 @@ void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemHappyPathTest() {
              matrix_it->second.size() == 1 && matrix_it->second.front().size() == 1 &&
              matrix_it->second.front().front() == "(-1)*(3)",
          "reviewed lightlike linear auxiliary derivative DE consumer should return the reviewed "
-         "generated-x matrix entry unchanged");
+             "generated-x matrix entry unchanged");
+}
+
+void RunReviewedLightlikeLinearAuxiliaryDerivativeReductionUsesExactDimensionOverrideLeadingArgumentTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-exact-dimension-run"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-exact-dimension.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::LightlikeLinearAuxiliaryDerivativeReductionExecution execution =
+      amflow::RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          " x ",
+          std::optional<std::string>{"10/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative exact-dimension reducer should not "
+         "mutate the input problem spec");
+  Expect(execution.execution_result.Succeeded(),
+         "reviewed lightlike linear auxiliary derivative exact-dimension reducer should "
+         "preserve successful reducer execution");
+  Expect(execution.preparation.backend_preparation.command_arguments.size() == 1 &&
+             execution.preparation.backend_preparation.command_arguments.front() == "-sd=5",
+         "reviewed lightlike linear auxiliary derivative exact-dimension reducer should "
+         "canonicalize the exact dimension expression before execution");
+  Expect(!execution.preparation.backend_preparation.commands.empty() &&
+             execution.preparation.backend_preparation.commands.front().find(" -sd=5 ") !=
+                 std::string::npos,
+         "reviewed lightlike linear auxiliary derivative exact-dimension reducer should "
+         "render the canonical Kira dimension argument");
+  Expect(execution.parsed_reduction_result.has_value() &&
+             execution.parsed_reduction_result->status ==
+                 amflow::ParsedReductionStatus::ParsedRules,
+         "reviewed lightlike linear auxiliary derivative exact-dimension reducer should still "
+         "parse explicit reduction rules");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemUsesExactDimensionOverrideTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-exact-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-lightlike-derivative-exact-baseline.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-exact-dimension-build"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-exact-dimension.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=6", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          "x",
+          std::optional<std::string>{"6"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative exact-dimension DE consumer should "
+         "not mutate the input problem spec");
+  Expect(amflow::ValidateDESystem(system).empty(),
+         "reviewed lightlike linear auxiliary derivative exact-dimension DE consumer should "
+         "return a valid DESystem");
+  Expect(SameDESystem(system, baseline_system),
+         "reviewed lightlike linear auxiliary derivative exact-dimension DE consumer should "
+         "preserve the reviewed assembled generated-x DESystem unchanged");
 }
 
 void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemExecutionFailureTest() {
@@ -17848,6 +17993,92 @@ void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesHappyPathTest() {
   Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
          "reviewed lightlike linear auxiliary derivative solver handoff should return solver "
          "diagnostics verbatim");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressionTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "x=1/3";
+  const std::string target_location = "x=7/9";
+  const int requested_digits = 67;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-dimension-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-lightlike-derivative-dimension-baseline.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-dimension"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-dimension.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.125;
+  solver.returned_diagnostics.overlap_mismatch = 0.25;
+  solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative dimension-expression solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          solver,
+          start_location,
+          target_location,
+          precision_policy,
+          requested_digits,
+          "x",
+          std::optional<std::string>{"10/2"});
+
+  Expect(solver.call_count() == 1,
+         "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
+         "call the supplied solver once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
+         "forward the reviewed generated-x DESystem unchanged after exact dimension reduction");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "5",
+         "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
+         "record the canonical public dimension expression on the SolveRequest");
+  Expect(request.start_location == start_location && request.target_location == target_location &&
+             SamePrecisionPolicy(request.precision_policy, precision_policy) &&
+             request.requested_digits == requested_digits,
+         "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
+         "preserve the ordinary solver request fields");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "reviewed lightlike linear auxiliary derivative dimension-expression solver should "
+         "return solver diagnostics verbatim");
 }
 
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest() {
@@ -37242,6 +37473,73 @@ ReferenceHarnessSelfCheckRun RunReferenceHarnessSelfCheck(
       message_prefix);
 }
 
+std::filesystem::path WriteCaptureSelfCheckMathkernel(const std::filesystem::path& root) {
+  const std::filesystem::path mathkernel_path = root / "bin" / "fake-mathkernel.py";
+  std::filesystem::create_directories(mathkernel_path.parent_path());
+  WriteExecutableScript(
+      mathkernel_path,
+      R"PY(#!/usr/bin/env python3
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+
+def script_argument() -> Path:
+    if "-script" not in sys.argv:
+        raise SystemExit("missing -script")
+    index = sys.argv.index("-script")
+    if index + 1 >= len(sys.argv):
+        raise SystemExit("missing script path")
+    return Path(sys.argv[index + 1])
+
+
+def canonicalize_rule_list(text: str) -> str:
+    stripped = text.strip()
+    if not (stripped.startswith("{") and stripped.endswith("}")):
+        return " ".join(stripped.split())
+    rules = []
+    for part in stripped[1:-1].split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if "->" not in item:
+            return " ".join(stripped.split())
+        lhs, rhs = item.split("->", 1)
+        rules.append((lhs.strip(), rhs.strip()))
+    if not rules:
+        return "{}"
+    return "{" + ", ".join(f"{lhs} -> {rhs}" for lhs, rhs in sorted(rules)) + "}"
+
+
+script = script_argument()
+if script.name == "run.wl":
+    Path("sol").write_text("{b -> 1, a -> 2}\n", encoding="utf-8")
+    raise SystemExit(0)
+
+payload = script.read_text(encoding="utf-8")
+spec_match = re.search(r'Import\["([^"]+)",\s*"RawJSON"\]', payload)
+output_match = re.search(r'Export\["([^"]+)",', payload)
+if spec_match is None or output_match is None:
+    raise SystemExit("unsupported synthetic canonicalize script")
+
+spec = json.loads(Path(spec_match.group(1)).read_text(encoding="utf-8"))
+files = []
+for item in spec.get("files", []):
+    canonical = canonicalize_rule_list(Path(item["path"]).read_text(encoding="utf-8"))
+    files.append(
+        {
+            "name": item["name"],
+            "canonical_sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            "canonical_text": canonical,
+        }
+    )
+Path(output_match.group(1)).write_text(json.dumps({"files": files}, sort_keys=True), encoding="utf-8")
+)PY");
+  return mathkernel_path;
+}
+
 ReferenceHarnessSelfCheckRun RunQualificationScaffoldReadinessReport() {
   std::vector<std::string> script_arguments;
   for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
@@ -37812,9 +38110,18 @@ void FreezePhase0GoldensSelfCheckLocksPlaceholderRefreshPolicyTest() {
 }
 
 void CaptureReferenceHarnessSelfCheckCoversPromotionAndResumeTest() {
-  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
+  const std::filesystem::path ignored_root =
+      FreshTempDir("amflow-reference-harness-capture-self-check-ignored-root");
+  const std::filesystem::path mathkernel_path =
+      WriteCaptureSelfCheckMathkernel(FreshTempDir("amflow-reference-harness-capture-self-check-kernel"));
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-reference-harness-capture-self-check",
       "tools/reference-harness/scripts/capture_phase0_reference.py",
+      {"--root",
+       ignored_root.string(),
+       "--self-check",
+       "--mathkernel",
+       mathkernel_path.string()},
       "capture reference-harness self-check");
   Expect(result.stderr_log.empty(),
          "capture reference-harness self-check should not emit stderr noise on success");
@@ -41874,12 +42181,15 @@ int main() {
     PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionRejectsEmptyGeneratedTargetsTest();
     PrepareReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesHelperRejectionSurfaceTest();
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionHappyPathTest();
+    RunReviewedLightlikeLinearAuxiliaryDerivativeReductionUsesExactDimensionOverrideLeadingArgumentTest();
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionExecutionFailureTest();
     RunReviewedLightlikeLinearAuxiliaryDerivativeReductionPreservesIdentityFallbackResultsTest();
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemHappyPathTest();
+    BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemUsesExactDimensionOverrideTest();
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemExecutionFailureTest();
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallbackResultsTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesHappyPathTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressionTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();

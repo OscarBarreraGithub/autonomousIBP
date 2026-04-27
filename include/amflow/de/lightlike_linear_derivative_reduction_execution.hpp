@@ -26,6 +26,18 @@ RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
     const std::filesystem::path& fermat_executable,
     const std::string& x_symbol = "x");
 
+LightlikeLinearAuxiliaryDerivativeReductionExecution
+RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression);
+
 DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -35,5 +47,16 @@ DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
     const std::filesystem::path& kira_executable,
     const std::filesystem::path& fermat_executable,
     const std::string& x_symbol = "x");
+
+DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression);
 
 }  // namespace amflow

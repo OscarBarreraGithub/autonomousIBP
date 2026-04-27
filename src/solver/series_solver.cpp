@@ -595,6 +595,22 @@ std::optional<std::string> NormalizeSolveRequestDimensionExpression(
   }
 }
 
+std::optional<std::string> NormalizeLightlikeLinearDimensionExpression(
+    const std::optional<std::string>& dimension_expression) {
+  try {
+    return NormalizePublicDimensionExpression(dimension_expression);
+  } catch (const std::invalid_argument& error) {
+    const std::string message = error.what();
+    const std::string prefix = "eta-generated dimension expression";
+    if (message.rfind(prefix, 0) == 0) {
+      throw std::invalid_argument(
+          "reviewed lightlike-linear auxiliary derivative dimension expression" +
+          message.substr(prefix.size()));
+    }
+    throw;
+  }
+}
+
 bool HasSymbolicPublicDimensionExpression(
     const std::optional<std::string>& dimension_expression) {
   return dimension_expression.has_value() &&
@@ -4900,6 +4916,39 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     const PrecisionPolicy& precision_policy,
     const int requested_digits,
     const std::string& x_symbol) {
+  return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                               master_basis,
+                                                               propagator_index,
+                                                               options,
+                                                               layout,
+                                                               kira_executable,
+                                                               fermat_executable,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               x_symbol,
+                                                               std::nullopt);
+}
+
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression) {
+  const std::optional<std::string> normalized_dimension_expression =
+      NormalizeLightlikeLinearDimensionExpression(dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
           AssessGeneratedSolvePhysicalKinematics(spec);
       diagnostics.has_value()) {
@@ -4915,13 +4964,15 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
                                                                              layout,
                                                                              kira_executable,
                                                                              fermat_executable,
-                                                                             x_symbol);
+                                                                             x_symbol,
+                                                                             normalized_dimension_expression);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
   request.start_location = start_location;
   request.target_location = target_location;
   request.precision_policy = precision_policy;
+  request.amf_requested_dimension_expression = normalized_dimension_expression;
   request.requested_digits = requested_digits;
   return SolveWithPrecisionRetry(solver, std::move(request));
 }

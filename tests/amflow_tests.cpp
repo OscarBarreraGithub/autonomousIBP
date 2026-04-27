@@ -17752,6 +17752,204 @@ void BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallb
       "fallback parse and assembly diagnostics");
 }
 
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "x=1/5";
+  const std::string target_location = "x=9/7";
+  const int requested_digits = 83;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-lightlike-derivative-solver.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-solver.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path,
+                        MakeAutoInvariantLinearResultScript(
+                            true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.015625;
+  solver.returned_diagnostics.overlap_mismatch = 0.03125;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded lightlike-linear derivative solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                                    master_basis,
+                                                                    2,
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    kira_path,
+                                                                    fermat_path,
+                                                                    solver,
+                                                                    start_location,
+                                                                    target_location,
+                                                                    precision_policy,
+                                                                    requested_digits,
+                                                                    " x ");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative solver handoff should not mutate the "
+         "input problem spec");
+  Expect(solver.call_count() == 1,
+         "reviewed lightlike linear auxiliary derivative solver handoff should call the "
+         "supplied solver exactly once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "reviewed lightlike linear auxiliary derivative solver handoff should forward the "
+         "reviewed generated-x DESystem unchanged into SolveRequest");
+  Expect(request.system.variables.size() == 1 && request.system.variables.front().name == "x" &&
+             request.system.variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve the "
+         "auxiliary x variable");
+  Expect(request.system.coefficient_matrices.at("x").size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0][0] == "(-1)*(3)",
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve the "
+         "generated-x matrix entry");
+  Expect(request.start_location == start_location && request.target_location == target_location,
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve the "
+         "continuation endpoints");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve every "
+         "precision-policy field");
+  Expect(request.requested_digits == requested_digits,
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve "
+         "requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "reviewed lightlike linear auxiliary derivative solver handoff should return solver "
+         "diagnostics verbatim");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-exec-failure"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-solver-fail.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"expected-lightlike-derivative-solver-failure\" 1>&2\n"
+      "exit 9\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&layout, &kira_path, &fermat_path, &solver]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            MakeAutoInvariantLinearProblemSpec(),
+            MakeAutoInvariantLinearMasterBasis(),
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            55));
+      },
+      "reviewed lightlike linear auxiliary derivative solver handoff should preserve upstream "
+      "DE-construction failure");
+
+  Expect(message.find(
+             "reviewed lightlike-linear auxiliary derivative DE construction requires "
+             "successful reducer execution") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative solver handoff should report reducer "
+         "execution failure");
+  Expect(message.find("status=completed") != std::string::npos &&
+             message.find("exit_code=9") != std::string::npos,
+         "reviewed lightlike linear auxiliary derivative solver handoff should preserve reducer "
+         "status and exit code");
+  Expect(solver.call_count() == 0,
+         "reviewed lightlike linear auxiliary derivative solver handoff should not call the "
+         "solver when DE construction fails");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest() {
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-drift"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-solver-drift.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "set -eu\n"
+      "dest=\"$PWD/results/toy_auto_linear_family\"\n"
+      "mkdir -p \"$dest\"\n"
+      "cat > \"$dest/masters\" <<'EOF'\n"
+      "toy_auto_linear_family[1,1,2] 0\n"
+      "EOF\n"
+      "cat > \"$dest/kira_target.m\" <<'EOF'\n"
+      "{\n"
+      "  toy_auto_linear_family[0,1,2] -> 3*toy_auto_linear_family[1,1,2]\n"
+      "}\n"
+      "EOF\n"
+      "exit 0\n");
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          MakeAutoInvariantLinearProblemSpec(),
+          MakeAutoInvariantLinearMasterBasis(),
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          solver,
+          "x=0",
+          "x=1",
+          MakeDistinctPrecisionPolicy(),
+          55);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "master_set_instability",
+         "reviewed lightlike linear auxiliary derivative solver handoff should classify reducer "
+         "master-basis drift as master_set_instability");
+  ExpectContains(diagnostics.summary,
+                 "variable \"x\" reduction master basis does not match assembly master basis",
+                 "reviewed lightlike linear auxiliary derivative solver handoff should preserve "
+                 "the generated-x drift context");
+  Expect(solver.call_count() == 0,
+         "reviewed lightlike linear auxiliary derivative solver handoff should not call the "
+         "solver after reducer master-basis drift");
+}
+
 void PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest() {
   amflow::KiraBackend backend;
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
@@ -41681,6 +41879,9 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemHappyPathTest();
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemExecutionFailureTest();
     BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystemRejectsIdentityFallbackResultsTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesHappyPathTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionDoesNotDuplicateInvariantTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionPreservesHelperRejectionSurfaceTest();

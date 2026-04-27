@@ -15,6 +15,7 @@
 #include "amflow/core/options.hpp"
 #include "amflow/de/eta_reduction_execution.hpp"
 #include "amflow/de/invariant_reduction_execution.hpp"
+#include "amflow/de/lightlike_linear_derivative_reduction_execution.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/boundary_generation.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
@@ -4875,6 +4876,46 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
                                                          layout,
                                                          kira_executable,
                                                          fermat_executable);
+  } catch (const MasterSetInstabilityError& error) {
+    return MakeMasterSetInstabilityDiagnostics(error.what());
+  }
+  request.start_location = start_location;
+  request.target_location = target_location;
+  request.precision_policy = precision_policy;
+  request.requested_digits = requested_digits;
+  return SolveWithPrecisionRetry(solver, std::move(request));
+}
+
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol) {
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          AssessGeneratedSolvePhysicalKinematics(spec);
+      diagnostics.has_value()) {
+    return *diagnostics;
+  }
+
+  SolveRequest request;
+  try {
+    request.system = BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(spec,
+                                                                             master_basis,
+                                                                             propagator_index,
+                                                                             options,
+                                                                             layout,
+                                                                             kira_executable,
+                                                                             fermat_executable,
+                                                                             x_symbol);
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }

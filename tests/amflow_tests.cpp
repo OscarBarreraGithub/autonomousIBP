@@ -16234,7 +16234,63 @@ void LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoe
          "coefficient subset");
 }
 
-void LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTest() {
+void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedLoopLinearCombinationTest() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_two_loop_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k1-k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k1-k2)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"k1*n - k2*n",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_two_loop_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_two_loop_family";
+  master_basis.masters = {
+      {"toy_lightlike_two_loop_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should accept matched "
+         "two-loop lightlike driver combinations after factor matching proves the quadratic "
+         "driver exists");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "-1",
+         "matched two-loop lightlike driver generation should preserve the reviewed local "
+         "x-derivative coefficient");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_lightlike_two_loop_family[0,1,2]",
+         "matched two-loop lightlike driver generation should consume the matching quadratic "
+         "driver slot and increment the rewritten linear slot");
+  Expect(generated_variable.reduction_targets.size() == 1 &&
+             generated_variable.reduction_targets[0].Label() ==
+                 "toy_lightlike_two_loop_family[0,1,2]",
+         "matched two-loop lightlike driver generation should still deduplicate generated "
+         "reduction targets");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].expression = "k*n + 2*k*n";
 
@@ -16244,9 +16300,10 @@ void LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTe
             MakeAutoInvariantLinearMasterBasis(),
             amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
       },
-      "supports only unscaled or globally-scaled one-term quadratic drivers",
-      "reviewed lightlike linear auxiliary derivative generation should fail close on summed "
-      "quadratic drivers pending dedicated canonicalization");
+      "requires the extracted quadratic driver to match an existing transformed-family "
+      "propagator factor",
+      "reviewed lightlike linear auxiliary derivative generation should still fail close when "
+      "a summed quadratic driver has no matching transformed-family propagator");
 }
 
 void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest() {
@@ -42195,7 +42252,8 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationHappyPathTest();
     LightlikeLinearAuxiliaryDerivativeGenerationNegativeExponentTest();
     LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoefficientTest();
-    LightlikeLinearAuxiliaryDerivativeGenerationRejectsSummedQuadraticDriversTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedLoopLinearCombinationTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolOutsideRewrittenPropagatorTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolInsideRewrittenTailTest();

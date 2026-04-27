@@ -121,9 +121,7 @@ std::string NormalizeReviewedLightlikeQuadraticDriverForSeed(const std::string& 
       continue;
     }
     if (additive_depth == 0 && (ch == '+' || ch == '-')) {
-      throw std::runtime_error(
-          "reviewed lightlike linear auxiliary derivative generation currently supports only "
-          "unscaled or globally-scaled one-term quadratic drivers");
+      return driver_expression;
     }
   }
 

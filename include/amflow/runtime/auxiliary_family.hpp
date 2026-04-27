@@ -26,6 +26,9 @@ Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(
     std::size_t propagator_index,
     const std::string& x_symbol = "x");
 
+std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(
+    const ProblemSpec& spec);
+
 LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTransform(
     const ProblemSpec& spec,
     std::size_t propagator_index,

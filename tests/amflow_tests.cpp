@@ -5375,6 +5375,50 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomen
       "surfaces deferred");
 }
 
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const std::size_t selected_index =
+      amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec);
+
+  Expect(selected_index == 2,
+         "reviewed lightlike linear automatic selection should choose the single explicit "
+         "linear propagator");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "reviewed lightlike linear automatic selection should not mutate the input problem "
+         "spec");
+}
+
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].variant.reset();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec));
+      },
+      "requires exactly one explicit kind \"linear\" / variant \"linear\" propagator",
+      "reviewed lightlike linear automatic selection should reject legacy kind-only linear "
+      "metadata");
+}
+
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators.push_back(
+      {"1 + k*n", "0", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear});
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec));
+      },
+      "found multiple candidates: 2 and 3",
+      "reviewed lightlike linear automatic selection should fail closed on ambiguous explicit "
+      "linear propagators");
+}
+
 void ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -18394,6 +18438,243 @@ void SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRoutesOptionsTest() 
   Expect(SameSolverDiagnostics(replayed_diagnostics, seeded_diagnostics),
          "reviewed lightlike linear derivative AmfOptions UseCache + SkipReduction replay "
          "should return the seeded cached diagnostics exactly");
+}
+
+void SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRoutesSingleLinearSelectionThroughLightlikeDerivativeTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::EtaInsertionDecision linear_decision;
+  linear_decision.mode_name = "LinearMode";
+  linear_decision.selected_propagator_indices = {2};
+  linear_decision.selected_propagators = {spec.family.propagators[2].expression};
+  linear_decision.explanation = "reviewed single explicit linear propagator";
+
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"LinearMode"});
+  amf_options.d0 = "5";
+  amf_options.fixed_eps = "0";
+  amf_options.use_cache = false;
+  amf_options.skip_reduction = false;
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "x=1/7";
+  const std::string target_location = "x=5/7";
+  const int requested_digits = 89;
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-lightlike-linear-selection-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-lightlike-linear-selection-baseline.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoInvariantLinearResultScript(true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path);
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-amf-options-lightlike-linear-selection"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-linear-selection.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const auto linear_mode = std::make_shared<RecordingEtaMode>(linear_decision, "LinearMode");
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.00390625;
+  solver.returned_diagnostics.overlap_mismatch = 0.0078125;
+  solver.returned_diagnostics.summary =
+      "recorded AmfOptions single-linear selection lightlike solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEtaModeSeries(spec,
+                                           master_basis,
+                                           amf_options,
+                                           {linear_mode},
+                                           MakeKiraReductionOptions(),
+                                           layout,
+                                           kira_path,
+                                           fermat_path,
+                                           solver,
+                                           start_location,
+                                           target_location,
+                                           precision_policy,
+                                           requested_digits,
+                                           " x ");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "AmfOptions single-linear selection route should not mutate reviewed inputs");
+  Expect(linear_mode->call_count() == 1,
+         "AmfOptions single-linear selection route should plan the user-defined mode once");
+  Expect(solver.call_count() == 1,
+         "AmfOptions single-linear selection route should call the supplied solver once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "AmfOptions single-linear selection route should forward the reviewed lightlike "
+         "generated-x DESystem");
+  Expect(request.system.variables.size() == 1 && request.system.variables.front().name == "x" &&
+             request.system.variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "AmfOptions single-linear selection route should use the reviewed auxiliary x variable");
+  Expect(request.system.coefficient_matrices.at("x").size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0][0] == "(-1)*(3)",
+         "AmfOptions single-linear selection route should preserve the reviewed lightlike matrix "
+         "entry");
+  Expect(request.start_location == start_location && request.target_location == target_location,
+         "AmfOptions single-linear selection route should preserve continuation endpoints");
+  Expect(request.requested_digits == requested_digits,
+         "AmfOptions single-linear selection route should preserve requested_digits");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
+      request, precision_policy, amf_options, "AmfOptions single-linear selection route");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "AmfOptions single-linear selection route should return solver diagnostics verbatim");
+}
+
+void SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesSelectsUniqueReviewedLinearPropagatorTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.d0 = "6";
+  amf_options.fixed_eps = "1/2";
+  amf_options.use_cache = false;
+  amf_options.skip_reduction = false;
+
+  const amflow::ArtifactLayout explicit_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-amf-options-explicit-index"));
+  const std::filesystem::path explicit_kira_path =
+      explicit_layout.root / "bin" / "fake-kira-lightlike-explicit-index.sh";
+  const std::filesystem::path explicit_fermat_path =
+      explicit_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(explicit_kira_path.parent_path());
+  WriteExecutableScript(
+      explicit_kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(explicit_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout auto_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-amf-options-auto-index"));
+  const std::filesystem::path auto_kira_path =
+      auto_layout.root / "bin" / "fake-kira-lightlike-auto-index.sh";
+  const std::filesystem::path auto_fermat_path = auto_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(auto_kira_path.parent_path());
+  WriteExecutableScript(
+      auto_kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(auto_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver explicit_solver;
+  RecordingSeriesSolver auto_solver;
+  explicit_solver.returned_diagnostics.success = true;
+  explicit_solver.returned_diagnostics.residual_norm = 0.015625;
+  explicit_solver.returned_diagnostics.overlap_mismatch = 0.03125;
+  explicit_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear explicit-index AmfOptions solve";
+  auto_solver.returned_diagnostics = explicit_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics explicit_diagnostics =
+      amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          amf_options,
+          MakeKiraReductionOptions(),
+          explicit_layout,
+          explicit_kira_path,
+          explicit_fermat_path,
+          explicit_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          " x ");
+
+  const amflow::SolverDiagnostics auto_diagnostics =
+      amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          amf_options,
+          MakeKiraReductionOptions(),
+          auto_layout,
+          auto_kira_path,
+          auto_fermat_path,
+          auto_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          " x ");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear derivative AmfOptions automatic selector should not mutate "
+         "the input problem spec");
+  Expect(explicit_solver.call_count() == 1 && auto_solver.call_count() == 1,
+         "reviewed lightlike linear derivative AmfOptions automatic selector should solve the "
+         "same single-propagator path as the explicit-index helper");
+  Expect(SameSolveRequest(auto_solver.last_request(), explicit_solver.last_request()),
+         "reviewed lightlike linear derivative AmfOptions automatic selector should forward the "
+         "same SolveRequest as explicit reviewed propagator index 2");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
+      auto_solver.last_request(),
+      precision_policy,
+      amf_options,
+      "reviewed lightlike linear derivative AmfOptions automatic selector");
+  Expect(SameSolverDiagnostics(auto_diagnostics, explicit_diagnostics) &&
+             SameSolverDiagnostics(auto_diagnostics, auto_solver.returned_diagnostics),
+         "reviewed lightlike linear derivative AmfOptions automatic selector should return the "
+         "same diagnostics as the explicit-index helper");
+}
+
+void SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRejectsAmbiguousAutomaticSelectionTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators.push_back(
+      {"1 + k*n", "0", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear});
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-amf-options-ambiguous"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            MakePoisonedAmfOptions({"NotUsed"}),
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            73,
+            "x"));
+      },
+      "found multiple candidates: 2 and 3",
+      "reviewed lightlike linear derivative AmfOptions automatic selector should fail before "
+      "reducer or solver execution when the reviewed linear propagator is ambiguous");
+  Expect(solver.call_count() == 0,
+         "reviewed lightlike linear derivative AmfOptions automatic selector should not call "
+         "the solver after ambiguous selection");
 }
 
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest() {
@@ -42711,6 +42992,9 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformDoesNotDuplicateInvariantTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformPreservesHelperRejectionSurfaceTest();
@@ -43235,6 +43519,9 @@ int main() {
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesD0ForExactEpsBindingTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTest();
     SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRoutesOptionsTest();
+    SolveAmfOptionsEtaModeSeriesWithUserDefinedModesRoutesSingleLinearSelectionThroughLightlikeDerivativeTest();
+    SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesSelectsUniqueReviewedLinearPropagatorTest();
+    SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRejectsAmbiguousAutomaticSelectionTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesChangedRuntimePolicyTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionReusesMatchingStateTest();

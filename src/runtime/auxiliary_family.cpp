@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <optional>
 #include <sstream>
 #include <set>
 #include <stdexcept>
@@ -417,6 +418,30 @@ Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(const ProblemSpec& sp
   rewritten.kind = PropagatorKind::Standard;
   rewritten.variant = PropagatorVariant::Quadratic;
   return rewritten;
+}
+
+std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(const ProblemSpec& spec) {
+  std::optional<std::size_t> selected_index;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Linear || !propagator.variant.has_value() ||
+        *propagator.variant != PropagatorVariant::Linear) {
+      continue;
+    }
+    if (selected_index.has_value()) {
+      throw std::runtime_error(
+          "reviewed lightlike linear auxiliary automatic selection requires exactly one "
+          "explicit kind \"linear\" / variant \"linear\" propagator, found multiple candidates: " +
+          std::to_string(*selected_index) + " and " + std::to_string(index));
+    }
+    selected_index = index;
+  }
+  if (!selected_index.has_value()) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary automatic selection requires exactly one explicit "
+        "kind \"linear\" / variant \"linear\" propagator");
+  }
+  return *selected_index;
 }
 
 LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTransform(

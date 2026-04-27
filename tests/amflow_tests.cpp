@@ -18274,6 +18274,128 @@ void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTe
          "solver diagnostics verbatim");
 }
 
+void SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRoutesOptionsTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.d0 = "5";
+  amf_options.fixed_eps = "0";
+  amf_options.use_cache = true;
+  amf_options.skip_reduction = false;
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-amf-options"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-amf-options.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.residual_norm = 0.03125;
+  seed_solver.returned_diagnostics.overlap_mismatch = 0.0625;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative AmfOptions seed solve";
+
+  const amflow::SolverDiagnostics seeded_diagnostics =
+      amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          amf_options,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          seed_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          " x ");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike linear auxiliary derivative AmfOptions wrapper should not mutate "
+         "the input problem spec");
+  Expect(seed_solver.call_count() == 1,
+         "reviewed lightlike linear auxiliary derivative AmfOptions wrapper should seed one "
+         "live solve");
+  ExpectSolveRequestReflectsLiveAmfOptionsPolicies(
+      seed_solver.last_request(),
+      precision_policy,
+      amf_options,
+      "reviewed lightlike linear auxiliary derivative AmfOptions wrapper");
+  Expect(seed_solver.last_request().requested_digits == 73,
+         "reviewed lightlike linear auxiliary derivative AmfOptions wrapper should preserve "
+         "requested_digits");
+  Expect(seed_solver.last_request().system.variables.size() == 1 &&
+             seed_solver.last_request().system.variables.front().name == "x" &&
+             seed_solver.last_request().system.coefficient_matrices.at("x").front().front() ==
+                 "(-1)*(3)",
+         "reviewed lightlike linear auxiliary derivative AmfOptions wrapper should forward the "
+         "reviewed generated-x system");
+  Expect(SameSolverDiagnostics(seeded_diagnostics, seed_solver.returned_diagnostics),
+         "reviewed lightlike linear auxiliary derivative AmfOptions wrapper should return seed "
+         "diagnostics verbatim");
+
+  const std::string seeded_manifest =
+      ReadFile(RequireOnlySolvedPathCacheManifestPath(
+          layout,
+          "reviewed lightlike linear derivative AmfOptions wrapper should seed one solved-path "
+          "cache manifest"));
+  ExpectContains(seeded_manifest,
+                 "solve_kind: \"lightlike-linear-auxiliary-derivative-series\"",
+                 "reviewed lightlike linear derivative AmfOptions wrapper should reuse the "
+                 "reviewed direct solved-path identity");
+  ExpectContains(seeded_manifest,
+                 "amf_requested_dimension_expression=5",
+                 "reviewed lightlike linear derivative AmfOptions wrapper should persist the "
+                 "fixed-eps exact dimension expression in the solved-path manifest");
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"unexpected live lightlike AmfOptions reducer execution\" 1>&2\n"
+      "exit 27\n");
+  amf_options.skip_reduction = true;
+
+  RecordingSeriesSolver replay_solver;
+  replay_solver.returned_diagnostics.success = true;
+  replay_solver.returned_diagnostics.summary =
+      "live solver should not be called on matching lightlike AmfOptions cache replay";
+
+  const amflow::SolverDiagnostics replayed_diagnostics =
+      amflow::SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          amf_options,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          replay_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          " x ");
+
+  Expect(replay_solver.call_count() == 0,
+         "reviewed lightlike linear derivative AmfOptions UseCache + SkipReduction replay "
+         "should return cached diagnostics without invoking the reducer or solver");
+  Expect(SameSolverDiagnostics(replayed_diagnostics, seeded_diagnostics),
+         "reviewed lightlike linear derivative AmfOptions UseCache + SkipReduction replay "
+         "should return the seeded cached diagnostics exactly");
+}
+
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
@@ -43112,6 +43234,7 @@ int main() {
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUsesDimensionExpressionTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesD0ForExactEpsBindingTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTest();
+    SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeriesRoutesOptionsTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesChangedRuntimePolicyTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionReusesMatchingStateTest();

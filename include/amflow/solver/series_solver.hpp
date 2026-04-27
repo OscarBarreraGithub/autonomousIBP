@@ -306,6 +306,39 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     bool use_cache,
     bool skip_reduction);
 
+SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    std::size_t propagator_index,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& x_symbol = "x");
+
+SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    std::size_t propagator_index,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& exact_dimension_override);
+
 SolverDiagnostics SolveEtaGeneratedSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

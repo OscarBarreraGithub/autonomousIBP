@@ -5506,6 +5506,85 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
   return diagnostics;
 }
 
+SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol) {
+  return SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                                 master_basis,
+                                                                 propagator_index,
+                                                                 amf_options,
+                                                                 options,
+                                                                 layout,
+                                                                 kira_executable,
+                                                                 fermat_executable,
+                                                                 solver,
+                                                                 start_location,
+                                                                 target_location,
+                                                                 precision_policy,
+                                                                 requested_digits,
+                                                                 x_symbol,
+                                                                 std::nullopt);
+}
+
+SolverDiagnostics SolveAmfOptionsLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
+  const PrecisionPolicy live_precision_policy =
+      BuildAmfOptionsPrecisionPolicy(precision_policy, amf_options);
+  const std::optional<AmfSolveRuntimePolicy> live_amf_runtime_policy =
+      BuildAmfOptionsRuntimePolicy(amf_options);
+  const std::optional<std::string> live_amf_requested_d0 = amf_options.d0;
+  const std::optional<std::string> live_dimension_expression =
+      exact_dimension_override.has_value()
+          ? exact_dimension_override
+          : BuildAmfRequestedDimensionExpression(live_amf_requested_d0,
+                                                 amf_options.fixed_eps);
+
+  return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                               master_basis,
+                                                               propagator_index,
+                                                               options,
+                                                               layout,
+                                                               kira_executable,
+                                                               fermat_executable,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               live_precision_policy,
+                                                               requested_digits,
+                                                               x_symbol,
+                                                               live_dimension_expression,
+                                                               live_amf_requested_d0,
+                                                               live_amf_runtime_policy,
+                                                               amf_options.use_cache,
+                                                               amf_options.skip_reduction);
+}
+
 SolverDiagnostics SolveEtaGeneratedSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

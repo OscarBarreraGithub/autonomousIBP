@@ -38,6 +38,11 @@ RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
     const std::string& x_symbol,
     const std::optional<std::string>& dimension_expression);
 
+void ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride(
+    BackendPreparation& preparation,
+    const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override);
+
 DESystem BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

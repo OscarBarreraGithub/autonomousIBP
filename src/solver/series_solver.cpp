@@ -53,6 +53,11 @@ constexpr char kMasterSetInstabilityCode[] = "master_set_instability";
 constexpr char kContinuationBudgetExhaustedCode[] = "continuation_budget_exhausted";
 constexpr char kSkipReductionUnavailablePrefix[] =
     "skip_reduction requested but no matching eta-generated reduction state is available";
+constexpr char kLightlikeLinearSkipReductionUnavailablePrefix[] =
+    "skip_reduction requested but no matching lightlike-linear auxiliary derivative reduction "
+    "state is available";
+constexpr char kLightlikeLinearReductionStateFile[] =
+    "amflow-lightlike-linear-auxiliary-derivative-reduction-state.txt";
 constexpr char kWrapperExactDimensionOverrideStateFile[] =
     "amflow-wrapper-exact-dimension-override.txt";
 constexpr int kBootstrapContinuationOrder = 4;
@@ -414,6 +419,11 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
   throw std::runtime_error(std::string(kSkipReductionUnavailablePrefix) + ": " + detail);
 }
 
+[[noreturn]] void ThrowLightlikeLinearSkipReductionUnavailable(const std::string& detail) {
+  throw std::runtime_error(std::string(kLightlikeLinearSkipReductionUnavailablePrefix) + ": " +
+                           detail);
+}
+
 bool IsDimensionIdentifierStart(const char character) {
   return std::isalpha(static_cast<unsigned char>(character)) != 0 || character == '_';
 }
@@ -726,10 +736,11 @@ std::string ReadPreparedFile(const std::filesystem::path& path) {
 
 std::vector<std::string> ValidatePreparedFilesAgainstLayout(
     const BackendPreparation& preparation,
-    const ArtifactLayout& layout) {
+    const ArtifactLayout& layout,
+    const std::string& preparation_label) {
   std::vector<std::string> messages;
   if (!preparation.validation_messages.empty()) {
-    messages.emplace_back("current eta-generated preparation is invalid: " +
+    messages.emplace_back("current " + preparation_label + " preparation is invalid: " +
                           JoinMessages(preparation.validation_messages));
   }
 
@@ -757,8 +768,8 @@ std::vector<std::string> ValidatePreparedFilesAgainstLayout(
     try {
       const std::string actual_content = ReadPreparedFile(prepared_file_path);
       if (actual_content != expected_content) {
-        messages.emplace_back("prepared Kira file content does not match current eta-generated "
-                              "preparation: " +
+        messages.emplace_back("prepared Kira file content does not match current " +
+                              preparation_label + " preparation: " +
                               prepared_file_path.string());
       }
     } catch (const std::exception& error) {
@@ -767,6 +778,120 @@ std::vector<std::string> ValidatePreparedFilesAgainstLayout(
   }
 
   return messages;
+}
+
+std::string BuildBackendPreparationFingerprint(const BackendPreparation& preparation) {
+  std::ostringstream out;
+  out << "commands:\n";
+  for (const std::string& command : preparation.commands) {
+    out << command.size() << ":" << command << "\n";
+  }
+  out << "command_arguments:\n";
+  for (const std::string& argument : preparation.command_arguments) {
+    out << argument.size() << ":" << argument << "\n";
+  }
+  out << "generated_files:\n";
+  for (const auto& [relative_path, content] : preparation.generated_files) {
+    out << relative_path.size() << ":" << relative_path << "\n";
+    out << content.size() << ":" << content << "\n";
+  }
+  return ComputeArtifactFingerprint(out.str());
+}
+
+std::filesystem::path LightlikeLinearReductionStatePath(const ArtifactLayout& layout) {
+  return layout.cache_dir / kLightlikeLinearReductionStateFile;
+}
+
+std::string BuildOptionalFileFingerprintState(const std::string& label,
+                                              const std::filesystem::path& path) {
+  std::ostringstream out;
+  out << label << "_present: " << (std::filesystem::exists(path) ? "true" : "false") << "\n";
+  if (std::filesystem::exists(path)) {
+    out << label << "_fingerprint: \"" << ComputeArtifactFingerprint(ReadPreparedFile(path))
+        << "\"\n";
+  }
+  return out.str();
+}
+
+std::string BuildLightlikeLinearReductionResultFingerprintState(const ArtifactLayout& layout,
+                                                                const std::string& family) {
+  const std::filesystem::path generated_family_results_dir =
+      layout.generated_config_dir / "results" / family;
+  const std::filesystem::path direct_family_results_dir = layout.results_dir / family;
+  const std::filesystem::path direct_masters_path = direct_family_results_dir / "masters";
+  const std::filesystem::path generated_masters_path =
+      generated_family_results_dir / "masters";
+  const std::filesystem::path direct_rules_path = direct_family_results_dir / "kira_target.m";
+  const std::filesystem::path generated_rules_path =
+      generated_family_results_dir / "kira_target.m";
+  const std::filesystem::path masters_source_path =
+      std::filesystem::exists(direct_masters_path) ? direct_masters_path : generated_masters_path;
+  const std::filesystem::path rules_source_path =
+      std::filesystem::exists(direct_rules_path) ? direct_rules_path : generated_rules_path;
+
+  std::ostringstream out;
+  out << BuildOptionalFileFingerprintState("masters", masters_source_path);
+  out << BuildOptionalFileFingerprintState("rules", rules_source_path);
+  return out.str();
+}
+
+std::string SerializeLightlikeLinearReductionState(
+    const ArtifactLayout& layout,
+    const BackendPreparation& preparation,
+    const std::string& family) {
+  std::ostringstream out;
+  out << "schema_version: 1\n";
+  out << "state_kind: \"lightlike-linear-auxiliary-derivative-reduction-state\"\n";
+  out << "family: \"" << family << "\"\n";
+  out << "preparation_fingerprint: \"" << BuildBackendPreparationFingerprint(preparation)
+      << "\"\n";
+  out << BuildLightlikeLinearReductionResultFingerprintState(layout, family);
+  return out.str();
+}
+
+void PersistLightlikeLinearReductionState(const ArtifactLayout& layout,
+                                          const BackendPreparation& preparation,
+                                          const std::string& family) {
+  std::filesystem::create_directories(layout.cache_dir);
+  const std::filesystem::path state_path = LightlikeLinearReductionStatePath(layout);
+  std::ofstream stream(state_path, std::ios::out | std::ios::trunc);
+  if (!stream.is_open()) {
+    throw std::runtime_error("failed to open lightlike-linear reduction state marker for writing: " +
+                             state_path.string());
+  }
+  stream << SerializeLightlikeLinearReductionState(layout, preparation, family);
+  if (!stream) {
+    throw std::runtime_error("failed to write lightlike-linear reduction state marker: " +
+                             state_path.string());
+  }
+  stream.close();
+  if (!stream) {
+    throw std::runtime_error("failed to finalize lightlike-linear reduction state marker: " +
+                             state_path.string());
+  }
+}
+
+void ValidateLightlikeLinearReductionState(const ArtifactLayout& layout,
+                                           const BackendPreparation& preparation,
+                                           const std::string& family) {
+  const std::filesystem::path state_path = LightlikeLinearReductionStatePath(layout);
+  if (!std::filesystem::exists(state_path)) {
+    ThrowLightlikeLinearSkipReductionUnavailable(
+        "lightlike-linear reduction state marker is missing: " + state_path.string());
+  }
+  if (!std::filesystem::is_regular_file(state_path)) {
+    ThrowLightlikeLinearSkipReductionUnavailable(
+        "lightlike-linear reduction state marker is not a regular file: " + state_path.string());
+  }
+
+  const std::string actual_state = ReadPreparedFile(state_path);
+  const std::string expected_state =
+      SerializeLightlikeLinearReductionState(layout, preparation, family);
+  if (actual_state != expected_state) {
+    ThrowLightlikeLinearSkipReductionUnavailable(
+        "lightlike-linear reduction state marker does not match current preparation: " +
+        state_path.string());
+  }
 }
 
 std::filesystem::path BuildFamilyResultsShadowRoot(const ArtifactLayout& layout,
@@ -866,7 +991,7 @@ ValidatedWrapperEtaGeneratedReductionState LoadValidatedWrapperEtaGeneratedReduc
   ApplyWrapperExactDimensionOverride(
       preparation.backend_preparation, layout, exact_dimension_override);
   const std::vector<std::string> prepared_file_messages =
-      ValidatePreparedFilesAgainstLayout(preparation.backend_preparation, layout);
+      ValidatePreparedFilesAgainstLayout(preparation.backend_preparation, layout, "eta-generated");
   if (!prepared_file_messages.empty()) {
     ThrowSkipReductionUnavailable(JoinMessages(prepared_file_messages));
   }
@@ -987,6 +1112,117 @@ DESystem BuildWrapperEtaGeneratedDESystem(
       master_basis,
       LoadValidatedWrapperEtaGeneratedReductionState(
           spec, master_basis, decision, options, layout, exact_dimension_override, eta_symbol));
+}
+
+struct ValidatedLightlikeLinearAuxiliaryDerivativeReductionState {
+  GeneratedDerivativeVariable generated_variable;
+  ParsedReductionResult reduction_result;
+};
+
+ValidatedLightlikeLinearAuxiliaryDerivativeReductionState
+LoadValidatedLightlikeLinearAuxiliaryDerivativeReductionState(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override,
+    const std::string& x_symbol) {
+  LightlikeLinearAuxiliaryDerivativeReductionPreparation preparation =
+      PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
+          spec, master_basis, propagator_index, options, layout, x_symbol);
+  ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride(
+      preparation.backend_preparation, layout, exact_dimension_override);
+  const std::vector<std::string> prepared_file_messages =
+      ValidatePreparedFilesAgainstLayout(preparation.backend_preparation,
+                                         layout,
+                                         "lightlike-linear auxiliary derivative");
+  if (!prepared_file_messages.empty()) {
+    ThrowLightlikeLinearSkipReductionUnavailable(JoinMessages(prepared_file_messages));
+  }
+
+  const std::string family = preparation.auxiliary_family.transformed_spec.family.name;
+  ValidateLightlikeLinearReductionState(layout, preparation.backend_preparation, family);
+
+  ParsedReductionResult reduction_result;
+  try {
+    reduction_result = ParseWrapperOwnedReductionResult(layout, family);
+    ThrowIfParsedMasterSetDrift(master_basis,
+                                reduction_result,
+                                VariableContext(preparation.generated_variable, 0));
+  } catch (const std::exception& error) {
+    ThrowLightlikeLinearSkipReductionUnavailable(error.what());
+  }
+
+  return {preparation.generated_variable, reduction_result};
+}
+
+DESystem AssembleLightlikeLinearAuxiliaryDerivativeDESystem(
+    const ParsedMasterList& master_basis,
+    const ValidatedLightlikeLinearAuxiliaryDerivativeReductionState& prepared_state) {
+  try {
+    GeneratedDerivativeVariableReductionInput variable_input;
+    variable_input.generated_variable = prepared_state.generated_variable;
+    variable_input.reduction_result = prepared_state.reduction_result;
+    return AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  } catch (const std::exception& error) {
+    ThrowLightlikeLinearSkipReductionUnavailable(error.what());
+  }
+}
+
+DESystem BuildLightlikeLinearAuxiliaryDerivativeDESystemForSolver(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression,
+    const std::optional<std::string>& exact_dimension_override) {
+  const LightlikeLinearAuxiliaryDerivativeReductionExecution execution =
+      RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(spec,
+                                                             master_basis,
+                                                             propagator_index,
+                                                             options,
+                                                             layout,
+                                                             kira_executable,
+                                                             fermat_executable,
+                                                             x_symbol,
+                                                             dimension_expression);
+  if (!execution.execution_result.Succeeded()) {
+    std::ostringstream message;
+    message << "reviewed lightlike-linear auxiliary derivative DE construction requires "
+            << "successful reducer execution; status="
+            << CommandExecutionStatusToString(execution.execution_result.status)
+            << "; exit_code=" << execution.execution_result.exit_code
+            << "; stderr_log=" << execution.execution_result.stderr_log_path.string();
+    if (!execution.execution_result.error_message.empty()) {
+      message << "; error=" << execution.execution_result.error_message;
+    }
+    throw std::runtime_error(message.str());
+  }
+  if (!execution.parsed_reduction_result.has_value()) {
+    throw std::runtime_error(
+        "reviewed lightlike-linear auxiliary derivative DE construction completed without "
+        "parsed reduction results");
+  }
+
+  ThrowIfParsedMasterSetDrift(master_basis,
+                              *execution.parsed_reduction_result,
+                              VariableContext(execution.preparation.generated_variable, 0));
+
+  GeneratedDerivativeVariableReductionInput variable_input;
+  variable_input.generated_variable = execution.preparation.generated_variable;
+  variable_input.reduction_result = *execution.parsed_reduction_result;
+  DESystem system = AssembleGeneratedDerivativeDESystem(master_basis, {variable_input});
+  ApplySymbolicDimensionExpression(system, dimension_expression, exact_dimension_override);
+  PersistLightlikeLinearReductionState(
+      layout,
+      execution.preparation.backend_preparation,
+      execution.preparation.auxiliary_family.transformed_spec.family.name);
+  return system;
 }
 
 bool HasDeclaredVariable(const DESystem& system, const std::string& variable_name) {
@@ -5116,6 +5352,45 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     const std::optional<std::string>& amf_requested_d0,
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     const bool use_cache) {
+  return SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(spec,
+                                                               master_basis,
+                                                               propagator_index,
+                                                               options,
+                                                               layout,
+                                                               kira_executable,
+                                                               fermat_executable,
+                                                               solver,
+                                                               start_location,
+                                                               target_location,
+                                                               precision_policy,
+                                                               requested_digits,
+                                                               x_symbol,
+                                                               dimension_expression,
+                                                               amf_requested_d0,
+                                                               amf_runtime_policy,
+                                                               use_cache,
+                                                               false);
+}
+
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression,
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
+    const bool use_cache,
+    const bool skip_reduction) {
   const std::optional<std::string> normalized_dimension_expression =
       NormalizeLightlikeLinearDimensionExpression(dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
@@ -5152,6 +5427,41 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
             normalized_dimension_expression,
             requested_digits,
             x_symbol);
+  }
+
+  const std::optional<std::string> exact_dimension_override =
+      ResolveExactDimensionOverride(normalized_dimension_expression);
+  std::optional<SolveRequest> prepared_skip_reduction_request;
+  if (skip_reduction) {
+    try {
+      SolveRequest request;
+      request.system = AssembleLightlikeLinearAuxiliaryDerivativeDESystem(
+          master_basis,
+          LoadValidatedLightlikeLinearAuxiliaryDerivativeReductionState(spec,
+                                                                        master_basis,
+                                                                        propagator_index,
+                                                                        options,
+                                                                        layout,
+                                                                        exact_dimension_override,
+                                                                        x_symbol));
+      ApplySymbolicDimensionExpression(
+          request.system, normalized_dimension_expression, exact_dimension_override);
+      PopulateSolveRequestExecutionInputs(request,
+                                          start_location,
+                                          target_location,
+                                          precision_policy,
+                                          amf_runtime_policy,
+                                          amf_requested_d0,
+                                          normalized_dimension_expression,
+                                          requested_digits);
+      cache_context.expected_request_fingerprint = ComputeSolveRequestFingerprint(request);
+      prepared_skip_reduction_request = std::move(request);
+    } catch (const MasterSetInstabilityError& error) {
+      return MakeMasterSetInstabilityDiagnostics(error.what());
+    }
+  }
+
+  if (use_cache) {
     const SolvedPathCacheReplayResult replay =
         TryReplaySolvedPathCache(layout, cache_context);
     if (replay.status == SolvedPathCacheReplayStatus::Hit && replay.diagnostics->success) {
@@ -5161,26 +5471,34 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
 
   SolveRequest request;
   try {
-    request.system = BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(spec,
-                                                                             master_basis,
-                                                                             propagator_index,
-                                                                             options,
-                                                                             layout,
-                                                                             kira_executable,
-                                                                             fermat_executable,
-                                                                             x_symbol,
-                                                                             normalized_dimension_expression);
+    if (prepared_skip_reduction_request.has_value()) {
+      request = *prepared_skip_reduction_request;
+    } else {
+      request.system = BuildLightlikeLinearAuxiliaryDerivativeDESystemForSolver(
+          spec,
+          master_basis,
+          propagator_index,
+          options,
+          layout,
+          kira_executable,
+          fermat_executable,
+          x_symbol,
+          normalized_dimension_expression,
+          exact_dimension_override);
+    }
   } catch (const MasterSetInstabilityError& error) {
     return MakeMasterSetInstabilityDiagnostics(error.what());
   }
-  PopulateSolveRequestExecutionInputs(request,
-                                      start_location,
-                                      target_location,
-                                      precision_policy,
-                                      amf_runtime_policy,
-                                      amf_requested_d0,
-                                      normalized_dimension_expression,
-                                      requested_digits);
+  if (!prepared_skip_reduction_request.has_value()) {
+    PopulateSolveRequestExecutionInputs(request,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        amf_runtime_policy,
+                                        amf_requested_d0,
+                                        normalized_dimension_expression,
+                                        requested_digits);
+  }
   const SolverDiagnostics diagnostics = SolveWithPrecisionRetry(solver, request);
   if (use_cache && diagnostics.success) {
     PersistSolvedPathCacheManifest(layout, cache_context, request, diagnostics);

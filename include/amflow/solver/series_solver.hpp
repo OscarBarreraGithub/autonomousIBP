@@ -286,6 +286,26 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
     const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
     bool use_cache);
 
+SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    std::size_t propagator_index,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    int requested_digits,
+    const std::string& x_symbol,
+    const std::optional<std::string>& dimension_expression,
+    const std::optional<std::string>& amf_requested_d0,
+    const std::optional<AmfSolveRuntimePolicy>& amf_runtime_policy,
+    bool use_cache,
+    bool skip_reduction);
+
 SolverDiagnostics SolveEtaGeneratedSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,

@@ -18479,6 +18479,527 @@ void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesCha
                  "refresh the manifest request summary with the live runtime policy");
 }
 
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionReusesMatchingStateTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-skip-reduction"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-skip-reduction.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative skip_reduction seed solve";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{},
+      false,
+      false));
+  Expect(seed_solver.call_count() == 1,
+         "reviewed lightlike linear derivative skip_reduction should seed matching state with "
+         "one live solve");
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"unexpected live lightlike reducer execution during skip_reduction\" 1>&2\n"
+      "exit 21\n");
+
+  RecordingSeriesSolver reuse_solver;
+  reuse_solver.returned_diagnostics.success = true;
+  reuse_solver.returned_diagnostics.residual_norm = 0.00390625;
+  reuse_solver.returned_diagnostics.overlap_mismatch = 0.0078125;
+  reuse_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative skip_reduction reuse solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          layout,
+          kira_path,
+          fermat_path,
+          reuse_solver,
+          "x=0",
+          "x=1",
+          precision_policy,
+          73,
+          "x",
+          std::optional<std::string>{"5"},
+          std::optional<std::string>{"7"},
+          std::optional<amflow::AmfSolveRuntimePolicy>{},
+          false,
+          true);
+
+  Expect(reuse_solver.call_count() == 1,
+         "reviewed lightlike linear derivative skip_reduction should call the supplied solver "
+         "after reusing matching reduction state");
+  Expect(SameSolverDiagnostics(diagnostics, reuse_solver.returned_diagnostics),
+         "reviewed lightlike linear derivative skip_reduction should return the reuse solver "
+         "diagnostics");
+  Expect(reuse_solver.last_request().system.coefficient_matrices.at("x").front().front() ==
+             "(-1)*(3)",
+         "reviewed lightlike linear derivative skip_reduction should rebuild the reviewed "
+         "generated-x system from the retained reduction state");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-use-cache-skip-deleted"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-use-cache-skip-deleted.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative use_cache skip_reduction deleted seed solve";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{},
+      true,
+      false));
+  static_cast<void>(RequireOnlySolvedPathCacheManifestPath(
+      layout,
+      "reviewed lightlike UseCache + skip_reduction deleted-state coverage should seed one "
+      "solved-path cache manifest first"));
+  const std::filesystem::path prepared_file_path = RequirePreparedKiraFilePath(
+      layout,
+      "config/integralfamilies.yaml",
+      "reviewed lightlike UseCache + skip_reduction deleted-state coverage should materialize "
+      "prepared family YAML");
+  std::filesystem::remove(prepared_file_path);
+  Expect(!std::filesystem::exists(prepared_file_path),
+         "reviewed lightlike UseCache + skip_reduction deleted-state coverage should delete the "
+         "prepared family YAML before replay");
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"unexpected live lightlike reducer execution during deleted-state rejection\" 1>&2\n"
+      "exit 22\n");
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &solver, &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"5"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            true,
+            true));
+      },
+      "reviewed lightlike UseCache + skip_reduction should reject deleted prepared state instead "
+      "of replaying a stale solved-path cache hit");
+
+  Expect(message.find("skip_reduction requested but no matching lightlike-linear auxiliary "
+                      "derivative reduction state is available") != std::string::npos,
+         "reviewed lightlike UseCache + skip_reduction should preserve the explicit missing-state "
+         "diagnostic");
+  Expect(message.find("prepared Kira file is missing") != std::string::npos,
+         "reviewed lightlike UseCache + skip_reduction should report the deleted prepared file "
+         "instead of replaying stale cache diagnostics");
+  Expect(solver.call_count() == 0,
+         "reviewed lightlike UseCache + skip_reduction should not call the solver when deleted "
+         "prepared state is rejected");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsChangedExactDimensionStateTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-skip-dimension"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-skip-dimension.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative exact-dimension state seed solve";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{},
+      false,
+      false));
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"unexpected live lightlike reducer execution during exact-dimension rejection\" "
+      "1>&2\n"
+      "exit 24\n");
+
+  RecordingSeriesSolver solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &solver, &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"6"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            false,
+            true));
+      },
+      "reviewed lightlike skip_reduction should reject changed exact-dimension prepared state");
+
+  Expect(message.find("skip_reduction requested but no matching lightlike-linear auxiliary "
+                      "derivative reduction state is available") != std::string::npos,
+         "reviewed lightlike skip_reduction should preserve the explicit missing-state "
+         "diagnostic for changed exact-dimension prepared state");
+  Expect(message.find("prepared Kira file content does not match current lightlike-linear "
+                      "auxiliary derivative preparation") != std::string::npos,
+         "reviewed lightlike skip_reduction should reject changed exact-dimension state through "
+         "prepared-file validation before parsing retained results");
+  Expect(solver.call_count() == 0,
+         "reviewed lightlike skip_reduction should not call the solver when exact-dimension "
+         "prepared state changes");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsFailedLiveStateDriftTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-skip-drift"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-skip-drift.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative failed-state seed solve";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{},
+      false,
+      false));
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "echo \"expected changed-dimension lightlike reducer failure\" 1>&2\n"
+      "exit 23\n");
+
+  RecordingSeriesSolver failed_live_solver;
+  const std::string live_failure_message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &failed_live_solver,
+       &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            failed_live_solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"7"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            false,
+            false));
+      },
+      "reviewed lightlike failed-state setup should surface the changed live reducer failure");
+  Expect(live_failure_message.find("exit_code=23") != std::string::npos,
+         "reviewed lightlike failed-state setup should confirm the changed live reducer failed");
+  Expect(failed_live_solver.call_count() == 0,
+         "reviewed lightlike failed-state setup should not call the solver after live reducer "
+         "failure");
+
+  RecordingSeriesSolver reuse_solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &reuse_solver,
+       &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            reuse_solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"7"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            false,
+            true));
+      },
+      "reviewed lightlike skip_reduction should reject stale results after failed live state "
+      "drift");
+
+  Expect(message.find("skip_reduction requested but no matching lightlike-linear auxiliary "
+                      "derivative reduction state is available") != std::string::npos,
+         "reviewed lightlike skip_reduction should preserve the explicit missing-state "
+         "diagnostic after failed live state drift");
+  Expect(message.find("reduction state marker does not match current preparation") !=
+             std::string::npos,
+         "reviewed lightlike skip_reduction should reject stale results with a state-marker "
+         "mismatch after failed live state drift");
+  Expect(reuse_solver.call_count() == 0,
+         "reviewed lightlike skip_reduction should not call the solver when retained results are "
+         "stale after failed live state drift");
+}
+
+void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsFailedSameStateResultContaminationTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-skip-contaminated"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-lightlike-derivative-skip-contaminated.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver seed_solver;
+  seed_solver.returned_diagnostics.success = true;
+  seed_solver.returned_diagnostics.summary =
+      "recorded lightlike-linear derivative same-state contamination seed solve";
+  static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+      spec,
+      master_basis,
+      2,
+      MakeKiraReductionOptions(),
+      layout,
+      kira_path,
+      fermat_path,
+      seed_solver,
+      "x=0",
+      "x=1",
+      precision_policy,
+      73,
+      "x",
+      std::optional<std::string>{"5"},
+      std::optional<std::string>{"7"},
+      std::optional<amflow::AmfSolveRuntimePolicy>{},
+      false,
+      false));
+
+  WriteExecutableScript(
+      kira_path,
+      "#!/bin/sh\n"
+      "set -eu\n"
+      "dest=\"$PWD/results/toy_auto_linear_family\"\n"
+      "mkdir -p \"$dest\"\n"
+      "cat > \"$dest/masters\" <<'EOF'\n"
+      "toy_auto_linear_family[1,1,1] 0\n"
+      "EOF\n"
+      "cat > \"$dest/kira_target.m\" <<'EOF'\n"
+      "{\n"
+      "  toy_auto_linear_family[0,1,2] -> 5*toy_auto_linear_family[1,1,1]\n"
+      "}\n"
+      "EOF\n"
+      "echo \"expected same-state contaminated lightlike reducer failure\" 1>&2\n"
+      "exit 25\n");
+
+  RecordingSeriesSolver failed_live_solver;
+  const std::string live_failure_message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &failed_live_solver,
+       &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            failed_live_solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"5"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            false,
+            false));
+      },
+      "reviewed lightlike same-state contamination setup should surface the live reducer failure");
+  Expect(live_failure_message.find("exit_code=25") != std::string::npos,
+         "reviewed lightlike same-state contamination setup should confirm the live reducer "
+         "failed after writing contaminated results");
+  Expect(failed_live_solver.call_count() == 0,
+         "reviewed lightlike same-state contamination setup should not call the solver after "
+         "live reducer failure");
+
+  RecordingSeriesSolver reuse_solver;
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &master_basis, &layout, &kira_path, &fermat_path, &reuse_solver,
+       &precision_policy]() {
+        static_cast<void>(amflow::SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
+            spec,
+            master_basis,
+            2,
+            MakeKiraReductionOptions(),
+            layout,
+            kira_path,
+            fermat_path,
+            reuse_solver,
+            "x=0",
+            "x=1",
+            precision_policy,
+            73,
+            "x",
+            std::optional<std::string>{"5"},
+            std::optional<std::string>{"7"},
+            std::optional<amflow::AmfSolveRuntimePolicy>{},
+            false,
+            true));
+      },
+      "reviewed lightlike skip_reduction should reject same-preparation contaminated results");
+
+  Expect(message.find("skip_reduction requested but no matching lightlike-linear auxiliary "
+                      "derivative reduction state is available") != std::string::npos,
+         "reviewed lightlike skip_reduction should preserve the explicit missing-state "
+         "diagnostic after same-preparation result contamination");
+  Expect(message.find("reduction state marker does not match current preparation") !=
+             std::string::npos,
+         "reviewed lightlike skip_reduction should reject same-preparation contaminated results "
+         "through the success-marker result fingerprint");
+  Expect(reuse_solver.call_count() == 0,
+         "reviewed lightlike skip_reduction should not call the solver when same-preparation "
+         "retained results were contaminated by a failed live reducer");
+}
+
 void SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest() {
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-lightlike-linear-derivative-solver-exec-failure"));
@@ -42593,6 +43114,11 @@ int main() {
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesCarriesRuntimePolicyTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheReplaysMatchingSolvedPathTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheInvalidatesChangedRuntimePolicyTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionReusesMatchingStateTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesUseCacheSkipReductionRejectsDeletedPreparedStateTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsChangedExactDimensionStateTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsFailedLiveStateDriftTest();
+    SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesSkipReductionRejectsFailedSameStateResultContaminationTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesExecutionFailureTest();
     SolveReviewedLightlikeLinearAuxiliaryDerivativeSeriesClassifiesReducerMasterSetDriftTest();
     PrepareReviewedLightlikeLinearAuxiliaryReductionHappyPathTest();

@@ -12,6 +12,9 @@ namespace amflow {
 
 namespace {
 
+constexpr char kExactDimensionOverrideStateFile[] =
+    "amflow-lightlike-linear-auxiliary-derivative-exact-dimension-override.txt";
+
 std::string StatusToString(const CommandExecutionStatus status) {
   switch (status) {
     case CommandExecutionStatus::NotRun:
@@ -248,23 +251,6 @@ void ApplySymbolicDimensionExpression(DESystem& system, const std::string& dimen
   }
 }
 
-void ApplyExactDimensionOverride(BackendPreparation& preparation,
-                                 const ArtifactLayout& layout,
-                                 const std::optional<std::string>& exact_dimension_override) {
-  preparation.command_arguments.clear();
-  if (exact_dimension_override.has_value()) {
-    preparation.command_arguments.push_back("-sd=" + *exact_dimension_override);
-  }
-
-  std::ostringstream command;
-  command << "FERMATPATH=<fermat-executable> kira";
-  for (const std::string& argument : preparation.command_arguments) {
-    command << " " << argument;
-  }
-  command << " " << (layout.generated_config_dir / "jobs.yaml").string();
-  preparation.commands = {command.str()};
-}
-
 void ThrowIfParsedMasterSetDrift(const ParsedMasterList& master_basis,
                                  const ParsedReductionResult& reduction_result,
                                  const std::string& variable_name) {
@@ -290,6 +276,31 @@ void ThrowIfParsedMasterSetDrift(const ParsedMasterList& master_basis,
 }
 
 }  // namespace
+
+void ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride(
+    BackendPreparation& preparation,
+    const ArtifactLayout& layout,
+    const std::optional<std::string>& exact_dimension_override) {
+  std::ostringstream state;
+  state << "present=" << (exact_dimension_override.has_value() ? "true" : "false") << "\n";
+  if (exact_dimension_override.has_value()) {
+    state << "value=" << *exact_dimension_override << "\n";
+  }
+  preparation.generated_files[kExactDimensionOverrideStateFile] = state.str();
+
+  preparation.command_arguments.clear();
+  if (exact_dimension_override.has_value()) {
+    preparation.command_arguments.push_back("-sd=" + *exact_dimension_override);
+  }
+
+  std::ostringstream command;
+  command << "FERMATPATH=<fermat-executable> kira";
+  for (const std::string& argument : preparation.command_arguments) {
+    command << " " << argument;
+  }
+  command << " " << (layout.generated_config_dir / "jobs.yaml").string();
+  preparation.commands = {command.str()};
+}
 
 LightlikeLinearAuxiliaryDerivativeReductionExecution
 RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
@@ -331,9 +342,8 @@ RunReviewedLightlikeLinearAuxiliaryDerivativeReduction(
   LightlikeLinearAuxiliaryDerivativeReductionExecution execution;
   execution.preparation = PrepareReviewedLightlikeLinearAuxiliaryDerivativeReduction(
       spec, master_basis, propagator_index, options, layout, x_symbol);
-  ApplyExactDimensionOverride(execution.preparation.backend_preparation,
-                              layout,
-                              normalized_exact_dimension_override);
+  ApplyReviewedLightlikeLinearAuxiliaryDerivativeExactDimensionOverride(
+      execution.preparation.backend_preparation, layout, normalized_exact_dimension_override);
 
   KiraBackend backend;
   execution.execution_result = backend.ExecutePrepared(execution.preparation.backend_preparation,

@@ -84,7 +84,6 @@ std::string CutkoskyPhaseSpaceProviderStrategyForPrescription(
 
 std::string ResolveRawCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
   std::optional<FeynmanPrescription> selected_cut_prescription;
-  bool saw_non_default_cut_prescription = false;
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const Propagator& propagator = spec.family.propagators[index];
     if (propagator.kind != PropagatorKind::Cut) {
@@ -97,10 +96,6 @@ std::string ResolveRawCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
       throw std::invalid_argument("family.propagators[" + std::to_string(index) +
                                   "].prescription must be one of -1 (-i0), 0 (none), or 1 "
                                   "(+i0)");
-    }
-
-    if (*raw_prescription != FeynmanPrescription::MinusI0) {
-      saw_non_default_cut_prescription = true;
     }
 
     if (!selected_cut_prescription.has_value()) {
@@ -116,7 +111,7 @@ std::string ResolveRawCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
     }
   }
 
-  if (!selected_cut_prescription.has_value() || !saw_non_default_cut_prescription) {
+  if (!selected_cut_prescription.has_value()) {
     return kBuiltinCutkoskyPhaseSpaceStrategy;
   }
 

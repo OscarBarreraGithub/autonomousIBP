@@ -12356,6 +12356,55 @@ void Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptio
          "the loop-prescription-aware provider-selection path");
 }
 
+void Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryExposesReviewedStrategiesTest() {
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers =
+      amflow::MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry();
+  const std::vector<std::string> expected_strategies = {
+      "builtin::cutkosky-phase-space",
+      "builtin::cutkosky-phase-space::plus_i0",
+      "builtin::cutkosky-phase-space::minus_i0",
+      "builtin::cutkosky-phase-space::none",
+  };
+
+  std::vector<std::string> actual_strategies;
+  actual_strategies.reserve(providers.size());
+  for (const auto& provider : providers) {
+    actual_strategies.push_back(provider->Strategy());
+  }
+
+  Expect(actual_strategies == expected_strategies,
+         "Batch 63l deferred Cutkosky provider registry should expose exactly the reviewed "
+         "legacy and loop-prescription-aware strategy vocabulary");
+}
+
+void Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryFailsClosedBeforeSolverTest() {
+  const amflow::ProblemSpec spec = MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+      amflow::FeynmanPrescription::MinusI0);
+  const amflow::AmfOptions amf_options;
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers =
+      amflow::MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry();
+  RecordingSeriesSolver solver;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options, &request_template, &providers, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            providers,
+            solver));
+      },
+      "builtin Cutkosky phase-space boundary values remain deferred for strategy "
+      "builtin::cutkosky-phase-space::minus_i0 at eta @ cutkosky-phase-space",
+      "Batch 63l deferred Cutkosky provider registry should fail closed on the matched "
+      "loop-prescription-aware strategy");
+  Expect(solver.call_count() == 0,
+         "Batch 63l deferred Cutkosky provider registry should stop before solver execution "
+         "when boundary values remain unavailable");
+}
+
 void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
@@ -43654,6 +43703,8 @@ int main() {
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceSupportsEtaSymbolOverrideTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest();
     Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptionAwareProviderStrategyTest();
+    Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryExposesReviewedStrategiesTest();
+    Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryFailsClosedBeforeSolverTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();

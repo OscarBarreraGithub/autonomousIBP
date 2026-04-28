@@ -25,4 +25,7 @@ SolveRequest AttachBoundaryConditionsFromProviderRegistry(
     const SolveRequest& request,
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers);
 
+std::vector<std::shared_ptr<BoundaryProvider>>
+MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry();
+
 }  // namespace amflow

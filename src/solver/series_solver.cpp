@@ -182,43 +182,47 @@ std::optional<std::string> ParseExplicitLocationAssignmentVariable(
   return variable;
 }
 
-std::optional<NumericEvaluationPoint> TryBuildReviewedMsqListPassiveBindings(
-    const ProblemSpec& spec) {
-  if (AssessPhysicalKinematicsForBatch62(spec).verdict !=
-      PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset) {
+std::optional<NumericEvaluationPoint> TryBuildReviewedInvariantListPassiveBindings(
+    const ProblemSpec& spec,
+    const std::string& active_variable) {
+  if (active_variable != "s" && active_variable != "t" && active_variable != "msq") {
     return std::nullopt;
   }
-  if (spec.kinematics.numeric_substitutions.count("s") != 1 ||
-      spec.kinematics.numeric_substitutions.count("t") != 1) {
+  if (AssessPhysicalKinematicsForBatch62(spec).verdict !=
+      PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset) {
     return std::nullopt;
   }
 
   NumericEvaluationPoint passive_bindings;
   try {
-    passive_bindings.emplace(
-        "s",
-        EvaluateCoefficientExpression(spec.kinematics.numeric_substitutions.at("s"),
-                                      NumericEvaluationPoint{})
-            .ToString());
-    passive_bindings.emplace(
-        "t",
-        EvaluateCoefficientExpression(spec.kinematics.numeric_substitutions.at("t"),
-                                      NumericEvaluationPoint{})
-            .ToString());
+    for (const std::string& invariant : {"s", "t", "msq"}) {
+      if (invariant == active_variable) {
+        continue;
+      }
+      if (spec.kinematics.numeric_substitutions.count(invariant) != 1) {
+        return std::nullopt;
+      }
+      passive_bindings.emplace(
+          invariant,
+          EvaluateCoefficientExpression(spec.kinematics.numeric_substitutions.at(invariant),
+                                        NumericEvaluationPoint{})
+              .ToString());
+    }
   } catch (const std::exception&) {
     return std::nullopt;
   }
   return passive_bindings;
 }
 
-std::optional<ExactRational> TryEvaluateReviewedRawMsqListLocation(
+std::optional<ExactRational> TryEvaluateReviewedRawInvariantListLocation(
     const ProblemSpec& spec,
+    const std::string& active_variable,
     const std::string& location) {
   if (ParseExplicitLocationAssignmentVariable(location).has_value()) {
     return std::nullopt;
   }
   const std::optional<NumericEvaluationPoint> passive_bindings =
-      TryBuildReviewedMsqListPassiveBindings(spec);
+      TryBuildReviewedInvariantListPassiveBindings(spec, active_variable);
   if (!passive_bindings.has_value()) {
     return std::nullopt;
   }
@@ -230,16 +234,17 @@ std::optional<ExactRational> TryEvaluateReviewedRawMsqListLocation(
   }
 }
 
-std::optional<ExactRational> TryEvaluateReviewedExplicitMsqListLocation(
+std::optional<ExactRational> TryEvaluateReviewedExplicitInvariantListLocation(
     const ProblemSpec& spec,
+    const std::string& active_variable,
     const std::string& location) {
   const std::optional<std::string> variable =
       ParseExplicitLocationAssignmentVariable(location);
-  if (!variable.has_value() || *variable != "msq") {
+  if (!variable.has_value() || *variable != active_variable) {
     return std::nullopt;
   }
   const std::optional<NumericEvaluationPoint> passive_bindings =
-      TryBuildReviewedMsqListPassiveBindings(spec);
+      TryBuildReviewedInvariantListPassiveBindings(spec, active_variable);
   if (!passive_bindings.has_value()) {
     return std::nullopt;
   }
@@ -254,7 +259,9 @@ std::optional<ExactRational> TryEvaluateReviewedExplicitMsqListLocation(
   }
 }
 
-bool HasMalformedReviewedExplicitMsqListLocationSyntax(const std::string& location) {
+bool HasMalformedReviewedExplicitInvariantListLocationSyntax(
+    const std::string& location,
+    const std::string& active_variable) {
   const std::string trimmed = Trim(location);
   if (trimmed.empty()) {
     return false;
@@ -266,7 +273,7 @@ bool HasMalformedReviewedExplicitMsqListLocationSyntax(const std::string& locati
   }
 
   const std::string variable = Trim(trimmed.substr(0, separator));
-  if (variable != "msq") {
+  if (variable != active_variable) {
     return false;
   }
 
@@ -274,51 +281,63 @@ bool HasMalformedReviewedExplicitMsqListLocationSyntax(const std::string& locati
   return expression.empty() || trimmed.find('=', separator + 1) != std::string::npos;
 }
 
-bool HasMixedExplicitRawReviewedMsqListShape(
+bool LocationTargetsReviewedInvariantSide(const std::optional<std::string>& variable,
+                                          const std::string& location,
+                                          const std::string& active_variable) {
+  return (variable.has_value() && *variable == active_variable) ||
+         HasMalformedReviewedExplicitInvariantListLocationSyntax(location, active_variable);
+}
+
+bool HasMixedExplicitRawReviewedInvariantListShape(
     const std::vector<std::string>& invariant_names,
+    const std::string& active_variable,
     const std::optional<std::string>& start_variable,
     const std::optional<std::string>& target_variable,
     const std::string& start_location,
     const std::string& target_location) {
-  if (std::find(invariant_names.begin(), invariant_names.end(), "msq") ==
+  if (std::find(invariant_names.begin(), invariant_names.end(), active_variable) ==
       invariant_names.end()) {
     return false;
   }
-  if ((start_variable.has_value() && *start_variable != "msq") ||
-      (target_variable.has_value() && *target_variable != "msq")) {
+  if ((start_variable.has_value() && *start_variable != active_variable) ||
+      (target_variable.has_value() && *target_variable != active_variable)) {
     return false;
   }
 
-  const bool start_is_msq_side =
-      (start_variable.has_value() && *start_variable == "msq") ||
-      HasMalformedReviewedExplicitMsqListLocationSyntax(start_location);
-  const bool target_is_msq_side =
-      (target_variable.has_value() && *target_variable == "msq") ||
-      HasMalformedReviewedExplicitMsqListLocationSyntax(target_location);
-  return start_is_msq_side != target_is_msq_side;
+  const bool start_is_active_side =
+      LocationTargetsReviewedInvariantSide(start_variable, start_location, active_variable);
+  const bool target_is_active_side =
+      LocationTargetsReviewedInvariantSide(target_variable, target_location, active_variable);
+  return start_is_active_side != target_is_active_side;
 }
 
-bool HasEvaluatedMixedExplicitRawReviewedMsqListSegment(
+bool HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(
     const ProblemSpec& spec,
     const std::vector<std::string>& invariant_names,
+    const std::string& active_variable,
     const std::optional<std::string>& start_variable,
     const std::optional<std::string>& target_variable,
     const std::string& start_location,
     const std::string& target_location) {
-  if (!HasMixedExplicitRawReviewedMsqListShape(invariant_names,
-                                               start_variable,
-                                               target_variable,
-                                               start_location,
-                                               target_location)) {
+  if (!HasMixedExplicitRawReviewedInvariantListShape(invariant_names,
+                                                     active_variable,
+                                                     start_variable,
+                                                     target_variable,
+                                                     start_location,
+                                                     target_location)) {
     return false;
   }
 
-  const std::string& explicit_location =
-      start_variable.has_value() ? start_location : target_location;
-  const std::string& raw_location =
-      start_variable.has_value() ? target_location : start_location;
-  return TryEvaluateReviewedExplicitMsqListLocation(spec, explicit_location).has_value() &&
-         TryEvaluateReviewedRawMsqListLocation(spec, raw_location).has_value();
+  const bool start_is_active_side =
+      LocationTargetsReviewedInvariantSide(start_variable, start_location, active_variable);
+  const std::string& explicit_location = start_is_active_side ? start_location : target_location;
+  const std::string& raw_location = start_is_active_side ? target_location : start_location;
+  return TryEvaluateReviewedExplicitInvariantListLocation(spec,
+                                                          active_variable,
+                                                          explicit_location)
+             .has_value() &&
+         TryEvaluateReviewedRawInvariantListLocation(spec, active_variable, raw_location)
+             .has_value();
 }
 
 std::optional<std::string> ResolveReviewedInvariantListSegmentName(
@@ -342,12 +361,21 @@ std::optional<std::string> ResolveReviewedInvariantListSegmentName(
           invariant_names.end()) {
     return *start_variable;
   }
-  if (HasMixedExplicitRawReviewedMsqListShape(invariant_names,
-                                              start_variable,
-                                              target_variable,
-                                              start_location,
-                                              target_location)) {
+  if (HasMixedExplicitRawReviewedInvariantListShape(invariant_names,
+                                                    "msq",
+                                                    start_variable,
+                                                    target_variable,
+                                                    start_location,
+                                                    target_location)) {
     return std::string("msq");
+  }
+  if (HasMixedExplicitRawReviewedInvariantListShape(invariant_names,
+                                                    "t",
+                                                    start_variable,
+                                                    target_variable,
+                                                    start_location,
+                                                    target_location)) {
+    return std::string("t");
   }
 
   if (std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end()) {
@@ -373,16 +401,19 @@ bool ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(
        invariant_names.front() == "msq")) {
     return true;
   }
-  return reviewed_segment_invariant_name.has_value() &&
-         *reviewed_segment_invariant_name == "msq" &&
-         HasEvaluatedMixedExplicitRawReviewedMsqListSegment(spec,
-                                                            invariant_names,
-                                                            ParseExplicitLocationAssignmentVariable(
-                                                                start_location),
-                                                            ParseExplicitLocationAssignmentVariable(
-                                                                target_location),
-                                                            start_location,
-                                                            target_location);
+  if (!reviewed_segment_invariant_name.has_value() ||
+      (*reviewed_segment_invariant_name != "t" &&
+       *reviewed_segment_invariant_name != "msq")) {
+    return false;
+  }
+  return HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(
+      spec,
+      invariant_names,
+      *reviewed_segment_invariant_name,
+      ParseExplicitLocationAssignmentVariable(start_location),
+      ParseExplicitLocationAssignmentVariable(target_location),
+      start_location,
+      target_location);
 }
 
 std::filesystem::path AbsoluteOrEmpty(const std::filesystem::path& path) {
@@ -5218,30 +5249,51 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   const std::optional<std::string> target_variable =
       ParseExplicitLocationAssignmentVariable(target_location);
   const bool has_mixed_explicit_raw_reviewed_msq_list_shape =
-      HasMixedExplicitRawReviewedMsqListShape(
-          invariant_names, start_variable, target_variable, start_location, target_location);
+      HasMixedExplicitRawReviewedInvariantListShape(
+          invariant_names, "msq", start_variable, target_variable, start_location, target_location);
+  const bool has_mixed_explicit_raw_reviewed_t_list_shape =
+      HasMixedExplicitRawReviewedInvariantListShape(
+          invariant_names, "t", start_variable, target_variable, start_location, target_location);
   const bool has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment =
-      HasEvaluatedMixedExplicitRawReviewedMsqListSegment(spec,
-                                                         invariant_names,
-                                                         start_variable,
-                                                         target_variable,
-                                                         start_location,
-                                                         target_location);
+      HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(spec,
+                                                               invariant_names,
+                                                               "msq",
+                                                               start_variable,
+                                                               target_variable,
+                                                               start_location,
+                                                               target_location);
+  const bool has_evaluated_mixed_explicit_raw_reviewed_t_list_segment =
+      HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(spec,
+                                                               invariant_names,
+                                                               "t",
+                                                               start_variable,
+                                                               target_variable,
+                                                               start_location,
+                                                               target_location);
   const std::optional<std::string> reviewed_segment_invariant_name =
       ResolveReviewedInvariantListSegmentName(
           invariant_names, start_location, target_location);
   const bool allow_unlabeled_reviewed_raw_expressions =
       reviewed_segment_invariant_name.has_value() &&
-              *reviewed_segment_invariant_name == "msq" &&
-              has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment
+              ((*reviewed_segment_invariant_name == "msq" &&
+                has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment) ||
+               (*reviewed_segment_invariant_name == "t" &&
+                has_evaluated_mixed_explicit_raw_reviewed_t_list_segment))
           ? true
           : ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(spec,
                                                                        invariant_names,
                                                                        reviewed_segment_invariant_name,
                                                                        start_location,
                                                                        target_location);
-  if (has_mixed_explicit_raw_reviewed_msq_list_shape &&
-      !has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment) {
+  const std::optional<std::string> malformed_mixed_explicit_raw_invariant_name =
+      has_mixed_explicit_raw_reviewed_msq_list_shape &&
+              !has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment
+          ? std::optional<std::string>("msq")
+      : has_mixed_explicit_raw_reviewed_t_list_shape &&
+              !has_evaluated_mixed_explicit_raw_reviewed_t_list_segment
+          ? std::optional<std::string>("t")
+          : std::nullopt;
+  if (malformed_mixed_explicit_raw_invariant_name.has_value()) {
     PhysicalKinematicsGuardrailAssessment assessment =
         AssessPhysicalKinematicsForBatch62(spec);
     if (assessment.verdict ==
@@ -5249,8 +5301,10 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
       assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
       assessment.detail =
           "malformed or unsupported non-explicit continuation locations remain unsupported on "
-          "the reviewed mixed explicit/raw multi-invariant msq surface; spell the reviewed msq "
-          "segment explicitly as msq=...";
+          "the reviewed mixed explicit/raw multi-invariant " +
+          *malformed_mixed_explicit_raw_invariant_name +
+          " surface; spell the reviewed " + *malformed_mixed_explicit_raw_invariant_name +
+          " segment explicitly as " + *malformed_mixed_explicit_raw_invariant_name + "=...";
       return MakePhysicalKinematicsNotSupportedDiagnostics(assessment);
     }
   }

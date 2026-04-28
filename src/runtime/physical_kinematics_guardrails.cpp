@@ -124,6 +124,15 @@ ExactRational DistanceToClosedSegment(const ExactRational& point,
   return IsLessThan(start_distance, target_distance) ? start_distance : target_distance;
 }
 
+ReviewedInvariantSegment ExpandClosedSegmentByMargin(const ReviewedInvariantSegment& segment,
+                                                     const ExactRational& margin) {
+  const ExactRational& lower =
+      IsLessThan(segment.start, segment.target) ? segment.start : segment.target;
+  const ExactRational& upper =
+      IsLessThan(segment.start, segment.target) ? segment.target : segment.start;
+  return {SubtractRational(lower, margin), AddRational(upper, margin)};
+}
+
 std::optional<ExplicitLocationAssignment> ParseExplicitLocationAssignment(
     const std::string& location) {
   const std::string trimmed = Trim(location);
@@ -593,6 +602,19 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
       assessment.detail =
           DescribeReviewedClosedRealTSegment(segment->start, segment->target) +
           " crosses the reviewed 2->2 endpoint polynomial "
+          "t^2 - (2*msq - s)*t + msq^2 = 0";
+      return assessment;
+    }
+    const ExactRational near_singular_margin =
+        ComputeReviewedNearSingularMargin(*exact_substitutions);
+    if (TSegmentCrossesReviewedEndpointSurface(
+            ExpandClosedSegmentByMargin(*segment, near_singular_margin),
+            *exact_substitutions)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealTSegment(segment->start, segment->target) +
+          " enters the " + DescribeReviewedNearSingularMargin(near_singular_margin) +
+          " around the reviewed 2->2 endpoint polynomial "
           "t^2 - (2*msq - s)*t + msq^2 = 0";
     }
     return assessment;

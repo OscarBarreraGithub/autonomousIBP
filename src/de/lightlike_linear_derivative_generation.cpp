@@ -274,7 +274,27 @@ std::optional<AdditiveDriverTerm> ParseCommonCoefficientAdditiveDriverTerm(
 
   const std::optional<std::size_t> split = FindFirstTopLevelMultiplication(term);
   if (!split.has_value()) {
-    return std::nullopt;
+    int depth = 0;
+    for (const char ch : term) {
+      if (ch == '(') {
+        ++depth;
+        continue;
+      }
+      if (ch == ')') {
+        if (depth == 0) {
+          return std::nullopt;
+        }
+        --depth;
+        continue;
+      }
+      if (ch == '/' && depth == 0) {
+        return std::nullopt;
+      }
+    }
+    if (depth != 0) {
+      return std::nullopt;
+    }
+    return AdditiveDriverTerm{ExactRational{"1", "1"}, leading_negative, term};
   }
 
   const std::string coefficient = TrimWhitespace(term.substr(0, *split));

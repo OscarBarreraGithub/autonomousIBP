@@ -581,8 +581,8 @@ def write_synthetic_qualification_summary(path: Path) -> None:
             "phase0_pending_ids": synthetic_phase0_pending_ids(),
             "blocked_phase0_examples": [
                 {"id": "complex_kinematics", "next_runtime_lane": "b61n"},
-                {"id": "feynman_prescription", "next_runtime_lane": "b63k"},
-                {"id": "linear_propagator", "next_runtime_lane": "b64k"},
+                {"id": "feynman_prescription", "next_runtime_lane": "b63n"},
+                {"id": "linear_propagator", "next_runtime_lane": "b64ag"},
             ],
         },
     )

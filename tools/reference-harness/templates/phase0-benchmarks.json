@@ -40,8 +40,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63k",
-      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63k`) lands."
+      "next_runtime_lane": "b63n",
+      "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63n`) lands."
     },
     {
       "id": "automatic_phasespace",
@@ -49,8 +49,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b63k",
-      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63k`) lands."
+      "next_runtime_lane": "b63n",
+      "notes": "Phase-space example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63n`) lands."
     },
     {
       "id": "linear_propagator",
@@ -58,8 +58,8 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
-      "next_runtime_lane": "b64k",
-      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64k`) lands."
+      "next_runtime_lane": "b64ag",
+      "notes": "Linear-propagator smoke test stays capture-blocked until the next reviewed linear-propagator runtime slice (`b64ag`) lands."
     },
     {
       "id": "spacetime_dimension",

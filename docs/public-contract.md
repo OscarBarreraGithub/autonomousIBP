@@ -148,7 +148,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - current worktree now also carries the first executable M7 helper on top of that scaffold only:
   `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one machine-readable
   `qualification_readiness.py` summary plus the release-signoff checklist, audits the checklist
-  source/doc targets inside the repo, preserves the blocked `b61n` / `b62n` / `b63k` / `b64k`
+  source/doc targets inside the repo, preserves the blocked `b61n` / `b62p` / `b63n` / `b64ag`
   runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
   release-readiness summary. The current worktree now also lets that helper optionally consume
   the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves

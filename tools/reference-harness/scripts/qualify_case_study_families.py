@@ -463,8 +463,8 @@ def write_synthetic_readiness_summary(
                 "required_failure_codes": ["insufficient_precision", "master_set_instability"],
                 "regression_profile": "current-reviewed-regressions",
                 "known_regression_families": ["unexpected master sets in Kira interface"],
-                "next_runtime_lane": "b62n",
-                "landed_runtime_predecessor": "b62m",
+                "next_runtime_lane": "b62p",
+                "landed_runtime_predecessor": "b62o",
             }
         )
 

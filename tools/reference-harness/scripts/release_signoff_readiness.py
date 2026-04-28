@@ -1798,7 +1798,7 @@ def write_synthetic_qualification_summary(path: Path) -> None:
             "blocked_phase0_examples": [
                 {
                     "id": "automatic_phasespace",
-                    "next_runtime_lane": "b63k",
+                    "next_runtime_lane": "b63n",
                 },
                 {
                     "id": "complex_kinematics",
@@ -1806,17 +1806,17 @@ def write_synthetic_qualification_summary(path: Path) -> None:
                 },
                 {
                     "id": "feynman_prescription",
-                    "next_runtime_lane": "b63k",
+                    "next_runtime_lane": "b63n",
                 },
                 {
                     "id": "linear_propagator",
-                    "next_runtime_lane": "b64k",
+                    "next_runtime_lane": "b64ag",
                 },
             ],
             "blocked_case_study_families": [
                 {
                     "id": "one-singular-endpoint-case",
-                    "next_runtime_lane": "b62n",
+                    "next_runtime_lane": "b62p",
                 }
             ],
         },
@@ -1913,8 +1913,8 @@ def write_synthetic_case_study_qualification_summary(path: Path) -> None:
             "blocked_case_study_families": [
                 {
                     "id": "one-singular-endpoint-case",
-                    "next_runtime_lane": "b62n",
-                    "landed_runtime_predecessor": "b62m",
+                    "next_runtime_lane": "b62p",
+                    "landed_runtime_predecessor": "b62o",
                 }
             ],
             "case_study_families": [],
@@ -2232,7 +2232,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 for prerequisite in summary["release_prerequisites"]
             ),
             "phase_f_runtime_blockers_preserved": (
-                summary["blocked_runtime_lanes"] == ["b61n", "b62n", "b63k", "b64k"]
+                summary["blocked_runtime_lanes"] == ["b61n", "b62p", "b63n", "b64ag"]
             ),
             "retained_reference_evidence_not_overclaimed": any(
                 prerequisite["id"] == "retained-reference-evidence"

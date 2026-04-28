@@ -39576,39 +39576,39 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
   ExpectContains(result.stdout_json, "\"complex_kinematics\": \"b61n\"",
                  "bootstrap reference-harness self-check should publish the current complex "
                  "kinematics blocker hint");
-  ExpectContains(result.stdout_json, "\"automatic_phasespace\": \"b63k\"",
+  ExpectContains(result.stdout_json, "\"automatic_phasespace\": \"b63n\"",
                  "bootstrap reference-harness self-check should publish the current phase-space "
                  "blocker hint");
-  ExpectContains(result.stdout_json, "\"feynman_prescription\": \"b63k\"",
+  ExpectContains(result.stdout_json, "\"feynman_prescription\": \"b63n\"",
                  "bootstrap reference-harness self-check should publish the current prescription "
                  "blocker hint");
-  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64k\"",
+  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64ag\"",
                  "bootstrap reference-harness self-check should publish the current linear "
                  "propagator blocker hint");
   ExpectContains(result.stdout_json,
                  "\"singular_case_study_runtime_lane_locked\": true",
                  "bootstrap reference-harness self-check should keep the singular guardrail "
                  "runtime-lane hint synchronized with the reviewed next-slice plan");
-  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62n\"",
+  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62p\"",
                  "bootstrap reference-harness self-check should publish the current singular "
                  "guardrail blocker hint");
   ExpectContains(result.stdout_json,
                  "\"runtime_lane_predecessors_recorded\": true",
                  "bootstrap reference-harness self-check should anchor forward runtime-lane "
                  "hints to recorded landed predecessor slices");
-  ExpectContains(result.stdout_json, "\"complex_kinematics\": \"b61j\"",
+  ExpectContains(result.stdout_json, "\"complex_kinematics\": \"b61k\"",
                  "bootstrap reference-harness self-check should publish the recorded complex "
                  "kinematics predecessor anchor");
-  ExpectContains(result.stdout_json, "\"automatic_phasespace\": \"b63j\"",
+  ExpectContains(result.stdout_json, "\"automatic_phasespace\": \"b63m\"",
                  "bootstrap reference-harness self-check should publish the recorded automatic "
                  "phase-space predecessor anchor");
-  ExpectContains(result.stdout_json, "\"feynman_prescription\": \"b63j\"",
+  ExpectContains(result.stdout_json, "\"feynman_prescription\": \"b63m\"",
                  "bootstrap reference-harness self-check should publish the recorded phase-space "
                  "predecessor anchor");
-  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64j\"",
+  ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64af\"",
                  "bootstrap reference-harness self-check should publish the recorded linear "
                  "propagator predecessor anchor");
-  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62m\"",
+  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62o\"",
                  "bootstrap reference-harness self-check should publish the recorded singular "
                  "guardrail predecessor anchor");
   ExpectContains(result.stdout_json,
@@ -39907,23 +39907,23 @@ void QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest() {
                  "qualification readiness summary should keep the blocked complex-kinematics "
                  "next-slice hint visible");
   ExpectContains(result.stdout_json,
-                 "\"id\": \"automatic_phasespace\",\n      \"next_runtime_lane\": \"b63k\"",
+                 "\"id\": \"automatic_phasespace\",\n      \"next_runtime_lane\": \"b63n\"",
                  "qualification readiness summary should keep blocked automatic_phasespace lane "
                  "hints visible");
   ExpectContains(result.stdout_json,
-                 "\"id\": \"feynman_prescription\",\n      \"next_runtime_lane\": \"b63k\"",
+                 "\"id\": \"feynman_prescription\",\n      \"next_runtime_lane\": \"b63n\"",
                  "qualification readiness summary should keep blocked prescription lane hints "
                  "visible");
   ExpectContains(result.stdout_json, "\"id\": \"linear_propagator\"",
                  "qualification readiness summary should keep blocked linear-propagator evidence "
                  "visible");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b64k\"",
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b64ag\"",
                  "qualification readiness summary should keep the blocked linear-propagator "
                  "next-slice hint visible");
   ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
                  "qualification readiness summary should keep the blocked singular case-study "
                  "anchor visible");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62n\"",
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
                  "qualification readiness summary should keep the blocked singular case-study "
                  "next-slice hint visible");
 }
@@ -39976,10 +39976,10 @@ void QualificationCaseStudyReadinessMatchesRepoSourcesTest() {
   ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
                  "qualification case-study readiness report should summarize the singular "
                  "endpoint family");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62n\"",
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
                  "qualification case-study readiness report should keep the blocked singular "
                  "runtime lane visible");
-  ExpectContains(result.stdout_json, "\"landed_runtime_predecessor\": \"b62m\"",
+  ExpectContains(result.stdout_json, "\"landed_runtime_predecessor\": \"b62o\"",
                  "qualification case-study readiness report should keep the blocked singular "
                  "predecessor anchor visible");
 }
@@ -41100,7 +41100,7 @@ void CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersV
   ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\"",
                  "case-study-family qualification summary should keep the singular case-study "
                  "anchor visible");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62n\"",
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
                  "case-study-family qualification summary should keep the singular runtime "
                  "blocker visible");
   ExpectContains(result.stdout_json, "\"case-study numerics are not yet compared\"",
@@ -41334,7 +41334,7 @@ void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
                  "release signoff readiness summary should preserve the blocked complex "
                  "kinematics lane hint");
   ExpectContains(result.stdout_json,
-                 "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b62n\",\n    \"b63k\",\n    \"b64k\"\n  ]",
+                 "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b62p\",\n    \"b63n\",\n    \"b64ag\"\n  ]",
                  "release signoff readiness summary should keep the current blocked runtime-lane "
                  "frontier visible");
 }

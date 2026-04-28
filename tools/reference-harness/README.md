@@ -60,7 +60,7 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
 
 All twenty-one harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
-`next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62n` / `b63k` / `b64k`
+`next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62p` / `b63n` / `b64ag`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
 qualification verdict, plus the blocked M7 release-readiness and qualification-corpus audits:
@@ -390,7 +390,7 @@ python3 tools/reference-harness/scripts/release_signoff_readiness.py \
 
 Add `--summary-path` if you want the JSON report written to disk as well as printed to stdout.
 This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
-and docs-completion targets, keeps the current blocked `b61n` / `b62n` / `b63k` / `b64k`
+and docs-completion targets, keeps the current blocked `b61n` / `b62p` / `b63n` / `b64ag`
 frontier visible from the retained M6 evidence packet, preserves optional phase-0 qualification
 and case-study-family qualification verdict blockers plus qualification-corpus,
 performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar blockers when
@@ -502,7 +502,7 @@ The capture script writes:
   blocked on reviewed runtime slices, plus `optional_capture_packet` hints for ready example pairs
   that belong in the retained `de-d0-pair` or retained `user-hook-pair` packets. Those hints
   stay aligned with the current theory frontier while still anchoring against the recorded
-  predecessor slices `b61j` / `b62m` / `b63j` / `b64j`.
+  predecessor slices `b61k` / `b62o` / `b63m` / `b64af`.
 - `templates/release-signoff-checklist.json` is the first machine-readable M7 scaffold: it freezes
   the later release-review sections for qualification closure, performance review, diagnostic
   review, docs completion, and the final parity sign-off statement. It is planning metadata only

@@ -664,7 +664,7 @@ The first case-study-family qualification verdict remains blocked on purpose:
 `tools/reference-harness/scripts/qualify_case_study_families.py` consumes the
 machine-readable case-study readiness summary, can consume one future case-study numeric
 comparison summary, and writes one blocked/pass case-study-family verdict. In the current
-retained repo state it preserves the singular case-study `b62n` runtime-lane blocker and the
+retained repo state it preserves the singular case-study `b62p` runtime-lane blocker and the
 missing case-study numeric comparison evidence, keeps the phase-0 packet-set verdict as a
 separate prerequisite, and does not claim that `Milestone M6` has closed.
 
@@ -685,7 +685,7 @@ case-study-family qualification verdict, plus one qualification-corpus summary s
 performance-review summary sidecar, one diagnostic-review summary sidecar, one docs-completion
 summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets, and writes one blocked
 release-readiness summary that keeps the current
-`b61n` / `b62n` / `b63k` / `b64k` frontier, phase-0 correct-digit/failure-code
+`b61n` / `b62p` / `b63n` / `b64ag` frontier, phase-0 correct-digit/failure-code
 blockers, case-study runtime/numeric blockers, qualification-corpus blockers,
 performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
 and the final parity-signoff blocker path visible without claiming that `Milestone M6` or

@@ -3582,14 +3582,59 @@ SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summar
 
 SolverDiagnostics MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
     const std::string& variable_name,
-    const EtaContinuationPlan& plan) {
+    const EtaContinuationPlan& plan,
+    const std::string& reason = "") {
   std::string summary =
       std::string(kBootstrapSolverPrefix) +
       " does not execute eta_continuation_plan on the default exact path; eta_symbol=" +
       plan.eta_symbol + "; system_variable=" + variable_name;
   summary += "; contour_fingerprint=" + plan.contour_fingerprint;
+  if (!reason.empty()) {
+    summary += "; reason=" + reason;
+  }
   summary += "; default-solver complex contour execution remains deferred";
   return MakeUnsupportedSolverPathDiagnostics(summary);
+}
+
+std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructuralRejectionReason(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const EtaContinuationPlan& plan) {
+  if (plan.eta_symbol != variable_name) {
+    return "eta_continuation_plan eta_symbol does not match the selected system variable";
+  }
+  if (plan.start_location != request.start_location ||
+      plan.target_location != request.target_location) {
+    return "eta_continuation_plan start/target locations do not match the solve request";
+  }
+  if (!request.system.singular_points.empty() || !plan.singular_points.empty()) {
+    return "default exact solver accepts eta_continuation_plan only when no singular-point "
+           "branch ledger is required";
+  }
+  if (plan.contour_points.size() != 2) {
+    return "default exact solver currently accepts only direct real two-point "
+           "eta_continuation_plan metadata";
+  }
+
+  const ExactComplexRational& start = plan.contour_points.front();
+  const ExactComplexRational& target = plan.contour_points.back();
+  if (!start.IsReal() || !target.IsReal()) {
+    return "default exact solver currently accepts only real eta_continuation_plan endpoints";
+  }
+  return std::nullopt;
+}
+
+std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanEndpointRejectionReason(
+    const EtaContinuationPlan& plan,
+    const ExactRational& start_value,
+    const ExactRational& target_value) {
+  const ExactComplexRational& start = plan.contour_points.front();
+  const ExactComplexRational& target = plan.contour_points.back();
+  if (start.real != start_value || target.real != target_value) {
+    return "eta_continuation_plan contour endpoints do not match the parsed solve request "
+           "start/target locations";
+  }
+  return std::nullopt;
 }
 
 std::string BuildComplexEtaContinuationManifestRunId(const EtaContinuationPlan& plan) {
@@ -4469,8 +4514,13 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
 
   const std::string& variable_name = live_request.system.variables.front().name;
   if (live_request.eta_continuation_plan.has_value()) {
-    return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
-        variable_name, *live_request.eta_continuation_plan);
+    const std::optional<std::string> rejection_reason =
+        ReviewedDirectRealBootstrapEtaContinuationPlanStructuralRejectionReason(
+            live_request, variable_name, *live_request.eta_continuation_plan);
+    if (rejection_reason.has_value()) {
+      return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+          variable_name, *live_request.eta_continuation_plan, *rejection_reason);
+    }
   }
   const NumericEvaluationPoint passive_bindings = BuildBootstrapPassiveBindings(live_request);
   const ExactRational start_value =
@@ -4483,6 +4533,17 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                       live_request.target_location,
                       passive_bindings,
                       kBootstrapSolverPrefix);
+  if (live_request.eta_continuation_plan.has_value()) {
+    const std::optional<std::string> rejection_reason =
+        ReviewedDirectRealBootstrapEtaContinuationPlanEndpointRejectionReason(
+            *live_request.eta_continuation_plan,
+            start_value,
+            target_value);
+    if (rejection_reason.has_value()) {
+      return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+          variable_name, *live_request.eta_continuation_plan, *rejection_reason);
+    }
+  }
 
   const BoundaryCondition* start_boundary = nullptr;
   try {

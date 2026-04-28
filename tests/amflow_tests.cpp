@@ -12405,6 +12405,41 @@ void Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryFailsClosedBeforeSolverTe
          "when boundary values remain unavailable");
 }
 
+void Batch63mAmfOptionsEndingSchemeCutkoskyPhaseSpaceUsesDeferredBuiltinRegistryTest() {
+  const amflow::ProblemSpec spec = MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
+      amflow::FeynmanPrescription::PlusI0);
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options;
+  const amflow::SolveRequest request_template =
+      MakeCutkoskyPhaseSpaceSolveTemplateRequestWithEtaSymbol("eta_aux");
+  const amflow::SolveRequest original_request_template = request_template;
+  RecordingSeriesSolver solver;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options, &request_template, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            solver,
+            "eta_aux"));
+      },
+      "builtin Cutkosky phase-space boundary values remain deferred for strategy "
+      "builtin::cutkosky-phase-space::plus_i0 at eta_aux @ cutkosky-phase-space",
+      "Batch 63m no-provider Cutkosky wrapper should use the deferred builtin registry and "
+      "fail closed on the matched loop-prescription-aware strategy");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 63m no-provider Cutkosky wrapper should not mutate the shared input "
+         "ProblemSpec when the deferred builtin registry fails closed");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 63m no-provider Cutkosky wrapper should not mutate the caller-owned solve "
+         "request template when the deferred builtin registry fails closed");
+  Expect(solver.call_count() == 0,
+         "Batch 63m no-provider Cutkosky wrapper should stop before solver execution while "
+         "builtin phase-space boundary values remain deferred");
+}
+
 void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Cutkosky"});
@@ -43705,6 +43740,7 @@ int main() {
     Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptionAwareProviderStrategyTest();
     Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryExposesReviewedStrategiesTest();
     Batch63lDeferredCutkoskyPhaseSpaceProviderRegistryFailsClosedBeforeSolverTest();
+    Batch63mAmfOptionsEndingSchemeCutkoskyPhaseSpaceUsesDeferredBuiltinRegistryTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();

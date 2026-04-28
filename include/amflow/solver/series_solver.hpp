@@ -672,6 +672,13 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const AmfOptions& amf_options,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const SolveRequest& request_template,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol = "eta");
+SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const AmfOptions& amf_options,
+    const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
+    const SolveRequest& request_template,
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol = "eta");

@@ -4,6 +4,8 @@
 #include "amflow/solver/coefficient_evaluator.hpp"
 
 #include <cctype>
+#include <limits>
+#include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -109,15 +111,18 @@ std::vector<std::string> SplitTopLevelAdditiveTerms(const std::string& value) {
   return terms;
 }
 
-std::string AbsoluteRationalString(const ExactRational& value) {
-  std::string numerator = value.numerator;
-  if (!numerator.empty() && numerator.front() == '-') {
-    numerator.erase(numerator.begin());
+ExactRational AbsoluteRational(ExactRational value) {
+  if (!value.numerator.empty() && value.numerator.front() == '-') {
+    value.numerator.erase(value.numerator.begin());
   }
+  return value;
+}
+
+std::string RationalText(const ExactRational& value) {
   if (value.denominator == "1") {
-    return numerator;
+    return value.numerator;
   }
-  return numerator + "/" + value.denominator;
+  return value.numerator + "/" + value.denominator;
 }
 
 bool IsNegativeRational(const ExactRational& value) {
@@ -125,10 +130,134 @@ bool IsNegativeRational(const ExactRational& value) {
 }
 
 struct AdditiveDriverTerm {
-  std::string magnitude;
+  ExactRational magnitude;
   bool negative = false;
   std::string body;
 };
+
+struct PositiveSmallRational {
+  long long numerator = 0;
+  long long denominator = 1;
+};
+
+std::optional<long long> ParsePositiveLongLong(const std::string& value) {
+  if (value.empty() || value.front() == '-' || value.front() == '+') {
+    return std::nullopt;
+  }
+  try {
+    std::size_t parsed_size = 0;
+    const long long parsed = std::stoll(value, &parsed_size);
+    if (parsed_size != value.size() || parsed <= 0) {
+      return std::nullopt;
+    }
+    return parsed;
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+std::optional<long long> CheckedPositiveProduct(const long long lhs, const long long rhs) {
+  if (lhs <= 0 || rhs <= 0) {
+    return std::nullopt;
+  }
+  if (lhs > std::numeric_limits<long long>::max() / rhs) {
+    return std::nullopt;
+  }
+  return lhs * rhs;
+}
+
+std::optional<long long> CheckedPositiveLcm(const long long lhs, const long long rhs) {
+  if (lhs <= 0 || rhs <= 0) {
+    return std::nullopt;
+  }
+  return CheckedPositiveProduct(lhs / std::gcd(lhs, rhs), rhs);
+}
+
+std::optional<PositiveSmallRational> ToPositiveSmallRational(const ExactRational& value) {
+  const std::optional<long long> numerator = ParsePositiveLongLong(value.numerator);
+  const std::optional<long long> denominator = ParsePositiveLongLong(value.denominator);
+  if (!numerator.has_value() || !denominator.has_value()) {
+    return std::nullopt;
+  }
+  return PositiveSmallRational{*numerator, *denominator};
+}
+
+std::optional<PositiveSmallRational> CommonPositiveMagnitude(
+    const std::vector<AdditiveDriverTerm>& terms) {
+  long long common_numerator = 0;
+  long long common_denominator = 1;
+  for (const AdditiveDriverTerm& term : terms) {
+    const std::optional<PositiveSmallRational> magnitude =
+        ToPositiveSmallRational(term.magnitude);
+    if (!magnitude.has_value()) {
+      return std::nullopt;
+    }
+    common_numerator = common_numerator == 0
+                           ? magnitude->numerator
+                           : std::gcd(common_numerator, magnitude->numerator);
+    const std::optional<long long> next_denominator =
+        CheckedPositiveLcm(common_denominator, magnitude->denominator);
+    if (!next_denominator.has_value()) {
+      return std::nullopt;
+    }
+    common_denominator = *next_denominator;
+  }
+
+  if (common_numerator <= 0) {
+    return std::nullopt;
+  }
+  const long long divisor = std::gcd(common_numerator, common_denominator);
+  return PositiveSmallRational{common_numerator / divisor, common_denominator / divisor};
+}
+
+std::optional<long long> IntegerWeightRelativeToCommon(
+    const ExactRational& magnitude,
+    const PositiveSmallRational& common_magnitude) {
+  const std::optional<PositiveSmallRational> term_magnitude =
+      ToPositiveSmallRational(magnitude);
+  if (!term_magnitude.has_value()) {
+    return std::nullopt;
+  }
+  const std::optional<long long> numerator =
+      CheckedPositiveProduct(term_magnitude->numerator, common_magnitude.denominator);
+  const std::optional<long long> denominator =
+      CheckedPositiveProduct(term_magnitude->denominator, common_magnitude.numerator);
+  if (!numerator.has_value() || !denominator.has_value() || *numerator % *denominator != 0) {
+    return std::nullopt;
+  }
+  const long long weight = *numerator / *denominator;
+  if (weight <= 0) {
+    return std::nullopt;
+  }
+  return weight;
+}
+
+std::string CommonMagnitudeText(const PositiveSmallRational& magnitude) {
+  if (magnitude.denominator == 1) {
+    return std::to_string(magnitude.numerator);
+  }
+  return std::to_string(magnitude.numerator) + "/" + std::to_string(magnitude.denominator);
+}
+
+std::string WeightedDriverBody(const long long weight, const std::string& body) {
+  if (weight == 1) {
+    return body;
+  }
+  return std::to_string(weight) + "*(" + StripOneOuterParenthesisPair(body) + ")";
+}
+
+bool AllTermsShareMagnitude(const std::vector<AdditiveDriverTerm>& terms) {
+  if (terms.empty()) {
+    return false;
+  }
+  const ExactRational& common_magnitude = terms.front().magnitude;
+  for (const AdditiveDriverTerm& term : terms) {
+    if (term.magnitude != common_magnitude) {
+      return false;
+    }
+  }
+  return true;
+}
 
 std::optional<AdditiveDriverTerm> ParseCommonCoefficientAdditiveDriverTerm(
     const std::string& raw_term) {
@@ -162,7 +291,7 @@ std::optional<AdditiveDriverTerm> ParseCommonCoefficientAdditiveDriverTerm(
       return std::nullopt;
     }
     return AdditiveDriverTerm{
-        AbsoluteRationalString(signed_coefficient),
+        AbsoluteRational(signed_coefficient),
         IsNegativeRational(signed_coefficient),
         body,
     };
@@ -180,24 +309,40 @@ std::optional<std::string> NormalizeCommonCoefficientAdditiveQuadraticDriver(
 
   std::vector<AdditiveDriverTerm> terms;
   terms.reserve(raw_terms.size());
-  std::string common_magnitude;
   for (const std::string& raw_term : raw_terms) {
     const std::optional<AdditiveDriverTerm> term =
         ParseCommonCoefficientAdditiveDriverTerm(raw_term);
     if (!term.has_value()) {
       return std::nullopt;
     }
-    if (common_magnitude.empty()) {
-      common_magnitude = term->magnitude;
-    } else if (term->magnitude != common_magnitude) {
+    terms.push_back(*term);
+  }
+
+  const bool shared_magnitude = AllTermsShareMagnitude(terms);
+  std::optional<PositiveSmallRational> primitive_common_magnitude;
+  std::string common_magnitude_text;
+  if (shared_magnitude) {
+    common_magnitude_text = RationalText(terms.front().magnitude);
+  } else {
+    primitive_common_magnitude = CommonPositiveMagnitude(terms);
+    if (!primitive_common_magnitude.has_value()) {
       return std::nullopt;
     }
-    terms.push_back(*term);
+    common_magnitude_text = CommonMagnitudeText(*primitive_common_magnitude);
   }
 
   std::string normalized_inner;
   for (std::size_t index = 0; index < terms.size(); ++index) {
     const AdditiveDriverTerm& term = terms[index];
+    long long weight = 1;
+    if (!shared_magnitude) {
+      const std::optional<long long> primitive_weight =
+          IntegerWeightRelativeToCommon(term.magnitude, *primitive_common_magnitude);
+      if (!primitive_weight.has_value()) {
+        return std::nullopt;
+      }
+      weight = *primitive_weight;
+    }
     if (index == 0) {
       if (term.negative) {
         normalized_inner += "-";
@@ -205,7 +350,7 @@ std::optional<std::string> NormalizeCommonCoefficientAdditiveQuadraticDriver(
     } else {
       normalized_inner += term.negative ? "-" : "+";
     }
-    normalized_inner += term.body;
+    normalized_inner += WeightedDriverBody(weight, term.body);
   }
   if (normalized_inner.empty()) {
     return std::nullopt;
@@ -213,7 +358,8 @@ std::optional<std::string> NormalizeCommonCoefficientAdditiveQuadraticDriver(
 
   try {
     const std::string squared_coefficient =
-        EvaluateCoefficientExpression("(" + common_magnitude + ")*(" + common_magnitude + ")",
+        EvaluateCoefficientExpression("(" + common_magnitude_text + ")*(" +
+                                          common_magnitude_text + ")",
                                       NumericEvaluationPoint{})
             .ToString();
     if (squared_coefficient == "1") {

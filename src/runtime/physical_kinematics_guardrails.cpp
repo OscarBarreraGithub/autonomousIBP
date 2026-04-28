@@ -636,6 +636,31 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
           DescribeReviewedClosedRealMsqSegment(segment->start, segment->target) +
           " crosses the reviewed 2->2 endpoint polynomial "
           "t^2 - (2*msq - s)*t + msq^2 = 0";
+      return assessment;
+    }
+
+    const ExactRational near_singular_margin =
+        ComputeReviewedNearSingularMargin(*exact_substitutions);
+    if (IsLessThanOrEqual(DistanceToClosedSegment(threshold_msq,
+                                                  segment->start,
+                                                  segment->target),
+                          near_singular_margin)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealMsqSegment(segment->start, segment->target) +
+          " enters the " + DescribeReviewedNearSingularMargin(near_singular_margin) +
+          " around the reviewed pair-production threshold s = 4*msq";
+      return assessment;
+    }
+    if (MsqSegmentCrossesReviewedEndpointSurface(
+            ExpandClosedSegmentByMargin(*segment, near_singular_margin),
+            *exact_substitutions)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+      assessment.detail =
+          DescribeReviewedClosedRealMsqSegment(segment->start, segment->target) +
+          " enters the " + DescribeReviewedNearSingularMargin(near_singular_margin) +
+          " around the reviewed 2->2 endpoint polynomial "
+          "t^2 - (2*msq - s)*t + msq^2 = 0";
     }
     return assessment;
   }

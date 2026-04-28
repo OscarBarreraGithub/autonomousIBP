@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <vector>
@@ -81,9 +82,50 @@ std::string CutkoskyPhaseSpaceProviderStrategyForPrescription(
   return kBuiltinCutkoskyPhaseSpaceStrategy;
 }
 
+std::string ResolveRawCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
+  std::optional<FeynmanPrescription> selected_cut_prescription;
+  bool saw_non_default_cut_prescription = false;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    const std::optional<FeynmanPrescription> raw_prescription =
+        ParseFeynmanPrescription(propagator.prescription);
+    if (!raw_prescription.has_value()) {
+      throw std::invalid_argument("family.propagators[" + std::to_string(index) +
+                                  "].prescription must be one of -1 (-i0), 0 (none), or 1 "
+                                  "(+i0)");
+    }
+
+    if (*raw_prescription != FeynmanPrescription::MinusI0) {
+      saw_non_default_cut_prescription = true;
+    }
+
+    if (!selected_cut_prescription.has_value()) {
+      selected_cut_prescription = *raw_prescription;
+      continue;
+    }
+
+    if (*selected_cut_prescription != *raw_prescription) {
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires all cut "
+          "propagators to carry the same raw provider strategy on the current reviewed "
+          "raw-prescription provider-selection subset");
+    }
+  }
+
+  if (!selected_cut_prescription.has_value() || !saw_non_default_cut_prescription) {
+    return kBuiltinCutkoskyPhaseSpaceStrategy;
+  }
+
+  return CutkoskyPhaseSpaceProviderStrategyForPrescription(*selected_cut_prescription);
+}
+
 std::string ResolveBuiltinCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
   if (spec.family.loop_prescriptions.empty()) {
-    return kBuiltinCutkoskyPhaseSpaceStrategy;
+    return ResolveRawCutkoskyPhaseSpaceStrategy(spec);
   }
 
   std::optional<FeynmanPrescription> selected_cut_prescription;

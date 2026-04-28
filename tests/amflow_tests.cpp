@@ -1920,6 +1920,22 @@ amflow::ProblemSpec MakeLoopPrescriptionMismatchCutkoskyPhaseSpaceSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeRawPrescriptionCutkoskyPhaseSpaceSpec(
+    const amflow::FeynmanPrescription cut_prescription) {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.propagators[0].prescription = static_cast<int>(cut_prescription);
+  spec.family.propagators[5].prescription = static_cast<int>(cut_prescription);
+  return spec;
+}
+
+amflow::ProblemSpec MakeMixedRawPrescriptionCutkoskyPhaseSpaceSpec() {
+  amflow::ProblemSpec spec =
+      MakeRawPrescriptionCutkoskyPhaseSpaceSpec(amflow::FeynmanPrescription::PlusI0);
+  spec.family.propagators[5].prescription =
+      static_cast<int>(amflow::FeynmanPrescription::None);
+  return spec;
+}
+
 amflow::FamilyDefinition MakeAutomaticPhaseSpaceLoopPrescriptionFamily() {
   amflow::FamilyDefinition family;
   family.name = "phase";
@@ -9858,6 +9874,36 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwarePr
          "provider strategy when every cut propagator derives matching zero loop metadata");
 }
 
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest() {
+  const amflow::BoundaryRequest plus_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeRawPrescriptionCutkoskyPhaseSpaceSpec(amflow::FeynmanPrescription::PlusI0));
+  const amflow::BoundaryRequest none_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeRawPrescriptionCutkoskyPhaseSpaceSpec(amflow::FeynmanPrescription::None));
+  const amflow::BoundaryRequest default_minus_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
+          MakeRawPrescriptionCutkoskyPhaseSpaceSpec(amflow::FeynmanPrescription::MinusI0));
+
+  Expect(SameBoundaryRequest(
+             plus_request,
+             {"eta", "cutkosky-phase-space", "builtin::cutkosky-phase-space::plus_i0"}),
+         "builtin Cutkosky phase-space boundary generation should surface a +i0 provider "
+         "strategy when every cut propagator carries matching raw +i0 metadata and no "
+         "loop-prescriptions are present");
+  Expect(SameBoundaryRequest(
+             none_request,
+             {"eta", "cutkosky-phase-space", "builtin::cutkosky-phase-space::none"}),
+         "builtin Cutkosky phase-space boundary generation should surface a no-prescription "
+         "provider strategy when every cut propagator carries matching raw zero metadata and "
+         "no loop-prescriptions are present");
+  Expect(SameBoundaryRequest(default_minus_request,
+                             {"eta", "cutkosky-phase-space",
+                              "builtin::cutkosky-phase-space"}),
+         "builtin Cutkosky phase-space boundary generation should keep the legacy provider "
+         "strategy for default raw -i0 cut prescriptions without loop-prescriptions");
+}
+
 void GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -10855,6 +10901,18 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptio
       "strategy",
       "builtin Cutkosky phase-space boundary generation should fail closed when the cut surface "
       "would require multiple loop-prescription-backed provider strategies");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesTest() {
+  const amflow::ProblemSpec spec = MakeMixedRawPrescriptionCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "requires all cut propagators to carry the same raw provider strategy",
+      "builtin Cutkosky phase-space boundary generation should fail closed when raw cut "
+      "prescriptions without loop-prescriptions would require multiple provider strategies");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest() {
@@ -44137,6 +44195,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();
     GeneratePlannedCutkoskyPhaseSpaceBoundaryRequestBuiltinHappyPathTest();
     GeneratePlannedEtaInfinityBoundaryRequestRejectsCutkoskyPhaseSpaceTerminalNodeTest();
@@ -44182,6 +44241,7 @@ int main() {
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopOnlySubsetTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsUnsupportedPropagatorKindsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptionProviderStrategiesTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAttachesThroughProviderSeamTest();

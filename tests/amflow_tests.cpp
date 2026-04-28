@@ -41206,6 +41206,129 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
       "withheld-claim list");
 }
 
+void CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-case-study-numeric-self-check",
+      "tools/reference-harness/scripts/compare_case_study_numeric_results.py",
+      {"--self-check"},
+      "case-study numeric comparison self-check");
+  Expect(result.stderr_log.empty(),
+         "case-study numeric comparison self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_case_study_numeric_summary_passes\": true",
+                 "case-study numeric comparison self-check should keep matching synthetic "
+                 "case-study numerics on the passing path");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_numeric_summary_feeds_case_study_qualification\": true",
+                 "case-study numeric comparison self-check should emit the numeric-summary "
+                 "schema consumed by the case-study qualification verdict");
+  ExpectContains(result.stdout_json, "\"missing_evidence_blocks_numeric_summary\": true",
+                 "case-study numeric comparison self-check should keep missing case-study "
+                 "evidence on the blocker path");
+  ExpectContains(result.stdout_json, "\"threshold_failures_reported\": true",
+                 "case-study numeric comparison self-check should report correct-digit "
+                 "threshold failures");
+  ExpectContains(result.stdout_json, "\"metadata_drift_reported\": true",
+                 "case-study numeric comparison self-check should report scaffold metadata "
+                 "drift without overclaiming comparison success");
+  ExpectContains(result.stdout_json, "\"duplicate_evidence_rejected\": true",
+                 "case-study numeric comparison self-check should reject duplicate evidence "
+                 "sidecars for one family");
+  ExpectContains(result.stdout_json, "\"unknown_family_rejected\": true",
+                 "case-study numeric comparison self-check should reject evidence for families "
+                 "outside the readiness summary");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "case-study numeric comparison self-check should write the synthetic summary "
+                 "output");
+}
+
+void CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest() {
+  const std::filesystem::path readiness_summary_path =
+      FreshTempDir("amflow-case-study-numeric-prereq-readiness") /
+      "case-study-readiness.json";
+  const std::filesystem::path numeric_summary_path =
+      FreshTempDir("amflow-case-study-numeric-summary") / "case-study-numerics.json";
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-case-study-numeric-qualification-summary") / "summary.json";
+
+  const ReferenceHarnessSelfCheckRun readiness_result = RunReferenceHarnessScript(
+      "amflow-case-study-numeric-prereq-readiness",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", readiness_summary_path.string()},
+      "case-study numeric prerequisite readiness summary");
+  Expect(readiness_result.stderr_log.empty(),
+         "case-study numeric prerequisite readiness summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(readiness_summary_path),
+         "case-study numeric prerequisite readiness summary should write the requested summary "
+         "file");
+
+  const ReferenceHarnessSelfCheckRun numeric_result = RunReferenceHarnessScript(
+      "amflow-case-study-numeric-summary",
+      "tools/reference-harness/scripts/compare_case_study_numeric_results.py",
+      {"--case-study-readiness-summary",
+       readiness_summary_path.string(),
+       "--summary-path",
+       numeric_summary_path.string()},
+      "case-study numeric comparison summary");
+  Expect(numeric_result.stderr_log.empty(),
+         "case-study numeric comparison summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(numeric_summary_path),
+         "case-study numeric comparison summary should write the requested summary file");
+  ExpectContains(numeric_result.stdout_json, "\"scope\": \"case-study-numerics\"",
+                 "case-study numeric comparison summary should stay scoped to case-study "
+                 "numerics");
+  ExpectContains(numeric_result.stdout_json, "\"case_study_numeric_evidence_count\": 0",
+                 "case-study numeric comparison summary should truthfully report absent "
+                 "case-study numeric sidecars");
+  ExpectContains(numeric_result.stdout_json, "\"case_study_numeric_comparison_passed\": false",
+                 "case-study numeric comparison summary should not pass without numeric "
+                 "evidence");
+  ExpectContains(numeric_result.stdout_json, "\"missing_case_study_numeric_ids\": [",
+                 "case-study numeric comparison summary should keep missing case-study ids "
+                 "visible");
+  ExpectContains(numeric_result.stdout_json, "\"one-singular-endpoint-case\"",
+                 "case-study numeric comparison summary should keep the singular case-study "
+                 "family visible");
+  ExpectContains(numeric_result.stdout_json,
+                 "\"case-study numeric evidence missing for package-double-box\"",
+                 "case-study numeric comparison summary should report missing matrix-only "
+                 "case-study evidence explicitly");
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-case-study-numeric-qualification-summary",
+      "tools/reference-harness/scripts/qualify_case_study_families.py",
+      {"--case-study-readiness-summary",
+       readiness_summary_path.string(),
+       "--case-study-numeric-summary",
+       numeric_summary_path.string(),
+       "--summary-path",
+       qualification_summary_path.string()},
+      "case-study qualification verdict with numeric summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "case-study qualification verdict with numeric summary should not emit stderr noise on "
+         "success");
+  Expect(std::filesystem::exists(qualification_summary_path),
+         "case-study qualification verdict with numeric summary should write the requested "
+         "summary file");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"case_study_numeric_evidence_present\": true",
+                 "case-study qualification verdict should consume the numeric summary as "
+                 "explicit evidence");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"current_state\": \"blocked-on-runtime-lanes\"",
+                 "case-study qualification verdict should still prioritize the retained "
+                 "runtime-lane blocker");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"case-study numeric summary is missing selected families\"",
+                 "case-study qualification verdict should preserve the numeric evidence blocker "
+                 "from the summary");
+  ExpectContains(qualification_result.stdout_json, "\"case_study_families_qualified\": false",
+                 "case-study qualification verdict should not overclaim qualification after "
+                 "consuming the blocked numeric summary");
+  ExpectContains(qualification_result.stdout_json, "\"milestone_m6_ready\": false",
+                 "case-study qualification verdict should not claim M6 closure");
+}
+
 void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-case-study-qualification-self-check",
@@ -44683,6 +44806,8 @@ int main() {
     Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest();
     Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest();
     Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest();
+    CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest();
+    CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest();
     CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest();
     CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersVisibleTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();

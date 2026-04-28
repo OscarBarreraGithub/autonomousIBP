@@ -126,8 +126,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
   singular `next_runtime_lane` blocker plus its landed predecessor anchor against the frozen
   sources before later case-study qualification lanes widen into real numerics.
+  `tools/reference-harness/scripts/compare_case_study_numeric_results.py` now produces the first
+  `case-study-numerics` summary for that verdict from explicit numeric evidence sidecars: it
+  checks sidecar family ids and scaffold digit/failure/regression profiles against the readiness
+  contract, reports missing evidence and threshold failures, and does not launch the runtime or
+  generate numerics.
   `tools/reference-harness/scripts/qualify_case_study_families.py` now consumes that readiness
-  summary plus an optional future case-study numeric summary and writes one blocked/pass
+  summary plus an optional case-study numeric summary and writes one blocked/pass
   case-study-family qualification verdict. In the current retained repo state it keeps the
   singular case-study runtime-lane blocker and the absence of compared case-study numerics
   explicit, keeps the phase-0 verdict prerequisite separate, and does not mark `Milestone M6`

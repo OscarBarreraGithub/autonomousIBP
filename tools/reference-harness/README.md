@@ -58,12 +58,13 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All twenty-one harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All twenty-two harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62p` / `b63n` / `b64ag`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
-qualification verdict, plus the blocked M7 release-readiness and qualification-corpus audits:
+numeric summary producer, the case-study-family qualification verdict, plus the blocked M7
+release-readiness and qualification-corpus audits:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -91,6 +92,9 @@ python3 tools/reference-harness/scripts/qualification_readiness.py \
   --self-check
 
 python3 tools/reference-harness/scripts/qualification_case_study_readiness.py \
+  --self-check
+
+python3 tools/reference-harness/scripts/compare_case_study_numeric_results.py \
   --self-check
 
 python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
@@ -137,11 +141,11 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all twenty-one helper self-checks through the configured
+`amflow-tests` now exercises all twenty-two helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
-retained phase-0 packet-set qualification verdict, the blocked/pass case-study-family
-qualification verdict, blocked release-readiness with
+case-study numeric summary producer, retained phase-0 packet-set qualification verdict, the
+blocked/pass case-study-family qualification verdict, blocked release-readiness with
 qualification-corpus, performance-review, diagnostic-review, docs-completion, and parity-signoff
 sidecar preservation, qualification-corpus sidecar production, performance-review sidecar
 production, diagnostic-review sidecar production, docs-completion sidecar production,
@@ -237,6 +241,20 @@ against `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.y
 evidence/planning only: it does not compare retained case-study numerics and does not claim that
 `Milestone M6` is passing.
 
+To build the case-study numeric comparison summary from explicit numeric evidence sidecars:
+
+```bash
+python3 tools/reference-harness/scripts/compare_case_study_numeric_results.py \
+  --case-study-readiness-summary /tmp/case-study-readiness.json \
+  --numeric-evidence /tmp/one-case-study-numeric-evidence.json
+```
+
+Add more `--numeric-evidence` flags for additional case-study families, and add
+`--summary-path` if you want the JSON summary written to disk as well as printed to stdout.
+The helper validates each sidecar's family id, digit-threshold profile, failure-code profile, and
+known-regression profile against the readiness contract, then reports missing or failing case-study
+numeric evidence without launching the runtime or claiming that `Milestone M6` is passing.
+
 To turn that case-study readiness summary into the first blocked/pass case-study-family
 qualification verdict:
 
@@ -245,7 +263,7 @@ python3 tools/reference-harness/scripts/qualify_case_study_families.py \
   --case-study-readiness-summary /tmp/case-study-readiness.json
 ```
 
-Add `--case-study-numeric-summary` for a future case-study numeric comparison summary and
+Add `--case-study-numeric-summary` for the case-study numeric comparison summary and
 `--summary-path` if you want the JSON verdict written to disk as well as printed to stdout.
 The helper fail-closes if the case-study ids drift across the readiness and numeric summaries.
 In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
@@ -521,6 +539,10 @@ The capture script writes:
   validates the selected literature anchors, parity labels, digit floors, failure/regression
   profiles, and the reviewed singular blocker hint against the frozen sources and emits one
   machine-readable family-readiness summary without comparing case-study numerics.
+- `compare_case_study_numeric_results.py` is the first M6 case-study numeric summary producer:
+  it consumes that family-readiness summary plus explicit numeric evidence sidecars, fail-closes
+  on family-id or profile drift, and writes the `case-study-numerics` summary consumed by
+  `qualify_case_study_families.py` without running the runtime or producing numerics itself.
 - `qualify_phase0_packet_set.py` is the first retained phase-0 packet-set qualification verdict:
   it consumes one `qualification_readiness.py` summary plus the packet-set comparison,
   correct-digit, and failure-code summaries, fail-closes unless their retained packet labels and
@@ -593,6 +615,9 @@ The capture script writes:
 - `qualification_case_study_readiness.py --self-check` exercises the first M6 case-study-family
   summary against synthetic selected-benchmark anchors, stronger-threshold inheritance, the
   reviewed singular blocker lane, and the recorded predecessor batch.
+- `compare_case_study_numeric_results.py --self-check` exercises the first M6 case-study numeric
+  summary producer against matching, missing, below-threshold, metadata-drifted, duplicate, and
+  unknown-family synthetic sidecars, plus compatibility with `qualify_case_study_families.py`.
 - `release_signoff_readiness.py --self-check` exercises the first blocked M7 release-readiness
   audit against one synthetic M6 summary plus synthetic phase-0 qualification,
   qualification-corpus, performance-review, diagnostic-review, docs-completion, and

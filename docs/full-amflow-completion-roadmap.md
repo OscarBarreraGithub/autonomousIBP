@@ -662,11 +662,18 @@ dependency change.
 
 The first case-study-family qualification verdict remains blocked on purpose:
 `tools/reference-harness/scripts/qualify_case_study_families.py` consumes the
-machine-readable case-study readiness summary, can consume one future case-study numeric
+machine-readable case-study readiness summary, can consume one case-study numeric
 comparison summary, and writes one blocked/pass case-study-family verdict. In the current
 retained repo state it preserves the singular case-study `b62p` runtime-lane blocker and the
 missing case-study numeric comparison evidence, keeps the phase-0 packet-set verdict as a
 separate prerequisite, and does not claim that `Milestone M6` has closed.
+The first case-study numeric summary producer is similarly narrow:
+`tools/reference-harness/scripts/compare_case_study_numeric_results.py` consumes that reviewed
+case-study readiness summary plus explicit numeric evidence sidecars, validates the family ids and
+frozen digit/failure/regression profiles, and emits the `case-study-numerics` summary consumed by
+the case-study-family verdict. It reports missing sidecars, failed comparisons, and correct-digit
+threshold misses, but does not launch the runtime, produce case-study numerics, compare phase-0
+evidence, or claim `Milestone M6` closure.
 
 The first `Milestone M7` groundwork packet is documentation-only:
 `docs/release-signoff-checklist.md` records the exact evidence buckets,
@@ -686,7 +693,7 @@ performance-review summary sidecar, one diagnostic-review summary sidecar, one d
 summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets, and writes one blocked
 release-readiness summary that keeps the current
 `b61n` / `b62p` / `b63n` / `b64ag` frontier, phase-0 correct-digit/failure-code
-blockers, case-study runtime/numeric blockers, qualification-corpus blockers,
+blockers, case-study runtime/numeric-summary blockers, qualification-corpus blockers,
 performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
 and the final parity-signoff blocker path visible without claiming that `Milestone M6` or
 `Milestone M7` has closed.

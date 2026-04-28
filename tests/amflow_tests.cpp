@@ -16503,14 +16503,147 @@ void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedWeightedGroupedR
          "deduplicate generated reduction targets");
 }
 
+void LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuadraticDriverTest() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_nonprimitive_quadratic_driver_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(2*k1-4*k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((2*k1-4*k2)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"k1*n - 2*k2*n",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_nonprimitive_quadratic_driver_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_nonprimitive_quadratic_driver_family";
+  master_basis.masters = {
+      {"toy_lightlike_nonprimitive_quadratic_driver_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should accept matched "
+         "nonprimitive transformed-family quadratic factors after primitive scale matching");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "(-1)*(1/4)",
+         "matched nonprimitive lightlike quadratic factors should fold the inverse squared "
+         "integer scale into the reviewed local x-derivative coefficient");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_lightlike_nonprimitive_quadratic_driver_family[0,1,2]",
+         "matched nonprimitive lightlike quadratic factors should consume the scaled quadratic "
+         "driver slot and increment the rewritten linear slot");
+  Expect(generated_variable.reduction_targets.size() == 1 &&
+             generated_variable.reduction_targets[0].Label() ==
+                 "toy_lightlike_nonprimitive_quadratic_driver_family[0,1,2]",
+         "matched nonprimitive lightlike quadratic factors should still deduplicate generated "
+         "reduction targets");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationPrefersExactQuadraticDriverOverScaledMatchTest() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_exact_preferred_driver_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(2*k1-4*k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(k1-2*k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"k1*n - 2*k2*n",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_exact_preferred_driver_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_exact_preferred_driver_family";
+  master_basis.masters = {
+      {"toy_lightlike_exact_preferred_driver_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should keep exact factor "
+         "matches ahead of earlier scaled-equivalent factors");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "-1",
+         "exact lightlike quadratic factor matches should not inherit the inverse scale of an "
+         "earlier scaled-equivalent propagator");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_lightlike_exact_preferred_driver_family[1,0,2]",
+         "exact lightlike quadratic factor matches should consume the exact matching slot");
+}
+
 void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest() {
-  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
-  spec.family.propagators[2].expression = "k*n + 2*k*n";
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_unmatched_summed_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k1)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k1)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"k1*n + 2*k2*n",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_unmatched_summed_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_unmatched_summed_family";
+  master_basis.masters = {
+      {"toy_lightlike_unmatched_summed_family", {1, 1, 1}},
+  };
 
   ExpectRuntimeError(
-      [&spec]() {
+      [&spec, &master_basis]() {
         static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
-            MakeAutoInvariantLinearMasterBasis(),
+            master_basis,
             amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
       },
       "requires the extracted quadratic driver to match an existing transformed-family "
@@ -43726,6 +43859,8 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedWeightedGroupedRationalLoopLinearCombinationTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuadraticDriverTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationPrefersExactQuadraticDriverOverScaledMatchTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolOutsideRewrittenPropagatorTest();

@@ -102,6 +102,8 @@ Expr MakeSymbol(std::string value) {
   return expr;
 }
 
+Expr MakeMultiply(std::vector<Expr> terms);
+
 Expr MakeMomentumSquare(std::map<std::string, int> momentum_terms) {
   for (auto it = momentum_terms.begin(); it != momentum_terms.end();) {
     if (it->second == 0) {
@@ -120,6 +122,29 @@ Expr MakeMomentumSquare(std::map<std::string, int> momentum_terms) {
   expr.kind = ExprKind::MomentumSquare;
   expr.momentum_terms = std::move(momentum_terms);
   return expr;
+}
+
+Expr MakeScaledMomentumSquare(std::map<std::string, int> momentum_terms) {
+  int common_magnitude = 0;
+  for (const auto& [_, multiplier] : momentum_terms) {
+    if (multiplier == 0) {
+      continue;
+    }
+    common_magnitude =
+        common_magnitude == 0 ? std::abs(multiplier) : std::gcd(common_magnitude,
+                                                                 std::abs(multiplier));
+  }
+
+  if (common_magnitude <= 1) {
+    return MakeMomentumSquare(std::move(momentum_terms));
+  }
+
+  for (auto& [_, multiplier] : momentum_terms) {
+    multiplier /= common_magnitude;
+  }
+  return MakeMultiply({MakeNumber(Rational(static_cast<long long>(common_magnitude) *
+                                           static_cast<long long>(common_magnitude))),
+                       MakeMomentumSquare(std::move(momentum_terms))});
 }
 
 bool IsZero(const Expr& expr) {
@@ -549,7 +574,7 @@ class ExprParser {
               "automatic invariant seed construction supports squared linear momentum "
               "combinations only");
         }
-        return MakeMomentumSquare(*momentum_terms);
+        return MakeScaledMomentumSquare(*momentum_terms);
       }
       return expr;
     }
@@ -892,35 +917,64 @@ struct Monomial {
   std::vector<int> factor_indices;
 };
 
+struct LeadingNumericFactor {
+  Rational coefficient = Rational(1);
+  Expr remainder;
+};
+
+LeadingNumericFactor SplitLeadingNumericFactor(const Expr& expr) {
+  if (expr.kind == ExprKind::Multiply && !expr.terms.empty() &&
+      expr.terms.front().kind == ExprKind::Number && expr.terms.size() > 1) {
+    std::vector<Expr> remainder_terms(expr.terms.begin() + 1, expr.terms.end());
+    return {expr.terms.front().number, MakeMultiply(std::move(remainder_terms))};
+  }
+  return {Rational(1), expr};
+}
+
+Monomial MakeKnownFactorMonomial(const std::size_t index,
+                                 const std::size_t factor_count,
+                                 const Rational& coefficient) {
+  Monomial monomial;
+  monomial.numeric = coefficient;
+  monomial.factor_indices.assign(factor_count, 0);
+  monomial.factor_indices[index] = -1;
+  return monomial;
+}
+
+std::optional<Monomial> TryExpandKnownPropagatorFactor(
+    const Expr& expr,
+    const std::vector<Expr>& propagator_expressions,
+    const std::size_t factor_count) {
+  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
+    if (ExprEquals(expr, propagator_expressions[index])) {
+      return MakeKnownFactorMonomial(index, factor_count, Rational(1));
+    }
+  }
+
+  const LeadingNumericFactor expr_factor = SplitLeadingNumericFactor(expr);
+  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
+    const LeadingNumericFactor propagator_factor =
+        SplitLeadingNumericFactor(propagator_expressions[index]);
+    if (!ExprEquals(expr_factor.remainder, propagator_factor.remainder)) {
+      continue;
+    }
+
+    return MakeKnownFactorMonomial(
+        index, factor_count, expr_factor.coefficient * propagator_factor.coefficient.Reciprocal());
+  }
+  return std::nullopt;
+}
+
 std::vector<Monomial> ExpandMonomials(
     const Expr& expr,
     const std::vector<Expr>& propagator_expressions,
     const std::set<std::string>& allowed_scalar_symbols,
     const std::size_t factor_count) {
   if (expr.kind != ExprKind::Number && expr.kind != ExprKind::Symbol) {
-    for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
-      if (!ExprEquals(expr, propagator_expressions[index])) {
-        continue;
-      }
-      Monomial monomial;
-      monomial.factor_indices.assign(factor_count, 0);
-      monomial.factor_indices[index] = -1;
-      return {monomial};
-    }
-  }
-  if (expr.kind == ExprKind::Multiply && !expr.terms.empty() &&
-      expr.terms.front().kind == ExprKind::Number && expr.terms.size() > 1) {
-    std::vector<Expr> remainder_terms(expr.terms.begin() + 1, expr.terms.end());
-    const Expr remainder = MakeMultiply(std::move(remainder_terms));
-    for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
-      if (!ExprEquals(remainder, propagator_expressions[index])) {
-        continue;
-      }
-      Monomial monomial;
-      monomial.numeric = expr.terms.front().number;
-      monomial.factor_indices.assign(factor_count, 0);
-      monomial.factor_indices[index] = -1;
-      return {monomial};
+    if (std::optional<Monomial> known_factor =
+            TryExpandKnownPropagatorFactor(expr, propagator_expressions, factor_count);
+        known_factor.has_value()) {
+      return {*known_factor};
     }
   }
 

@@ -16390,6 +16390,62 @@ void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedRationalLoopLine
          "generated reduction targets");
 }
 
+void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedRationalLoopLinearCombinationTest() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_grouped_rational_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k1-k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k1-k2)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"1/2*(k1*n - k2*n)",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_grouped_rational_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_grouped_rational_family";
+  master_basis.masters = {
+      {"toy_lightlike_grouped_rational_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should accept matched "
+         "common-rational two-loop driver combinations when the common coefficient wraps the "
+         "grouped lightlike linear expression");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "(-1)*(1/4)",
+         "matched grouped common-rational lightlike driver generation should fold the squared "
+         "common coefficient into the reviewed local x-derivative coefficient");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_lightlike_grouped_rational_family[0,1,2]",
+         "matched grouped common-rational lightlike driver generation should consume the "
+         "matching quadratic driver slot and increment the rewritten linear slot");
+  Expect(generated_variable.reduction_targets.size() == 1 &&
+             generated_variable.reduction_targets[0].Label() ==
+                 "toy_lightlike_grouped_rational_family[0,1,2]",
+         "matched grouped common-rational lightlike driver generation should still deduplicate "
+         "generated reduction targets");
+}
+
 void LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].expression = "k*n + 2*k*n";
@@ -43611,6 +43667,7 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationScalesMatchedQuadraticDriverCoefficientTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedRationalLoopLinearCombinationTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsReusedXSymbolOutsideRewrittenPropagatorTest();

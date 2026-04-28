@@ -257,11 +257,214 @@ bool IsLoopMomentum(const std::set<std::string>& loop_momenta, const std::string
   return loop_momenta.count(StripOuterParentheses(factor)) > 0;
 }
 
+bool HasTopLevelAdditiveOperator(const std::string& expression) {
+  int depth = 0;
+  for (std::size_t index = 0; index < expression.size(); ++index) {
+    const char ch = expression[index];
+    if (ch == '(') {
+      ++depth;
+      continue;
+    }
+    if (ch == ')') {
+      --depth;
+      continue;
+    }
+    if (depth == 0 && (ch == '+' || ch == '-') &&
+        !Trim(expression.substr(0, index)).empty()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void AppendCoefficientFactor(std::ostringstream& coefficient_expression,
+                             bool& coefficient_started,
+                             const char separator,
+                             const std::string& factor) {
+  if (!coefficient_started && separator == '/') {
+    coefficient_expression << "1/";
+  } else if (coefficient_started) {
+    coefficient_expression << separator;
+  }
+  coefficient_expression << factor;
+  coefficient_started = true;
+}
+
+std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
+    const ProblemSpec& spec,
+    const SignedTerm& term,
+    const std::string& external_symbol,
+    const std::string& coefficient_prefix) {
+  const std::set<std::string> loop_momenta(spec.family.loop_momenta.begin(),
+                                           spec.family.loop_momenta.end());
+
+  std::vector<FlatFactor> flat_factors;
+  AppendFlattenedFactors(term.expression,
+                         "reviewed lightlike linear auxiliary rewrite",
+                         '*',
+                         flat_factors);
+
+  std::string loop_factor;
+  bool saw_external_factor = false;
+  std::ostringstream coefficient_expression;
+  bool coefficient_started = false;
+  if (!coefficient_prefix.empty()) {
+    coefficient_expression << "(" << coefficient_prefix << ")";
+    coefficient_started = true;
+  }
+
+  for (const FlatFactor& factor_entry : flat_factors) {
+    const std::string raw_factor = Trim(factor_entry.factor);
+    const std::string factor = StripOuterParentheses(raw_factor);
+    if (factor.empty()) {
+      throw std::runtime_error(
+          "reviewed lightlike linear auxiliary rewrite encountered an empty factor in propagator "
+          "expression");
+    }
+
+    if (factor == external_symbol) {
+      if (factor_entry.separator == '/') {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
+                                 "symbol out of denominators");
+      }
+      if (saw_external_factor) {
+        throw std::runtime_error(
+            "reviewed lightlike linear auxiliary rewrite requires one external factor per "
+            "bilinear term");
+      }
+      saw_external_factor = true;
+      continue;
+    }
+
+    if (IsLoopMomentum(loop_momenta, factor)) {
+      if (factor_entry.separator == '/') {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps loop "
+                                 "momenta out of denominators");
+      }
+      if (!loop_factor.empty()) {
+        throw std::runtime_error(
+            "reviewed lightlike linear auxiliary rewrite requires one loop factor per bilinear "
+            "term");
+      }
+      loop_factor = factor;
+      continue;
+    }
+
+    const ExactRational coefficient_piece = EvaluateExactConstantExpression(
+        raw_factor, "reviewed lightlike linear auxiliary rewrite");
+    if (factor_entry.separator == '/' && coefficient_piece.IsZero()) {
+      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite encountered "
+                               "division by zero in a rational coefficient factor");
+    }
+    AppendCoefficientFactor(coefficient_expression,
+                            coefficient_started,
+                            factor_entry.separator,
+                            raw_factor);
+  }
+
+  if (loop_factor.empty() && !saw_external_factor) {
+    static_cast<void>(EvaluateExactConstantExpression(
+        term.negative ? "-(" + term.expression + ")" : term.expression,
+        "reviewed lightlike linear auxiliary rewrite"));
+    return std::nullopt;
+  }
+
+  if (loop_factor.empty() || !saw_external_factor) {
+    throw std::runtime_error("reviewed lightlike linear auxiliary rewrite supports only "
+                             "rational constants plus loop-" +
+                             external_symbol + " bilinears");
+  }
+
+  std::string coefficient_text =
+      coefficient_started
+          ? EvaluateExactConstantExpression(coefficient_expression.str(),
+                                            "reviewed lightlike linear auxiliary rewrite")
+                .ToString()
+          : "1";
+  if (term.negative) {
+    coefficient_text = EvaluateExactConstantExpression(
+                           "-(" + coefficient_text + ")",
+                           "reviewed lightlike linear auxiliary rewrite")
+                           .ToString();
+  }
+  if (coefficient_text == "0") {
+    return std::nullopt;
+  }
+  if (coefficient_text == "1") {
+    return loop_factor;
+  }
+  return "(" + coefficient_text + ")*(" + loop_factor + ")";
+}
+
+std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLinearTerms(
+    const ProblemSpec& spec,
+    const SignedTerm& term,
+    const std::string& external_symbol) {
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+  const SplitSequence split = SplitTopLevelByOperators(term.expression, context, "*/");
+
+  std::string grouped_linear_combination;
+  std::ostringstream coefficient_expression;
+  bool coefficient_started = false;
+
+  for (std::size_t index = 0; index < split.parts.size(); ++index) {
+    const char separator = index == 0 ? '*' : split.separators[index - 1];
+    const std::string raw_factor = Trim(split.parts[index]);
+
+    std::optional<ExactRational> coefficient_piece;
+    try {
+      coefficient_piece = EvaluateExactConstantExpression(raw_factor, context);
+    } catch (const std::runtime_error&) {
+    }
+    if (coefficient_piece.has_value()) {
+      if (separator == '/' && coefficient_piece->IsZero()) {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite encountered "
+                                 "division by zero in a rational coefficient factor");
+      }
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              separator,
+                              raw_factor);
+      continue;
+    }
+
+    const std::string stripped_factor = StripOuterParentheses(raw_factor);
+    if (separator == '/' || !HasTopLevelAdditiveOperator(stripped_factor) ||
+        !grouped_linear_combination.empty()) {
+      return std::nullopt;
+    }
+    grouped_linear_combination = stripped_factor;
+  }
+
+  if (grouped_linear_combination.empty()) {
+    return std::nullopt;
+  }
+
+  std::string common_coefficient =
+      coefficient_started
+          ? EvaluateExactConstantExpression(coefficient_expression.str(), context).ToString()
+          : "1";
+  if (term.negative) {
+    common_coefficient =
+        EvaluateExactConstantExpression("-(" + common_coefficient + ")", context).ToString();
+  }
+
+  std::vector<std::string> rendered_terms;
+  for (const SignedTerm& grouped_term :
+       SplitTopLevelTerms(grouped_linear_combination, context)) {
+    if (std::optional<std::string> rendered_term =
+            RenderReviewedLightlikeLoopLinearTerm(
+                spec, grouped_term, external_symbol, common_coefficient);
+        rendered_term.has_value()) {
+      rendered_terms.push_back(*rendered_term);
+    }
+  }
+  return rendered_terms;
+}
+
 std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
                                                         const Propagator& propagator,
                                                         const std::string& external_symbol) {
-  const std::set<std::string> loop_momenta(spec.family.loop_momenta.begin(),
-                                           spec.family.loop_momenta.end());
   const std::vector<SignedTerm> terms =
       SplitTopLevelTerms(Trim(propagator.expression),
                          "reviewed lightlike linear auxiliary rewrite");
@@ -269,103 +472,22 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   std::vector<std::string> rendered_terms;
   bool saw_bilinear_term = false;
   for (const SignedTerm& term : terms) {
-    std::vector<FlatFactor> flat_factors;
-    AppendFlattenedFactors(term.expression,
-                           "reviewed lightlike linear auxiliary rewrite",
-                           '*',
-                           flat_factors);
-
-    std::string loop_factor;
-    bool saw_external_factor = false;
-    std::ostringstream coefficient_expression;
-    bool coefficient_started = false;
-
-    for (const FlatFactor& factor_entry : flat_factors) {
-      const std::string raw_factor = Trim(factor_entry.factor);
-      const std::string factor = StripOuterParentheses(raw_factor);
-      if (factor.empty()) {
-        throw std::runtime_error(
-            "reviewed lightlike linear auxiliary rewrite encountered an empty factor in propagator "
-            "expression");
+    if (const std::optional<std::vector<std::string>> grouped_terms =
+            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol);
+        grouped_terms.has_value()) {
+      for (const std::string& grouped_term : *grouped_terms) {
+        rendered_terms.push_back(grouped_term);
+        saw_bilinear_term = true;
       }
-
-      if (factor == external_symbol) {
-        if (factor_entry.separator == '/') {
-          throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
-                                   "symbol out of denominators");
-        }
-        if (saw_external_factor) {
-          throw std::runtime_error(
-              "reviewed lightlike linear auxiliary rewrite requires one external factor per "
-              "bilinear term");
-        }
-        saw_external_factor = true;
-        continue;
-      }
-
-      if (IsLoopMomentum(loop_momenta, factor)) {
-        if (factor_entry.separator == '/') {
-          throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps loop "
-                                   "momenta out of denominators");
-        }
-        if (!loop_factor.empty()) {
-          throw std::runtime_error(
-              "reviewed lightlike linear auxiliary rewrite requires one loop factor per bilinear "
-              "term");
-        }
-        loop_factor = factor;
-        continue;
-      }
-
-      const ExactRational coefficient_piece = EvaluateExactConstantExpression(
-          raw_factor, "reviewed lightlike linear auxiliary rewrite");
-      if (factor_entry.separator == '/' && coefficient_piece.IsZero()) {
-        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite encountered "
-                                 "division by zero in a rational coefficient factor");
-      }
-      if (!coefficient_started && factor_entry.separator == '/') {
-        coefficient_expression << "1/";
-      } else if (coefficient_started) {
-        coefficient_expression << factor_entry.separator;
-      }
-      coefficient_expression << raw_factor;
-      coefficient_started = true;
-    }
-
-    if (loop_factor.empty() && !saw_external_factor) {
-      static_cast<void>(EvaluateExactConstantExpression(
-          term.negative ? "-(" + term.expression + ")" : term.expression,
-          "reviewed lightlike linear auxiliary rewrite"));
       continue;
     }
 
-    if (loop_factor.empty() || !saw_external_factor) {
-      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite supports only "
-                               "rational constants plus loop-" +
-                               external_symbol + " bilinears");
+    if (std::optional<std::string> rendered_term =
+            RenderReviewedLightlikeLoopLinearTerm(spec, term, external_symbol, "");
+        rendered_term.has_value()) {
+      rendered_terms.push_back(*rendered_term);
+      saw_bilinear_term = true;
     }
-
-    std::string coefficient_text =
-        coefficient_started
-            ? EvaluateExactConstantExpression(coefficient_expression.str(),
-                                              "reviewed lightlike linear auxiliary rewrite")
-                  .ToString()
-            : "1";
-    if (term.negative) {
-      coefficient_text = EvaluateExactConstantExpression(
-                             "-(" + coefficient_text + ")",
-                             "reviewed lightlike linear auxiliary rewrite")
-                             .ToString();
-    }
-    if (coefficient_text == "0") {
-      continue;
-    }
-    if (coefficient_text == "1") {
-      rendered_terms.push_back(loop_factor);
-    } else {
-      rendered_terms.push_back("(" + coefficient_text + ")*(" + loop_factor + ")");
-    }
-    saw_bilinear_term = true;
   }
 
   if (!saw_bilinear_term || rendered_terms.empty()) {

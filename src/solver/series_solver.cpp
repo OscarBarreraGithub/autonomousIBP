@@ -3709,19 +3709,48 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
       for (const std::string& singular_point : request.system.singular_points) {
         const ExactComplexRational declared_singular_value =
             EvaluateComplexPointExpression(variable_name, singular_point, passive_bindings);
-        if (!declared_singular_value.IsReal() ||
-            LiesOnClosedRealEtaContinuationSegment(declared_singular_value.real,
-                                                   start.real,
-                                                   target.real)) {
+        if (!declared_singular_value.IsReal()) {
           return "default exact solver accepts ledgerless eta_continuation_plan singular "
                  "declarations only when every system-declared singular point evaluates exactly "
-                 "to a real point off the direct real segment";
+                 "to a real point off the direct real segment or to the reviewed singular target "
+                 "endpoint";
+        }
+        if (!LiesOnClosedRealEtaContinuationSegment(declared_singular_value.real,
+                                                    start.real,
+                                                    target.real)) {
+          continue;
+        }
+        const bool is_target_endpoint_singular =
+            IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(declared_singular_value.real,
+                                                                     start.real,
+                                                                     target.real);
+        if (!is_target_endpoint_singular) {
+          return "default exact solver accepts ledgerless eta_continuation_plan singular "
+                 "declarations only when every system-declared singular point evaluates exactly "
+                 "to a real point off the direct real segment or to the reviewed singular target "
+                 "endpoint";
+        }
+        try {
+          const std::string target_expression = variable_name + "=" + target.real.ToString();
+          if (ClassifyFinitePoint(request.system,
+                                  variable_name,
+                                  target_expression,
+                                  passive_bindings) != PointClassification::Singular) {
+            return "default exact solver accepts ledgerless target-endpoint "
+                   "eta_continuation_plan singular declarations only when the target endpoint "
+                   "is singular on the reviewed exact path";
+          }
+        } catch (const std::exception&) {
+          return "default exact solver accepts ledgerless target-endpoint "
+                 "eta_continuation_plan singular declarations only when the target endpoint is "
+                 "singular on the reviewed exact path";
         }
       }
     } catch (const std::exception&) {
       return "default exact solver accepts ledgerless eta_continuation_plan singular "
              "declarations only when every system-declared singular point evaluates exactly "
-             "to a real point off the direct real segment";
+             "to a real point off the direct real segment or to the reviewed singular target "
+             "endpoint";
     }
     return std::nullopt;
   }

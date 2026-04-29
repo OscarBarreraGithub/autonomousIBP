@@ -4140,6 +4140,12 @@ amflow::ProblemSpec MakeThresholdNearMarginK0SmokeProblemSpecForTests() {
   return spec;
 }
 
+amflow::ProblemSpec MakeEndpointNearMarginK0SmokeProblemSpecForTests() {
+  amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  spec.kinematics.numeric_substitutions = {{"s", "10"}, {"t", "-1/4"}, {"msq", "1"}};
+  return spec;
+}
+
 amflow::ProblemSpec MakeOutsideOpenPhysicalRegionK0SmokeProblemSpecForTests() {
   amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   spec.kinematics.numeric_substitutions = {{"s", "25/4"}, {"t", "0"}, {"msq", "1"}};
@@ -4293,6 +4299,27 @@ void AssessPhysicalKinematicsForBatch62ClassifiesThresholdNearMarginPointTest() 
   ExpectContains(assessment.detail,
                  "s = 4*msq",
                  "Batch 62s should report the reviewed threshold locus for near-singular "
+                 "physical points");
+}
+
+void AssessPhysicalKinematicsForBatch62ClassifiesEndpointNearMarginPointTest() {
+  const amflow::ProblemSpec spec = MakeEndpointNearMarginK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessPhysicalKinematicsForBatch62(spec);
+
+  Expect(assessment.verdict ==
+             amflow::PhysicalKinematicsGuardrailVerdict::NearSingularSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62t should classify endpoint-adjacent reviewed physical points inside the "
+         "frozen near-singular margin");
+  ExpectContains(assessment.detail,
+                 "width 1/4",
+                 "Batch 62t should report the frozen exact near-singular margin on reviewed "
+                 "endpoint-adjacent physical points");
+  ExpectContains(assessment.detail,
+                 "t^2 - (2*msq - s)*t + msq^2 = 0",
+                 "Batch 62t should report the reviewed endpoint locus for near-singular "
                  "physical points");
 }
 
@@ -27781,6 +27808,48 @@ void SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDECon
          "the near-singular margin");
 }
 
+void SolveEtaGeneratedSeriesRejectsEndpointNearSingularPhysicalPointBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = MakeEndpointNearMarginK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-near-endpoint-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "eta=0",
+                                      "eta=1",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_near_singular",
+         "Batch 62t should classify endpoint-adjacent reviewed physical points before eta DE "
+         "construction");
+  ExpectContains(diagnostics.summary,
+                 "current ProblemSpec or requested continuation segment enters",
+                 "Batch 62t should keep point-level near-singular diagnostics honest rather "
+                 "than describing only continuation segments");
+  ExpectContains(diagnostics.summary,
+                 "width 1/4",
+                 "Batch 62t should report the frozen near-singular margin through eta solver "
+                 "diagnostics");
+  ExpectContains(diagnostics.summary,
+                 "t^2 - (2*msq - s)*t + msq^2 = 0",
+                 "Batch 62t should report the reviewed endpoint surface through eta solver "
+                 "diagnostics");
+  Expect(solver.call_count() == 0,
+         "Batch 62t should not call the solver when point-level physical kinematics are inside "
+         "the endpoint near-singular margin");
+}
+
 void SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -45163,6 +45232,7 @@ int main() {
     AssessPhysicalKinematicsForBatch62ClassifiesEndpointSurfaceAsSingularTest();
     AssessPhysicalKinematicsForBatch62RejectsRealSurfaceOutsideOpenRegionTest();
     AssessPhysicalKinematicsForBatch62ClassifiesThresholdNearMarginPointTest();
+    AssessPhysicalKinematicsForBatch62ClassifiesEndpointNearMarginPointTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesRawThresholdCrossingTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointCrossingTest();
@@ -45955,6 +46025,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsEndpointNearSingularPhysicalPointBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();
     SolveEtaGeneratedSeriesUsesExactDimensionOverrideHappyPathTest();
     SolveEtaGeneratedSeriesUsesSymbolicDimensionExpressionWithoutReducerOverrideTest();

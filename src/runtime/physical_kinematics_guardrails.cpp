@@ -551,6 +551,21 @@ PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
         " around the reviewed pair-production threshold s = 4*msq";
     return assessment;
   }
+  const ReviewedInvariantSegment point_t_segment = {
+      exact_substitutions->t,
+      exact_substitutions->t,
+  };
+  if (TSegmentCrossesReviewedEndpointSurface(
+          ExpandClosedSegmentByMargin(point_t_segment, near_singular_margin),
+          *exact_substitutions)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+    assessment.detail =
+        "exact bindings enter the " +
+        DescribeReviewedNearSingularMargin(near_singular_margin) +
+        " around the reviewed 2->2 endpoint polynomial "
+        "t^2 - (2*msq - s)*t + msq^2 = 0";
+    return assessment;
+  }
 
   assessment.verdict = PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset;
   return assessment;

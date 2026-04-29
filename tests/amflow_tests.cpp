@@ -1891,6 +1891,13 @@ amflow::ProblemSpec MakeReviewedCutkoskyPhaseSpaceSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeDisconnectedCutkoskyPhaseSpaceSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[3].kind = amflow::PropagatorKind::Cut;
+  return spec;
+}
+
 amflow::ProblemSpec MakeLoopPrescriptionAwareCutkoskyPhaseSpaceSpec(
     const amflow::FeynmanPrescription cut_prescription) {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
@@ -1910,6 +1917,8 @@ amflow::ProblemSpec MakeMixedLoopPrescriptionAwareCutkoskyPhaseSpaceSpec() {
   spec.family.propagators[0].prescription = 1;
   spec.family.propagators[3].kind = amflow::PropagatorKind::Cut;
   spec.family.propagators[3].prescription = 0;
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[5].prescription = 1;
   return spec;
 }
 
@@ -7018,6 +7027,18 @@ void PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest() {
       "cut topology lacks loop support");
 }
 
+void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
+  const amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
+      },
+      "disconnected cut components: [[0], [3]]",
+      "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
+      "the reviewed cut surface splits into disconnected components");
+}
+
 void PlanEndingSchemeUserDefinedHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -10046,9 +10067,7 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest() {
 }
 
 void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() {
-  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
-  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
-  spec.family.propagators[3].kind = amflow::PropagatorKind::Cut;
+  amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
 
   const amflow::CutkoskyPhaseSpaceTopology topology =
@@ -10090,6 +10109,18 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyT
       "no declared loop momentum support",
       "builtin Cutkosky phase-space boundary generation should reject cut propagators that "
       "carry no declared loop-momentum topology before provider routing");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest() {
+  const amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "disconnected cut components: [[0], [3]]",
+      "builtin Cutkosky phase-space boundary generation should reject disconnected cut "
+      "components before provider routing");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest() {
@@ -45638,6 +45669,7 @@ int main() {
     PlanEndingSchemeTraditionRejectsPhaseSpaceSubsetTest();
     PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest();
+    PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
     PlanEndingSchemeRejectsRegistryValidationFailureTest();
@@ -45754,6 +45786,7 @@ int main() {
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();

@@ -35,6 +35,20 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return stream.str();
 }
 
+std::string DescribeCutComponents(
+    const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
+  std::ostringstream stream;
+  stream << "[";
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (index != 0) {
+      stream << ", ";
+    }
+    stream << JoinIndices(components[index].cut_propagator_indices);
+  }
+  stream << "]";
+  return stream.str();
+}
+
 std::vector<std::size_t> CollectCutPropagatorIndices(const ProblemSpec& spec) {
   std::vector<std::size_t> cut_indices;
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
@@ -93,6 +107,13 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
         " to carry declared loop-momentum support before emitting the reviewed phase-space "
         "terminal node; no declared loop momentum support found in expression \"" +
         spec.family.propagators[support.propagator_index].expression + "\"");
+  }
+
+  if (topology.cut_components.size() > 1) {
+    throw std::runtime_error(
+        "ending scheme Cutkosky requires a connected cut surface before emitting the reviewed "
+        "phase-space terminal node; disconnected cut components: " +
+        DescribeCutComponents(topology.cut_components));
   }
 }
 

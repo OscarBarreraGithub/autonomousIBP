@@ -30,6 +30,33 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
 
 constexpr char kBuiltinCutkoskyPhaseSpaceStrategy[] = "builtin::cutkosky-phase-space";
 
+std::string JoinIndices(const std::vector<std::size_t>& indices) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < indices.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << indices[index];
+  }
+  out << "]";
+  return out.str();
+}
+
+std::string DescribeCutComponents(
+    const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << JoinIndices(components[index].cut_propagator_indices);
+  }
+  out << "]";
+  return out.str();
+}
+
 std::set<std::string> ExtractIdentifiers(const std::string& expression) {
   std::set<std::string> identifiers;
   std::size_t index = 0;
@@ -159,6 +186,13 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
         " to carry declared loop-momentum support; no declared loop momentum support found "
         "in expression \"" + spec.family.propagators[support.propagator_index].expression +
         "\"");
+  }
+
+  if (topology.cut_components.size() > 1) {
+    throw BoundaryUnsolvedError(
+        "builtin Cutkosky phase-space boundary request generation requires a connected cut "
+        "surface on the current reviewed phase-space subset; disconnected cut components: " +
+        DescribeCutComponents(topology.cut_components));
   }
 }
 

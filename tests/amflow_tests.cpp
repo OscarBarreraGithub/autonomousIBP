@@ -12144,6 +12144,151 @@ void Batch65aAmfOptionsEndingSchemeEtaInfinityProviderFailureShortCircuitTest() 
          "failure");
 }
 
+void Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryHappyPathTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "CustomScheme"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto baseline_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+  const auto wrapper_retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed",
+      PlanningFailureKind::InvalidArgument);
+
+  amflow::EndingDecision custom_decision;
+  custom_decision.terminal_strategy = "custom::should-not-be-used";
+  custom_decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto baseline_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+  const auto wrapper_custom_scheme =
+      std::make_shared<RecordingEndingScheme>(custom_decision, "CustomScheme");
+
+  const auto baseline_decoy_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("unused::eta->infinity",
+                                                        std::vector<amflow::BoundaryCondition>{});
+  const auto baseline_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("builtin::eta->infinity",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeEtaInfinityBoundaryCondition()});
+  const auto wrapper_decoy_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("unused::eta->infinity",
+                                                        std::vector<amflow::BoundaryCondition>{});
+  const auto wrapper_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("builtin::eta->infinity",
+                                                        std::vector<amflow::BoundaryCondition>{
+                                                            MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::BoundaryRequest baseline_boundary_request =
+      amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+          spec,
+          amf_options,
+          {baseline_retry_scheme, baseline_custom_scheme});
+  amflow::SolveRequest baseline_solve_request = request_template;
+  baseline_solve_request.boundary_requests = {baseline_boundary_request};
+  const amflow::SolveRequest baseline_attached =
+      amflow::AttachBoundaryConditionsFromProviderRegistry(
+          baseline_solve_request,
+          {baseline_decoy_provider, baseline_provider});
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      baseline_solver.Solve(baseline_attached);
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+          spec,
+          amf_options,
+          {wrapper_retry_scheme, wrapper_custom_scheme},
+          request_template,
+          {wrapper_decoy_provider, wrapper_provider},
+          wrapper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 65b eta->infinity provider-registry wrapper should not mutate the shared input "
+         "ProblemSpec on the happy path");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 65b eta->infinity provider-registry wrapper should not mutate the caller-owned "
+         "solve request template on the happy path");
+  Expect(baseline_retry_scheme->call_count() == 1 && baseline_custom_scheme->call_count() == 1 &&
+             wrapper_retry_scheme->call_count() == 1 && wrapper_custom_scheme->call_count() == 1,
+         "Batch 65b eta->infinity provider-registry wrapper should preserve ordered ending "
+         "fallback with one planning probe per configured scheme");
+  Expect(baseline_decoy_provider->strategy_call_count() == 1 &&
+             baseline_decoy_provider->provide_call_count() == 0 &&
+             wrapper_decoy_provider->strategy_call_count() == 1 &&
+             wrapper_decoy_provider->provide_call_count() == 0,
+         "Batch 65b eta->infinity provider-registry wrapper should validate unmatched registry "
+         "entries without routing requests to them");
+  Expect(baseline_provider->strategy_call_count() == 1 &&
+             baseline_provider->provide_call_count() == 1 &&
+             wrapper_provider->strategy_call_count() == 1 &&
+             wrapper_provider->provide_call_count() == 1,
+         "Batch 65b eta->infinity provider-registry wrapper should route exactly one request to "
+         "the matching provider");
+  Expect(baseline_solver.call_count() == 1 && wrapper_solver.call_count() == 1,
+         "Batch 65b eta->infinity provider-registry wrapper should call the solver exactly once "
+         "after registry attachment succeeds");
+  Expect(wrapper_provider->seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_provider->seen_requests().front(),
+                                baseline_provider->seen_requests().front()),
+         "Batch 65b eta->infinity provider-registry wrapper should feed the same planned "
+         "eta->infinity boundary request into the provider registry as the manual baseline");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 65b eta->infinity provider-registry wrapper should feed the same attached "
+         "SolveRequest into the solver as the manual provider-registry baseline");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 65b eta->infinity provider-registry wrapper should preserve downstream solver "
+         "diagnostics relative to the manual provider-registry baseline");
+}
+
+void Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Tradition"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const auto wrong_provider =
+      std::make_shared<RecordingStaticBoundaryProvider>("manual",
+                                                        std::vector<amflow::BoundaryCondition>{});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &request_template, &wrong_provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            {wrong_provider},
+            solver));
+      },
+      "Batch 65b eta->infinity provider-registry wrapper should preserve missing-strategy "
+      "boundary_unsolved diagnostics before solver execution");
+
+  Expect(message.find("boundary provider registry does not contain strategy "
+                      "builtin::eta->infinity") != std::string::npos,
+         "Batch 65b eta->infinity provider-registry wrapper should report the missing builtin "
+         "eta->infinity provider strategy");
+  Expect(wrong_provider->strategy_call_count() == 1 &&
+             wrong_provider->provide_call_count() == 0,
+         "Batch 65b eta->infinity provider-registry wrapper should validate the wrong provider "
+         "without calling it");
+  Expect(solver.call_count() == 0,
+         "Batch 65b eta->infinity provider-registry wrapper should not call the solver after a "
+         "missing registry strategy");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -45679,6 +45824,8 @@ int main() {
     Batch65aAmfOptionsEndingSchemeEtaInfinityFallsThroughInvalidArgumentPlanningFailureTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityPlanningShortCircuitTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityProviderFailureShortCircuitTest();
+    Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryHappyPathTest();
+    Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();

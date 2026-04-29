@@ -462,6 +462,87 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
   return rendered_terms;
 }
 
+std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
+    const ProblemSpec& spec,
+    const SignedTerm& term,
+    const std::string& external_symbol) {
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+  const SplitSequence split = SplitTopLevelByOperators(term.expression, context, "*/");
+
+  std::string grouped_loop_combination;
+  bool saw_external_factor = false;
+  std::ostringstream coefficient_expression;
+  bool coefficient_started = false;
+
+  for (std::size_t index = 0; index < split.parts.size(); ++index) {
+    const char separator = index == 0 ? '*' : split.separators[index - 1];
+    const std::string raw_factor = Trim(split.parts[index]);
+    const std::string stripped_factor = StripOuterParentheses(raw_factor);
+
+    if (stripped_factor == external_symbol) {
+      if (separator == '/') {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
+                                 "symbol out of denominators");
+      }
+      if (saw_external_factor) {
+        throw std::runtime_error(
+            "reviewed lightlike linear auxiliary rewrite requires one external factor per "
+            "bilinear term");
+      }
+      saw_external_factor = true;
+      continue;
+    }
+
+    std::optional<ExactRational> coefficient_piece;
+    try {
+      coefficient_piece = EvaluateExactConstantExpression(raw_factor, context);
+    } catch (const std::runtime_error&) {
+    }
+    if (coefficient_piece.has_value()) {
+      if (separator == '/' && coefficient_piece->IsZero()) {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite encountered "
+                                 "division by zero in a rational coefficient factor");
+      }
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              separator,
+                              raw_factor);
+      continue;
+    }
+
+    if (separator == '/' || !HasTopLevelAdditiveOperator(stripped_factor) ||
+        !grouped_loop_combination.empty()) {
+      return std::nullopt;
+    }
+    grouped_loop_combination = stripped_factor;
+  }
+
+  if (grouped_loop_combination.empty() || !saw_external_factor) {
+    return std::nullopt;
+  }
+
+  std::string common_coefficient =
+      coefficient_started
+          ? EvaluateExactConstantExpression(coefficient_expression.str(), context).ToString()
+          : "1";
+  if (term.negative) {
+    common_coefficient =
+        EvaluateExactConstantExpression("-(" + common_coefficient + ")", context).ToString();
+  }
+
+  std::vector<std::string> rendered_terms;
+  for (const SignedTerm& grouped_term : SplitTopLevelTerms(grouped_loop_combination, context)) {
+    SignedTerm expanded_term = grouped_term;
+    expanded_term.expression = grouped_term.expression + "*" + external_symbol;
+    if (std::optional<std::string> rendered_term = RenderReviewedLightlikeLoopLinearTerm(
+            spec, expanded_term, external_symbol, common_coefficient);
+        rendered_term.has_value()) {
+      rendered_terms.push_back(*rendered_term);
+    }
+  }
+  return rendered_terms;
+}
+
 std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
                                                         const Propagator& propagator,
                                                         const std::string& external_symbol) {
@@ -474,6 +555,16 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   for (const SignedTerm& term : terms) {
     if (const std::optional<std::vector<std::string>> grouped_terms =
             TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol);
+        grouped_terms.has_value()) {
+      for (const std::string& grouped_term : *grouped_terms) {
+        rendered_terms.push_back(grouped_term);
+        saw_bilinear_term = true;
+      }
+      continue;
+    }
+
+    if (const std::optional<std::vector<std::string>> grouped_terms =
+            TryRenderGroupedLoopMomentumFactorTerms(spec, term, external_symbol);
         grouped_terms.has_value()) {
       for (const std::string& grouped_term : *grouped_terms) {
         rendered_terms.push_back(grouped_term);

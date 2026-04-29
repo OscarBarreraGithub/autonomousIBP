@@ -5437,6 +5437,22 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivi
          "denominators on the claimed rational-coefficient surface");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1-k2)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1-k2)^2)";
+  spec.family.propagators[2].expression = "(k1-k2)*n";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*((k1 + (-1)*(k2))^2) + ((k1-k2)*n)",
+         "reviewed lightlike linear auxiliary rewrite should expand one grouped loop-momentum "
+         "factor times the reviewed lightlike external into the existing loop-linear driver "
+         "surface");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
 
@@ -16869,6 +16885,61 @@ void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedNegativeGroupedR
                  "toy_lightlike_negative_grouped_rational_family[0,1,2]",
          "matched negative grouped-rational lightlike driver generation should still "
          "deduplicate generated reduction targets");
+}
+
+void LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedLoopFactorTest() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "toy_lightlike_grouped_loop_factor_family";
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.top_level_sectors = {7};
+  spec.family.propagators = {
+      {"(k1-k2)^2", "0", amflow::PropagatorKind::Standard, -1},
+      {"(-s)*((k1-k2)^2)", "0", amflow::PropagatorKind::Standard, -1},
+      {"(k1-k2)*n",
+       "-1",
+       amflow::PropagatorKind::Linear,
+       -1,
+       amflow::PropagatorVariant::Linear},
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.invariants = {"s"};
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+  };
+  spec.kinematics.numeric_substitutions = {
+      {"s", "30"},
+  };
+  spec.targets = {
+      {"toy_lightlike_grouped_loop_factor_family", {1, 1, 1}},
+  };
+  spec.dimension = "4 - 2*eps";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_lightlike_grouped_loop_factor_family";
+  master_basis.masters = {
+      {"toy_lightlike_grouped_loop_factor_family", {1, 1, 1}},
+  };
+
+  const amflow::GeneratedDerivativeVariable generated_variable =
+      amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+          master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x"));
+
+  Expect(generated_variable.rows.size() == 1 &&
+             generated_variable.rows[0].terms.size() == 1,
+         "reviewed lightlike linear auxiliary derivative generation should accept a grouped "
+         "loop-momentum factor times the reviewed lightlike external after helper expansion");
+  Expect(generated_variable.rows[0].terms[0].coefficient == "-1",
+         "matched grouped loop-factor lightlike driver generation should preserve the reviewed "
+         "local x-derivative coefficient");
+  Expect(generated_variable.rows[0].terms[0].target.Label() ==
+             "toy_lightlike_grouped_loop_factor_family[0,1,2]",
+         "matched grouped loop-factor lightlike driver generation should consume the matching "
+         "quadratic driver slot and increment the rewritten linear slot");
+  Expect(generated_variable.reduction_targets.size() == 1 &&
+             generated_variable.reduction_targets[0].Label() ==
+                 "toy_lightlike_grouped_loop_factor_family[0,1,2]",
+         "matched grouped loop-factor lightlike driver generation should still deduplicate "
+         "generated reduction targets");
 }
 
 void LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuadraticDriverTest() {
@@ -44182,6 +44253,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesSpacedPostSeparatorUnaryMinusTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTrailingConstantDivisionTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
@@ -44658,6 +44730,7 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedWeightedGroupedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedNegativeGroupedRationalLoopLinearCombinationTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedLoopFactorTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuadraticDriverTest();
     LightlikeLinearAuxiliaryDerivativeGenerationPrefersExactQuadraticDriverOverScaledMatchTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest();

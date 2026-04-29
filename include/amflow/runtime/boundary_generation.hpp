@@ -18,8 +18,14 @@ struct CutkoskyPhaseSpaceCutSupport {
   std::vector<std::string> loop_momenta;
 };
 
+struct CutkoskyPhaseSpaceCutComponent {
+  std::vector<std::size_t> cut_propagator_indices;
+  std::vector<std::string> loop_momenta;
+};
+
 struct CutkoskyPhaseSpaceTopology {
   std::vector<CutkoskyPhaseSpaceCutSupport> cut_supports;
+  std::vector<CutkoskyPhaseSpaceCutComponent> cut_components;
 };
 
 CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(

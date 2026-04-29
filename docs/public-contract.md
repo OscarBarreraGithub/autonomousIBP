@@ -466,10 +466,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fail closed. Broader builtin
   `Prescription`, top-sector analysis, broader Cutkosky topology analysis, and automatic
   phase-space boundary-value generation remain deferred
-- `CutkoskyPhaseSpaceCutSupport`, `CutkoskyPhaseSpaceTopology`, and
-  `AnalyzeCutkoskyPhaseSpaceCutTopology(...)`: the first pure phase-space cut-topology helper,
-  reporting each cut propagator index plus the declared loop momenta mentioned by that
-  propagator expression without parsing graph components or producing boundary values. The
+- `CutkoskyPhaseSpaceCutSupport`, `CutkoskyPhaseSpaceCutComponent`,
+  `CutkoskyPhaseSpaceTopology`, and `AnalyzeCutkoskyPhaseSpaceCutTopology(...)`: the first pure
+  phase-space cut-topology helper, reporting each cut propagator index plus the declared loop
+  momenta mentioned by that propagator expression and the reviewed connected components induced
+  by shared declared loop support. This component telemetry is declaration-order only and still
+  does not parse graph components, classify physical cut regions, or produce boundary values. The
   reviewed Cutkosky boundary-request preflight consumes only the empty-support rejection: a cut
   propagator with no declared loop-momentum support fails closed before provider strategy routing
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only

@@ -54,6 +54,58 @@ std::set<std::string> ExtractIdentifiers(const std::string& expression) {
   return identifiers;
 }
 
+bool ShareLoopMomentum(const CutkoskyPhaseSpaceCutSupport& lhs,
+                       const CutkoskyPhaseSpaceCutSupport& rhs) {
+  for (const std::string& loop_momentum : lhs.loop_momenta) {
+    if (std::find(rhs.loop_momenta.begin(), rhs.loop_momenta.end(), loop_momentum) !=
+        rhs.loop_momenta.end()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
+    const std::vector<CutkoskyPhaseSpaceCutSupport>& cut_supports,
+    const std::vector<std::string>& declared_loop_order) {
+  std::vector<CutkoskyPhaseSpaceCutComponent> components;
+  std::vector<bool> visited(cut_supports.size(), false);
+  for (std::size_t seed = 0; seed < cut_supports.size(); ++seed) {
+    if (visited[seed]) {
+      continue;
+    }
+
+    CutkoskyPhaseSpaceCutComponent component;
+    std::set<std::string> component_loops;
+    std::vector<std::size_t> queue = {seed};
+    visited[seed] = true;
+    for (std::size_t cursor = 0; cursor < queue.size(); ++cursor) {
+      const std::size_t current = queue[cursor];
+      const CutkoskyPhaseSpaceCutSupport& support = cut_supports[current];
+      component.cut_propagator_indices.push_back(support.propagator_index);
+      component_loops.insert(support.loop_momenta.begin(), support.loop_momenta.end());
+
+      for (std::size_t candidate = 0; candidate < cut_supports.size(); ++candidate) {
+        if (visited[candidate] || !ShareLoopMomentum(support, cut_supports[candidate])) {
+          continue;
+        }
+        visited[candidate] = true;
+        queue.push_back(candidate);
+      }
+    }
+
+    std::sort(component.cut_propagator_indices.begin(),
+              component.cut_propagator_indices.end());
+    for (const std::string& loop_momentum : declared_loop_order) {
+      if (component_loops.count(loop_momentum) != 0) {
+        component.loop_momenta.push_back(loop_momentum);
+      }
+    }
+    components.push_back(std::move(component));
+  }
+  return components;
+}
+
 void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const Propagator& propagator = spec.family.propagators[index];
@@ -307,6 +359,8 @@ CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
     }
     topology.cut_supports.push_back(std::move(support));
   }
+  topology.cut_components =
+      BuildCutComponents(topology.cut_supports, family.loop_momenta);
   return topology;
 }
 

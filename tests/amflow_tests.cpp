@@ -9917,8 +9917,51 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest() {
                  std::vector<std::string>{"k1", "k2"},
          "Cutkosky phase-space topology analysis should report mixed-loop cut support in "
          "declared loop-momentum order");
+  Expect(topology.cut_components.size() == 1,
+         "Cutkosky phase-space topology analysis should connect cuts that share declared loop "
+         "support");
+  Expect(topology.cut_components[0].cut_propagator_indices ==
+             std::vector<std::size_t>{0, 5},
+         "Cutkosky phase-space topology analysis should report connected cut propagator "
+         "indices in declaration order");
+  Expect(topology.cut_components[0].loop_momenta == std::vector<std::string>{"k1", "k2"},
+         "Cutkosky phase-space topology analysis should report component loop support in "
+         "declared loop-momentum order");
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "Cutkosky phase-space topology analysis should not mutate the input ProblemSpec");
+}
+
+void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[3].kind = amflow::PropagatorKind::Cut;
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::CutkoskyPhaseSpaceTopology topology =
+      amflow::AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+
+  Expect(topology.cut_supports.size() == 2,
+         "Cutkosky phase-space topology analysis should retain both disconnected cut supports");
+  Expect(topology.cut_components.size() == 2,
+         "Cutkosky phase-space topology analysis should keep disjoint loop cuts in separate "
+         "components");
+  Expect(topology.cut_components[0].cut_propagator_indices ==
+             std::vector<std::size_t>{0},
+         "Cutkosky phase-space topology analysis should keep the first disconnected cut "
+         "component anchored to propagator 0");
+  Expect(topology.cut_components[0].loop_momenta == std::vector<std::string>{"k1"},
+         "Cutkosky phase-space topology analysis should report the first component loop "
+         "support");
+  Expect(topology.cut_components[1].cut_propagator_indices ==
+             std::vector<std::size_t>{3},
+         "Cutkosky phase-space topology analysis should keep the second disconnected cut "
+         "component anchored to propagator 3");
+  Expect(topology.cut_components[1].loop_momenta == std::vector<std::string>{"k2"},
+         "Cutkosky phase-space topology analysis should report the second component loop "
+         "support");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Cutkosky phase-space disconnected-component analysis should not mutate the input "
+         "ProblemSpec");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest() {
@@ -45164,6 +45207,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
+    AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();

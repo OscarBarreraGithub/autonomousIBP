@@ -1233,6 +1233,7 @@ The first single-name ending-scheme planning wrapper is also bootstrap-only:
 - resolution failures preserve the existing `ResolveEndingScheme(...)` diagnostics unchanged
 - planning failures preserve the existing `EndingScheme::Plan(...)` diagnostics unchanged
 - current builtin ending schemes are still intentionally narrow, but no longer uniform placeholders: `Tradition` remains the loop-only `eta->infinity` planner and now rejects cut-marked specs on the reviewed local phase-space subset; `Cutkosky` is the first truthful phase-space ending consumer on that same reviewed subset and returns the distinct terminal node `<family>::cutkosky-phase-space`; `SingleMass` still keeps the placeholder singleton `<family>::eta->infinity`; and builtin `Trivial` still adds the unsupported extra node `<family>::trivial-region`
+- builtin `Cutkosky` ending planning also consumes the reviewed cut-topology loop-support preflight before terminal-node emission: a cut propagator with no declared loop-momentum support fails planning locally instead of producing `<family>::cutkosky-phase-space>`
 - this batch does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 - this batch does not yet claim full upstream ending semantics for `Tradition`, `Cutkosky`, `SingleMass`, or `Trivial`
 

@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "amflow/core/options.hpp"
+#include "amflow/runtime/boundary_generation.hpp"
 
 namespace amflow {
 
@@ -78,6 +79,20 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
     throw std::runtime_error("ending scheme Cutkosky only supports standard/cut propagators on "
                              "the current reviewed phase-space subset; propagator " +
                              std::to_string(index) + " has kind " + ToString(kind));
+  }
+
+  const CutkoskyPhaseSpaceTopology topology =
+      AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+  for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+    if (!support.loop_momenta.empty()) {
+      continue;
+    }
+    throw std::runtime_error(
+        "ending scheme Cutkosky requires cut propagator " +
+        std::to_string(support.propagator_index) +
+        " to carry declared loop-momentum support before emitting the reviewed phase-space "
+        "terminal node; no declared loop momentum support found in expression \"" +
+        spec.family.propagators[support.propagator_index].expression + "\"");
   }
 }
 

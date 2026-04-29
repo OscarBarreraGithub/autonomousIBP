@@ -6904,6 +6904,20 @@ void PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
          "Cutkosky ending planning should expose the reviewed phase-space terminal node");
 }
 
+void PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[0].kind = amflow::PropagatorKind::Cut;
+  spec.family.propagators[0].expression = "(p1)^2";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
+      },
+      "ending scheme Cutkosky requires cut propagator 0 to carry declared loop-momentum support",
+      "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
+      "cut topology lacks loop support");
+}
+
 void PlanEndingSchemeUserDefinedHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -45170,6 +45184,7 @@ int main() {
     PlanEndingSchemeBuiltinHappyPathTest();
     PlanEndingSchemeTraditionRejectsPhaseSpaceSubsetTest();
     PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
+    PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
     PlanEndingSchemeRejectsRegistryValidationFailureTest();

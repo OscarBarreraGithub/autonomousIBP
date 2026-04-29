@@ -541,6 +541,17 @@ PhysicalKinematicsGuardrailAssessment AssessPhysicalKinematicsForBatch62(
     return assessment;
   }
 
+  const ExactRational near_singular_margin =
+      ComputeReviewedNearSingularMargin(*exact_substitutions);
+  if (IsLessThanOrEqual(threshold_gap, near_singular_margin)) {
+    assessment.verdict = PhysicalKinematicsGuardrailVerdict::NearSingularSurface;
+    assessment.detail =
+        "exact bindings enter the " +
+        DescribeReviewedNearSingularMargin(near_singular_margin) +
+        " around the reviewed pair-production threshold s = 4*msq";
+    return assessment;
+  }
+
   assessment.verdict = PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset;
   return assessment;
 }

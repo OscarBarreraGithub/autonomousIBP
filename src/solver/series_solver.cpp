@@ -4166,7 +4166,8 @@ SolverDiagnostics MakePhysicalKinematicsNearSingularDiagnostics(
   diagnostics.summary =
       std::string(kPhysicalKinematicsNearSingularCode) +
       ": Batch 62 only reviews subset " + assessment.reviewed_subset +
-      "; requested continuation segment enters a conservative reviewed near-singular margin";
+      "; current ProblemSpec or requested continuation segment enters a conservative reviewed "
+      "near-singular margin";
   if (!assessment.detail.empty()) {
     diagnostics.summary += "; " + assessment.detail;
   }

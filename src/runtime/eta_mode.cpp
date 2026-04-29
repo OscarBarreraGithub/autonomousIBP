@@ -6,6 +6,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "amflow/core/options.hpp"
+#include "amflow/runtime/auxiliary_family.hpp"
 
 namespace amflow {
 
@@ -51,6 +53,38 @@ void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision
     decision.selected_propagator_indices.push_back(index);
     decision.selected_propagators.push_back(propagator.expression);
   }
+}
+
+std::optional<std::size_t> SelectReviewedPropagatorModeLightlikeLinearIndex(
+    const ProblemSpec& spec) {
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    return std::nullopt;
+  }
+
+  std::optional<std::size_t> selected_index;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Linear || !propagator.variant.has_value() ||
+        *propagator.variant != PropagatorVariant::Linear) {
+      continue;
+    }
+    if (selected_index.has_value()) {
+      return std::nullopt;
+    }
+    selected_index = index;
+  }
+
+  if (!selected_index.has_value()) {
+    return std::nullopt;
+  }
+
+  try {
+    static_cast<void>(BuildReviewedLightlikeLinearAuxiliaryPropagator(
+        spec, *selected_index, "x"));
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+  return selected_index;
 }
 
 void ValidatePrescriptionVocabulary(const ProblemSpec& spec) {
@@ -1080,6 +1114,19 @@ class BuiltinEtaMode final : public EtaMode {
     }
 
     if (name_ == "Propagator") {
+      if (const std::optional<std::size_t> reviewed_linear_index =
+              SelectReviewedPropagatorModeLightlikeLinearIndex(spec);
+          reviewed_linear_index.has_value()) {
+        decision.selected_propagator_indices.push_back(*reviewed_linear_index);
+        decision.selected_propagators.push_back(
+            spec.family.propagators[*reviewed_linear_index].expression);
+        decision.explanation =
+            "Bootstrap Propagator selector selected the unique reviewed lightlike-linear "
+            "propagator for generated-x routing on the current local declaration-order "
+            "candidate surface";
+        return decision;
+      }
+
       SelectNonAuxiliaryPropagators(spec, decision);
       if (decision.selected_propagator_indices.empty()) {
         throw std::runtime_error(

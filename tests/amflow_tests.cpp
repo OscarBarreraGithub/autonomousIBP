@@ -5771,6 +5771,47 @@ void PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest() {
          "Propagator eta mode should use an honest bootstrap structural-selector explanation");
 }
 
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.mode_name == "Propagator",
+         "reviewed lightlike-linear Propagator selection should preserve its mode name");
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should choose only the explicit "
+         "variant-linear propagator");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should expose the selected linear "
+         "propagator expression");
+  Expect(decision.explanation ==
+             "Bootstrap Propagator selector selected the unique reviewed lightlike-linear "
+             "propagator for generated-x routing on the current local declaration-order "
+             "candidate surface",
+         "reviewed lightlike-linear Propagator selection should use a distinct honest "
+         "explanation");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "reviewed lightlike-linear Propagator selection should not mutate the input problem "
+         "spec");
+}
+
+void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeUnsupportedKiraLinearScalarRuleProblemSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 1, 2},
+         "Propagator eta mode should preserve structural fallback when the unique explicit "
+         "linear propagator is outside the reviewed lightlike-linear helper surface");
+  Expect(decision.explanation ==
+             "Bootstrap structural selector selected 3 non-auxiliary propagators in "
+             "declaration order for mode Propagator",
+         "Propagator eta mode should keep the structural-selector explanation after rejected "
+         "lightlike-linear validation");
+}
+
 void PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest() {
   const amflow::ProblemSpec spec = MakeBuiltinAllAuxiliarySpec();
   const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
@@ -30333,6 +30374,115 @@ void SolveBuiltinEtaModeSeriesPrescriptionSupportsReviewedLinearPropagatorSubset
          "diagnostics verbatim");
 }
 
+void SolveBuiltinEtaModeSeriesPropagatorRoutesReviewedLightlikeLinearSelectionTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantLinearMasterBasis();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "x=1/11";
+  const std::string target_location = "x=3/11";
+  const int requested_digits = 67;
+  const amflow::EtaInsertionDecision selected_decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  Expect(selected_decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "builtin Propagator eta-mode solve should select the reviewed lightlike-linear "
+         "propagator before the solver handoff");
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-propagator-lightlike-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-propagator-lightlike-baseline.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(
+      baseline_kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::DESystem baseline_system =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryDerivativeDESystem(
+          spec,
+          master_basis,
+          2,
+          MakeKiraReductionOptions(),
+          baseline_layout,
+          baseline_kira_path,
+          baseline_fermat_path,
+          "x",
+          std::optional<std::string>{"5"});
+
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-builtin-eta-mode-propagator-lightlike"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-propagator-lightlike.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantLinearResultScriptExpectingLeadingArgument(
+          "-sd=5", true, MakeAutoInvariantLinearDerivativeRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.0078125;
+  solver.returned_diagnostics.overlap_mismatch = 0.015625;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "recorded builtin Propagator lightlike-linear solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveBuiltinEtaModeSeries(spec,
+                                        master_basis,
+                                        "Propagator",
+                                        MakeKiraReductionOptions(),
+                                        layout,
+                                        kira_path,
+                                        fermat_path,
+                                        solver,
+                                        start_location,
+                                        target_location,
+                                        precision_policy,
+                                        requested_digits,
+                                        " x ",
+                                        std::optional<std::string>{"10/2"});
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "builtin Propagator lightlike-linear solve should not mutate reviewed inputs");
+  Expect(solver.call_count() == 1,
+         "builtin Propagator lightlike-linear solve should call the supplied solver exactly "
+         "once");
+  const amflow::SolveRequest& request = solver.last_request();
+  Expect(SameDESystem(request.system, baseline_system),
+         "builtin Propagator lightlike-linear solve should forward the reviewed generated-x "
+         "DESystem");
+  Expect(request.system.variables.size() == 1 && request.system.variables.front().name == "x" &&
+             request.system.variables.front().kind ==
+                 amflow::DifferentiationVariableKind::Auxiliary,
+         "builtin Propagator lightlike-linear solve should use the reviewed auxiliary x "
+         "variable rather than ordinary eta insertion");
+  Expect(request.system.coefficient_matrices.at("x").size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0].size() == 1 &&
+             request.system.coefficient_matrices.at("x")[0][0] == "(-1)*(3)",
+         "builtin Propagator lightlike-linear solve should preserve the reviewed generated-x "
+         "matrix entry");
+  Expect(request.amf_requested_dimension_expression.has_value() &&
+             *request.amf_requested_dimension_expression == "5",
+         "builtin Propagator lightlike-linear solve should carry the normalized public "
+         "dimension expression");
+  Expect(request.start_location == start_location && request.target_location == target_location,
+         "builtin Propagator lightlike-linear solve should preserve continuation endpoints");
+  Expect(SamePrecisionPolicy(request.precision_policy, precision_policy),
+         "builtin Propagator lightlike-linear solve should preserve the caller precision "
+         "policy");
+  Expect(request.requested_digits == requested_digits,
+         "builtin Propagator lightlike-linear solve should preserve requested_digits");
+  Expect(SameSolverDiagnostics(diagnostics, solver.returned_diagnostics),
+         "builtin Propagator lightlike-linear solve should return solver diagnostics verbatim");
+}
+
 void SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -44827,6 +44977,8 @@ int main() {
     PrescriptionEtaModeRejectsUnsupportedRawValuesBeforeFilteringTest();
     PrescriptionEtaModeSupportsReviewedPassiveLinearSubsetTest();
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest();
+    PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();
     MassEtaModeSelectsEqualNonzeroMassGroupTest();
@@ -45565,6 +45717,7 @@ int main() {
     SolveBuiltinEtaModeSeriesMassHappyPathTest();
     SolveBuiltinEtaModeSeriesPropagatorHappyPathTest();
     SolveBuiltinEtaModeSeriesPropagatorAllowsSelectedNonzeroMassTest();
+    SolveBuiltinEtaModeSeriesPropagatorRoutesReviewedLightlikeLinearSelectionTest();
     SolveBuiltinEtaModeSeriesBootstrapSolverPassthroughTest();
     SolveBuiltinEtaModeSeriesRejectsUnknownBuiltinNameTest();
     SolveBuiltinEtaModeSeriesUnsupportedBuiltinModesRejectTest();

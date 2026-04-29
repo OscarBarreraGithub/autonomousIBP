@@ -13527,6 +13527,83 @@ void BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedge
          "if the source expressions differ textually and the ledger value is not pre-reduced");
 }
 
+void BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::DESystem system = MakeScalarRegularPointSeriesSystem("1/eta");
+  system.singular_points = {"eta=0"};
+  amflow::SolveRequest baseline_request =
+      MakeManualStartBoundarySolveRequest(system, "eta", "eta=1", "eta=0", {"7/11"});
+  amflow::SolveRequest request = baseline_request;
+  amflow::EtaContinuationPlan plan;
+  plan.eta_symbol = "eta";
+  plan.start_location = request.start_location;
+  plan.target_location = request.target_location;
+  amflow::ExactComplexRational start_point;
+  start_point.real = {"1", "1"};
+  start_point.imaginary = {"0", "1"};
+  amflow::ExactComplexRational target_point;
+  target_point.real = {"0", "1"};
+  target_point.imaginary = {"0", "1"};
+  plan.contour_points = {start_point, target_point};
+  amflow::EtaContourSingularPoint target_singular_point =
+      MakeBootstrapEtaContourSingularPointForTests("eta=0", "0", 0);
+  target_singular_point.value = target_point;
+  plan.singular_points = {target_singular_point};
+  plan.contour_fingerprint =
+      "bootstrap-target-endpoint-zero-winding-ledger-plan";
+  request.eta_continuation_plan = plan;
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap target-endpoint eta-continuation-plan coverage should keep the reviewed "
+         "mixed exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap target-endpoint eta-continuation-plan coverage should preserve exact mixed "
+         "diagnostics when the zero-winding ledger point is exactly the target endpoint");
+}
+
+void BootstrapSeriesSolverRejectsStaleTargetEndpointEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::DESystem system = MakeScalarRegularPointSeriesSystem("1/(eta+1)");
+  system.singular_points = {"eta=0"};
+  amflow::SolveRequest request =
+      MakeManualStartBoundarySolveRequest(system, "eta", "eta=1", "eta=0", {"7/11"});
+  amflow::EtaContinuationPlan plan;
+  plan.eta_symbol = "eta";
+  plan.start_location = request.start_location;
+  plan.target_location = request.target_location;
+  amflow::ExactComplexRational start_point;
+  start_point.real = {"1", "1"};
+  start_point.imaginary = {"0", "1"};
+  amflow::ExactComplexRational target_point;
+  target_point.real = {"0", "1"};
+  target_point.imaginary = {"0", "1"};
+  plan.contour_points = {start_point, target_point};
+  amflow::EtaContourSingularPoint target_singular_point =
+      MakeBootstrapEtaContourSingularPointForTests("eta=0", "0", 0);
+  target_singular_point.value = target_point;
+  plan.singular_points = {target_singular_point};
+  plan.contour_fingerprint =
+      "bootstrap-stale-target-endpoint-zero-winding-ledger-plan";
+  request.eta_continuation_plan = plan;
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap stale target-endpoint eta-continuation-plan coverage should fail closed when "
+         "the declared target singular point is regular in the actual system");
+  ExpectContains(diagnostics.summary,
+                 "target endpoint is singular",
+                 "bootstrap stale target-endpoint eta-continuation-plan coverage should explain "
+                 "the singular-target-only carveout");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap stale target-endpoint eta-continuation-plan coverage should report "
+                 "the reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedgerValueTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -45326,6 +45403,8 @@ int main() {
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsStaleTargetEndpointEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedgerValueTest();
     BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest();

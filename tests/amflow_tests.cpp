@@ -13311,6 +13311,18 @@ amflow::EtaContinuationPlan MakeBootstrapEtaContinuationPlanForTests(
   return plan;
 }
 
+amflow::EtaContourSingularPoint MakeBootstrapEtaContourSingularPointForTests(
+    const std::string& expression,
+    const std::string& real_value,
+    const int branch_winding) {
+  amflow::EtaContourSingularPoint singular_point;
+  singular_point.expression = expression;
+  singular_point.value.real = {real_value, "1"};
+  singular_point.value.imaginary = {"0", "1"};
+  singular_point.branch_winding = branch_winding;
+  return singular_point;
+}
+
 void BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -13342,6 +13354,130 @@ void BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPath
   Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
          "bootstrap eta-continuation-plan coverage should preserve exact diagnostics for direct "
          "real two-point metadata on the default exact solver");
+}
+
+void BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  baseline_request.system.singular_points = {"eta=2"};
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-zero-winding-direct-real-plan";
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap zero-winding eta-continuation-plan coverage should keep the off-path "
+         "singular-point exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap zero-winding eta-continuation-plan coverage should preserve exact "
+         "diagnostics for direct real two-point metadata when every branch winding is zero");
+}
+
+void BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=2"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 1),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-nonzero-winding-direct-real-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap nonzero-winding eta-continuation-plan coverage should keep branch-changing "
+         "plans off the default exact solver path");
+  ExpectContains(diagnostics.summary,
+                 "every branch winding is zero",
+                 "bootstrap nonzero-winding eta-continuation-plan coverage should explain the "
+                 "zero-winding-only carveout");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap nonzero-winding eta-continuation-plan coverage should report the "
+                 "reviewed contour fingerprint");
+}
+
+void BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-stale-zero-winding-ledger-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap stale zero-winding eta-continuation-plan coverage should fail closed when "
+         "the solver system declares no singular points");
+  ExpectContains(diagnostics.summary,
+                 "system declares singular points",
+                 "bootstrap stale zero-winding eta-continuation-plan coverage should explain "
+                 "the system/ledger mismatch");
+}
+
+void BootstrapSeriesSolverRejectsMismatchedZeroWindingEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=3"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-mismatched-zero-winding-ledger-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap mismatched zero-winding eta-continuation-plan coverage should fail closed when "
+         "the ledger expression is not declared by the solver system");
+  ExpectContains(diagnostics.summary,
+                 "matches a system-declared singular point",
+                 "bootstrap mismatched zero-winding eta-continuation-plan coverage should explain "
+                 "the declaration/ledger mismatch");
+}
+
+void BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=1/2"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=1/2", "1/2", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-on-path-zero-winding-ledger-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap on-path zero-winding eta-continuation-plan coverage should fail closed when "
+         "a direct real path crosses a declared singular point");
+  ExpectContains(diagnostics.summary,
+                 "stays off the direct real segment",
+                 "bootstrap on-path zero-winding eta-continuation-plan coverage should explain "
+                 "the off-path-only carveout");
 }
 
 void BootstrapSeriesSolverRejectsDetouredEtaContinuationPlanOnDefaultExactPathTest() {
@@ -44783,6 +44919,11 @@ int main() {
     BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
+    BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest();
+    BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsMismatchedZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsDetouredEtaContinuationPlanOnDefaultExactPathTest();
     SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactUpperTriangularHappyPathMatchesBootstrapSolverTest();

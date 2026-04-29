@@ -3627,6 +3627,46 @@ SolverDiagnostics MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
   return MakeUnsupportedSolverPathDiagnostics(summary);
 }
 
+int CompareExactRationalForEtaContinuationPlan(const ExactRational& lhs,
+                                               const ExactRational& rhs) {
+  const ExactRational difference = SubtractRational(lhs, rhs);
+  if (difference.IsZero()) {
+    return 0;
+  }
+  return !difference.numerator.empty() && difference.numerator.front() == '-' ? -1 : 1;
+}
+
+bool LiesOnClosedRealEtaContinuationSegment(const ExactRational& point,
+                                            const ExactRational& start,
+                                            const ExactRational& target) {
+  const ExactRational& lower =
+      CompareExactRationalForEtaContinuationPlan(start, target) <= 0 ? start : target;
+  const ExactRational& upper =
+      CompareExactRationalForEtaContinuationPlan(start, target) <= 0 ? target : start;
+  return CompareExactRationalForEtaContinuationPlan(lower, point) <= 0 &&
+         CompareExactRationalForEtaContinuationPlan(point, upper) <= 0;
+}
+
+bool EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(
+    const DESystem& system,
+    const EtaContinuationPlan& plan) {
+  std::vector<std::string> declared_singular_points;
+  declared_singular_points.reserve(system.singular_points.size());
+  for (const std::string& singular_point : system.singular_points) {
+    declared_singular_points.push_back(Trim(singular_point));
+  }
+  std::sort(declared_singular_points.begin(), declared_singular_points.end());
+
+  std::vector<std::string> ledger_singular_points;
+  ledger_singular_points.reserve(plan.singular_points.size());
+  for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
+    ledger_singular_points.push_back(Trim(singular_point.expression));
+  }
+  std::sort(ledger_singular_points.begin(), ledger_singular_points.end());
+
+  return declared_singular_points == ledger_singular_points;
+}
+
 std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructuralRejectionReason(
     const SolveRequest& request,
     const std::string& variable_name,
@@ -3638,10 +3678,6 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
       plan.target_location != request.target_location) {
     return "eta_continuation_plan start/target locations do not match the solve request";
   }
-  if (!request.system.singular_points.empty() || !plan.singular_points.empty()) {
-    return "default exact solver accepts eta_continuation_plan only when no singular-point "
-           "branch ledger is required";
-  }
   if (plan.contour_points.size() != 2) {
     return "default exact solver currently accepts only direct real two-point "
            "eta_continuation_plan metadata";
@@ -3651,6 +3687,31 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   const ExactComplexRational& target = plan.contour_points.back();
   if (!start.IsReal() || !target.IsReal()) {
     return "default exact solver currently accepts only real eta_continuation_plan endpoints";
+  }
+  if (!request.system.singular_points.empty() && plan.singular_points.empty()) {
+    return "default exact solver requires an evaluated eta_continuation_plan singular-point "
+           "ledger when the system declares singular points";
+  }
+  if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
+    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+           "when the system declares singular points";
+  }
+  if (!EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(request.system, plan)) {
+    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+           "when every ledger expression matches a system-declared singular point";
+  }
+  for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
+    if (singular_point.branch_winding != 0) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when every branch winding is zero on the direct real path";
+    }
+    if (singular_point.value.IsReal() &&
+        LiesOnClosedRealEtaContinuationSegment(singular_point.value.real,
+                                               start.real,
+                                               target.real)) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when every evaluated singular point stays off the direct real segment";
+    }
   }
   return std::nullopt;
 }

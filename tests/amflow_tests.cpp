@@ -12320,6 +12320,81 @@ void Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTes
          "missing registry strategy");
 }
 
+void Batch65cDeferredEtaInfinityProviderRegistryExposesReviewedStrategyTest() {
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers =
+      amflow::MakeDeferredEtaInfinityBoundaryProviderRegistry();
+  const std::vector<std::string> expected_strategies = {"builtin::eta->infinity"};
+
+  std::vector<std::string> actual_strategies;
+  actual_strategies.reserve(providers.size());
+  for (const auto& provider : providers) {
+    actual_strategies.push_back(provider->Strategy());
+  }
+
+  Expect(actual_strategies == expected_strategies,
+         "Batch 65c deferred eta->infinity provider registry should expose exactly the "
+         "reviewed builtin strategy vocabulary");
+}
+
+void Batch65cDeferredEtaInfinityProviderRegistryFailsClosedBeforeSolverTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Tradition"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers =
+      amflow::MakeDeferredEtaInfinityBoundaryProviderRegistry();
+  RecordingSeriesSolver solver;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options, &request_template, &providers, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            providers,
+            solver));
+      },
+      "builtin eta->infinity boundary values remain deferred for strategy "
+      "builtin::eta->infinity at eta @ infinity",
+      "Batch 65c deferred eta->infinity provider registry should fail closed on the matched "
+      "builtin strategy");
+  Expect(solver.call_count() == 0,
+         "Batch 65c deferred eta->infinity provider registry should stop before solver "
+         "execution when boundary values remain unavailable");
+}
+
+void Batch65cAmfOptionsEndingSchemeEtaInfinityUsesDeferredBuiltinRegistryTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Tradition"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+  RecordingSeriesSolver solver;
+
+  ExpectBoundaryUnsolved(
+      [&spec, &amf_options, &request_template, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+            spec,
+            amf_options,
+            {},
+            request_template,
+            solver));
+      },
+      "builtin eta->infinity boundary values remain deferred for strategy "
+      "builtin::eta->infinity at eta @ infinity",
+      "Batch 65c no-provider eta->infinity wrapper should use the deferred builtin registry "
+      "and fail closed on the matched builtin strategy");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 65c no-provider eta->infinity wrapper should not mutate the shared input "
+         "ProblemSpec when the deferred builtin registry fails closed");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 65c no-provider eta->infinity wrapper should not mutate the caller-owned solve "
+         "request template when the deferred builtin registry fails closed");
+  Expect(solver.call_count() == 0,
+         "Batch 65c no-provider eta->infinity wrapper should stop before solver execution "
+         "while builtin eta->infinity boundary values remain deferred");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -45975,6 +46050,9 @@ int main() {
     Batch65aAmfOptionsEndingSchemeEtaInfinityProviderFailureShortCircuitTest();
     Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryHappyPathTest();
     Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTest();
+    Batch65cDeferredEtaInfinityProviderRegistryExposesReviewedStrategyTest();
+    Batch65cDeferredEtaInfinityProviderRegistryFailsClosedBeforeSolverTest();
+    Batch65cAmfOptionsEndingSchemeEtaInfinityUsesDeferredBuiltinRegistryTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();

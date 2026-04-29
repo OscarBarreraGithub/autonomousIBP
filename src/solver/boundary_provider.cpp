@@ -66,6 +66,36 @@ class DeferredCutkoskyPhaseSpaceBoundaryProvider final : public BoundaryProvider
   std::string strategy_;
 };
 
+class DeferredEtaInfinityBoundaryProvider final : public BoundaryProvider {
+ public:
+  explicit DeferredEtaInfinityBoundaryProvider(std::string strategy)
+      : strategy_(std::move(strategy)) {}
+
+  std::string Strategy() const override {
+    return strategy_;
+  }
+
+  BoundaryCondition Provide(const DESystem&, const BoundaryRequest& request) const override {
+    throw BoundaryUnsolvedError(
+        "builtin eta->infinity boundary values remain deferred for strategy " +
+        strategy_ + " at " + DescribeBoundaryLocus(request) +
+        "; automatic eta->infinity boundary-value generation remains unimplemented on this "
+        "reviewed provider surface");
+  }
+
+ private:
+  std::string strategy_;
+};
+
+std::shared_ptr<BoundaryProvider> MakeDeferredEtaInfinityBoundaryProviderForStrategy(
+    const std::string& strategy) {
+  if (strategy.empty()) {
+    throw std::invalid_argument(
+        "deferred eta->infinity boundary provider strategy must not be empty");
+  }
+  return std::make_shared<DeferredEtaInfinityBoundaryProvider>(strategy);
+}
+
 std::shared_ptr<BoundaryProvider> MakeDeferredCutkoskyPhaseSpaceBoundaryProviderForStrategy(
     const std::string& strategy) {
   if (strategy.empty()) {
@@ -160,6 +190,13 @@ SolveRequest AttachBoundaryConditionsFromProviderRegistry(
   }
 
   return AttachManualBoundaryConditions(request, explicit_conditions);
+}
+
+std::vector<std::shared_ptr<BoundaryProvider>>
+MakeDeferredEtaInfinityBoundaryProviderRegistry() {
+  return {
+      MakeDeferredEtaInfinityBoundaryProviderForStrategy("builtin::eta->infinity"),
+  };
 }
 
 std::vector<std::shared_ptr<BoundaryProvider>>

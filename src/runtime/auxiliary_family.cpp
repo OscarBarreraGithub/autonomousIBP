@@ -212,14 +212,38 @@ std::pair<std::string, std::string> ParseScalarProductPair(const std::string& ex
   return {StripOuterParentheses(split.parts[0]), StripOuterParentheses(split.parts[1])};
 }
 
-std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec) {
+std::set<std::string> CollectDeclaredExternalFactorsInExpression(
+    const ProblemSpec& spec,
+    const std::string& expression) {
   const std::set<std::string> external_momenta = CollectExternalMomenta(spec);
-  if (external_momenta.size() != 1) {
-    throw std::runtime_error(
-        "reviewed lightlike linear auxiliary rewrite requires exactly one declared external "
-        "momentum symbol");
+  std::set<std::string> declared_external_factors;
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+
+  for (const SignedTerm& term : SplitTopLevelTerms(Trim(expression), context)) {
+    std::vector<FlatFactor> flat_factors;
+    AppendFlattenedFactors(term.expression, context, '*', flat_factors);
+    for (const FlatFactor& factor_entry : flat_factors) {
+      const std::string factor = StripOuterParentheses(Trim(factor_entry.factor));
+      if (external_momenta.count(factor) > 0) {
+        declared_external_factors.insert(factor);
+      }
+    }
   }
-  const std::string external_symbol = *external_momenta.begin();
+
+  return declared_external_factors;
+}
+
+std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
+                                                   const Propagator& propagator) {
+  const std::set<std::string> used_external_momenta =
+      CollectDeclaredExternalFactorsInExpression(spec, propagator.expression);
+  if (used_external_momenta.size() != 1) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary rewrite requires exactly one declared lightlike "
+        "external momentum symbol to appear as a direct factor in the selected linear "
+        "propagator expression");
+  }
+  const std::string external_symbol = *used_external_momenta.begin();
 
   bool found_lightlike_rule = false;
   for (const auto& rule : spec.kinematics.scalar_product_rules) {
@@ -621,7 +645,7 @@ Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(const ProblemSpec& sp
                              " to carry explicit variant \"linear\" on kind \"linear\"");
   }
 
-  const std::string external_symbol = RequireReviewedLightlikeExternalSymbol(spec);
+  const std::string external_symbol = RequireReviewedLightlikeExternalSymbol(spec, original);
   const std::string loop_linear_combination = BuildReviewedLightlikeLoopLinearCombination(
       spec, original, external_symbol);
 

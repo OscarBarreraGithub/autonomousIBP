@@ -3013,6 +3013,17 @@ amflow::ProblemSpec MakeAutoInvariantLinearProblemSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeAutoInvariantLinearSpectatorExternalProblemSpec() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.incoming_momenta = {"p", "n"};
+  spec.kinematics.momentum_conservation = "p + n = 0";
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+      {"p*p", "1"},
+  };
+  return spec;
+}
+
 amflow::EtaInsertionDecision MakeAutoEtaLinearDecision() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   amflow::EtaInsertionDecision decision;
@@ -5507,6 +5518,20 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumF
          "surface");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearSpectatorExternalProblemSpec();
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*((k)^2) + (k*n)",
+         "reviewed lightlike linear auxiliary rewrite should tolerate declared spectator "
+         "external momenta that do not appear in the selected linear propagator expression");
+  Expect(rewritten.mass == spec.family.propagators[2].mass,
+         "reviewed lightlike linear auxiliary rewrite should preserve mass literals when "
+         "spectator external momenta are present");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
 
@@ -5559,17 +5584,24 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalS
       "surfaces");
 }
 
-void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest() {
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
-  spec.kinematics.outgoing_momenta.push_back("p");
+  spec.kinematics.incoming_momenta = {"p", "n"};
+  spec.kinematics.momentum_conservation = "p + n = 0";
+  spec.kinematics.scalar_product_rules = {
+      {"n*n", "0"},
+      {"p*p", "0"},
+  };
+  spec.family.propagators[2].expression = "k*n + k*p";
 
   ExpectRuntimeError(
       [&spec]() {
         static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
       },
-      "requires exactly one declared external momentum symbol",
-      "reviewed lightlike linear auxiliary rewrite should keep broader multi-external gauge-link "
-      "surfaces deferred");
+      "requires exactly one declared lightlike external momentum symbol to appear as a direct "
+      "factor",
+      "reviewed lightlike linear auxiliary rewrite should keep linear expressions that use "
+      "multiple external momenta deferred");
 }
 
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest() {
@@ -5849,6 +5881,20 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest() {
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "reviewed lightlike-linear Propagator selection should not mutate the input problem "
          "spec");
+}
+
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearSpectatorExternalProblemSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should tolerate spectator external "
+         "momenta while keeping the unique explicit linear propagator selected");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the selected linear "
+         "expression with spectator external momenta present");
 }
 
 void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
@@ -45369,11 +45415,12 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesTrailingConstantDivisionTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
-    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalMomentaTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
@@ -45388,6 +45435,7 @@ int main() {
     PrescriptionEtaModeSupportsReviewedPassiveLinearSubsetTest();
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();

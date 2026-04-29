@@ -3702,12 +3702,37 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
   const bool expressions_match =
       EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(request.system, plan);
 
+  if (plan.singular_points.empty()) {
+    const ExactComplexRational& start = plan.contour_points.front();
+    const ExactComplexRational& target = plan.contour_points.back();
+    try {
+      for (const std::string& singular_point : request.system.singular_points) {
+        const ExactComplexRational declared_singular_value =
+            EvaluateComplexPointExpression(variable_name, singular_point, passive_bindings);
+        if (!declared_singular_value.IsReal() ||
+            LiesOnClosedRealEtaContinuationSegment(declared_singular_value.real,
+                                                   start.real,
+                                                   target.real)) {
+          return "default exact solver accepts ledgerless eta_continuation_plan singular "
+                 "declarations only when every system-declared singular point evaluates exactly "
+                 "to a real point off the direct real segment";
+        }
+      }
+    } catch (const std::exception&) {
+      return "default exact solver accepts ledgerless eta_continuation_plan singular "
+             "declarations only when every system-declared singular point evaluates exactly "
+             "to a real point off the direct real segment";
+    }
+    return std::nullopt;
+  }
+
   std::vector<std::string> declared_singular_value_keys;
   declared_singular_value_keys.reserve(request.system.singular_points.size());
   try {
     for (const std::string& singular_point : request.system.singular_points) {
-      const std::optional<std::string> key = CanonicalExactComplexValueKey(
-          EvaluateComplexPointExpression(variable_name, singular_point, passive_bindings));
+      const ExactComplexRational value =
+          EvaluateComplexPointExpression(variable_name, singular_point, passive_bindings);
+      const std::optional<std::string> key = CanonicalExactComplexValueKey(value);
       if (!key.has_value()) {
         return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
                "when every ledger value matches a system-declared singular point by exact value";
@@ -3789,10 +3814,6 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   const ExactComplexRational& target = plan.contour_points.back();
   if (!start.IsReal() || !target.IsReal()) {
     return "default exact solver currently accepts only real eta_continuation_plan endpoints";
-  }
-  if (!request.system.singular_points.empty() && plan.singular_points.empty()) {
-    return "default exact solver requires an evaluated eta_continuation_plan singular-point "
-           "ledger when the system declares singular points";
   }
   if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "

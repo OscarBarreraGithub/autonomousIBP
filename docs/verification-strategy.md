@@ -302,6 +302,11 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   summary, fail-closes if the numeric summary's case-study ids drift from the readiness summary,
   and in the current retained repo state preserves both the singular case-study runtime-lane
   blocker and the missing case-study numeric evidence without claiming `Milestone M6` closure.
+- `tools/reference-harness/scripts/qualify_milestone_m6.py` is the first Milestone M6
+  qualification verdict composer: it consumes the reviewed phase-0 packet-set verdict plus the
+  reviewed case-study-family verdict, requires both to pass, requires pending phase-0 runtime-lane
+  blockers to be closed, and preserves the subverdict blocker lists plus blocked runtime lanes in
+  one M6-scoped summary without launching runtime work or claiming `Milestone M7`.
 - `tools/reference-harness/scripts/compare_case_study_numeric_results.py` is the first
   case-study numeric summary producer for that verdict: it consumes the reviewed case-study
   readiness summary plus explicit numeric evidence sidecars, validates the family ids and frozen
@@ -352,15 +357,16 @@ suite as the solver is implemented. The qualification scaffold is planning metad
 not by itself claim any new captured benchmark evidence or solver parity. The packet-level
 correct-digit scorer, the packet-set correct-digit aggregator, the packet-level plus packet-set
 candidate failure-code audits, the case-study numeric summary producer, the retained phase-0
-packet-set qualification verdict, and the case-study-family qualification verdict all remain
-narrower than full qualification closure: the
+packet-set qualification verdict, the case-study-family qualification verdict, and the M6
+qualification composer all remain narrower than release qualification closure: the
 scorers compare retained numerics but do not audit candidate failure-code behavior, the
 failure-code audits check only the published candidate audit sidecars against the frozen
 scaffold, the case-study numeric producer only summarizes explicit sidecars and missing evidence,
 the phase-0 qualification verdict keeps case-study numerics withheld explicitly, the
 case-study-family qualification verdict keeps phase-0 closure separate and remains blocked on the
-current singular runtime lane plus missing case-study numeric evidence, and none of them claim
-that `Milestone M6` is passing.
+current singular runtime lane plus missing case-study numeric evidence, and the M6 composer keeps
+the current retained summary blocked until the reviewed phase-0 packet-set verdict, pending
+phase-0 runtime lanes, and case-study-family verdict are all closed.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in

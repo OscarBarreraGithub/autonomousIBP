@@ -58,12 +58,13 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All twenty-two harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All twenty-three harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62p` / `b63n` / `b64ag`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
-numeric summary producer, the case-study-family qualification verdict, plus the blocked M7
+numeric summary producer, the case-study-family qualification verdict, the M6 qualification
+verdict composer, plus the blocked M7
 release-readiness and qualification-corpus audits:
 
 ```bash
@@ -122,6 +123,9 @@ python3 tools/reference-harness/scripts/qualify_phase0_packet_set.py \
 python3 tools/reference-harness/scripts/qualify_case_study_families.py \
   --self-check
 
+python3 tools/reference-harness/scripts/qualify_milestone_m6.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --self-check
 
@@ -141,11 +145,12 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all twenty-two helper self-checks through the configured
+`amflow-tests` now exercises all twenty-three helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
 case-study numeric summary producer, retained phase-0 packet-set qualification verdict, the
-blocked/pass case-study-family qualification verdict, blocked release-readiness with
+blocked/pass case-study-family qualification verdict, blocked/pass M6 qualification verdict,
+blocked release-readiness with
 qualification-corpus, performance-review, diagnostic-review, docs-completion, and parity-signoff
 sidecar preservation, qualification-corpus sidecar production, performance-review sidecar
 production, diagnostic-review sidecar production, docs-completion sidecar production,
@@ -269,6 +274,22 @@ The helper fail-closes if the case-study ids drift across the readiness and nume
 In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
 absence of compared case-study numerics visible, keeps the phase-0 verdict prerequisite separate,
 and does not claim that `Milestone M6` is passing.
+
+To compose the reviewed phase-0 and case-study verdicts into the first M6-scoped blocked/pass
+summary:
+
+```bash
+python3 tools/reference-harness/scripts/qualify_milestone_m6.py \
+  --phase0-qualification-summary /tmp/phase0-qualification.json \
+  --case-study-qualification-summary /tmp/case-study-qualification.json
+```
+
+Add `--summary-path` if you want the JSON verdict written to disk as well as printed to stdout.
+The composer requires both subverdicts to pass and requires pending phase-0 runtime-lane blockers
+to be closed before `milestone_m6_ready` can become true. In the current retained repo state it
+preserves the phase-0 correct-digit and failure-code blockers, the case-study runtime/numeric
+blockers, and the blocked `b61n` / `b62p` / `b63n` / `b64ag` runtime-lane frontier without
+claiming `Milestone M7` or release readiness.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:
@@ -548,6 +569,14 @@ The capture script writes:
   correct-digit, and failure-code summaries, fail-closes unless their retained packet labels and
   captured phase-0 ids stay synchronized, and writes one blocked/pass verdict over the reviewed
   phase-0 packet set only.
+- `qualify_case_study_families.py` is the first case-study-family qualification verdict: it
+  consumes one case-study readiness summary plus an optional case-study numeric summary,
+  fail-closes unless their case-study ids stay synchronized, and writes one blocked/pass verdict
+  over the reviewed case-study family set only.
+- `qualify_milestone_m6.py` is the first Milestone M6 qualification verdict composer: it consumes
+  the reviewed phase-0 packet-set verdict plus the reviewed case-study-family verdict, requires
+  both to pass, requires pending phase-0 runtime-lane blockers to be closed, and preserves
+  subverdict blockers plus blocked runtime lanes in one M6-scoped summary.
 - `release_signoff_readiness.py` is the first executable M7 helper: it consumes one
   machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
   audits that the checklist source/doc paths exist inside the repo, preserves the blocked

@@ -41769,6 +41769,234 @@ void CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersV
                  "visible");
 }
 
+void MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-self-check",
+      "tools/reference-harness/scripts/qualify_milestone_m6.py",
+      {"--self-check"},
+      "Milestone M6 qualification verdict self-check");
+  Expect(result.stderr_log.empty(),
+         "Milestone M6 qualification verdict self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_subverdicts_qualify_m6\": true",
+                 "Milestone M6 qualification self-check should qualify only when the phase-0 "
+                 "and case-study subverdicts both pass");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_blocker_blocks_m6\": true",
+                 "Milestone M6 qualification self-check should preserve phase-0 packet-set "
+                 "blockers");
+  ExpectContains(result.stdout_json, "\"phase0_runtime_lane_blocker_blocks_m6\": true",
+                 "Milestone M6 qualification self-check should preserve pending phase-0 runtime "
+                 "lane blockers even after the packet-set verdict passes");
+  ExpectContains(result.stdout_json, "\"case_study_blocker_blocks_m6\": true",
+                 "Milestone M6 qualification self-check should preserve case-study-family "
+                 "blockers");
+  ExpectContains(result.stdout_json,
+                 "\"phase0_and_case_study_blockers_preserved\": true",
+                 "Milestone M6 qualification self-check should keep both subverdict blocker "
+                 "lists visible");
+  ExpectContains(result.stdout_json, "\"subverdict_withheld_claims_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve subverdict non-claims");
+  ExpectContains(result.stdout_json, "\"malformed_phase0_scope_rejected\": true",
+                 "Milestone M6 qualification self-check should reject a malformed phase-0 "
+                 "subverdict scope");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "Milestone M6 qualification self-check should write the synthetic summary "
+                 "output");
+}
+
+void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
+  const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
+  const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-readiness") / "qualification-summary.json";
+  const std::filesystem::path comparison_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-compare") / "comparison-summary.json";
+  const std::filesystem::path correct_digit_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-correct-digits") / "correct-digits.json";
+  const std::filesystem::path failure_code_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-failure-codes") / "failure-codes.json";
+  const std::filesystem::path phase0_qualification_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-phase0-verdict") /
+      "phase0-qualification.json";
+  const std::filesystem::path case_study_readiness_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-case-readiness") /
+      "case-study-readiness.json";
+  const std::filesystem::path case_study_qualification_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-case-verdict") /
+      "case-study-qualification.json";
+  const std::filesystem::path m6_summary_path =
+      FreshTempDir("amflow-m6-qualification-retained-summary") / "m6-qualification.json";
+
+  std::vector<std::string> qualification_args = {
+      "--root",
+      required_root.string(),
+      "--summary-path",
+      qualification_summary_path.string(),
+  };
+  for (const std::filesystem::path& optional_root : optional_roots) {
+    qualification_args.push_back("--optional-packet-root");
+    qualification_args.push_back(optional_root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-readiness",
+      "tools/reference-harness/scripts/qualification_readiness.py",
+      qualification_args,
+      "Milestone M6 retained prerequisite readiness summary");
+  Expect(qualification_result.stderr_log.empty(),
+         "Milestone M6 retained prerequisite readiness summary should not emit stderr noise on "
+         "success");
+
+  std::vector<std::string> comparison_args = {"--summary-path", comparison_summary_path.string()};
+  std::vector<std::string> correct_digit_args = {"--summary-path",
+                                                 correct_digit_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    const std::string pair = root.string() + "::" + root.string();
+    comparison_args.push_back("--packet-root-pair");
+    comparison_args.push_back(pair);
+    correct_digit_args.push_back("--packet-root-pair");
+    correct_digit_args.push_back(pair);
+  }
+
+  const ReferenceHarnessSelfCheckRun comparison_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-compare",
+      "tools/reference-harness/scripts/compare_phase0_packet_set_to_reference.py",
+      comparison_args,
+      "Milestone M6 retained packet-set comparison");
+  Expect(comparison_result.stderr_log.empty(),
+         "Milestone M6 retained packet-set comparison should not emit stderr noise on success");
+
+  const ReferenceHarnessSelfCheckRun correct_digit_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-correct-digits",
+      "tools/reference-harness/scripts/score_phase0_packet_set_correct_digits.py",
+      correct_digit_args,
+      "Milestone M6 retained packet-set correct digits");
+  Expect(correct_digit_result.stderr_log.empty(),
+         "Milestone M6 retained packet-set correct-digit summary should not emit stderr noise on "
+         "success");
+
+  std::vector<std::string> failure_code_args = {"--summary-path",
+                                                failure_code_summary_path.string()};
+  for (const std::filesystem::path& root : QualificationPhase0ReferencePacketRoots()) {
+    failure_code_args.push_back("--candidate-root");
+    failure_code_args.push_back(root.string());
+  }
+
+  const ReferenceHarnessSelfCheckRun failure_code_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-failure-codes",
+      "tools/reference-harness/scripts/audit_phase0_packet_set_failure_codes.py",
+      failure_code_args,
+      "Milestone M6 retained packet-set failure-code audit");
+  Expect(failure_code_result.stderr_log.empty(),
+         "Milestone M6 retained packet-set failure-code audit should not emit stderr noise on "
+         "success");
+
+  const ReferenceHarnessSelfCheckRun phase0_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-phase0-verdict",
+      "tools/reference-harness/scripts/qualify_phase0_packet_set.py",
+      {"--qualification-summary",
+       qualification_summary_path.string(),
+       "--packet-set-comparison-summary",
+       comparison_summary_path.string(),
+       "--packet-set-correct-digit-summary",
+       correct_digit_summary_path.string(),
+       "--packet-set-failure-code-summary",
+       failure_code_summary_path.string(),
+       "--summary-path",
+       phase0_qualification_summary_path.string()},
+      "Milestone M6 retained phase-0 packet-set verdict");
+  Expect(phase0_result.stderr_log.empty(),
+         "Milestone M6 retained phase-0 packet-set verdict should not emit stderr noise on "
+         "success");
+
+  const ReferenceHarnessSelfCheckRun case_readiness_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-case-readiness",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", case_study_readiness_summary_path.string()},
+      "Milestone M6 retained case-study readiness summary");
+  Expect(case_readiness_result.stderr_log.empty(),
+         "Milestone M6 retained case-study readiness summary should not emit stderr noise on "
+         "success");
+
+  const ReferenceHarnessSelfCheckRun case_qualification_result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-case-verdict",
+      "tools/reference-harness/scripts/qualify_case_study_families.py",
+      {"--case-study-readiness-summary",
+       case_study_readiness_summary_path.string(),
+       "--summary-path",
+       case_study_qualification_summary_path.string()},
+      "Milestone M6 retained case-study-family verdict");
+  Expect(case_qualification_result.stderr_log.empty(),
+         "Milestone M6 retained case-study-family verdict should not emit stderr noise on "
+         "success");
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-m6-qualification-retained-summary",
+      "tools/reference-harness/scripts/qualify_milestone_m6.py",
+      {"--phase0-qualification-summary",
+       phase0_qualification_summary_path.string(),
+       "--case-study-qualification-summary",
+       case_study_qualification_summary_path.string(),
+       "--summary-path",
+       m6_summary_path.string()},
+      "Milestone M6 retained qualification summary");
+  Expect(result.stderr_log.empty(),
+         "Milestone M6 retained qualification summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(m6_summary_path),
+         "Milestone M6 retained qualification summary should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"scope\": \"milestone-m6-qualification\"",
+                 "Milestone M6 retained qualification summary should publish the M6 scope");
+  ExpectContains(result.stdout_json,
+                 "\"current_state\": \"blocked-on-phase0-packet-set\"",
+                 "Milestone M6 retained qualification summary should preserve the first "
+                 "unpassed phase-0 verdict");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
+                 "Milestone M6 retained qualification summary should preserve the blocked "
+                 "phase-0 verdict");
+  ExpectContains(result.stdout_json, "\"case_study_families_qualified\": false",
+                 "Milestone M6 retained qualification summary should preserve the blocked "
+                 "case-study verdict");
+  ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
+                 "Milestone M6 retained qualification summary should not claim M6 closure");
+  ExpectContains(result.stdout_json, "\"phase0: retained packet-set correct-digit scoring has "
+                                    "not fully passed\"",
+                 "Milestone M6 retained qualification summary should preserve the phase-0 "
+                 "correct-digit blocker");
+  ExpectContains(result.stdout_json,
+                 "\"phase0: retained packet-set is missing published failure-code audits\"",
+                 "Milestone M6 retained qualification summary should preserve the phase-0 "
+                 "failure-code audit blocker");
+  ExpectContains(result.stdout_json,
+                 "\"case-study: case-study family one-singular-endpoint-case is still blocked "
+                 "on a runtime lane\"",
+                 "Milestone M6 retained qualification summary should preserve the case-study "
+                 "runtime blocker");
+  ExpectContains(result.stdout_json,
+                 "\"case-study: case-study numerics are not yet compared\"",
+                 "Milestone M6 retained qualification summary should preserve the missing "
+                 "case-study numeric evidence blocker");
+  ExpectContains(result.stdout_json, "\"blocked_runtime_lanes\": [",
+                 "Milestone M6 retained qualification summary should keep blocked runtime lanes "
+                 "visible");
+  ExpectContains(result.stdout_json, "\"b61n\"",
+                 "Milestone M6 retained qualification summary should preserve the complex "
+                 "kinematics lane blocker");
+  ExpectContains(result.stdout_json, "\"b62p\"",
+                 "Milestone M6 retained qualification summary should preserve the singular "
+                 "case-study lane blocker");
+  ExpectContains(result.stdout_json, "\"b63n\"",
+                 "Milestone M6 retained qualification summary should preserve the phase-space "
+                 "lane blocker");
+  ExpectContains(result.stdout_json, "\"b64ag\"",
+                 "Milestone M6 retained qualification summary should preserve the linear "
+                 "propagator lane blocker");
+  ExpectContains(result.stdout_json,
+                 "\"This summary does not claim Milestone M6 closure.\"",
+                 "Milestone M6 retained qualification summary should keep M6 closure withheld");
+  ExpectContains(result.stdout_json,
+                 "\"This summary does not mark Milestone M7 or release readiness.\"",
+                 "Milestone M6 retained qualification summary should keep M7/release non-claims");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -45147,6 +45375,8 @@ int main() {
     CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest();
     CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest();
     CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersVisibleTest();
+    MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest();
+    MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();

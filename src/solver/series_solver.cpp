@@ -6436,6 +6436,72 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
                                                     cache_context);
 }
 
+SolverDiagnostics SolvePlannedResolvedAmfOptionsEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol) {
+  return SolvePlannedResolvedAmfOptionsEtaModeSeries(spec,
+                                                     master_basis,
+                                                     decision,
+                                                     amf_options,
+                                                     options,
+                                                     layout,
+                                                     kira_executable,
+                                                     fermat_executable,
+                                                     solver,
+                                                     start_location,
+                                                     target_location,
+                                                     precision_policy,
+                                                     requested_digits,
+                                                     eta_symbol,
+                                                     std::nullopt);
+}
+
+SolverDiagnostics SolvePlannedResolvedAmfOptionsEtaModeSeries(
+    const ProblemSpec& spec,
+    const ParsedMasterList& master_basis,
+    const EtaInsertionDecision& decision,
+    const AmfOptions& amf_options,
+    const ReductionOptions& options,
+    const ArtifactLayout& layout,
+    const std::filesystem::path& kira_executable,
+    const std::filesystem::path& fermat_executable,
+    const SeriesSolver& solver,
+    const std::string& start_location,
+    const std::string& target_location,
+    const PrecisionPolicy& precision_policy,
+    const int requested_digits,
+    const std::string& eta_symbol,
+    const std::optional<std::string>& exact_dimension_override) {
+  return SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                             master_basis,
+                                             decision,
+                                             amf_options,
+                                             "amf-options-resolved-eta-mode-series",
+                                             options,
+                                             layout,
+                                             kira_executable,
+                                             fermat_executable,
+                                             solver,
+                                             start_location,
+                                             target_location,
+                                             precision_policy,
+                                             requested_digits,
+                                             eta_symbol,
+                                             exact_dimension_override);
+}
+
 SolverDiagnostics SolveBuiltinEtaModeSeries(
     const ProblemSpec& spec,
     const ParsedMasterList& master_basis,
@@ -6909,22 +6975,21 @@ SolverDiagnostics SolveAmfOptionsEtaModeSeries(
     const std::optional<std::string>& exact_dimension_override) {
   const EtaInsertionDecision decision =
       PlanAmfOptionsEtaMode(spec, amf_options, user_defined_modes);
-  return SolvePlannedAmfOptionsEtaModeSeries(spec,
-                                             master_basis,
-                                             decision,
-                                             amf_options,
-                                             "amf-options-resolved-eta-mode-series",
-                                             options,
-                                             layout,
-                                             kira_executable,
-                                             fermat_executable,
-                                             solver,
-                                             start_location,
-                                             target_location,
-                                             precision_policy,
-                                             requested_digits,
-                                             eta_symbol,
-                                             exact_dimension_override);
+  return SolvePlannedResolvedAmfOptionsEtaModeSeries(spec,
+                                                     master_basis,
+                                                     decision,
+                                                     amf_options,
+                                                     options,
+                                                     layout,
+                                                     kira_executable,
+                                                     fermat_executable,
+                                                     solver,
+                                                     start_location,
+                                                     target_location,
+                                                     precision_policy,
+                                                     requested_digits,
+                                                     eta_symbol,
+                                                     exact_dimension_override);
 }
 
 std::unique_ptr<SeriesSolver> MakeBootstrapSeriesSolver() {

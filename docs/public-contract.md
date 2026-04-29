@@ -385,8 +385,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   automatic boundary values remain unavailable. A no-provider `AmfOptions` Cutkosky wrapper now
   uses that deferred builtin registry directly, so callers can exercise the reviewed builtin
   routing surface without supplying their own registry, while still receiving the same typed
-  no-boundary-values diagnostic. This still does not widen builtin `Prescription` selection,
-  top-sector or Cutkosky topology analysis, or automatic phase-space boundary-value generation;
+  no-boundary-values diagnostic. The same boundary-request preflight now performs one narrow
+  cut-topology support check: every cut propagator must mention at least one declared loop
+  momentum before provider routing. This still does not widen builtin `Prescription` selection,
+  top-sector analysis, broader Cutkosky topology analysis, or automatic phase-space boundary-value generation;
   and explicit linear variants now reach only the reviewed invariant seed/execution subsets, the
   stricter general Kira-preparation subset, the direct eta-generated plus eta-mode-planned solver
   handoffs on the reviewed direct-decision subset where only reviewed quadratic propagators are
@@ -462,8 +464,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `Propagator::prescription`; when loop metadata is absent, uniform raw cut prescriptions may
   select the reviewed `+i0`, `-i0`, or no-prescription strategies, while mixed raw cut strategies
   fail closed. Broader builtin
-  `Prescription`, top-sector / Cutkosky topology analysis, and automatic phase-space boundary-value
-  generation remain deferred
+  `Prescription`, top-sector analysis, broader Cutkosky topology analysis, and automatic
+  phase-space boundary-value generation remain deferred
+- `CutkoskyPhaseSpaceCutSupport`, `CutkoskyPhaseSpaceTopology`, and
+  `AnalyzeCutkoskyPhaseSpaceCutTopology(...)`: the first pure phase-space cut-topology helper,
+  reporting each cut propagator index plus the declared loop momenta mentioned by that
+  propagator expression without parsing graph components or producing boundary values. The
+  reviewed Cutkosky boundary-request preflight consumes only the empty-support rejection: a cut
+  propagator with no declared loop-momentum support fails closed before provider strategy routing
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the
@@ -474,7 +482,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `GenerateBuiltinEtaInfinityBoundaryRequest(...)`: pure builtin boundary-request generation over a validated bootstrap `ProblemSpec` subset, returning one explicit `BoundaryRequest` without boundary values or solver execution
 - `GeneratePlannedEtaInfinityBoundaryRequest(...)`: single-name ending-planned wrapper that accepts only the exact singleton `<family>::eta->infinity` terminal-node decision and then returns the reviewed builtin `eta -> infinity` `BoundaryRequest`
 - `GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(...)`: standalone `AmfOptions::ending_schemes` eta->infinity boundary-request selector that preserves the reviewed ordered fallback semantics without attaching boundary data or invoking the solver
-- `GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(...)`, `GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(...)`, and `GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(...)`: standalone reviewed Cutkosky phase-space boundary-request generators over the same narrow standard/cut-only subset, without boundary values or provider registries
+- `GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(...)`, `GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(...)`, and `GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(...)`: standalone reviewed Cutkosky phase-space boundary-request generators over the same narrow standard/cut-only subset, with the reviewed loop-support topology preflight, without boundary values or provider registries
 - `PlanBuiltinAmfOptionsEtaMode(...)`: standalone builtin-only `AmfOptions::amf_modes` eta-mode decision helper that performs only reviewed ordered builtin selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `PlanAmfOptionsEtaMode(...)`: standalone `AmfOptions::amf_modes` mixed eta-mode decision helper that performs only reviewed ordered mixed builtin/user-defined selection and planning, returning the winning `EtaInsertionDecision` without touching solver policy, cache, `skip_reduction`, or `D0` metadata
 - `ExactRational`, `ExactComplexRational`, `BuildComplexNumericEvaluationPoint(...)`, `EvaluateCoefficientExpression(...)`, `EvaluateComplexCoefficientExpression(...)`, `EvaluateCoefficientMatrix(...)`, `EvaluateComplexCoefficientMatrix(...)`, and `EvaluateComplexPointExpression(...)`: exact rational coefficient evaluation plus a separate exact-complex helper layer over one explicit substitution point, including merged `ProblemSpec` exact/complex kinematic bindings and standalone complex point-expression parsing

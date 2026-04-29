@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -11,6 +12,18 @@ namespace amflow {
 
 struct AmfOptions;
 class EndingScheme;
+
+struct CutkoskyPhaseSpaceCutSupport {
+  std::size_t propagator_index = 0;
+  std::vector<std::string> loop_momenta;
+};
+
+struct CutkoskyPhaseSpaceTopology {
+  std::vector<CutkoskyPhaseSpaceCutSupport> cut_supports;
+};
+
+CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
+    const FamilyDefinition& family);
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,

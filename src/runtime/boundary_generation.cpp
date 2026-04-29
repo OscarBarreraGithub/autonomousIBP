@@ -1,10 +1,13 @@
 #include "amflow/runtime/boundary_generation.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <exception>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "amflow/core/options.hpp"
@@ -26,6 +29,30 @@ std::string JoinMessages(const std::vector<std::string>& messages) {
 }
 
 constexpr char kBuiltinCutkoskyPhaseSpaceStrategy[] = "builtin::cutkosky-phase-space";
+
+std::set<std::string> ExtractIdentifiers(const std::string& expression) {
+  std::set<std::string> identifiers;
+  std::size_t index = 0;
+  while (index < expression.size()) {
+    const unsigned char current = static_cast<unsigned char>(expression[index]);
+    if (std::isalpha(current) == 0 && current != static_cast<unsigned char>('_')) {
+      ++index;
+      continue;
+    }
+
+    const std::size_t begin = index;
+    ++index;
+    while (index < expression.size()) {
+      const unsigned char next = static_cast<unsigned char>(expression[index]);
+      if (std::isalnum(next) == 0 && next != static_cast<unsigned char>('_')) {
+        break;
+      }
+      ++index;
+    }
+    identifiers.insert(expression.substr(begin, index - begin));
+  }
+  return identifiers;
+}
 
 void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
@@ -66,6 +93,20 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
     throw BoundaryUnsolvedError(
         "builtin Cutkosky phase-space boundary request generation requires at least one cut "
         "propagator on the current reviewed phase-space subset");
+  }
+
+  const CutkoskyPhaseSpaceTopology topology =
+      AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+  for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+    if (!support.loop_momenta.empty()) {
+      continue;
+    }
+    throw BoundaryUnsolvedError(
+        "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
+        std::to_string(support.propagator_index) +
+        " to carry declared loop-momentum support; no declared loop momentum support found "
+        "in expression \"" + spec.family.propagators[support.propagator_index].expression +
+        "\"");
   }
 }
 
@@ -246,6 +287,28 @@ void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
 }
 
 }  // namespace
+
+CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
+    const FamilyDefinition& family) {
+  CutkoskyPhaseSpaceTopology topology;
+  for (std::size_t index = 0; index < family.propagators.size(); ++index) {
+    const Propagator& propagator = family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    CutkoskyPhaseSpaceCutSupport support;
+    support.propagator_index = index;
+    const std::set<std::string> identifiers = ExtractIdentifiers(propagator.expression);
+    for (const std::string& loop_momentum : family.loop_momenta) {
+      if (identifiers.find(loop_momentum) != identifiers.end()) {
+        support.loop_momenta.push_back(loop_momentum);
+      }
+    }
+    topology.cut_supports.push_back(std::move(support));
+  }
+  return topology;
+}
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spec,
                                                          const std::string& eta_symbol) {

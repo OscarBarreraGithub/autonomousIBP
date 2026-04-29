@@ -9859,6 +9859,41 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest() {
          "phase-space request");
 }
 
+void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::CutkoskyPhaseSpaceTopology topology =
+      amflow::AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+
+  Expect(topology.cut_supports.size() == 2,
+         "Cutkosky phase-space topology analysis should report the reviewed cut propagators");
+  Expect(topology.cut_supports[0].propagator_index == 0 &&
+             topology.cut_supports[0].loop_momenta == std::vector<std::string>{"k1"},
+         "Cutkosky phase-space topology analysis should report the first cut's loop support");
+  Expect(topology.cut_supports[1].propagator_index == 5 &&
+             topology.cut_supports[1].loop_momenta ==
+                 std::vector<std::string>{"k1", "k2"},
+         "Cutkosky phase-space topology analysis should report mixed-loop cut support in "
+         "declared loop-momentum order");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Cutkosky phase-space topology analysis should not mutate the input ProblemSpec");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.propagators[0].expression = "p1^2";
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Standard;
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "no declared loop momentum support",
+      "builtin Cutkosky phase-space boundary generation should reject cut propagators that "
+      "carry no declared loop-momentum topology before provider routing");
+}
+
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest() {
   const amflow::BoundaryRequest plus_request =
       amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
@@ -44960,6 +44995,8 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryPropagatesProviderBoundaryUnsolvedTest();
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
+    AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();

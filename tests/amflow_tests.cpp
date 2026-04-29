@@ -13381,6 +13381,61 @@ void BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest() 
          "diagnostics for direct real two-point metadata when every branch winding is zero");
 }
 
+void BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  baseline_request.system.singular_points = {"eta=4/2"};
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  request.eta_continuation_plan->singular_points.front().value.real = {"4", "2"};
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-value-matched-zero-winding-ledger-plan";
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap value-matched eta-continuation-plan coverage should keep the off-path "
+         "singular declaration exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap value-matched eta-continuation-plan coverage should preserve exact "
+         "diagnostics when zero-winding ledger values match system declarations exactly even "
+         "if the source expressions differ textually and the ledger value is not pre-reduced");
+}
+
+void BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedgerValueTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=2"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "3", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-expression-matched-stale-ledger-value-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap expression-matched stale ledger-value coverage should fail closed when the "
+         "recorded singular value differs from the exact system declaration");
+  ExpectContains(diagnostics.summary,
+                 "exact value",
+                 "bootstrap expression-matched stale ledger-value coverage should explain the "
+                 "exact-value mismatch");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap expression-matched stale ledger-value coverage should report the "
+                 "reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -45021,6 +45076,8 @@ int main() {
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
+    BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedgerValueTest();
     BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsMismatchedZeroWindingEtaContinuationPlanLedgerTest();

@@ -3676,6 +3676,65 @@ bool EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(
   return declared_singular_points == ledger_singular_points;
 }
 
+std::optional<std::string> CanonicalExactComplexValueKey(const ExactComplexRational& value) {
+  try {
+    const ExactRational real = ExactArithmetic(value.real.ToString());
+    const ExactRational imaginary = ExactArithmetic(value.imaginary.ToString());
+    return ExactComplexRational{real, imaginary}.ToString();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerValueRejectionReason(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const EtaContinuationPlan& plan,
+    const NumericEvaluationPoint& passive_bindings) {
+  const bool expressions_match =
+      EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(request.system, plan);
+
+  std::vector<std::string> declared_singular_value_keys;
+  declared_singular_value_keys.reserve(request.system.singular_points.size());
+  try {
+    for (const std::string& singular_point : request.system.singular_points) {
+      const std::optional<std::string> key = CanonicalExactComplexValueKey(
+          EvaluateComplexPointExpression(variable_name, singular_point, passive_bindings));
+      if (!key.has_value()) {
+        return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+               "when every ledger value matches a system-declared singular point by exact value";
+      }
+      declared_singular_value_keys.push_back(*key);
+    }
+  } catch (const std::exception&) {
+    if (expressions_match) {
+      return std::nullopt;
+    }
+    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+           "when every ledger value matches a system-declared singular point by exact value";
+  }
+
+  std::vector<std::string> ledger_singular_value_keys;
+  ledger_singular_value_keys.reserve(plan.singular_points.size());
+  for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
+    const std::optional<std::string> key = CanonicalExactComplexValueKey(singular_point.value);
+    if (!key.has_value()) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when every ledger value matches a system-declared singular point by exact value";
+    }
+    ledger_singular_value_keys.push_back(*key);
+  }
+
+  std::sort(declared_singular_value_keys.begin(), declared_singular_value_keys.end());
+  std::sort(ledger_singular_value_keys.begin(), ledger_singular_value_keys.end());
+
+  if (declared_singular_value_keys != ledger_singular_value_keys) {
+    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+           "when every ledger value matches a system-declared singular point by exact value";
+  }
+  return std::nullopt;
+}
+
 std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructuralRejectionReason(
     const SolveRequest& request,
     const std::string& variable_name,
@@ -3704,10 +3763,6 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when the system declares singular points";
-  }
-  if (!EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(request.system, plan)) {
-    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
-           "when every ledger expression matches a system-declared singular point";
   }
   for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
     if (singular_point.branch_winding != 0) {
@@ -4643,6 +4698,16 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
     if (rejection_reason.has_value()) {
       return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
           variable_name, *live_request.eta_continuation_plan, *rejection_reason);
+    }
+    const std::optional<std::string> ledger_rejection_reason =
+        ReviewedDirectRealBootstrapEtaContinuationPlanLedgerValueRejectionReason(
+            live_request,
+            variable_name,
+            *live_request.eta_continuation_plan,
+            passive_bindings);
+    if (ledger_rejection_reason.has_value()) {
+      return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+          variable_name, *live_request.eta_continuation_plan, *ledger_rejection_reason);
     }
   }
 

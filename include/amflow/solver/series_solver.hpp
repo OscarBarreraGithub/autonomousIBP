@@ -96,7 +96,8 @@ struct SolveRequest {
   // Reviewed complex eta continuation metadata for injected solvers that opt
   // into the separate complex contour path. The default exact bootstrap solver
   // accepts only direct real two-point metadata over its already-reviewed exact
-  // path; any actual contour detour or branch ledger still fail-closes.
+  // path, with zero-winding off-path singular ledgers accepted only on the
+  // reviewed expression/exact-value matching subset.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;
 };

@@ -377,6 +377,14 @@ std::optional<std::string> ResolveReviewedInvariantListSegmentName(
                                                     target_location)) {
     return std::string("t");
   }
+  if (HasMixedExplicitRawReviewedInvariantListShape(invariant_names,
+                                                    "s",
+                                                    start_variable,
+                                                    target_variable,
+                                                    start_location,
+                                                    target_location)) {
+    return std::string("s");
+  }
 
   if (std::find(invariant_names.begin(), invariant_names.end(), "s") != invariant_names.end()) {
     return std::string("s");
@@ -402,7 +410,8 @@ bool ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(
     return true;
   }
   if (!reviewed_segment_invariant_name.has_value() ||
-      (*reviewed_segment_invariant_name != "t" &&
+      (*reviewed_segment_invariant_name != "s" &&
+       *reviewed_segment_invariant_name != "t" &&
        *reviewed_segment_invariant_name != "msq")) {
     return false;
   }
@@ -5315,6 +5324,9 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
   const bool has_mixed_explicit_raw_reviewed_t_list_shape =
       HasMixedExplicitRawReviewedInvariantListShape(
           invariant_names, "t", start_variable, target_variable, start_location, target_location);
+  const bool has_mixed_explicit_raw_reviewed_s_list_shape =
+      HasMixedExplicitRawReviewedInvariantListShape(
+          invariant_names, "s", start_variable, target_variable, start_location, target_location);
   const bool has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment =
       HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(spec,
                                                                invariant_names,
@@ -5331,6 +5343,14 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
                                                                target_variable,
                                                                start_location,
                                                                target_location);
+  const bool has_evaluated_mixed_explicit_raw_reviewed_s_list_segment =
+      HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(spec,
+                                                               invariant_names,
+                                                               "s",
+                                                               start_variable,
+                                                               target_variable,
+                                                               start_location,
+                                                               target_location);
   const std::optional<std::string> reviewed_segment_invariant_name =
       ResolveReviewedInvariantListSegmentName(
           invariant_names, start_location, target_location);
@@ -5339,7 +5359,9 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
               ((*reviewed_segment_invariant_name == "msq" &&
                 has_evaluated_mixed_explicit_raw_reviewed_msq_list_segment) ||
                (*reviewed_segment_invariant_name == "t" &&
-                has_evaluated_mixed_explicit_raw_reviewed_t_list_segment))
+                has_evaluated_mixed_explicit_raw_reviewed_t_list_segment) ||
+               (*reviewed_segment_invariant_name == "s" &&
+                has_evaluated_mixed_explicit_raw_reviewed_s_list_segment))
           ? true
           : ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(spec,
                                                                        invariant_names,
@@ -5353,6 +5375,9 @@ SolverDiagnostics SolveInvariantGeneratedSeriesList(
       : has_mixed_explicit_raw_reviewed_t_list_shape &&
               !has_evaluated_mixed_explicit_raw_reviewed_t_list_segment
           ? std::optional<std::string>("t")
+      : has_mixed_explicit_raw_reviewed_s_list_shape &&
+              !has_evaluated_mixed_explicit_raw_reviewed_s_list_segment
+          ? std::optional<std::string>("s")
           : std::nullopt;
   if (malformed_mixed_explicit_raw_invariant_name.has_value()) {
     PhysicalKinematicsGuardrailAssessment assessment =

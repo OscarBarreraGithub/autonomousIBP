@@ -24070,6 +24070,107 @@ void SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawTLocationO
          "malformed");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawSSegmentThresholdCrossingOnReviewedTSRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-mixed-s-threshold-segment-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "s=5",
+                                                "3",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62r should reject mixed explicit/raw reviewed s segments on {t, s} multi-"
+         "invariant requests before DE construction");
+  ExpectContains(diagnostics.summary,
+                 "s = 4*msq",
+                 "Batch 62r should report the threshold locus when mixed {t, s} continuation "
+                 "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62r should not call the solver when mixed {t, s} continuation crosses a "
+         "reviewed threshold s segment");
+}
+
+void SolveInvariantGeneratedSeriesListMixedExplicitRawSSegmentOnReviewedTSRequestReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-safe-mixed-s-segment-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                                    amflow::ParsedMasterList{},
+                                                                    {"t", "s"},
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    layout.root / "bin" /
+                                                                        "unused-kira.sh",
+                                                                    layout.root / "bin" /
+                                                                        "unused-fermat.sh",
+                                                                    solver,
+                                                                    "s=6",
+                                                                    "7",
+                                                                    MakeDistinctPrecisionPolicy(),
+                                                                    55));
+      },
+      "supports only linear scalar-product-rule expressions",
+      "Batch 62r should let safe mixed explicit/raw reviewed s segments on {t, s} requests "
+      "reach the next invariant validation layer instead of falling through the raw s blocker");
+  Expect(solver.call_count() == 0,
+         "Batch 62r safe mixed {t, s} coverage should still fail before the downstream solver "
+         "when invariant generation blocks DE construction");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawSLocationOnReviewedTSRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-mixed-s-ts-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"t", "s"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "s=5",
+                                                "foo",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62r should fail closed on malformed mixed explicit/raw {t, s} locations before "
+         "DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed s segment explicitly as s=...",
+      "Batch 62r should report explicit s guidance when the raw side of a mixed {t, s} "
+      "request is malformed");
+  Expect(solver.call_count() == 0,
+         "Batch 62r should not call the solver when a mixed explicit/raw {t, s} request is "
+         "malformed");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdOpenRegionK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -45295,6 +45396,9 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawTSegmentEndpointNearSingularOnReviewedSTRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListMixedExplicitRawTSegmentOnReviewedSTRequestReachesNextLayerTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawTLocationOnReviewedSTRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsMixedExplicitRawSSegmentThresholdCrossingOnReviewedTSRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListMixedExplicitRawSSegmentOnReviewedTSRequestReachesNextLayerTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedMixedExplicitRawSLocationOnReviewedTSRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsRawThresholdNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsAmbiguousRawMultiInvariantLocationsBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedRawMultiInvariantLocationsBeforeDEConstructionTest();

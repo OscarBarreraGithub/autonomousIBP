@@ -116,6 +116,35 @@ def normalize_case_study_family_profiles(
     return digit_thresholds, required_failure_codes
 
 
+def normalize_positive_int_map(raw: Any, label: str) -> dict[str, int]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise TypeError(f"{label} must be an object")
+    values: dict[str, int] = {}
+    for key, value in raw.items():
+        key_text = normalize_string(key, f"{label} key")
+        if not isinstance(value, int):
+            raise TypeError(f"{label} {key_text} must be an int")
+        expect(value > 0, f"{label} {key_text} must be positive")
+        values[key_text] = value
+    return values
+
+
+def normalize_string_list_map(raw: Any, label: str) -> dict[str, list[str]]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise TypeError(f"{label} must be an object")
+    values: dict[str, list[str]] = {}
+    for key, value in raw.items():
+        key_text = normalize_string(key, f"{label} key")
+        string_values = normalize_string_list(value, f"{label} {key_text}")
+        expect_unique(string_values, f"{label} {key_text}")
+        values[key_text] = string_values
+    return values
+
+
 def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "phase-0 qualification schema_version must be 1")
@@ -142,6 +171,22 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     )
     withheld_claims = normalize_string_list(
         summary.get("withheld_claims", []), "phase-0 qualification withheld_claims"
+    )
+    digit_thresholds = normalize_positive_int_map(
+        summary.get("phase0_digit_thresholds_by_benchmark"),
+        "phase-0 qualification phase0_digit_thresholds_by_benchmark",
+    )
+    required_failure_codes = normalize_string_list_map(
+        summary.get("phase0_required_failure_codes_by_benchmark"),
+        "phase-0 qualification phase0_required_failure_codes_by_benchmark",
+    )
+    expect(
+        set(digit_thresholds) == set(phase0_reference_captured_ids),
+        "phase-0 qualification digit-threshold profiles must match phase0_reference_captured_ids",
+    )
+    expect(
+        set(required_failure_codes) == set(phase0_reference_captured_ids),
+        "phase-0 qualification required-failure-code profiles must match phase0_reference_captured_ids",
     )
 
     return {
@@ -184,6 +229,8 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
             "phase-0 qualification packet_set_required_failure_codes_satisfied",
         ),
         "missing_required_failure_codes_across_packet_set": missing_required_failure_codes,
+        "phase0_digit_thresholds_by_benchmark": digit_thresholds,
+        "phase0_required_failure_codes_by_benchmark": required_failure_codes,
         "milestone_m6_ready": normalize_bool(
             summary.get("milestone_m6_ready"), "phase-0 qualification milestone_m6_ready"
         ),
@@ -360,6 +407,12 @@ def summarize_milestone_m6_qualification(
         "phase0_reference_captured_ids": phase0["phase0_reference_captured_ids"],
         "phase0_pending_ids": phase0["phase0_pending_ids"],
         "blocked_phase0_examples": phase0["blocked_phase0_examples"],
+        "phase0_digit_thresholds_by_benchmark": phase0[
+            "phase0_digit_thresholds_by_benchmark"
+        ],
+        "phase0_required_failure_codes_by_benchmark": phase0[
+            "phase0_required_failure_codes_by_benchmark"
+        ],
         "case_study_ids": case_study["case_study_ids"],
         "runtime_blocked_case_study_ids": case_study["runtime_blocked_case_study_ids"],
         "missing_case_study_numeric_ids": case_study["missing_case_study_numeric_ids"],
@@ -414,6 +467,14 @@ def write_synthetic_phase0_summary(
             "missing_required_failure_codes_across_packet_set": (
                 [] if qualified else ["insufficient_precision"]
             ),
+            "phase0_digit_thresholds_by_benchmark": {
+                "automatic_loop": 50,
+                "automatic_vs_manual": 50,
+            },
+            "phase0_required_failure_codes_by_benchmark": {
+                "automatic_loop": ["insufficient_precision", "boundary_unsolved"],
+                "automatic_vs_manual": ["master_set_instability"],
+            },
             "phase0_packet_set_qualified": qualified,
             "milestone_m6_ready": False,
             "blocking_reasons": (
@@ -566,6 +627,20 @@ def run_self_check() -> dict[str, Any]:
             "case_study_blocker_blocks_m6": (
                 case_blocked_summary["current_state"] == "blocked-on-case-study-families"
                 and not case_blocked_summary["milestone_m6_ready"]
+            ),
+            "phase0_profiles_preserved": (
+                passing_summary["phase0_digit_thresholds_by_benchmark"] == {
+                    "automatic_loop": 50,
+                    "automatic_vs_manual": 50,
+                }
+                and passing_summary["phase0_required_failure_codes_by_benchmark"][
+                    "automatic_loop"
+                ]
+                == ["insufficient_precision", "boundary_unsolved"]
+                and passing_summary["phase0_required_failure_codes_by_benchmark"][
+                    "automatic_vs_manual"
+                ]
+                == ["master_set_instability"]
             ),
             "case_study_profiles_preserved": (
                 passing_summary["case_study_digit_thresholds_by_family"] == {

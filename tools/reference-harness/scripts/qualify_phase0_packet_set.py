@@ -42,6 +42,48 @@ def expect_unique(values: list[str], label: str) -> None:
     expect(len(set(values)) == len(values), f"{label} must not contain duplicates")
 
 
+def normalize_benchmark_profiles(
+    raw: Any,
+    label: str,
+) -> tuple[dict[str, int], dict[str, list[str]]]:
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} benchmarks must be a list")
+
+    digit_thresholds: dict[str, int] = {}
+    required_failure_codes: dict[str, list[str]] = {}
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise TypeError(f"{label} benchmark entries must be objects")
+        benchmark_id_raw = entry.get("benchmark_id")
+        if not isinstance(benchmark_id_raw, str):
+            raise TypeError(f"{label} benchmark_id must be a string")
+        benchmark_id = benchmark_id_raw.strip()
+        if not benchmark_id:
+            raise ValueError(f"{label} benchmark_id must not be empty")
+        if benchmark_id in digit_thresholds:
+            raise ValueError(f"duplicate {label} benchmark_id: {benchmark_id}")
+
+        minimum_correct_digits = entry.get("minimum_correct_digits")
+        if not isinstance(minimum_correct_digits, int):
+            raise TypeError(f"{label} {benchmark_id} minimum_correct_digits must be an int")
+        expect(
+            minimum_correct_digits > 0,
+            f"{label} {benchmark_id} minimum_correct_digits must be positive",
+        )
+
+        benchmark_required_codes = normalize_string_list(
+            entry.get("required_failure_codes", []),
+            f"{label} {benchmark_id} required_failure_codes",
+        )
+        expect_unique(benchmark_required_codes, f"{label} {benchmark_id} required_failure_codes")
+        benchmark_required_codes = sorted(benchmark_required_codes)
+
+        digit_thresholds[benchmark_id] = minimum_correct_digits
+        required_failure_codes[benchmark_id] = benchmark_required_codes
+
+    return digit_thresholds, required_failure_codes
+
+
 def parse_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]:
     if not isinstance(raw, list):
         raise TypeError(f"{label} must be a list")
@@ -159,12 +201,18 @@ def load_packet_set_comparison_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set comparison summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set comparison summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set comparison summary expected_reference_captured_phase0_ids")
+    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+        summary.get("benchmarks", []),
+        "packet-set comparison summary",
+    )
     return {
         **summary,
         "reference_packet_labels": reference_packet_labels,
         "expected_reference_packet_labels": expected_packet_labels,
         "compared_phase0_ids": compared_phase0_ids,
         "expected_reference_captured_phase0_ids": expected_phase0_ids,
+        "phase0_digit_thresholds_by_benchmark": digit_thresholds,
+        "phase0_required_failure_codes_by_benchmark": required_failure_codes,
     }
 
 
@@ -218,6 +266,10 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set correct-digit summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set correct-digit summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set correct-digit summary expected_reference_captured_phase0_ids")
+    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+        summary.get("benchmarks", []),
+        "packet-set correct-digit summary",
+    )
     return {
         **summary,
         "minimum_observed_correct_digits_across_packet_set": minimum_correct_digits,
@@ -225,6 +277,8 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
         "expected_reference_packet_labels": expected_packet_labels,
         "compared_phase0_ids": compared_phase0_ids,
         "expected_reference_captured_phase0_ids": expected_phase0_ids,
+        "phase0_digit_thresholds_by_benchmark": digit_thresholds,
+        "phase0_required_failure_codes_by_benchmark": required_failure_codes,
     }
 
 
@@ -283,6 +337,10 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         missing_required_failure_codes,
         "packet-set failure-code summary missing_required_failure_codes_across_packet_set",
     )
+    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+        summary.get("benchmarks", []),
+        "packet-set failure-code summary",
+    )
     return {
         **summary,
         "candidate_packet_labels": candidate_packet_labels,
@@ -290,6 +348,8 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         "audited_phase0_ids": audited_phase0_ids,
         "expected_reference_captured_phase0_ids": expected_phase0_ids,
         "missing_required_failure_codes_across_packet_set": missing_required_failure_codes,
+        "phase0_digit_thresholds_by_benchmark": digit_thresholds,
+        "phase0_required_failure_codes_by_benchmark": required_failure_codes,
     }
 
 
@@ -364,6 +424,13 @@ def summarize_phase0_packet_set_qualification(
     correct_digit_packet_labels = correct_digit_summary["reference_packet_labels"]
     failure_code_packet_labels = failure_code_summary["candidate_packet_labels"]
 
+    phase0_digit_thresholds_by_benchmark = comparison_summary[
+        "phase0_digit_thresholds_by_benchmark"
+    ]
+    phase0_required_failure_codes_by_benchmark = comparison_summary[
+        "phase0_required_failure_codes_by_benchmark"
+    ]
+
     expect(
         set(comparison_phase0_ids) == set(phase0_reference_captured_ids),
         "phase-0 ids in the packet-set comparison summary must match qualification_readiness.py",
@@ -383,6 +450,34 @@ def summarize_phase0_packet_set_qualification(
     expect(
         set(failure_code_packet_labels) == set(packet_labels),
         "packet labels in the packet-set failure-code summary must match the comparison summary",
+    )
+    expect(
+        set(phase0_digit_thresholds_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 digit-threshold profiles must match qualification_readiness.py",
+    )
+    expect(
+        set(phase0_required_failure_codes_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 required-failure-code profiles must match qualification_readiness.py",
+    )
+    expect(
+        correct_digit_summary["phase0_digit_thresholds_by_benchmark"]
+        == phase0_digit_thresholds_by_benchmark,
+        "phase-0 digit-threshold profiles drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_digit_thresholds_by_benchmark"]
+        == phase0_digit_thresholds_by_benchmark,
+        "phase-0 digit-threshold profiles drifted between comparison and failure-code summaries",
+    )
+    expect(
+        correct_digit_summary["phase0_required_failure_codes_by_benchmark"]
+        == phase0_required_failure_codes_by_benchmark,
+        "phase-0 required-failure-code profiles drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_required_failure_codes_by_benchmark"]
+        == phase0_required_failure_codes_by_benchmark,
+        "phase-0 required-failure-code profiles drifted between comparison and failure-code summaries",
     )
 
     packet_labels_match_across_inputs = True
@@ -506,6 +601,8 @@ def summarize_phase0_packet_set_qualification(
         "phase0_reference_captured_ids": phase0_reference_captured_ids,
         "phase0_pending_ids": qualification_summary["phase0_pending_ids"],
         "reference_packet_labels": sorted(packet_labels),
+        "phase0_digit_thresholds_by_benchmark": phase0_digit_thresholds_by_benchmark,
+        "phase0_required_failure_codes_by_benchmark": phase0_required_failure_codes_by_benchmark,
         "qualification_evidence_coherent": qualification_evidence_coherent,
         "packet_labels_match_across_inputs": packet_labels_match_across_inputs,
         "phase0_ids_match_across_inputs": phase0_ids_match_across_inputs,
@@ -562,6 +659,29 @@ def synthetic_packet_labels() -> list[str]:
     return ["de-d0-pair", "required-set", "user-hook-pair"]
 
 
+def synthetic_benchmark_profiles(
+    *,
+    reverse_required_failure_codes: bool = False,
+) -> list[dict[str, Any]]:
+    required_failure_codes = [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+    ]
+    if reverse_required_failure_codes:
+        required_failure_codes = list(reversed(required_failure_codes))
+
+    return [
+        {
+            "benchmark_id": benchmark_id,
+            "minimum_correct_digits": 50,
+            "required_failure_codes": required_failure_codes,
+        }
+        for benchmark_id in synthetic_phase0_reference_captured_ids()
+    ]
+
+
 def write_synthetic_qualification_summary(path: Path) -> None:
     write_json(
         path,
@@ -609,6 +729,7 @@ def write_synthetic_packet_set_comparison_summary(path: Path) -> None:
             "digit_threshold_profiles_reported": True,
             "required_failure_code_profiles_reported": True,
             "regression_profiles_reported": True,
+            "benchmarks": synthetic_benchmark_profiles(reverse_required_failure_codes=True),
         },
     )
 
@@ -642,6 +763,7 @@ def write_synthetic_packet_set_correct_digit_summary(
             "minimum_observed_correct_digits_across_packet_set": (
                 50 if meets_digit_thresholds else 18
             ),
+            "benchmarks": synthetic_benchmark_profiles(),
         },
     )
 
@@ -676,6 +798,7 @@ def write_synthetic_packet_set_failure_code_summary(
             "digit_threshold_profiles_reported": True,
             "required_failure_code_profiles_reported": True,
             "regression_profiles_reported": True,
+            "benchmarks": synthetic_benchmark_profiles(),
         },
     )
 
@@ -830,6 +953,18 @@ def run_self_check() -> dict[str, Any]:
             "unexpected_failure_codes_block_phase0_qualification": (
                 unexpected_failure_summary["current_state"] == "blocked-on-unexpected-failure-codes"
                 and not unexpected_failure_summary["phase0_packet_set_qualified"]
+            ),
+            "phase0_profiles_preserved": (
+                passing_summary["phase0_digit_thresholds_by_benchmark"]["automatic_loop"] == 50
+                and passing_summary["phase0_required_failure_codes_by_benchmark"][
+                    "automatic_vs_manual"
+                ]
+                == [
+                    "boundary_unsolved",
+                    "continuation_budget_exhausted",
+                    "insufficient_precision",
+                    "master_set_instability",
+                ]
             ),
             "phase0_id_drift_rejected": phase0_id_drift_rejected,
             "packet_label_drift_rejected": packet_label_drift_rejected,

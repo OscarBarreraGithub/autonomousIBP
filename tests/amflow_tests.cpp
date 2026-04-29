@@ -42266,6 +42266,9 @@ void MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest() {
   ExpectContains(result.stdout_json, "\"case_study_blocker_blocks_m6\": true",
                  "Milestone M6 qualification self-check should preserve case-study-family "
                  "blockers");
+  ExpectContains(result.stdout_json, "\"case_study_profiles_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve case-study digit and "
+                 "required failure-code profiles");
   ExpectContains(result.stdout_json,
                  "\"phase0_and_case_study_blockers_preserved\": true",
                  "Milestone M6 qualification self-check should keep both subverdict blocker "
@@ -42432,6 +42435,19 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"case_study_families_qualified\": false",
                  "Milestone M6 retained qualification summary should preserve the blocked "
                  "case-study verdict");
+  ExpectContains(result.stdout_json, "\"case_study_digit_thresholds_by_family\": {",
+                 "Milestone M6 retained qualification summary should publish case-study digit "
+                 "threshold profiles");
+  ExpectContains(result.stdout_json, "\"ttbar-h\": 100",
+                 "Milestone M6 retained qualification summary should preserve the strong "
+                 "case-study digit threshold");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_required_failure_codes_by_family\": {",
+                 "Milestone M6 retained qualification summary should publish case-study "
+                 "required failure-code profiles");
+  ExpectContains(result.stdout_json, "\"master_set_instability\"",
+                 "Milestone M6 retained qualification summary should preserve case-study "
+                 "required failure-code evidence");
   ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
                  "Milestone M6 retained qualification summary should not claim M6 closure");
   ExpectContains(result.stdout_json, "\"phase0: retained packet-set correct-digit scoring has "

@@ -78,6 +78,44 @@ def normalize_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]
     return entries
 
 
+def normalize_case_study_family_profiles(
+    raw: Any,
+    label: str,
+) -> tuple[dict[str, int], dict[str, list[str]]]:
+    if raw is None:
+        return {}, {}
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} must be a list")
+
+    digit_thresholds: dict[str, int] = {}
+    required_failure_codes: dict[str, list[str]] = {}
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise TypeError(f"{label} entries must be objects")
+        family_id = normalize_string(entry.get("id"), f"{label} id")
+        if family_id in digit_thresholds:
+            raise ValueError(f"duplicate {label} id: {family_id}")
+
+        minimum_correct_digits = entry.get("minimum_correct_digits")
+        if not isinstance(minimum_correct_digits, int):
+            raise TypeError(f"{label} {family_id} minimum_correct_digits must be an int")
+        expect(
+            minimum_correct_digits > 0,
+            f"{label} {family_id} minimum_correct_digits must be positive",
+        )
+
+        family_required_codes = normalize_string_list(
+            entry.get("required_failure_codes", []),
+            f"{label} {family_id} required_failure_codes",
+        )
+        expect_unique(family_required_codes, f"{label} {family_id} required_failure_codes")
+
+        digit_thresholds[family_id] = minimum_correct_digits
+        required_failure_codes[family_id] = family_required_codes
+
+    return digit_thresholds, required_failure_codes
+
+
 def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "phase-0 qualification schema_version must be 1")
@@ -179,6 +217,14 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         runtime_blocked_ids, "case-study qualification runtime_blocked_case_study_ids"
     )
     expect_unique(missing_numeric_ids, "case-study qualification missing_case_study_numeric_ids")
+    digit_thresholds, required_failure_codes = normalize_case_study_family_profiles(
+        summary.get("case_study_families", []),
+        "case-study qualification case_study_families",
+    )
+    expect(
+        set(digit_thresholds) == set(case_study_ids),
+        "case-study qualification family profiles must match case_study_ids",
+    )
 
     return {
         **summary,
@@ -192,6 +238,8 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
             summary.get("blocked_case_study_families", []),
             "case-study qualification blocked_case_study_families",
         ),
+        "case_study_digit_thresholds_by_family": digit_thresholds,
+        "case_study_required_failure_codes_by_family": required_failure_codes,
         "blocking_reasons": normalize_string_list(
             summary.get("blocking_reasons", []), "case-study qualification blocking_reasons"
         ),
@@ -316,6 +364,12 @@ def summarize_milestone_m6_qualification(
         "runtime_blocked_case_study_ids": case_study["runtime_blocked_case_study_ids"],
         "missing_case_study_numeric_ids": case_study["missing_case_study_numeric_ids"],
         "blocked_case_study_families": case_study["blocked_case_study_families"],
+        "case_study_digit_thresholds_by_family": case_study[
+            "case_study_digit_thresholds_by_family"
+        ],
+        "case_study_required_failure_codes_by_family": case_study[
+            "case_study_required_failure_codes_by_family"
+        ],
         "blocked_runtime_lanes": blocked_runtime_lanes,
         "missing_required_failure_codes_across_packet_set": phase0[
             "missing_required_failure_codes_across_packet_set"
@@ -381,6 +435,18 @@ def write_synthetic_case_study_summary(
     qualified: bool,
     runtime_blocked: bool = False,
 ) -> None:
+    case_study_families = [
+        {
+            "id": "ttbar-h",
+            "minimum_correct_digits": 100,
+            "required_failure_codes": ["insufficient_precision", "master_set_instability"],
+        },
+        {
+            "id": "one-singular-endpoint-case",
+            "minimum_correct_digits": 50,
+            "required_failure_codes": ["physical_kinematics_singular"],
+        },
+    ]
     blocked_families = (
         [{"id": "one-singular-endpoint-case", "next_runtime_lane": "b62p"}]
         if runtime_blocked
@@ -404,6 +470,7 @@ def write_synthetic_case_study_summary(
             ),
             "missing_case_study_numeric_ids": [] if qualified else ["ttbar-h"],
             "blocked_case_study_families": blocked_families,
+            "case_study_families": case_study_families,
             "readiness_contract_coherent": True,
             "case_study_numeric_evidence_present": qualified,
             "case_study_numeric_comparison_passed": qualified,
@@ -499,6 +566,18 @@ def run_self_check() -> dict[str, Any]:
             "case_study_blocker_blocks_m6": (
                 case_blocked_summary["current_state"] == "blocked-on-case-study-families"
                 and not case_blocked_summary["milestone_m6_ready"]
+            ),
+            "case_study_profiles_preserved": (
+                passing_summary["case_study_digit_thresholds_by_family"] == {
+                    "ttbar-h": 100,
+                    "one-singular-endpoint-case": 50,
+                }
+                and passing_summary["case_study_required_failure_codes_by_family"]["ttbar-h"]
+                == ["insufficient_precision", "master_set_instability"]
+                and passing_summary["case_study_required_failure_codes_by_family"][
+                    "one-singular-endpoint-case"
+                ]
+                == ["physical_kinematics_singular"]
             ),
             "phase0_and_case_study_blockers_preserved": (
                 "phase0: retained packet-set correct-digit scoring has not fully passed"

@@ -359,6 +359,13 @@ bool HaveNonExplicitReviewedTMultiInvariantLocations(
          IsUnlabeledLocationWithoutAssignment(target_location);
 }
 
+bool HaveNonExplicitReviewedMsqMultiInvariantLocations(
+    const std::string& start_location,
+    const std::string& target_location) {
+  return IsUnlabeledLocationWithoutAssignment(start_location) &&
+         IsUnlabeledLocationWithoutAssignment(target_location);
+}
+
 bool HaveOppositeSigns(const ExactRational& lhs, const ExactRational& rhs) {
   return (IsNegative(lhs) && IsPositive(rhs)) ||
          (IsPositive(lhs) && IsNegative(rhs));
@@ -618,6 +625,13 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
       assessment.detail =
           "non-explicit continuation locations remain unsupported on the reviewed multi-invariant "
           "t surface; spell the reviewed t segment explicitly as t=...";
+    } else if (invariant_name == "msq" && !allow_unlabeled_reviewed_raw_expressions &&
+               HaveNonExplicitReviewedMsqMultiInvariantLocations(start_location,
+                                                                 target_location)) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+      assessment.detail =
+          "non-explicit continuation locations remain unsupported on the reviewed multi-invariant "
+          "msq surface; spell the reviewed msq segment explicitly as msq=...";
     }
     return assessment;
   }

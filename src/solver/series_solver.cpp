@@ -394,6 +394,10 @@ std::optional<std::string> ResolveReviewedInvariantListSegmentName(
         invariant_names.end()) {
       return std::string("t");
     }
+    if (std::find(invariant_names.begin(), invariant_names.end(), "msq") !=
+        invariant_names.end()) {
+      return std::string("msq");
+    }
   }
   return std::nullopt;
 }

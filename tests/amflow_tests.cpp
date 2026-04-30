@@ -4690,6 +4690,41 @@ void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformed
       "multi-invariant locations");
 }
 
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsNonExplicitRawMultiInvariantMsqLocationsTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "msq", "7", "8", false);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62u should fail closed on non-explicit raw locations when msq anchors a "
+         "reviewed multi-invariant request without s or t");
+  ExpectContains(
+      assessment.detail,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62u should tell callers how to disambiguate raw reviewed msq locations");
+}
+
+void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedNonExplicitRawMultiInvariantMsqLocationsTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+
+  const amflow::PhysicalKinematicsGuardrailAssessment assessment =
+      amflow::AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+          spec, "msq", "foo", "bar", false);
+
+  Expect(assessment.verdict == amflow::PhysicalKinematicsGuardrailVerdict::UnsupportedSurface &&
+             assessment.reviewed_subset == amflow::DescribeReviewedPhysicalKinematicsSubset(),
+         "Batch 62u should fail closed on malformed non-explicit raw locations when msq anchors "
+         "a reviewed multi-invariant request without s or t");
+  ExpectContains(
+      assessment.detail,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62u should keep the explicit msq disambiguation guidance for malformed raw "
+      "multi-invariant locations");
+}
+
 void AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
 
@@ -25354,6 +25389,41 @@ void SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMs
          "remain outside the reviewed mixed explicit/raw msq surface");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-fully-raw-msq-umsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"u", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "7",
+                                                "8",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62u should fail closed on fully non-explicit raw msq locations for reviewed "
+         "multi-invariant requests without s or t before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed msq segment explicitly as msq=...",
+      "Batch 62u should report explicit msq guidance on fully non-explicit {u, msq} "
+      "multi-invariant requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62u should not call the solver when fully non-explicit {u, msq} locations "
+         "remain outside the reviewed single-invariant raw msq surface");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -45737,6 +45807,8 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedRawMultiInvariantLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsNonExplicitRawMultiInvariantTLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedNonExplicitRawMultiInvariantTLocationsTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsNonExplicitRawMultiInvariantMsqLocationsTest();
+    AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62RejectsMalformedNonExplicitRawMultiInvariantMsqLocationsTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62ClassifiesEndpointNearMarginTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsThresholdClearSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeSegmentSupportedTest();
@@ -46498,6 +46570,7 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSideOnReviewedTMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSyntaxOnReviewedTMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMsqRequestFailClosedTest();
+    SolveInvariantGeneratedSeriesListRejectsFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

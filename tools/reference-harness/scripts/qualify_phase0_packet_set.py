@@ -45,12 +45,13 @@ def expect_unique(values: list[str], label: str) -> None:
 def normalize_benchmark_profiles(
     raw: Any,
     label: str,
-) -> tuple[dict[str, int], dict[str, list[str]]]:
+) -> tuple[dict[str, int], dict[str, list[str]], dict[str, list[str]]]:
     if not isinstance(raw, list):
         raise TypeError(f"{label} benchmarks must be a list")
 
     digit_thresholds: dict[str, int] = {}
     required_failure_codes: dict[str, list[str]] = {}
+    known_regression_families: dict[str, list[str]] = {}
     for entry in raw:
         if not isinstance(entry, dict):
             raise TypeError(f"{label} benchmark entries must be objects")
@@ -77,11 +78,21 @@ def normalize_benchmark_profiles(
         )
         expect_unique(benchmark_required_codes, f"{label} {benchmark_id} required_failure_codes")
         benchmark_required_codes = sorted(benchmark_required_codes)
+        benchmark_known_regressions = normalize_string_list(
+            entry.get("known_regression_families", []),
+            f"{label} {benchmark_id} known_regression_families",
+        )
+        expect_unique(
+            benchmark_known_regressions,
+            f"{label} {benchmark_id} known_regression_families",
+        )
+        benchmark_known_regressions = sorted(benchmark_known_regressions)
 
         digit_thresholds[benchmark_id] = minimum_correct_digits
         required_failure_codes[benchmark_id] = benchmark_required_codes
+        known_regression_families[benchmark_id] = benchmark_known_regressions
 
-    return digit_thresholds, required_failure_codes
+    return digit_thresholds, required_failure_codes, known_regression_families
 
 
 def parse_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]:
@@ -201,7 +212,7 @@ def load_packet_set_comparison_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set comparison summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set comparison summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set comparison summary expected_reference_captured_phase0_ids")
-    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
         summary.get("benchmarks", []),
         "packet-set comparison summary",
     )
@@ -213,6 +224,7 @@ def load_packet_set_comparison_summary(summary_path: Path) -> dict[str, Any]:
         "expected_reference_captured_phase0_ids": expected_phase0_ids,
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
+        "phase0_known_regression_families_by_benchmark": known_regression_families,
     }
 
 
@@ -266,7 +278,7 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set correct-digit summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set correct-digit summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set correct-digit summary expected_reference_captured_phase0_ids")
-    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
         summary.get("benchmarks", []),
         "packet-set correct-digit summary",
     )
@@ -279,6 +291,7 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
         "expected_reference_captured_phase0_ids": expected_phase0_ids,
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
+        "phase0_known_regression_families_by_benchmark": known_regression_families,
     }
 
 
@@ -337,7 +350,7 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         missing_required_failure_codes,
         "packet-set failure-code summary missing_required_failure_codes_across_packet_set",
     )
-    digit_thresholds, required_failure_codes = normalize_benchmark_profiles(
+    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
         summary.get("benchmarks", []),
         "packet-set failure-code summary",
     )
@@ -350,6 +363,7 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         "missing_required_failure_codes_across_packet_set": missing_required_failure_codes,
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
+        "phase0_known_regression_families_by_benchmark": known_regression_families,
     }
 
 
@@ -430,6 +444,9 @@ def summarize_phase0_packet_set_qualification(
     phase0_required_failure_codes_by_benchmark = comparison_summary[
         "phase0_required_failure_codes_by_benchmark"
     ]
+    phase0_known_regression_families_by_benchmark = comparison_summary[
+        "phase0_known_regression_families_by_benchmark"
+    ]
 
     expect(
         set(comparison_phase0_ids) == set(phase0_reference_captured_ids),
@@ -460,6 +477,10 @@ def summarize_phase0_packet_set_qualification(
         "phase-0 required-failure-code profiles must match qualification_readiness.py",
     )
     expect(
+        set(phase0_known_regression_families_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 known-regression profiles must match qualification_readiness.py",
+    )
+    expect(
         correct_digit_summary["phase0_digit_thresholds_by_benchmark"]
         == phase0_digit_thresholds_by_benchmark,
         "phase-0 digit-threshold profiles drifted between comparison and correct-digit summaries",
@@ -478,6 +499,16 @@ def summarize_phase0_packet_set_qualification(
         failure_code_summary["phase0_required_failure_codes_by_benchmark"]
         == phase0_required_failure_codes_by_benchmark,
         "phase-0 required-failure-code profiles drifted between comparison and failure-code summaries",
+    )
+    expect(
+        correct_digit_summary["phase0_known_regression_families_by_benchmark"]
+        == phase0_known_regression_families_by_benchmark,
+        "phase-0 known-regression profiles drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_known_regression_families_by_benchmark"]
+        == phase0_known_regression_families_by_benchmark,
+        "phase-0 known-regression profiles drifted between comparison and failure-code summaries",
     )
 
     packet_labels_match_across_inputs = True
@@ -603,6 +634,7 @@ def summarize_phase0_packet_set_qualification(
         "reference_packet_labels": sorted(packet_labels),
         "phase0_digit_thresholds_by_benchmark": phase0_digit_thresholds_by_benchmark,
         "phase0_required_failure_codes_by_benchmark": phase0_required_failure_codes_by_benchmark,
+        "phase0_known_regression_families_by_benchmark": phase0_known_regression_families_by_benchmark,
         "qualification_evidence_coherent": qualification_evidence_coherent,
         "packet_labels_match_across_inputs": packet_labels_match_across_inputs,
         "phase0_ids_match_across_inputs": phase0_ids_match_across_inputs,
@@ -677,6 +709,10 @@ def synthetic_benchmark_profiles(
             "benchmark_id": benchmark_id,
             "minimum_correct_digits": 50,
             "required_failure_codes": required_failure_codes,
+            "known_regression_families": [
+                "AnalyzeBlock on non-block-triangular systems",
+                "asymptotic-series overflow",
+            ],
         }
         for benchmark_id in synthetic_phase0_reference_captured_ids()
     ]
@@ -964,6 +1000,13 @@ def run_self_check() -> dict[str, Any]:
                     "continuation_budget_exhausted",
                     "insufficient_precision",
                     "master_set_instability",
+                ]
+                and passing_summary["phase0_known_regression_families_by_benchmark"][
+                    "automatic_loop"
+                ]
+                == [
+                    "AnalyzeBlock on non-block-triangular systems",
+                    "asymptotic-series overflow",
                 ]
             ),
             "phase0_id_drift_rejected": phase0_id_drift_rejected,

@@ -294,7 +294,8 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   packet-set qualification verdict: it consumes one `qualification_readiness.py` summary plus the
   packet-set comparison, correct-digit, and failure-code summaries, fail-closes unless their
   retained packet labels and captured phase-0 ids stay synchronized, fail-closes unless the
-  per-benchmark digit-threshold and required-failure-code profiles agree across those summaries,
+  per-benchmark digit-threshold, required-failure-code, and known-regression profiles agree across
+  those summaries,
   and writes one blocked/pass verdict over the reviewed phase-0 packet set only while preserving
   those profile maps and keeping case-study numerics and full `Milestone M6` closure withheld
   explicitly.
@@ -308,8 +309,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   qualification verdict composer: it consumes the reviewed phase-0 packet-set verdict plus the
   reviewed case-study-family verdict, requires both to pass, requires pending phase-0 runtime-lane
   blockers to be closed, and preserves the subverdict blocker lists, blocked runtime lanes,
-  phase-0 per-benchmark digit/failure-code profiles, and case-study-family digit/failure-code
-  profiles in one M6-scoped summary without launching runtime work or claiming `Milestone M7`.
+  phase-0 per-benchmark digit/failure-code/regression profiles, and case-study-family
+  digit/failure-code/regression profiles in one M6-scoped summary without launching runtime work
+  or claiming `Milestone M7`.
 - `tools/reference-harness/scripts/compare_case_study_numeric_results.py` is the first
   case-study numeric summary producer for that verdict: it consumes the reviewed case-study
   readiness summary plus explicit numeric evidence sidecars, validates the family ids and frozen

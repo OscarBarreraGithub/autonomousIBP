@@ -81,14 +81,15 @@ def normalize_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]
 def normalize_case_study_family_profiles(
     raw: Any,
     label: str,
-) -> tuple[dict[str, int], dict[str, list[str]]]:
+) -> tuple[dict[str, int], dict[str, list[str]], dict[str, list[str]]]:
     if raw is None:
-        return {}, {}
+        return {}, {}, {}
     if not isinstance(raw, list):
         raise TypeError(f"{label} must be a list")
 
     digit_thresholds: dict[str, int] = {}
     required_failure_codes: dict[str, list[str]] = {}
+    known_regression_families: dict[str, list[str]] = {}
     for entry in raw:
         if not isinstance(entry, dict):
             raise TypeError(f"{label} entries must be objects")
@@ -109,11 +110,20 @@ def normalize_case_study_family_profiles(
             f"{label} {family_id} required_failure_codes",
         )
         expect_unique(family_required_codes, f"{label} {family_id} required_failure_codes")
+        family_known_regressions = normalize_string_list(
+            entry.get("known_regression_families", []),
+            f"{label} {family_id} known_regression_families",
+        )
+        expect_unique(
+            family_known_regressions,
+            f"{label} {family_id} known_regression_families",
+        )
 
         digit_thresholds[family_id] = minimum_correct_digits
         required_failure_codes[family_id] = family_required_codes
+        known_regression_families[family_id] = family_known_regressions
 
-    return digit_thresholds, required_failure_codes
+    return digit_thresholds, required_failure_codes, known_regression_families
 
 
 def normalize_positive_int_map(raw: Any, label: str) -> dict[str, int]:
@@ -180,6 +190,10 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
         summary.get("phase0_required_failure_codes_by_benchmark"),
         "phase-0 qualification phase0_required_failure_codes_by_benchmark",
     )
+    known_regression_families = normalize_string_list_map(
+        summary.get("phase0_known_regression_families_by_benchmark"),
+        "phase-0 qualification phase0_known_regression_families_by_benchmark",
+    )
     expect(
         set(digit_thresholds) == set(phase0_reference_captured_ids),
         "phase-0 qualification digit-threshold profiles must match phase0_reference_captured_ids",
@@ -187,6 +201,10 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
     expect(
         set(required_failure_codes) == set(phase0_reference_captured_ids),
         "phase-0 qualification required-failure-code profiles must match phase0_reference_captured_ids",
+    )
+    expect(
+        set(known_regression_families) == set(phase0_reference_captured_ids),
+        "phase-0 qualification known-regression profiles must match phase0_reference_captured_ids",
     )
 
     return {
@@ -231,6 +249,7 @@ def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
         "missing_required_failure_codes_across_packet_set": missing_required_failure_codes,
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
+        "phase0_known_regression_families_by_benchmark": known_regression_families,
         "milestone_m6_ready": normalize_bool(
             summary.get("milestone_m6_ready"), "phase-0 qualification milestone_m6_ready"
         ),
@@ -264,13 +283,21 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         runtime_blocked_ids, "case-study qualification runtime_blocked_case_study_ids"
     )
     expect_unique(missing_numeric_ids, "case-study qualification missing_case_study_numeric_ids")
-    digit_thresholds, required_failure_codes = normalize_case_study_family_profiles(
+    (
+        digit_thresholds,
+        required_failure_codes,
+        known_regression_families,
+    ) = normalize_case_study_family_profiles(
         summary.get("case_study_families", []),
         "case-study qualification case_study_families",
     )
     expect(
         set(digit_thresholds) == set(case_study_ids),
         "case-study qualification family profiles must match case_study_ids",
+    )
+    expect(
+        set(known_regression_families) == set(case_study_ids),
+        "case-study qualification known-regression profiles must match case_study_ids",
     )
 
     return {
@@ -287,6 +314,7 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         ),
         "case_study_digit_thresholds_by_family": digit_thresholds,
         "case_study_required_failure_codes_by_family": required_failure_codes,
+        "case_study_known_regression_families_by_family": known_regression_families,
         "blocking_reasons": normalize_string_list(
             summary.get("blocking_reasons", []), "case-study qualification blocking_reasons"
         ),
@@ -413,6 +441,9 @@ def summarize_milestone_m6_qualification(
         "phase0_required_failure_codes_by_benchmark": phase0[
             "phase0_required_failure_codes_by_benchmark"
         ],
+        "phase0_known_regression_families_by_benchmark": phase0[
+            "phase0_known_regression_families_by_benchmark"
+        ],
         "case_study_ids": case_study["case_study_ids"],
         "runtime_blocked_case_study_ids": case_study["runtime_blocked_case_study_ids"],
         "missing_case_study_numeric_ids": case_study["missing_case_study_numeric_ids"],
@@ -422,6 +453,9 @@ def summarize_milestone_m6_qualification(
         ],
         "case_study_required_failure_codes_by_family": case_study[
             "case_study_required_failure_codes_by_family"
+        ],
+        "case_study_known_regression_families_by_family": case_study[
+            "case_study_known_regression_families_by_family"
         ],
         "blocked_runtime_lanes": blocked_runtime_lanes,
         "missing_required_failure_codes_across_packet_set": phase0[
@@ -475,6 +509,12 @@ def write_synthetic_phase0_summary(
                 "automatic_loop": ["insufficient_precision", "boundary_unsolved"],
                 "automatic_vs_manual": ["master_set_instability"],
             },
+            "phase0_known_regression_families_by_benchmark": {
+                "automatic_loop": ["asymptotic-series overflow"],
+                "automatic_vs_manual": [
+                    "boundary-generation errors for unnormalized loop momenta"
+                ],
+            },
             "phase0_packet_set_qualified": qualified,
             "milestone_m6_ready": False,
             "blocking_reasons": (
@@ -501,11 +541,13 @@ def write_synthetic_case_study_summary(
             "id": "ttbar-h",
             "minimum_correct_digits": 100,
             "required_failure_codes": ["insufficient_precision", "master_set_instability"],
+            "known_regression_families": ["unexpected master sets in Kira interface"],
         },
         {
             "id": "one-singular-endpoint-case",
             "minimum_correct_digits": 50,
             "required_failure_codes": ["physical_kinematics_singular"],
+            "known_regression_families": ["AnalyzeBlock on non-block-triangular systems"],
         },
     ]
     blocked_families = (
@@ -641,6 +683,14 @@ def run_self_check() -> dict[str, Any]:
                     "automatic_vs_manual"
                 ]
                 == ["master_set_instability"]
+                and passing_summary["phase0_known_regression_families_by_benchmark"][
+                    "automatic_loop"
+                ]
+                == ["asymptotic-series overflow"]
+                and passing_summary["phase0_known_regression_families_by_benchmark"][
+                    "automatic_vs_manual"
+                ]
+                == ["boundary-generation errors for unnormalized loop momenta"]
             ),
             "case_study_profiles_preserved": (
                 passing_summary["case_study_digit_thresholds_by_family"] == {
@@ -653,6 +703,14 @@ def run_self_check() -> dict[str, Any]:
                     "one-singular-endpoint-case"
                 ]
                 == ["physical_kinematics_singular"]
+                and passing_summary["case_study_known_regression_families_by_family"][
+                    "ttbar-h"
+                ]
+                == ["unexpected master sets in Kira interface"]
+                and passing_summary["case_study_known_regression_families_by_family"][
+                    "one-singular-endpoint-case"
+                ]
+                == ["AnalyzeBlock on non-block-triangular systems"]
             ),
             "phase0_and_case_study_blockers_preserved": (
                 "phase0: retained packet-set correct-digit scoring has not fully passed"

@@ -401,6 +401,19 @@ bool HasOnlyReviewedMsqInvariantListAnchor(const std::vector<std::string>& invar
   return has_msq;
 }
 
+bool HasOnlyReviewedSInvariantListAnchor(const std::vector<std::string>& invariant_names) {
+  bool has_s = false;
+  for (const std::string& invariant_name : invariant_names) {
+    if (invariant_name == "t" || invariant_name == "msq") {
+      return false;
+    }
+    if (invariant_name == "s") {
+      has_s = true;
+    }
+  }
+  return has_s;
+}
+
 bool HasOnlyReviewedTInvariantListAnchor(const std::vector<std::string>& invariant_names) {
   bool has_t = false;
   for (const std::string& invariant_name : invariant_names) {
@@ -412,6 +425,16 @@ bool HasOnlyReviewedTInvariantListAnchor(const std::vector<std::string>& invaria
     }
   }
   return has_t;
+}
+
+bool HasEvaluatedFullyRawReviewedSInvariantListSegment(
+    const ProblemSpec& spec,
+    const std::vector<std::string>& invariant_names,
+    const std::string& start_location,
+    const std::string& target_location) {
+  return HasOnlyReviewedSInvariantListAnchor(invariant_names) &&
+         TryEvaluateReviewedRawInvariantListLocation(spec, "s", start_location).has_value() &&
+         TryEvaluateReviewedRawInvariantListLocation(spec, "s", target_location).has_value();
 }
 
 bool HasEvaluatedFullyRawReviewedMsqInvariantListSegment(
@@ -522,6 +545,13 @@ bool ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(
   }
   if (*reviewed_segment_invariant_name == "t" &&
       HasEvaluatedFullyRawReviewedTInvariantListSegment(spec,
+                                                        invariant_names,
+                                                        start_location,
+                                                        target_location)) {
+    return true;
+  }
+  if (*reviewed_segment_invariant_name == "s" &&
+      HasEvaluatedFullyRawReviewedSInvariantListSegment(spec,
                                                         invariant_names,
                                                         start_location,
                                                         target_location)) {

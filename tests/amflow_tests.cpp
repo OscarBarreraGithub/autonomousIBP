@@ -10143,6 +10143,23 @@ void GenerateBuiltinEtaInfinityBoundaryRequestSampleSpecHappyPathTest() {
          "the sample ProblemSpec should map to the reviewed builtin eta->infinity request");
 }
 
+void GenerateBuiltinEtaInfinityBoundaryRequestAcceptsTrimmedZeroMassTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators.front().mass = " 0 ";
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::BoundaryRequest request =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec, "eta_aux");
+
+  const amflow::BoundaryRequest expected = {"eta_aux", "infinity", "builtin::eta->infinity"};
+  Expect(SameBoundaryRequest(request, expected),
+         "builtin eta->infinity boundary generation should accept outer-whitespace zero mass "
+         "literals without changing the reviewed request shape");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "trimmed zero mass acceptance should not mutate the input ProblemSpec or canonicalize "
+         "caller-owned mass literals");
+}
+
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest() {
   const amflow::BoundaryRequest request =
       amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
@@ -46558,6 +46575,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryPropagatesProviderBoundaryUnsolvedTest();
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
+    GenerateBuiltinEtaInfinityBoundaryRequestAcceptsTrimmedZeroMassTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();

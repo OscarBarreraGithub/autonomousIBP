@@ -43,6 +43,19 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return out.str();
 }
 
+std::string Trim(const std::string& value) {
+  std::size_t start = 0;
+  while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
+    ++start;
+  }
+
+  std::size_t end = value.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+    --end;
+  }
+  return value.substr(start, end - start);
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream out;
@@ -142,10 +155,10 @@ void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
           "propagators; propagator " +
           std::to_string(index) + " has kind " + ToString(propagator.kind));
     }
-    if (propagator.mass != "0") {
+    if (Trim(propagator.mass) != "0") {
       throw BoundaryUnsolvedError(
           "builtin eta->infinity boundary request generation only supports propagators with "
-          "mass exactly \"0\"; propagator " +
+          "mass exactly \"0\" after trimming outer whitespace; propagator " +
           std::to_string(index) + " has mass \"" + propagator.mass + "\"");
     }
   }

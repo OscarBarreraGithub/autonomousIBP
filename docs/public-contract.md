@@ -1271,7 +1271,7 @@ The first single-name ending-scheme planning wrapper is also bootstrap-only:
 - resolution failures preserve the existing `ResolveEndingScheme(...)` diagnostics unchanged
 - planning failures preserve the existing `EndingScheme::Plan(...)` diagnostics unchanged
 - current builtin ending schemes are still intentionally narrow, but no longer uniform placeholders: `Tradition` remains the loop-only `eta->infinity` planner and now rejects cut-marked specs on the reviewed local phase-space subset; `Cutkosky` is the first truthful phase-space ending consumer on that same reviewed subset and returns the distinct terminal node `<family>::cutkosky-phase-space`; `SingleMass` still keeps the placeholder singleton `<family>::eta->infinity`; and builtin `Trivial` still adds the unsupported extra node `<family>::trivial-region`
-- builtin `Cutkosky` ending planning also consumes the reviewed cut-topology loop-support preflight before terminal-node emission: a cut propagator with no declared loop-momentum support fails planning locally instead of producing `<family>::cutkosky-phase-space>`
+- builtin `Cutkosky` ending planning also consumes the reviewed cut-topology loop-support and raw-prescription-vocabulary preflights before terminal-node emission: a cut propagator with no declared loop-momentum support, or any standard/cut propagator carrying a raw prescription outside `-1`, `0`, or `1`, fails planning locally instead of producing `<family>::cutkosky-phase-space>`
 - this batch does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 - this batch does not yet claim full upstream ending semantics for `Tradition`, `Cutkosky`, `SingleMass`, or `Trivial`
 
@@ -1282,7 +1282,7 @@ The first ordered ending-scheme selection wrapper is also bootstrap-only:
 - empty ending-scheme lists fail locally with a deterministic argument error
 - unknown-name or registry-validation failures from `ResolveEndingScheme(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately
 - if no scheme in the caller-supplied list reaches completion, the final planning failure from `EndingScheme::Plan(...)` is preserved unchanged
-- standard planning failures from `EndingScheme::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts
+- standard planning failures from `EndingScheme::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts, except the reviewed Cutkosky raw-prescription vocabulary failure is malformed-input fail-fast and stops ordered fallback before a later placeholder ending can be selected
 - this batch does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 
 The first `AmfOptions`-fed ending-scheme planning wrapper is also bootstrap-only:

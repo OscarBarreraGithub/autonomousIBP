@@ -22,6 +22,13 @@ bool IsBuiltinEndingSchemeName(const std::string& name) {
   return false;
 }
 
+bool IsCutkoskyPrescriptionVocabularyFailure(const std::invalid_argument& error) {
+  const std::string message = error.what();
+  return message.find("family.propagators[") != std::string::npos &&
+         message.find("].prescription must be one of -1 (-i0), 0 (none), or 1 (+i0)") !=
+             std::string::npos;
+}
+
 std::string JoinIndices(const std::vector<std::size_t>& indices) {
   std::ostringstream stream;
   stream << "[";
@@ -87,12 +94,16 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
 
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const PropagatorKind kind = spec.family.propagators[index].kind;
-    if (kind == PropagatorKind::Standard || kind == PropagatorKind::Cut) {
-      continue;
+    if (kind != PropagatorKind::Standard && kind != PropagatorKind::Cut) {
+      throw std::runtime_error("ending scheme Cutkosky only supports standard/cut propagators on "
+                               "the current reviewed phase-space subset; propagator " +
+                               std::to_string(index) + " has kind " + ToString(kind));
     }
-    throw std::runtime_error("ending scheme Cutkosky only supports standard/cut propagators on "
-                             "the current reviewed phase-space subset; propagator " +
-                             std::to_string(index) + " has kind " + ToString(kind));
+    if (!ParseFeynmanPrescription(spec.family.propagators[index].prescription).has_value()) {
+      throw std::invalid_argument("family.propagators[" + std::to_string(index) +
+                                  "].prescription must be one of -1 (-i0), 0 (none), or 1 "
+                                  "(+i0)");
+    }
   }
 
   const CutkoskyPhaseSpaceTopology topology =
@@ -154,6 +165,14 @@ EndingDecision SelectEndingSchemeDecision(
         ResolveEndingScheme(ending_scheme_names[index], user_defined_schemes);
     try {
       return ending_scheme->Plan(spec);
+    } catch (const std::invalid_argument& error) {
+      if (ending_scheme_names[index] == "Cutkosky" &&
+          IsCutkoskyPrescriptionVocabularyFailure(error)) {
+        throw;
+      }
+      if (index + 1 == ending_scheme_names.size()) {
+        throw;
+      }
     } catch (const std::exception&) {
       if (index + 1 == ending_scheme_names.size()) {
         throw;

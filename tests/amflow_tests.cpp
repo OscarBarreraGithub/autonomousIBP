@@ -7150,6 +7150,19 @@ void PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest() {
       "cut topology lacks loop support");
 }
 
+void PlanEndingSchemeCutkoskyRejectsInvalidRawPrescriptionBeforeTerminalNodeTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.propagators[0].prescription = 2;
+
+  ExpectInvalidArgument(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
+      },
+      "family.propagators[0].prescription must be one of -1 (-i0), 0 (none), or 1 (+i0)",
+      "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
+      "a reviewed cut propagator carries an unsupported raw prescription token");
+}
+
 void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
   const amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
 
@@ -7436,6 +7449,20 @@ void PlanAmfOptionsEndingSchemeSelectsCutkoskyOnPhaseSpaceSubsetTest() {
              std::vector<std::string>{"planar_double_box::cutkosky-phase-space"},
          "AmfOptions ending planner should preserve the reviewed Cutkosky phase-space terminal "
          "node");
+}
+
+void PlanAmfOptionsEndingSchemeRejectsInvalidCutkoskyPrescriptionBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.propagators[0].prescription = 2;
+  const amflow::AmfOptions amf_options;
+
+  ExpectInvalidArgument(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
+      },
+      "family.propagators[0].prescription must be one of -1 (-i0), 0 (none), or 1 (+i0)",
+      "AmfOptions ending planner should fail fast on malformed Cutkosky raw prescriptions "
+      "instead of falling through to a later placeholder ending");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest() {
@@ -46510,6 +46537,7 @@ int main() {
     PlanEndingSchemeTraditionRejectsPhaseSpaceSubsetTest();
     PlanEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest();
+    PlanEndingSchemeCutkoskyRejectsInvalidRawPrescriptionBeforeTerminalNodeTest();
     PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
@@ -46523,6 +46551,7 @@ int main() {
     PlanAmfOptionsEndingSchemeHappyPathTest();
     PlanAmfOptionsEndingSchemeUsesDefaultEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeSelectsCutkoskyOnPhaseSpaceSubsetTest();
+    PlanAmfOptionsEndingSchemeRejectsInvalidCutkoskyPrescriptionBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();

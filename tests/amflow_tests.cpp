@@ -37976,6 +37976,118 @@ void SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest() {
                                                "typed planned resolved AmfOptions helper");
 }
 
+void SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
+      "amflow-bootstrap-planned-builtin-amf-options-helper-fixture");
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeBuiltinPropagatorMixedSpec();
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"Propagator"});
+  const amflow::PrecisionPolicy precision_policy = MakeDistinctPrecisionPolicy();
+  const std::string start_location = "rho=13/19";
+  const std::string target_location = "rho=29/31";
+  const int requested_digits = 97;
+  const std::string eta_symbol = "rho";
+  const std::optional<std::string> symbolic_dimension_override{" D0 - 2*eps "};
+
+  const amflow::EtaInsertionDecision planned_decision =
+      amflow::PlanBuiltinAmfOptionsEtaMode(spec, amf_options);
+  amf_options.amf_modes = {"UnexpectedReplan"};
+
+  const amflow::ArtifactLayout baseline_layout = amflow::EnsureArtifactLayout(FreshTempDir(
+      "amflow-bootstrap-planned-builtin-amf-options-helper-baseline"));
+  const std::filesystem::path baseline_kira_path =
+      baseline_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path baseline_fermat_path =
+      baseline_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(baseline_kira_path.parent_path());
+  WriteExecutableScript(baseline_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(baseline_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::ArtifactLayout helper_layout = amflow::EnsureArtifactLayout(FreshTempDir(
+      "amflow-bootstrap-planned-builtin-amf-options-helper-typed"));
+  const std::filesystem::path helper_kira_path =
+      helper_layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path helper_fermat_path =
+      helper_layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(helper_kira_path.parent_path());
+  WriteExecutableScript(helper_kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(helper_fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.returned_diagnostics.success = true;
+  baseline_solver.returned_diagnostics.residual_norm = 0.000030517578125;
+  baseline_solver.returned_diagnostics.overlap_mismatch = 0.00006103515625;
+  baseline_solver.returned_diagnostics.failure_code.clear();
+  baseline_solver.returned_diagnostics.summary =
+      "recorded typed planned builtin AmfOptions helper solve";
+  helper_solver.returned_diagnostics = baseline_solver.returned_diagnostics;
+
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  master_basis,
+                                                  planned_decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  baseline_layout,
+                                                  baseline_kira_path,
+                                                  baseline_fermat_path,
+                                                  baseline_solver,
+                                                  start_location,
+                                                  target_location,
+                                                  precision_policy,
+                                                  requested_digits,
+                                                  eta_symbol,
+                                                  symbolic_dimension_override);
+
+  const amflow::SolverDiagnostics helper_diagnostics =
+      amflow::SolvePlannedBuiltinAmfOptionsEtaModeSeries(spec,
+                                                         master_basis,
+                                                         planned_decision,
+                                                         amf_options,
+                                                         MakeKiraReductionOptions(),
+                                                         helper_layout,
+                                                         helper_kira_path,
+                                                         helper_fermat_path,
+                                                         helper_solver,
+                                                         start_location,
+                                                         target_location,
+                                                         precision_policy,
+                                                         requested_digits,
+                                                         eta_symbol,
+                                                         symbolic_dimension_override);
+
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "typed planned builtin AmfOptions helper should execute the same wrapper tail once");
+  const amflow::SolveRequest& baseline_request = baseline_solver.last_request();
+  const amflow::SolveRequest& helper_request = helper_solver.last_request();
+  Expect(SameSolveRequest(helper_request, baseline_request),
+         "typed planned builtin AmfOptions helper should forward the same SolveRequest as the "
+         "generic builtin identity helper");
+  Expect(helper_request.amf_requested_dimension_expression.has_value() &&
+             *helper_request.amf_requested_dimension_expression == "D0-2*eps",
+         "typed planned builtin AmfOptions helper should preserve normalized symbolic "
+         "dimension override metadata");
+  Expect(SameSolverDiagnostics(helper_diagnostics, baseline_diagnostics) &&
+             SameSolverDiagnostics(helper_diagnostics, helper_solver.returned_diagnostics),
+         "typed planned builtin AmfOptions helper should return the generic helper "
+         "diagnostics");
+
+  const std::string baseline_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      baseline_layout,
+      "generic planned builtin AmfOptions helper should seed one solved-path cache manifest"));
+  const std::string helper_manifest_yaml = ReadFile(RequireOnlySolvedPathCacheManifestPath(
+      helper_layout,
+      "typed planned builtin AmfOptions helper should seed one solved-path cache manifest"));
+  ExpectSolvedPathCacheManifestMatchesBaseline(helper_manifest_yaml,
+                                               baseline_manifest_yaml,
+                                               "amf-options-builtin-eta-mode-series",
+                                               "typed planned builtin AmfOptions helper");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -46982,6 +47094,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesBuiltinHappyPathEquivalenceTest();
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest();
+    SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
     SolvePlannedAmfOptionsEtaModeSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheReplaysDeferredComplexContinuationDiagnosticsTest();

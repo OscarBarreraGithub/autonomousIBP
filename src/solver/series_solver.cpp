@@ -3698,6 +3698,20 @@ std::optional<std::string> CanonicalExactComplexValueKey(const ExactComplexRatio
   }
 }
 
+std::optional<std::string> CanonicalExactRationalValueKey(const ExactRational& value) {
+  try {
+    return ExactArithmetic(value.ToString()).ToString();
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+}
+
+bool SameCanonicalExactRationalValue(const ExactRational& lhs, const ExactRational& rhs) {
+  const std::optional<std::string> lhs_key = CanonicalExactRationalValueKey(lhs);
+  const std::optional<std::string> rhs_key = CanonicalExactRationalValueKey(rhs);
+  return lhs_key.has_value() && rhs_key.has_value() && *lhs_key == *rhs_key;
+}
+
 std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerValueRejectionReason(
     const SolveRequest& request,
     const std::string& variable_name,
@@ -3877,7 +3891,8 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanEndpoin
     const ExactRational& target_value) {
   const ExactComplexRational& start = plan.contour_points.front();
   const ExactComplexRational& target = plan.contour_points.back();
-  if (start.real != start_value || target.real != target_value) {
+  if (!SameCanonicalExactRationalValue(start.real, start_value) ||
+      !SameCanonicalExactRationalValue(target.real, target_value)) {
     return "eta_continuation_plan contour endpoints do not match the parsed solve request "
            "start/target locations";
   }

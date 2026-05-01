@@ -14125,6 +14125,29 @@ void BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPath
          "real two-point metadata on the default exact solver");
 }
 
+void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->contour_points.front().real = {"0", "2"};
+  request.eta_continuation_plan->contour_points.back().real = {"2", "2"};
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-value-matched-direct-real-endpoints-plan";
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap value-matched eta-continuation-plan endpoint coverage should keep the "
+         "reviewed exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap value-matched eta-continuation-plan endpoint coverage should canonicalize "
+         "exact endpoint coordinates before comparing them to parsed solve locations");
+}
+
 void BootstrapSeriesSolverAcceptsLedgerlessOffPathDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
@@ -46540,6 +46563,7 @@ int main() {
     BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest();
     BootstrapSeriesSolverAcceptsLedgerlessOffPathDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsLedgerlessTargetEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();

@@ -5576,6 +5576,20 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMom
          "spectator external momenta are present");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.scalar_product_rules = {
+      {"n^2", "0"},
+  };
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*((k)^2) + (k*n)",
+         "reviewed lightlike linear auxiliary rewrite should accept squared self-rule notation "
+         "for the unique lightlike external momentum");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
 
@@ -5939,6 +5953,23 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExter
              std::vector<std::string>{spec.family.propagators[2].expression},
          "reviewed lightlike-linear Propagator selection should preserve the selected linear "
          "expression with spectator external momenta present");
+}
+
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarProductRuleTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.kinematics.scalar_product_rules = {
+      {"n^2", "0"},
+  };
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should treat squared self-rule "
+         "notation as the same lightlike external certification as n*n");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the selected linear "
+         "expression when the lightlike rule is written as n^2");
 }
 
 void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
@@ -45855,6 +45886,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
@@ -45875,6 +45907,7 @@ int main() {
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarProductRuleTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();

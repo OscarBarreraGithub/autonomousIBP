@@ -205,11 +205,23 @@ ExactRational EvaluateExactConstantExpression(const std::string& expression,
 std::pair<std::string, std::string> ParseScalarProductPair(const std::string& expression,
                                                            const std::string& context) {
   const SplitSequence split = SplitTopLevelByOperators(expression, context, "*");
-  if (split.parts.size() != 2 || split.separators.size() != 1 || split.separators[0] != '*') {
-    throw std::runtime_error(context + " requires scalar-product left sides of the form a*b, found: " +
-                             expression);
+  if (split.parts.size() == 2 && split.separators.size() == 1 && split.separators[0] == '*') {
+    return {StripOuterParentheses(split.parts[0]), StripOuterParentheses(split.parts[1])};
   }
-  return {StripOuterParentheses(split.parts[0]), StripOuterParentheses(split.parts[1])};
+
+  const SplitSequence square_split = SplitTopLevelByOperators(expression, context, "^");
+  if (square_split.parts.size() == 2 && square_split.separators.size() == 1 &&
+      square_split.separators[0] == '^' && Trim(square_split.parts[1]) == "2") {
+    const std::string base = StripOuterParentheses(square_split.parts[0]);
+    const SplitSequence base_split = SplitTopLevelByOperators(base, context, "+-*/^");
+    if (base_split.parts.size() == 1 && base_split.separators.empty()) {
+      return {base, base};
+    }
+  }
+
+  throw std::runtime_error(context +
+                           " requires scalar-product left sides of the form a*b or a^2, found: " +
+                           expression);
 }
 
 std::set<std::string> CollectDeclaredExternalFactorsInExpression(

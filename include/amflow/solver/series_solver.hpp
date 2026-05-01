@@ -760,6 +760,26 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol = "eta");
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol = "eta");
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol = "eta");
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol = "eta");
 
 SolverDiagnostics SolveDifferentialEquation(const SolveRequest& request);
 

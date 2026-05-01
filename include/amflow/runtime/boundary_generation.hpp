@@ -49,6 +49,10 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const std::string& eta_symbol = "eta");
 BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
     const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const std::string& eta_symbol = "eta");
+BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+    const ProblemSpec& spec,
     const std::string& ending_scheme_name,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol = "eta");

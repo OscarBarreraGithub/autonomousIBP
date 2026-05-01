@@ -6806,10 +6806,11 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SolveRequest& request_template,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  return SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
       spec,
-      amf_options,
-      user_defined_schemes,
+      decision,
       request_template,
       MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry(),
       solver,
@@ -6824,18 +6825,14 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  const BoundaryRequest boundary_request =
-      GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(spec,
-                                                                      amf_options,
-                                                                      user_defined_schemes,
-                                                                      eta_symbol);
-
-  SolveRequest solve_request = request_template;
-  solve_request.boundary_requests = {boundary_request};
-
-  const SolveRequest attached_request =
-      AttachBoundaryConditionsFromProvider(solve_request, provider);
-  return solver.Solve(attached_request);
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
+                                                                    decision,
+                                                                    request_template,
+                                                                    provider,
+                                                                    solver,
+                                                                    eta_symbol);
 }
 
 SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
@@ -6846,11 +6843,58 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
+                                                                    decision,
+                                                                    request_template,
+                                                                    providers,
+                                                                    solver,
+                                                                    eta_symbol);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+      spec,
+      decision,
+      request_template,
+      MakeDeferredCutkoskyPhaseSpaceBoundaryProviderRegistry(),
+      solver,
+      eta_symbol);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
   const BoundaryRequest boundary_request =
-      GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(spec,
-                                                                      amf_options,
-                                                                      user_defined_schemes,
-                                                                      eta_symbol);
+      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProvider(solve_request, provider);
+  return solver.Solve(attached_request);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
 
   SolveRequest solve_request = request_template;
   solve_request.boundary_requests = {boundary_request};

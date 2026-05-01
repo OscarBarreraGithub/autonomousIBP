@@ -330,6 +330,35 @@ bool HasTopLevelAdditiveOperator(const std::string& expression) {
   return false;
 }
 
+struct GroupedAdditiveFactor {
+  std::string expression;
+  bool negative = false;
+};
+
+std::optional<GroupedAdditiveFactor> MatchGroupedAdditiveFactor(
+    const std::string& raw_factor) {
+  const std::string stripped_factor = StripOuterParentheses(raw_factor);
+  if (HasTopLevelAdditiveOperator(stripped_factor)) {
+    return GroupedAdditiveFactor{stripped_factor, false};
+  }
+
+  if (stripped_factor.empty() ||
+      (stripped_factor.front() != '+' && stripped_factor.front() != '-')) {
+    return std::nullopt;
+  }
+
+  const std::string signed_remainder = Trim(stripped_factor.substr(1));
+  if (signed_remainder.empty() || signed_remainder.front() != '(') {
+    return std::nullopt;
+  }
+
+  const std::string signed_group = StripOuterParentheses(signed_remainder);
+  if (!HasTopLevelAdditiveOperator(signed_group)) {
+    return std::nullopt;
+  }
+  return GroupedAdditiveFactor{signed_group, stripped_factor.front() == '-'};
+}
+
 void AppendCoefficientFactor(std::ostringstream& coefficient_expression,
                              bool& coefficient_started,
                              const char separator,
@@ -498,12 +527,13 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
       continue;
     }
 
-    const std::string stripped_factor = StripOuterParentheses(raw_factor);
-    if (separator == '/' || !HasTopLevelAdditiveOperator(stripped_factor) ||
-        !grouped_linear_combination.empty()) {
+    const std::optional<GroupedAdditiveFactor> grouped_factor =
+        MatchGroupedAdditiveFactor(raw_factor);
+    if (separator == '/' || !grouped_factor.has_value() ||
+        grouped_factor->negative || !grouped_linear_combination.empty()) {
       return std::nullopt;
     }
-    grouped_linear_combination = stripped_factor;
+    grouped_linear_combination = grouped_factor->expression;
   }
 
   if (grouped_linear_combination.empty()) {
@@ -548,7 +578,6 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
   for (std::size_t index = 0; index < split.parts.size(); ++index) {
     const char separator = index == 0 ? '*' : split.separators[index - 1];
     const std::string raw_factor = Trim(split.parts[index]);
-    const std::string stripped_factor = StripOuterParentheses(raw_factor);
 
     const std::optional<SignedSymbolFactor> external_factor =
         MatchSignedSimpleSymbolFactor(raw_factor, selected_external_symbol);
@@ -589,11 +618,19 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
       continue;
     }
 
-    if (separator == '/' || !HasTopLevelAdditiveOperator(stripped_factor) ||
+    const std::optional<GroupedAdditiveFactor> grouped_factor =
+        MatchGroupedAdditiveFactor(raw_factor);
+    if (separator == '/' || !grouped_factor.has_value() ||
         !grouped_loop_combination.empty()) {
       return std::nullopt;
     }
-    grouped_loop_combination = stripped_factor;
+    grouped_loop_combination = grouped_factor->expression;
+    if (grouped_factor->negative) {
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              '*',
+                              "-1");
+    }
   }
 
   if (grouped_loop_combination.empty() || !saw_external_factor) {

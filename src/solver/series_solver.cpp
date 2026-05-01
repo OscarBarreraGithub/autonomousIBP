@@ -6701,10 +6701,11 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const SolveRequest& request_template,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  return SolveAmfOptionsEndingSchemeEtaInfinitySeries(
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
       spec,
-      amf_options,
-      user_defined_schemes,
+      decision,
       request_template,
       MakeDeferredEtaInfinityBoundaryProviderRegistry(),
       solver,
@@ -6719,18 +6720,14 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  const BoundaryRequest boundary_request =
-      GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(spec,
-                                                               amf_options,
-                                                               user_defined_schemes,
-                                                               eta_symbol);
-
-  SolveRequest solve_request = request_template;
-  solve_request.boundary_requests = {boundary_request};
-
-  const SolveRequest attached_request =
-      AttachBoundaryConditionsFromProvider(solve_request, provider);
-  return solver.Solve(attached_request);
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                             decision,
+                                                             request_template,
+                                                             provider,
+                                                             solver,
+                                                             eta_symbol);
 }
 
 SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
@@ -6741,11 +6738,58 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  const EndingDecision decision =
+      PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
+  return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                             decision,
+                                                             request_template,
+                                                             providers,
+                                                             solver,
+                                                             eta_symbol);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
+      spec,
+      decision,
+      request_template,
+      MakeDeferredEtaInfinityBoundaryProviderRegistry(),
+      solver,
+      eta_symbol);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
   const BoundaryRequest boundary_request =
-      GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(spec,
-                                                               amf_options,
-                                                               user_defined_schemes,
-                                                               eta_symbol);
+      GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProvider(solve_request, provider);
+  return solver.Solve(attached_request);
+}
+
+SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);
 
   SolveRequest solve_request = request_template;
   solve_request.boundary_requests = {boundary_request};

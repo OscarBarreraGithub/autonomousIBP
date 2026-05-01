@@ -442,13 +442,20 @@ BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(const ProblemSp
 
 BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const std::string& eta_symbol) {
+  ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
+  return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+}
+
+BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
+    const ProblemSpec& spec,
     const std::string& ending_scheme_name,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol) {
   const EndingDecision decision =
       PlanEndingScheme(spec, ending_scheme_name, user_defined_schemes);
-  ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
-  return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+  return GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);
 }
 
 BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
@@ -469,8 +476,7 @@ BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
     const std::string& eta_symbol) {
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
-  ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
-  return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
+  return GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);
 }
 
 BoundaryRequest GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(

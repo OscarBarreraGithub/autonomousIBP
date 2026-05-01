@@ -11,6 +11,7 @@
 namespace amflow {
 
 struct AmfOptions;
+struct EndingDecision;
 class EndingScheme;
 
 struct CutkoskyPhaseSpaceCutSupport {
@@ -36,6 +37,10 @@ BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(
     const std::string& eta_symbol = "eta");
 BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
     const ProblemSpec& spec,
+    const std::string& eta_symbol = "eta");
+BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
     const std::string& eta_symbol = "eta");
 BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,

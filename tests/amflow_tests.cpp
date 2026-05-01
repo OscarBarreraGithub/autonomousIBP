@@ -12461,6 +12461,112 @@ void Batch65cAmfOptionsEndingSchemeEtaInfinityUsesDeferredBuiltinRegistryTest() 
          "while builtin eta->infinity boundary values remain deferred");
 }
 
+void Batch65dPlannedEtaInfinityBoundaryRequestUsesSelectedDecisionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "CustomScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  const amflow::BoundaryRequest request =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, "eta_aux");
+
+  Expect(request.variable == "eta_aux" && request.location == "infinity" &&
+             request.strategy == "builtin::eta->infinity",
+         "Batch 65d planned eta->infinity boundary-request overload should consume an "
+         "already selected ending decision without resolving or planning another scheme");
+}
+
+void Batch65dPlannedEtaInfinityProviderHelperMatchesManualCompositionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "CustomScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  const amflow::BoundaryRequest baseline_boundary_request =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, decision);
+  amflow::SolveRequest baseline_solve_request = request_template;
+  baseline_solve_request.boundary_requests = {baseline_boundary_request};
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::eta->infinity",
+                                                    {MakeEtaInfinityBoundaryCondition()});
+  RecordingStaticBoundaryProvider helper_provider("builtin::eta->infinity",
+                                                  {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver helper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  helper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolveRequest baseline_attached =
+      amflow::AttachBoundaryConditionsFromProvider(baseline_solve_request,
+                                                   baseline_provider);
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      baseline_solver.Solve(baseline_attached);
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                  decision,
+                                                                  request_template,
+                                                                  helper_provider,
+                                                                  helper_solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 65d planned eta->infinity helper should not mutate the shared input "
+         "ProblemSpec");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 65d planned eta->infinity helper should not mutate the caller-owned solve "
+         "request template");
+  Expect(baseline_provider.strategy_call_count() == 1 &&
+             baseline_provider.provide_call_count() == 1 &&
+             helper_provider.strategy_call_count() == 1 &&
+             helper_provider.provide_call_count() == 1,
+         "Batch 65d planned eta->infinity helper should preserve single-provider attachment "
+         "semantics");
+  Expect(baseline_solver.call_count() == 1 && helper_solver.call_count() == 1,
+         "Batch 65d planned eta->infinity helper should call the solver exactly once after "
+         "provider attachment succeeds");
+  Expect(helper_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(helper_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 65d planned eta->infinity helper should feed the same boundary request into "
+         "the provider as the manual planned-decision composition baseline");
+  Expect(SameSolveRequest(helper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 65d planned eta->infinity helper should feed the same attached SolveRequest "
+         "into the solver as the manual planned-decision composition baseline");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 65d planned eta->infinity helper should preserve downstream solver diagnostics "
+         "relative to the manual planned-decision composition baseline");
+}
+
+void Batch65dPlannedEtaInfinityNoProviderUsesDeferredBuiltinRegistryTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  RecordingSeriesSolver solver;
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "Tradition";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  ExpectBoundaryUnsolved(
+      [&spec, &decision, &request_template, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
+            spec,
+            decision,
+            request_template,
+            solver));
+      },
+      "builtin eta->infinity boundary values remain deferred for strategy "
+      "builtin::eta->infinity at eta @ infinity",
+      "Batch 65d planned eta->infinity no-provider helper should use the deferred builtin "
+      "registry and fail closed on the matched builtin strategy");
+  Expect(solver.call_count() == 0,
+         "Batch 65d planned eta->infinity no-provider helper should stop before solver "
+         "execution while builtin eta->infinity boundary values remain deferred");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -46158,6 +46264,9 @@ int main() {
     Batch65cDeferredEtaInfinityProviderRegistryExposesReviewedStrategyTest();
     Batch65cDeferredEtaInfinityProviderRegistryFailsClosedBeforeSolverTest();
     Batch65cAmfOptionsEndingSchemeEtaInfinityUsesDeferredBuiltinRegistryTest();
+    Batch65dPlannedEtaInfinityBoundaryRequestUsesSelectedDecisionTest();
+    Batch65dPlannedEtaInfinityProviderHelperMatchesManualCompositionTest();
+    Batch65dPlannedEtaInfinityNoProviderUsesDeferredBuiltinRegistryTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();

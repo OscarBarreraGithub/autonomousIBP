@@ -1278,7 +1278,7 @@ The first single-name ending-scheme planning wrapper is also bootstrap-only:
 - resolution failures preserve the existing `ResolveEndingScheme(...)` diagnostics unchanged
 - planning failures preserve the existing `EndingScheme::Plan(...)` diagnostics unchanged
 - current builtin ending schemes are still intentionally narrow, but no longer uniform placeholders: `Tradition` remains the loop-only `eta->infinity` planner and now rejects cut-marked specs on the reviewed local phase-space subset; `Cutkosky` is the first truthful phase-space ending consumer on that same reviewed subset and returns the distinct terminal node `<family>::cutkosky-phase-space`; `SingleMass` still keeps the placeholder singleton `<family>::eta->infinity`; and builtin `Trivial` still adds the unsupported extra node `<family>::trivial-region`
-- builtin `Cutkosky` ending planning also consumes the reviewed cut-topology loop-support and raw-prescription-vocabulary preflights before terminal-node emission: a cut propagator with no declared loop-momentum support, or any standard/cut propagator carrying a raw prescription outside `-1`, `0`, or `1`, fails planning locally instead of producing `<family>::cutkosky-phase-space>`
+- builtin `Cutkosky` ending planning also consumes the reviewed cut-topology loop-support, connected-component, and raw-prescription-vocabulary preflights before terminal-node emission: a cut propagator with no declared loop-momentum support, a cut surface split across disconnected declared loop-momentum components, or any standard/cut propagator carrying a raw prescription outside `-1`, `0`, or `1`, fails planning locally instead of producing `<family>::cutkosky-phase-space>`
 - this batch does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 - this batch does not yet claim full upstream ending semantics for `Tradition`, `Cutkosky`, `SingleMass`, or `Trivial`
 
@@ -1289,14 +1289,14 @@ The first ordered ending-scheme selection wrapper is also bootstrap-only:
 - empty ending-scheme lists fail locally with a deterministic argument error
 - unknown-name or registry-validation failures from `ResolveEndingScheme(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately
 - if no scheme in the caller-supplied list reaches completion, the final planning failure from `EndingScheme::Plan(...)` is preserved unchanged
-- standard planning failures from `EndingScheme::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts, except the reviewed Cutkosky raw-prescription vocabulary failure is malformed-input fail-fast and stops ordered fallback before a later placeholder ending can be selected
+- standard planning failures from `EndingScheme::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts, except the reviewed Cutkosky raw-prescription vocabulary and malformed cut-topology failures are malformed-input fail-fast and stop ordered fallback before a later placeholder ending can be selected
 - this batch does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 
 The first `AmfOptions`-fed ending-scheme planning wrapper is also bootstrap-only:
 
 - `PlanAmfOptionsEndingScheme(...)` takes the same planning inputs as `PlanEndingSchemeList(...)`, except the caller-supplied `const std::vector<std::string>& ending_scheme_names` is replaced by `const AmfOptions& amf_options`
 - it is a thin option-feed wrapper: it reads only `amf_options.ending_schemes` and forwards that vector unchanged into `PlanEndingSchemeList(...)`
-- the accepted resolution, validation, and fallback surface therefore remain exactly the reviewed ordered ending-list semantics: caller/default order is preserved, the selected scheme is planned at most once, empty lists still fail locally, resolver failures still stop selection immediately, standard planning failures still fall through in order until the list exhausts, and final planning failures are preserved unchanged
+- the accepted resolution, validation, and fallback surface therefore remains the reviewed ordered ending-list semantics with the Cutkosky malformed-input carveout: caller/default order is preserved, the selected scheme is planned at most once, empty lists still fail locally, resolver failures still stop selection immediately, standard planning failures still fall through in order until the list exhausts, reviewed malformed Cutkosky raw-prescription or cut-topology failures stop selection before placeholder endings, and final planning failures are preserved unchanged
 - non-`ending_schemes` `AmfOptions` fields do not affect ending selection, diagnostics, or result shape at this seam
 - this batch does not reinterpret any wider `AmfOptions` policy fields and does not yet couple ending decisions into boundary providers, `DESystem`, solver execution, or CLI behavior
 

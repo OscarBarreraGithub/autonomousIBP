@@ -7498,6 +7498,34 @@ void PlanAmfOptionsEndingSchemeRejectsInvalidCutkoskyPrescriptionBeforeFallbackT
       "instead of falling through to a later placeholder ending");
 }
 
+void PlanAmfOptionsEndingSchemeRejectsLoopFreeCutkoskyTopologyBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.propagators[0].expression = "p1^2";
+  spec.family.propagators[5].kind = amflow::PropagatorKind::Standard;
+  const amflow::AmfOptions amf_options;
+
+  ExpectRuntimeError(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
+      },
+      "ending scheme Cutkosky requires cut propagator 0 to carry declared loop-momentum support",
+      "AmfOptions ending planner should fail fast on malformed Cutkosky loop-support topology "
+      "instead of falling through to a later placeholder ending");
+}
+
+void PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallbackTest() {
+  const amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options;
+
+  ExpectRuntimeError(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
+      },
+      "disconnected cut components: [[0], [3]]",
+      "AmfOptions ending planner should fail fast on disconnected Cutkosky cut topology "
+      "instead of falling through to a later placeholder ending");
+}
+
 void PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest() {
   const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {});
 
@@ -46808,6 +46836,8 @@ int main() {
     PlanAmfOptionsEndingSchemeUsesDefaultEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeSelectsCutkoskyOnPhaseSpaceSubsetTest();
     PlanAmfOptionsEndingSchemeRejectsInvalidCutkoskyPrescriptionBeforeFallbackTest();
+    PlanAmfOptionsEndingSchemeRejectsLoopFreeCutkoskyTopologyBeforeFallbackTest();
+    PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();

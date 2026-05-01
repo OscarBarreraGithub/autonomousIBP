@@ -22,10 +22,20 @@ bool IsBuiltinEndingSchemeName(const std::string& name) {
   return false;
 }
 
-bool IsCutkoskyPrescriptionVocabularyFailure(const std::invalid_argument& error) {
-  const std::string message = error.what();
+bool IsCutkoskyPrescriptionVocabularyFailure(const std::string& message) {
   return message.find("family.propagators[") != std::string::npos &&
          message.find("].prescription must be one of -1 (-i0), 0 (none), or 1 (+i0)") !=
+             std::string::npos;
+}
+
+bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
+  const std::string message = error.what();
+  return IsCutkoskyPrescriptionVocabularyFailure(message) ||
+         message.find("ending scheme Cutkosky only supports standard/cut propagators") !=
+             std::string::npos ||
+         message.find("ending scheme Cutkosky requires cut propagator ") !=
+             std::string::npos ||
+         message.find("ending scheme Cutkosky requires a connected cut surface") !=
              std::string::npos;
 }
 
@@ -165,15 +175,11 @@ EndingDecision SelectEndingSchemeDecision(
         ResolveEndingScheme(ending_scheme_names[index], user_defined_schemes);
     try {
       return ending_scheme->Plan(spec);
-    } catch (const std::invalid_argument& error) {
+    } catch (const std::exception& error) {
       if (ending_scheme_names[index] == "Cutkosky" &&
-          IsCutkoskyPrescriptionVocabularyFailure(error)) {
+          IsMalformedCutkoskyPlanningFailure(error)) {
         throw;
       }
-      if (index + 1 == ending_scheme_names.size()) {
-        throw;
-      }
-    } catch (const std::exception&) {
       if (index + 1 == ending_scheme_names.size()) {
         throw;
       }

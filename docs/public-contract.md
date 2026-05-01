@@ -1215,7 +1215,11 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   `PlanBuiltinAmfOptionsEtaMode(...)`, then delegates the shared downstream wrapper-owned
   execution tail through `SolvePlannedBuiltinAmfOptionsEtaModeSeries(...)` with the preserved
   builtin solved-path identity; on the explicit-dimension overload, that same wrapper-local
-  selection still happens before downstream dimension-expression normalization runs
+  selection still happens before downstream dimension-expression normalization runs. The typed
+  planned builtin helper now also fail-closes before reducer/cache/solver work if caller-supplied
+  preplanned builtin decisions carry selected-propagator expression metadata that no longer
+  mirrors the selected indices on the current `ProblemSpec`; this is a narrow payload-coherence
+  guard only, not a re-planning or broader structural revalidation surface
 - the mixed `SolveAmfOptionsEtaModeSeries(...)` overload remains a thin option-feed wrapper for mixed eta-mode selection: it keeps the ordered mixed builtin/user-defined selection step local through `PlanAmfOptionsEtaMode(...)`, then delegates that same shared downstream wrapper-owned execution tail through `SolvePlannedResolvedAmfOptionsEtaModeSeries(...)` with the preserved resolved/mixed solved-path identity; on the explicit-dimension overload, that same ordered selection still happens before downstream dimension-expression normalization runs
 - both outer `SolveAmfOptionsEtaModeSeries(...)` overloads therefore inherit the current-worktree
   complex-continuation deferral seam after their retained local planning step only: reviewed
@@ -1501,7 +1505,11 @@ The first standalone differential-equation solver wrapper seam is now reviewed:
 
 The first auxiliary-family transformation seam is also intentionally narrow:
 
-- `EtaInsertionDecision` now carries selected propagator indices as the canonical selection surface; copied propagator expressions remain informational only in this bootstrap
+- `EtaInsertionDecision` now carries selected propagator indices as the canonical selection surface;
+  copied propagator expressions remain informational to the eta-insertion transform itself, with
+  the narrow typed planned-builtin `AmfOptions` helper validating only that caller-supplied
+  preplanned builtin payloads still mirror those indices before using the builtin solved-path
+  identity
 - `ApplyEtaInsertion(...)` returns a typed transformed-spec result and never mutates the input `ProblemSpec`
 - only the selected propagators are rewritten, and the bootstrap rewrite is deterministic string-level logic of the form `(<old expression>) + eta`
 - `kinematics.invariants` appends `eta` exactly once and preserves existing order otherwise

@@ -168,12 +168,44 @@ bool HasBuiltinEtaModeDecisionName(const EtaInsertionDecision& decision) {
 }
 
 void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
+    const ProblemSpec& spec,
     const EtaInsertionDecision& decision) {
   if (!HasBuiltinEtaModeDecisionName(decision)) {
     throw std::invalid_argument(
         "planned builtin AmfOptions eta-mode helper requires a builtin eta-mode decision name; "
         "got \"" +
         decision.mode_name + "\"");
+  }
+  if (decision.selected_propagators.size() != decision.selected_propagator_indices.size()) {
+    throw std::invalid_argument(
+        "planned builtin AmfOptions eta-mode helper requires selected propagator expression "
+        "count to match selected index count; got " +
+        std::to_string(decision.selected_propagators.size()) + " expressions for " +
+        std::to_string(decision.selected_propagator_indices.size()) + " indices");
+  }
+  for (std::size_t entry_index = 0;
+       entry_index < decision.selected_propagator_indices.size();
+       ++entry_index) {
+    const std::size_t propagator_index =
+        decision.selected_propagator_indices[entry_index];
+    if (propagator_index >= spec.family.propagators.size()) {
+      throw std::invalid_argument(
+          "planned builtin AmfOptions eta-mode helper selected propagator index out of range "
+          "at selected entry " +
+          std::to_string(entry_index) + ": " + std::to_string(propagator_index));
+    }
+    const std::string& expected_expression =
+        spec.family.propagators[propagator_index].expression;
+    const std::string& planned_expression =
+        decision.selected_propagators[entry_index];
+    if (planned_expression != expected_expression) {
+      throw std::invalid_argument(
+          "planned builtin AmfOptions eta-mode helper selected propagator expression mismatch "
+          "at selected entry " +
+          std::to_string(entry_index) + "; selected index " +
+          std::to_string(propagator_index) + " names \"" + expected_expression +
+          "\" but decision carries \"" + planned_expression + "\"");
+    }
   }
 }
 
@@ -6612,7 +6644,7 @@ SolverDiagnostics SolvePlannedBuiltinAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
-  ValidatePlannedBuiltinAmfOptionsEtaModeDecision(decision);
+  ValidatePlannedBuiltinAmfOptionsEtaModeDecision(spec, decision);
   return SolvePlannedAmfOptionsEtaModeSeries(spec,
                                              master_basis,
                                              decision,

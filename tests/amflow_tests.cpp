@@ -38534,6 +38534,49 @@ void SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest() {
          "calling the solver");
 }
 
+void SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision stale_decision;
+  stale_decision.mode_name = "Propagator";
+  stale_decision.selected_propagator_indices = {0};
+  stale_decision.selected_propagators = {"stale-expression"};
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"Propagator"};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-builtin-amf-options-stale-expression"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedBuiltinAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            stale_decision,
+            amf_options,
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned builtin AmfOptions eta-mode helper selected propagator expression mismatch",
+      "typed planned builtin AmfOptions helper should reject stale selected-expression metadata "
+      "before using the builtin solved-path identity");
+  Expect(solver.call_count() == 0,
+         "typed planned builtin AmfOptions helper should reject stale selected-expression "
+         "metadata before calling the solver");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -47560,6 +47603,7 @@ int main() {
     SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest();
+    SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
     SolvePlannedAmfOptionsEtaModeSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheReplaysDeferredComplexContinuationDiagnosticsTest();

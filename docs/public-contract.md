@@ -361,7 +361,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   arbitrary symbolic runtime behavior remain deferred
 - current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61u`
   direct-plan location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
-  plus the `Batch 62v` raw-`msq` guardrail retirement are still narrow: explicit complex kinematics
+  plus the `Batch 62v` raw-`msq` and `Batch 62w` raw-`t` guardrail retirements are still narrow:
+  explicit complex kinematics
   now stop at exact-complex evaluation plus reviewed contour-plan persistence; any non-opt-in
   generated-wrapper solver surface still defers with explicit `unsupported_solver_path`
   diagnostics, and the reviewed helper deferred/cache replay remains limited to that non-opt-in

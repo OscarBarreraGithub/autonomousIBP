@@ -25945,6 +25945,106 @@ void SolveInvariantGeneratedSeriesListRejectsMalformedFullyRawMsqLocationsOnRevi
          "Batch 62v should not call the solver when fully raw {u, msq} locations are malformed");
 }
 
+void SolveInvariantGeneratedSeriesListRejectsFullyRawTEndpointCrossingOnReviewedUTRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-fully-raw-t-ut-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"u", "t"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "-1",
+                                                "0",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62w should classify fully raw t locations for reviewed multi-invariant "
+         "requests without s or msq before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "t^2 - (2*msq - s)*t + msq^2 = 0",
+      "Batch 62w should report the endpoint locus when fully raw {u, t} continuation crosses "
+      "it");
+  Expect(solver.call_count() == 0,
+         "Batch 62w should not call the solver when fully raw {u, t} continuation crosses a "
+         "reviewed singular t segment");
+}
+
+void SolveInvariantGeneratedSeriesListFullyRawTSegmentOnReviewedUTRequestReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-safe-fully-raw-t-ut-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                                    amflow::ParsedMasterList{},
+                                                                    {"u", "t"},
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    layout.root / "bin" /
+                                                                        "unused-kira.sh",
+                                                                    layout.root / "bin" /
+                                                                        "unused-fermat.sh",
+                                                                    solver,
+                                                                    "-1",
+                                                                    "-1/2",
+                                                                    MakeDistinctPrecisionPolicy(),
+                                                                    55));
+      },
+      "requires invariant",
+      "Batch 62w should let safe fully raw reviewed t segments on {u, t} requests reach the "
+      "next invariant validation layer instead of failing the physical-kinematics guardrail");
+  Expect(solver.call_count() == 0,
+         "Batch 62w safe fully raw {u, t} coverage should still fail before the downstream "
+         "solver when invariant-list validation blocks DE construction");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedFullyRawTLocationsOnReviewedUTRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-fully-raw-t-ut-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"u", "t"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "foo",
+                                                "bar",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62w should keep malformed fully raw {u, t} locations fail-closed before DE "
+         "construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed t segment explicitly as t=...",
+      "Batch 62w should keep explicit t guidance for malformed fully raw {u, t} requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62w should not call the solver when fully raw {u, t} locations are malformed");
+}
+
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
@@ -46492,6 +46592,9 @@ int main() {
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawTSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeMsqSegmentSupportedTest();
     AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62KeepsSafeRawMsqSegmentSupportedTest();
+    SolveInvariantGeneratedSeriesListRejectsFullyRawTEndpointCrossingOnReviewedUTRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListFullyRawTSegmentOnReviewedUTRequestReachesNextLayerTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedFullyRawTLocationsOnReviewedUTRequestBeforeDEConstructionTest();
     LoadedSpecValidationRejectsMalformedTargetsTest();
     UnknownFieldsAreIgnoredTest();
     DuplicateKeysAreRejectedTest();

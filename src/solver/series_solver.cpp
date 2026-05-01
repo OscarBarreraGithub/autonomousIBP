@@ -3878,10 +3878,6 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   if (plan.eta_symbol != variable_name) {
     return "eta_continuation_plan eta_symbol does not match the selected system variable";
   }
-  if (plan.start_location != request.start_location ||
-      plan.target_location != request.target_location) {
-    return "eta_continuation_plan start/target locations do not match the solve request";
-  }
   if (plan.contour_points.size() != 2) {
     return "default exact solver currently accepts only direct real two-point "
            "eta_continuation_plan metadata";
@@ -3913,6 +3909,32 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
     }
   }
   return std::nullopt;
+}
+
+std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLocationRejectionReason(
+    const EtaContinuationPlan& plan,
+    const std::string& variable_name,
+    const NumericEvaluationPoint& passive_bindings,
+    const ExactRational& start_value,
+    const ExactRational& target_value) {
+  try {
+    const ExactRational plan_start_value = ParsePointValue(variable_name,
+                                                           plan.start_location,
+                                                           passive_bindings,
+                                                           kBootstrapSolverPrefix);
+    const ExactRational plan_target_value = ParsePointValue(variable_name,
+                                                            plan.target_location,
+                                                            passive_bindings,
+                                                            kBootstrapSolverPrefix);
+    if (SameCanonicalExactRationalValue(plan_start_value, start_value) &&
+        SameCanonicalExactRationalValue(plan_target_value, target_value)) {
+      return std::nullopt;
+    }
+  } catch (const std::exception&) {
+  }
+
+  return "eta_continuation_plan start/target locations do not match the parsed solve request "
+         "start/target locations";
 }
 
 std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanEndpointRejectionReason(
@@ -4827,6 +4849,17 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                       passive_bindings,
                       kBootstrapSolverPrefix);
   if (live_request.eta_continuation_plan.has_value()) {
+    const std::optional<std::string> location_rejection_reason =
+        ReviewedDirectRealBootstrapEtaContinuationPlanLocationRejectionReason(
+            *live_request.eta_continuation_plan,
+            variable_name,
+            passive_bindings,
+            start_value,
+            target_value);
+    if (location_rejection_reason.has_value()) {
+      return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+          variable_name, *live_request.eta_continuation_plan, *location_rejection_reason);
+    }
     const std::optional<std::string> rejection_reason =
         ReviewedDirectRealBootstrapEtaContinuationPlanEndpointRejectionReason(
             *live_request.eta_continuation_plan,

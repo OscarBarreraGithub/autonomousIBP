@@ -14222,6 +14222,55 @@ void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpoi
          "exact endpoint coordinates before comparing them to parsed solve locations");
 }
 
+void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocationMetadataTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->start_location = "eta=0/2";
+  request.eta_continuation_plan->target_location = "eta=2/2";
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-value-matched-direct-real-location-metadata-plan";
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap value-matched eta-continuation-plan location-metadata coverage should keep "
+         "the reviewed exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap value-matched eta-continuation-plan location-metadata coverage should "
+         "canonicalize plan start/target metadata before comparing it to parsed solve "
+         "locations");
+}
+
+void BootstrapSeriesSolverRejectsValueMismatchedDirectRealEtaContinuationPlanLocationMetadataTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->target_location = "eta=3/2";
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-stale-direct-real-location-metadata-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap value-mismatched eta-continuation-plan location-metadata coverage should "
+         "fail closed when plan metadata points at a different target location");
+  ExpectContains(diagnostics.summary,
+                 "start/target locations do not match the parsed solve request",
+                 "bootstrap value-mismatched eta-continuation-plan location-metadata coverage "
+                 "should explain the parsed-location mismatch");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap value-mismatched eta-continuation-plan location-metadata coverage "
+                 "should report the reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverAcceptsLedgerlessOffPathDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
@@ -46707,6 +46756,8 @@ int main() {
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest();
+    BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocationMetadataTest();
+    BootstrapSeriesSolverRejectsValueMismatchedDirectRealEtaContinuationPlanLocationMetadataTest();
     BootstrapSeriesSolverAcceptsLedgerlessOffPathDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsLedgerlessTargetEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();

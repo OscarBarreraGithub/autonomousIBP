@@ -10220,6 +10220,25 @@ void GenerateBuiltinEtaInfinityBoundaryRequestAcceptsTrimmedZeroMassTest() {
          "caller-owned mass literals");
 }
 
+void GenerateBuiltinEtaInfinityBoundaryRequestAcceptsSignedZeroMassTest() {
+  for (const std::string& mass_literal : {std::string("+0"), std::string(" -0 ")}) {
+    amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+    spec.family.propagators.front().mass = mass_literal;
+    const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+    const amflow::BoundaryRequest request =
+        amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec, "eta_aux");
+
+    const amflow::BoundaryRequest expected = {"eta_aux", "infinity", "builtin::eta->infinity"};
+    Expect(SameBoundaryRequest(request, expected),
+           "builtin eta->infinity boundary generation should accept reviewed signed zero mass "
+           "literals without changing the request shape");
+    Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+           "signed zero mass acceptance should not mutate the input ProblemSpec or canonicalize "
+           "caller-owned mass literals");
+  }
+}
+
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest() {
   const amflow::BoundaryRequest request =
       amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
@@ -11416,8 +11435,21 @@ void GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest() {
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec));
       },
-      "mass exactly \"0\"",
+      "zero mass literal",
       "well-formed nonzero propagator masses should fail as boundary_unsolved");
+}
+
+void GenerateBuiltinEtaInfinityBoundaryRequestRejectsSymbolicZeroMassTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators.front().mass = "0+0";
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec));
+      },
+      "zero mass literal",
+      "builtin eta->infinity boundary generation should not widen signed-zero support into "
+      "symbolic zero mass expressions");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAttachesThroughProviderSeamTest() {
@@ -46835,6 +46867,7 @@ int main() {
     AttachBoundaryConditionsFromProviderRegistryRejectsWrongLocationOutputTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsTrimmedZeroMassTest();
+    GenerateBuiltinEtaInfinityBoundaryRequestAcceptsSignedZeroMassTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
@@ -46889,6 +46922,7 @@ int main() {
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest();
+    GenerateBuiltinEtaInfinityBoundaryRequestRejectsSymbolicZeroMassTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAttachesThroughProviderSeamTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAttachesThroughProviderSeamTest();
     Batch47BuiltinTraditionEtaInfinityBoundaryEquivalenceTest();

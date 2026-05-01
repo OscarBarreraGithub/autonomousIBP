@@ -56,6 +56,11 @@ std::string Trim(const std::string& value) {
   return value.substr(start, end - start);
 }
 
+bool IsReviewedEtaInfinityZeroMassLiteral(const std::string& value) {
+  const std::string trimmed = Trim(value);
+  return trimmed == "0" || trimmed == "+0" || trimmed == "-0";
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream out;
@@ -155,10 +160,11 @@ void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
           "propagators; propagator " +
           std::to_string(index) + " has kind " + ToString(propagator.kind));
     }
-    if (Trim(propagator.mass) != "0") {
+    if (!IsReviewedEtaInfinityZeroMassLiteral(propagator.mass)) {
       throw BoundaryUnsolvedError(
           "builtin eta->infinity boundary request generation only supports propagators with "
-          "mass exactly \"0\" after trimming outer whitespace; propagator " +
+          "zero mass literal \"0\", \"+0\", or \"-0\" after trimming outer whitespace; "
+          "propagator " +
           std::to_string(index) + " has mass \"" + propagator.mass + "\"");
     }
   }

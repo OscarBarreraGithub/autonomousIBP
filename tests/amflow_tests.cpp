@@ -5577,6 +5577,21 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedLoopMom
          "loop-momentum factor into the generated loop-linear driver");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "2*(-(k1*n-k2*n))";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*(((-2)*(k1) + (2)*(k2))^2) + (2*(-(k1*n-k2*n)))",
+         "reviewed lightlike linear auxiliary rewrite should fold a unary sign on one grouped "
+         "loop-linear common factor into the generated loop-linear driver");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearSpectatorExternalProblemSpec();
 
@@ -5691,8 +5706,7 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFacto
       [&spec]() {
         static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
       },
-      "requires exactly one declared lightlike external momentum symbol to appear as a direct "
-      "factor",
+      "requires exactly one declared lightlike external momentum symbol to appear",
       "reviewed lightlike linear auxiliary rewrite should keep linear expressions that use "
       "multiple external momenta deferred");
 }
@@ -6060,6 +6074,24 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedL
              std::vector<std::string>{spec.family.propagators[2].expression},
          "reviewed lightlike-linear Propagator selection should preserve the signed grouped "
          "linear expression");
+}
+
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "2*(-(k1*n-k2*n))";
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should treat a unary-signed grouped "
+         "common factor as the same unique lightlike-linear slot");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the signed grouped "
+         "common-factor expression");
 }
 
 void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
@@ -46737,6 +46769,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorPreservesGroupedConstantDivisionTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedLoopMomentumFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest();
@@ -46764,6 +46797,7 @@ int main() {
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarProductRuleTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedDirectFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedLoopFactorTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedCommonFactorTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();

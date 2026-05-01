@@ -212,104 +212,6 @@ std::set<std::string> CollectExternalMomenta(const ProblemSpec& spec) {
   return external_momenta;
 }
 
-ExactRational EvaluateExactConstantExpression(const std::string& expression,
-                                              const std::string& context) {
-  try {
-    return EvaluateCoefficientExpression(expression, {});
-  } catch (const std::exception& error) {
-    throw std::runtime_error(context + " could not evaluate constant expression \"" +
-                             expression + "\": " + error.what());
-  }
-}
-
-std::pair<std::string, std::string> ParseScalarProductPair(const std::string& expression,
-                                                           const std::string& context) {
-  const SplitSequence split = SplitTopLevelByOperators(expression, context, "*");
-  if (split.parts.size() == 2 && split.separators.size() == 1 && split.separators[0] == '*') {
-    return {StripOuterParentheses(split.parts[0]), StripOuterParentheses(split.parts[1])};
-  }
-
-  const SplitSequence square_split = SplitTopLevelByOperators(expression, context, "^");
-  if (square_split.parts.size() == 2 && square_split.separators.size() == 1 &&
-      square_split.separators[0] == '^' && Trim(square_split.parts[1]) == "2") {
-    const std::string base = StripOuterParentheses(square_split.parts[0]);
-    const SplitSequence base_split = SplitTopLevelByOperators(base, context, "+-*/^");
-    if (base_split.parts.size() == 1 && base_split.separators.empty()) {
-      return {base, base};
-    }
-  }
-
-  throw std::runtime_error(context +
-                           " requires scalar-product left sides of the form a*b or a^2, found: " +
-                           expression);
-}
-
-std::set<std::string> CollectDeclaredExternalFactorsInExpression(
-    const ProblemSpec& spec,
-    const std::string& expression) {
-  const std::set<std::string> external_momenta = CollectExternalMomenta(spec);
-  std::set<std::string> declared_external_factors;
-  const std::string context = "reviewed lightlike linear auxiliary rewrite";
-
-  for (const SignedTerm& term : SplitTopLevelTerms(Trim(expression), context)) {
-    std::vector<FlatFactor> flat_factors;
-    AppendFlattenedFactors(term.expression, context, '*', flat_factors);
-    for (const FlatFactor& factor_entry : flat_factors) {
-      const std::optional<SignedSymbolFactor> external_factor =
-          MatchSignedSimpleSymbolFactor(factor_entry.factor, external_momenta);
-      if (external_factor.has_value()) {
-        declared_external_factors.insert(external_factor->symbol);
-      }
-    }
-  }
-
-  return declared_external_factors;
-}
-
-std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
-                                                   const Propagator& propagator) {
-  const std::set<std::string> used_external_momenta =
-      CollectDeclaredExternalFactorsInExpression(spec, propagator.expression);
-  if (used_external_momenta.size() != 1) {
-    throw std::runtime_error(
-        "reviewed lightlike linear auxiliary rewrite requires exactly one declared lightlike "
-        "external momentum symbol to appear as a direct factor in the selected linear "
-        "propagator expression");
-  }
-  const std::string external_symbol = *used_external_momenta.begin();
-
-  bool found_lightlike_rule = false;
-  for (const auto& rule : spec.kinematics.scalar_product_rules) {
-    const auto pair = ParseScalarProductPair(rule.left,
-                                             "reviewed lightlike linear auxiliary rewrite");
-    if (pair.first != external_symbol || pair.second != external_symbol) {
-      continue;
-    }
-    if (found_lightlike_rule) {
-      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires one unique " +
-                               external_symbol + "*" + external_symbol +
-                               " scalar-product rule");
-    }
-    const ExactRational value = EvaluateExactConstantExpression(
-        rule.right, "reviewed lightlike linear auxiliary rewrite");
-    if (!value.IsZero()) {
-      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires scalar-"
-                               "product rule " +
-                               external_symbol + "*" + external_symbol +
-                               " to evaluate exactly to 0");
-    }
-    found_lightlike_rule = true;
-  }
-
-  if (!found_lightlike_rule) {
-    throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires scalar-product "
-                             "rule " +
-                             external_symbol + "*" + external_symbol);
-  }
-
-  return external_symbol;
-}
-
 bool HasTopLevelAdditiveOperator(const std::string& expression) {
   int depth = 0;
   for (std::size_t index = 0; index < expression.size(); ++index) {
@@ -357,6 +259,113 @@ std::optional<GroupedAdditiveFactor> MatchGroupedAdditiveFactor(
     return std::nullopt;
   }
   return GroupedAdditiveFactor{signed_group, stripped_factor.front() == '-'};
+}
+
+ExactRational EvaluateExactConstantExpression(const std::string& expression,
+                                              const std::string& context) {
+  try {
+    return EvaluateCoefficientExpression(expression, {});
+  } catch (const std::exception& error) {
+    throw std::runtime_error(context + " could not evaluate constant expression \"" +
+                             expression + "\": " + error.what());
+  }
+}
+
+std::pair<std::string, std::string> ParseScalarProductPair(const std::string& expression,
+                                                           const std::string& context) {
+  const SplitSequence split = SplitTopLevelByOperators(expression, context, "*");
+  if (split.parts.size() == 2 && split.separators.size() == 1 && split.separators[0] == '*') {
+    return {StripOuterParentheses(split.parts[0]), StripOuterParentheses(split.parts[1])};
+  }
+
+  const SplitSequence square_split = SplitTopLevelByOperators(expression, context, "^");
+  if (square_split.parts.size() == 2 && square_split.separators.size() == 1 &&
+      square_split.separators[0] == '^' && Trim(square_split.parts[1]) == "2") {
+    const std::string base = StripOuterParentheses(square_split.parts[0]);
+    const SplitSequence base_split = SplitTopLevelByOperators(base, context, "+-*/^");
+    if (base_split.parts.size() == 1 && base_split.separators.empty()) {
+      return {base, base};
+    }
+  }
+
+  throw std::runtime_error(context +
+                           " requires scalar-product left sides of the form a*b or a^2, found: " +
+                           expression);
+}
+
+std::set<std::string> CollectDeclaredExternalFactorsInExpression(
+    const ProblemSpec& spec,
+    const std::string& expression) {
+  const std::set<std::string> external_momenta = CollectExternalMomenta(spec);
+  std::set<std::string> declared_external_factors;
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+
+  for (const SignedTerm& term : SplitTopLevelTerms(Trim(expression), context)) {
+    std::vector<FlatFactor> flat_factors;
+    AppendFlattenedFactors(term.expression, context, '*', flat_factors);
+    for (const FlatFactor& factor_entry : flat_factors) {
+      const std::optional<SignedSymbolFactor> external_factor =
+          MatchSignedSimpleSymbolFactor(factor_entry.factor, external_momenta);
+      if (external_factor.has_value()) {
+        declared_external_factors.insert(external_factor->symbol);
+        continue;
+      }
+
+      const std::optional<GroupedAdditiveFactor> grouped_factor =
+          MatchGroupedAdditiveFactor(factor_entry.factor);
+      if (grouped_factor.has_value()) {
+        const std::set<std::string> nested_external_factors =
+            CollectDeclaredExternalFactorsInExpression(spec, grouped_factor->expression);
+        declared_external_factors.insert(nested_external_factors.begin(),
+                                         nested_external_factors.end());
+      }
+    }
+  }
+
+  return declared_external_factors;
+}
+
+std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
+                                                   const Propagator& propagator) {
+  const std::set<std::string> used_external_momenta =
+      CollectDeclaredExternalFactorsInExpression(spec, propagator.expression);
+  if (used_external_momenta.size() != 1) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary rewrite requires exactly one declared lightlike "
+        "external momentum symbol to appear in the selected linear propagator expression");
+  }
+  const std::string external_symbol = *used_external_momenta.begin();
+
+  bool found_lightlike_rule = false;
+  for (const auto& rule : spec.kinematics.scalar_product_rules) {
+    const auto pair = ParseScalarProductPair(rule.left,
+                                             "reviewed lightlike linear auxiliary rewrite");
+    if (pair.first != external_symbol || pair.second != external_symbol) {
+      continue;
+    }
+    if (found_lightlike_rule) {
+      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires one unique " +
+                               external_symbol + "*" + external_symbol +
+                               " scalar-product rule");
+    }
+    const ExactRational value = EvaluateExactConstantExpression(
+        rule.right, "reviewed lightlike linear auxiliary rewrite");
+    if (!value.IsZero()) {
+      throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires scalar-"
+                               "product rule " +
+                               external_symbol + "*" + external_symbol +
+                               " to evaluate exactly to 0");
+    }
+    found_lightlike_rule = true;
+  }
+
+  if (!found_lightlike_rule) {
+    throw std::runtime_error("reviewed lightlike linear auxiliary rewrite requires scalar-product "
+                             "rule " +
+                             external_symbol + "*" + external_symbol);
+  }
+
+  return external_symbol;
 }
 
 void AppendCoefficientFactor(std::ostringstream& coefficient_expression,
@@ -530,10 +539,16 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
     const std::optional<GroupedAdditiveFactor> grouped_factor =
         MatchGroupedAdditiveFactor(raw_factor);
     if (separator == '/' || !grouped_factor.has_value() ||
-        grouped_factor->negative || !grouped_linear_combination.empty()) {
+        !grouped_linear_combination.empty()) {
       return std::nullopt;
     }
     grouped_linear_combination = grouped_factor->expression;
+    if (grouped_factor->negative) {
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              '*',
+                              "-1");
+    }
   }
 
   if (grouped_linear_combination.empty()) {

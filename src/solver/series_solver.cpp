@@ -161,6 +161,22 @@ std::string RemoveWhitespace(const std::string& value) {
   return normalized;
 }
 
+bool HasBuiltinEtaModeDecisionName(const EtaInsertionDecision& decision) {
+  const std::vector<std::string> builtin_modes = BuiltinEtaModes();
+  return std::find(builtin_modes.begin(), builtin_modes.end(), decision.mode_name) !=
+         builtin_modes.end();
+}
+
+void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
+    const EtaInsertionDecision& decision) {
+  if (!HasBuiltinEtaModeDecisionName(decision)) {
+    throw std::invalid_argument(
+        "planned builtin AmfOptions eta-mode helper requires a builtin eta-mode decision name; "
+        "got \"" +
+        decision.mode_name + "\"");
+  }
+}
+
 std::optional<std::string> ParseExplicitLocationAssignmentVariable(
     const std::string& location) {
   const std::string trimmed = Trim(location);
@@ -6566,6 +6582,7 @@ SolverDiagnostics SolvePlannedBuiltinAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  ValidatePlannedBuiltinAmfOptionsEtaModeDecision(decision);
   return SolvePlannedAmfOptionsEtaModeSeries(spec,
                                              master_basis,
                                              decision,

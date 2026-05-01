@@ -1139,7 +1139,9 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   builtin-only callers do not pass the raw identity string themselves. It does not re-read
   `amf_options.amf_modes`, does not resolve or re-plan eta modes, and preserves the same live
   policy, cache, `skip_reduction`, requested-`D0`, fixed-`eps`, and dimension-expression behavior
-  as the generic planned helper
+  as the generic planned helper. It also fail-closes before reducer or solver work if the
+  preplanned decision does not name one of the reviewed builtin eta modes, so the builtin
+  solved-path identity cannot be used for a non-builtin-named decision
 - `SolvePlannedResolvedAmfOptionsEtaModeSeries(...)` takes the same arguments except the
   caller-supplied `solve_kind`; a matching overload also takes
   `const std::optional<std::string>& exact_dimension_override` after `eta_symbol`

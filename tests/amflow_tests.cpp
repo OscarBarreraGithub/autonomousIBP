@@ -38359,6 +38359,49 @@ void SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest() {
                                                "typed planned builtin AmfOptions helper");
 }
 
+void SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision custom_decision;
+  custom_decision.mode_name = "CustomMode";
+  custom_decision.selected_propagator_indices = {0};
+  custom_decision.selected_propagators = {spec.family.propagators.at(0).expression};
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"Propagator"};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-builtin-amf-options-nonbuiltin-decision"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedBuiltinAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            custom_decision,
+            amf_options,
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned builtin AmfOptions eta-mode helper requires a builtin eta-mode decision name",
+      "typed planned builtin AmfOptions helper should reject non-builtin planned decisions "
+      "before using the builtin solved-path identity");
+  Expect(solver.call_count() == 0,
+         "typed planned builtin AmfOptions helper should reject non-builtin decisions before "
+         "calling the solver");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -47379,6 +47422,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
+    SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest();
     SolvePlannedAmfOptionsEtaModeSeriesIgnoresAmfModesAndReusesWrapperTailTest();
     SolvePlannedAmfOptionsEtaModeSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheReplaysDeferredComplexContinuationDiagnosticsTest();

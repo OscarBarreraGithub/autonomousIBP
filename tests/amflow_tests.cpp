@@ -25662,7 +25662,7 @@ void SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMs
          "remain outside the reviewed mixed explicit/raw msq surface");
 }
 
-void SolveInvariantGeneratedSeriesListRejectsFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest() {
+void SolveInvariantGeneratedSeriesListRejectsFullyRawMsqThresholdCrossingOnReviewedUMsqRequestBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
   const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
       FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-fully-raw-msq-umsq-"
@@ -25684,17 +25684,82 @@ void SolveInvariantGeneratedSeriesListRejectsFullyRawMsqLocationsOnReviewedUMsqR
                                                 55);
 
   Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62v should classify fully raw msq locations for reviewed multi-invariant "
+         "requests without s or t before DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62v should report the threshold locus when fully raw {u, msq} continuation "
+      "crosses it");
+  Expect(solver.call_count() == 0,
+         "Batch 62v should not call the solver when fully raw {u, msq} continuation crosses a "
+         "reviewed singular msq segment");
+}
+
+void SolveInvariantGeneratedSeriesListFullyRawMsqSegmentOnReviewedUMsqRequestReachesNextLayerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-safe-fully-raw-msq-umsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  ExpectRuntimeError(
+      [&spec, &layout, &solver]() {
+        static_cast<void>(amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                                    amflow::ParsedMasterList{},
+                                                                    {"u", "msq"},
+                                                                    MakeKiraReductionOptions(),
+                                                                    layout,
+                                                                    layout.root / "bin" /
+                                                                        "unused-kira.sh",
+                                                                    layout.root / "bin" /
+                                                                        "unused-fermat.sh",
+                                                                    solver,
+                                                                    "1",
+                                                                    "2",
+                                                                    MakeDistinctPrecisionPolicy(),
+                                                                    55));
+      },
+      "requires invariant",
+      "Batch 62v should let safe fully raw reviewed msq segments on {u, msq} requests reach the "
+      "next invariant validation layer instead of failing the physical-kinematics guardrail");
+  Expect(solver.call_count() == 0,
+         "Batch 62v safe fully raw {u, msq} coverage should still fail before the downstream "
+         "solver when invariant-list validation blocks DE construction");
+}
+
+void SolveInvariantGeneratedSeriesListRejectsMalformedFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-list-solver-malformed-fully-raw-msq-umsq-"
+                   "multi-invariant"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveInvariantGeneratedSeriesList(spec,
+                                                amflow::ParsedMasterList{},
+                                                {"u", "msq"},
+                                                MakeKiraReductionOptions(),
+                                                layout,
+                                                layout.root / "bin" / "unused-kira.sh",
+                                                layout.root / "bin" / "unused-fermat.sh",
+                                                solver,
+                                                "foo",
+                                                "bar",
+                                                MakeDistinctPrecisionPolicy(),
+                                                55);
+
+  Expect(!diagnostics.success &&
              diagnostics.failure_code == "physical_kinematics_not_supported",
-         "Batch 62u should fail closed on fully non-explicit raw msq locations for reviewed "
-         "multi-invariant requests without s or t before DE construction");
+         "Batch 62v should keep malformed fully raw {u, msq} locations fail-closed before DE "
+         "construction");
   ExpectContains(
       diagnostics.summary,
       "spell the reviewed msq segment explicitly as msq=...",
-      "Batch 62u should report explicit msq guidance on fully non-explicit {u, msq} "
-      "multi-invariant requests");
+      "Batch 62v should keep explicit msq guidance for malformed fully raw {u, msq} requests");
   Expect(solver.call_count() == 0,
-         "Batch 62u should not call the solver when fully non-explicit {u, msq} locations "
-         "remain outside the reviewed single-invariant raw msq surface");
+         "Batch 62v should not call the solver when fully raw {u, msq} locations are malformed");
 }
 
 void SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest() {
@@ -46964,7 +47029,9 @@ int main() {
     SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSideOnReviewedTMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsMalformedExplicitMsqSyntaxOnReviewedTMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListKeepsFullyRawMsqLikeLocationsOnReviewedTMsqRequestFailClosedTest();
-    SolveInvariantGeneratedSeriesListRejectsFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListRejectsFullyRawMsqThresholdCrossingOnReviewedUMsqRequestBeforeDEConstructionTest();
+    SolveInvariantGeneratedSeriesListFullyRawMsqSegmentOnReviewedUMsqRequestReachesNextLayerTest();
+    SolveInvariantGeneratedSeriesListRejectsMalformedFullyRawMsqLocationsOnReviewedUMsqRequestBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointCrossingPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListRejectsEndpointNearSingularPhysicalSegmentBeforeDEConstructionTest();
     SolveInvariantGeneratedSeriesListAutomaticRejectsEmptyInvariantListTest();

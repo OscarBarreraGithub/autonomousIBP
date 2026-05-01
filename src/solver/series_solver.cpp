@@ -340,6 +340,29 @@ bool HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(
              .has_value();
 }
 
+bool HasOnlyReviewedMsqInvariantListAnchor(const std::vector<std::string>& invariant_names) {
+  bool has_msq = false;
+  for (const std::string& invariant_name : invariant_names) {
+    if (invariant_name == "s" || invariant_name == "t") {
+      return false;
+    }
+    if (invariant_name == "msq") {
+      has_msq = true;
+    }
+  }
+  return has_msq;
+}
+
+bool HasEvaluatedFullyRawReviewedMsqInvariantListSegment(
+    const ProblemSpec& spec,
+    const std::vector<std::string>& invariant_names,
+    const std::string& start_location,
+    const std::string& target_location) {
+  return HasOnlyReviewedMsqInvariantListAnchor(invariant_names) &&
+         TryEvaluateReviewedRawInvariantListLocation(spec, "msq", start_location).has_value() &&
+         TryEvaluateReviewedRawInvariantListLocation(spec, "msq", target_location).has_value();
+}
+
 std::optional<std::string> ResolveReviewedInvariantListSegmentName(
     const std::vector<std::string>& invariant_names,
     const std::string& start_location,
@@ -418,6 +441,13 @@ bool ShouldAllowUnlabeledReviewedRawExpressionsForInvariantList(
        *reviewed_segment_invariant_name != "t" &&
        *reviewed_segment_invariant_name != "msq")) {
     return false;
+  }
+  if (*reviewed_segment_invariant_name == "msq" &&
+      HasEvaluatedFullyRawReviewedMsqInvariantListSegment(spec,
+                                                          invariant_names,
+                                                          start_location,
+                                                          target_location)) {
+    return true;
   }
   return HasEvaluatedMixedExplicitRawReviewedInvariantListSegment(
       spec,

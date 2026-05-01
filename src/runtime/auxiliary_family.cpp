@@ -162,6 +162,26 @@ struct FlatFactor {
   std::string factor;
 };
 
+struct SignedSymbolFactor {
+  std::string symbol;
+  bool negative = false;
+};
+
+std::optional<SignedSymbolFactor> MatchSignedSimpleSymbolFactor(
+    const std::string& expression,
+    const std::set<std::string>& symbols) {
+  std::string factor = StripOuterParentheses(Trim(expression));
+  bool negative = false;
+  if (!factor.empty() && (factor.front() == '+' || factor.front() == '-')) {
+    negative = factor.front() == '-';
+    factor = StripOuterParentheses(Trim(factor.substr(1)));
+  }
+  if (symbols.count(factor) == 0) {
+    return std::nullopt;
+  }
+  return SignedSymbolFactor{factor, negative};
+}
+
 void AppendFlattenedFactors(const std::string& expression,
                             const std::string& context,
                             const char separator,
@@ -235,9 +255,10 @@ std::set<std::string> CollectDeclaredExternalFactorsInExpression(
     std::vector<FlatFactor> flat_factors;
     AppendFlattenedFactors(term.expression, context, '*', flat_factors);
     for (const FlatFactor& factor_entry : flat_factors) {
-      const std::string factor = StripOuterParentheses(Trim(factor_entry.factor));
-      if (external_momenta.count(factor) > 0) {
-        declared_external_factors.insert(factor);
+      const std::optional<SignedSymbolFactor> external_factor =
+          MatchSignedSimpleSymbolFactor(factor_entry.factor, external_momenta);
+      if (external_factor.has_value()) {
+        declared_external_factors.insert(external_factor->symbol);
       }
     }
   }
@@ -289,10 +310,6 @@ std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
   return external_symbol;
 }
 
-bool IsLoopMomentum(const std::set<std::string>& loop_momenta, const std::string& factor) {
-  return loop_momenta.count(StripOuterParentheses(factor)) > 0;
-}
-
 bool HasTopLevelAdditiveOperator(const std::string& expression) {
   int depth = 0;
   for (std::size_t index = 0; index < expression.size(); ++index) {
@@ -333,6 +350,7 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
     const std::string& coefficient_prefix) {
   const std::set<std::string> loop_momenta(spec.family.loop_momenta.begin(),
                                            spec.family.loop_momenta.end());
+  const std::set<std::string> selected_external_symbol = {external_symbol};
 
   std::vector<FlatFactor> flat_factors;
   AppendFlattenedFactors(term.expression,
@@ -358,7 +376,9 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
           "expression");
     }
 
-    if (factor == external_symbol) {
+    const std::optional<SignedSymbolFactor> external_factor =
+        MatchSignedSimpleSymbolFactor(raw_factor, selected_external_symbol);
+    if (external_factor.has_value()) {
       if (factor_entry.separator == '/') {
         throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
                                  "symbol out of denominators");
@@ -369,10 +389,18 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
             "bilinear term");
       }
       saw_external_factor = true;
+      if (external_factor->negative) {
+        AppendCoefficientFactor(coefficient_expression,
+                                coefficient_started,
+                                '*',
+                                "-1");
+      }
       continue;
     }
 
-    if (IsLoopMomentum(loop_momenta, factor)) {
+    const std::optional<SignedSymbolFactor> loop_factor_match =
+        MatchSignedSimpleSymbolFactor(raw_factor, loop_momenta);
+    if (loop_factor_match.has_value()) {
       if (factor_entry.separator == '/') {
         throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps loop "
                                  "momenta out of denominators");
@@ -382,7 +410,13 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
             "reviewed lightlike linear auxiliary rewrite requires one loop factor per bilinear "
             "term");
       }
-      loop_factor = factor;
+      loop_factor = loop_factor_match->symbol;
+      if (loop_factor_match->negative) {
+        AppendCoefficientFactor(coefficient_expression,
+                                coefficient_started,
+                                '*',
+                                "-1");
+      }
       continue;
     }
 
@@ -507,6 +541,7 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
 
   std::string grouped_loop_combination;
   bool saw_external_factor = false;
+  const std::set<std::string> selected_external_symbol = {external_symbol};
   std::ostringstream coefficient_expression;
   bool coefficient_started = false;
 
@@ -515,7 +550,9 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
     const std::string raw_factor = Trim(split.parts[index]);
     const std::string stripped_factor = StripOuterParentheses(raw_factor);
 
-    if (stripped_factor == external_symbol) {
+    const std::optional<SignedSymbolFactor> external_factor =
+        MatchSignedSimpleSymbolFactor(raw_factor, selected_external_symbol);
+    if (external_factor.has_value()) {
       if (separator == '/') {
         throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
                                  "symbol out of denominators");
@@ -526,6 +563,12 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
             "bilinear term");
       }
       saw_external_factor = true;
+      if (external_factor->negative) {
+        AppendCoefficientFactor(coefficient_expression,
+                                coefficient_started,
+                                '*',
+                                "-1");
+      }
       continue;
     }
 

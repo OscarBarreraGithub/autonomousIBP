@@ -5590,6 +5590,26 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProduct
          "for the unique lightlike external momentum");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k*(-n)";
+
+  const amflow::Propagator signed_external =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(signed_external.expression == "x*(((-1)*(k))^2) + (k*(-n))",
+         "reviewed lightlike linear auxiliary rewrite should fold a unary sign on the direct "
+         "lightlike external factor into the loop-driver coefficient");
+
+  spec.family.propagators[2].expression = "(-k)*n";
+  const amflow::Propagator signed_loop =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(signed_loop.expression == "x*(((-1)*(k))^2) + ((-k)*n)",
+         "reviewed lightlike linear auxiliary rewrite should fold a unary sign on the direct "
+         "loop factor into the loop-driver coefficient");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
 
@@ -5660,6 +5680,28 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFacto
       "factor",
       "reviewed lightlike linear auxiliary rewrite should keep linear expressions that use "
       "multiple external momenta deferred");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k/(-n)";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "keeps the external symbol out of denominators",
+      "reviewed lightlike linear auxiliary rewrite should reject signed lightlike external "
+      "factors in denominators");
+
+  spec.family.propagators[2].expression = "n/(-k)";
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "keeps loop momenta out of denominators",
+      "reviewed lightlike linear auxiliary rewrite should reject signed loop factors in "
+      "denominators");
 }
 
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest() {
@@ -5970,6 +6012,21 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarP
              std::vector<std::string>{spec.family.propagators[2].expression},
          "reviewed lightlike-linear Propagator selection should preserve the selected linear "
          "expression when the lightlike rule is written as n^2");
+}
+
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedDirectFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators[2].expression = "k*(-n)";
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should treat a unary-signed direct "
+         "external factor as the same unique lightlike-linear slot");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the signed selected "
+         "linear expression");
 }
 
 void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
@@ -46306,11 +46363,13 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
@@ -46327,6 +46386,7 @@ int main() {
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarProductRuleTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedDirectFactorTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();

@@ -5604,6 +5604,21 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFacto
          "lightlike external factor into the generated loop-driver coefficient");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "(k1-k2)*(n+n)";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression == "x*(((2)*(k1) + (-2)*(k2))^2) + ((k1-k2)*(n+n))",
+         "reviewed lightlike linear auxiliary rewrite should combine one grouped loop factor "
+         "with one grouped repeated lightlike external factor");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearSpectatorExternalProblemSpec();
 
@@ -6119,6 +6134,24 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedExterna
              std::vector<std::string>{spec.family.propagators[2].expression},
          "reviewed lightlike-linear Propagator selection should preserve the grouped external "
          "expression");
+}
+
+void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedLoopAndExternalFactorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "(k1-k2)*(n+n)";
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should treat paired grouped loop and "
+         "external factors as the same unique lightlike-linear slot");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the grouped loop and "
+         "external expression");
 }
 
 void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
@@ -47212,6 +47245,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest();
@@ -47241,6 +47275,7 @@ int main() {
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedLoopFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedCommonFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedExternalFactorTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedLoopAndExternalFactorsTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();

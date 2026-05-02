@@ -732,6 +732,26 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
       continue;
     }
 
+    const std::optional<ExactRational> grouped_external_coefficient =
+        TryEvaluateGroupedExternalFactorCoefficient(raw_factor, external_symbol);
+    if (grouped_external_coefficient.has_value()) {
+      if (separator == '/') {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
+                                 "symbol out of denominators");
+      }
+      if (saw_external_factor) {
+        throw std::runtime_error(
+            "reviewed lightlike linear auxiliary rewrite requires one external factor per "
+            "bilinear term");
+      }
+      saw_external_factor = true;
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              '*',
+                              grouped_external_coefficient->ToString());
+      continue;
+    }
+
     std::optional<ExactRational> coefficient_piece;
     try {
       coefficient_piece = EvaluateExactConstantExpression(raw_factor, context);

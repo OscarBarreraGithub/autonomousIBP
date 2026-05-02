@@ -12965,6 +12965,29 @@ void Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThrough
          "diagnostics after terminal-node whitespace trimming");
 }
 
+void Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminalNodesTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.name.clear();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "CustomScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec, decision));
+      },
+      "Batch 65i planned eta->infinity boundary generation should reject malformed "
+      "ProblemSpec before terminal-node validation");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 65i planned eta->infinity boundary generation should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(message.find("unsupported extra terminal node") == std::string::npos,
+         "Batch 65i planned eta->infinity boundary generation should not mask malformed "
+         "ProblemSpec diagnostics behind stale terminal-node validation");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -47562,6 +47585,7 @@ int main() {
     Batch65dPlannedEtaInfinityNoProviderUsesDeferredBuiltinRegistryTest();
     Batch65hPlannedEtaInfinityTrimsTerminalNodeWhitespaceTest();
     Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest();
+    Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminalNodesTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();
     Batch63tPlannedCutkoskyProviderHelperMatchesManualCompositionTest();

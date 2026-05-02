@@ -69,6 +69,13 @@ std::string Trim(const std::string& value) {
   return value.substr(start, end - start);
 }
 
+void ValidateProblemSpecForBoundaryGeneration(const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+}
+
 bool IsReviewedEtaInfinityBareZeroMassLiteral(const std::string& trimmed) {
   return trimmed == "0" || trimmed == "+0" || trimmed == "-0";
 }
@@ -447,10 +454,7 @@ CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spec,
                                                          const std::string& eta_symbol) {
-  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
-  if (!validation_messages.empty()) {
-    throw std::invalid_argument(JoinMessages(validation_messages));
-  }
+  ValidateProblemSpecForBoundaryGeneration(spec);
 
   if (eta_symbol.empty()) {
     throw std::invalid_argument(
@@ -468,10 +472,7 @@ BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spe
 
 BoundaryRequest GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(const ProblemSpec& spec,
                                                                  const std::string& eta_symbol) {
-  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
-  if (!validation_messages.empty()) {
-    throw std::invalid_argument(JoinMessages(validation_messages));
-  }
+  ValidateProblemSpecForBoundaryGeneration(spec);
 
   if (eta_symbol.empty()) {
     throw std::invalid_argument(
@@ -491,6 +492,7 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,
     const EndingDecision& decision,
     const std::string& eta_symbol) {
+  ValidateProblemSpecForBoundaryGeneration(spec);
   ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
   return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
 }

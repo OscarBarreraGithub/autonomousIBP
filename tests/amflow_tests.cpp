@@ -29186,6 +29186,42 @@ void SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructio
          "eta solver handoff should not call the solver when physical kinematics are singular");
 }
 
+void SolveEtaGeneratedSeriesRejectsSContinuationSegmentBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-s-segment-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "s=5",
+                                      "s=3",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55,
+                                      "s");
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62y should reject reviewed s eta-continuation segments that cross the "
+         "threshold before eta DE construction");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62y should report the threshold locus when eta-generated s continuation crosses "
+      "it");
+  Expect(solver.call_count() == 0,
+         "Batch 62y should not call the solver when eta-generated s continuation crosses a "
+         "reviewed singular segment");
+}
+
 void SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdNearMarginK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -47901,6 +47937,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsDeferredComplexReplayFromDifferentManifestRootTest();
     SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsSContinuationSegmentBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsEndpointNearSingularPhysicalPointBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();

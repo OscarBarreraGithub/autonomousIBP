@@ -4516,9 +4516,15 @@ bool IsRetryablePrecisionInstability(const SolverDiagnostics& diagnostics) {
 }
 
 std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
-    const ProblemSpec& spec) {
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::string& start_location,
+    const std::string& target_location) {
   const PhysicalKinematicsGuardrailAssessment assessment =
-      AssessPhysicalKinematicsForBatch62(spec);
+      (eta_symbol == "s" || eta_symbol == "t" || eta_symbol == "msq")
+          ? AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+                spec, eta_symbol, start_location, target_location, true)
+          : AssessPhysicalKinematicsForBatch62(spec);
   switch (assessment.verdict) {
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:
     case PhysicalKinematicsGuardrailVerdict::SupportedReviewedSubset:
@@ -4655,7 +4661,8 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
         solver.SupportsReviewedComplexEtaContinuation();
     ValidateComplexEtaGeneratedWrapperBindings(spec);
     if (const std::optional<SolverDiagnostics> diagnostics =
-            AssessGeneratedSolvePhysicalKinematics(spec);
+            AssessGeneratedSolvePhysicalKinematics(
+                spec, eta_symbol, start_location, target_location);
         diagnostics.has_value()) {
       return *diagnostics;
     }
@@ -5976,7 +5983,8 @@ SolverDiagnostics SolveReviewedLightlikeLinearAuxiliaryDerivativeSeries(
   const std::optional<std::string> normalized_dimension_expression =
       NormalizeLightlikeLinearDimensionExpression(dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
-          AssessGeneratedSolvePhysicalKinematics(spec);
+          AssessGeneratedSolvePhysicalKinematics(
+              spec, x_symbol, start_location, target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }
@@ -6301,7 +6309,8 @@ SolverDiagnostics SolveEtaGeneratedSeries(
   const std::optional<std::string> normalized_exact_dimension_override =
       ResolveExactDimensionOverride(normalized_dimension_expression);
   if (const std::optional<SolverDiagnostics> diagnostics =
-          AssessGeneratedSolvePhysicalKinematics(spec);
+          AssessGeneratedSolvePhysicalKinematics(
+              spec, eta_symbol, start_location, target_location);
       diagnostics.has_value()) {
     return *diagnostics;
   }

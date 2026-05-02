@@ -416,8 +416,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   no-boundary-values diagnostic. The Cutkosky phase-space request/attach surface also exposes an
   already-planned `EndingDecision` helper so reviewed `AmfOptions` callers can carry the selected
   phase-space ending into provider, provider-registry, or deferred-registry attachment without
-  re-resolving `ending_schemes`. The same boundary-request preflight now performs one narrow
-  cut-topology support/connectivity check: every cut propagator must mention at least one
+  re-resolving `ending_schemes`. Planned Cutkosky phase-space boundary-request helpers preserve the
+  builtin malformed-spec and empty-`eta_symbol` preflights before selected terminal-node
+  validation, so stale selected decisions cannot mask the public empty-symbol diagnostic. The same
+  boundary-request preflight now performs one narrow cut-topology support/connectivity check: every
+  cut propagator must mention at least one
   declared loop momentum and all cut supports must belong to one connected component induced by
   shared declared loop-momentum support before provider routing. This still does not widen
   builtin `Prescription` selection, top-sector analysis, broader Cutkosky topology analysis, or

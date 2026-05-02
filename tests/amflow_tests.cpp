@@ -13381,6 +13381,59 @@ void Batch63xAmfOptionsEndingSchemeCutkoskyTrimsTerminalNodeWhitespaceThroughSol
          "after terminal-node whitespace trimming");
 }
 
+void Batch63yPlannedCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest() {
+  amflow::EndingDecision stale_decision;
+  stale_decision.terminal_strategy = "StaleScheme";
+  stale_decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&stale_decision]() {
+        static_cast<void>(amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+            MakeReviewedCutkoskyPhaseSpaceSpec(),
+            stale_decision,
+            ""));
+      },
+      "Batch 63y planned Cutkosky request should reject an empty eta symbol before "
+      "interpreting stale terminal nodes");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not be empty",
+         "Batch 63y planned Cutkosky request should preserve the builtin empty eta_symbol "
+         "diagnostic instead of masking it behind terminal-node validation");
+}
+
+void Batch63yAmfOptionsCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"StaleScheme"});
+
+  amflow::EndingDecision stale_decision;
+  stale_decision.terminal_strategy = "StaleScheme";
+  stale_decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+  const auto stale_scheme =
+      std::make_shared<RecordingEndingScheme>(stale_decision, "StaleScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &stale_scheme]() {
+        static_cast<void>(
+            amflow::GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(
+                spec,
+                amf_options,
+                {stale_scheme},
+                ""));
+      },
+      "Batch 63y AmfOptions Cutkosky request should reject an empty eta symbol before "
+      "interpreting stale terminal nodes");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not be empty",
+         "Batch 63y AmfOptions Cutkosky request should preserve the builtin empty eta_symbol "
+         "diagnostic after planning a stale selected ending");
+  Expect(stale_scheme->call_count() == 1,
+         "Batch 63y AmfOptions Cutkosky request should preserve exactly one selected-scheme "
+         "planning call before applying the empty eta_symbol preflight");
+}
+
 void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -48042,6 +48095,8 @@ int main() {
     Batch63tPlannedCutkoskyNoProviderUsesDeferredBuiltinRegistryTest();
     Batch63xPlannedCutkoskyTrimsTerminalNodeWhitespaceTest();
     Batch63xAmfOptionsEndingSchemeCutkoskyTrimsTerminalNodeWhitespaceThroughSolveTest();
+    Batch63yPlannedCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest();
+    Batch63yAmfOptionsCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest();

@@ -5592,6 +5592,23 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedCommonF
          "loop-linear common factor into the generated loop-linear driver");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedCommonGroupedLoopFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "2*((k1-k2)*n+k3*n)";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression ==
+             "x*(((2)*(k1) + (-2)*(k2) + (2)*(k3))^2) + "
+             "(2*((k1-k2)*n+k3*n))",
+         "reviewed lightlike linear auxiliary rewrite should expand one grouped loop-momentum "
+         "factor nested inside a common grouped lightlike-linear factor");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].expression = "k*(n+n)";
@@ -47527,6 +47544,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedLoopMomentumFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedGroupedCommonFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedCommonGroupedLoopFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();

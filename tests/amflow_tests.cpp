@@ -12841,6 +12841,97 @@ void Batch65dPlannedEtaInfinityNoProviderUsesDeferredBuiltinRegistryTest() {
          "execution while builtin eta->infinity boundary values remain deferred");
 }
 
+void Batch65hPlannedEtaInfinityTrimsTerminalNodeWhitespaceTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "WhitespaceScheme";
+  decision.terminal_nodes = {"  planar_double_box::eta->infinity \t"};
+  const auto scheme =
+      std::make_shared<RecordingEndingScheme>(decision, "WhitespaceScheme");
+
+  const amflow::BoundaryRequest request =
+      amflow::GeneratePlannedEtaInfinityBoundaryRequest(amflow::MakeSampleProblemSpec(),
+                                                        "WhitespaceScheme",
+                                                        {scheme});
+
+  const amflow::BoundaryRequest expected = {"eta", "infinity", "builtin::eta->infinity"};
+  Expect(SameBoundaryRequest(request, expected),
+         "Batch 65h planned eta->infinity boundary generation should accept the exact "
+         "supported terminal node after trimming outer whitespace");
+  Expect(scheme->call_count() == 1,
+         "Batch 65h planned eta->infinity boundary generation should plan the whitespace "
+         "terminal-node scheme exactly once");
+}
+
+void Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "WhitespaceScheme"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+
+  amflow::EndingDecision whitespace_decision;
+  whitespace_decision.terminal_strategy = "WhitespaceScheme";
+  whitespace_decision.terminal_nodes = {" \tplanar_double_box::eta->infinity  "};
+  const auto whitespace_scheme =
+      std::make_shared<RecordingEndingScheme>(whitespace_decision, "WhitespaceScheme");
+
+  const amflow::BoundaryRequest baseline_boundary_request =
+      amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec);
+  amflow::SolveRequest baseline_solve_request = request_template;
+  baseline_solve_request.boundary_requests = {baseline_boundary_request};
+
+  RecordingStaticBoundaryProvider baseline_provider("builtin::eta->infinity",
+                                                    {MakeEtaInfinityBoundaryCondition()});
+  RecordingStaticBoundaryProvider wrapper_provider("builtin::eta->infinity",
+                                                   {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolveRequest baseline_attached =
+      amflow::AttachBoundaryConditionsFromProvider(baseline_solve_request,
+                                                   baseline_provider);
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      baseline_solver.Solve(baseline_attached);
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                           amf_options,
+                                                           {retry_scheme, whitespace_scheme},
+                                                           request_template,
+                                                           wrapper_provider,
+                                                           wrapper_solver);
+
+  Expect(retry_scheme->call_count() == 1 && whitespace_scheme->call_count() == 1,
+         "Batch 65h AmfOptions eta->infinity wrapper should preserve ordered fallback before "
+         "accepting the trimmed terminal node");
+  Expect(wrapper_provider.strategy_call_count() == 1 &&
+             wrapper_provider.provide_call_count() == 1,
+         "Batch 65h AmfOptions eta->infinity wrapper should reach the provider exactly once "
+         "after trimmed terminal-node planning succeeds");
+  Expect(wrapper_solver.call_count() == 1,
+         "Batch 65h AmfOptions eta->infinity wrapper should call the solver exactly once "
+         "after trimmed terminal-node planning succeeds");
+  Expect(wrapper_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 65h AmfOptions eta->infinity wrapper should feed the same builtin boundary "
+         "request into the provider after terminal-node whitespace trimming");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 65h AmfOptions eta->infinity wrapper should feed the same attached request "
+         "into the solver after terminal-node whitespace trimming");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 65h AmfOptions eta->infinity wrapper should preserve downstream solver "
+         "diagnostics after terminal-node whitespace trimming");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -47284,6 +47375,8 @@ int main() {
     Batch65dPlannedEtaInfinityBoundaryRequestUsesSelectedDecisionTest();
     Batch65dPlannedEtaInfinityProviderHelperMatchesManualCompositionTest();
     Batch65dPlannedEtaInfinityNoProviderUsesDeferredBuiltinRegistryTest();
+    Batch65hPlannedEtaInfinityTrimsTerminalNodeWhitespaceTest();
+    Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();
     Batch63tPlannedCutkoskyProviderHelperMatchesManualCompositionTest();

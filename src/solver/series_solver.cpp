@@ -136,6 +136,13 @@ ExactRational DivideRational(const ExactRational& lhs, const ExactRational& rhs)
   return ExactArithmetic(Parenthesize(lhs) + "/" + Parenthesize(rhs));
 }
 
+void ValidateEtaInfinitySolveEtaSymbol(const std::string& eta_symbol) {
+  if (eta_symbol.empty()) {
+    throw std::invalid_argument(
+        "builtin eta->infinity boundary request eta_symbol must not be empty");
+  }
+}
+
 std::string Trim(const std::string& value) {
   std::size_t start = 0;
   while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
@@ -7047,6 +7054,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const SolveRequest& request_template,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
@@ -7066,6 +7074,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,
@@ -7084,6 +7093,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,

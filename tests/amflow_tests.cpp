@@ -13137,6 +13137,102 @@ void Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNo
          "eta_symbol diagnostics behind stale terminal-node validation");
 }
 
+void Batch65lNamedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforePlanningTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&scheme]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            amflow::MakeSampleProblemSpec(),
+            "ProbeScheme",
+            {scheme},
+            ""));
+      },
+      "Batch 65l named eta->infinity boundary generation should reject empty eta_symbol "
+      "before user-defined planning");
+
+  Expect(message.find("eta_symbol must not be empty") != std::string::npos,
+         "Batch 65l named eta->infinity boundary generation should preserve the empty "
+         "eta_symbol diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65l named eta->infinity boundary generation should not plan a user-defined "
+         "ending scheme after local empty eta_symbol rejection");
+}
+
+void Batch65lAmfOptionsEtaInfinityBoundaryRequestValidatesEtaSymbolBeforePlanningTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &scheme]() {
+        static_cast<void>(amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+            spec,
+            amf_options,
+            {scheme},
+            ""));
+      },
+      "Batch 65l AmfOptions eta->infinity boundary generation should reject empty "
+      "eta_symbol before user-defined planning");
+
+  Expect(message.find("eta_symbol must not be empty") != std::string::npos,
+         "Batch 65l AmfOptions eta->infinity boundary generation should preserve the empty "
+         "eta_symbol diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65l AmfOptions eta->infinity boundary generation should not plan a "
+         "user-defined ending scheme after local empty eta_symbol rejection");
+}
+
+void Batch65lAmfOptionsEtaInfinitySolveValidatesEtaSymbolBeforePlanningTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                               amf_options,
+                                                                               {scheme},
+                                                                               request_template,
+                                                                               provider,
+                                                                               solver,
+                                                                               ""));
+      },
+      "Batch 65l AmfOptions eta->infinity solve should reject empty eta_symbol before "
+      "user-defined planning");
+
+  Expect(message.find("eta_symbol must not be empty") != std::string::npos,
+         "Batch 65l AmfOptions eta->infinity solve should preserve the empty eta_symbol "
+         "diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65l AmfOptions eta->infinity solve should not plan a user-defined ending "
+         "scheme after local empty eta_symbol rejection");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 65l AmfOptions eta->infinity solve should not consult the provider after "
+         "local empty eta_symbol rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 65l AmfOptions eta->infinity solve should not call the solver after local "
+         "empty eta_symbol rejection");
+}
+
 void Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::vector<std::string> nested_zero_masses = {
@@ -48411,6 +48507,9 @@ int main() {
     Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest();
     Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminalNodesTest();
     Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNodesTest();
+    Batch65lNamedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
+    Batch65lAmfOptionsEtaInfinityBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
+    Batch65lAmfOptionsEtaInfinitySolveValidatesEtaSymbolBeforePlanningTest();
     Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();

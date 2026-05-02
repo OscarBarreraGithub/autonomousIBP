@@ -515,6 +515,7 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const std::string& ending_scheme_name,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol) {
+  ValidateEtaInfinityBoundaryEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanEndingScheme(spec, ending_scheme_name, user_defined_schemes);
   return GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);
@@ -546,6 +547,7 @@ BoundaryRequest GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
     const AmfOptions& amf_options,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol) {
+  ValidateEtaInfinityBoundaryEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return GeneratePlannedEtaInfinityBoundaryRequest(spec, decision, eta_symbol);

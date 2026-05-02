@@ -40275,6 +40275,58 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCa
          "reviewed unsupported complex-mode requests");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsSContinuationSegmentBeforeSolvedPathCacheOrReducerTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"});
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-s-segment-physical-kinematics"));
+
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.residual_norm = 0.25;
+  solver.returned_diagnostics.overlap_mismatch = 0.5;
+  solver.returned_diagnostics.failure_code.clear();
+  solver.returned_diagnostics.summary = "unexpected planned AmfOptions s-segment solve";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolvePlannedAmfOptionsEtaModeSeries(spec,
+                                                  amflow::ParsedMasterList{},
+                                                  decision,
+                                                  amf_options,
+                                                  "amf-options-builtin-eta-mode-series",
+                                                  MakeKiraReductionOptions(),
+                                                  layout,
+                                                  layout.root / "bin" / "unused-kira.sh",
+                                                  layout.root / "bin" / "unused-fermat.sh",
+                                                  solver,
+                                                  "s=5",
+                                                  "s=3",
+                                                  MakeDistinctPrecisionPolicy(),
+                                                  55,
+                                                  "s");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "planned AmfOptions s-segment coverage should not mutate the input problem spec");
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_singular",
+         "Batch 62aa should reject planned AmfOptions s eta-continuation segments that cross "
+         "the threshold before cache replay, reducer work, or solver execution");
+  ExpectContains(
+      diagnostics.summary,
+      "s = 4*msq",
+      "Batch 62aa should report the threshold locus when planned AmfOptions eta-generated s "
+      "continuation crosses it");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "Batch 62aa should not create solved-path cache artifacts on planned AmfOptions "
+         "singular s-segment requests");
+  Expect(solver.call_count() == 0,
+         "Batch 62aa should not call the exact solver when planned AmfOptions eta-generated "
+         "s continuation crosses a reviewed singular segment");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesPreservesComplexContinuationPlanningInputErrorsTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -48534,6 +48586,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayFromDifferentManifestRootTest();
     SolvePlannedAmfOptionsEtaModeSeriesUseCacheRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsBareComplexModeBeforeSolvedPathCacheOrSolverTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsSContinuationSegmentBeforeSolvedPathCacheOrReducerTest();
     SolvePlannedAmfOptionsEtaModeSeriesPreservesComplexContinuationPlanningInputErrorsTest();
     SolvePlannedAmfOptionsEtaModeSeriesSupportsReviewedComplexContinuationPlanHandoffTest();
     SolvePlannedAmfOptionsEtaModeSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest();

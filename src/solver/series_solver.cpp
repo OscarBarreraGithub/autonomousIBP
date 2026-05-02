@@ -4767,6 +4767,15 @@ SolverDiagnostics SolveEtaGeneratedSeriesWithSolvedPathCache(
     }
   }
 
+  if (!has_complex_request) {
+    if (const std::optional<SolverDiagnostics> diagnostics =
+            AssessGeneratedSolvePhysicalKinematics(
+                spec, eta_symbol, start_location, target_location);
+        diagnostics.has_value()) {
+      return *diagnostics;
+    }
+  }
+
   std::optional<SolveRequest> prepared_skip_reduction_request;
   if (skip_reduction) {
     SolveRequest request;

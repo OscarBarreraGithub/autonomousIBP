@@ -361,8 +361,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61v`
-  non-real singular-ledger fail-closed guard after the earlier `Batch 61u` direct-plan
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61w`
+  unfingerprinted-plan fail-closed guard after the earlier `Batch 61v` non-real
+  singular-ledger guard and `Batch 61u` direct-plan
   location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
   plus the `Batch 62v` raw-`msq`, `Batch 62w` raw-`t`, and `Batch 62x` raw-`s` guardrail
   retirements are still narrow:
@@ -371,7 +372,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   generated-wrapper solver surface still defers with explicit `unsupported_solver_path`
   diagnostics, and the reviewed helper deferred/cache replay remains limited to that non-opt-in
   subset. The default exact solver accepts only direct real two-point
-  `eta_continuation_plan` metadata on its already-reviewed exact path, now including evaluated
+  `eta_continuation_plan` metadata with a non-empty reviewed contour fingerprint on its
+  already-reviewed exact path, now including evaluated
   ledgerless system-declared singular surfaces only when every declared singular point evaluates
   exactly to a real point off the direct real segment or exactly to the distinct singular target
   endpoint on the reviewed mixed exact path. Direct real plan start/target metadata and contour

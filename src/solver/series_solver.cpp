@@ -3998,6 +3998,10 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   if (plan.eta_symbol != variable_name) {
     return "eta_continuation_plan eta_symbol does not match the selected system variable";
   }
+  if (plan.contour_fingerprint.empty()) {
+    return "default exact solver accepts eta_continuation_plan metadata only when it carries a "
+           "reviewed contour fingerprint";
+  }
   if (plan.contour_points.size() != 2) {
     return "default exact solver currently accepts only direct real two-point "
            "eta_continuation_plan metadata";

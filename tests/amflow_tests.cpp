@@ -14523,6 +14523,29 @@ void BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPath
          "real two-point metadata on the default exact solver");
 }
 
+void BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->contour_fingerprint.clear();
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap unfingerprinted eta-continuation-plan coverage should fail closed before "
+         "the default exact solver consumes unaudited plan metadata");
+  ExpectContains(diagnostics.summary,
+                 "reviewed contour fingerprint",
+                 "bootstrap unfingerprinted eta-continuation-plan coverage should explain the "
+                 "fingerprint requirement");
+  ExpectContains(diagnostics.summary,
+                 "contour_fingerprint=",
+                 "bootstrap unfingerprinted eta-continuation-plan coverage should report the "
+                 "empty contour-fingerprint field");
+}
+
 void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
@@ -47587,6 +47610,7 @@ int main() {
     BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocationMetadataTest();
     BootstrapSeriesSolverRejectsValueMismatchedDirectRealEtaContinuationPlanLocationMetadataTest();

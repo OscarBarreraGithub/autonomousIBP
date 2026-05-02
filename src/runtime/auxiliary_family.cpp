@@ -629,13 +629,19 @@ std::optional<std::vector<std::string>> TryRenderGroupedLoopMomentumFactorTerms(
 std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLinearTerms(
     const ProblemSpec& spec,
     const SignedTerm& term,
-    const std::string& external_symbol) {
+    const std::string& external_symbol,
+    const std::string& coefficient_prefix,
+    const std::size_t remaining_nested_grouped_common_layers) {
   const std::string context = "reviewed lightlike linear auxiliary rewrite";
   const SplitSequence split = SplitTopLevelByOperators(term.expression, context, "*/");
 
   std::string grouped_linear_combination;
   std::ostringstream coefficient_expression;
   bool coefficient_started = false;
+  if (!coefficient_prefix.empty()) {
+    coefficient_expression << "(" << coefficient_prefix << ")";
+    coefficient_started = true;
+  }
 
   for (std::size_t index = 0; index < split.parts.size(); ++index) {
     const char separator = index == 0 ? '*' : split.separators[index - 1];
@@ -689,6 +695,22 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
   std::vector<std::string> rendered_terms;
   for (const SignedTerm& grouped_term :
        SplitTopLevelTerms(grouped_linear_combination, context)) {
+    if (remaining_nested_grouped_common_layers > 0) {
+      if (const std::optional<std::vector<std::string>> nested_grouped_terms =
+              TryRenderGroupedCommonCoefficientLoopLinearTerms(
+                  spec,
+                  grouped_term,
+                  external_symbol,
+                  common_coefficient,
+                  remaining_nested_grouped_common_layers - 1);
+          nested_grouped_terms.has_value()) {
+        rendered_terms.insert(rendered_terms.end(),
+                              nested_grouped_terms->begin(),
+                              nested_grouped_terms->end());
+        continue;
+      }
+    }
+
     if (const std::optional<std::vector<std::string>> grouped_loop_terms =
             TryRenderGroupedLoopMomentumFactorTerms(
                 spec, grouped_term, external_symbol, common_coefficient);
@@ -842,7 +864,7 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   bool saw_bilinear_term = false;
   for (const SignedTerm& term : terms) {
     if (const std::optional<std::vector<std::string>> grouped_terms =
-            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol);
+            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 1);
         grouped_terms.has_value()) {
       for (const std::string& grouped_term : *grouped_terms) {
         rendered_terms.push_back(grouped_term);

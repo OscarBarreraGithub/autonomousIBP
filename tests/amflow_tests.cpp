@@ -29301,6 +29301,42 @@ void SolveEtaGeneratedSeriesRejectsSContinuationSegmentBeforeDEConstructionTest(
          "reviewed singular segment");
 }
 
+void SolveEtaGeneratedSeriesRejectsMalformedSContinuationSegmentBeforeDEConstructionTest() {
+  const amflow::ProblemSpec spec = LoadK0SmokeProblemSpecForTests();
+  const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-malformed-s-segment-physical-kinematics"));
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      amflow::ParsedMasterList{},
+                                      decision,
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      layout.root / "bin" / "unused-kira.sh",
+                                      layout.root / "bin" / "unused-fermat.sh",
+                                      solver,
+                                      "s=5",
+                                      "foo",
+                                      MakeDistinctPrecisionPolicy(),
+                                      55,
+                                      "s");
+
+  Expect(!diagnostics.success &&
+             diagnostics.failure_code == "physical_kinematics_not_supported",
+         "Batch 62z should reject malformed direct eta-generated s segments before eta DE "
+         "construction");
+  ExpectContains(
+      diagnostics.summary,
+      "spell the reviewed s segment explicitly as s=...",
+      "Batch 62z should report explicit s guidance when direct eta-generated s segment "
+      "locations are malformed");
+  Expect(solver.call_count() == 0,
+         "Batch 62z should not call the solver when direct eta-generated s segment locations "
+         "are malformed");
+}
+
 void SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeThresholdNearMarginK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -48115,6 +48151,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsDeferredComplexReplayWhenReducerExecutableContentDriftsTest();
     SolveEtaGeneratedSeriesRejectsSingularPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsSContinuationSegmentBeforeDEConstructionTest();
+    SolveEtaGeneratedSeriesRejectsMalformedSContinuationSegmentBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsThresholdNearSingularPhysicalPointBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsEndpointNearSingularPhysicalPointBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesK0SmokePhysicalSurfaceReachesNextLayerTest();

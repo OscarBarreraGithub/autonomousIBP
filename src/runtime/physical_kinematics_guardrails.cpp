@@ -584,7 +584,8 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const std::string& invariant_name,
     const std::string& start_location,
     const std::string& target_location,
-    const bool allow_unlabeled_reviewed_raw_expressions) {
+    const bool allow_unlabeled_reviewed_raw_expressions,
+    const bool fail_on_malformed_reviewed_segment) {
   PhysicalKinematicsGuardrailAssessment assessment =
       AssessPhysicalKinematicsForBatch62(spec);
   if (assessment.verdict !=
@@ -632,6 +633,13 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
       assessment.detail =
           "non-explicit continuation locations remain unsupported on the reviewed multi-invariant "
           "msq surface; spell the reviewed msq segment explicitly as msq=...";
+    } else if (fail_on_malformed_reviewed_segment) {
+      assessment.verdict = PhysicalKinematicsGuardrailVerdict::UnsupportedSurface;
+      assessment.detail =
+          "malformed or unsupported direct eta-generated continuation locations remain "
+          "unsupported on the reviewed " +
+          invariant_name + " surface; spell the reviewed " + invariant_name +
+          " segment explicitly as " + invariant_name + "=...";
     }
     return assessment;
   }
@@ -751,6 +759,22 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     return assessment;
   }
   return assessment;
+}
+
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& invariant_name,
+    const std::string& start_location,
+    const std::string& target_location,
+    const bool allow_unlabeled_reviewed_raw_expressions) {
+  return AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+      spec,
+      invariant_name,
+      start_location,
+      target_location,
+      allow_unlabeled_reviewed_raw_expressions,
+      false);
 }
 
 PhysicalKinematicsGuardrailAssessment

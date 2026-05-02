@@ -4534,7 +4534,7 @@ std::optional<SolverDiagnostics> AssessGeneratedSolvePhysicalKinematics(
   const PhysicalKinematicsGuardrailAssessment assessment =
       (eta_symbol == "s" || eta_symbol == "t" || eta_symbol == "msq")
           ? AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
-                spec, eta_symbol, start_location, target_location, true)
+                spec, eta_symbol, start_location, target_location, true, true)
           : AssessPhysicalKinematicsForBatch62(spec);
   switch (assessment.verdict) {
     case PhysicalKinematicsGuardrailVerdict::NotApplicable:

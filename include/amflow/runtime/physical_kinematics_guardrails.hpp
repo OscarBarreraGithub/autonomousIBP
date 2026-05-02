@@ -32,6 +32,15 @@ AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
     const std::string& invariant_name,
     const std::string& start_location,
     const std::string& target_location,
+    bool allow_unlabeled_reviewed_raw_expressions,
+    bool fail_on_malformed_reviewed_segment);
+
+PhysicalKinematicsGuardrailAssessment
+AssessInvariantGeneratedPhysicalKinematicsSegmentForBatch62(
+    const ProblemSpec& spec,
+    const std::string& invariant_name,
+    const std::string& start_location,
+    const std::string& target_location,
     bool allow_unlabeled_reviewed_raw_expressions);
 
 PhysicalKinematicsGuardrailAssessment

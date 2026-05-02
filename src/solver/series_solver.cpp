@@ -3393,6 +3393,28 @@ std::string SerializeEtaContinuationPlanForSolveRequestFingerprint(
   return out.str();
 }
 
+std::string SerializeEtaContinuationPlanForReviewedContourFingerprint(
+    const EtaContinuationPlan& plan) {
+  std::ostringstream out;
+  out << "eta_symbol=" << plan.eta_symbol << "\n";
+  out << "start_location=" << plan.start_location << "\n";
+  out << "target_location=" << plan.target_location << "\n";
+  out << "half_plane=" << ToString(plan.half_plane) << "\n";
+  out << "contour_points=" << plan.contour_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.contour_points.size(); ++index) {
+    out << "contour_point[" << index << "]=" << plan.contour_points[index].ToString() << "\n";
+  }
+  out << "singular_points=" << plan.singular_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.singular_points.size(); ++index) {
+    const EtaContourSingularPoint& singular_point = plan.singular_points[index];
+    out << "singular_point[" << index << "].expression=" << singular_point.expression << "\n";
+    out << "singular_point[" << index << "].value=" << singular_point.value.ToString() << "\n";
+    out << "singular_point[" << index << "].branch_winding="
+        << singular_point.branch_winding << "\n";
+  }
+  return out.str();
+}
+
 std::string SerializeOptionalEtaContinuationPlanForFingerprint(
     const std::optional<EtaContinuationPlan>& eta_continuation_plan) {
   std::ostringstream out;
@@ -4135,6 +4157,17 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanEndpoin
            "start/target locations";
   }
   return std::nullopt;
+}
+
+std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanFingerprintRejectionReason(
+    const EtaContinuationPlan& plan) {
+  const std::string expected_fingerprint = ComputeArtifactFingerprint(
+      SerializeEtaContinuationPlanForReviewedContourFingerprint(plan));
+  if (plan.contour_fingerprint == expected_fingerprint) {
+    return std::nullopt;
+  }
+  return "default exact solver accepts eta_continuation_plan metadata only when the reviewed "
+         "contour fingerprint matches the exact plan metadata";
 }
 
 std::string BuildComplexEtaContinuationManifestRunId(const EtaContinuationPlan& plan) {
@@ -5080,6 +5113,13 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
     if (ledger_rejection_reason.has_value()) {
       return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
           variable_name, *live_request.eta_continuation_plan, *ledger_rejection_reason);
+    }
+    const std::optional<std::string> fingerprint_rejection_reason =
+        ReviewedDirectRealBootstrapEtaContinuationPlanFingerprintRejectionReason(
+            *live_request.eta_continuation_plan);
+    if (fingerprint_rejection_reason.has_value()) {
+      return MakeBootstrapEtaContinuationPlanDeferredDiagnostics(
+          variable_name, *live_request.eta_continuation_plan, *fingerprint_rejection_reason);
     }
   }
 

@@ -365,11 +365,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61x`
-  singular-ledger expression/value fail-closed guard after the earlier `Batch 61w`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61z`
+  stale direct-real contour-fingerprint guard after the earlier `Batch 61y` duplicate-endpoint
+  guard, `Batch 61x` singular-ledger expression/value fail-closed guard, `Batch 61w`
   unfingerprinted-plan guard, `Batch 61v` non-real singular-ledger guard, and `Batch 61u`
-  direct-plan
-  location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
+  direct-plan location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
   plus the `Batch 62v` raw-`msq`, `Batch 62w` raw-`t`, and `Batch 62x` raw-`s` guardrail
   retirements are still narrow:
   explicit complex kinematics
@@ -377,7 +377,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   generated-wrapper solver surface still defers with explicit `unsupported_solver_path`
   diagnostics, and the reviewed helper deferred/cache replay remains limited to that non-opt-in
   subset. The default exact solver accepts only distinct direct real two-point
-  `eta_continuation_plan` metadata with a non-empty reviewed contour fingerprint on its
+  `eta_continuation_plan` metadata with a non-empty reviewed contour fingerprint that exactly
+  matches the direct plan metadata on its
   already-reviewed exact path, now including evaluated
   ledgerless system-declared singular surfaces only when every declared singular point evaluates
   exactly to a real point off the direct real segment or exactly to the distinct singular target
@@ -389,7 +390,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   point; every ledger value is real on the reviewed direct path; every recorded branch winding is
   zero; and each evaluated ledger point is either off the direct real segment or exactly the
   distinct singular target endpoint on the reviewed mixed exact path. It still rejects actual
-  contour detours, duplicate direct-real contour endpoints, stale or value-mismatched ledgers,
+  contour detours, stale direct-real contour fingerprints, duplicate direct-real contour endpoints,
+  stale or value-mismatched ledgers,
   ledgerless interior on-segment, stale target-endpoint, or non-real singular declarations,
   nonzero branch windings, singular starts or interior on-path ledgers, or complex endpoints, while the
   direct eta-generated, eta-mode-planned, and planned `AmfOptions` helper handoffs now add one

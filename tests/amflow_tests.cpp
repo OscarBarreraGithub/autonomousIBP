@@ -14996,6 +14996,34 @@ void PrecisionRetryControllerPreservesNonRetryableFailureTest() {
          "precision retry controller should preserve non-retryable solver diagnostics unchanged");
 }
 
+std::string SerializeBootstrapEtaContinuationPlanForFingerprintForTests(
+    const amflow::EtaContinuationPlan& plan) {
+  std::ostringstream out;
+  out << "eta_symbol=" << plan.eta_symbol << "\n";
+  out << "start_location=" << plan.start_location << "\n";
+  out << "target_location=" << plan.target_location << "\n";
+  out << "half_plane=" << amflow::ToString(plan.half_plane) << "\n";
+  out << "contour_points=" << plan.contour_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.contour_points.size(); ++index) {
+    out << "contour_point[" << index << "]=" << plan.contour_points[index].ToString() << "\n";
+  }
+  out << "singular_points=" << plan.singular_points.size() << "\n";
+  for (std::size_t index = 0; index < plan.singular_points.size(); ++index) {
+    const amflow::EtaContourSingularPoint& singular_point = plan.singular_points[index];
+    out << "singular_point[" << index << "].expression=" << singular_point.expression << "\n";
+    out << "singular_point[" << index << "].value=" << singular_point.value.ToString() << "\n";
+    out << "singular_point[" << index << "].branch_winding="
+        << singular_point.branch_winding << "\n";
+  }
+  return out.str();
+}
+
+void RefreshBootstrapEtaContinuationPlanFingerprintForTests(
+    amflow::EtaContinuationPlan& plan) {
+  plan.contour_fingerprint = amflow::ComputeArtifactFingerprint(
+      SerializeBootstrapEtaContinuationPlanForFingerprintForTests(plan));
+}
+
 amflow::EtaContinuationPlan MakeBootstrapEtaContinuationPlanForTests(
     const std::string& start_location,
     const std::string& target_location) {
@@ -15011,7 +15039,7 @@ amflow::EtaContinuationPlan MakeBootstrapEtaContinuationPlanForTests(
   plan.target_location = target_location;
   plan.half_plane = amflow::EtaContourHalfPlane::Upper;
   plan.contour_points = {start_point, target_point};
-  plan.contour_fingerprint = "bootstrap-default-complex-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(plan);
   return plan;
 }
 
@@ -15083,6 +15111,30 @@ void BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTes
                  "empty contour-fingerprint field");
 }
 
+void BootstrapSeriesSolverRejectsStaleDirectRealEtaContinuationPlanContourFingerprintTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-stale-direct-real-contour-fingerprint-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap stale eta-continuation-plan fingerprint coverage should fail closed before "
+         "the default exact solver consumes stale plan metadata");
+  ExpectContains(diagnostics.summary,
+                 "contour fingerprint matches the exact plan metadata",
+                 "bootstrap stale eta-continuation-plan fingerprint coverage should explain "
+                 "the exact plan/fingerprint requirement");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap stale eta-continuation-plan fingerprint coverage should report the "
+                 "caller-supplied contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsDuplicateEndpointDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -15118,8 +15170,7 @@ void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpoi
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
   request.eta_continuation_plan->contour_points.front().real = {"0", "2"};
   request.eta_continuation_plan->contour_points.back().real = {"2", "2"};
-  request.eta_continuation_plan->contour_fingerprint =
-      "bootstrap-value-matched-direct-real-endpoints-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
@@ -15141,8 +15192,7 @@ void BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocati
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
   request.eta_continuation_plan->start_location = "eta=0/2";
   request.eta_continuation_plan->target_location = "eta=2/2";
-  request.eta_continuation_plan->contour_fingerprint =
-      "bootstrap-value-matched-direct-real-location-metadata-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
@@ -15189,8 +15239,6 @@ void BootstrapSeriesSolverAcceptsLedgerlessOffPathDirectRealEtaContinuationPlanT
   amflow::SolveRequest request = baseline_request;
   request.eta_continuation_plan =
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
-  request.eta_continuation_plan->contour_fingerprint =
-      "bootstrap-ledgerless-off-path-direct-real-plan";
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
@@ -15223,8 +15271,7 @@ void BootstrapSeriesSolverAcceptsLedgerlessTargetEndpointDirectRealEtaContinuati
   target_point.real = {"0", "1"};
   target_point.imaginary = {"0", "1"};
   plan.contour_points = {start_point, target_point};
-  plan.contour_fingerprint =
-      "bootstrap-ledgerless-target-endpoint-direct-real-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(plan);
   request.eta_continuation_plan = plan;
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
@@ -15250,8 +15297,7 @@ void BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest() 
   request.eta_continuation_plan->singular_points = {
       MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
   };
-  request.eta_continuation_plan->contour_fingerprint =
-      "bootstrap-zero-winding-direct-real-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
@@ -15276,8 +15322,7 @@ void BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedge
       MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
   };
   request.eta_continuation_plan->singular_points.front().value.real = {"4", "2"};
-  request.eta_continuation_plan->contour_fingerprint =
-      "bootstrap-value-matched-zero-winding-ledger-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
@@ -15375,8 +15420,7 @@ void BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLed
       MakeBootstrapEtaContourSingularPointForTests("eta=0", "0", 0);
   target_singular_point.value = target_point;
   plan.singular_points = {target_singular_point};
-  plan.contour_fingerprint =
-      "bootstrap-target-endpoint-zero-winding-ledger-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(plan);
   request.eta_continuation_plan = plan;
 
   const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
@@ -48566,6 +48610,7 @@ int main() {
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest();
+    BootstrapSeriesSolverRejectsStaleDirectRealEtaContinuationPlanContourFingerprintTest();
     BootstrapSeriesSolverRejectsDuplicateEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocationMetadataTest();

@@ -12988,6 +12988,30 @@ void Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminal
          "ProblemSpec diagnostics behind stale terminal-node validation");
 }
 
+void Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNodesTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "StaleScheme";
+  decision.terminal_nodes = {"stale::eta->infinity"};
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(spec,
+                                                                            decision,
+                                                                            ""));
+      },
+      "Batch 65j planned eta->infinity boundary generation should reject empty eta_symbol "
+      "before terminal-node validation");
+
+  Expect(message.find("eta_symbol must not be empty") != std::string::npos,
+         "Batch 65j planned eta->infinity boundary generation should preserve the empty "
+         "eta_symbol diagnostic");
+  Expect(message.find("unsupported extra terminal node") == std::string::npos,
+         "Batch 65j planned eta->infinity boundary generation should not mask empty "
+         "eta_symbol diagnostics behind stale terminal-node validation");
+}
+
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
@@ -47672,6 +47696,7 @@ int main() {
     Batch65hPlannedEtaInfinityTrimsTerminalNodeWhitespaceTest();
     Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest();
     Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminalNodesTest();
+    Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNodesTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();
     Batch63tPlannedCutkoskyProviderHelperMatchesManualCompositionTest();

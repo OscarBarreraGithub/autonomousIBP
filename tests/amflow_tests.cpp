@@ -44586,6 +44586,12 @@ void CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest() {
   ExpectContains(result.stdout_json, "\"matching_case_study_numeric_summary_passes\": true",
                  "case-study numeric comparison self-check should keep matching synthetic "
                  "case-study numerics on the passing path");
+  ExpectContains(result.stdout_json, "\"numeric_profile_label_maps_preserved\": true",
+                 "case-study numeric comparison self-check should preserve per-family profile "
+                 "label maps");
+  ExpectContains(result.stdout_json, "\"numeric_profile_label_drift_preserved\": true",
+                 "case-study numeric comparison self-check should preserve drifted profile "
+                 "labels on the blocked metadata path");
   ExpectContains(result.stdout_json,
                  "\"case_study_numeric_summary_feeds_case_study_qualification\": true",
                  "case-study numeric comparison self-check should emit the numeric-summary "
@@ -44659,6 +44665,14 @@ void CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest() {
                  "case-study numeric comparison summary should keep the singular case-study "
                  "family visible");
   ExpectContains(numeric_result.stdout_json,
+                 "\"case_study_digit_threshold_profiles_by_family\": {",
+                 "case-study numeric comparison summary should publish digit profile labels by "
+                 "family");
+  ExpectContains(numeric_result.stdout_json,
+                 "\"one-singular-endpoint-case\": \"core-package-family-default\"",
+                 "case-study numeric comparison summary should preserve the singular "
+                 "case-study profile label");
+  ExpectContains(numeric_result.stdout_json,
                  "\"case-study numeric evidence missing for package-double-box\"",
                  "case-study numeric comparison summary should report missing matrix-only "
                  "case-study evidence explicitly");
@@ -44691,6 +44705,13 @@ void CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest() {
                  "\"case-study numeric summary is missing selected families\"",
                  "case-study qualification verdict should preserve the numeric evidence blocker "
                  "from the summary");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"case_study_numeric_digit_threshold_profiles_by_family\": {",
+                 "case-study qualification verdict should preserve numeric digit profile maps");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"numeric_profile_label_maps_match_readiness\": true",
+                 "case-study qualification verdict should audit numeric profile maps against "
+                 "readiness metadata");
   ExpectContains(qualification_result.stdout_json, "\"case_study_families_qualified\": false",
                  "case-study qualification verdict should not overclaim qualification after "
                  "consuming the blocked numeric summary");
@@ -44736,6 +44757,9 @@ void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceT
   ExpectContains(result.stdout_json, "\"numeric_family_metadata_drift_rejected\": true",
                  "case-study-family qualification self-check should reject contradictory "
                  "per-family numeric metadata");
+  ExpectContains(result.stdout_json, "\"numeric_profile_label_maps_preserved\": true",
+                 "case-study-family qualification self-check should preserve numeric profile "
+                 "label maps");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "case-study-family qualification self-check should write the synthetic summary "
                  "output");
@@ -44840,6 +44864,9 @@ void MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest() {
   ExpectContains(result.stdout_json, "\"case_study_profiles_preserved\": true",
                  "Milestone M6 qualification self-check should preserve case-study profile "
                  "values and scaffold labels");
+  ExpectContains(result.stdout_json, "\"case_study_numeric_profile_maps_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve case-study numeric "
+                 "profile label maps");
   ExpectContains(result.stdout_json,
                  "\"phase0_and_case_study_blockers_preserved\": true",
                  "Milestone M6 qualification self-check should keep both subverdict blocker "

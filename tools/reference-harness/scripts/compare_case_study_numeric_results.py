@@ -97,6 +97,9 @@ def summarize_case_study_numeric_comparison(
     missing_case_study_numeric_ids: list[str] = []
     minimum_digits: dict[str, int] = {}
     family_summaries: list[dict[str, Any]] = []
+    digit_threshold_profiles_by_family: dict[str, str] = {}
+    failure_code_profiles_by_family: dict[str, str] = {}
+    regression_profiles_by_family: dict[str, str] = {}
     blocking_reasons: list[str] = []
     all_comparisons_pass = True
     all_digit_thresholds_pass = True
@@ -107,6 +110,20 @@ def summarize_case_study_numeric_comparison(
     for family in families:
         family_id = family["id"]
         evidence = evidence_by_id.get(family_id)
+        digit_threshold_profile = (
+            family["digit_threshold_profile"]
+            if evidence is None
+            else evidence["digit_threshold_profile"]
+        )
+        failure_code_profile = (
+            family["failure_code_profile"] if evidence is None else evidence["failure_code_profile"]
+        )
+        regression_profile = (
+            family["regression_profile"] if evidence is None else evidence["regression_profile"]
+        )
+        digit_threshold_profiles_by_family[family_id] = digit_threshold_profile
+        failure_code_profiles_by_family[family_id] = failure_code_profile
+        regression_profiles_by_family[family_id] = regression_profile
         if evidence is None:
             missing_case_study_numeric_ids.append(family_id)
             minimum_digits[family_id] = 0
@@ -122,15 +139,16 @@ def summarize_case_study_numeric_comparison(
                     "digit_threshold_met": False,
                     "comparison_passed": False,
                     "metadata_matches_readiness": False,
+                    "digit_threshold_profile": digit_threshold_profile,
+                    "failure_code_profile": failure_code_profile,
+                    "regression_profile": regression_profile,
                 }
             )
             continue
 
-        digit_profile_matches = (
-            evidence["digit_threshold_profile"] == family["digit_threshold_profile"]
-        )
-        failure_profile_matches = evidence["failure_code_profile"] == family["failure_code_profile"]
-        regression_profile_matches = evidence["regression_profile"] == family["regression_profile"]
+        digit_profile_matches = digit_threshold_profile == family["digit_threshold_profile"]
+        failure_profile_matches = failure_code_profile == family["failure_code_profile"]
+        regression_profile_matches = regression_profile == family["regression_profile"]
         metadata_matches = (
             digit_profile_matches and failure_profile_matches and regression_profile_matches
         )
@@ -170,6 +188,9 @@ def summarize_case_study_numeric_comparison(
                 "digit_threshold_met": threshold_met,
                 "comparison_passed": evidence["comparison_passed"],
                 "metadata_matches_readiness": metadata_matches,
+                "digit_threshold_profile": digit_threshold_profile,
+                "failure_code_profile": failure_code_profile,
+                "regression_profile": regression_profile,
                 "evidence_path": evidence["path"],
             }
         )
@@ -204,6 +225,9 @@ def summarize_case_study_numeric_comparison(
         "case_study_numeric_comparison_passed": case_study_numeric_comparison_passed,
         "all_case_studies_meet_digit_thresholds": all_case_studies_meet_digit_thresholds,
         "minimum_observed_correct_digits_by_case_study": minimum_digits,
+        "case_study_digit_threshold_profiles_by_family": digit_threshold_profiles_by_family,
+        "case_study_failure_code_profiles_by_family": failure_code_profiles_by_family,
+        "case_study_regression_profiles_by_family": regression_profiles_by_family,
         "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
         "digit_threshold_profiles_reported": digit_threshold_profiles_reported,
         "required_failure_code_profiles_reported": required_failure_code_profiles_reported,
@@ -344,6 +368,31 @@ def run_self_check() -> dict[str, Any]:
                 matching_summary["case_study_numeric_comparison_passed"]
                 and matching_summary["all_case_studies_meet_digit_thresholds"]
                 and not matching_summary["missing_case_study_numeric_ids"]
+            ),
+            "numeric_profile_label_maps_preserved": (
+                matching_summary["case_study_digit_threshold_profiles_by_family"]["ttbar-h"]
+                == "2024-tth-light-quark-loop-mi"
+                and matching_summary["case_study_digit_threshold_profiles_by_family"][
+                    "package-double-box"
+                ]
+                == "core-package-family-default"
+                and matching_summary["case_study_failure_code_profiles_by_family"]["ttbar-h"]
+                == "default-required-failure-codes"
+                and matching_summary["case_study_regression_profiles_by_family"][
+                    "package-double-box"
+                ]
+                == "current-reviewed-regressions"
+                and matching_summary["case_study_numeric_family_summaries"][0][
+                    "digit_threshold_profile"
+                ]
+                == "2024-tth-light-quark-loop-mi"
+            ),
+            "numeric_profile_label_drift_preserved": (
+                metadata_drift_summary["case_study_digit_threshold_profiles_by_family"][
+                    "ttbar-h"
+                ]
+                == "core-package-family-default"
+                and not metadata_drift_summary["digit_threshold_profiles_reported"]
             ),
             "case_study_numeric_summary_feeds_case_study_qualification": qualified_summary[
                 "case_study_families_qualified"

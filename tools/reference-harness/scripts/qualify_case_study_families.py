@@ -48,6 +48,14 @@ def normalize_bool(raw: Any, label: str) -> bool:
     return raw
 
 
+def normalize_nonempty_string(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    value = raw.strip()
+    expect(value, f"{label} must not be empty")
+    return value
+
+
 def normalize_nonnegative_int(raw: Any, label: str) -> int:
     if not isinstance(raw, int):
         raise TypeError(f"{label} must be an int")
@@ -59,6 +67,19 @@ def normalize_positive_int(raw: Any, label: str) -> int:
     value = normalize_nonnegative_int(raw, label)
     expect(value > 0, f"{label} must be positive")
     return value
+
+
+def normalize_string_map(raw: Any, label: str) -> dict[str, str]:
+    if not isinstance(raw, dict):
+        raise TypeError(f"{label} must be an object")
+    values: dict[str, str] = {}
+    for key, value in raw.items():
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError(f"{label} keys must be non-empty strings")
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{label} values must be non-empty strings")
+        values[key.strip()] = value.strip()
+    return values
 
 
 def load_case_study_readiness_summary(summary_path: Path) -> dict[str, Any]:
@@ -234,6 +255,36 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
         set(missing_case_study_numeric_ids).issubset(set(compared_case_study_ids)),
         "case-study numeric summary missing ids must be a subset of compared_case_study_ids",
     )
+    digit_threshold_profiles_by_family = normalize_string_map(
+        summary.get("case_study_digit_threshold_profiles_by_family"),
+        "case-study numeric summary case_study_digit_threshold_profiles_by_family",
+    )
+    failure_code_profiles_by_family = normalize_string_map(
+        summary.get("case_study_failure_code_profiles_by_family"),
+        "case-study numeric summary case_study_failure_code_profiles_by_family",
+    )
+    regression_profiles_by_family = normalize_string_map(
+        summary.get("case_study_regression_profiles_by_family"),
+        "case-study numeric summary case_study_regression_profiles_by_family",
+    )
+    for label, profile_map in [
+        (
+            "case-study numeric summary digit-threshold profile labels",
+            digit_threshold_profiles_by_family,
+        ),
+        (
+            "case-study numeric summary failure-code profile labels",
+            failure_code_profiles_by_family,
+        ),
+        (
+            "case-study numeric summary regression profile labels",
+            regression_profiles_by_family,
+        ),
+    ]:
+        expect(
+            set(profile_map) == set(compared_case_study_ids),
+            f"{label} must match compared_case_study_ids",
+        )
 
     raw_family_summaries = summary.get("case_study_numeric_family_summaries", [])
     if not isinstance(raw_family_summaries, list):
@@ -279,6 +330,18 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
                     raw.get("metadata_matches_readiness"),
                     f"case-study numeric summary {family_id} metadata_matches_readiness",
                 ),
+                "digit_threshold_profile": normalize_nonempty_string(
+                    raw.get("digit_threshold_profile"),
+                    f"case-study numeric summary {family_id} digit_threshold_profile",
+                ),
+                "failure_code_profile": normalize_nonempty_string(
+                    raw.get("failure_code_profile"),
+                    f"case-study numeric summary {family_id} failure_code_profile",
+                ),
+                "regression_profile": normalize_nonempty_string(
+                    raw.get("regression_profile"),
+                    f"case-study numeric summary {family_id} regression_profile",
+                ),
                 "evidence_path": str(raw.get("evidence_path", "")).strip(),
             }
         )
@@ -293,6 +356,21 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
             family["minimum_observed_correct_digits"] == minimum_digits[family_id],
             "case-study numeric summary family observed digits must match "
             "minimum_observed_correct_digits_by_case_study",
+        )
+        expect(
+            family["digit_threshold_profile"] == digit_threshold_profiles_by_family[family_id],
+            "case-study numeric summary family digit-threshold profile label must match "
+            "case_study_digit_threshold_profiles_by_family",
+        )
+        expect(
+            family["failure_code_profile"] == failure_code_profiles_by_family[family_id],
+            "case-study numeric summary family failure-code profile label must match "
+            "case_study_failure_code_profiles_by_family",
+        )
+        expect(
+            family["regression_profile"] == regression_profiles_by_family[family_id],
+            "case-study numeric summary family regression profile label must match "
+            "case_study_regression_profiles_by_family",
         )
         if family_id in missing_case_study_numeric_ids:
             expect(
@@ -328,6 +406,9 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
         "blocking_reasons": blocking_reasons,
         "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
         "minimum_observed_correct_digits_by_case_study": minimum_digits,
+        "case_study_digit_threshold_profiles_by_family": digit_threshold_profiles_by_family,
+        "case_study_failure_code_profiles_by_family": failure_code_profiles_by_family,
+        "case_study_regression_profiles_by_family": regression_profiles_by_family,
         "case_study_numeric_family_summaries": family_summaries,
         "numeric_family_metadata_matches_readiness": family_metadata_matches_readiness,
     }
@@ -390,9 +471,13 @@ def summarize_case_study_qualification(
     digit_threshold_profiles_reported = False
     required_failure_code_profiles_reported = False
     regression_profiles_reported = False
+    numeric_digit_threshold_profiles_by_family: dict[str, str] = {}
+    numeric_failure_code_profiles_by_family: dict[str, str] = {}
+    numeric_regression_profiles_by_family: dict[str, str] = {}
     numeric_blocking_reasons: list[str] = []
     case_study_numeric_family_summaries: list[dict[str, Any]] = []
     numeric_family_metadata_matches_readiness = False
+    numeric_profile_label_maps_match_readiness = False
 
     if case_study_numeric_summary_path is not None:
         numeric_summary = load_case_study_numeric_summary(case_study_numeric_summary_path)
@@ -416,6 +501,44 @@ def summarize_case_study_qualification(
             "required_failure_code_profiles_reported"
         ]
         regression_profiles_reported = numeric_summary["regression_profiles_reported"]
+        numeric_digit_threshold_profiles_by_family = numeric_summary[
+            "case_study_digit_threshold_profiles_by_family"
+        ]
+        numeric_failure_code_profiles_by_family = numeric_summary[
+            "case_study_failure_code_profiles_by_family"
+        ]
+        numeric_regression_profiles_by_family = numeric_summary[
+            "case_study_regression_profiles_by_family"
+        ]
+        expected_digit_threshold_profiles = {
+            family["id"]: family["digit_threshold_profile"]
+            for family in readiness_summary["case_study_families"]
+        }
+        expected_failure_code_profiles = {
+            family["id"]: family["failure_code_profile"]
+            for family in readiness_summary["case_study_families"]
+        }
+        expected_regression_profiles = {
+            family["id"]: family["regression_profile"]
+            for family in readiness_summary["case_study_families"]
+        }
+        digit_threshold_profiles_reported = (
+            digit_threshold_profiles_reported
+            and numeric_digit_threshold_profiles_by_family == expected_digit_threshold_profiles
+        )
+        required_failure_code_profiles_reported = (
+            required_failure_code_profiles_reported
+            and numeric_failure_code_profiles_by_family == expected_failure_code_profiles
+        )
+        regression_profiles_reported = (
+            regression_profiles_reported
+            and numeric_regression_profiles_by_family == expected_regression_profiles
+        )
+        numeric_profile_label_maps_match_readiness = (
+            numeric_digit_threshold_profiles_by_family == expected_digit_threshold_profiles
+            and numeric_failure_code_profiles_by_family == expected_failure_code_profiles
+            and numeric_regression_profiles_by_family == expected_regression_profiles
+        )
         numeric_blocking_reasons = numeric_summary["blocking_reasons"]
         case_study_numeric_family_summaries = numeric_summary[
             "case_study_numeric_family_summaries"
@@ -500,9 +623,17 @@ def summarize_case_study_qualification(
         "case_study_numeric_comparison_passed": case_study_numeric_comparison_passed,
         "all_case_studies_meet_digit_thresholds": all_case_studies_meet_digit_thresholds,
         "minimum_observed_correct_digits_by_case_study": minimum_observed_correct_digits_by_case_study,
+        "case_study_numeric_digit_threshold_profiles_by_family": (
+            numeric_digit_threshold_profiles_by_family
+        ),
+        "case_study_numeric_failure_code_profiles_by_family": (
+            numeric_failure_code_profiles_by_family
+        ),
+        "case_study_numeric_regression_profiles_by_family": numeric_regression_profiles_by_family,
         "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
         "numeric_metadata_coherent": numeric_metadata_coherent,
         "numeric_family_metadata_matches_readiness": numeric_family_metadata_matches_readiness,
+        "numeric_profile_label_maps_match_readiness": numeric_profile_label_maps_match_readiness,
         "digit_threshold_profiles_reported": digit_threshold_profiles_reported,
         "required_failure_code_profiles_reported": required_failure_code_profiles_reported,
         "regression_profiles_reported": regression_profiles_reported,
@@ -616,8 +747,21 @@ def write_synthetic_numeric_summary(
         family_id: 0 if family_id in missing_ids else 100 for family_id in case_study_ids
     }
     family_summaries: list[dict[str, Any]] = []
+    digit_threshold_profiles: dict[str, str] = {}
+    failure_code_profiles: dict[str, str] = {}
+    regression_profiles: dict[str, str] = {}
     for family_id in case_study_ids:
         missing = family_id in missing_ids
+        digit_threshold_profile = (
+            "2024-tth-light-quark-loop-mi"
+            if family_id == "ttbar-h"
+            else "core-package-family-default"
+        )
+        failure_code_profile = "default-required-failure-codes"
+        regression_profile = "current-reviewed-regressions"
+        digit_threshold_profiles[family_id] = digit_threshold_profile
+        failure_code_profiles[family_id] = failure_code_profile
+        regression_profiles[family_id] = regression_profile
         family_summaries.append(
             {
                 "id": family_id,
@@ -633,6 +777,9 @@ def write_synthetic_numeric_summary(
                 "digit_threshold_met": (not missing) and meets_digit_thresholds,
                 "comparison_passed": (not missing) and passes_comparison,
                 "metadata_matches_readiness": family_metadata_matches_readiness,
+                "digit_threshold_profile": digit_threshold_profile,
+                "failure_code_profile": failure_code_profile,
+                "regression_profile": regression_profile,
                 "evidence_path": "" if missing else f"/synthetic/{family_id}.json",
             }
         )
@@ -645,6 +792,9 @@ def write_synthetic_numeric_summary(
             "case_study_numeric_comparison_passed": passes_comparison,
             "all_case_studies_meet_digit_thresholds": meets_digit_thresholds,
             "minimum_observed_correct_digits_by_case_study": minimum_digits,
+            "case_study_digit_threshold_profiles_by_family": digit_threshold_profiles,
+            "case_study_failure_code_profiles_by_family": failure_code_profiles,
+            "case_study_regression_profiles_by_family": regression_profiles,
             "missing_case_study_numeric_ids": missing_ids,
             "digit_threshold_profiles_reported": family_metadata_matches_readiness,
             "required_failure_code_profiles_reported": family_metadata_matches_readiness,
@@ -774,6 +924,21 @@ def run_self_check() -> dict[str, Any]:
             ),
             "case_study_id_drift_rejected": case_study_id_drift_rejected,
             "numeric_family_metadata_drift_rejected": numeric_family_metadata_drift_rejected,
+            "numeric_profile_label_maps_preserved": (
+                matching_summary["case_study_numeric_digit_threshold_profiles_by_family"][
+                    "ttbar-h"
+                ]
+                == "2024-tth-light-quark-loop-mi"
+                and matching_summary["case_study_numeric_failure_code_profiles_by_family"][
+                    "package-double-box"
+                ]
+                == "default-required-failure-codes"
+                and matching_summary["case_study_numeric_regression_profiles_by_family"][
+                    "ttbar-h"
+                ]
+                == "current-reviewed-regressions"
+                and matching_summary["numeric_profile_label_maps_match_readiness"]
+            ),
             "summary_written": summary_path.exists(),
         }
 

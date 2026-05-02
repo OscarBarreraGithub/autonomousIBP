@@ -134,13 +134,15 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `tools/reference-harness/scripts/compare_case_study_numeric_results.py` now produces the first
   `case-study-numerics` summary for that verdict from explicit numeric evidence sidecars: it
   checks sidecar family ids and scaffold digit/failure/regression profiles against the readiness
-  contract, reports missing evidence and threshold failures, and does not launch the runtime or
+  contract, publishes the numeric sidecar's per-family scaffold profile-label maps for downstream
+  audit, reports missing evidence and threshold failures, and does not launch the runtime or
   generate numerics.
   `tools/reference-harness/scripts/qualify_case_study_families.py` now consumes that readiness
   summary plus an optional case-study numeric summary and writes one blocked/pass
   case-study-family qualification verdict. It fail-closes unless the numeric summary's
   per-family rows match the compared case-study ids, preserve the observed-digit map, and keep
-  non-missing rows aligned with the top-level digit/failure/regression profile-coherence booleans.
+  non-missing rows aligned with the top-level digit/failure/regression profile-coherence booleans
+  plus the published numeric profile-label maps.
   In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
   absence of compared case-study numerics explicit, keeps the phase-0 verdict prerequisite
   separate, and does not mark `Milestone M6` complete.
@@ -149,8 +151,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   summary. It requires both subverdicts to pass, requires pending phase-0 runtime-lane blockers
   to be closed, preserves the subverdict blocker lists, blocked runtime lanes, phase-0
   per-benchmark digit/failure-code/regression profiles and profile labels, and case-study-family
-  digit/failure-code/regression profiles and profile labels, and does not launch runtime work or claim
-  `Milestone M7` / release readiness.
+  digit/failure-code/regression profiles, profile labels, and numeric profile-label maps when
+  present, and does not launch runtime work or claim `Milestone M7` / release readiness.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, the comparator
   and scorer helpers still do not inspect candidate failure-code behavior, the packet-level and
   packet-set failure-code audits check only published audit sidecars against the frozen scaffold,

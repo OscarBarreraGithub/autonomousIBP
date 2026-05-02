@@ -303,9 +303,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   `qualification_case_study_readiness.py` summary plus an optional case-study numeric
   summary, fail-closes if the numeric summary's case-study ids drift from the readiness summary,
   fail-closes if the numeric summary's non-missing per-family metadata rows contradict the
-  top-level digit/failure/regression profile-coherence booleans, and in the current retained repo
-  state preserves both the singular case-study runtime-lane blocker and the missing case-study
-  numeric evidence without claiming `Milestone M6` closure.
+  top-level digit/failure/regression profile-coherence booleans or the published numeric
+  profile-label maps, and in the current retained repo state preserves both the singular
+  case-study runtime-lane blocker and the missing case-study numeric evidence without claiming
+  `Milestone M6` closure.
 - `tools/reference-harness/scripts/qualify_milestone_m6.py` is the first Milestone M6
   qualification verdict composer: it consumes the reviewed phase-0 packet-set verdict plus the
   reviewed case-study-family verdict, requires both to pass, requires pending phase-0 runtime-lane
@@ -316,9 +317,9 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 - `tools/reference-harness/scripts/compare_case_study_numeric_results.py` is the first
   case-study numeric summary producer for that verdict: it consumes the reviewed case-study
   readiness summary plus explicit numeric evidence sidecars, validates the family ids and frozen
-  digit/failure/regression profiles, and reports missing sidecars, comparison failures, and
-  correct-digit threshold failures without launching the runtime or claiming `Milestone M6`
-  closure.
+  digit/failure/regression profiles, preserves per-family numeric profile-label maps, and reports
+  missing sidecars, comparison failures, and correct-digit threshold failures without launching
+  the runtime or claiming `Milestone M6` closure.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
   can also consume the retained phase-0 packet-set qualification verdict, the retained
@@ -367,7 +368,8 @@ packet-set qualification verdict, the case-study-family qualification verdict, a
 qualification composer all remain narrower than release qualification closure: the
 scorers compare retained numerics but do not audit candidate failure-code behavior, the
 failure-code audits check only the published candidate audit sidecars against the frozen
-scaffold, the case-study numeric producer only summarizes explicit sidecars and missing evidence,
+scaffold, the case-study numeric producer only summarizes explicit sidecars, their profile-label
+maps, and missing evidence,
 the phase-0 qualification verdict keeps case-study numerics withheld explicitly, the
 case-study-family qualification verdict keeps phase-0 closure separate and remains blocked on the
 current singular runtime lane plus missing case-study numeric evidence, and the M6 composer keeps

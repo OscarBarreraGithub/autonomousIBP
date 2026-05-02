@@ -183,6 +183,10 @@ void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
     const ProblemSpec& spec,
     const EtaInsertionDecision& decision,
     const std::string& helper_name) {
+  if (Trim(decision.mode_name).empty()) {
+    throw std::invalid_argument(
+        helper_name + " requires a non-empty eta-mode decision name");
+  }
   if (decision.selected_propagators.size() != decision.selected_propagator_indices.size()) {
     throw std::invalid_argument(
         helper_name + " requires selected propagator expression count to match selected index "

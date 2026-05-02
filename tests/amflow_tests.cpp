@@ -39410,6 +39410,95 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsDuplicateSelectedPropagatorIndice
          "exact solver");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision empty_name_decision;
+  empty_name_decision.mode_name = "";
+  empty_name_decision.selected_propagator_indices = {0};
+  empty_name_decision.selected_propagators = {
+      spec.family.propagators.at(0).expression,
+  };
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"CustomMode"};
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-empty-mode-name"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            empty_name_decision,
+            amf_options,
+            "amf-options-resolved-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires a non-empty eta-mode decision name",
+      "generic planned AmfOptions helper should reject an empty eta-mode decision name before "
+      "reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "generic planned AmfOptions empty mode-name coverage should not write manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "generic planned AmfOptions empty mode-name coverage should not create cache "
+         "artifacts");
+  Expect(solver.call_count() == 0,
+         "generic planned AmfOptions empty mode-name coverage should not call the exact "
+         "solver");
+
+  empty_name_decision.mode_name = " \t ";
+  const amflow::ArtifactLayout whitespace_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-whitespace-mode-name"));
+  RecordingSeriesSolver whitespace_solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            empty_name_decision,
+            amf_options,
+            "amf-options-resolved-eta-mode-series",
+            MakeKiraReductionOptions(),
+            whitespace_layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            whitespace_solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires a non-empty eta-mode decision name",
+      "generic planned AmfOptions helper should reject a whitespace-only eta-mode decision name "
+      "before reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(whitespace_layout.manifests_dir) == 0,
+         "generic planned AmfOptions whitespace mode-name coverage should not write "
+         "manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(whitespace_layout)) == 0,
+         "generic planned AmfOptions whitespace mode-name coverage should not create cache "
+         "artifacts");
+  Expect(whitespace_solver.call_count() == 0,
+         "generic planned AmfOptions whitespace mode-name coverage should not call the exact "
+         "solver");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::ParsedMasterList master_basis;
@@ -48882,6 +48971,7 @@ int main() {
     SolvePlannedResolvedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsDuplicateSelectedPropagatorIndicesTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest();

@@ -270,10 +270,12 @@ python3 tools/reference-harness/scripts/qualify_case_study_families.py \
 
 Add `--case-study-numeric-summary` for the case-study numeric comparison summary and
 `--summary-path` if you want the JSON verdict written to disk as well as printed to stdout.
-The helper fail-closes if the case-study ids drift across the readiness and numeric summaries.
-In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
-absence of compared case-study numerics visible, keeps the phase-0 verdict prerequisite separate,
-and does not claim that `Milestone M6` is passing.
+The helper fail-closes if the case-study ids drift across the readiness and numeric summaries,
+if the numeric summary's per-family rows drift from the observed-digit map, or if those rows
+contradict the top-level digit/failure/regression profile-coherence booleans for non-missing
+evidence. In the current retained repo state it keeps the singular case-study runtime-lane blocker
+and the absence of compared case-study numerics visible, keeps the phase-0 verdict prerequisite
+separate, and does not claim that `Milestone M6` is passing.
 
 To compose the reviewed phase-0 and case-study verdicts into the first M6-scoped blocked/pass
 summary:
@@ -571,8 +573,9 @@ The capture script writes:
   phase-0 packet set only.
 - `qualify_case_study_families.py` is the first case-study-family qualification verdict: it
   consumes one case-study readiness summary plus an optional case-study numeric summary,
-  fail-closes unless their case-study ids stay synchronized, and writes one blocked/pass verdict
-  over the reviewed case-study family set only.
+  fail-closes unless their case-study ids stay synchronized, fail-closes unless numeric
+  per-family rows preserve the observed-digit map and non-missing profile-coherence booleans, and
+  writes one blocked/pass verdict over the reviewed case-study family set only.
 - `qualify_milestone_m6.py` is the first Milestone M6 qualification verdict composer: it consumes
   the reviewed phase-0 packet-set verdict plus the reviewed case-study-family verdict, requires
   both to pass, requires pending phase-0 runtime-lane blockers to be closed, and preserves
@@ -647,6 +650,9 @@ The capture script writes:
 - `compare_case_study_numeric_results.py --self-check` exercises the first M6 case-study numeric
   summary producer against matching, missing, below-threshold, metadata-drifted, duplicate, and
   unknown-family synthetic sidecars, plus compatibility with `qualify_case_study_families.py`.
+- `qualify_case_study_families.py --self-check` exercises the case-study-family verdict against
+  matching, missing-numeric, runtime-blocked, below-threshold, incoherent-readiness,
+  case-study-id-drift, and numeric-family-metadata-drift summaries.
 - `release_signoff_readiness.py --self-check` exercises the first blocked M7 release-readiness
   audit against one synthetic M6 summary plus synthetic phase-0 qualification,
   qualification-corpus, performance-review, diagnostic-review, docs-completion, and

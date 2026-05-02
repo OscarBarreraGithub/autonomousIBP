@@ -48,6 +48,19 @@ def normalize_bool(raw: Any, label: str) -> bool:
     return raw
 
 
+def normalize_nonnegative_int(raw: Any, label: str) -> int:
+    if not isinstance(raw, int):
+        raise TypeError(f"{label} must be an int")
+    expect(raw >= 0, f"{label} must be nonnegative")
+    return raw
+
+
+def normalize_positive_int(raw: Any, label: str) -> int:
+    value = normalize_nonnegative_int(raw, label)
+    expect(value > 0, f"{label} must be positive")
+    return value
+
+
 def load_case_study_readiness_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "case-study readiness schema_version must be 1")
@@ -222,6 +235,92 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
         "case-study numeric summary missing ids must be a subset of compared_case_study_ids",
     )
 
+    raw_family_summaries = summary.get("case_study_numeric_family_summaries", [])
+    if not isinstance(raw_family_summaries, list):
+        raise TypeError("case-study numeric summary family summaries must be a list")
+    family_summaries: list[dict[str, Any]] = []
+    seen_family_ids: set[str] = set()
+    for raw in raw_family_summaries:
+        if not isinstance(raw, dict):
+            raise TypeError("case-study numeric summary family summary entries must be objects")
+        family_id_raw = raw.get("id")
+        if not isinstance(family_id_raw, str) or not family_id_raw.strip():
+            raise ValueError(
+                "case-study numeric summary family summary ids must be non-empty strings"
+            )
+        family_id = family_id_raw.strip()
+        expect(
+            family_id not in seen_family_ids,
+            f"duplicate case-study numeric family summary id: {family_id}",
+        )
+        seen_family_ids.add(family_id)
+
+        family_summaries.append(
+            {
+                "id": family_id,
+                "status": str(raw.get("status", "")).strip(),
+                "minimum_observed_correct_digits": normalize_nonnegative_int(
+                    raw.get("minimum_observed_correct_digits"),
+                    f"case-study numeric summary {family_id} minimum_observed_correct_digits",
+                ),
+                "required_minimum_correct_digits": normalize_positive_int(
+                    raw.get("required_minimum_correct_digits"),
+                    f"case-study numeric summary {family_id} required_minimum_correct_digits",
+                ),
+                "digit_threshold_met": normalize_bool(
+                    raw.get("digit_threshold_met"),
+                    f"case-study numeric summary {family_id} digit_threshold_met",
+                ),
+                "comparison_passed": normalize_bool(
+                    raw.get("comparison_passed"),
+                    f"case-study numeric summary {family_id} comparison_passed",
+                ),
+                "metadata_matches_readiness": normalize_bool(
+                    raw.get("metadata_matches_readiness"),
+                    f"case-study numeric summary {family_id} metadata_matches_readiness",
+                ),
+                "evidence_path": str(raw.get("evidence_path", "")).strip(),
+            }
+        )
+
+    expect(
+        set(seen_family_ids) == set(compared_case_study_ids),
+        "case-study numeric summary family summary ids must match compared_case_study_ids",
+    )
+    for family in family_summaries:
+        family_id = family["id"]
+        expect(
+            family["minimum_observed_correct_digits"] == minimum_digits[family_id],
+            "case-study numeric summary family observed digits must match "
+            "minimum_observed_correct_digits_by_case_study",
+        )
+        if family_id in missing_case_study_numeric_ids:
+            expect(
+                not family["comparison_passed"] and not family["digit_threshold_met"],
+                "case-study numeric summary missing family rows must not report passing numerics",
+            )
+        else:
+            expect(
+                family["evidence_path"],
+                "case-study numeric summary non-missing family rows must preserve evidence_path",
+            )
+
+    family_metadata_matches_readiness = all(
+        family["metadata_matches_readiness"]
+        for family in family_summaries
+        if family["id"] not in missing_case_study_numeric_ids
+    )
+    profile_booleans_match = (
+        normalized_bools["digit_threshold_profiles_reported"]
+        and normalized_bools["required_failure_code_profiles_reported"]
+        and normalized_bools["regression_profiles_reported"]
+    )
+    expect(
+        family_metadata_matches_readiness == profile_booleans_match,
+        "case-study numeric summary family metadata_matches_readiness must agree with "
+        "profile coherence booleans",
+    )
+
     return {
         **summary,
         **normalized_bools,
@@ -229,6 +328,8 @@ def load_case_study_numeric_summary(summary_path: Path) -> dict[str, Any]:
         "blocking_reasons": blocking_reasons,
         "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
         "minimum_observed_correct_digits_by_case_study": minimum_digits,
+        "case_study_numeric_family_summaries": family_summaries,
+        "numeric_family_metadata_matches_readiness": family_metadata_matches_readiness,
     }
 
 
@@ -290,6 +391,8 @@ def summarize_case_study_qualification(
     required_failure_code_profiles_reported = False
     regression_profiles_reported = False
     numeric_blocking_reasons: list[str] = []
+    case_study_numeric_family_summaries: list[dict[str, Any]] = []
+    numeric_family_metadata_matches_readiness = False
 
     if case_study_numeric_summary_path is not None:
         numeric_summary = load_case_study_numeric_summary(case_study_numeric_summary_path)
@@ -314,6 +417,12 @@ def summarize_case_study_qualification(
         ]
         regression_profiles_reported = numeric_summary["regression_profiles_reported"]
         numeric_blocking_reasons = numeric_summary["blocking_reasons"]
+        case_study_numeric_family_summaries = numeric_summary[
+            "case_study_numeric_family_summaries"
+        ]
+        numeric_family_metadata_matches_readiness = numeric_summary[
+            "numeric_family_metadata_matches_readiness"
+        ]
 
     numeric_metadata_coherent = (
         (not case_study_numeric_evidence_present)
@@ -321,6 +430,7 @@ def summarize_case_study_qualification(
             digit_threshold_profiles_reported
             and required_failure_code_profiles_reported
             and regression_profiles_reported
+            and numeric_family_metadata_matches_readiness
         )
     )
     current_state = determine_current_state(
@@ -392,9 +502,11 @@ def summarize_case_study_qualification(
         "minimum_observed_correct_digits_by_case_study": minimum_observed_correct_digits_by_case_study,
         "missing_case_study_numeric_ids": missing_case_study_numeric_ids,
         "numeric_metadata_coherent": numeric_metadata_coherent,
+        "numeric_family_metadata_matches_readiness": numeric_family_metadata_matches_readiness,
         "digit_threshold_profiles_reported": digit_threshold_profiles_reported,
         "required_failure_code_profiles_reported": required_failure_code_profiles_reported,
         "regression_profiles_reported": regression_profiles_reported,
+        "case_study_numeric_family_summaries": case_study_numeric_family_summaries,
         "case_study_families_qualified": case_study_families_qualified,
         "milestone_m6_ready": False,
         "milestone_m6_requires_phase0_verdict": True,
@@ -497,7 +609,33 @@ def write_synthetic_numeric_summary(
     case_study_ids: list[str],
     passes_comparison: bool = True,
     meets_digit_thresholds: bool = True,
+    family_metadata_matches_readiness: bool = True,
 ) -> None:
+    missing_ids = [] if passes_comparison else [case_study_ids[0]]
+    minimum_digits = {
+        family_id: 0 if family_id in missing_ids else 100 for family_id in case_study_ids
+    }
+    family_summaries: list[dict[str, Any]] = []
+    for family_id in case_study_ids:
+        missing = family_id in missing_ids
+        family_summaries.append(
+            {
+                "id": family_id,
+                "status": (
+                    "missing-numeric-evidence"
+                    if missing
+                    else "digit-threshold-met"
+                    if meets_digit_thresholds
+                    else "digit-threshold-failed"
+                ),
+                "minimum_observed_correct_digits": minimum_digits[family_id],
+                "required_minimum_correct_digits": 50,
+                "digit_threshold_met": (not missing) and meets_digit_thresholds,
+                "comparison_passed": (not missing) and passes_comparison,
+                "metadata_matches_readiness": family_metadata_matches_readiness,
+                "evidence_path": "" if missing else f"/synthetic/{family_id}.json",
+            }
+        )
     write_json(
         path,
         {
@@ -506,15 +644,14 @@ def write_synthetic_numeric_summary(
             "compared_case_study_ids": case_study_ids,
             "case_study_numeric_comparison_passed": passes_comparison,
             "all_case_studies_meet_digit_thresholds": meets_digit_thresholds,
-            "minimum_observed_correct_digits_by_case_study": {
-                family_id: 100 for family_id in case_study_ids
-            },
-            "missing_case_study_numeric_ids": [] if passes_comparison else [case_study_ids[0]],
-            "digit_threshold_profiles_reported": True,
-            "required_failure_code_profiles_reported": True,
-            "regression_profiles_reported": True,
+            "minimum_observed_correct_digits_by_case_study": minimum_digits,
+            "missing_case_study_numeric_ids": missing_ids,
+            "digit_threshold_profiles_reported": family_metadata_matches_readiness,
+            "required_failure_code_profiles_reported": family_metadata_matches_readiness,
+            "regression_profiles_reported": family_metadata_matches_readiness,
+            "case_study_numeric_family_summaries": family_summaries,
             "blocking_reasons": []
-            if passes_comparison and meets_digit_thresholds
+            if passes_comparison and meets_digit_thresholds and family_metadata_matches_readiness
             else ["synthetic case-study numeric blocker"],
         },
     )
@@ -592,6 +729,27 @@ def run_self_check() -> dict[str, Any]:
                 "case-study ids in the numeric summary must match case-study readiness" in str(error)
             )
 
+        numeric_family_metadata_drift_rejected = False
+        try:
+            family_metadata_drift_path = temp_root / "case-study-family-metadata-drift.json"
+            write_synthetic_numeric_summary(
+                family_metadata_drift_path,
+                case_study_ids=["ttbar-h", "package-double-box"],
+            )
+            family_metadata_drift = load_json(family_metadata_drift_path)
+            family_metadata_drift["case_study_numeric_family_summaries"][0][
+                "metadata_matches_readiness"
+            ] = False
+            write_json(family_metadata_drift_path, family_metadata_drift)
+            summarize_case_study_qualification(
+                case_study_readiness_summary_path=readiness_path,
+                case_study_numeric_summary_path=family_metadata_drift_path,
+            )
+        except RuntimeError as error:
+            numeric_family_metadata_drift_rejected = (
+                "family metadata_matches_readiness must agree" in str(error)
+            )
+
         return {
             "matching_case_studies_qualified": matching_summary[
                 "case_study_families_qualified"
@@ -615,6 +773,7 @@ def run_self_check() -> dict[str, Any]:
                 incoherent_readiness_summary["current_state"] == "blocked-on-case-study-readiness"
             ),
             "case_study_id_drift_rejected": case_study_id_drift_rejected,
+            "numeric_family_metadata_drift_rejected": numeric_family_metadata_drift_rejected,
             "summary_written": summary_path.exists(),
         }
 

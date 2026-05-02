@@ -44445,6 +44445,9 @@ void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceT
   ExpectContains(result.stdout_json, "\"case_study_id_drift_rejected\": true",
                  "case-study-family qualification self-check should reject drift in case-study "
                  "ids across prerequisite summaries");
+  ExpectContains(result.stdout_json, "\"numeric_family_metadata_drift_rejected\": true",
+                 "case-study-family qualification self-check should reject contradictory "
+                 "per-family numeric metadata");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "case-study-family qualification self-check should write the synthetic summary "
                  "output");

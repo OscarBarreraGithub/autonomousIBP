@@ -138,10 +138,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   generate numerics.
   `tools/reference-harness/scripts/qualify_case_study_families.py` now consumes that readiness
   summary plus an optional case-study numeric summary and writes one blocked/pass
-  case-study-family qualification verdict. In the current retained repo state it keeps the
-  singular case-study runtime-lane blocker and the absence of compared case-study numerics
-  explicit, keeps the phase-0 verdict prerequisite separate, and does not mark `Milestone M6`
-  complete.
+  case-study-family qualification verdict. It fail-closes unless the numeric summary's
+  per-family rows match the compared case-study ids, preserve the observed-digit map, and keep
+  non-missing rows aligned with the top-level digit/failure/regression profile-coherence booleans.
+  In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
+  absence of compared case-study numerics explicit, keeps the phase-0 verdict prerequisite
+  separate, and does not mark `Milestone M6` complete.
   `tools/reference-harness/scripts/qualify_milestone_m6.py` now composes the reviewed phase-0
   packet-set verdict and the reviewed case-study-family verdict into one M6-scoped blocked/pass
   summary. It requires both subverdicts to pass, requires pending phase-0 runtime-lane blockers

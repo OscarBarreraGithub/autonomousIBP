@@ -302,8 +302,10 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
   case-study-family qualification verdict: it consumes one
   `qualification_case_study_readiness.py` summary plus an optional case-study numeric
   summary, fail-closes if the numeric summary's case-study ids drift from the readiness summary,
-  and in the current retained repo state preserves both the singular case-study runtime-lane
-  blocker and the missing case-study numeric evidence without claiming `Milestone M6` closure.
+  fail-closes if the numeric summary's non-missing per-family metadata rows contradict the
+  top-level digit/failure/regression profile-coherence booleans, and in the current retained repo
+  state preserves both the singular case-study runtime-lane blocker and the missing case-study
+  numeric evidence without claiming `Milestone M6` closure.
 - `tools/reference-harness/scripts/qualify_milestone_m6.py` is the first Milestone M6
   qualification verdict composer: it consumes the reviewed phase-0 packet-set verdict plus the
   reviewed case-study-family verdict, requires both to pass, requires pending phase-0 runtime-lane

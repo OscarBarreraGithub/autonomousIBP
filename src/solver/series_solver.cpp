@@ -4017,8 +4017,12 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
       return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
              "when every branch winding is zero on the direct real path";
     }
-    if (singular_point.value.IsReal() &&
-        !IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(singular_point.value.real,
+    if (!singular_point.value.IsReal()) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when every evaluated singular point is real on the reviewed direct path; non-real "
+             "singular ledgers remain deferred";
+    }
+    if (!IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(singular_point.value.real,
                                                                   start.real,
                                                                   target.real) &&
         LiesOnClosedRealEtaContinuationSegment(singular_point.value.real,

@@ -360,8 +360,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61u`
-  direct-plan location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61v`
+  non-real singular-ledger fail-closed guard after the earlier `Batch 61u` direct-plan
+  location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
   plus the `Batch 62v` raw-`msq`, `Batch 62w` raw-`t`, and `Batch 62x` raw-`s` guardrail
   retirements are still narrow:
   explicit complex kinematics
@@ -377,9 +378,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   matching the existing value-matched singular-ledger behavior. Evaluated singular ledgers are
   accepted only when every
   ledger expression matches, or exact evaluated ledger value matches, a system-declared singular
-  point; every recorded branch winding is zero; and each evaluated ledger point is either off the
-  direct real segment or exactly the distinct singular target endpoint on the reviewed mixed exact
-  path. It still rejects actual contour detours, stale or value-mismatched ledgers,
+  point; every ledger value is real on the reviewed direct path; every recorded branch winding is
+  zero; and each evaluated ledger point is either off the direct real segment or exactly the
+  distinct singular target endpoint on the reviewed mixed exact path. It still rejects actual
+  contour detours, stale or value-mismatched ledgers,
   ledgerless interior on-segment, stale target-endpoint, or non-real singular declarations,
   nonzero branch windings, singular starts or interior on-path ledgers, or complex endpoints, while the
   direct eta-generated, eta-mode-planned, and planned `AmfOptions` helper handoffs now add one

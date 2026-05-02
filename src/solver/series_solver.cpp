@@ -6562,6 +6562,8 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  ValidatePlannedAmfOptionsEtaModeDecisionPayload(
+      spec, decision, "planned AmfOptions eta-mode helper");
   const std::optional<std::string> normalized_explicit_dimension_expression =
       NormalizePublicDimensionExpression(exact_dimension_override);
   const std::optional<std::size_t> reviewed_linear_index =

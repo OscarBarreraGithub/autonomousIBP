@@ -38786,6 +38786,50 @@ void SolvePlannedResolvedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorEx
          "metadata before calling the solver");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision stale_decision;
+  stale_decision.mode_name = "CustomMode";
+  stale_decision.selected_propagator_indices = {0};
+  stale_decision.selected_propagators = {"stale-expression"};
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"CustomMode"};
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-stale-expression"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            stale_decision,
+            amf_options,
+            "amf-options-resolved-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper selected propagator expression mismatch",
+      "generic planned AmfOptions helper should reject stale selected-expression metadata "
+      "before reducer, cache, or solver work");
+  Expect(solver.call_count() == 0,
+         "generic planned AmfOptions helper should reject stale selected-expression metadata "
+         "before calling the solver");
+}
+
 void SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -48070,6 +48114,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesResolvedHappyPathEquivalenceTest();
     SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest();
     SolvePlannedResolvedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();

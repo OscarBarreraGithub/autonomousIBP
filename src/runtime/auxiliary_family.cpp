@@ -381,6 +381,102 @@ void AppendCoefficientFactor(std::ostringstream& coefficient_expression,
   coefficient_started = true;
 }
 
+std::optional<ExactRational> TryEvaluateGroupedExternalFactorCoefficient(
+    const std::string& raw_factor,
+    const std::string& external_symbol) {
+  const std::optional<GroupedAdditiveFactor> grouped_factor =
+      MatchGroupedAdditiveFactor(raw_factor);
+  if (!grouped_factor.has_value()) {
+    return std::nullopt;
+  }
+
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+  const std::set<std::string> selected_external_symbol = {external_symbol};
+  std::vector<std::string> coefficient_terms;
+
+  for (const SignedTerm& grouped_term : SplitTopLevelTerms(grouped_factor->expression, context)) {
+    std::vector<FlatFactor> flat_factors;
+    AppendFlattenedFactors(grouped_term.expression, context, '*', flat_factors);
+
+    bool saw_external_factor = false;
+    std::ostringstream coefficient_expression;
+    bool coefficient_started = false;
+    for (const FlatFactor& factor_entry : flat_factors) {
+      const std::string raw_term_factor = Trim(factor_entry.factor);
+      const std::optional<SignedSymbolFactor> external_factor =
+          MatchSignedSimpleSymbolFactor(raw_term_factor, selected_external_symbol);
+      if (external_factor.has_value()) {
+        if (factor_entry.separator == '/') {
+          throw std::runtime_error(
+              "reviewed lightlike linear auxiliary rewrite keeps the external symbol out of "
+              "denominators");
+        }
+        if (saw_external_factor) {
+          throw std::runtime_error(
+              "reviewed lightlike linear auxiliary rewrite requires one external factor per "
+              "bilinear term");
+        }
+        saw_external_factor = true;
+        if (external_factor->negative) {
+          AppendCoefficientFactor(coefficient_expression,
+                                  coefficient_started,
+                                  '*',
+                                  "-1");
+        }
+        continue;
+      }
+
+      std::optional<ExactRational> coefficient_piece;
+      try {
+        coefficient_piece = EvaluateExactConstantExpression(raw_term_factor, context);
+      } catch (const std::runtime_error&) {
+        return std::nullopt;
+      }
+      if (factor_entry.separator == '/' && coefficient_piece->IsZero()) {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite encountered "
+                                 "division by zero in a rational coefficient factor");
+      }
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              factor_entry.separator,
+                              raw_term_factor);
+    }
+
+    if (!saw_external_factor) {
+      return std::nullopt;
+    }
+
+    std::string coefficient_text =
+        coefficient_started ? EvaluateExactConstantExpression(coefficient_expression.str(),
+                                                              context)
+                                  .ToString()
+                            : "1";
+    if (grouped_term.negative) {
+      coefficient_text =
+          EvaluateExactConstantExpression("-(" + coefficient_text + ")", context).ToString();
+    }
+    coefficient_terms.push_back(coefficient_text);
+  }
+
+  if (coefficient_terms.empty()) {
+    return std::nullopt;
+  }
+
+  std::ostringstream total_expression;
+  for (std::size_t index = 0; index < coefficient_terms.size(); ++index) {
+    if (index > 0) {
+      total_expression << "+";
+    }
+    total_expression << "(" << coefficient_terms[index] << ")";
+  }
+
+  std::string total = total_expression.str();
+  if (grouped_factor->negative) {
+    total = "-(" + total + ")";
+  }
+  return EvaluateExactConstantExpression(total, context);
+}
+
 std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
     const ProblemSpec& spec,
     const SignedTerm& term,
@@ -433,6 +529,26 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
                                 '*',
                                 "-1");
       }
+      continue;
+    }
+
+    const std::optional<ExactRational> grouped_external_coefficient =
+        TryEvaluateGroupedExternalFactorCoefficient(raw_factor, external_symbol);
+    if (grouped_external_coefficient.has_value()) {
+      if (factor_entry.separator == '/') {
+        throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps the external "
+                                 "symbol out of denominators");
+      }
+      if (saw_external_factor) {
+        throw std::runtime_error(
+            "reviewed lightlike linear auxiliary rewrite requires one external factor per "
+            "bilinear term");
+      }
+      saw_external_factor = true;
+      AppendCoefficientFactor(coefficient_expression,
+                              coefficient_started,
+                              '*',
+                              grouped_external_coefficient->ToString());
       continue;
     }
 

@@ -190,6 +190,8 @@ void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
         std::to_string(decision.selected_propagators.size()) + " expressions for " +
         std::to_string(decision.selected_propagator_indices.size()) + " indices");
   }
+  std::vector<std::size_t> seen_indices;
+  seen_indices.reserve(decision.selected_propagator_indices.size());
   for (std::size_t entry_index = 0;
        entry_index < decision.selected_propagator_indices.size();
        ++entry_index) {
@@ -200,6 +202,14 @@ void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
           helper_name + " selected propagator index out of range at selected entry " +
           std::to_string(entry_index) + ": " + std::to_string(propagator_index));
     }
+    if (std::find(seen_indices.begin(), seen_indices.end(), propagator_index) !=
+        seen_indices.end()) {
+      throw std::invalid_argument(
+          helper_name + " requires unique selected propagator indices; duplicate selected index " +
+          std::to_string(propagator_index) + " at selected entry " +
+          std::to_string(entry_index));
+    }
+    seen_indices.push_back(propagator_index);
     const std::string& expected_expression =
         spec.family.propagators[propagator_index].expression;
     const std::string& planned_expression =

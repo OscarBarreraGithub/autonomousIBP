@@ -13189,6 +13189,105 @@ void Batch63tPlannedCutkoskyNoProviderUsesDeferredBuiltinRegistryTest() {
          "while builtin phase-space boundary values remain deferred");
 }
 
+void Batch63xPlannedCutkoskyTrimsTerminalNodeWhitespaceTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "WhitespaceScheme";
+  decision.terminal_nodes = {"  planar_double_box::cutkosky-phase-space \t"};
+  const auto scheme =
+      std::make_shared<RecordingEndingScheme>(decision, "WhitespaceScheme");
+
+  const amflow::BoundaryRequest request =
+      amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+          MakeReviewedCutkoskyPhaseSpaceSpec(),
+          "WhitespaceScheme",
+          {scheme});
+
+  const amflow::BoundaryRequest expected = {
+      "eta",
+      "cutkosky-phase-space",
+      "builtin::cutkosky-phase-space::minus_i0",
+  };
+  Expect(SameBoundaryRequest(request, expected),
+         "Batch 63x planned Cutkosky phase-space boundary generation should accept the exact "
+         "supported terminal node after trimming outer whitespace");
+  Expect(scheme->call_count() == 1,
+         "Batch 63x planned Cutkosky phase-space boundary generation should plan the whitespace "
+         "terminal-node scheme exactly once");
+}
+
+void Batch63xAmfOptionsEndingSchemeCutkoskyTrimsTerminalNodeWhitespaceThroughSolveTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"RetryScheme", "WhitespaceScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision retry_decision;
+  retry_decision.terminal_strategy = "RetryScheme";
+  retry_decision.terminal_nodes = {"retry::node"};
+  const auto retry_scheme = std::make_shared<RecordingEndingScheme>(
+      retry_decision,
+      "RetryScheme",
+      "retry ending planning failed");
+
+  amflow::EndingDecision whitespace_decision;
+  whitespace_decision.terminal_strategy = "WhitespaceScheme";
+  whitespace_decision.terminal_nodes = {" \tplanar_double_box::cutkosky-phase-space  "};
+  const auto whitespace_scheme =
+      std::make_shared<RecordingEndingScheme>(whitespace_decision, "WhitespaceScheme");
+
+  const amflow::BoundaryRequest baseline_boundary_request =
+      amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec);
+  amflow::SolveRequest baseline_solve_request = request_template;
+  baseline_solve_request.boundary_requests = {baseline_boundary_request};
+
+  RecordingStaticBoundaryProvider baseline_provider(
+      "builtin::cutkosky-phase-space::minus_i0",
+      {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingStaticBoundaryProvider wrapper_provider(
+      "builtin::cutkosky-phase-space::minus_i0",
+      {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver baseline_solver;
+  RecordingSeriesSolver wrapper_solver;
+  baseline_solver.use_request_driven_diagnostics = true;
+  wrapper_solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolveRequest baseline_attached =
+      amflow::AttachBoundaryConditionsFromProvider(baseline_solve_request,
+                                                   baseline_provider);
+  const amflow::SolverDiagnostics baseline_diagnostics =
+      baseline_solver.Solve(baseline_attached);
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+          spec,
+          amf_options,
+          {retry_scheme, whitespace_scheme},
+          request_template,
+          wrapper_provider,
+          wrapper_solver);
+
+  Expect(retry_scheme->call_count() == 1 && whitespace_scheme->call_count() == 1,
+         "Batch 63x AmfOptions Cutkosky wrapper should preserve ordered fallback before "
+         "accepting the trimmed phase-space terminal node");
+  Expect(wrapper_provider.strategy_call_count() == 1 &&
+             wrapper_provider.provide_call_count() == 1,
+         "Batch 63x AmfOptions Cutkosky wrapper should reach the provider exactly once after "
+         "trimmed terminal-node planning succeeds");
+  Expect(wrapper_solver.call_count() == 1,
+         "Batch 63x AmfOptions Cutkosky wrapper should call the solver exactly once after "
+         "trimmed terminal-node planning succeeds");
+  Expect(wrapper_provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(wrapper_provider.seen_requests().front(),
+                                baseline_provider.seen_requests().front()),
+         "Batch 63x AmfOptions Cutkosky wrapper should feed the same builtin phase-space "
+         "request into the provider after terminal-node whitespace trimming");
+  Expect(SameSolveRequest(wrapper_solver.last_request(), baseline_solver.last_request()),
+         "Batch 63x AmfOptions Cutkosky wrapper should feed the same attached request into the "
+         "solver after terminal-node whitespace trimming");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "Batch 63x AmfOptions Cutkosky wrapper should preserve downstream solver diagnostics "
+         "after terminal-node whitespace trimming");
+}
+
 void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -47701,6 +47800,8 @@ int main() {
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();
     Batch63tPlannedCutkoskyProviderHelperMatchesManualCompositionTest();
     Batch63tPlannedCutkoskyNoProviderUsesDeferredBuiltinRegistryTest();
+    Batch63xPlannedCutkoskyTrimsTerminalNodeWhitespaceTest();
+    Batch63xAmfOptionsEndingSchemeCutkoskyTrimsTerminalNodeWhitespaceThroughSolveTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest();

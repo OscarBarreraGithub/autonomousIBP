@@ -405,11 +405,13 @@ void ValidatePlannedEtaInfinityTerminalNodes(const ProblemSpec& spec,
 void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
                                                     const EndingDecision& decision) {
   const std::string supported_terminal_node = SupportedCutkoskyPhaseSpaceTerminalNode(spec);
-  const std::size_t supported_count =
-      static_cast<std::size_t>(std::count(decision.terminal_nodes.begin(),
-                                          decision.terminal_nodes.end(),
-                                          supported_terminal_node));
-  if (supported_count > 1) {
+  std::size_t trimmed_supported_count = 0;
+  for (const std::string& terminal_node : decision.terminal_nodes) {
+    if (Trim(terminal_node) == supported_terminal_node) {
+      ++trimmed_supported_count;
+    }
+  }
+  if (trimmed_supported_count > 1) {
     throw BoundaryUnsolvedError(
         "planned Cutkosky phase-space boundary request requires exactly one supported terminal "
         "node " +
@@ -417,7 +419,7 @@ void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
   }
 
   for (const std::string& terminal_node : decision.terminal_nodes) {
-    if (terminal_node != supported_terminal_node) {
+    if (Trim(terminal_node) != supported_terminal_node) {
       throw BoundaryUnsolvedError(
           "planned Cutkosky phase-space boundary request requires exactly one supported "
           "terminal node " +
@@ -425,7 +427,7 @@ void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
     }
   }
 
-  if (supported_count == 0) {
+  if (trimmed_supported_count == 0) {
     throw BoundaryUnsolvedError(
         "planned Cutkosky phase-space boundary request requires exactly one supported terminal "
         "node " +

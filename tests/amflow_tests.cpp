@@ -39158,6 +39158,43 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheO
   Expect(solver.call_count() == 0,
          "generic planned AmfOptions empty solve-kind coverage should not call the exact "
          "solver");
+
+  const amflow::ArtifactLayout whitespace_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-whitespace-solve-kind"));
+  RecordingSeriesSolver whitespace_solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            decision,
+            amf_options,
+            " amf-options-resolved-eta-mode-series ",
+            MakeKiraReductionOptions(),
+            whitespace_layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            whitespace_solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires solved-path identity without outer "
+      "whitespace",
+      "generic planned AmfOptions helper should reject a whitespace-padded solved-path "
+      "identity before reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(whitespace_layout.manifests_dir) == 0,
+         "generic planned AmfOptions whitespace solve-kind coverage should not write "
+         "manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(whitespace_layout)) == 0,
+         "generic planned AmfOptions whitespace solve-kind coverage should not create "
+         "cache artifacts");
+  Expect(whitespace_solver.call_count() == 0,
+         "generic planned AmfOptions whitespace solve-kind coverage should not call the "
+         "exact solver");
 }
 
 void SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest() {

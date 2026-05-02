@@ -169,8 +169,13 @@ bool HasBuiltinEtaModeDecisionName(const EtaInsertionDecision& decision) {
 
 void ValidatePlannedAmfOptionsEtaModeSolveKind(const std::string& solve_kind,
                                                const std::string& helper_name) {
-  if (Trim(solve_kind).empty()) {
+  const std::string trimmed_solve_kind = Trim(solve_kind);
+  if (trimmed_solve_kind.empty()) {
     throw std::invalid_argument(helper_name + " requires a non-empty solved-path identity");
+  }
+  if (trimmed_solve_kind != solve_kind) {
+    throw std::invalid_argument(
+        helper_name + " requires solved-path identity without outer whitespace");
   }
 }
 

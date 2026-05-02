@@ -10395,6 +10395,26 @@ void GenerateBuiltinEtaInfinityBoundaryRequestAcceptsParenthesizedZeroMassTest()
   }
 }
 
+void GenerateBuiltinEtaInfinityBoundaryRequestAcceptsNestedParenthesizedZeroMassTest() {
+  for (const std::string& mass_literal :
+       {std::string("((0))"), std::string(" ( ( +0 ) ) "), std::string("(((-0)))")}) {
+    amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+    spec.family.propagators.front().mass = mass_literal;
+    const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+    const amflow::BoundaryRequest request =
+        amflow::GenerateBuiltinEtaInfinityBoundaryRequest(spec, "eta_aux");
+
+    const amflow::BoundaryRequest expected = {"eta_aux", "infinity", "builtin::eta->infinity"};
+    Expect(SameBoundaryRequest(request, expected),
+           "builtin eta->infinity boundary generation should accept nested redundant outer "
+           "parentheses around reviewed exact-zero mass literals");
+    Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+           "nested parenthesized zero mass acceptance should not mutate the input ProblemSpec "
+           "or canonicalize caller-owned mass literals");
+  }
+}
+
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestHappyPathTest() {
   const amflow::BoundaryRequest request =
       amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(
@@ -13027,6 +13047,62 @@ void Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNo
   Expect(message.find("unsupported extra terminal node") == std::string::npos,
          "Batch 65j planned eta->infinity boundary generation should not mask empty "
          "eta_symbol diagnostics behind stale terminal-node validation");
+}
+
+void Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const std::vector<std::string> nested_zero_masses = {
+      "((0))",
+      " ( ( +0 ) ) ",
+      "(((-0)))",
+  };
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    spec.family.propagators[index].mass =
+        nested_zero_masses[index % nested_zero_masses.size()];
+  }
+  const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
+  const amflow::AmfOptions amf_options = MakePoisonedAmfOptions({"NotUsed"}, {"Tradition"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+  const amflow::SolveRequest original_request_template = request_template;
+
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+  solver.use_request_driven_diagnostics = true;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                           amf_options,
+                                                           {},
+                                                           request_template,
+                                                           provider,
+                                                           solver);
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_spec_yaml,
+         "Batch 65k AmfOptions eta->infinity solve should not mutate nested parenthesized "
+         "mass literals while accepting them");
+  Expect(SameSolveRequest(request_template, original_request_template),
+         "Batch 65k AmfOptions eta->infinity solve should not mutate the caller-owned solve "
+         "request template");
+  Expect(provider.strategy_call_count() == 1 && provider.provide_call_count() == 1,
+         "Batch 65k AmfOptions eta->infinity solve should reach the provider exactly once "
+         "after nested zero-mass acceptance");
+  Expect(solver.call_count() == 1,
+         "Batch 65k AmfOptions eta->infinity solve should call the solver exactly once after "
+         "nested zero-mass acceptance and provider attachment");
+  const amflow::BoundaryRequest expected = {"eta", "infinity", "builtin::eta->infinity"};
+  Expect(provider.seen_requests().size() == 1 &&
+             SameBoundaryRequest(provider.seen_requests().front(), expected),
+         "Batch 65k AmfOptions eta->infinity solve should feed the reviewed builtin request "
+         "shape through the provider after nested zero-mass acceptance");
+  Expect(solver.last_request().boundary_conditions.size() == 1 &&
+             SameBoundaryCondition(solver.last_request().boundary_conditions.front(),
+                                  MakeEtaInfinityBoundaryCondition()),
+         "Batch 65k AmfOptions eta->infinity solve should attach the provider-returned "
+         "boundary condition unchanged");
+  Expect(diagnostics.success,
+         "Batch 65k AmfOptions eta->infinity solve should preserve request-driven solver "
+         "success diagnostics after nested zero-mass acceptance");
 }
 
 void Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest() {
@@ -47871,6 +47947,7 @@ int main() {
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsTrimmedZeroMassTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsSignedZeroMassTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsParenthesizedZeroMassTest();
+    GenerateBuiltinEtaInfinityBoundaryRequestAcceptsNestedParenthesizedZeroMassTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
@@ -47958,6 +48035,7 @@ int main() {
     Batch65hAmfOptionsEndingSchemeEtaInfinityTrimsTerminalNodeWhitespaceThroughSolveTest();
     Batch65iPlannedEtaInfinityBoundaryRequestValidatesProblemSpecBeforeTerminalNodesTest();
     Batch65jPlannedEtaInfinityBoundaryRequestValidatesEtaSymbolBeforeTerminalNodesTest();
+    Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();
     Batch63tPlannedCutkoskyProviderHelperMatchesManualCompositionTest();

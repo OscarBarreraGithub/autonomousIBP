@@ -81,15 +81,11 @@ bool IsReviewedEtaInfinityBareZeroMassLiteral(const std::string& trimmed) {
 }
 
 bool IsReviewedEtaInfinityZeroMassLiteral(const std::string& value) {
-  const std::string trimmed = Trim(value);
-  if (IsReviewedEtaInfinityBareZeroMassLiteral(trimmed)) {
-    return true;
+  std::string trimmed = Trim(value);
+  while (trimmed.size() >= 3 && trimmed.front() == '(' && trimmed.back() == ')') {
+    trimmed = Trim(trimmed.substr(1, trimmed.size() - 2));
   }
-  if (trimmed.size() >= 3 && trimmed.front() == '(' && trimmed.back() == ')') {
-    return IsReviewedEtaInfinityBareZeroMassLiteral(
-        Trim(trimmed.substr(1, trimmed.size() - 2)));
-  }
-  return false;
+  return IsReviewedEtaInfinityBareZeroMassLiteral(trimmed);
 }
 
 std::string DescribeCutComponents(
@@ -196,7 +192,7 @@ void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
       throw BoundaryUnsolvedError(
           "builtin eta->infinity boundary request generation only supports propagators with "
           "zero mass literal \"0\", \"+0\", or \"-0\" after trimming outer whitespace and at "
-          "most one redundant outer parenthesis pair; "
+          "any number of redundant outer parenthesis pairs; "
           "propagator " +
           std::to_string(index) + " has mass \"" + propagator.mass + "\"");
     }

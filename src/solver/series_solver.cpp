@@ -3970,6 +3970,27 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
            "when every ledger value matches a system-declared singular point by exact value";
   }
 
+  for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
+    try {
+      const ExactComplexRational expression_value =
+          EvaluateComplexPointExpression(variable_name,
+                                         singular_point.expression,
+                                         passive_bindings);
+      const std::optional<std::string> expression_key =
+          CanonicalExactComplexValueKey(expression_value);
+      const std::optional<std::string> ledger_key =
+          CanonicalExactComplexValueKey(singular_point.value);
+      if (!expression_key.has_value() || !ledger_key.has_value() ||
+          *expression_key != *ledger_key) {
+        return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+               "when every ledger expression evaluates to its recorded value";
+      }
+    } catch (const std::exception&) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when every ledger expression evaluates to its recorded value";
+    }
+  }
+
   const ExactComplexRational& start = plan.contour_points.front();
   const ExactComplexRational& target = plan.contour_points.back();
   const bool has_target_endpoint_singular_ledger =

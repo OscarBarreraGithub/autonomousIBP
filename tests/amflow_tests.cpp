@@ -15041,6 +15041,34 @@ void BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedger
                  "reviewed contour fingerprint");
 }
 
+void BootstrapSeriesSolverRejectsStaleEtaContinuationPlanLedgerExpressionValueTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=3"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "3", 0),
+  };
+  request.eta_continuation_plan->contour_fingerprint =
+      "bootstrap-stale-ledger-expression-value-plan";
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap stale singular-ledger expression/value coverage should fail closed before "
+         "the default exact solver consumes stale plan metadata");
+  ExpectContains(diagnostics.summary,
+                 "ledger expression evaluates to its recorded value",
+                 "bootstrap stale singular-ledger expression/value coverage should explain the "
+                 "expression/value mismatch");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap stale singular-ledger expression/value coverage should report the "
+                 "reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -47859,6 +47887,7 @@ int main() {
     BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsStaleTargetEndpointEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsExpressionMatchedStaleEtaContinuationPlanLedgerValueTest();
+    BootstrapSeriesSolverRejectsStaleEtaContinuationPlanLedgerExpressionValueTest();
     BootstrapSeriesSolverRejectsNonzeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsNonRealSingularLedgerDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest();

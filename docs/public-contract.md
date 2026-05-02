@@ -363,9 +363,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61w`
-  unfingerprinted-plan fail-closed guard after the earlier `Batch 61v` non-real
-  singular-ledger guard and `Batch 61u` direct-plan
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61x`
+  singular-ledger expression/value fail-closed guard after the earlier `Batch 61w`
+  unfingerprinted-plan guard, `Batch 61v` non-real singular-ledger guard, and `Batch 61u`
+  direct-plan
   location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
   plus the `Batch 62v` raw-`msq`, `Batch 62w` raw-`t`, and `Batch 62x` raw-`s` guardrail
   retirements are still narrow:

@@ -167,6 +167,13 @@ bool HasBuiltinEtaModeDecisionName(const EtaInsertionDecision& decision) {
          builtin_modes.end();
 }
 
+void ValidatePlannedAmfOptionsEtaModeSolveKind(const std::string& solve_kind,
+                                               const std::string& helper_name) {
+  if (Trim(solve_kind).empty()) {
+    throw std::invalid_argument(helper_name + " requires a non-empty solved-path identity");
+  }
+}
+
 void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
     const ProblemSpec& spec,
     const EtaInsertionDecision& decision,
@@ -6566,6 +6573,8 @@ SolverDiagnostics SolvePlannedAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  ValidatePlannedAmfOptionsEtaModeSolveKind(solve_kind,
+                                            "planned AmfOptions eta-mode helper");
   ValidatePlannedAmfOptionsEtaModeDecisionPayload(
       spec, decision, "planned AmfOptions eta-mode helper");
   const std::optional<std::string> normalized_explicit_dimension_expression =

@@ -38909,6 +38909,53 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpression
          "before calling the solver");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  const amflow::EtaInsertionDecision decision =
+      amflow::MakeBuiltinEtaMode("All")->Plan(spec);
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"All"};
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-empty-solve-kind"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            decision,
+            amf_options,
+            "",
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires a non-empty solved-path identity",
+      "generic planned AmfOptions helper should reject an empty solved-path identity before "
+      "reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "generic planned AmfOptions empty solve-kind coverage should not write manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "generic planned AmfOptions empty solve-kind coverage should not create cache "
+         "artifacts");
+  Expect(solver.call_count() == 0,
+         "generic planned AmfOptions empty solve-kind coverage should not call the exact "
+         "solver");
+}
+
 void SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = WritePropagatorHappyFixture(
@@ -48201,6 +48248,7 @@ int main() {
     SolvePlannedResolvedAmfOptionsEtaModeSeriesUsesResolvedIdentityTest();
     SolvePlannedResolvedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesUsesBuiltinIdentityTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsNonBuiltinDecisionTest();
     SolvePlannedBuiltinAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();

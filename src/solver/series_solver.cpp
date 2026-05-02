@@ -4055,6 +4055,10 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   if (!start.IsReal() || !target.IsReal()) {
     return "default exact solver currently accepts only real eta_continuation_plan endpoints";
   }
+  if (CompareExactRationalForEtaContinuationPlan(start.real, target.real) == 0) {
+    return "default exact solver accepts eta_continuation_plan metadata only with distinct "
+           "direct real contour endpoints";
+  }
   if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when the system declares singular points";

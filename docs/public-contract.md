@@ -1153,7 +1153,11 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
   mixed builtin/user-defined callers do not pass the raw identity string themselves. It does not
   re-read `amf_options.amf_modes`, does not resolve or re-plan eta modes, and preserves the same
   live policy, cache, `skip_reduction`, requested-`D0`, fixed-`eps`, and dimension-expression
-  behavior as the generic planned helper
+  behavior as the generic planned helper. It also fail-closes before reducer or solver work if
+  caller-supplied preplanned resolved decisions carry selected-propagator expression metadata
+  that no longer mirrors the selected indices on the current `ProblemSpec`, matching the typed
+  builtin helper's payload-coherence guard without adding re-planning or broader structural
+  validation
 - when the overload with `exact_dimension_override` is used, that explicit public dimension
   expression is normalized once at the public boundary and then replaces the otherwise derived
   live dimension carrier on this helper only; exact expressions still drive live

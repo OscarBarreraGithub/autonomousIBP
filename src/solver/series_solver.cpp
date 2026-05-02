@@ -167,19 +167,14 @@ bool HasBuiltinEtaModeDecisionName(const EtaInsertionDecision& decision) {
          builtin_modes.end();
 }
 
-void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
+void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
     const ProblemSpec& spec,
-    const EtaInsertionDecision& decision) {
-  if (!HasBuiltinEtaModeDecisionName(decision)) {
-    throw std::invalid_argument(
-        "planned builtin AmfOptions eta-mode helper requires a builtin eta-mode decision name; "
-        "got \"" +
-        decision.mode_name + "\"");
-  }
+    const EtaInsertionDecision& decision,
+    const std::string& helper_name) {
   if (decision.selected_propagators.size() != decision.selected_propagator_indices.size()) {
     throw std::invalid_argument(
-        "planned builtin AmfOptions eta-mode helper requires selected propagator expression "
-        "count to match selected index count; got " +
+        helper_name + " requires selected propagator expression count to match selected index "
+                      "count; got " +
         std::to_string(decision.selected_propagators.size()) + " expressions for " +
         std::to_string(decision.selected_propagator_indices.size()) + " indices");
   }
@@ -190,8 +185,7 @@ void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
         decision.selected_propagator_indices[entry_index];
     if (propagator_index >= spec.family.propagators.size()) {
       throw std::invalid_argument(
-          "planned builtin AmfOptions eta-mode helper selected propagator index out of range "
-          "at selected entry " +
+          helper_name + " selected propagator index out of range at selected entry " +
           std::to_string(entry_index) + ": " + std::to_string(propagator_index));
     }
     const std::string& expected_expression =
@@ -200,13 +194,31 @@ void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
         decision.selected_propagators[entry_index];
     if (planned_expression != expected_expression) {
       throw std::invalid_argument(
-          "planned builtin AmfOptions eta-mode helper selected propagator expression mismatch "
-          "at selected entry " +
+          helper_name + " selected propagator expression mismatch at selected entry " +
           std::to_string(entry_index) + "; selected index " +
           std::to_string(propagator_index) + " names \"" + expected_expression +
           "\" but decision carries \"" + planned_expression + "\"");
     }
   }
+}
+
+void ValidatePlannedBuiltinAmfOptionsEtaModeDecision(
+    const ProblemSpec& spec,
+    const EtaInsertionDecision& decision) {
+  const std::string helper_name = "planned builtin AmfOptions eta-mode helper";
+  if (!HasBuiltinEtaModeDecisionName(decision)) {
+    throw std::invalid_argument(
+        helper_name + " requires a builtin eta-mode decision name; got \"" +
+        decision.mode_name + "\"");
+  }
+  ValidatePlannedAmfOptionsEtaModeDecisionPayload(spec, decision, helper_name);
+}
+
+void ValidatePlannedResolvedAmfOptionsEtaModeDecision(
+    const ProblemSpec& spec,
+    const EtaInsertionDecision& decision) {
+  ValidatePlannedAmfOptionsEtaModeDecisionPayload(
+      spec, decision, "planned resolved AmfOptions eta-mode helper");
 }
 
 std::optional<std::string> ParseExplicitLocationAssignmentVariable(
@@ -6741,6 +6753,7 @@ SolverDiagnostics SolvePlannedResolvedAmfOptionsEtaModeSeries(
     const int requested_digits,
     const std::string& eta_symbol,
     const std::optional<std::string>& exact_dimension_override) {
+  ValidatePlannedResolvedAmfOptionsEtaModeDecision(spec, decision);
   return SolvePlannedAmfOptionsEtaModeSeries(spec,
                                              master_basis,
                                              decision,

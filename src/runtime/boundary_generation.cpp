@@ -438,6 +438,14 @@ void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
   }
 }
 
+void ValidatePlannedCutkoskyPhaseSpaceDecisionMetadata(const EndingDecision& decision) {
+  if (Trim(decision.terminal_strategy).empty()) {
+    throw BoundaryUnsolvedError(
+        "planned Cutkosky phase-space boundary request requires selected ending decision "
+        "terminal_strategy must not be empty");
+  }
+}
+
 }  // namespace
 
 CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
@@ -518,6 +526,7 @@ BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
     const std::string& eta_symbol) {
   ValidateProblemSpecForBoundaryGeneration(spec);
   ValidateCutkoskyPhaseSpaceBoundaryEtaSymbol(eta_symbol);
+  ValidatePlannedCutkoskyPhaseSpaceDecisionMetadata(decision);
   ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(spec, decision);
   return GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec, eta_symbol);
 }

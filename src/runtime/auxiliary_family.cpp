@@ -666,17 +666,30 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
 
     const std::optional<GroupedAdditiveFactor> grouped_factor =
         MatchGroupedAdditiveFactor(raw_factor);
-    if (separator == '/' || !grouped_factor.has_value() ||
-        !grouped_linear_combination.empty()) {
+    if (separator == '/' || !grouped_linear_combination.empty()) {
       return std::nullopt;
     }
-    grouped_linear_combination = grouped_factor->expression;
-    if (grouped_factor->negative) {
-      AppendCoefficientFactor(coefficient_expression,
-                              coefficient_started,
-                              '*',
-                              "-1");
+    if (grouped_factor.has_value()) {
+      grouped_linear_combination = grouped_factor->expression;
+      if (grouped_factor->negative) {
+        AppendCoefficientFactor(coefficient_expression,
+                                coefficient_started,
+                                '*',
+                                "-1");
+      }
+      continue;
     }
+
+    const std::string stripped_factor = StripOuterParentheses(raw_factor);
+    if (stripped_factor == raw_factor) {
+      return std::nullopt;
+    }
+    const SplitSequence stripped_split =
+        SplitTopLevelByOperators(stripped_factor, context, "*/");
+    if (stripped_split.separators.empty()) {
+      return std::nullopt;
+    }
+    grouped_linear_combination = stripped_factor;
   }
 
   if (grouped_linear_combination.empty()) {
@@ -864,7 +877,7 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   bool saw_bilinear_term = false;
   for (const SignedTerm& term : terms) {
     if (const std::optional<std::vector<std::string>> grouped_terms =
-            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 1);
+            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 2);
         grouped_terms.has_value()) {
       for (const std::string& grouped_term : *grouped_terms) {
         rendered_terms.push_back(grouped_term);

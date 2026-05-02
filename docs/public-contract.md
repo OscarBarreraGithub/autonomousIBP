@@ -122,9 +122,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   reviewed `qualification_readiness.py` summary plus the packet-set comparison, correct-digit,
   and failure-code summaries, fail-closes unless the retained packet labels and captured phase-0
   ids stay synchronized across those prerequisite reports, requires the per-benchmark
-  digit-threshold, required-failure-code, and known-regression profiles to match across the
-  prerequisite reports, and writes one blocked/pass verdict over the reviewed phase-0 packet set
-  only while preserving those profile maps for later M6 composition.
+  digit-threshold, required-failure-code, and known-regression profiles plus their scaffold
+  profile labels to match across the prerequisite reports, and writes one blocked/pass verdict
+  over the reviewed phase-0 packet set only while preserving those value and label maps for
+  later M6 composition.
   `tools/reference-harness/scripts/qualification_case_study_readiness.py` is then the first
   machine-readable case-study-family consumer of the same scaffold: it validates the selected
   literature anchors, parity labels, digit floors, failure/regression profiles, and the reviewed
@@ -145,8 +146,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   packet-set verdict and the reviewed case-study-family verdict into one M6-scoped blocked/pass
   summary. It requires both subverdicts to pass, requires pending phase-0 runtime-lane blockers
   to be closed, preserves the subverdict blocker lists, blocked runtime lanes, phase-0
-  per-benchmark digit/failure-code/regression profiles, and case-study-family
-  digit/failure-code/regression profiles, and does not launch runtime work or claim
+  per-benchmark digit/failure-code/regression profiles and profile labels, and case-study-family
+  digit/failure-code/regression profiles and profile labels, and does not launch runtime work or claim
   `Milestone M7` / release readiness.
   Together these remain harness-only plumbing: they do not launch the C++ runtime, the comparator
   and scorer helpers still do not inspect candidate failure-code behavior, the packet-level and

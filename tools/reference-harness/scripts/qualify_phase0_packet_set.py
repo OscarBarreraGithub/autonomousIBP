@@ -38,6 +38,15 @@ def normalize_string_list(raw: Any, label: str) -> list[str]:
     return values
 
 
+def normalize_string(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    value = raw.strip()
+    if not value:
+        raise ValueError(f"{label} must not be empty")
+    return value
+
+
 def expect_unique(values: list[str], label: str) -> None:
     expect(len(set(values)) == len(values), f"{label} must not contain duplicates")
 
@@ -45,24 +54,42 @@ def expect_unique(values: list[str], label: str) -> None:
 def normalize_benchmark_profiles(
     raw: Any,
     label: str,
-) -> tuple[dict[str, int], dict[str, list[str]], dict[str, list[str]]]:
+) -> tuple[
+    dict[str, int],
+    dict[str, list[str]],
+    dict[str, list[str]],
+    dict[str, str],
+    dict[str, str],
+    dict[str, str],
+]:
     if not isinstance(raw, list):
         raise TypeError(f"{label} benchmarks must be a list")
 
     digit_thresholds: dict[str, int] = {}
     required_failure_codes: dict[str, list[str]] = {}
     known_regression_families: dict[str, list[str]] = {}
+    digit_threshold_profiles: dict[str, str] = {}
+    failure_code_profiles: dict[str, str] = {}
+    regression_profiles: dict[str, str] = {}
     for entry in raw:
         if not isinstance(entry, dict):
             raise TypeError(f"{label} benchmark entries must be objects")
-        benchmark_id_raw = entry.get("benchmark_id")
-        if not isinstance(benchmark_id_raw, str):
-            raise TypeError(f"{label} benchmark_id must be a string")
-        benchmark_id = benchmark_id_raw.strip()
-        if not benchmark_id:
-            raise ValueError(f"{label} benchmark_id must not be empty")
+        benchmark_id = normalize_string(entry.get("benchmark_id"), f"{label} benchmark_id")
         if benchmark_id in digit_thresholds:
             raise ValueError(f"duplicate {label} benchmark_id: {benchmark_id}")
+
+        digit_threshold_profile = normalize_string(
+            entry.get("digit_threshold_profile"),
+            f"{label} {benchmark_id} digit_threshold_profile",
+        )
+        failure_code_profile = normalize_string(
+            entry.get("failure_code_profile"),
+            f"{label} {benchmark_id} failure_code_profile",
+        )
+        regression_profile = normalize_string(
+            entry.get("regression_profile"),
+            f"{label} {benchmark_id} regression_profile",
+        )
 
         minimum_correct_digits = entry.get("minimum_correct_digits")
         if not isinstance(minimum_correct_digits, int):
@@ -91,8 +118,18 @@ def normalize_benchmark_profiles(
         digit_thresholds[benchmark_id] = minimum_correct_digits
         required_failure_codes[benchmark_id] = benchmark_required_codes
         known_regression_families[benchmark_id] = benchmark_known_regressions
+        digit_threshold_profiles[benchmark_id] = digit_threshold_profile
+        failure_code_profiles[benchmark_id] = failure_code_profile
+        regression_profiles[benchmark_id] = regression_profile
 
-    return digit_thresholds, required_failure_codes, known_regression_families
+    return (
+        digit_thresholds,
+        required_failure_codes,
+        known_regression_families,
+        digit_threshold_profiles,
+        failure_code_profiles,
+        regression_profiles,
+    )
 
 
 def parse_runtime_lane_entries(raw: Any, label: str) -> list[dict[str, str]]:
@@ -212,10 +249,14 @@ def load_packet_set_comparison_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set comparison summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set comparison summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set comparison summary expected_reference_captured_phase0_ids")
-    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
-        summary.get("benchmarks", []),
-        "packet-set comparison summary",
-    )
+    (
+        digit_thresholds,
+        required_failure_codes,
+        known_regression_families,
+        digit_threshold_profiles,
+        failure_code_profiles,
+        regression_profiles,
+    ) = normalize_benchmark_profiles(summary.get("benchmarks", []), "packet-set comparison summary")
     return {
         **summary,
         "reference_packet_labels": reference_packet_labels,
@@ -225,6 +266,9 @@ def load_packet_set_comparison_summary(summary_path: Path) -> dict[str, Any]:
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
         "phase0_known_regression_families_by_benchmark": known_regression_families,
+        "phase0_digit_threshold_profiles_by_benchmark": digit_threshold_profiles,
+        "phase0_failure_code_profiles_by_benchmark": failure_code_profiles,
+        "phase0_regression_profiles_by_benchmark": regression_profiles,
     }
 
 
@@ -278,10 +322,14 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
     expect_unique(expected_packet_labels, "packet-set correct-digit summary expected_reference_packet_labels")
     expect_unique(compared_phase0_ids, "packet-set correct-digit summary compared_phase0_ids")
     expect_unique(expected_phase0_ids, "packet-set correct-digit summary expected_reference_captured_phase0_ids")
-    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
-        summary.get("benchmarks", []),
-        "packet-set correct-digit summary",
-    )
+    (
+        digit_thresholds,
+        required_failure_codes,
+        known_regression_families,
+        digit_threshold_profiles,
+        failure_code_profiles,
+        regression_profiles,
+    ) = normalize_benchmark_profiles(summary.get("benchmarks", []), "packet-set correct-digit summary")
     return {
         **summary,
         "minimum_observed_correct_digits_across_packet_set": minimum_correct_digits,
@@ -292,6 +340,9 @@ def load_packet_set_correct_digit_summary(summary_path: Path) -> dict[str, Any]:
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
         "phase0_known_regression_families_by_benchmark": known_regression_families,
+        "phase0_digit_threshold_profiles_by_benchmark": digit_threshold_profiles,
+        "phase0_failure_code_profiles_by_benchmark": failure_code_profiles,
+        "phase0_regression_profiles_by_benchmark": regression_profiles,
     }
 
 
@@ -350,10 +401,14 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         missing_required_failure_codes,
         "packet-set failure-code summary missing_required_failure_codes_across_packet_set",
     )
-    digit_thresholds, required_failure_codes, known_regression_families = normalize_benchmark_profiles(
-        summary.get("benchmarks", []),
-        "packet-set failure-code summary",
-    )
+    (
+        digit_thresholds,
+        required_failure_codes,
+        known_regression_families,
+        digit_threshold_profiles,
+        failure_code_profiles,
+        regression_profiles,
+    ) = normalize_benchmark_profiles(summary.get("benchmarks", []), "packet-set failure-code summary")
     return {
         **summary,
         "candidate_packet_labels": candidate_packet_labels,
@@ -364,6 +419,9 @@ def load_packet_set_failure_code_summary(summary_path: Path) -> dict[str, Any]:
         "phase0_digit_thresholds_by_benchmark": digit_thresholds,
         "phase0_required_failure_codes_by_benchmark": required_failure_codes,
         "phase0_known_regression_families_by_benchmark": known_regression_families,
+        "phase0_digit_threshold_profiles_by_benchmark": digit_threshold_profiles,
+        "phase0_failure_code_profiles_by_benchmark": failure_code_profiles,
+        "phase0_regression_profiles_by_benchmark": regression_profiles,
     }
 
 
@@ -447,6 +505,15 @@ def summarize_phase0_packet_set_qualification(
     phase0_known_regression_families_by_benchmark = comparison_summary[
         "phase0_known_regression_families_by_benchmark"
     ]
+    phase0_digit_threshold_profiles_by_benchmark = comparison_summary[
+        "phase0_digit_threshold_profiles_by_benchmark"
+    ]
+    phase0_failure_code_profiles_by_benchmark = comparison_summary[
+        "phase0_failure_code_profiles_by_benchmark"
+    ]
+    phase0_regression_profiles_by_benchmark = comparison_summary[
+        "phase0_regression_profiles_by_benchmark"
+    ]
 
     expect(
         set(comparison_phase0_ids) == set(phase0_reference_captured_ids),
@@ -481,6 +548,18 @@ def summarize_phase0_packet_set_qualification(
         "phase-0 known-regression profiles must match qualification_readiness.py",
     )
     expect(
+        set(phase0_digit_threshold_profiles_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 digit-threshold profile labels must match qualification_readiness.py",
+    )
+    expect(
+        set(phase0_failure_code_profiles_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 failure-code profile labels must match qualification_readiness.py",
+    )
+    expect(
+        set(phase0_regression_profiles_by_benchmark) == set(phase0_reference_captured_ids),
+        "phase-0 regression profile labels must match qualification_readiness.py",
+    )
+    expect(
         correct_digit_summary["phase0_digit_thresholds_by_benchmark"]
         == phase0_digit_thresholds_by_benchmark,
         "phase-0 digit-threshold profiles drifted between comparison and correct-digit summaries",
@@ -509,6 +588,36 @@ def summarize_phase0_packet_set_qualification(
         failure_code_summary["phase0_known_regression_families_by_benchmark"]
         == phase0_known_regression_families_by_benchmark,
         "phase-0 known-regression profiles drifted between comparison and failure-code summaries",
+    )
+    expect(
+        correct_digit_summary["phase0_digit_threshold_profiles_by_benchmark"]
+        == phase0_digit_threshold_profiles_by_benchmark,
+        "phase-0 digit-threshold profile labels drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_digit_threshold_profiles_by_benchmark"]
+        == phase0_digit_threshold_profiles_by_benchmark,
+        "phase-0 digit-threshold profile labels drifted between comparison and failure-code summaries",
+    )
+    expect(
+        correct_digit_summary["phase0_failure_code_profiles_by_benchmark"]
+        == phase0_failure_code_profiles_by_benchmark,
+        "phase-0 failure-code profile labels drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_failure_code_profiles_by_benchmark"]
+        == phase0_failure_code_profiles_by_benchmark,
+        "phase-0 failure-code profile labels drifted between comparison and failure-code summaries",
+    )
+    expect(
+        correct_digit_summary["phase0_regression_profiles_by_benchmark"]
+        == phase0_regression_profiles_by_benchmark,
+        "phase-0 regression profile labels drifted between comparison and correct-digit summaries",
+    )
+    expect(
+        failure_code_summary["phase0_regression_profiles_by_benchmark"]
+        == phase0_regression_profiles_by_benchmark,
+        "phase-0 regression profile labels drifted between comparison and failure-code summaries",
     )
 
     packet_labels_match_across_inputs = True
@@ -635,6 +744,9 @@ def summarize_phase0_packet_set_qualification(
         "phase0_digit_thresholds_by_benchmark": phase0_digit_thresholds_by_benchmark,
         "phase0_required_failure_codes_by_benchmark": phase0_required_failure_codes_by_benchmark,
         "phase0_known_regression_families_by_benchmark": phase0_known_regression_families_by_benchmark,
+        "phase0_digit_threshold_profiles_by_benchmark": phase0_digit_threshold_profiles_by_benchmark,
+        "phase0_failure_code_profiles_by_benchmark": phase0_failure_code_profiles_by_benchmark,
+        "phase0_regression_profiles_by_benchmark": phase0_regression_profiles_by_benchmark,
         "qualification_evidence_coherent": qualification_evidence_coherent,
         "packet_labels_match_across_inputs": packet_labels_match_across_inputs,
         "phase0_ids_match_across_inputs": phase0_ids_match_across_inputs,
@@ -707,8 +819,11 @@ def synthetic_benchmark_profiles(
     return [
         {
             "benchmark_id": benchmark_id,
+            "digit_threshold_profile": "core-package-family-default",
             "minimum_correct_digits": 50,
+            "failure_code_profile": "default-required-failure-codes",
             "required_failure_codes": required_failure_codes,
+            "regression_profile": "current-reviewed-regressions",
             "known_regression_families": [
                 "AnalyzeBlock on non-block-triangular systems",
                 "asymptotic-series overflow",
@@ -852,6 +967,7 @@ def run_self_check() -> dict[str, Any]:
         unexpected_failure_summary_path = temp_root / "failure-code-summary-unexpected.json"
         drift_comparison_summary_path = temp_root / "comparison-summary-drift.json"
         drift_failure_code_summary_path = temp_root / "failure-code-summary-drift.json"
+        profile_label_drift_summary_path = temp_root / "failure-code-summary-profile-drift.json"
         summary_path = temp_root / "phase0-qualification-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
@@ -940,6 +1056,12 @@ def run_self_check() -> dict[str, Any]:
         ]
         write_json(drift_failure_code_summary_path, packet_label_drift_payload)
 
+        profile_label_drift_payload = load_json(passing_failure_code_summary_path)
+        profile_label_drift_payload["benchmarks"][0][
+            "digit_threshold_profile"
+        ] = "unexpected-profile-label"
+        write_json(profile_label_drift_summary_path, profile_label_drift_payload)
+
         phase0_id_drift_rejected = False
         try:
             summarize_phase0_packet_set_qualification(
@@ -965,6 +1087,17 @@ def run_self_check() -> dict[str, Any]:
             packet_label_drift_rejected = "packet labels in the packet-set failure-code summary" in str(
                 error
             )
+
+        profile_label_drift_rejected = False
+        try:
+            summarize_phase0_packet_set_qualification(
+                qualification_summary_path=qualification_summary_path,
+                packet_set_comparison_summary_path=comparison_summary_path,
+                packet_set_correct_digit_summary_path=correct_digit_summary_path,
+                packet_set_failure_code_summary_path=profile_label_drift_summary_path,
+            )
+        except RuntimeError as error:
+            profile_label_drift_rejected = "profile labels drifted" in str(error)
 
         return {
             "matching_phase0_packet_set_qualified": passing_summary["phase0_packet_set_qualified"],
@@ -992,6 +1125,10 @@ def run_self_check() -> dict[str, Any]:
             ),
             "phase0_profiles_preserved": (
                 passing_summary["phase0_digit_thresholds_by_benchmark"]["automatic_loop"] == 50
+                and passing_summary["phase0_digit_threshold_profiles_by_benchmark"][
+                    "automatic_loop"
+                ]
+                == "core-package-family-default"
                 and passing_summary["phase0_required_failure_codes_by_benchmark"][
                     "automatic_vs_manual"
                 ]
@@ -1001,6 +1138,10 @@ def run_self_check() -> dict[str, Any]:
                     "insufficient_precision",
                     "master_set_instability",
                 ]
+                and passing_summary["phase0_failure_code_profiles_by_benchmark"][
+                    "automatic_vs_manual"
+                ]
+                == "default-required-failure-codes"
                 and passing_summary["phase0_known_regression_families_by_benchmark"][
                     "automatic_loop"
                 ]
@@ -1008,9 +1149,14 @@ def run_self_check() -> dict[str, Any]:
                     "AnalyzeBlock on non-block-triangular systems",
                     "asymptotic-series overflow",
                 ]
+                and passing_summary["phase0_regression_profiles_by_benchmark"][
+                    "automatic_loop"
+                ]
+                == "current-reviewed-regressions"
             ),
             "phase0_id_drift_rejected": phase0_id_drift_rejected,
             "packet_label_drift_rejected": packet_label_drift_rejected,
+            "profile_label_drift_rejected": profile_label_drift_rejected,
             "summary_written": summary_path.exists(),
         }
 

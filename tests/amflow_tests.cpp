@@ -43898,6 +43898,9 @@ void Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest() {
   ExpectContains(result.stdout_json, "\"packet_label_drift_rejected\": true",
                  "phase-0 qualification packet-set self-check should reject drift in the "
                  "retained packet labels across prerequisite summaries");
+  ExpectContains(result.stdout_json, "\"profile_label_drift_rejected\": true",
+                 "phase-0 qualification packet-set self-check should reject drift in scaffold "
+                 "profile labels across prerequisite summaries");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "phase-0 qualification packet-set self-check should write the synthetic "
                  "summary output");
@@ -44024,6 +44027,24 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
                  "\"minimum_observed_correct_digits_across_packet_set\": 18",
                  "phase-0 qualification packet-set summary should keep the retained "
                  "minimum correct-digit score visible");
+  ExpectContains(result.stdout_json, "\"phase0_digit_threshold_profiles_by_benchmark\": {",
+                 "phase-0 qualification packet-set summary should publish digit-threshold "
+                 "profile labels");
+  ExpectContains(result.stdout_json, "\"phase0_failure_code_profiles_by_benchmark\": {",
+                 "phase-0 qualification packet-set summary should publish failure-code profile "
+                 "labels");
+  ExpectContains(result.stdout_json, "\"phase0_regression_profiles_by_benchmark\": {",
+                 "phase-0 qualification packet-set summary should publish regression profile "
+                 "labels");
+  ExpectContains(result.stdout_json, "\"core-package-family-default\"",
+                 "phase-0 qualification packet-set summary should preserve the scaffold digit "
+                 "profile label");
+  ExpectContains(result.stdout_json, "\"default-required-failure-codes\"",
+                 "phase-0 qualification packet-set summary should preserve the scaffold "
+                 "failure-code profile label");
+  ExpectContains(result.stdout_json, "\"current-reviewed-regressions\"",
+                 "phase-0 qualification packet-set summary should preserve the scaffold "
+                 "regression profile label");
   ExpectContains(result.stdout_json, "\"packet_set_failure_code_metadata_coherent\": true",
                  "phase-0 qualification packet-set summary should preserve coherent retained "
                  "failure-code metadata before evaluating audit sidecars");
@@ -44363,9 +44384,12 @@ void MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest() {
   ExpectContains(result.stdout_json, "\"case_study_blocker_blocks_m6\": true",
                  "Milestone M6 qualification self-check should preserve case-study-family "
                  "blockers");
+  ExpectContains(result.stdout_json, "\"phase0_profiles_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve phase-0 profile values "
+                 "and scaffold labels");
   ExpectContains(result.stdout_json, "\"case_study_profiles_preserved\": true",
-                 "Milestone M6 qualification self-check should preserve case-study digit and "
-                 "required failure-code profiles");
+                 "Milestone M6 qualification self-check should preserve case-study profile "
+                 "values and scaffold labels");
   ExpectContains(result.stdout_json,
                  "\"phase0_and_case_study_blockers_preserved\": true",
                  "Milestone M6 qualification self-check should keep both subverdict blocker "
@@ -44535,13 +44559,36 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"case_study_digit_thresholds_by_family\": {",
                  "Milestone M6 retained qualification summary should publish case-study digit "
                  "threshold profiles");
+  ExpectContains(result.stdout_json, "\"case_study_digit_threshold_profiles_by_family\": {",
+                 "Milestone M6 retained qualification summary should publish case-study digit "
+                 "profile labels");
   ExpectContains(result.stdout_json, "\"ttbar-h\": 100",
                  "Milestone M6 retained qualification summary should preserve the strong "
                  "case-study digit threshold");
+  ExpectContains(result.stdout_json, "\"2024-tth-light-quark-loop-mi\"",
+                 "Milestone M6 retained qualification summary should preserve the strong "
+                 "case-study digit profile label");
   ExpectContains(result.stdout_json,
                  "\"case_study_required_failure_codes_by_family\": {",
                  "Milestone M6 retained qualification summary should publish case-study "
                  "required failure-code profiles");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_failure_code_profiles_by_family\": {",
+                 "Milestone M6 retained qualification summary should publish case-study "
+                 "failure-code profile labels");
+  ExpectContains(result.stdout_json,
+                 "\"case_study_regression_profiles_by_family\": {",
+                 "Milestone M6 retained qualification summary should publish case-study "
+                 "regression profile labels");
+  ExpectContains(result.stdout_json, "\"phase0_digit_threshold_profiles_by_benchmark\": {",
+                 "Milestone M6 retained qualification summary should publish phase-0 digit "
+                 "profile labels");
+  ExpectContains(result.stdout_json, "\"phase0_failure_code_profiles_by_benchmark\": {",
+                 "Milestone M6 retained qualification summary should publish phase-0 "
+                 "failure-code profile labels");
+  ExpectContains(result.stdout_json, "\"phase0_regression_profiles_by_benchmark\": {",
+                 "Milestone M6 retained qualification summary should publish phase-0 "
+                 "regression profile labels");
   ExpectContains(result.stdout_json, "\"master_set_instability\"",
                  "Milestone M6 retained qualification summary should preserve case-study "
                  "required failure-code evidence");

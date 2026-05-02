@@ -52,6 +52,19 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return stream.str();
 }
 
+std::string JoinNames(const std::vector<std::string>& names) {
+  std::ostringstream stream;
+  stream << "[";
+  for (std::size_t index = 0; index < names.size(); ++index) {
+    if (index != 0) {
+      stream << ", ";
+    }
+    stream << names[index];
+  }
+  stream << "]";
+  return stream.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream stream;
@@ -60,7 +73,8 @@ std::string DescribeCutComponents(
     if (index != 0) {
       stream << ", ";
     }
-    stream << JoinIndices(components[index].cut_propagator_indices);
+    stream << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
+           << " loops=" << JoinNames(components[index].loop_momenta);
   }
   stream << "]";
   return stream.str();

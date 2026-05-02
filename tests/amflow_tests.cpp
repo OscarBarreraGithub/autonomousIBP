@@ -7262,7 +7262,7 @@ void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "disconnected cut components: [[0], [3]]",
+      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
       "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
       "the reviewed cut surface splits into disconnected components");
 }
@@ -7580,7 +7580,7 @@ void PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallback
       [&spec, &amf_options]() {
         static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
       },
-      "disconnected cut components: [[0], [3]]",
+      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
       "AmfOptions ending planner should fail fast on disconnected Cutkosky cut topology "
       "instead of falling through to a later placeholder ending");
 }
@@ -10443,7 +10443,7 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutCompo
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "disconnected cut components: [[0], [3]]",
+      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
       "builtin Cutkosky phase-space boundary generation should reject disconnected cut "
       "components before provider routing");
 }

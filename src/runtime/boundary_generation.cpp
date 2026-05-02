@@ -43,6 +43,19 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return out.str();
 }
 
+std::string JoinNames(const std::vector<std::string>& names) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < names.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << names[index];
+  }
+  out << "]";
+  return out.str();
+}
+
 std::string Trim(const std::string& value) {
   std::size_t start = 0;
   while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
@@ -80,7 +93,8 @@ std::string DescribeCutComponents(
     if (index != 0) {
       out << ", ";
     }
-    out << JoinIndices(components[index].cut_propagator_indices);
+    out << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
+        << " loops=" << JoinNames(components[index].loop_momenta);
   }
   out << "]";
   return out.str();

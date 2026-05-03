@@ -95,16 +95,24 @@ void ValidateProblemSpecForBoundaryGeneration(const ProblemSpec& spec) {
   }
 }
 
-bool IsReviewedEtaInfinityBareZeroMassLiteral(const std::string& trimmed) {
+bool IsReviewedBareZeroMassLiteral(const std::string& trimmed) {
   return trimmed == "0" || trimmed == "+0" || trimmed == "-0";
 }
 
-bool IsReviewedEtaInfinityZeroMassLiteral(const std::string& value) {
+bool IsReviewedBoundaryZeroMassLiteral(const std::string& value) {
   std::string trimmed = Trim(value);
   while (trimmed.size() >= 3 && trimmed.front() == '(' && trimmed.back() == ')') {
     trimmed = Trim(trimmed.substr(1, trimmed.size() - 2));
   }
-  return IsReviewedEtaInfinityBareZeroMassLiteral(trimmed);
+  return IsReviewedBareZeroMassLiteral(trimmed);
+}
+
+bool IsReviewedEtaInfinityZeroMassLiteral(const std::string& value) {
+  return IsReviewedBoundaryZeroMassLiteral(value);
+}
+
+bool IsReviewedCutkoskyPhaseSpaceMasslessLiteral(const std::string& value) {
+  return IsReviewedBoundaryZeroMassLiteral(value);
 }
 
 std::string DescribeCutComponent(const CutkoskyPhaseSpaceCutComponent& component) {
@@ -353,6 +361,17 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
     const Propagator& propagator = spec.family.propagators[index];
     if (propagator.kind == PropagatorKind::Cut) {
       saw_cut_propagator = true;
+      if (!IsReviewedCutkoskyPhaseSpaceMasslessLiteral(propagator.mass)) {
+        throw BoundaryUnsolvedError(
+            "builtin Cutkosky phase-space boundary request generation requires cut "
+            "propagator " +
+            std::to_string(index) +
+            " to have reviewed massless phase-space support on the current boundary-value "
+            "subset; mass must be zero literal \"0\", \"+0\", or \"-0\" after trimming "
+            "outer whitespace and any number of redundant outer parenthesis pairs; "
+            "propagator " +
+            std::to_string(index) + " has mass \"" + propagator.mass + "\"");
+      }
       continue;
     }
     if (propagator.kind == PropagatorKind::Standard) {

@@ -1,6 +1,7 @@
 #include "amflow/runtime/ending_scheme.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <exception>
 #include <memory>
 #include <optional>
@@ -152,6 +153,31 @@ std::vector<std::size_t> CollectCutPropagatorIndices(const ProblemSpec& spec) {
   return cut_indices;
 }
 
+std::string Trim(const std::string& value) {
+  std::size_t start = 0;
+  while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
+    ++start;
+  }
+
+  std::size_t end = value.size();
+  while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+    --end;
+  }
+  return value.substr(start, end - start);
+}
+
+bool IsReviewedCutkoskyPhaseSpaceBareZeroMassLiteral(const std::string& trimmed) {
+  return trimmed == "0" || trimmed == "+0" || trimmed == "-0";
+}
+
+bool IsReviewedCutkoskyPhaseSpaceMasslessLiteral(const std::string& value) {
+  std::string trimmed = Trim(value);
+  while (trimmed.size() >= 3 && trimmed.front() == '(' && trimmed.back() == ')') {
+    trimmed = Trim(trimmed.substr(1, trimmed.size() - 2));
+  }
+  return IsReviewedCutkoskyPhaseSpaceBareZeroMassLiteral(trimmed);
+}
+
 void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
   if (spec.family.loop_prescriptions.empty()) {
     return;
@@ -276,6 +302,16 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
       throw std::runtime_error("ending scheme Cutkosky only supports standard/cut propagators on "
                                "the current reviewed phase-space subset; propagator " +
                                std::to_string(index) + " has kind " + ToString(kind));
+    }
+    if (kind == PropagatorKind::Cut &&
+        !IsReviewedCutkoskyPhaseSpaceMasslessLiteral(spec.family.propagators[index].mass)) {
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires cut propagator " + std::to_string(index) +
+          " to have reviewed massless phase-space support before emitting the reviewed "
+          "phase-space terminal node on the current boundary-value subset; mass must be zero "
+          "literal \"0\", \"+0\", or \"-0\" after trimming outer whitespace and any number "
+          "of redundant outer parenthesis pairs; propagator " +
+          std::to_string(index) + " has mass \"" + spec.family.propagators[index].mass + "\"");
     }
     if (!ParseFeynmanPrescription(spec.family.propagators[index].prescription).has_value()) {
       throw std::invalid_argument("family.propagators[" + std::to_string(index) +

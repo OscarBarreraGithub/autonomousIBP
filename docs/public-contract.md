@@ -432,6 +432,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   public empty-symbol diagnostic, and `AmfOptions` Cutkosky request/solve wrappers now reject empty,
   whitespace-only, outer-whitespace-padded, or internal-whitespace `eta_symbol` values before ordered
   ending planning, provider lookup, boundary attachment, or solver execution.
+  Selected Cutkosky phase-space `terminal_strategy` metadata now also rejects internal whitespace
+  before provider attachment, matching the existing empty and outer-whitespace selected-decision
+  guardrails without re-planning caller-supplied decisions.
   The same boundary-request preflight now performs one narrow cut-topology support/connectivity check: every cut propagator
   must mention at least one
   declared loop momentum and all cut supports must belong to one connected component induced by

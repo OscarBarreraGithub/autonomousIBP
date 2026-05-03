@@ -481,6 +481,11 @@ void ValidatePlannedCutkoskyPhaseSpaceDecisionMetadata(const EndingDecision& dec
         "planned Cutkosky phase-space boundary request requires selected ending decision "
         "terminal_strategy must not contain leading or trailing whitespace");
   }
+  if (ContainsWhitespace(decision.terminal_strategy)) {
+    throw BoundaryUnsolvedError(
+        "planned Cutkosky phase-space boundary request requires selected ending decision "
+        "terminal_strategy must not contain internal whitespace");
+  }
 }
 
 }  // namespace

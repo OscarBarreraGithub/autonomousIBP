@@ -14651,6 +14651,70 @@ void Batch63afAmfOptionsCutkoskySolveRejectsInternalWhitespaceEtaSymbolBeforePla
          "internal-whitespace eta_symbol rejection");
 }
 
+void Batch63agPlannedCutkoskyRejectsInternalWhitespaceSelectedTerminalStrategyTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "Custom Strategy";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+
+  ExpectBoundaryUnsolved(
+      [&decision]() {
+        static_cast<void>(amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+            MakeReviewedCutkoskyPhaseSpaceSpec(),
+            decision));
+      },
+      "planned Cutkosky phase-space boundary request requires selected ending decision "
+      "terminal_strategy must not contain internal whitespace",
+      "Batch 63ag planned Cutkosky request should reject selected terminal strategy metadata "
+      "with internal whitespace");
+}
+
+void Batch63agAmfOptionsCutkoskyRejectsInternalWhitespaceSelectedTerminalStrategyBeforeProviderTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"InternalWhitespaceStrategy"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "Internal Whitespace Strategy";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(
+      decision,
+      "InternalWhitespaceStrategy");
+
+  RecordingStaticBoundaryProvider provider(
+      "builtin::cutkosky-phase-space::minus_i0",
+      {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63ag AmfOptions Cutkosky wrapper should reject internal-whitespace selected "
+      "strategy metadata before provider attachment");
+
+  Expect(message.find(
+             "planned Cutkosky phase-space boundary request requires selected ending decision "
+             "terminal_strategy must not contain internal whitespace") != std::string::npos,
+         "Batch 63ag AmfOptions Cutkosky wrapper should preserve the selected-decision "
+         "internal-whitespace diagnostic");
+  Expect(scheme->call_count() == 1,
+         "Batch 63ag AmfOptions Cutkosky wrapper should still plan the configured ending "
+         "exactly once before validating selected-decision internal whitespace");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63ag AmfOptions Cutkosky wrapper should stop before provider attachment when "
+         "selected-decision strategy metadata has internal whitespace");
+  Expect(solver.call_count() == 0,
+         "Batch 63ag AmfOptions Cutkosky wrapper should stop before solver execution when "
+         "selected-decision strategy metadata has internal whitespace");
+}
+
 void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -49923,6 +49987,8 @@ int main() {
     Batch63aeAmfOptionsCutkoskySolveRejectsPaddedEtaSymbolBeforePlanningTest();
     Batch63afBuiltinCutkoskyBoundaryRequestRejectsInternalWhitespaceEtaSymbolTest();
     Batch63afAmfOptionsCutkoskySolveRejectsInternalWhitespaceEtaSymbolBeforePlanningTest();
+    Batch63agPlannedCutkoskyRejectsInternalWhitespaceSelectedTerminalStrategyTest();
+    Batch63agAmfOptionsCutkoskyRejectsInternalWhitespaceSelectedTerminalStrategyBeforeProviderTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest();

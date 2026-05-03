@@ -6109,6 +6109,20 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
       "reviewed lightlike linear auxiliary rewrite should reject empty auxiliary symbols");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMalformedSymbolTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+
+  for (const std::string& x_symbol : {"x y", "x+eta", "1x"}) {
+    ExpectRuntimeError(
+        [&spec, &x_symbol]() {
+          static_cast<void>(
+              amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, x_symbol));
+        },
+        "reviewed lightlike linear auxiliary rewrite symbol must be a standalone identifier",
+        "reviewed lightlike linear auxiliary rewrite should reject malformed auxiliary symbols");
+  }
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
 
@@ -52258,6 +52272,7 @@ int main() {
     BuiltinPropagatorSelectorSupportsSixteenNestedGroupedCommonLightlikeFactorTest();
     BuiltinPropagatorSelectorSupportsSeventeenNestedGroupedCommonLightlikeFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMalformedSymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();

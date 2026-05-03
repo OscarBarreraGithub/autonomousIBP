@@ -34,6 +34,30 @@ bool ContainsInvariant(const std::vector<std::string>& invariants,
   return std::find(invariants.begin(), invariants.end(), value) != invariants.end();
 }
 
+bool IsAuxiliaryIdentifierStart(const char character) {
+  return std::isalpha(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+bool IsAuxiliaryIdentifierContinuation(const char character) {
+  return std::isalnum(static_cast<unsigned char>(character)) != 0 || character == '_';
+}
+
+std::string RequireReviewedLightlikeAuxiliarySymbol(const std::string& x_symbol) {
+  const std::string trimmed_x_symbol = Trim(x_symbol);
+  if (trimmed_x_symbol.empty()) {
+    throw std::runtime_error("reviewed lightlike linear auxiliary rewrite symbol must not be "
+                             "empty");
+  }
+  if (!IsAuxiliaryIdentifierStart(trimmed_x_symbol.front()) ||
+      !std::all_of(trimmed_x_symbol.begin() + 1,
+                   trimmed_x_symbol.end(),
+                   IsAuxiliaryIdentifierContinuation)) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary rewrite symbol must be a standalone identifier");
+  }
+  return trimmed_x_symbol;
+}
+
 std::string StripOuterParentheses(const std::string& value) {
   std::string current = Trim(value);
   while (!current.empty() && current.front() == '(' && current.back() == ')') {
@@ -937,11 +961,7 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
 Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(const ProblemSpec& spec,
                                                            const std::size_t propagator_index,
                                                            const std::string& x_symbol) {
-  const std::string trimmed_x_symbol = Trim(x_symbol);
-  if (trimmed_x_symbol.empty()) {
-    throw std::runtime_error("reviewed lightlike linear auxiliary rewrite symbol must not be "
-                             "empty");
-  }
+  const std::string trimmed_x_symbol = RequireReviewedLightlikeAuxiliarySymbol(x_symbol);
   if (propagator_index >= spec.family.propagators.size()) {
     throw std::runtime_error("reviewed lightlike linear auxiliary rewrite propagator index out of "
                              "range: " +
@@ -1016,7 +1036,7 @@ LightlikeLinearAuxiliaryTransformResult ApplyReviewedLightlikeLinearAuxiliaryTra
     const std::string& x_symbol) {
   LightlikeLinearAuxiliaryTransformResult result;
   result.transformed_spec = spec;
-  result.x_symbol = Trim(x_symbol);
+  result.x_symbol = RequireReviewedLightlikeAuxiliarySymbol(x_symbol);
   result.rewritten_propagator_index = propagator_index;
   result.transformed_spec.family.propagators[propagator_index] =
       BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, propagator_index, x_symbol);

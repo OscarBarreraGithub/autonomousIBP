@@ -15146,6 +15146,113 @@ void Batch63apPlannedCutkoskyProviderRegistryValidatesProblemSpecBeforeProviders
          "after malformed ProblemSpec rejection");
 }
 
+void Batch63aqPlannedCutkoskyNoProviderValidatesEtaSymbolBeforeProblemSpecTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            solver,
+            ""));
+      },
+      "Batch 63aq planned Cutkosky no-provider solve should reject empty eta symbols "
+      "before malformed ProblemSpec validation");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not be empty",
+         "Batch 63aq planned Cutkosky no-provider solve should preserve the empty "
+         "eta_symbol diagnostic");
+  Expect(solver.call_count() == 0,
+         "Batch 63aq planned Cutkosky no-provider solve should not call the solver after "
+         "local empty eta_symbol rejection");
+}
+
+void Batch63aqPlannedCutkoskySingleProviderValidatesEtaSymbolBeforeProviderTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  RecordingStaticBoundaryProvider provider(
+      "",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition("")});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            provider,
+            solver,
+            "\teta_aux "));
+      },
+      "Batch 63aq planned Cutkosky single-provider solve should reject padded eta symbols "
+      "before provider validation");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not contain "
+             "leading or trailing whitespace",
+         "Batch 63aq planned Cutkosky single-provider solve should preserve the padded "
+         "eta_symbol diagnostic");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63aq planned Cutkosky single-provider solve should not consult the provider "
+         "after local padded eta_symbol rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63aq planned Cutkosky single-provider solve should not call the solver after "
+         "local padded eta_symbol rejection");
+}
+
+void Batch63aqPlannedCutkoskyProviderRegistryValidatesEtaSymbolBeforeProvidersTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  auto provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition("")});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{provider},
+            solver,
+            "eta aux"));
+      },
+      "Batch 63aq planned Cutkosky provider-registry solve should reject internal-whitespace "
+      "eta symbols before provider-registry validation");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not contain "
+             "internal whitespace",
+         "Batch 63aq planned Cutkosky provider-registry solve should preserve the "
+         "internal-whitespace eta_symbol diagnostic");
+  Expect(provider->strategy_call_count() == 0 && provider->provide_call_count() == 0,
+         "Batch 63aq planned Cutkosky provider-registry solve should not consult providers "
+         "after local internal-whitespace eta_symbol rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63aq planned Cutkosky provider-registry solve should not call the solver "
+         "after local internal-whitespace eta_symbol rejection");
+}
+
 void Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest() {
   const std::string message = CaptureInvalidArgumentMessage(
       []() {
@@ -51765,6 +51872,9 @@ int main() {
     Batch63aoAmfOptionsCutkoskySolveValidatesProblemSpecBeforePlanningTest();
     Batch63apPlannedCutkoskySingleProviderValidatesProblemSpecBeforeProviderTest();
     Batch63apPlannedCutkoskyProviderRegistryValidatesProblemSpecBeforeProvidersTest();
+    Batch63aqPlannedCutkoskyNoProviderValidatesEtaSymbolBeforeProblemSpecTest();
+    Batch63aqPlannedCutkoskySingleProviderValidatesEtaSymbolBeforeProviderTest();
+    Batch63aqPlannedCutkoskyProviderRegistryValidatesEtaSymbolBeforeProvidersTest();
     Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest();
     Batch63acAmfOptionsCutkoskySolveRejectsWhitespaceEtaSymbolBeforePlanningTest();
     Batch63aeBuiltinCutkoskyBoundaryRequestRejectsPaddedEtaSymbolTest();

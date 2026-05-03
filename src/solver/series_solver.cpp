@@ -7723,6 +7723,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SolveRequest& request_template,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
       spec,
       decision,
@@ -7739,6 +7740,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   ValidateCutkoskyPhaseSpaceSolveProblemSpec(spec);
   const std::string provider_strategy = ValidateSingleBoundaryProviderStrategy(provider);
   return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedProvider(spec,
@@ -7757,6 +7759,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   ValidateCutkoskyPhaseSpaceSolveProblemSpec(spec);
   ValidateRequiredUniqueBoundaryProviderRegistry(providers);
   return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedRegistry(spec,

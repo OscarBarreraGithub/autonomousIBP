@@ -15882,6 +15882,30 @@ void BootstrapSeriesSolverRejectsStaleDirectRealEtaContinuationPlanContourFinger
                  "caller-supplied contour fingerprint");
 }
 
+void BootstrapSeriesSolverRejectsLowerHalfPlaneDirectRealEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->half_plane = amflow::EtaContourHalfPlane::Lower;
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap lower-half-plane eta-continuation-plan coverage should fail closed before "
+         "the default exact solver consumes noncanonical contour metadata");
+  ExpectContains(diagnostics.summary,
+                 "upper-half-plane",
+                 "bootstrap lower-half-plane eta-continuation-plan coverage should explain the "
+                 "reviewed upper-half-plane convention");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap lower-half-plane eta-continuation-plan coverage should report the "
+                 "caller-supplied contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsDuplicateEndpointDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -49712,6 +49736,7 @@ int main() {
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsStaleDirectRealEtaContinuationPlanContourFingerprintTest();
+    BootstrapSeriesSolverRejectsLowerHalfPlaneDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsDuplicateEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanEndpointsTest();
     BootstrapSeriesSolverAcceptsValueMatchedDirectRealEtaContinuationPlanLocationMetadataTest();

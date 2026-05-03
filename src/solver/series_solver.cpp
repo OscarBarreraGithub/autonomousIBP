@@ -4204,6 +4204,10 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
     return "default exact solver accepts eta_continuation_plan metadata only when it carries a "
            "reviewed contour fingerprint";
   }
+  if (plan.half_plane != EtaContourHalfPlane::Upper) {
+    return "default exact solver accepts eta_continuation_plan metadata only when the reviewed "
+           "direct real contour uses the upper-half-plane convention";
+  }
   if (plan.contour_points.size() != 2) {
     return "default exact solver currently accepts only direct real two-point "
            "eta_continuation_plan metadata";

@@ -5500,8 +5500,14 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
 
   const ExactRationalVector regular_match_values =
       MultiplyMatrixVector(start_match, start_boundary_values);
-  static_cast<void>(regular_match_values);
-  return MakeSuccessfulMixedBootstrapSolveDiagnostics();
+  const ExactRationalVector target_frobenius_values =
+      MultiplyMatrixVector(InvertUpperTriangularMatrix(target_match), regular_match_values);
+  SolverDiagnostics diagnostics = MakeSuccessfulMixedBootstrapSolveDiagnostics();
+  diagnostics.target_values.reserve(target_frobenius_values.size());
+  for (const ExactRational& value : target_frobenius_values) {
+    diagnostics.target_values.push_back(value.ToString());
+  }
+  return diagnostics;
 }
 
 }  // namespace
@@ -5654,9 +5660,13 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
           EvaluateMatrixPolynomial(start_coefficients, start_value, target_value);
       const ExactRationalVector transported_target_values =
           MultiplyMatrixVector(transported_fundamental_matrix, start_boundary_values);
-      static_cast<void>(transported_target_values);
 
-      return MakeSuccessfulBootstrapSolveDiagnostics();
+      SolverDiagnostics diagnostics = MakeSuccessfulBootstrapSolveDiagnostics();
+      diagnostics.target_values.reserve(transported_target_values.size());
+      for (const ExactRational& value : transported_target_values) {
+        diagnostics.target_values.push_back(value.ToString());
+      }
+      return diagnostics;
     } catch (const std::invalid_argument& error) {
       if (!IsRegularCenterRejection(error)) {
         throw;

@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "amflow/core/de_system.hpp"
@@ -67,11 +68,24 @@ struct UpperTriangularMatrixSeriesPatchOverlapDiagnostics {
 };
 
 struct SolverDiagnostics {
+  SolverDiagnostics() = default;
+  SolverDiagnostics(bool success_in,
+                    double residual_norm_in,
+                    double overlap_mismatch_in,
+                    std::string failure_code_in,
+                    std::string summary_in)
+      : success(success_in),
+        residual_norm(residual_norm_in),
+        overlap_mismatch(overlap_mismatch_in),
+        failure_code(std::move(failure_code_in)),
+        summary(std::move(summary_in)) {}
+
   bool success = false;
   double residual_norm = 1.0;
   double overlap_mismatch = 1.0;
   std::string failure_code;
   std::string summary;
+  std::vector<std::string> target_values;
 };
 
 struct SolveRequest {

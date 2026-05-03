@@ -48199,6 +48199,87 @@ void ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest() {
          "probe is unavailable");
 }
 
+void SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root = FreshTempDir("amflow-solve-series-cli-tiny-direct");
+  const std::filesystem::path spec_path = run_root / "tiny-direct.yaml";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      spec_path,
+      "family:\n"
+      "  name: \"toy_scalar_family\"\n"
+      "  loop_momenta: [\"k\"]\n"
+      "  top_level_sectors: [1]\n"
+      "  propagators:\n"
+      "    - expression: \"k^2\"\n"
+      "      mass: \"0\"\n"
+      "      kind: \"standard\"\n"
+      "      prescription: -1\n"
+      "kinematics:\n"
+      "  invariants: [\"s\"]\n"
+      "  numeric_substitutions:\n"
+      "    s: \"1\"\n"
+      "targets:\n"
+      "  - family: \"toy_scalar_family\"\n"
+      "    indices: [1]\n"
+      "dimension: \"4 - 2*eps\"\n"
+      "complex_mode: false\n"
+      "solve_series:\n"
+      "  benchmark_id: \"tiny_direct\"\n"
+      "  variable: \"eta\"\n"
+      "  start_location: \"eta=0\"\n"
+      "  target_location: \"eta=2\"\n"
+      "  masters:\n"
+      "    - family: \"toy_scalar_family\"\n"
+      "      indices: [1]\n"
+      "      label: \"I\"\n"
+      "  coefficient_matrices:\n"
+      "    eta:\n"
+      "      - [\"1/(eta+1)\"]\n"
+      "  boundary_conditions:\n"
+      "    - variable: \"eta\"\n"
+      "      location: \"eta=0\"\n"
+      "      values: [\"1\"]\n"
+      "      strategy: \"manual\"\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(spec_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "solve-series CLI should complete on a tiny direct exact solve request; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  Expect(std::filesystem::exists(output_path),
+         "solve-series CLI should write the requested JSON output path");
+
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"schema_version\": 1",
+                 "solve-series JSON should publish schema_version");
+  ExpectContains(json, "\"benchmark_id\": \"tiny_direct\"",
+                 "solve-series JSON should preserve the embedded benchmark id");
+  ExpectContains(json, "\"family\": \"toy_scalar_family\"",
+                 "solve-series JSON should preserve the ProblemSpec family");
+  ExpectContains(json, "\"precision_digits\": 40",
+                 "solve-series JSON should record requested precision digits");
+  ExpectContains(json, "\"epsilon_order\": 0",
+                 "solve-series JSON should record requested epsilon order");
+  ExpectContains(json, "\"integral\": \"toy_scalar_family[1]\"",
+                 "solve-series JSON should emit the target integral label");
+  ExpectContains(json, "\"order\": 0",
+                 "solve-series JSON should emit the constant epsilon coefficient");
+  ExpectContains(json, "\"real_digits\": \"3.",
+                 "solve-series JSON should serialize the transported target value");
+  ExpectContains(json, "\"imag_digits\": \"0",
+                 "solve-series JSON should serialize a real-valued imaginary component");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "solve-series JSON should report successful solver status");
+}
+
 struct ReferenceHarnessSelfCheckRun {
   std::string stdout_json;
   std::string stderr_log;
@@ -49055,6 +49136,24 @@ void Phase0ReferenceComparatorMatchesRetainedRequiredSetTest() {
   ExpectContains(result.stdout_json, "\"insufficient_precision\"",
                  "phase-0 reference comparator report should surface the frozen required "
                  "failure-code profile from the qualification scaffold");
+}
+
+void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-cpp-vs-amflow-comparator-self-check",
+      "tools/reference-harness/scripts/compare_cpp_vs_amflow.py",
+      {"--self-check"},
+      "C++ vs AMFlow comparator self-check");
+  Expect(result.stderr_log.empty(),
+         "C++ vs AMFlow comparator self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"matching_synthetic_passed\": true",
+                 "C++ vs AMFlow comparator self-check should accept matching synthetic inputs");
+  ExpectContains(result.stdout_json, "\"mismatch_synthetic_rejected\": true",
+                 "C++ vs AMFlow comparator self-check should reject coefficient mismatches");
+  ExpectContains(result.stdout_json, "\"missing_integral_rejected\": true",
+                 "C++ vs AMFlow comparator self-check should reject missing C++ integrals");
+  ExpectContains(result.stdout_json, "\"failed_cpp_status_rejected\": true",
+                 "C++ vs AMFlow comparator self-check should reject non-success C++ payloads");
 }
 
 void Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest() {
@@ -54031,6 +54130,7 @@ int main() {
     RunKiraFromFileNonzeroExitStillWritesTruthfulDefaultParseRootTest();
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
+    SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();
@@ -54045,6 +54145,7 @@ int main() {
     QualificationReadinessSelfCheckAggregatesRetainedPacketsTest();
     Phase0ReferenceComparatorSelfCheckCoversMismatchFailuresTest();
     Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
+    CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest();
     Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest();
     Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
     Phase0CorrectDigitScorerSelfCheckCoversThresholdAndSkeletonFailuresTest();

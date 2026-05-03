@@ -1,10 +1,20 @@
 #include <array>
+#include <chrono>
+#include <cctype>
+#include <fstream>
 #include <filesystem>
 #include <exception>
 #include <iostream>
+#include <map>
+#include <optional>
 #include <cstdio>
+#include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
+
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include "amflow/core/options.hpp"
 #include "amflow/core/problem_spec.hpp"
@@ -12,6 +22,7 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/solver/series_solver.hpp"
 
 namespace {
 
@@ -359,6 +370,851 @@ int RunKiraForSpec(const amflow::ProblemSpec& spec,
   return result.status == amflow::CommandExecutionStatus::InvalidConfiguration ? 2 : 4;
 }
 
+struct CliYamlLine {
+  std::size_t number = 0;
+  int indent = 0;
+  std::string text;
+};
+
+struct DirectSolveSeriesSpec {
+  bool present = false;
+  std::string benchmark_id;
+  std::string variable;
+  std::string start_location;
+  std::string target_location;
+  std::vector<amflow::MasterIntegral> masters;
+  std::map<std::string, std::vector<std::vector<std::string>>> coefficient_matrices;
+  std::vector<amflow::BoundaryCondition> boundary_conditions;
+};
+
+[[noreturn]] void FailCliYamlParse(const std::size_t line_number,
+                                   const std::string& message) {
+  throw std::runtime_error("solve_series parse error at line " +
+                           std::to_string(line_number) + ": " + message);
+}
+
+bool StartsWith(const std::string& value, const std::string& prefix) {
+  return value.rfind(prefix, 0) == 0;
+}
+
+std::vector<CliYamlLine> TokenizeCliYaml(const std::string& yaml) {
+  std::vector<CliYamlLine> lines;
+  std::istringstream stream(yaml);
+  std::string raw;
+  std::size_t line_number = 0;
+  while (std::getline(stream, raw)) {
+    ++line_number;
+    if (!raw.empty() && raw.back() == '\r') {
+      raw.pop_back();
+    }
+    const std::size_t first_non_space = raw.find_first_not_of(' ');
+    if (first_non_space == std::string::npos || raw[first_non_space] == '#') {
+      continue;
+    }
+    if (first_non_space % 2 != 0) {
+      FailCliYamlParse(line_number, "indentation must use multiples of two spaces");
+    }
+    lines.push_back({line_number,
+                     static_cast<int>(first_non_space),
+                     raw.substr(first_non_space)});
+  }
+  return lines;
+}
+
+std::pair<std::string, std::string> SplitCliYamlKeyValue(const CliYamlLine& line,
+                                                         const std::string& text) {
+  const std::size_t separator = text.find(':');
+  if (separator == std::string::npos) {
+    FailCliYamlParse(line.number, "expected key/value pair");
+  }
+  return {TrimAsciiWhitespace(text.substr(0, separator)),
+          TrimAsciiWhitespace(text.substr(separator + 1))};
+}
+
+std::string ParseCliYamlString(const CliYamlLine& line, const std::string& value) {
+  const std::string trimmed = TrimAsciiWhitespace(value);
+  if (trimmed.empty()) {
+    FailCliYamlParse(line.number, "expected a scalar value");
+  }
+  if (trimmed.front() != '"') {
+    return trimmed;
+  }
+  if (trimmed.size() < 2 || trimmed.back() != '"') {
+    FailCliYamlParse(line.number, "unterminated quoted string");
+  }
+  std::string parsed;
+  parsed.reserve(trimmed.size() - 2);
+  for (std::size_t index = 1; index + 1 < trimmed.size(); ++index) {
+    const char character = trimmed[index];
+    if (character != '\\') {
+      parsed.push_back(character);
+      continue;
+    }
+    if (index + 1 >= trimmed.size() - 1) {
+      FailCliYamlParse(line.number, "invalid escape sequence");
+    }
+    const char escaped = trimmed[++index];
+    switch (escaped) {
+      case '\\':
+      case '"':
+        parsed.push_back(escaped);
+        break;
+      case 'n':
+        parsed.push_back('\n');
+        break;
+      case 't':
+        parsed.push_back('\t');
+        break;
+      default:
+        FailCliYamlParse(line.number, "unsupported escape sequence");
+    }
+  }
+  return parsed;
+}
+
+std::vector<std::string> SplitCliYamlListItems(const CliYamlLine& line,
+                                               const std::string& value) {
+  const std::string trimmed = TrimAsciiWhitespace(value);
+  if (trimmed.size() < 2 || trimmed.front() != '[' || trimmed.back() != ']') {
+    FailCliYamlParse(line.number, "expected a bracketed list");
+  }
+  const std::string inner = TrimAsciiWhitespace(trimmed.substr(1, trimmed.size() - 2));
+  if (inner.empty()) {
+    return {};
+  }
+
+  std::vector<std::string> items;
+  std::string current;
+  bool in_quotes = false;
+  bool escaping = false;
+  for (const char character : inner) {
+    if (escaping) {
+      current.push_back(character);
+      escaping = false;
+      continue;
+    }
+    if (character == '\\') {
+      current.push_back(character);
+      escaping = true;
+      continue;
+    }
+    if (character == '"') {
+      in_quotes = !in_quotes;
+      current.push_back(character);
+      continue;
+    }
+    if (character == ',' && !in_quotes) {
+      items.push_back(TrimAsciiWhitespace(current));
+      current.clear();
+      continue;
+    }
+    current.push_back(character);
+  }
+  if (in_quotes) {
+    FailCliYamlParse(line.number, "unterminated quoted string in list");
+  }
+  items.push_back(TrimAsciiWhitespace(current));
+  return items;
+}
+
+std::vector<std::string> ParseCliYamlStringList(const CliYamlLine& line,
+                                                const std::string& value) {
+  std::vector<std::string> parsed;
+  for (const auto& item : SplitCliYamlListItems(line, value)) {
+    parsed.push_back(ParseCliYamlString(line, item));
+  }
+  return parsed;
+}
+
+int ParseCliYamlInteger(const CliYamlLine& line, const std::string& value) {
+  const std::string trimmed = TrimAsciiWhitespace(value);
+  if (trimmed.empty()) {
+    FailCliYamlParse(line.number, "expected an integer value");
+  }
+  std::size_t consumed = 0;
+  int parsed = 0;
+  try {
+    parsed = std::stoi(trimmed, &consumed);
+  } catch (const std::exception&) {
+    FailCliYamlParse(line.number, "invalid integer value");
+  }
+  if (consumed != trimmed.size()) {
+    FailCliYamlParse(line.number, "invalid integer value");
+  }
+  return parsed;
+}
+
+std::vector<int> ParseCliYamlIntegerList(const CliYamlLine& line,
+                                         const std::string& value) {
+  std::vector<int> parsed;
+  for (const auto& item : SplitCliYamlListItems(line, value)) {
+    parsed.push_back(ParseCliYamlInteger(line, item));
+  }
+  return parsed;
+}
+
+void SkipCliYamlBlock(const std::vector<CliYamlLine>& lines,
+                      std::size_t& index,
+                      const int effective_indent) {
+  ++index;
+  while (index < lines.size() && lines[index].indent > effective_indent) {
+    ++index;
+  }
+}
+
+void RecordUniqueCliYamlKey(std::set<std::string>& seen,
+                            const CliYamlLine& line,
+                            const std::string& scope,
+                            const std::string& key) {
+  if (!seen.insert(key).second) {
+    FailCliYamlParse(line.number, "duplicate " + scope + " field: " + key);
+  }
+}
+
+bool ApplySolveSeriesMasterField(amflow::MasterIntegral& master,
+                                 const CliYamlLine& line,
+                                 const std::string& key,
+                                 const std::string& value) {
+  if (key == "family") {
+    master.family = ParseCliYamlString(line, value);
+    return true;
+  }
+  if (key == "indices") {
+    master.indices = ParseCliYamlIntegerList(line, value);
+    return true;
+  }
+  if (key == "label") {
+    master.label = ParseCliYamlString(line, value);
+    return true;
+  }
+  return false;
+}
+
+bool ApplySolveSeriesBoundaryField(amflow::BoundaryCondition& condition,
+                                   const CliYamlLine& line,
+                                   const std::string& key,
+                                   const std::string& value) {
+  if (key == "variable") {
+    condition.variable = ParseCliYamlString(line, value);
+    return true;
+  }
+  if (key == "location") {
+    condition.location = ParseCliYamlString(line, value);
+    return true;
+  }
+  if (key == "values") {
+    condition.values = ParseCliYamlStringList(line, value);
+    return true;
+  }
+  if (key == "strategy") {
+    condition.strategy = ParseCliYamlString(line, value);
+    return true;
+  }
+  return false;
+}
+
+std::vector<amflow::MasterIntegral> ParseSolveSeriesMasters(
+    const std::vector<CliYamlLine>& lines,
+    std::size_t& index,
+    const int parent_indent) {
+  std::vector<amflow::MasterIntegral> masters;
+  while (index < lines.size() && lines[index].indent > parent_indent) {
+    const CliYamlLine& line = lines[index];
+    if (line.indent != parent_indent + 2 || !StartsWith(line.text, "- ")) {
+      FailCliYamlParse(line.number, "expected a masters list item");
+    }
+
+    amflow::MasterIntegral master;
+    std::set<std::string> seen_fields;
+    const auto [first_key, first_value] =
+        SplitCliYamlKeyValue(line, TrimAsciiWhitespace(line.text.substr(2)));
+    RecordUniqueCliYamlKey(seen_fields, line, "master", first_key);
+    if (ApplySolveSeriesMasterField(master, line, first_key, first_value)) {
+      ++index;
+    } else {
+      SkipCliYamlBlock(lines, index, parent_indent + 4);
+    }
+
+    while (index < lines.size() && lines[index].indent > parent_indent + 2) {
+      const CliYamlLine& nested = lines[index];
+      if (nested.indent != parent_indent + 4) {
+        FailCliYamlParse(nested.number, "unexpected indentation inside masters");
+      }
+      const auto [key, value] = SplitCliYamlKeyValue(nested, nested.text);
+      RecordUniqueCliYamlKey(seen_fields, nested, "master", key);
+      if (ApplySolveSeriesMasterField(master, nested, key, value)) {
+        ++index;
+      } else {
+        SkipCliYamlBlock(lines, index, nested.indent);
+      }
+    }
+
+    if (master.family.empty()) {
+      FailCliYamlParse(line.number, "master family must not be empty");
+    }
+    if (master.indices.empty()) {
+      FailCliYamlParse(line.number, "master indices must not be empty");
+    }
+    masters.push_back(std::move(master));
+  }
+  return masters;
+}
+
+std::vector<std::vector<std::string>> ParseSolveSeriesMatrixRows(
+    const std::vector<CliYamlLine>& lines,
+    std::size_t& index,
+    const int parent_indent) {
+  std::vector<std::vector<std::string>> rows;
+  while (index < lines.size() && lines[index].indent > parent_indent) {
+    const CliYamlLine& line = lines[index];
+    if (line.indent != parent_indent + 2 || !StartsWith(line.text, "- ")) {
+      FailCliYamlParse(line.number, "expected a coefficient matrix row");
+    }
+    rows.push_back(ParseCliYamlStringList(line, TrimAsciiWhitespace(line.text.substr(2))));
+    ++index;
+  }
+  if (rows.empty()) {
+    FailCliYamlParse(lines[index - 1].number, "coefficient matrix must not be empty");
+  }
+  return rows;
+}
+
+std::map<std::string, std::vector<std::vector<std::string>>> ParseSolveSeriesMatrices(
+    const std::vector<CliYamlLine>& lines,
+    std::size_t& index,
+    const int parent_indent) {
+  std::map<std::string, std::vector<std::vector<std::string>>> matrices;
+  while (index < lines.size() && lines[index].indent > parent_indent) {
+    const CliYamlLine& line = lines[index];
+    if (line.indent != parent_indent + 2) {
+      FailCliYamlParse(line.number, "unexpected indentation inside coefficient_matrices");
+    }
+    const auto [variable, value] = SplitCliYamlKeyValue(line, line.text);
+    if (!value.empty()) {
+      FailCliYamlParse(line.number, "coefficient matrix entries must use block row syntax");
+    }
+    ++index;
+    auto rows = ParseSolveSeriesMatrixRows(lines, index, line.indent);
+    if (!matrices.emplace(variable, std::move(rows)).second) {
+      FailCliYamlParse(line.number, "duplicate coefficient matrix variable: " + variable);
+    }
+  }
+  return matrices;
+}
+
+std::vector<amflow::BoundaryCondition> ParseSolveSeriesBoundaryConditions(
+    const std::vector<CliYamlLine>& lines,
+    std::size_t& index,
+    const int parent_indent) {
+  std::vector<amflow::BoundaryCondition> conditions;
+  while (index < lines.size() && lines[index].indent > parent_indent) {
+    const CliYamlLine& line = lines[index];
+    if (line.indent != parent_indent + 2 || !StartsWith(line.text, "- ")) {
+      FailCliYamlParse(line.number, "expected a boundary_conditions list item");
+    }
+
+    amflow::BoundaryCondition condition;
+    std::set<std::string> seen_fields;
+    const auto [first_key, first_value] =
+        SplitCliYamlKeyValue(line, TrimAsciiWhitespace(line.text.substr(2)));
+    RecordUniqueCliYamlKey(seen_fields, line, "boundary condition", first_key);
+    if (ApplySolveSeriesBoundaryField(condition, line, first_key, first_value)) {
+      ++index;
+    } else {
+      SkipCliYamlBlock(lines, index, parent_indent + 4);
+    }
+
+    while (index < lines.size() && lines[index].indent > parent_indent + 2) {
+      const CliYamlLine& nested = lines[index];
+      if (nested.indent != parent_indent + 4) {
+        FailCliYamlParse(nested.number, "unexpected indentation inside boundary_conditions");
+      }
+      const auto [key, value] = SplitCliYamlKeyValue(nested, nested.text);
+      RecordUniqueCliYamlKey(seen_fields, nested, "boundary condition", key);
+      if (ApplySolveSeriesBoundaryField(condition, nested, key, value)) {
+        ++index;
+      } else {
+        SkipCliYamlBlock(lines, index, nested.indent);
+      }
+    }
+
+    if (condition.variable.empty()) {
+      FailCliYamlParse(line.number, "boundary condition variable must not be empty");
+    }
+    if (condition.location.empty()) {
+      FailCliYamlParse(line.number, "boundary condition location must not be empty");
+    }
+    if (condition.values.empty()) {
+      FailCliYamlParse(line.number, "boundary condition values must not be empty");
+    }
+    conditions.push_back(std::move(condition));
+  }
+  return conditions;
+}
+
+DirectSolveSeriesSpec ParseDirectSolveSeriesSpec(const std::string& yaml) {
+  const std::vector<CliYamlLine> lines = TokenizeCliYaml(yaml);
+  DirectSolveSeriesSpec spec;
+
+  std::size_t index = 0;
+  while (index < lines.size()) {
+    const CliYamlLine& line = lines[index];
+    if (line.indent != 0) {
+      FailCliYamlParse(line.number, "unexpected indentation at top level");
+    }
+    const auto [key, value] = SplitCliYamlKeyValue(line, line.text);
+    if (key != "solve_series") {
+      SkipCliYamlBlock(lines, index, line.indent);
+      continue;
+    }
+    if (spec.present) {
+      FailCliYamlParse(line.number, "duplicate top-level solve_series block");
+    }
+    if (!value.empty()) {
+      FailCliYamlParse(line.number, "solve_series must use mapping syntax");
+    }
+    spec.present = true;
+    ++index;
+
+    std::set<std::string> seen_fields;
+    while (index < lines.size() && lines[index].indent > line.indent) {
+      const CliYamlLine& nested = lines[index];
+      if (nested.indent != line.indent + 2) {
+        FailCliYamlParse(nested.number, "unexpected indentation inside solve_series");
+      }
+      const auto [field, field_value] = SplitCliYamlKeyValue(nested, nested.text);
+      RecordUniqueCliYamlKey(seen_fields, nested, "solve_series", field);
+      if (field == "benchmark_id") {
+        spec.benchmark_id = ParseCliYamlString(nested, field_value);
+        ++index;
+        continue;
+      }
+      if (field == "variable") {
+        spec.variable = ParseCliYamlString(nested, field_value);
+        ++index;
+        continue;
+      }
+      if (field == "start_location") {
+        spec.start_location = ParseCliYamlString(nested, field_value);
+        ++index;
+        continue;
+      }
+      if (field == "target_location") {
+        spec.target_location = ParseCliYamlString(nested, field_value);
+        ++index;
+        continue;
+      }
+      if (field == "masters") {
+        if (!field_value.empty()) {
+          FailCliYamlParse(nested.number, "masters must use block list syntax");
+        }
+        ++index;
+        spec.masters = ParseSolveSeriesMasters(lines, index, nested.indent);
+        continue;
+      }
+      if (field == "coefficient_matrices") {
+        if (!field_value.empty()) {
+          FailCliYamlParse(nested.number, "coefficient_matrices must use mapping syntax");
+        }
+        ++index;
+        spec.coefficient_matrices =
+            ParseSolveSeriesMatrices(lines, index, nested.indent);
+        continue;
+      }
+      if (field == "boundary_conditions") {
+        if (!field_value.empty()) {
+          FailCliYamlParse(nested.number, "boundary_conditions must use block list syntax");
+        }
+        ++index;
+        spec.boundary_conditions =
+            ParseSolveSeriesBoundaryConditions(lines, index, nested.indent);
+        continue;
+      }
+      SkipCliYamlBlock(lines, index, nested.indent);
+    }
+  }
+
+  return spec;
+}
+
+void ValidateDirectSolveSeriesSpec(const DirectSolveSeriesSpec& spec) {
+  if (!spec.present) {
+    throw std::invalid_argument(
+        "solve-series requires an embedded solve_series direct-solver block; plain "
+        "ProblemSpec files do not carry a DE system or boundary conditions");
+  }
+  if (spec.variable.empty()) {
+    throw std::invalid_argument("solve_series.variable must not be empty");
+  }
+  if (spec.start_location.empty()) {
+    throw std::invalid_argument("solve_series.start_location must not be empty");
+  }
+  if (spec.target_location.empty()) {
+    throw std::invalid_argument("solve_series.target_location must not be empty");
+  }
+  if (spec.masters.empty()) {
+    throw std::invalid_argument("solve_series.masters must not be empty");
+  }
+  if (spec.coefficient_matrices.find(spec.variable) == spec.coefficient_matrices.end()) {
+    throw std::invalid_argument("solve_series.coefficient_matrices must include variable " +
+                                spec.variable);
+  }
+  if (spec.boundary_conditions.empty()) {
+    throw std::invalid_argument("solve_series.boundary_conditions must not be empty");
+  }
+}
+
+std::string ReadTextFile(const std::filesystem::path& path) {
+  std::ifstream stream(path);
+  if (!stream) {
+    throw std::runtime_error("failed to open file: " + path.string());
+  }
+  return std::string((std::istreambuf_iterator<char>(stream)),
+                     std::istreambuf_iterator<char>());
+}
+
+void WriteTextFile(const std::filesystem::path& path, const std::string& contents) {
+  if (!path.parent_path().empty()) {
+    std::filesystem::create_directories(path.parent_path());
+  }
+  std::ofstream stream(path, std::ios::out | std::ios::trunc);
+  if (!stream) {
+    throw std::runtime_error("failed to open output file: " + path.string());
+  }
+  stream << contents;
+  if (!stream) {
+    throw std::runtime_error("failed to write output file: " + path.string());
+  }
+}
+
+std::string IntegralLabel(const std::string& family, const std::vector<int>& indices) {
+  std::ostringstream out;
+  out << family << "[";
+  for (std::size_t index = 0; index < indices.size(); ++index) {
+    if (index > 0) {
+      out << ",";
+    }
+    out << indices[index];
+  }
+  out << "]";
+  return out.str();
+}
+
+std::string JsonString(const std::string& value) {
+  std::ostringstream out;
+  out << '"';
+  for (const char character : value) {
+    switch (character) {
+      case '\\':
+        out << "\\\\";
+        break;
+      case '"':
+        out << "\\\"";
+        break;
+      case '\n':
+        out << "\\n";
+        break;
+      case '\r':
+        out << "\\r";
+        break;
+      case '\t':
+        out << "\\t";
+        break;
+      default:
+        if (static_cast<unsigned char>(character) < 0x20) {
+          out << "\\u00";
+          const char* digits = "0123456789abcdef";
+          out << digits[(static_cast<unsigned char>(character) >> 4) & 0x0f];
+          out << digits[static_cast<unsigned char>(character) & 0x0f];
+        } else {
+          out << character;
+        }
+    }
+  }
+  out << '"';
+  return out.str();
+}
+
+std::string RationalToDecimalDigits(const std::string& exact_value, const int digits) {
+  using boost::multiprecision::cpp_int;
+
+  std::string numerator_text = exact_value;
+  std::string denominator_text = "1";
+  const std::size_t slash = exact_value.find('/');
+  if (slash != std::string::npos) {
+    numerator_text = exact_value.substr(0, slash);
+    denominator_text = exact_value.substr(slash + 1);
+  }
+
+  cpp_int numerator(numerator_text);
+  cpp_int denominator(denominator_text);
+  if (denominator == 0) {
+    throw std::invalid_argument("cannot decimalize rational with zero denominator");
+  }
+  bool negative = false;
+  if (numerator < 0) {
+    negative = !negative;
+    numerator = -numerator;
+  }
+  if (denominator < 0) {
+    negative = !negative;
+    denominator = -denominator;
+  }
+
+  const cpp_int integer_part = numerator / denominator;
+  cpp_int remainder = numerator % denominator;
+  std::string decimal = (negative && (integer_part != 0 || remainder != 0) ? "-" : "") +
+                        integer_part.convert_to<std::string>();
+  if (digits <= 0) {
+    return decimal;
+  }
+  decimal.push_back('.');
+  for (int index = 0; index < digits; ++index) {
+    remainder *= 10;
+    const cpp_int digit = remainder / denominator;
+    decimal.push_back(static_cast<char>('0' + digit.convert_to<int>()));
+    remainder %= denominator;
+  }
+  return decimal;
+}
+
+amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
+                                            const int requested_digits) {
+  amflow::SolveRequest request;
+  request.system.masters = spec.masters;
+  request.system.variables = {
+      {spec.variable, amflow::DifferentiationVariableKind::Eta},
+  };
+  request.system.coefficient_matrices = spec.coefficient_matrices;
+  request.boundary_conditions = spec.boundary_conditions;
+  request.boundary_requests.reserve(spec.boundary_conditions.size());
+  for (const amflow::BoundaryCondition& condition : spec.boundary_conditions) {
+    request.boundary_requests.push_back(
+        {condition.variable, condition.location, condition.strategy});
+  }
+  request.start_location = spec.start_location;
+  request.target_location = spec.target_location;
+  request.requested_digits = requested_digits;
+  request.precision_policy.working_precision =
+      std::max(request.precision_policy.working_precision, requested_digits);
+  request.precision_policy.rationalize_precision =
+      std::max(request.precision_policy.rationalize_precision, requested_digits);
+  request.precision_policy.x_order = std::max(request.precision_policy.x_order, requested_digits);
+  request.precision_policy.max_working_precision =
+      std::max(request.precision_policy.max_working_precision, requested_digits);
+  return request;
+}
+
+struct SolveSeriesCliArgs {
+  std::filesystem::path spec_path;
+  std::filesystem::path output_path;
+  int epsilon_order = -1;
+  int digits = -1;
+};
+
+int ParseRequiredIntegerFlag(const std::string& flag, const std::string& value) {
+  std::size_t consumed = 0;
+  int parsed = 0;
+  try {
+    parsed = std::stoi(value, &consumed);
+  } catch (const std::exception&) {
+    throw std::invalid_argument(flag + " requires an integer value");
+  }
+  if (consumed != value.size()) {
+    throw std::invalid_argument(flag + " requires an integer value");
+  }
+  return parsed;
+}
+
+SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
+  if (argc < 3) {
+    throw std::invalid_argument("solve-series requires a spec file path");
+  }
+  SolveSeriesCliArgs args;
+  args.spec_path = argv[2];
+  std::set<std::string> seen_flags;
+  for (int index = 3; index < argc; ++index) {
+    const std::string flag = argv[index];
+    if (flag != "--eps-order" && flag != "--digits" && flag != "--out") {
+      throw std::invalid_argument("unknown solve-series flag: " + flag);
+    }
+    if (!seen_flags.insert(flag).second) {
+      throw std::invalid_argument("duplicate solve-series flag: " + flag);
+    }
+    if (index + 1 >= argc) {
+      throw std::invalid_argument(flag + " requires a value");
+    }
+    const std::string value = argv[++index];
+    if (flag == "--eps-order") {
+      args.epsilon_order = ParseRequiredIntegerFlag(flag, value);
+    } else if (flag == "--digits") {
+      args.digits = ParseRequiredIntegerFlag(flag, value);
+    } else {
+      args.output_path = value;
+    }
+  }
+  if (args.epsilon_order < 0) {
+    throw std::invalid_argument("solve-series requires --eps-order N with N >= 0");
+  }
+  if (args.digits <= 0) {
+    throw std::invalid_argument("solve-series requires --digits N with N > 0");
+  }
+  if (args.output_path.empty()) {
+    throw std::invalid_argument("solve-series requires --out path");
+  }
+  return args;
+}
+
+std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
+                                     const DirectSolveSeriesSpec& direct_spec,
+                                     const amflow::SolverDiagnostics& diagnostics,
+                                     const int epsilon_order,
+                                     const int digits,
+                                     const std::string& status,
+                                     const std::string& error,
+                                     const double duration_seconds) {
+  std::map<std::string, std::size_t> master_index_by_label;
+  for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
+    const auto& master = direct_spec.masters[index];
+    master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
+  }
+
+  std::ostringstream out;
+  out.setf(std::ios::fixed);
+  out.precision(6);
+  out << "{\n";
+  out << "  \"schema_version\": 1,\n";
+  if (!direct_spec.benchmark_id.empty()) {
+    out << "  \"benchmark_id\": " << JsonString(direct_spec.benchmark_id) << ",\n";
+  }
+  out << "  \"family\": " << JsonString(problem_spec.family.name) << ",\n";
+  out << "  \"targets\": [";
+  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << JsonString(problem_spec.targets[index].Label());
+  }
+  out << "],\n";
+  out << "  \"solver\": {\n";
+  out << "    \"precision_digits\": " << digits << ",\n";
+  out << "    \"epsilon_order\": " << epsilon_order << "\n";
+  out << "  },\n";
+  out << "  \"results\": [\n";
+  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+    const std::string label = problem_spec.targets[index].Label();
+    if (index > 0) {
+      out << ",\n";
+    }
+    out << "    {\n";
+    out << "      \"integral\": " << JsonString(label) << ",\n";
+    out << "      \"epsilon_orders\": [";
+    const auto master_it = master_index_by_label.find(label);
+    if (status == "success" && master_it != master_index_by_label.end() &&
+        master_it->second < diagnostics.target_values.size()) {
+      const std::string exact_real = diagnostics.target_values[master_it->second];
+      out << "{\n";
+      out << "        \"order\": 0,\n";
+      out << "        \"real_digits\": "
+          << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
+      out << "        \"imag_digits\": "
+          << JsonString(RationalToDecimalDigits("0", digits)) << ",\n";
+      out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
+      out << "        \"exact_imag\": \"0\"\n";
+      out << "      }";
+    }
+    out << "]\n";
+    out << "    }";
+  }
+  out << "\n";
+  out << "  ],\n";
+  out << "  \"status\": " << JsonString(status) << ",\n";
+  out << "  \"duration_seconds\": " << duration_seconds;
+  if (!diagnostics.failure_code.empty()) {
+    out << ",\n  \"failure_code\": " << JsonString(diagnostics.failure_code);
+  }
+  if (!diagnostics.summary.empty()) {
+    out << ",\n  \"summary\": " << JsonString(diagnostics.summary);
+  }
+  if (!error.empty()) {
+    out << ",\n  \"error\": " << JsonString(error);
+  }
+  out << "\n}\n";
+  return out.str();
+}
+
+int RunSolveSeriesCommand(const int argc, char** argv) {
+  const auto start = std::chrono::steady_clock::now();
+  const SolveSeriesCliArgs args = ParseSolveSeriesArgs(argc, argv);
+
+  const amflow::ProblemSpec problem_spec = amflow::LoadProblemSpecFile(args.spec_path);
+  const auto messages = LoadedSpecValidationMessages(problem_spec);
+  if (!messages.empty()) {
+    PrintMessages(std::cerr, messages);
+    return 2;
+  }
+
+  const std::string raw_spec = ReadTextFile(args.spec_path);
+  DirectSolveSeriesSpec direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
+  amflow::SolverDiagnostics diagnostics;
+  std::string status = "failed";
+  std::string error;
+  int exit_code = 0;
+
+  try {
+    ValidateDirectSolveSeriesSpec(direct_spec);
+    if (args.epsilon_order != 0) {
+      status = "unsupported";
+      error = "solve-series currently supports only epsilon order 0 on the reviewed direct "
+              "exact solver surface";
+      exit_code = 2;
+    } else {
+      const amflow::SolveRequest request = MakeDirectSolveRequest(direct_spec, args.digits);
+      const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
+      diagnostics = solver->Solve(request);
+      if (diagnostics.success) {
+        const bool has_all_target_values =
+            diagnostics.target_values.size() >= direct_spec.masters.size();
+        if (has_all_target_values) {
+          status = "success";
+          exit_code = 0;
+        } else {
+          status = "failed";
+          error = "series solver succeeded but did not expose transported target values for "
+                  "all masters on this path";
+          exit_code = 4;
+        }
+      } else {
+        status = "failed";
+        exit_code = 4;
+      }
+    }
+  } catch (const std::exception& solve_error) {
+    status = "failed";
+    error = solve_error.what();
+    exit_code = 2;
+  }
+
+  const auto end = std::chrono::steady_clock::now();
+  const double duration_seconds =
+      std::chrono::duration<double>(end - start).count();
+  WriteTextFile(args.output_path,
+                SerializeSolveSeriesJson(problem_spec,
+                                         direct_spec,
+                                         diagnostics,
+                                         args.epsilon_order,
+                                         args.digits,
+                                         status,
+                                         error,
+                                         duration_seconds));
+  if (!error.empty()) {
+    std::cerr << error << "\n";
+  } else if (!diagnostics.success && !diagnostics.summary.empty()) {
+    std::cerr << diagnostics.summary << "\n";
+  }
+  return exit_code;
+}
+
 void PrintUsage() {
   std::cout << "Usage: amflow-cli <command> [args]\n"
             << "Commands:\n"
@@ -373,6 +1229,8 @@ void PrintUsage() {
             << "                           Parse Kira results/<family>/masters and kira_target.m\n"
             << "  run-kira-from-file <file> <kira> <fermat> [dir]\n"
             << "                           Emit and execute Kira for a file-backed ProblemSpec\n"
+            << "  solve-series <file> --eps-order N --digits N --out path\n"
+            << "                           Run a reviewed embedded direct solve_series request and write JSON\n"
             << "  show-defaults            Print bootstrap AMF and reduction defaults\n"
             << "  write-manifest <dir>     Create an artifact layout and write a sample/demo manifest\n";
 }
@@ -473,6 +1331,10 @@ int main(int argc, char** argv) {
       const std::filesystem::path root =
           argc >= 6 ? std::filesystem::path(argv[5]) : DefaultArtifactRootForSpec(spec_path);
       return RunKiraForSpec(spec, root, argv[3], argv[4], spec_path, messages);
+    }
+
+    if (command == "solve-series") {
+      return RunSolveSeriesCommand(argc, argv);
     }
 
     if (command == "write-manifest") {

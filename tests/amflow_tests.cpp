@@ -18745,11 +18745,12 @@ void BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerTwoComplexWaypointsEtaC
          "real segment");
 }
 
-void BootstrapSeriesSolverRejectsSingularLedgerThreeComplexWaypointsEtaContinuationPlanTest() {
+void BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerThreeComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
       MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
   request.system.singular_points = {"eta=2"};
+  amflow::SolveRequest baseline_request = request;
   request.eta_continuation_plan =
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
   for (int numerator = 1; numerator <= 3; ++numerator) {
@@ -18764,18 +18765,49 @@ void BootstrapSeriesSolverRejectsSingularLedgerThreeComplexWaypointsEtaContinuat
   };
   RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap off-path-ledger three-complex-waypoint eta-continuation-plan coverage should "
+         "keep the off-path singular declaration exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap off-path-ledger three-complex-waypoint eta-continuation-plan coverage should "
+         "preserve exact diagnostics when all zero-winding singular ledgers stay off the direct "
+         "real segment");
+}
+
+void BootstrapSeriesSolverRejectsSingularLedgerFourComplexWaypointsEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=2"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  for (int numerator = 1; numerator <= 4; ++numerator) {
+    amflow::ExactComplexRational detour;
+    detour.real = {std::to_string(numerator), "5"};
+    detour.imaginary = {"1", std::to_string(numerator + 4)};
+    request.eta_continuation_plan->contour_points.insert(
+        request.eta_continuation_plan->contour_points.begin() + numerator, detour);
+  }
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
 
   Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
-         "bootstrap singular-ledger three-complex-waypoint eta-continuation-plan coverage should "
+         "bootstrap singular-ledger four-complex-waypoint eta-continuation-plan coverage should "
          "keep broader singular detour metadata off the default exact solver path");
   ExpectContains(diagnostics.summary,
-                 "at most two reviewed interior waypoints",
-                 "bootstrap singular-ledger three-complex-waypoint eta-continuation-plan "
+                 "at most three reviewed interior waypoints",
+                 "bootstrap singular-ledger four-complex-waypoint eta-continuation-plan "
                  "coverage should explain the narrowed singular-ledger waypoint cap");
   ExpectContains(diagnostics.summary,
                  request.eta_continuation_plan->contour_fingerprint,
-                 "bootstrap singular-ledger three-complex-waypoint eta-continuation-plan "
+                 "bootstrap singular-ledger four-complex-waypoint eta-continuation-plan "
                  "coverage should report the reviewed contour fingerprint");
 }
 
@@ -52305,7 +52337,8 @@ int main() {
     BootstrapSeriesSolverRejectsNineComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerTwoComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
-    BootstrapSeriesSolverRejectsSingularLedgerThreeComplexWaypointsEtaContinuationPlanTest();
+    BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerThreeComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsSingularLedgerFourComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsTargetEndpointLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();

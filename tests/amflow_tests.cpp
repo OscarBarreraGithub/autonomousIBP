@@ -17718,6 +17718,42 @@ void BootstrapSeriesSolverAcceptsTwoComplexWaypointsEtaContinuationPlanOnDefault
          "real endpoints");
 }
 
+void BootstrapSeriesSolverAcceptsThreeComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest baseline_request = request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational first_detour;
+  first_detour.real = {"1", "4"};
+  first_detour.imaginary = {"1", "4"};
+  amflow::ExactComplexRational second_detour;
+  second_detour.real = {"1", "2"};
+  second_detour.imaginary = {"1", "5"};
+  amflow::ExactComplexRational third_detour;
+  third_detour.real = {"3", "4"};
+  third_detour.imaginary = {"1", "6"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, first_detour);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 2, second_detour);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 3, third_detour);
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap three-complex-waypoint eta-continuation-plan coverage should keep the "
+         "baseline exact endpoint path supported");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap three-complex-waypoint eta-continuation-plan coverage should preserve exact "
+         "diagnostics when all reviewed upper-half-plane waypoints stay ordered between the "
+         "real endpoints");
+}
+
 void BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -51273,6 +51309,7 @@ int main() {
     BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsTwoComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsThreeComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsSingularLedgerTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();

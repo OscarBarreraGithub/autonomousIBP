@@ -30598,6 +30598,41 @@ void SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest() {
          "direct single-linear stale-payload rejection should not call the supplied solver");
 }
 
+void SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = " ";
+  decision.selected_propagator_indices = {2};
+  decision.selected_propagators = {spec.family.propagators[2].expression};
+  decision.explanation = "direct blank-name single explicit linear propagator";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-blank-name"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &decision, &layout, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            decision,
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            71,
+            "x"));
+      },
+      "requires a non-empty eta-mode decision name",
+      "direct single-linear route should reject blank decision names before lightlike reducer "
+      "or solver execution");
+  Expect(solver.call_count() == 0,
+         "direct single-linear blank-name rejection should not call the supplied solver");
+}
+
 void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -51231,6 +51266,7 @@ int main() {
     SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivativeTest();
     SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest();
+    SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();

@@ -3375,6 +3375,17 @@ std::optional<std::size_t> SelectReviewedSingleExplicitLinearDecisionIndex(
       *selected.variant != PropagatorVariant::Linear) {
     return std::nullopt;
   }
+  const std::string trimmed_mode_name = Trim(decision.mode_name);
+  if (trimmed_mode_name.empty()) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route requires a non-empty eta-mode "
+        "decision name");
+  }
+  if (trimmed_mode_name != decision.mode_name) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route requires eta-mode decision name "
+        "without outer whitespace");
+  }
   if (decision.selected_propagators.size() != 1) {
     throw std::invalid_argument(
         "reviewed single explicit-linear generated-x route requires selected propagator "

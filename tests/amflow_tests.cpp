@@ -8290,9 +8290,10 @@ void PlanEndingSchemeCutkoskyRejectsMixedRawPrescriptionBeforeTerminalNodeTest()
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "requires all cut propagators to carry the same raw provider strategy",
-      "Batch 63ba Cutkosky ending planner should fail before emitting a phase-space terminal "
-      "node when raw cut prescriptions select mixed provider strategies");
+      "cut propagator 5 disagrees with cut propagator 0",
+      "Batch 63bd Cutkosky ending planner should fail before emitting a phase-space terminal "
+      "node with the disagreeing cut indices when raw cut prescriptions select mixed provider "
+      "strategies");
 }
 
 void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
@@ -8705,9 +8706,10 @@ void PlanAmfOptionsEndingSchemeRejectsMixedRawPrescriptionBeforeFallbackTest() {
       [&spec, &amf_options]() {
         static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
       },
-      "requires all cut propagators to carry the same raw provider strategy",
-      "Batch 63ba AmfOptions ending planner should fail fast when raw Cutkosky provider "
-      "strategies disagree instead of falling through to a placeholder ending");
+      "cut propagator 5 disagrees with cut propagator 0",
+      "Batch 63bd AmfOptions ending planner should fail fast when raw Cutkosky provider "
+      "strategies disagree, preserving the cut indices instead of falling through to a "
+      "placeholder ending");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsLoopFreeCutkoskyTopologyBeforeFallbackTest() {
@@ -11891,6 +11893,18 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProvi
          "builtin Cutkosky phase-space boundary generation should surface a -i0 provider "
          "strategy when every cut propagator carries matching raw -i0 metadata and no "
          "loop-prescriptions are present");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesWithIndicesTest() {
+  const amflow::ProblemSpec spec = MakeMixedRawPrescriptionCutkoskyPhaseSpaceSpec();
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "cut propagator 5 disagrees with cut propagator 0",
+      "Batch 63bd builtin Cutkosky phase-space boundary request generation should preserve the "
+      "disagreeing cut indices when raw cut prescriptions select mixed provider strategies");
 }
 
 void GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest() {
@@ -53136,6 +53150,7 @@ int main() {
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMassiveCutPropagatorsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptionProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesWithIndicesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMismatchWithRawCutSurfaceTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest();
     GenerateBuiltinEtaInfinityBoundaryRequestRejectsSymbolicZeroMassTest();

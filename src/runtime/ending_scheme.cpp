@@ -35,6 +35,8 @@ bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
              std::string::npos ||
          message.find("ending scheme Cutkosky requires cut propagator ") !=
              std::string::npos ||
+         message.find("ending scheme Cutkosky requires target ") !=
+             std::string::npos ||
          message.find("ending scheme Cutkosky requires a connected cut surface") !=
              std::string::npos;
 }
@@ -129,6 +131,11 @@ bool IsPropagatorActiveInAnyTopLevelSector(const std::size_t propagator_index,
   });
 }
 
+bool IsPropagatorActiveInTarget(const std::size_t propagator_index,
+                                const TargetIntegral& target) {
+  return propagator_index < target.indices.size() && target.indices[propagator_index] > 0;
+}
+
 void ValidateTraditionEndingSurface(const ProblemSpec& spec) {
   const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
   if (cut_indices.empty()) {
@@ -209,6 +216,19 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
           JoinSectors(spec.family.top_level_sectors) +
           " before emitting the reviewed phase-space terminal node on the current reviewed "
           "multi-top-sector support subset");
+    }
+  }
+
+  for (const TargetIntegral& target : spec.targets) {
+    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+      if (IsPropagatorActiveInTarget(support.propagator_index, target)) {
+        continue;
+      }
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires target " + target.Label() +
+          " to keep cut propagator " + std::to_string(support.propagator_index) +
+          " active before emitting the reviewed phase-space terminal node on the current "
+          "reviewed target-support subset");
     }
   }
 }

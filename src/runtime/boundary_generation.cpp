@@ -175,6 +175,11 @@ bool IsPropagatorActiveInAnyTopLevelSector(const std::size_t propagator_index,
   });
 }
 
+bool IsPropagatorActiveInTarget(const std::size_t propagator_index,
+                                const TargetIntegral& target) {
+  return propagator_index < target.indices.size() && target.indices[propagator_index] > 0;
+}
+
 std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutSupport>& cut_supports,
     const std::vector<std::string>& declared_loop_order) {
@@ -305,6 +310,19 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
           " to be active in at least one declared top-level sector " +
           JoinSectors(spec.family.top_level_sectors) +
           " on the current reviewed multi-top-sector support subset");
+    }
+  }
+
+  for (const TargetIntegral& target : spec.targets) {
+    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+      if (IsPropagatorActiveInTarget(support.propagator_index, target)) {
+        continue;
+      }
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires target " +
+          target.Label() + " to keep cut propagator " +
+          std::to_string(support.propagator_index) +
+          " active on the current reviewed target-support subset");
     }
   }
 }

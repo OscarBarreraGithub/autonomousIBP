@@ -338,11 +338,16 @@ std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
   }
   const std::string external_symbol = *used_external_momenta.begin();
 
+  const std::set<std::string> selected_external_symbol = {external_symbol};
   bool found_lightlike_rule = false;
   for (const auto& rule : spec.kinematics.scalar_product_rules) {
     const auto pair = ParseScalarProductPair(rule.left,
                                              "reviewed lightlike linear auxiliary rewrite");
-    if (pair.first != external_symbol || pair.second != external_symbol) {
+    const std::optional<SignedSymbolFactor> left_factor =
+        MatchSignedSimpleSymbolFactor(pair.first, selected_external_symbol);
+    const std::optional<SignedSymbolFactor> right_factor =
+        MatchSignedSimpleSymbolFactor(pair.second, selected_external_symbol);
+    if (!left_factor.has_value() || !right_factor.has_value()) {
       continue;
     }
     if (found_lightlike_rule) {

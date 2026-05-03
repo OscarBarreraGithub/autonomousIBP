@@ -4032,6 +4032,8 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
 
   std::vector<std::string> declared_singular_value_keys;
   declared_singular_value_keys.reserve(request.system.singular_points.size());
+  std::map<std::string, std::pair<std::string, std::size_t>>
+      declared_singular_expression_by_value_key;
   try {
     for (const std::string& singular_point : request.system.singular_points) {
       const ExactComplexRational value =
@@ -4042,6 +4044,15 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
                "when every ledger value matches a system-declared singular point by exact value";
       }
       declared_singular_value_keys.push_back(*key);
+      const std::string expression = Trim(singular_point);
+      auto [entry, inserted] = declared_singular_expression_by_value_key.emplace(
+          *key, std::make_pair(expression, std::size_t{1}));
+      if (!inserted) {
+        if (expression < entry->second.first) {
+          entry->second.first = expression;
+        }
+        ++entry->second.second;
+      }
     }
   } catch (const std::exception&) {
     if (expressions_match) {
@@ -4071,6 +4082,20 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
   if (declared_singular_value_keys != ledger_singular_value_keys) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when every ledger value matches a system-declared singular point by exact value";
+  }
+
+  for (const EtaContourSingularPoint& singular_point : plan.singular_points) {
+    const std::optional<std::string> key = CanonicalExactComplexValueKey(singular_point.value);
+    const auto declaration_it = key.has_value()
+                                    ? declared_singular_expression_by_value_key.find(*key)
+                                    : declared_singular_expression_by_value_key.end();
+    if (declaration_it != declared_singular_expression_by_value_key.end() &&
+        declaration_it->second.second > 1 &&
+        Trim(singular_point.expression) != declaration_it->second.first) {
+      return "default exact solver accepts duplicate-valued eta_continuation_plan "
+             "singular-point ledgers only when they preserve the contour planner's canonical "
+             "singular-ledger expression";
+    }
   }
 
   try {

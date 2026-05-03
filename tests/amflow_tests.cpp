@@ -15839,6 +15839,46 @@ void BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaCo
          "zero-winding plan ledger");
 }
 
+void BootstrapSeriesSolverRejectsNonCanonicalDuplicateSingularDeclarationLedgerExpressionTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest canonical_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  canonical_request.system.singular_points = {"eta=2", "eta=4/2"};
+  canonical_request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(canonical_request.start_location,
+                                               canonical_request.target_location);
+  canonical_request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(
+      *canonical_request.eta_continuation_plan);
+
+  amflow::SolveRequest noncanonical_request = canonical_request;
+  noncanonical_request.eta_continuation_plan->singular_points.front().expression = "eta=4/2";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(
+      *noncanonical_request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics canonical_diagnostics = solver.Solve(canonical_request);
+  const amflow::SolverDiagnostics noncanonical_diagnostics = solver.Solve(noncanonical_request);
+
+  Expect(canonical_diagnostics.success,
+         "bootstrap duplicate-ledger-expression coverage should preserve the reviewed "
+         "canonical duplicate-valued singular-ledger expression");
+  Expect(!noncanonical_diagnostics.success &&
+             noncanonical_diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap duplicate-ledger-expression coverage should fail closed when a "
+         "duplicate-valued system declaration is represented by the noncanonical ledger "
+         "expression");
+  ExpectContains(noncanonical_diagnostics.summary,
+                 "canonical singular-ledger expression",
+                 "bootstrap duplicate-ledger-expression coverage should explain the "
+                 "canonical expression requirement");
+  ExpectContains(noncanonical_diagnostics.summary,
+                 noncanonical_request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap duplicate-ledger-expression coverage should report the "
+                 "caller-supplied contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsNonCanonicalSingularLedgerOrderEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
@@ -49348,6 +49388,7 @@ int main() {
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsNonCanonicalDuplicateSingularDeclarationLedgerExpressionTest();
     BootstrapSeriesSolverRejectsNonCanonicalSingularLedgerOrderEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsLedgerlessOnPathDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsLedgerlessStaleTargetEndpointDirectRealEtaContinuationPlanTest();

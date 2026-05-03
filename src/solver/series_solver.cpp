@@ -4405,6 +4405,35 @@ SolverDiagnostics MakeComplexEtaContinuationManifestWriteFailureDiagnostics(
       "; live complex contour execution remains deferred");
 }
 
+std::optional<SolverDiagnostics> MaybeMakeComplexEtaZeroBranchDeferredDiagnostics(
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const SolveRequest& request) {
+  if (spec.kinematics.complex_numeric_substitutions.empty()) {
+    return std::nullopt;
+  }
+
+  ExactComplexRational target;
+  try {
+    const NumericEvaluationPoint evaluation_point = BuildComplexNumericEvaluationPoint(spec);
+    target =
+        EvaluateComplexPointExpression(eta_symbol, request.target_location, evaluation_point);
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
+
+  if (!SameCanonicalExactRationalValue(target.real, ZeroRational()) ||
+      !SameCanonicalExactRationalValue(target.imaginary, ZeroRational())) {
+    return std::nullopt;
+  }
+
+  return MakeUnsupportedSolverPathDiagnostics(
+      "complex eta continuation target_location=" + request.target_location +
+      " evaluates to eta=0 on the reviewed complex path; branch-aware eta-to-zero endgame "
+      "remains deferred; no continuation_plan_manifest or solved-path cache artifact was "
+      "written");
+}
+
 std::optional<std::filesystem::path>
 ExtractContinuationPlanManifestPathFromDeferredComplexEtaContinuationDiagnostics(
     const SolverDiagnostics& diagnostics) {
@@ -4565,6 +4594,12 @@ MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
     return std::nullopt;
   }
 
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          MaybeMakeComplexEtaZeroBranchDeferredDiagnostics(spec, eta_symbol, request);
+      diagnostics.has_value()) {
+    return *diagnostics;
+  }
+
   const EtaContinuationPlan plan =
       PlanEtaContinuationContour(request.system,
                                  spec,
@@ -4615,6 +4650,12 @@ SolverDiagnostics SolveWithReviewedLiveComplexEtaContinuationPlan(
     const SeriesSolver& solver,
     const std::string& eta_symbol,
     SolveRequest request) {
+  if (const std::optional<SolverDiagnostics> diagnostics =
+          MaybeMakeComplexEtaZeroBranchDeferredDiagnostics(spec, eta_symbol, request);
+      diagnostics.has_value()) {
+    return *diagnostics;
+  }
+
   const EtaContinuationPlan plan =
       PlanEtaContinuationContour(request.system,
                                  spec,

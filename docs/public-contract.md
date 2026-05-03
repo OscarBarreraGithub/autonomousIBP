@@ -365,7 +365,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61ae`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61ag`
+  eta-zero branch-deferral preflight, `Batch 61ae`
   contour-planner eta-symbol declaration guard, `Batch 61ad` lower-half-plane direct-real
   metadata guard, and `Batch 61ac`
   duplicate-valued singular-declaration canonical expression guard after the earlier `Batch 61ab`
@@ -381,7 +382,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   now stop at exact-complex evaluation plus reviewed contour-plan persistence; any non-opt-in
   generated-wrapper solver surface still defers with explicit `unsupported_solver_path`
   diagnostics, and the reviewed helper deferred/cache replay remains limited to that non-opt-in
-  subset. The default exact solver accepts only distinct direct real two-point
+  subset. Exact complex generated-wrapper requests whose target location evaluates to `eta=0`
+  now fail closed before contour planning, continuation-plan manifest writes, solved-path cache
+  writes or replay, or solver handoff, keeping branch-aware eta-to-zero endgame handling
+  explicitly deferred. The default exact solver accepts only distinct direct real two-point
   `eta_continuation_plan` metadata or monotone on-segment direct-real waypoint metadata with a
   non-empty reviewed contour fingerprint that exactly matches the direct plan metadata on its
   already-reviewed exact path, now including evaluated

@@ -30834,6 +30834,58 @@ void SolveEtaGeneratedSeriesPreservesComplexContinuationPlanningInputErrorsTest(
          "reviewed contour planning rejects the caller inputs");
 }
 
+void SolveEtaGeneratedSeriesDefersEtaZeroTargetBranchHandlingBeforeManifestTest() {
+  amflow::KiraBackend backend;
+  const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
+  const amflow::ParsedMasterList master_basis =
+      backend.ParseMasterList(fixture_root, "planar_double_box");
+  const amflow::ProblemSpec spec = MakeGenericComplexEtaContinuationProblemSpecForTests();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-complex-continuation-eta-zero-branch-deferral"));
+  const std::filesystem::path kira_path = layout.root / "bin" / "fake-kira-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(kira_path, MakeFixtureCopyScript(fixture_root));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  RecordingSeriesSolver solver;
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::SolveEtaGeneratedSeries(spec,
+                                      master_basis,
+                                      MakeEtaGeneratedHappyDecision(),
+                                      MakeKiraReductionOptions(),
+                                      layout,
+                                      kira_path,
+                                      fermat_path,
+                                      solver,
+                                      "eta=-1",
+                                      "eta=0",
+                                      MakeDistinctPrecisionPolicy(),
+                                      59);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "eta solver complex continuation eta-zero coverage should fail closed with a typed "
+         "unsupported-solver diagnostic before branch handling is implemented");
+  ExpectContains(diagnostics.summary,
+                 "branch-aware eta-to-zero endgame remains deferred",
+                 "eta solver complex continuation eta-zero coverage should keep the deferred "
+                 "branch status explicit");
+  ExpectContains(diagnostics.summary,
+                 "target_location=eta=0",
+                 "eta solver complex continuation eta-zero coverage should report the requested "
+                 "eta-zero target endpoint");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "eta solver complex continuation eta-zero coverage should not write a continuation "
+         "manifest before branch handling is implemented");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "eta solver complex continuation eta-zero coverage should not write solved-path cache "
+         "artifacts before branch handling is implemented");
+  Expect(solver.call_count() == 0,
+         "eta solver complex continuation eta-zero coverage should not call the exact solver "
+         "before branch handling is implemented");
+}
+
 void SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path fixture_root = TestDataRoot() / "kira-results/eta-generated-happy";
@@ -51021,6 +51073,7 @@ int main() {
     SolveEtaGeneratedSeriesSupportsReviewedComplexContinuationPlanHandoffTest();
     SolveEtaGeneratedSeriesPreservesLiveComplexContinuationPlanningInputErrorsTest();
     SolveEtaGeneratedSeriesPreservesComplexContinuationPlanningInputErrorsTest();
+    SolveEtaGeneratedSeriesDefersEtaZeroTargetBranchHandlingBeforeManifestTest();
     SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenLiveContinuationManifestWriteFailsTest();
     SolveEtaGeneratedSeriesReturnsExplicitDiagnosticsWhenContinuationManifestWriteFailsTest();
     SolveEtaGeneratedSeriesPersistsDeferredComplexContinuationCacheManifestBeforeExactSolverTest();

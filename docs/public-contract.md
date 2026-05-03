@@ -562,10 +562,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   phase-space cut-topology helper, reporting each cut propagator index, the declared loop
   momenta mentioned by that propagator expression, the declared `family.top_level_sectors` masks
   that activate that cut in caller order, and the reviewed connected components induced by shared
-  declared loop support. This telemetry is declaration-order only and still does not parse graph
+  declared loop support. Each component now also reports the caller-ordered declared top-level
+  sectors that activate every cut in that component. This telemetry is declaration-order only and still does not parse graph
   components, classify physical cut regions, or produce boundary values. The
   reviewed disconnected-cut diagnostics now include both the cut propagator index set and declared
-  loop-momentum support set for each disconnected component. The reviewed Cutkosky
+  loop-momentum support set plus component top-sector activation set for each disconnected
+  component. The reviewed Cutkosky
   boundary-request preflight consumes the shared topology support, connectivity, and declared
   top-sector activation telemetry before provider strategy routing, while target-support checks
   stay on the current `ProblemSpec` target list
@@ -1447,8 +1449,9 @@ The first boundary-request and manual boundary-attachment seams are also bootstr
 - `MakeDeferredEtaInfinityBoundaryProviderRegistry()` returns the reviewed deferred builtin eta->infinity provider registry for exactly one current request strategy: `builtin::eta->infinity`. The provider intentionally throws typed `boundary_unsolved` from `Provide(...)`; it exists only so callers can route the reviewed eta->infinity request strategy through the provider-registry seam and receive an explicit no-boundary-values diagnostic before solver execution
 - the reviewed phase-space request/attach wrappers now consult `family.loop_prescriptions` or, when absent, uniform raw cut prescriptions only for builtin provider-strategy refinement on cut propagators after the reviewed loop-support/connected-component, top-sector activation, and target-support preflights, while broader topological cut analysis and automatic boundary-value generation remain deferred
 - disconnected Cutkosky cut-surface diagnostics on both ending planning and builtin boundary-
-  request generation now report each disconnected component as `cuts=[...] loops=[...]`, preserving
-  the reviewed declaration-order cut indices and loop support without changing the rejection
+  request generation now report each disconnected component as
+  `cuts=[...] loops=[...] active_top_level_sectors=[...]`, preserving the reviewed declaration-order
+  cut indices, loop support, and component top-sector activation without changing the rejection
   boundary or adding graph/component polynomial analysis
 - `BootstrapSeriesSolver` now requires an explicit manual start boundary on its supported Batch 39 subset and returns typed `boundary_unsolved` for missing or incompatible explicit start-boundary attachment before continuation begins
 - Batch 44 keeps the provider seam separate from solving: `BootstrapSeriesSolver` and `SolveDifferentialEquation(...)` remain unchanged and do not consult `BoundaryProvider`

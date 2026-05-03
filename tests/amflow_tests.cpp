@@ -8173,7 +8173,8 @@ void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
+      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
       "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
       "the reviewed cut surface splits into disconnected components");
 }
@@ -8530,7 +8531,8 @@ void PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallback
       [&spec, &amf_options]() {
         static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
+      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
       "AmfOptions ending planner should fail fast on disconnected Cutkosky cut topology "
       "instead of falling through to a later placeholder ending");
 }
@@ -11421,6 +11423,12 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest() {
   Expect(topology.cut_supports[1].active_top_level_sectors == std::vector<int>{32, 127},
          "Batch 63as Cutkosky topology should report declared top-level sectors that activate "
          "the second cut propagator in declaration order");
+  Expect(topology.cut_components.size() == 1,
+         "Batch 63at Cutkosky topology should keep connected cuts in one component while "
+         "reporting component top-sector activation");
+  Expect(topology.cut_components[0].active_top_level_sectors == std::vector<int>{127},
+         "Batch 63at Cutkosky topology should report only declared top-level sectors that "
+         "activate every cut in the connected component");
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "Batch 63as Cutkosky top-sector activation telemetry should not mutate the input "
          "ProblemSpec");
@@ -11428,6 +11436,7 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest() {
 
 void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() {
   amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {1, 8, 127};
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
 
   const amflow::CutkoskyPhaseSpaceTopology topology =
@@ -11445,6 +11454,9 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() 
   Expect(topology.cut_components[0].loop_momenta == std::vector<std::string>{"k1"},
          "Cutkosky phase-space topology analysis should report the first component loop "
          "support");
+  Expect(topology.cut_components[0].active_top_level_sectors == std::vector<int>{1, 127},
+         "Batch 63at Cutkosky topology should report declared top-level sectors that activate "
+         "the first disconnected cut component");
   Expect(topology.cut_components[1].cut_propagator_indices ==
              std::vector<std::size_t>{3},
          "Cutkosky phase-space topology analysis should keep the second disconnected cut "
@@ -11452,6 +11464,9 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() 
   Expect(topology.cut_components[1].loop_momenta == std::vector<std::string>{"k2"},
          "Cutkosky phase-space topology analysis should report the second component loop "
          "support");
+  Expect(topology.cut_components[1].active_top_level_sectors == std::vector<int>{8, 127},
+         "Batch 63at Cutkosky topology should report declared top-level sectors that activate "
+         "the second disconnected cut component");
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "Cutkosky phase-space disconnected-component analysis should not mutate the input "
          "ProblemSpec");
@@ -11478,7 +11493,8 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutCompo
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
+      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
       "builtin Cutkosky phase-space boundary generation should reject disconnected cut "
       "components before provider routing");
 }

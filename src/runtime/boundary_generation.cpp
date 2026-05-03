@@ -116,7 +116,9 @@ std::string DescribeCutComponents(
       out << ", ";
     }
     out << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
-        << " loops=" << JoinNames(components[index].loop_momenta);
+        << " loops=" << JoinNames(components[index].loop_momenta)
+        << " active_top_level_sectors="
+        << JoinSectors(components[index].active_top_level_sectors);
   }
   out << "]";
   return out.str();
@@ -173,6 +175,17 @@ bool IsPropagatorActiveInTarget(const std::size_t propagator_index,
   return propagator_index < target.indices.size() && target.indices[propagator_index] > 0;
 }
 
+std::vector<int> IntersectActiveTopLevelSectors(const std::vector<int>& lhs,
+                                                const std::vector<int>& rhs) {
+  std::vector<int> intersection;
+  for (const int sector : lhs) {
+    if (std::find(rhs.begin(), rhs.end(), sector) != rhs.end()) {
+      intersection.push_back(sector);
+    }
+  }
+  return intersection;
+}
+
 std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutSupport>& cut_supports,
     const std::vector<std::string>& declared_loop_order) {
@@ -187,11 +200,19 @@ std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     std::set<std::string> component_loops;
     std::vector<std::size_t> queue = {seed};
     visited[seed] = true;
+    bool initialized_component_sectors = false;
     for (std::size_t cursor = 0; cursor < queue.size(); ++cursor) {
       const std::size_t current = queue[cursor];
       const CutkoskyPhaseSpaceCutSupport& support = cut_supports[current];
       component.cut_propagator_indices.push_back(support.propagator_index);
       component_loops.insert(support.loop_momenta.begin(), support.loop_momenta.end());
+      if (!initialized_component_sectors) {
+        component.active_top_level_sectors = support.active_top_level_sectors;
+        initialized_component_sectors = true;
+      } else {
+        component.active_top_level_sectors = IntersectActiveTopLevelSectors(
+            component.active_top_level_sectors, support.active_top_level_sectors);
+      }
 
       for (std::size_t candidate = 0; candidate < cut_supports.size(); ++candidate) {
         if (visited[candidate] || !ShareLoopMomentum(support, cut_supports[candidate])) {

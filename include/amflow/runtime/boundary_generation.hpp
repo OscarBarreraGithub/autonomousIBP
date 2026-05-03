@@ -23,6 +23,7 @@ struct CutkoskyPhaseSpaceCutSupport {
 struct CutkoskyPhaseSpaceCutComponent {
   std::vector<std::size_t> cut_propagator_indices;
   std::vector<std::string> loop_momenta;
+  std::vector<int> active_top_level_sectors;
 };
 
 struct CutkoskyPhaseSpaceTopology {

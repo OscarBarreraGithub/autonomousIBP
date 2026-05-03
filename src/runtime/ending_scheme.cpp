@@ -89,7 +89,9 @@ std::string DescribeCutComponents(
       stream << ", ";
     }
     stream << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
-           << " loops=" << JoinNames(components[index].loop_momenta);
+           << " loops=" << JoinNames(components[index].loop_momenta)
+           << " active_top_level_sectors="
+           << JoinSectors(components[index].active_top_level_sectors);
   }
   stream << "]";
   return stream.str();

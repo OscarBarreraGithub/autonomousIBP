@@ -17888,6 +17888,77 @@ void BootstrapSeriesSolverAcceptsThreeComplexWaypointsEtaContinuationPlanOnDefau
          "real endpoints");
 }
 
+void BootstrapSeriesSolverAcceptsFourComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest baseline_request = request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational first_detour;
+  first_detour.real = {"1", "5"};
+  first_detour.imaginary = {"1", "4"};
+  amflow::ExactComplexRational second_detour;
+  second_detour.real = {"2", "5"};
+  second_detour.imaginary = {"1", "5"};
+  amflow::ExactComplexRational third_detour;
+  third_detour.real = {"3", "5"};
+  third_detour.imaginary = {"1", "6"};
+  amflow::ExactComplexRational fourth_detour;
+  fourth_detour.real = {"4", "5"};
+  fourth_detour.imaginary = {"1", "7"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, first_detour);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 2, second_detour);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 3, third_detour);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 4, fourth_detour);
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap four-complex-waypoint eta-continuation-plan coverage should keep the "
+         "baseline exact endpoint path supported");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap four-complex-waypoint eta-continuation-plan coverage should preserve exact "
+         "diagnostics when all reviewed upper-half-plane waypoints stay ordered between the "
+         "real endpoints");
+}
+
+void BootstrapSeriesSolverRejectsFiveComplexWaypointsEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  for (int numerator = 1; numerator <= 5; ++numerator) {
+    amflow::ExactComplexRational detour;
+    detour.real = {std::to_string(numerator), "6"};
+    detour.imaginary = {"1", std::to_string(numerator + 4)};
+    request.eta_continuation_plan->contour_points.insert(
+        request.eta_continuation_plan->contour_points.begin() + numerator, detour);
+  }
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap five-complex-waypoint eta-continuation-plan coverage should keep broader "
+         "complex contour metadata off the default exact solver path");
+  ExpectContains(diagnostics.summary,
+                 "one, two, three, or four reviewed upper-half-plane interior waypoints",
+                 "bootstrap five-complex-waypoint eta-continuation-plan coverage should explain "
+                 "the reviewed four-waypoint cap");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap five-complex-waypoint eta-continuation-plan coverage should report "
+                 "the reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -51448,6 +51519,8 @@ int main() {
     BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsTwoComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsThreeComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsFourComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsFiveComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsSingularLedgerTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();

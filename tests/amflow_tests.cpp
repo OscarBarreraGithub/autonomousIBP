@@ -6167,6 +6167,23 @@ void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest() {
          "spec");
 }
 
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators.push_back(
+      {"1 + k", "0", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear});
+  const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const std::size_t selected_index =
+      amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec);
+
+  Expect(selected_index == 2,
+         "reviewed lightlike linear automatic selection should choose the unique explicit "
+         "linear propagator that validates through the helper");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
+         "reviewed lightlike linear automatic selection should not mutate inputs while "
+         "probing unsupported explicit linear declarations");
+}
+
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].variant.reset();
@@ -51756,6 +51773,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest();

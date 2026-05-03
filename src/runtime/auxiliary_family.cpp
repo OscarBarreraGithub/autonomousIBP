@@ -976,10 +976,16 @@ std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(const ProblemS
         *propagator.variant != PropagatorVariant::Linear) {
       continue;
     }
+    try {
+      static_cast<void>(BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, index, "x"));
+    } catch (const std::exception&) {
+      continue;
+    }
     if (selected_index.has_value()) {
       throw std::runtime_error(
           "reviewed lightlike linear auxiliary automatic selection requires exactly one "
-          "explicit kind \"linear\" / variant \"linear\" propagator, found multiple candidates: " +
+          "explicit kind \"linear\" / variant \"linear\" propagator that validates through the "
+          "reviewed lightlike linear auxiliary rewrite, found multiple candidates: " +
           std::to_string(*selected_index) + " and " + std::to_string(index));
     }
     selected_index = index;
@@ -987,7 +993,8 @@ std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(const ProblemS
   if (!selected_index.has_value()) {
     throw std::runtime_error(
         "reviewed lightlike linear auxiliary automatic selection requires exactly one explicit "
-        "kind \"linear\" / variant \"linear\" propagator");
+        "kind \"linear\" / variant \"linear\" propagator that validates through the reviewed "
+        "lightlike linear auxiliary rewrite");
   }
   return *selected_index;
 }

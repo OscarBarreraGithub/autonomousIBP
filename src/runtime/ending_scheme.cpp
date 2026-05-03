@@ -36,6 +36,8 @@ bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
                       "provider strategy") != std::string::npos ||
          message.find("ending scheme Cutkosky requires all cut propagators to resolve to the "
                       "same loop-prescription-backed provider strategy") != std::string::npos ||
+         message.find("ending scheme Cutkosky requires all cut propagators to carry the "
+                      "same raw provider strategy") != std::string::npos ||
          message.find("ending scheme Cutkosky only supports standard/cut propagators") !=
              std::string::npos ||
          message.find("ending scheme Cutkosky requires cut propagator ") !=
@@ -203,6 +205,40 @@ void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
   }
 }
 
+void ValidateCutkoskyRawPrescriptionProviderSurface(const ProblemSpec& spec) {
+  if (!spec.family.loop_prescriptions.empty()) {
+    return;
+  }
+
+  std::optional<FeynmanPrescription> selected_cut_prescription;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    const std::optional<FeynmanPrescription> raw_prescription =
+        ParseFeynmanPrescription(propagator.prescription);
+    if (!raw_prescription.has_value()) {
+      throw std::invalid_argument("family.propagators[" + std::to_string(index) +
+                                  "].prescription must be one of -1 (-i0), 0 (none), or 1 "
+                                  "(+i0)");
+    }
+
+    if (!selected_cut_prescription.has_value()) {
+      selected_cut_prescription = *raw_prescription;
+      continue;
+    }
+
+    if (*selected_cut_prescription != *raw_prescription) {
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires all cut propagators to carry the same raw provider "
+          "strategy before emitting the reviewed phase-space terminal node on the current "
+          "reviewed raw-prescription provider-selection subset");
+    }
+  }
+}
+
 std::string EtaInfinityTerminalNode(const ProblemSpec& spec) {
   return spec.family.name + "::eta->infinity";
 }
@@ -324,6 +360,7 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
     }
   }
 
+  ValidateCutkoskyRawPrescriptionProviderSurface(spec);
   ValidateCutkoskyLoopPrescriptionProviderSurface(spec);
 }
 

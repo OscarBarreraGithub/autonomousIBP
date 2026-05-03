@@ -1147,6 +1147,7 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
 - `PlanBuiltinAmfOptionsEtaMode(...)` takes `(const ProblemSpec&, const AmfOptions&)` and returns `EtaInsertionDecision`
 - it is a standalone ordered builtin-selection helper: it reads only `amf_options.amf_modes`, resolves one builtin mode at a time through `MakeBuiltinEtaMode(...)`, probes planning in that same order, carries the winning `EtaInsertionDecision` forward without re-planning, and remains strictly pre-policy, pre-cache, pre-`skip_reduction`, and pre-`D0`
 - empty `amf_options.amf_modes` lists fail locally with `invalid_argument("builtin eta-mode list must not be empty")`
+- empty, whitespace-only, or outer-whitespace-padded `amf_options.amf_modes` entries fail locally before builtin resolution or planning
 - unknown builtin names preserve the existing `MakeBuiltinEtaMode(...)` diagnostics unchanged and stop selection immediately
 - standard builtin planning failures from `EtaMode::Plan(...)` are treated as ordered fallback misses until the list exhausts
 - builtin `Branch` / `Loop` planning failures remain immediate terminal failures and do not fall through to later entries
@@ -1155,6 +1156,7 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
 - `PlanAmfOptionsEtaMode(...)` takes `(const ProblemSpec&, const AmfOptions&, const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes)` and returns `EtaInsertionDecision`
 - it is a standalone ordered mixed-selection helper: it reads only `amf_options.amf_modes`, resolves one builtin-or-user-defined mode at a time through `ResolveEtaMode(...)`, probes planning in that same order, carries the winning `EtaInsertionDecision` forward without re-planning, and remains strictly pre-policy, pre-cache, pre-`skip_reduction`, and pre-`D0`
 - empty `amf_options.amf_modes` lists fail locally with `invalid_argument("eta-mode list must not be empty")`
+- empty, whitespace-only, or outer-whitespace-padded `amf_options.amf_modes` entries fail locally before mixed builtin/user-defined resolution, registry validation, or planning
 - unknown-name or registry-validation failures from `ResolveEtaMode(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately
 - standard planning failures from `EtaMode::Plan(...)` are treated as ordered fallback misses until the list exhausts
 - builtin `Branch` / `Loop` planning failures remain immediate terminal failures and do not fall through to later entries

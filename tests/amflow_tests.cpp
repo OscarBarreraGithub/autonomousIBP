@@ -7082,6 +7082,31 @@ void PlanBuiltinAmfOptionsEtaModeRejectsEmptyAmfModeListTest() {
       "builtin AmfOptions eta-mode planner should preserve empty builtin-list diagnostics");
 }
 
+void PlanBuiltinAmfOptionsEtaModeRejectsMalformedAmfModeEntriesTest() {
+  const amflow::AmfOptions empty_entry_options = MakePoisonedAmfOptions({" \t "});
+
+  ExpectInvalidArgument(
+      [&empty_entry_options]() {
+        static_cast<void>(amflow::PlanBuiltinAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), empty_entry_options));
+      },
+      "builtin eta-mode list entry must not be empty",
+      "builtin AmfOptions eta-mode planner should reject whitespace-only mode entries before "
+      "builtin resolution");
+
+  const amflow::AmfOptions padded_entry_options =
+      MakePoisonedAmfOptions({" Propagator\t"});
+
+  ExpectInvalidArgument(
+      [&padded_entry_options]() {
+        static_cast<void>(amflow::PlanBuiltinAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), padded_entry_options));
+      },
+      "builtin eta-mode list entry must not carry outer whitespace",
+      "builtin AmfOptions eta-mode planner should reject padded mode entries before builtin "
+      "resolution");
+}
+
 void PlanBuiltinAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest() {
   const amflow::AmfOptions amf_options =
       MakePoisonedAmfOptions({"MissingMode", "Propagator"});
@@ -7228,6 +7253,39 @@ void PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest() {
       },
       "eta-mode list must not be empty",
       "AmfOptions eta-mode planner should preserve empty mixed-list diagnostics");
+}
+
+void PlanAmfOptionsEtaModeRejectsMalformedAmfModeEntriesBeforeResolutionTest() {
+  const auto whitespace_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  const amflow::AmfOptions empty_entry_options = MakePoisonedAmfOptions({" \n "});
+
+  ExpectInvalidArgument(
+      [&empty_entry_options, &whitespace_custom_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), empty_entry_options, {whitespace_custom_mode}));
+      },
+      "eta-mode list entry must not be empty",
+      "AmfOptions eta-mode planner should reject whitespace-only mode entries before mixed "
+      "resolution");
+  Expect(whitespace_custom_mode->call_count() == 0,
+         "AmfOptions eta-mode planner should not plan user modes after a whitespace-only mode "
+         "entry");
+
+  const auto padded_custom_mode =
+      std::make_shared<RecordingEtaMode>(MakeEtaGeneratedHappyDecision(), "CustomMode");
+  const amflow::AmfOptions padded_entry_options =
+      MakePoisonedAmfOptions({" CustomMode\t"});
+
+  ExpectInvalidArgument(
+      [&padded_entry_options, &padded_custom_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), padded_entry_options, {padded_custom_mode}));
+      },
+      "eta-mode list entry must not carry outer whitespace",
+      "AmfOptions eta-mode planner should reject padded mode entries before mixed resolution");
+  Expect(padded_custom_mode->call_count() == 0,
+         "AmfOptions eta-mode planner should not plan user modes after a padded mode entry");
 }
 
 void PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest() {
@@ -49426,12 +49484,14 @@ int main() {
     ResolveEtaModeRejectsNullRegistryEntriesTest();
     PlanBuiltinAmfOptionsEtaModeHappyPathTest();
     PlanBuiltinAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
+    PlanBuiltinAmfOptionsEtaModeRejectsMalformedAmfModeEntriesTest();
     PlanBuiltinAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
     PlanBuiltinAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();
     PlanBuiltinAmfOptionsEtaModeBranchLoopBlockersStopImmediatelyTest();
     PlanBuiltinAmfOptionsEtaModeRejectsInvalidPrescriptionBeforeFallbackTest();
     PlanAmfOptionsEtaModeHappyPathTest();
     PlanAmfOptionsEtaModeRejectsEmptyAmfModeListTest();
+    PlanAmfOptionsEtaModeRejectsMalformedAmfModeEntriesBeforeResolutionTest();
     PlanAmfOptionsEtaModeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEtaModeRejectsRegistryValidationFailureTest();
     PlanAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest();

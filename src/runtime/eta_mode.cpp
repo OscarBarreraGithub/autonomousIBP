@@ -1197,6 +1197,17 @@ std::shared_ptr<EtaMode> ResolveEtaMode(
   return MakeBuiltinEtaMode(name);
 }
 
+void ValidateAmfOptionsEtaModeListEntry(const std::string& eta_mode_name,
+                                        const std::string& list_name) {
+  const std::string trimmed_name = Trim(eta_mode_name);
+  if (trimmed_name.empty()) {
+    throw std::invalid_argument(list_name + " entry must not be empty");
+  }
+  if (trimmed_name != eta_mode_name) {
+    throw std::invalid_argument(list_name + " entry must not carry outer whitespace");
+  }
+}
+
 EtaInsertionDecision PlanBuiltinAmfOptionsEtaMode(const ProblemSpec& spec,
                                                   const AmfOptions& amf_options) {
   if (amf_options.amf_modes.empty()) {
@@ -1205,6 +1216,7 @@ EtaInsertionDecision PlanBuiltinAmfOptionsEtaMode(const ProblemSpec& spec,
 
   for (std::size_t index = 0; index < amf_options.amf_modes.size(); ++index) {
     const std::string& eta_mode_name = amf_options.amf_modes[index];
+    ValidateAmfOptionsEtaModeListEntry(eta_mode_name, "builtin eta-mode list");
     const std::shared_ptr<EtaMode> eta_mode = MakeBuiltinEtaMode(eta_mode_name);
     try {
       return eta_mode->Plan(spec);
@@ -1229,6 +1241,7 @@ EtaInsertionDecision PlanAmfOptionsEtaMode(
 
   std::exception_ptr last_failure;
   for (const std::string& eta_mode_name : amf_options.amf_modes) {
+    ValidateAmfOptionsEtaModeListEntry(eta_mode_name, "eta-mode list");
     const std::shared_ptr<EtaMode> eta_mode =
         ResolveEtaMode(eta_mode_name, user_defined_modes);
     try {

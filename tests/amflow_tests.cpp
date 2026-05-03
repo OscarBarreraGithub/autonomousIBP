@@ -15398,6 +15398,31 @@ void BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedge
          "if the source expressions differ textually and the ledger value is not pre-reduced");
 }
 
+void BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaContinuationPlanLedgerTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  baseline_request.system.singular_points = {"eta=2", "eta=4/2"};
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap duplicate-declaration eta-continuation-plan coverage should keep the "
+         "off-path singular declaration exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap duplicate-declaration eta-continuation-plan coverage should canonicalize "
+         "duplicate system-declared singular values before comparing them to a deduplicated "
+         "zero-winding plan ledger");
+}
+
 void BootstrapSeriesSolverRejectsLedgerlessOnPathDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -48690,6 +48715,7 @@ int main() {
     BootstrapSeriesSolverAcceptsLedgerlessTargetEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsLedgerlessOnPathDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsLedgerlessStaleTargetEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLedgerTest();

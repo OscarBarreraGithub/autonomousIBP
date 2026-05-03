@@ -365,9 +365,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61z`
-  stale direct-real contour-fingerprint guard after the earlier `Batch 61y` duplicate-endpoint
-  guard, `Batch 61x` singular-ledger expression/value fail-closed guard, `Batch 61w`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61aa`
+  duplicate singular-declaration ledger canonicalization after the earlier `Batch 61z`
+  stale direct-real contour-fingerprint guard, `Batch 61y` duplicate-endpoint guard,
+  `Batch 61x` singular-ledger expression/value fail-closed guard, `Batch 61w`
   unfingerprinted-plan guard, `Batch 61v` non-real singular-ledger guard, and `Batch 61u`
   direct-plan location-metadata comparison; the earlier `Batch 61a` through `Batch 64ak` surface
   plus the `Batch 62v` raw-`msq`, `Batch 62w` raw-`t`, and `Batch 62x` raw-`s` guardrail
@@ -386,10 +387,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   endpoint coordinates are compared by exact canonical value on this reviewed metadata-only path,
   matching the existing value-matched singular-ledger behavior. Evaluated singular ledgers are
   accepted only when every
-  ledger expression matches, or exact evaluated ledger value matches, a system-declared singular
-  point; every ledger value is real on the reviewed direct path; every recorded branch winding is
-  zero; and each evaluated ledger point is either off the direct real segment or exactly the
-  distinct singular target endpoint on the reviewed mixed exact path. It still rejects actual
+  ledger expression matches, or exact evaluated ledger value matches, a unique exact evaluated
+  system-declared singular point after duplicate equivalent declarations are canonicalized; every
+  ledger value is real on the reviewed direct path; every recorded branch winding is zero; and
+  each evaluated ledger point is either off the direct real segment or exactly the distinct
+  singular target endpoint on the reviewed mixed exact path. It still rejects actual
   contour detours, stale direct-real contour fingerprints, duplicate direct-real contour endpoints,
   stale or value-mismatched ledgers,
   ledgerless interior on-segment, stale target-endpoint, or non-real singular declarations,

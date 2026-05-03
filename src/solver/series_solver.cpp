@@ -4011,6 +4011,9 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
   }
 
   std::sort(declared_singular_value_keys.begin(), declared_singular_value_keys.end());
+  declared_singular_value_keys.erase(std::unique(declared_singular_value_keys.begin(),
+                                                 declared_singular_value_keys.end()),
+                                     declared_singular_value_keys.end());
   std::sort(ledger_singular_value_keys.begin(), ledger_singular_value_keys.end());
 
   if (declared_singular_value_keys != ledger_singular_value_keys) {

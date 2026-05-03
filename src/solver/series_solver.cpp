@@ -3339,6 +3339,17 @@ std::optional<std::size_t> SelectReviewedSingleExplicitLinearDecisionIndex(
       *selected.variant != PropagatorVariant::Linear) {
     return std::nullopt;
   }
+  if (decision.selected_propagators.size() != 1) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route requires selected propagator "
+        "expression metadata for exactly one selected index");
+  }
+  if (decision.selected_propagators.front() != selected.expression) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route selected propagator expression "
+        "metadata does not match selected index " +
+        std::to_string(selected_index));
+  }
   return selected_index;
 }
 

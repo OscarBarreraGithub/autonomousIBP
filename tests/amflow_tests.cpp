@@ -30437,6 +30437,41 @@ void SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivative
          "direct single-linear route should return solver diagnostics verbatim");
 }
 
+void SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "DirectLinear";
+  decision.selected_propagator_indices = {2};
+  decision.selected_propagators = {"stale-linear-expression"};
+  decision.explanation = "direct stale single explicit linear propagator";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-stale-payload"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&spec, &decision, &layout, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            decision,
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            71,
+            "x"));
+      },
+      "selected propagator expression metadata does not match selected index 2",
+      "direct single-linear route should reject stale selected-propagator metadata before "
+      "lightlike reducer or solver execution");
+  Expect(solver.call_count() == 0,
+         "direct single-linear stale-payload rejection should not call the supplied solver");
+}
+
 void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -51066,6 +51101,7 @@ int main() {
     SolveEtaGeneratedSeriesHappyPathTest();
     SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivativeTest();
+    SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();

@@ -6184,6 +6184,23 @@ void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExpl
          "probing unsupported explicit linear declarations");
 }
 
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsComplexNumericSubstitutionsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.complex_numeric_substitutions = {
+      {"s", "30 + I"},
+  };
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec));
+      },
+      "requires no complex numeric substitutions",
+      "reviewed lightlike linear automatic selection should keep complex numeric "
+      "substitution surfaces outside the generated-x selector");
+}
+
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].variant.reset();
@@ -51774,6 +51791,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsComplexNumericSubstitutionsTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest();

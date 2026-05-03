@@ -969,6 +969,12 @@ Propagator BuildReviewedLightlikeLinearAuxiliaryPropagator(const ProblemSpec& sp
 }
 
 std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(const ProblemSpec& spec) {
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary automatic selection requires no complex numeric "
+        "substitutions on the current generated-x selector surface");
+  }
+
   std::optional<std::size_t> selected_index;
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const Propagator& propagator = spec.family.propagators[index];

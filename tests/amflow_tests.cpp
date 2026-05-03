@@ -11366,6 +11366,28 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest() {
          "Cutkosky phase-space topology analysis should not mutate the input ProblemSpec");
 }
 
+void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {1, 32, 127};
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::CutkoskyPhaseSpaceTopology topology =
+      amflow::AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+
+  Expect(topology.cut_supports.size() == 2,
+         "Batch 63as Cutkosky topology should retain the reviewed cut propagators while "
+         "reporting top-sector activation");
+  Expect(topology.cut_supports[0].active_top_level_sectors == std::vector<int>{1, 127},
+         "Batch 63as Cutkosky topology should report declared top-level sectors that activate "
+         "the first cut propagator in declaration order");
+  Expect(topology.cut_supports[1].active_top_level_sectors == std::vector<int>{32, 127},
+         "Batch 63as Cutkosky topology should report declared top-level sectors that activate "
+         "the second cut propagator in declaration order");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Batch 63as Cutkosky top-sector activation telemetry should not mutate the input "
+         "ProblemSpec");
+}
+
 void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() {
   amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -52047,6 +52069,7 @@ int main() {
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsParenthesizedZeroMassTest();
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsNestedParenthesizedZeroMassTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
+    AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest();

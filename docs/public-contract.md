@@ -467,13 +467,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `eta_symbol` values before selected-decision interpretation, ordered ending planning, provider
   lookup, boundary attachment, or solver execution.
   The same boundary-request preflight now performs one narrow cut-topology support/connectivity,
-  top-sector activation, and target-support check: every cut propagator must mention at least one
-  declared loop momentum, all cut supports must belong to one connected component induced by
-  shared declared loop-momentum support, and when exactly one `family.top_level_sectors` mask is
-  declared every cut propagator must be active in that mask before provider routing; when several
-  masks are declared, every cut propagator must be active in at least one declared mask before
-  provider routing, and every declared target integral must keep each cut propagator at positive
-  support before provider routing. This still does not widen builtin `Prescription` selection,
+  top-sector activation, and target-support check through the shared Cutkosky topology telemetry:
+  every cut propagator must mention at least one declared loop momentum, all cut supports must
+  belong to one connected component induced by shared declared loop-momentum support, and when
+  exactly one `family.top_level_sectors` mask is declared every cut propagator must be active in
+  that mask before provider routing; when several masks are declared, every cut propagator must be
+  active in at least one declared mask before provider routing, and every declared target integral
+  must keep each cut propagator at positive support before provider routing. This still does not
+  widen builtin `Prescription` selection,
   broader target-sector analysis, broader Cutkosky
   topology analysis, or automatic phase-space boundary-value generation;
   and explicit linear variants now reach only the reviewed invariant seed/execution subsets, the
@@ -555,16 +556,16 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   phase-space boundary-value generation remain deferred
 - `CutkoskyPhaseSpaceCutSupport`, `CutkoskyPhaseSpaceCutComponent`,
   `CutkoskyPhaseSpaceTopology`, and `AnalyzeCutkoskyPhaseSpaceCutTopology(...)`: the first pure
-  phase-space cut-topology helper, reporting each cut propagator index plus the declared loop
-  momenta mentioned by that propagator expression and the reviewed connected components induced
-  by shared declared loop support. This component telemetry is declaration-order only and still
-  does not parse graph components, classify physical cut regions, or produce boundary values. The
+  phase-space cut-topology helper, reporting each cut propagator index, the declared loop
+  momenta mentioned by that propagator expression, the declared `family.top_level_sectors` masks
+  that activate that cut in caller order, and the reviewed connected components induced by shared
+  declared loop support. This telemetry is declaration-order only and still does not parse graph
+  components, classify physical cut regions, or produce boundary values. The
   reviewed disconnected-cut diagnostics now include both the cut propagator index set and declared
   loop-momentum support set for each disconnected component. The reviewed Cutkosky
-  boundary-request preflight consumes only the empty-support rejection plus the disconnected-
-  component rejection: a cut propagator with no declared loop-momentum support fails closed before
-  provider strategy routing, and disconnected cut components fail closed before provider strategy
-  routing while reporting their reviewed loop-support groups
+  boundary-request preflight consumes the shared topology support, connectivity, and declared
+  top-sector activation telemetry before provider strategy routing, while target-support checks
+  stay on the current `ProblemSpec` target list
 - `AmflowLoopPrefactorSign`, `AmflowPrefactorConvention`, and `BuildOverallAmflowPrefactor(...)`: the first explicit in-repo prefactor/sign-convention helper surface, rendering a deterministic textual overall AMFlow prefactor from declared loop count plus cut propagator count without mutating the input `ProblemSpec`; the current default literals are frozen narrowly by `specs/amflow-prefactor-reference.yaml` and the human-readable mirror `references/snapshots/amflow/prefactor_convention_lock.md`, with retained-root backing for the `+i0` loop and cut prefactors while the explicit `-i0` loop-prefactor literal remains repo-snapshot backed only
 - `KiraInsertPrefactorEntry`, `KiraInsertPrefactorsSurface`, `ValidateKiraInsertPrefactorsSurface(...)`, and `SerializeKiraInsertPrefactorsSurface(...)`: a deterministic repo-local Kira `insert_prefactors` surface over xints-like denominator entries, frozen by `specs/kira-insert-prefactors-surface.yaml` and `references/snapshots/kira/insert_prefactors_surface_lock.md`; validation rejects empty entry lists, empty families, cross-entry family mismatches, empty denominators, newline-containing denominators, and a first-entry denominator other than exact `"1"`, while serialization renders one line per entry as `<integral.Label()>*1/(<denominator>)\n`. This surface is intentionally distinct from `BuildOverallAmflowPrefactor(...)`, does not reuse that overall AMFlow loop-prefactor helper, and now feeds a narrow default-disabled `KiraBackend`/`jobs.yaml` emission path only when `ReductionOptions.kira_insert_prefactors == true`, an explicit `KiraInsertPrefactorsSurface` is supplied, the active `ReductionMode` emits `run_firefly`, the selected target list has exactly one integral, the family has no cut propagators, and the current family/arity/anchor validation passes. Explicit public emission calls through `KiraBackend::EmitJobFiles(...)` and `EmitJobFilesForTargets(...)` reject invalid opt-in requests deterministically instead of silently suppressing `xints`, while `Prepare(...)` and `PrepareForTargets(...)` preserve bootstrap preparation behavior by recording validation messages and omitting the companion file
 - `AmfOptions`: AMFlow runtime controls, including optional exact `fixed_eps` metadata on the

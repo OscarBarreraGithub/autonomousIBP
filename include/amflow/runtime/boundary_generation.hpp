@@ -17,6 +17,7 @@ class EndingScheme;
 struct CutkoskyPhaseSpaceCutSupport {
   std::size_t propagator_index = 0;
   std::vector<std::string> loop_momenta;
+  std::vector<int> active_top_level_sectors;
 };
 
 struct CutkoskyPhaseSpaceCutComponent {

@@ -168,13 +168,6 @@ bool IsPropagatorActiveInTopLevelSector(const std::size_t propagator_index,
          (sector_mask & (1ULL << propagator_index)) != 0ULL;
 }
 
-bool IsPropagatorActiveInAnyTopLevelSector(const std::size_t propagator_index,
-                                           const std::vector<int>& sectors) {
-  return std::any_of(sectors.begin(), sectors.end(), [propagator_index](const int sector) {
-    return IsPropagatorActiveInTopLevelSector(propagator_index, sector);
-  });
-}
-
 bool IsPropagatorActiveInTarget(const std::size_t propagator_index,
                                 const TargetIntegral& target) {
   return propagator_index < target.indices.size() && target.indices[propagator_index] > 0;
@@ -288,7 +281,7 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
   if (spec.family.top_level_sectors.size() == 1) {
     const int sector = spec.family.top_level_sectors.front();
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (IsPropagatorActiveInTopLevelSector(support.propagator_index, sector)) {
+      if (!support.active_top_level_sectors.empty()) {
         continue;
       }
       throw BoundaryUnsolvedError(
@@ -300,8 +293,7 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
     }
   } else if (spec.family.top_level_sectors.size() > 1) {
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (IsPropagatorActiveInAnyTopLevelSector(support.propagator_index,
-                                                spec.family.top_level_sectors)) {
+      if (!support.active_top_level_sectors.empty()) {
         continue;
       }
       throw BoundaryUnsolvedError(
@@ -593,6 +585,11 @@ CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
     for (const std::string& loop_momentum : family.loop_momenta) {
       if (identifiers.find(loop_momentum) != identifiers.end()) {
         support.loop_momenta.push_back(loop_momentum);
+      }
+    }
+    for (const int sector : family.top_level_sectors) {
+      if (IsPropagatorActiveInTopLevelSector(index, sector)) {
+        support.active_top_level_sectors.push_back(sector);
       }
     }
     topology.cut_supports.push_back(std::move(support));

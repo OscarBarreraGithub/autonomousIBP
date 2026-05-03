@@ -40209,6 +40209,58 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySelectedPropagatorPayloadTes
          "solver");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsWhitespaceSelectedPropagatorExpressionTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision whitespace_expression_decision;
+  whitespace_expression_decision.mode_name = "CustomMode";
+  whitespace_expression_decision.selected_propagator_indices = {0};
+  whitespace_expression_decision.selected_propagators = {" \t "};
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"CustomMode"};
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-whitespace-selected-expression"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            whitespace_expression_decision,
+            amf_options,
+            "amf-options-resolved-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires non-empty selected propagator expression "
+      "metadata",
+      "generic planned AmfOptions helper should reject whitespace-only selected-expression "
+      "metadata before reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "generic planned AmfOptions whitespace selected-expression coverage should not write "
+         "manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "generic planned AmfOptions whitespace selected-expression coverage should not create "
+         "cache artifacts");
+  Expect(solver.call_count() == 0,
+         "generic planned AmfOptions whitespace selected-expression coverage should not call the "
+         "exact solver");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::ParsedMasterList master_basis;
@@ -49857,6 +49909,7 @@ int main() {
     SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsDuplicateSelectedPropagatorIndicesTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySelectedPropagatorPayloadTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsWhitespaceSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsWhitespacePaddedModeNameBeforeReducerCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest();

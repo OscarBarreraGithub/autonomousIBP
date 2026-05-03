@@ -244,6 +244,12 @@ void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
         spec.family.propagators[propagator_index].expression;
     const std::string& planned_expression =
         decision.selected_propagators[entry_index];
+    if (Trim(planned_expression).empty()) {
+      throw std::invalid_argument(
+          helper_name + " requires non-empty selected propagator expression metadata at "
+                        "selected entry " +
+          std::to_string(entry_index));
+    }
     if (planned_expression != expected_expression) {
       throw std::invalid_argument(
           helper_name + " selected propagator expression mismatch at selected entry " +

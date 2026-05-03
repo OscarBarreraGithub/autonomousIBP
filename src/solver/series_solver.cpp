@@ -183,13 +183,6 @@ void ValidateRequiredBoundaryProviderRegistry(
   ValidateBoundaryProviderRegistryHasNoNullEntries(providers);
 }
 
-void ValidateBoundaryProviderRegistryNotEmpty(
-    const std::vector<std::shared_ptr<BoundaryProvider>>& providers) {
-  if (providers.empty()) {
-    throw std::invalid_argument("boundary provider registry must not be empty");
-  }
-}
-
 void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
   if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
         return std::isspace(c);
@@ -7441,7 +7434,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
-  ValidateBoundaryProviderRegistryNotEmpty(providers);
+  ValidateRequiredBoundaryProviderRegistry(providers);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
@@ -7492,7 +7485,7 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  ValidateBoundaryProviderRegistryNotEmpty(providers);
+  ValidateRequiredBoundaryProviderRegistry(providers);
   const BoundaryRequest boundary_request =
       GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
 

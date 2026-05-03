@@ -15825,10 +15825,10 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCirc
       "boundary provider registry entry 2 is null",
       "Batch 63g Cutkosky registry wrapper should preserve registry validation failures before "
       "solver execution");
-  Expect(cutkosky_provider->strategy_call_count() == 1 &&
+  Expect(cutkosky_provider->strategy_call_count() == 0 &&
              cutkosky_provider->provide_call_count() == 0,
-         "Batch 63g Cutkosky registry wrapper should validate the registry before any provider "
-         "Provide call");
+         "Batch 63ai Cutkosky registry wrapper should reject null entries before provider "
+         "strategy lookup");
   Expect(solver.call_count() == 0,
          "Batch 63g Cutkosky registry wrapper should not call the solver when registry "
          "validation fails");
@@ -15899,6 +15899,73 @@ void Batch63ahPlannedCutkoskyProviderRegistryEmptyPreflightsDecisionValidationTe
   Expect(solver.call_count() == 0,
          "Batch 63ah planned Cutkosky provider-registry solve should not call the solver after "
          "empty provider-registry rejection");
+}
+
+void Batch63aiAmfOptionsCutkoskyProviderRegistryNullEntryPreflightsPlanningTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers = {nullptr};
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &providers, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            providers,
+            solver));
+      },
+      "Batch 63ai AmfOptions Cutkosky provider-registry solve should reject null providers "
+      "before user-defined ending planning");
+
+  Expect(message == "boundary provider registry entry 1 is null",
+         "Batch 63ai AmfOptions Cutkosky provider-registry solve should preserve the null "
+         "provider diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63ai AmfOptions Cutkosky provider-registry solve should not plan a "
+         "user-defined ending scheme after null provider rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63ai AmfOptions Cutkosky provider-registry solve should not call the solver "
+         "after null provider rejection");
+}
+
+void Batch63aiPlannedCutkoskyProviderRegistryNullEntryPreflightsDecisionValidationTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers = {nullptr};
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &providers, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            providers,
+            solver));
+      },
+      "Batch 63ai planned Cutkosky provider-registry solve should reject null providers "
+      "before selected-decision validation");
+
+  Expect(message == "boundary provider registry entry 1 is null",
+         "Batch 63ai planned Cutkosky provider-registry solve should preserve the null "
+         "provider diagnostic");
+  Expect(solver.call_count() == 0,
+         "Batch 63ai planned Cutkosky provider-registry solve should not call the solver after "
+         "null provider rejection");
 }
 
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
@@ -50491,6 +50558,8 @@ int main() {
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();
     Batch63ahAmfOptionsCutkoskyProviderRegistryEmptyPreflightsPlanningTest();
     Batch63ahPlannedCutkoskyProviderRegistryEmptyPreflightsDecisionValidationTest();
+    Batch63aiAmfOptionsCutkoskyProviderRegistryNullEntryPreflightsPlanningTest();
+    Batch63aiPlannedCutkoskyProviderRegistryNullEntryPreflightsDecisionValidationTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

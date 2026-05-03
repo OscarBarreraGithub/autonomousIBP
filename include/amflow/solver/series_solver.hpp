@@ -86,6 +86,12 @@ struct SolverDiagnostics {
   std::string failure_code;
   std::string summary;
   std::vector<std::string> target_values;
+  struct EpsilonCoefficient {
+    int order = 0;
+    std::string real;
+    std::string imaginary;
+  };
+  std::vector<std::vector<EpsilonCoefficient>> target_epsilon_coefficients;
 };
 
 struct SolveRequest {
@@ -120,6 +126,7 @@ struct SolveRequest {
   // only.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;
+  std::optional<int> requested_epsilon_order;
 };
 
 class SeriesSolver {

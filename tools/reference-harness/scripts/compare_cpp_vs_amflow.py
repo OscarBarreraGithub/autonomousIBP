@@ -15,6 +15,7 @@ from typing import Any
 
 IntegralKey = tuple[str, tuple[int, ...]]
 CoefficientMap = dict[int, tuple[Decimal, Decimal]]
+ZERO_COMPLEX = (Decimal(0), Decimal(0))
 
 INTEGRAL_RE = re.compile(r"^j\[\s*([A-Za-z_][A-Za-z0-9_]*)\s*,(.*)\]$")
 
@@ -283,6 +284,7 @@ def load_cpp_result(path: Path) -> tuple[dict[str, Any], dict[IntegralKey, Coeff
     expect(key not in parsed, f"duplicate C++ integral: {integral}")
     raw_orders = raw_result.get("epsilon_orders")
     expect(isinstance(raw_orders, list), f"{path} {integral} epsilon_orders must be a list")
+    expect(raw_orders, f"{path} {integral} epsilon_orders must not be empty")
     coefficients: CoefficientMap = {}
     for order_index, raw_order in enumerate(raw_orders):
       expect(isinstance(raw_order, dict), f"{path} {integral} epsilon_orders entries must be objects")
@@ -295,6 +297,14 @@ def load_cpp_result(path: Path) -> tuple[dict[str, Any], dict[IntegralKey, Coeff
       )
     parsed[key] = coefficients
   return payload, parsed
+
+
+def cpp_requested_epsilon_order(payload: dict[str, Any]) -> int | None:
+  raw_solver = payload.get("solver")
+  if not isinstance(raw_solver, dict):
+    return None
+  raw_order = raw_solver.get("epsilon_order")
+  return raw_order if isinstance(raw_order, int) and raw_order >= 0 else None
 
 
 def digit_agreement(lhs: Decimal, rhs: Decimal) -> int:
@@ -313,6 +323,7 @@ def compare_cpp_vs_amflow(
   getcontext().prec = max(120, tolerance_digits + 40)
   cpp_payload, cpp = load_cpp_result(cpp_result_path)
   amflow = load_amflow_golden(amflow_golden_path)
+  requested_epsilon_order = cpp_requested_epsilon_order(cpp_payload)
 
   all_keys = sorted(set(cpp) | set(amflow), key=lambda item: (item[0], item[1]))
   integral_summaries: list[dict[str, Any]] = []
@@ -334,18 +345,26 @@ def compare_cpp_vs_amflow(
       continue
 
     coefficient_summaries: list[dict[str, Any]] = []
-    orders = sorted(set(cpp_coefficients) | set(amflow_coefficients))
+    if requested_epsilon_order is not None:
+      explicit_orders = {
+          order
+          for order in set(cpp_coefficients) | set(amflow_coefficients)
+          if order <= requested_epsilon_order
+      }
+      explicit_orders.add(0)
+      explicit_orders.add(requested_epsilon_order)
+    else:
+      explicit_orders = set(cpp_coefficients) | set(amflow_coefficients)
+    orders = (
+        list(range(min(explicit_orders), max(explicit_orders) + 1))
+        if explicit_orders
+        else []
+    )
     for order in orders:
-      cpp_value = cpp_coefficients.get(order)
-      amflow_value = amflow_coefficients.get(order)
-      if cpp_value is None:
-        failures.append(f"missing C++ coefficient {label} eps^{order}")
-        coefficient_summaries.append({"order": order, "status": "missing-cpp-coefficient"})
-        continue
-      if amflow_value is None:
-        failures.append(f"missing AMFlow coefficient {label} eps^{order}")
-        coefficient_summaries.append({"order": order, "status": "missing-amflow-coefficient"})
-        continue
+      cpp_present = order in cpp_coefficients
+      amflow_present = order in amflow_coefficients
+      cpp_value = cpp_coefficients.get(order, ZERO_COMPLEX)
+      amflow_value = amflow_coefficients.get(order, ZERO_COMPLEX)
       real_digits = digit_agreement(cpp_value[0], amflow_value[0])
       imag_digits = digit_agreement(cpp_value[1], amflow_value[1])
       coefficient_passed = real_digits >= tolerance_digits and imag_digits >= tolerance_digits
@@ -370,6 +389,8 @@ def compare_cpp_vs_amflow(
               "cpp_imag": str(cpp_value[1]),
               "amflow_real": str(amflow_value[0]),
               "amflow_imag": str(amflow_value[1]),
+              "cpp_present": cpp_present,
+              "amflow_present": amflow_present,
           }
       )
     integral_summaries.append(
@@ -483,6 +504,45 @@ def run_self_check() -> dict[str, Any]:
     except Exception:
       failed_status_rejected = True
 
+    bounded_root = root / "bounded-positive-order"
+    bounded_root.mkdir(parents=True, exist_ok=True)
+    bounded_amflow = bounded_root / "amflow-golden.txt"
+    bounded_amflow.write_text(
+        "{j[toy, 1] -> 1.0000000000000000000000000000000000000000`40. + "
+        "2.0000000000000000000000000000000000000000`40.*eps + "
+        "999.0000000000000000000000000000000000000000`40.*eps^2}\n",
+        encoding="utf-8",
+    )
+    bounded_cpp = bounded_root / "cpp-result.json"
+    bounded_cpp.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "bounded",
+                "solver": {"precision_digits": 40, "epsilon_order": 1},
+                "results": [
+                    {
+                        "integral": "toy[1]",
+                        "epsilon_orders": [
+                            {"order": 0, "real_digits": "1.0000000000000000000000000000000000000000", "imag_digits": "0"},
+                            {"order": 1, "real_digits": "2.0000000000000000000000000000000000000000", "imag_digits": "0"},
+                        ],
+                    }
+                ],
+                "status": "success",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    bounded = compare_cpp_vs_amflow(
+        cpp_result_path=bounded_cpp,
+        amflow_golden_path=bounded_amflow,
+        tolerance_digits=30,
+    )
+
   return {
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
@@ -490,6 +550,7 @@ def run_self_check() -> dict[str, Any]:
       "mismatch_synthetic_rejected": not mismatch["passed"] and bool(mismatch["failures"]),
       "missing_integral_rejected": not missing["passed"] and bool(missing["failures"]),
       "failed_cpp_status_rejected": failed_status_rejected,
+      "positive_order_above_request_ignored": bounded["passed"],
       "summary_written": False,
   }
 
@@ -516,6 +577,7 @@ def main(argv: list[str]) -> int:
               "mismatch_synthetic_rejected",
               "missing_integral_rejected",
               "failed_cpp_status_rejected",
+              "positive_order_above_request_ignored",
           )
       ) else 1
 

@@ -48280,6 +48280,166 @@ void SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest() {
                  "solve-series JSON should report successful solver status");
 }
 
+void SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root = FreshTempDir("amflow-solve-series-cli-tiny-eps");
+  const std::filesystem::path spec_path = run_root / "tiny-eps.yaml";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      spec_path,
+      "family:\n"
+      "  name: \"toy_scalar_family\"\n"
+      "  loop_momenta: [\"k\"]\n"
+      "  top_level_sectors: [1]\n"
+      "  propagators:\n"
+      "    - expression: \"k^2\"\n"
+      "      mass: \"0\"\n"
+      "      kind: \"standard\"\n"
+      "      prescription: -1\n"
+      "kinematics:\n"
+      "  invariants: [\"s\"]\n"
+      "  numeric_substitutions:\n"
+      "    s: \"1\"\n"
+      "targets:\n"
+      "  - family: \"toy_scalar_family\"\n"
+      "    indices: [1]\n"
+      "  - family: \"toy_scalar_family\"\n"
+      "    indices: [2]\n"
+      "dimension: \"4 - 2*eps\"\n"
+      "complex_mode: false\n"
+      "solve_series:\n"
+      "  benchmark_id: \"tiny_eps\"\n"
+      "  variable: \"eta\"\n"
+      "  start_location: \"eta=0\"\n"
+      "  target_location: \"eta=2\"\n"
+      "  masters:\n"
+      "    - family: \"toy_scalar_family\"\n"
+      "      indices: [1]\n"
+      "      label: \"I1\"\n"
+      "    - family: \"toy_scalar_family\"\n"
+      "      indices: [2]\n"
+      "      label: \"I2\"\n"
+      "  coefficient_matrices:\n"
+      "    eta:\n"
+      "      - [\"0\", \"eps\"]\n"
+      "      - [\"0\", \"0\"]\n"
+      "  boundary_conditions:\n"
+      "    - variable: \"eta\"\n"
+      "      location: \"eta=0\"\n"
+      "      values: [\"1\", \"1/eps + 2 + 3*eps\"]\n"
+      "      strategy: \"manual\"\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(spec_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "solve-series CLI should complete when the direct exact path carries a Laurent "
+         "epsilon expansion; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"epsilon_order\": 2",
+                 "solve-series JSON should record the requested positive epsilon order");
+  ExpectContains(json, "\"integral\": \"toy_scalar_family[1]\"",
+                 "solve-series JSON should emit the first target integral");
+  ExpectContains(json, "\"integral\": \"toy_scalar_family[2]\"",
+                 "solve-series JSON should emit the second target integral");
+  ExpectContains(json, "\"order\": -1",
+                 "solve-series JSON should emit the Laurent pole order");
+  ExpectContains(json, "\"exact_real\": \"3\"",
+                 "solve-series JSON should emit the transported epsilon^0 coefficient");
+  ExpectContains(json, "\"exact_real\": \"4\"",
+                 "solve-series JSON should emit the transported epsilon^1 coefficient");
+  ExpectContains(json, "\"exact_real\": \"6\"",
+                 "solve-series JSON should emit the transported epsilon^2 coefficient");
+  ExpectContains(json, "\"exact_real\": \"1\"",
+                 "solve-series JSON should emit the boundary pole coefficient");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "solve-series JSON should report success for the full epsilon expansion");
+}
+
+void SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-eps-guard");
+  const std::filesystem::path spec_path = run_root / "tiny-eps-guard.yaml";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      spec_path,
+      "family:\n"
+      "  name: \"toy_scalar_family\"\n"
+      "  loop_momenta: [\"k\"]\n"
+      "  top_level_sectors: [1]\n"
+      "  propagators:\n"
+      "    - expression: \"k^2\"\n"
+      "      mass: \"0\"\n"
+      "      kind: \"standard\"\n"
+      "      prescription: -1\n"
+      "kinematics:\n"
+      "  invariants: [\"s\"]\n"
+      "  numeric_substitutions:\n"
+      "    s: \"1\"\n"
+      "targets:\n"
+      "  - family: \"toy_scalar_family\"\n"
+      "    indices: [1]\n"
+      "dimension: \"4 - 2*eps\"\n"
+      "complex_mode: false\n"
+      "solve_series:\n"
+      "  benchmark_id: \"tiny_eps_guard\"\n"
+      "  variable: \"eta\"\n"
+      "  start_location: \"eta=0\"\n"
+      "  target_location: \"eta=2\"\n"
+      "  masters:\n"
+      "    - family: \"toy_scalar_family\"\n"
+      "      indices: [1]\n"
+      "      label: \"I1\"\n"
+      "    - family: \"toy_scalar_family\"\n"
+      "      indices: [2]\n"
+      "      label: \"I2\"\n"
+      "  coefficient_matrices:\n"
+      "    eta:\n"
+      "      - [\"0\", \"1/eps\"]\n"
+      "      - [\"0\", \"0\"]\n"
+      "  boundary_conditions:\n"
+      "    - variable: \"eta\"\n"
+      "      location: \"eta=0\"\n"
+      "      values: [\"1\", \"eps*eps\"]\n"
+      "      strategy: \"manual\"\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(spec_path.string()) + " --eps-order 1 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "solve-series CLI should keep enough epsilon guard terms when pole transport shifts "
+         "higher boundary coefficients into the requested range; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"order\": 0",
+                 "guarded solve-series JSON should emit the constant coefficient");
+  ExpectContains(json, "\"order\": 1",
+                 "guarded solve-series JSON should emit the requested positive coefficient");
+  ExpectContains(json, "\"exact_real\": \"1\"",
+                 "guarded solve-series JSON should preserve the initial constant coefficient");
+  ExpectContains(json, "\"exact_real\": \"2\"",
+                 "guarded solve-series JSON should include the pole-shifted epsilon coefficient");
+  Expect(json.find("\"order\": 2") == std::string::npos,
+         "guarded solve-series JSON should not emit coefficients above the requested epsilon "
+         "order");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "guarded solve-series JSON should report success");
+}
+
 struct ReferenceHarnessSelfCheckRun {
   std::string stdout_json;
   std::string stderr_log;
@@ -54131,6 +54291,8 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest();
+    SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
+    SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

@@ -303,7 +303,7 @@ manifest:
 
 ```bash
 ./build/amflow-cli solve-series /path/to/problem-spec.yaml \
-  --eps-order 0 \
+  --eps-order 1 \
   --digits 40 \
   --out /tmp/benchmark.cpp-result.json
 
@@ -315,11 +315,10 @@ python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
 
 The ingester accepts either a retained `golden-manifest.json` or a raw AMFlow rule-list file. It
 matches integrals by family plus indices, compares each ε coefficient present in both files, emits
-a structured pass/fail JSON summary, and exits nonzero on missing integrals, missing coefficients,
-non-success C++ result status, or digit agreement below the requested tolerance. The current
-reviewed direct `solve-series` surface emits only ε order `0`; retained goldens with poles or
-positive ε orders, such as `automatic_loop`, will fail closed until the C++ solver exposes those
-coefficients.
+a structured pass/fail JSON summary, and exits nonzero on missing integrals, non-success C++
+result status, or digit agreement below the requested tolerance. Omitted AMFlow or C++
+coefficients inside the compared ε range are treated as implicit zeros, so explicit zero
+coefficients emitted by the C++ JSON do not fail against AMFlow rule lists that omit zero terms.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

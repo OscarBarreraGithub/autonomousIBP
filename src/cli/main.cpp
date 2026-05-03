@@ -979,7 +979,9 @@ std::string RationalToDecimalDigits(const std::string& exact_value, const int di
 }
 
 amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
-                                            const int requested_digits) {
+                                            const int requested_digits,
+                                            const std::optional<int> requested_epsilon_order,
+                                            const std::string& dimension_expression) {
   amflow::SolveRequest request;
   request.system.masters = spec.masters;
   request.system.variables = {
@@ -995,6 +997,10 @@ amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
   request.start_location = spec.start_location;
   request.target_location = spec.target_location;
   request.requested_digits = requested_digits;
+  request.requested_epsilon_order = requested_epsilon_order;
+  if (requested_epsilon_order.has_value() && !dimension_expression.empty()) {
+    request.amf_requested_dimension_expression = dimension_expression;
+  }
   request.precision_policy.working_precision =
       std::max(request.precision_policy.working_precision, requested_digits);
   request.precision_policy.rationalize_precision =
@@ -1003,6 +1009,47 @@ amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
   request.precision_policy.max_working_precision =
       std::max(request.precision_policy.max_working_precision, requested_digits);
   return request;
+}
+
+bool ContainsStandaloneIdentifier(const std::string& text, const std::string& identifier) {
+  for (std::size_t position = text.find(identifier); position != std::string::npos;
+       position = text.find(identifier, position + identifier.size())) {
+    const bool left_boundary =
+        position == 0 ||
+        !(std::isalnum(static_cast<unsigned char>(text[position - 1])) ||
+          text[position - 1] == '_');
+    const std::size_t right = position + identifier.size();
+    const bool right_boundary =
+        right == text.size() ||
+        !(std::isalnum(static_cast<unsigned char>(text[right])) || text[right] == '_');
+    if (left_boundary && right_boundary) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool DirectSolveSeriesSpecContainsEpsilon(const DirectSolveSeriesSpec& spec) {
+  for (const auto& [variable, matrix] : spec.coefficient_matrices) {
+    if (ContainsStandaloneIdentifier(variable, "eps")) {
+      return true;
+    }
+    for (const auto& row : matrix) {
+      for (const std::string& cell : row) {
+        if (ContainsStandaloneIdentifier(cell, "eps")) {
+          return true;
+        }
+      }
+    }
+  }
+  for (const amflow::BoundaryCondition& condition : spec.boundary_conditions) {
+    for (const std::string& value : condition.values) {
+      if (ContainsStandaloneIdentifier(value, "eps")) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 struct SolveSeriesCliArgs {
@@ -1110,18 +1157,42 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "      \"integral\": " << JsonString(label) << ",\n";
     out << "      \"epsilon_orders\": [";
     const auto master_it = master_index_by_label.find(label);
-    if (status == "success" && master_it != master_index_by_label.end() &&
-        master_it->second < diagnostics.target_values.size()) {
-      const std::string exact_real = diagnostics.target_values[master_it->second];
-      out << "{\n";
-      out << "        \"order\": 0,\n";
-      out << "        \"real_digits\": "
-          << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
-      out << "        \"imag_digits\": "
-          << JsonString(RationalToDecimalDigits("0", digits)) << ",\n";
-      out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
-      out << "        \"exact_imag\": \"0\"\n";
-      out << "      }";
+    if (status == "success" && master_it != master_index_by_label.end()) {
+      const std::size_t master_index = master_it->second;
+      if (master_index < diagnostics.target_epsilon_coefficients.size() &&
+          !diagnostics.target_epsilon_coefficients[master_index].empty()) {
+        const auto& coefficients = diagnostics.target_epsilon_coefficients[master_index];
+        for (std::size_t coefficient_index = 0; coefficient_index < coefficients.size();
+             ++coefficient_index) {
+          if (coefficient_index > 0) {
+            out << ", ";
+          }
+          const auto& coefficient = coefficients[coefficient_index];
+          const std::string exact_real = coefficient.real.empty() ? "0" : coefficient.real;
+          const std::string exact_imag =
+              coefficient.imaginary.empty() ? "0" : coefficient.imaginary;
+          out << "{\n";
+          out << "        \"order\": " << coefficient.order << ",\n";
+          out << "        \"real_digits\": "
+              << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
+          out << "        \"imag_digits\": "
+              << JsonString(RationalToDecimalDigits(exact_imag, digits)) << ",\n";
+          out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
+          out << "        \"exact_imag\": " << JsonString(exact_imag) << "\n";
+          out << "      }";
+        }
+      } else if (master_index < diagnostics.target_values.size()) {
+        const std::string exact_real = diagnostics.target_values[master_index];
+        out << "{\n";
+        out << "        \"order\": 0,\n";
+        out << "        \"real_digits\": "
+            << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
+        out << "        \"imag_digits\": "
+            << JsonString(RationalToDecimalDigits("0", digits)) << ",\n";
+        out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
+        out << "        \"exact_imag\": \"0\"\n";
+        out << "      }";
+      }
     }
     out << "]\n";
     out << "    }";
@@ -1163,31 +1234,35 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
 
   try {
     ValidateDirectSolveSeriesSpec(direct_spec);
-    if (args.epsilon_order != 0) {
-      status = "unsupported";
-      error = "solve-series currently supports only epsilon order 0 on the reviewed direct "
-              "exact solver surface";
-      exit_code = 2;
-    } else {
-      const amflow::SolveRequest request = MakeDirectSolveRequest(direct_spec, args.digits);
-      const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
-      diagnostics = solver->Solve(request);
-      if (diagnostics.success) {
-        const bool has_all_target_values =
-            diagnostics.target_values.size() >= direct_spec.masters.size();
-        if (has_all_target_values) {
-          status = "success";
-          exit_code = 0;
-        } else {
-          status = "failed";
-          error = "series solver succeeded but did not expose transported target values for "
-                  "all masters on this path";
-          exit_code = 4;
-        }
+    const bool needs_epsilon_expansion =
+        args.epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(direct_spec);
+    const std::optional<int> requested_epsilon_order =
+        needs_epsilon_expansion ? std::optional<int>{args.epsilon_order} : std::nullopt;
+    const amflow::SolveRequest request =
+        MakeDirectSolveRequest(direct_spec,
+                               args.digits,
+                               requested_epsilon_order,
+                               problem_spec.dimension);
+    const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
+    diagnostics = solver->Solve(request);
+    if (diagnostics.success) {
+      const bool has_all_target_values =
+          diagnostics.target_values.size() >= direct_spec.masters.size();
+      const bool has_all_epsilon_coefficients =
+          !requested_epsilon_order.has_value() ||
+          diagnostics.target_epsilon_coefficients.size() >= direct_spec.masters.size();
+      if (has_all_target_values && has_all_epsilon_coefficients) {
+        status = "success";
+        exit_code = 0;
       } else {
         status = "failed";
+        error = "series solver succeeded but did not expose transported epsilon coefficients "
+                "for all masters on this path";
         exit_code = 4;
       }
+    } else {
+      status = "failed";
+      exit_code = 4;
     }
   } catch (const std::exception& solve_error) {
     status = "failed";

@@ -2446,6 +2446,1095 @@ ExactPassiveBindings ResolvePassiveBindingsExactly(const NumericEvaluationPoint&
   return exact_bindings;
 }
 
+std::string MakeResolvedPointExpression(const std::string& variable_name,
+                                        const ExactRational& value);
+std::vector<std::string> BuildBasisFunctions(const std::string& variable_name,
+                                             const ExactRational& center_value,
+                                             int order);
+const BoundaryCondition& ResolveStartBoundaryCondition(const SolveRequest& request,
+                                                       const std::string& variable_name);
+SolverDiagnostics MakeSuccessfulBootstrapSolveDiagnostics();
+SolverDiagnostics MakeBoundaryUnsolvedDiagnostics(const BoundaryUnsolvedError& error);
+SolverDiagnostics MakeInsufficientPrecisionDiagnostics(const PrecisionDecision& decision);
+SolverDiagnostics MakeUnsupportedSolverPathDiagnostics(const std::string& summary);
+void RequireDistinctPoints(const ExactRational& match_point,
+                           const ExactRational& check_point,
+                           const char* patch_prefix);
+
+LaurentSeries TruncateLaurentSeriesToMaxOrder(const LaurentSeries& series,
+                                              const int max_order) {
+  LaurentSeries truncated;
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_order) {
+      SetLaurentCoefficient(truncated, order, coefficient);
+    }
+  }
+  return truncated;
+}
+
+bool IsZeroLaurentSeriesThroughMaxOrder(const LaurentSeries& series, const int max_order) {
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_order && !coefficient.IsZero()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+LaurentSeries EpsilonLaurentSeries() {
+  LaurentSeries series;
+  SetLaurentCoefficient(series, 1, OneRational());
+  return series;
+}
+
+LaurentSeries AddLaurentSeriesLimited(const LaurentSeries& lhs,
+                                      const LaurentSeries& rhs,
+                                      const int max_order) {
+  return TruncateLaurentSeriesToMaxOrder(AddLaurentSeries(lhs, rhs), max_order);
+}
+
+LaurentSeries SubtractLaurentSeriesLimited(const LaurentSeries& lhs,
+                                           const LaurentSeries& rhs,
+                                           const int max_order) {
+  return TruncateLaurentSeriesToMaxOrder(SubtractLaurentSeries(lhs, rhs), max_order);
+}
+
+LaurentSeries NegateLaurentSeriesLimited(const LaurentSeries& value, const int max_order) {
+  return TruncateLaurentSeriesToMaxOrder(NegateLaurentSeries(value), max_order);
+}
+
+LaurentSeries MultiplyLaurentSeriesLimited(const LaurentSeries& lhs,
+                                           const LaurentSeries& rhs,
+                                           const int max_order) {
+  return TruncateLaurentSeriesToMaxOrder(MultiplyLaurentSeries(lhs, rhs), max_order);
+}
+
+LaurentSeries ScaleLaurentSeries(const LaurentSeries& series,
+                                 const ExactRational& scale,
+                                 const int max_order) {
+  LaurentSeries result;
+  if (scale.IsZero()) {
+    return result;
+  }
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_order) {
+      SetLaurentCoefficient(result, order, MultiplyRational(coefficient, scale));
+    }
+  }
+  return result;
+}
+
+LaurentSeries DivideLaurentSeriesByExact(const LaurentSeries& series,
+                                         const ExactRational& divisor,
+                                         const int max_order) {
+  LaurentSeries result;
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_order) {
+      SetLaurentCoefficient(result, order, DivideRational(coefficient, divisor));
+    }
+  }
+  return result;
+}
+
+using LaurentEtaSeries = std::vector<LaurentSeries>;
+
+LaurentEtaSeries MakeZeroLaurentEtaSeries(const int eta_order) {
+  return LaurentEtaSeries(static_cast<std::size_t>(eta_order + 1), LaurentSeries{});
+}
+
+LaurentEtaSeries MakeConstantLaurentEtaSeries(const LaurentSeries& value,
+                                              const int eta_order,
+                                              const int max_eps_order) {
+  LaurentEtaSeries series = MakeZeroLaurentEtaSeries(eta_order);
+  series[0] = TruncateLaurentSeriesToMaxOrder(value, max_eps_order);
+  return series;
+}
+
+LaurentEtaSeries MakeActiveEtaVariableSeries(const ExactRational& center_value,
+                                             const int eta_order) {
+  LaurentEtaSeries series = MakeZeroLaurentEtaSeries(eta_order);
+  series[0] = MakeConstantLaurentSeries(center_value);
+  if (eta_order >= 1) {
+    series[1] = MakeConstantLaurentSeries(OneRational());
+  }
+  return series;
+}
+
+std::optional<std::size_t> LeadingEtaOrder(const LaurentEtaSeries& series,
+                                           const int max_eps_order) {
+  for (std::size_t index = 0; index < series.size(); ++index) {
+    if (!IsZeroLaurentSeriesThroughMaxOrder(series[index], max_eps_order)) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+LaurentEtaSeries AddLaurentEtaSeries(const LaurentEtaSeries& lhs,
+                                     const LaurentEtaSeries& rhs,
+                                     const int max_eps_order) {
+  LaurentEtaSeries result(lhs.size(), LaurentSeries{});
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    result[index] = AddLaurentSeriesLimited(lhs[index], rhs[index], max_eps_order);
+  }
+  return result;
+}
+
+LaurentEtaSeries SubtractLaurentEtaSeries(const LaurentEtaSeries& lhs,
+                                          const LaurentEtaSeries& rhs,
+                                          const int max_eps_order) {
+  LaurentEtaSeries result(lhs.size(), LaurentSeries{});
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    result[index] = SubtractLaurentSeriesLimited(lhs[index], rhs[index], max_eps_order);
+  }
+  return result;
+}
+
+LaurentEtaSeries NegateLaurentEtaSeries(const LaurentEtaSeries& value,
+                                        const int max_eps_order) {
+  LaurentEtaSeries result(value.size(), LaurentSeries{});
+  for (std::size_t index = 0; index < value.size(); ++index) {
+    result[index] = NegateLaurentSeriesLimited(value[index], max_eps_order);
+  }
+  return result;
+}
+
+LaurentEtaSeries MultiplyLaurentEtaSeries(const LaurentEtaSeries& lhs,
+                                          const LaurentEtaSeries& rhs,
+                                          const int max_eps_order) {
+  LaurentEtaSeries result(lhs.size(), LaurentSeries{});
+  for (std::size_t lhs_index = 0; lhs_index < lhs.size(); ++lhs_index) {
+    if (IsZeroLaurentSeriesThroughMaxOrder(lhs[lhs_index], max_eps_order)) {
+      continue;
+    }
+    for (std::size_t rhs_index = 0; rhs_index + lhs_index < rhs.size(); ++rhs_index) {
+      if (IsZeroLaurentSeriesThroughMaxOrder(rhs[rhs_index], max_eps_order)) {
+        continue;
+      }
+      const std::size_t result_index = lhs_index + rhs_index;
+      result[result_index] = AddLaurentSeriesLimited(
+          result[result_index],
+          MultiplyLaurentSeriesLimited(lhs[lhs_index], rhs[rhs_index], max_eps_order),
+          max_eps_order);
+    }
+  }
+  return result;
+}
+
+LaurentEtaSeries DivideLaurentEtaSeries(const LaurentEtaSeries& numerator,
+                                        const LaurentEtaSeries& denominator,
+                                        const std::string& expression,
+                                        const int max_eps_order,
+                                        const char* patch_prefix) {
+  const int eta_order = static_cast<int>(numerator.size()) - 1;
+  const std::optional<std::size_t> denominator_leading_order =
+      LeadingEtaOrder(denominator, max_eps_order);
+  if (!denominator_leading_order.has_value()) {
+    throw UnsupportedCoefficientShape(
+        expression,
+        "division denominator has no nonzero local-series term through the requested order",
+        patch_prefix);
+  }
+
+  const std::optional<std::size_t> numerator_leading_order =
+      LeadingEtaOrder(numerator, max_eps_order);
+  if (!numerator_leading_order.has_value()) {
+    return MakeZeroLaurentEtaSeries(eta_order);
+  }
+
+  if (*numerator_leading_order < *denominator_leading_order) {
+    throw UnsupportedCoefficientShape(expression,
+                                      "quotient introduces negative powers at the center",
+                                      patch_prefix);
+  }
+
+  const std::size_t shift = *numerator_leading_order - *denominator_leading_order;
+  LaurentEtaSeries quotient = MakeZeroLaurentEtaSeries(eta_order);
+  if (shift >= quotient.size()) {
+    return quotient;
+  }
+
+  const LaurentSeries denominator_leading = denominator[*denominator_leading_order];
+  for (std::size_t quotient_index = shift; quotient_index < quotient.size(); ++quotient_index) {
+    const std::size_t normalized_index = quotient_index - shift;
+    LaurentSeries numerator_term;
+    const std::size_t numerator_index = *numerator_leading_order + normalized_index;
+    if (numerator_index < numerator.size()) {
+      numerator_term = numerator[numerator_index];
+    }
+
+    LaurentSeries remainder = numerator_term;
+    for (std::size_t divisor_offset = 1;
+         divisor_offset <= normalized_index &&
+         *denominator_leading_order + divisor_offset < denominator.size();
+         ++divisor_offset) {
+      const LaurentSeries contribution = MultiplyLaurentSeriesLimited(
+          denominator[*denominator_leading_order + divisor_offset],
+          quotient[quotient_index - divisor_offset],
+          max_eps_order);
+      remainder = SubtractLaurentSeriesLimited(remainder, contribution, max_eps_order);
+    }
+
+    quotient[quotient_index] = DivideLaurentSeries(
+        remainder, denominator_leading, expression, max_eps_order, patch_prefix);
+  }
+
+  return quotient;
+}
+
+class LaurentEtaSeriesExpressionParser {
+ public:
+  LaurentEtaSeriesExpressionParser(std::string expression,
+                                   std::string active_variable,
+                                   ExactRational center_value,
+                                   ExactPassiveBindings passive_bindings,
+                                   const int eta_order,
+                                   const int max_eps_order,
+                                   const char* patch_prefix)
+      : expression_(std::move(expression)),
+        active_variable_(std::move(active_variable)),
+        center_value_(std::move(center_value)),
+        passive_bindings_(std::move(passive_bindings)),
+        tokens_(Tokenize(expression_, patch_prefix)),
+        eta_order_(eta_order),
+        max_eps_order_(max_eps_order),
+        patch_prefix_(patch_prefix) {}
+
+  LaurentEtaSeries Parse() {
+    const LaurentEtaSeries value = ParseExpression();
+    if (Current().kind != TokenKind::End) {
+      throw Malformed("unexpected trailing token \"" + Current().text + "\"");
+    }
+    return value;
+  }
+
+ private:
+  const Token& Current() const { return tokens_[position_]; }
+
+  const Token& Advance() {
+    const Token& current = Current();
+    if (position_ < tokens_.size()) {
+      ++position_;
+    }
+    return current;
+  }
+
+  bool Match(const TokenKind kind) {
+    if (Current().kind != kind) {
+      return false;
+    }
+    Advance();
+    return true;
+  }
+
+  std::invalid_argument Malformed(const std::string& detail) const {
+    return std::invalid_argument(std::string(patch_prefix_) +
+                                 " encountered malformed coefficient expression: " + detail +
+                                 " in \"" + expression_ + "\"");
+  }
+
+  LaurentEtaSeries ParseExpression() {
+    LaurentEtaSeries value = ParseTerm();
+    while (true) {
+      if (Match(TokenKind::Plus)) {
+        value = AddLaurentEtaSeries(value, ParseTerm(), max_eps_order_);
+        continue;
+      }
+      if (Match(TokenKind::Minus)) {
+        value = SubtractLaurentEtaSeries(value, ParseTerm(), max_eps_order_);
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  LaurentEtaSeries ParseTerm() {
+    LaurentEtaSeries value = ParseUnary();
+    while (true) {
+      if (Match(TokenKind::Star)) {
+        value = MultiplyLaurentEtaSeries(value, ParseUnary(), max_eps_order_);
+        continue;
+      }
+      if (Match(TokenKind::Slash)) {
+        value =
+            DivideLaurentEtaSeries(value, ParseUnary(), expression_, max_eps_order_, patch_prefix_);
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  LaurentEtaSeries ParseUnary() {
+    if (Match(TokenKind::Plus)) {
+      return ParseUnary();
+    }
+    if (Match(TokenKind::Minus)) {
+      return NegateLaurentEtaSeries(ParseUnary(), max_eps_order_);
+    }
+    return ParsePrimary();
+  }
+
+  LaurentEtaSeries ParsePrimary() {
+    if (Current().kind == TokenKind::Number) {
+      const Token token = Advance();
+      return MakeConstantLaurentEtaSeries(
+          MakeConstantLaurentSeries({token.text, "1"}), eta_order_, max_eps_order_);
+    }
+
+    if (Current().kind == TokenKind::Identifier) {
+      const Token token = Advance();
+      if (token.text == active_variable_) {
+        return MakeActiveEtaVariableSeries(center_value_, eta_order_);
+      }
+      if (token.text == "eps") {
+        return MakeConstantLaurentEtaSeries(
+            EpsilonLaurentSeries(), eta_order_, max_eps_order_);
+      }
+
+      const auto binding_it = passive_bindings_.find(token.text);
+      if (binding_it == passive_bindings_.end()) {
+        throw std::invalid_argument(std::string(patch_prefix_) +
+                                    " requires a numeric binding for symbol \"" +
+                                    token.text + "\"");
+      }
+      return MakeConstantLaurentEtaSeries(
+          MakeConstantLaurentSeries(binding_it->second), eta_order_, max_eps_order_);
+    }
+
+    if (Match(TokenKind::LeftParen)) {
+      const LaurentEtaSeries value = ParseExpression();
+      if (!Match(TokenKind::RightParen)) {
+        throw Malformed("expected ')'");
+      }
+      return value;
+    }
+
+    if (Current().kind == TokenKind::End) {
+      throw Malformed("unexpected end of expression");
+    }
+    throw Malformed("unexpected token \"" + Current().text + "\"");
+  }
+
+  std::string expression_;
+  std::string active_variable_;
+  ExactRational center_value_;
+  ExactPassiveBindings passive_bindings_;
+  std::vector<Token> tokens_;
+  std::size_t position_ = 0;
+  int eta_order_ = 0;
+  int max_eps_order_ = 0;
+  const char* patch_prefix_ = kMatrixPatchPrefix;
+};
+
+using LaurentSeriesMatrix = std::vector<std::vector<LaurentSeries>>;
+
+struct UpperTriangularMatrixEpsilonSeriesPatch {
+  std::string center;
+  int order = 0;
+  std::vector<std::string> basis_functions;
+  std::vector<LaurentSeriesMatrix> coefficient_matrices;
+};
+
+LaurentSeriesMatrix MakeZeroLaurentMatrix(const std::size_t dimension) {
+  return LaurentSeriesMatrix(dimension, std::vector<LaurentSeries>(dimension));
+}
+
+LaurentSeriesMatrix MakeIdentityLaurentMatrix(const std::size_t dimension) {
+  LaurentSeriesMatrix matrix = MakeZeroLaurentMatrix(dimension);
+  for (std::size_t index = 0; index < dimension; ++index) {
+    matrix[index][index] = MakeConstantLaurentSeries(OneRational());
+  }
+  return matrix;
+}
+
+LaurentSeriesMatrix AddLaurentMatrices(const LaurentSeriesMatrix& lhs,
+                                       const LaurentSeriesMatrix& rhs,
+                                       const int max_eps_order) {
+  LaurentSeriesMatrix result = MakeZeroLaurentMatrix(lhs.size());
+  for (std::size_t row = 0; row < lhs.size(); ++row) {
+    for (std::size_t column = 0; column < lhs[row].size(); ++column) {
+      result[row][column] =
+          AddLaurentSeriesLimited(lhs[row][column], rhs[row][column], max_eps_order);
+    }
+  }
+  return result;
+}
+
+LaurentSeriesMatrix SubtractLaurentMatrices(const LaurentSeriesMatrix& lhs,
+                                            const LaurentSeriesMatrix& rhs,
+                                            const int max_eps_order) {
+  LaurentSeriesMatrix result = MakeZeroLaurentMatrix(lhs.size());
+  for (std::size_t row = 0; row < lhs.size(); ++row) {
+    for (std::size_t column = 0; column < lhs[row].size(); ++column) {
+      result[row][column] =
+          SubtractLaurentSeriesLimited(lhs[row][column], rhs[row][column], max_eps_order);
+    }
+  }
+  return result;
+}
+
+LaurentSeriesMatrix MultiplyLaurentMatrices(const LaurentSeriesMatrix& lhs,
+                                            const LaurentSeriesMatrix& rhs,
+                                            const int max_eps_order) {
+  const std::size_t dimension = lhs.size();
+  LaurentSeriesMatrix result = MakeZeroLaurentMatrix(dimension);
+  for (std::size_t row = 0; row < dimension; ++row) {
+    for (std::size_t column = 0; column < dimension; ++column) {
+      LaurentSeries sum;
+      for (std::size_t inner = 0; inner < dimension; ++inner) {
+        sum = AddLaurentSeriesLimited(
+            sum,
+            MultiplyLaurentSeriesLimited(lhs[row][inner], rhs[inner][column], max_eps_order),
+            max_eps_order);
+      }
+      result[row][column] = std::move(sum);
+    }
+  }
+  return result;
+}
+
+LaurentSeriesMatrix ScaleLaurentMatrix(const LaurentSeriesMatrix& matrix,
+                                       const ExactRational& scale,
+                                       const int max_eps_order) {
+  LaurentSeriesMatrix result = MakeZeroLaurentMatrix(matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+      result[row][column] = ScaleLaurentSeries(matrix[row][column], scale, max_eps_order);
+    }
+  }
+  return result;
+}
+
+LaurentSeriesMatrix DivideLaurentMatrixByExact(const LaurentSeriesMatrix& matrix,
+                                               const ExactRational& divisor,
+                                               const int max_eps_order) {
+  LaurentSeriesMatrix result = MakeZeroLaurentMatrix(matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+      result[row][column] =
+          DivideLaurentSeriesByExact(matrix[row][column], divisor, max_eps_order);
+    }
+  }
+  return result;
+}
+
+LaurentSeriesMatrix InvertUpperTriangularLaurentMatrix(const LaurentSeriesMatrix& matrix,
+                                                       const int max_eps_order,
+                                                       const char* patch_prefix) {
+  const std::size_t dimension = matrix.size();
+  LaurentSeriesMatrix inverse = MakeZeroLaurentMatrix(dimension);
+  const LaurentSeries one = MakeConstantLaurentSeries(OneRational());
+  for (std::size_t row_offset = 0; row_offset < dimension; ++row_offset) {
+    const std::size_t row = dimension - 1 - row_offset;
+    inverse[row][row] =
+        DivideLaurentSeries(one, matrix[row][row], "matrix diagonal", max_eps_order, patch_prefix);
+    for (std::size_t column = row + 1; column < dimension; ++column) {
+      LaurentSeries sum;
+      for (std::size_t inner = row + 1; inner <= column; ++inner) {
+        sum = AddLaurentSeriesLimited(
+            sum,
+            MultiplyLaurentSeriesLimited(matrix[row][inner], inverse[inner][column], max_eps_order),
+            max_eps_order);
+      }
+      inverse[row][column] = NegateLaurentSeriesLimited(
+          DivideLaurentSeries(sum, matrix[row][row], "matrix diagonal", max_eps_order, patch_prefix),
+          max_eps_order);
+    }
+  }
+  return inverse;
+}
+
+bool IsZeroLaurentMatrixThroughMaxOrder(const LaurentSeriesMatrix& matrix,
+                                        const int max_eps_order) {
+  for (const auto& row : matrix) {
+    for (const LaurentSeries& cell : row) {
+      if (!IsZeroLaurentSeriesThroughMaxOrder(cell, max_eps_order)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+using LaurentEtaSeriesMatrix = std::vector<std::vector<LaurentEtaSeries>>;
+
+LaurentEtaSeriesMatrix ExpandMatrixEtaLaurentSeriesLocally(
+    const std::vector<std::vector<std::string>>& matrix,
+    const std::string& variable_name,
+    const ExactRational& center_value,
+    const ExactPassiveBindings& passive_bindings,
+    const int eta_order,
+    const int max_eps_order,
+    const char* patch_prefix) {
+  LaurentEtaSeriesMatrix local_series;
+  local_series.reserve(matrix.size());
+  for (const auto& row : matrix) {
+    std::vector<LaurentEtaSeries> local_row;
+    local_row.reserve(row.size());
+    for (const auto& cell : row) {
+      local_row.push_back(LaurentEtaSeriesExpressionParser(cell,
+                                                           variable_name,
+                                                           center_value,
+                                                           passive_bindings,
+                                                           eta_order,
+                                                           max_eps_order,
+                                                           patch_prefix)
+                              .Parse());
+    }
+    local_series.push_back(std::move(local_row));
+  }
+  return local_series;
+}
+
+std::vector<LaurentSeriesMatrix> BuildEtaLaurentDegreeMatrices(
+    const LaurentEtaSeriesMatrix& local_series,
+    const int eta_order) {
+  const std::size_t dimension = local_series.size();
+  std::vector<LaurentSeriesMatrix> degree_matrices(
+      static_cast<std::size_t>(eta_order + 1), MakeZeroLaurentMatrix(dimension));
+  for (std::size_t row = 0; row < dimension; ++row) {
+    for (std::size_t column = 0; column < local_series[row].size(); ++column) {
+      for (int degree = 0; degree <= eta_order; ++degree) {
+        degree_matrices[static_cast<std::size_t>(degree)][row][column] =
+            local_series[row][column][static_cast<std::size_t>(degree)];
+      }
+    }
+  }
+  return degree_matrices;
+}
+
+void RequireUpperTriangularLaurentLocalSupport(
+    const std::vector<LaurentSeriesMatrix>& degree_matrices,
+    const int eta_order,
+    const int max_eps_order,
+    const char* patch_prefix) {
+  if (degree_matrices.empty()) {
+    return;
+  }
+
+  const std::size_t dimension = degree_matrices.front().size();
+  for (std::size_t row = 0; row < dimension; ++row) {
+    for (std::size_t column = 0; column < row; ++column) {
+      for (int degree = 0; degree <= eta_order; ++degree) {
+        if (!IsZeroLaurentSeriesThroughMaxOrder(
+                degree_matrices[static_cast<std::size_t>(degree)][row][column],
+                max_eps_order)) {
+          throw std::invalid_argument(std::string(patch_prefix) +
+                                      " requires no strictly lower-triangular local support "
+                                      "through order " +
+                                      std::to_string(eta_order) + " but entry (" +
+                                      std::to_string(row) + "," + std::to_string(column) +
+                                      ") survives at degree " + std::to_string(degree));
+        }
+      }
+    }
+  }
+}
+
+std::vector<LaurentSeriesMatrix> ComputeLaurentMatrixPatchCoefficients(
+    const std::vector<LaurentSeriesMatrix>& degree_matrices,
+    const int max_eps_order) {
+  const std::size_t dimension =
+      degree_matrices.empty() ? 0 : degree_matrices.front().size();
+  std::vector<LaurentSeriesMatrix> coefficients(
+      degree_matrices.size(), MakeZeroLaurentMatrix(dimension));
+  coefficients.front() = MakeIdentityLaurentMatrix(dimension);
+
+  for (std::size_t degree = 0; degree + 1 < coefficients.size(); ++degree) {
+    LaurentSeriesMatrix numerator = MakeZeroLaurentMatrix(dimension);
+    for (std::size_t coefficient_degree = 0; coefficient_degree <= degree; ++coefficient_degree) {
+      numerator = AddLaurentMatrices(
+          numerator,
+          MultiplyLaurentMatrices(degree_matrices[coefficient_degree],
+                                  coefficients[degree - coefficient_degree],
+                                  max_eps_order),
+          max_eps_order);
+    }
+    coefficients[degree + 1] =
+        DivideLaurentMatrixByExact(numerator, IntegerRational(degree + 1), max_eps_order);
+  }
+
+  return coefficients;
+}
+
+void VerifyLaurentMatrixResidual(
+    const std::vector<LaurentSeriesMatrix>& degree_matrices,
+    const std::vector<LaurentSeriesMatrix>& patch_coefficients,
+    const int max_eps_order,
+    const char* patch_prefix) {
+  if (patch_coefficients.empty()) {
+    return;
+  }
+
+  const std::size_t dimension = patch_coefficients.front().size();
+  for (std::size_t degree = 0; degree + 1 < patch_coefficients.size(); ++degree) {
+    LaurentSeriesMatrix product_term = MakeZeroLaurentMatrix(dimension);
+    for (std::size_t coefficient_degree = 0; coefficient_degree <= degree; ++coefficient_degree) {
+      product_term = AddLaurentMatrices(
+          product_term,
+          MultiplyLaurentMatrices(degree_matrices[coefficient_degree],
+                                  patch_coefficients[degree - coefficient_degree],
+                                  max_eps_order),
+          max_eps_order);
+    }
+
+    const LaurentSeriesMatrix derivative_term =
+        ScaleLaurentMatrix(patch_coefficients[degree + 1],
+                           IntegerRational(degree + 1),
+                           max_eps_order);
+    if (!IsZeroLaurentMatrixThroughMaxOrder(
+            SubtractLaurentMatrices(derivative_term, product_term, max_eps_order),
+            max_eps_order)) {
+      throw std::runtime_error(std::string(patch_prefix) +
+                               " internal epsilon-series residual self-check failed at degree " +
+                               std::to_string(degree));
+    }
+  }
+}
+
+LaurentSeriesMatrix EvaluateLaurentMatrixPolynomial(
+    const std::vector<LaurentSeriesMatrix>& coefficient_matrices,
+    const ExactRational& center_value,
+    const ExactRational& point_value,
+    const int max_eps_order) {
+  const std::size_t dimension =
+      coefficient_matrices.empty() ? 0 : coefficient_matrices.front().size();
+  LaurentSeriesMatrix value = MakeZeroLaurentMatrix(dimension);
+  ExactRational power = OneRational();
+  const ExactRational shift = SubtractRational(point_value, center_value);
+  for (const LaurentSeriesMatrix& coefficient_matrix : coefficient_matrices) {
+    value = AddLaurentMatrices(
+        value, ScaleLaurentMatrix(coefficient_matrix, power, max_eps_order), max_eps_order);
+    power = MultiplyRational(power, shift);
+  }
+  return value;
+}
+
+LaurentSeriesMatrix EvaluateLaurentMatrixPolynomialDerivative(
+    const std::vector<LaurentSeriesMatrix>& coefficient_matrices,
+    const ExactRational& center_value,
+    const ExactRational& point_value,
+    const int max_eps_order) {
+  const std::size_t dimension =
+      coefficient_matrices.empty() ? 0 : coefficient_matrices.front().size();
+  LaurentSeriesMatrix derivative = MakeZeroLaurentMatrix(dimension);
+  ExactRational power = OneRational();
+  const ExactRational shift = SubtractRational(point_value, center_value);
+  for (std::size_t degree = 1; degree < coefficient_matrices.size(); ++degree) {
+    derivative = AddLaurentMatrices(
+        derivative,
+        ScaleLaurentMatrix(coefficient_matrices[degree],
+                           MultiplyRational(IntegerRational(degree), power),
+                           max_eps_order),
+        max_eps_order);
+    power = MultiplyRational(power, shift);
+  }
+  return derivative;
+}
+
+LaurentSeriesMatrix EvaluateCoefficientMatrixAsEpsilonLaurent(
+    const DESystem& system,
+    const std::string& variable_name,
+    const ExactRational& point_value,
+    const NumericEvaluationPoint& passive_bindings,
+    const int max_eps_order,
+    const char* patch_prefix) {
+  ExactPassiveBindings exact_bindings = ResolvePassiveBindingsExactly(passive_bindings);
+  exact_bindings[variable_name] = point_value;
+  const auto& matrix = ResolveSelectedMatrix(system, variable_name, patch_prefix);
+  LaurentSeriesMatrix evaluated = MakeZeroLaurentMatrix(matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+      evaluated[row][column] = LaurentSeriesExpressionParser(matrix[row][column],
+                                                             "eps",
+                                                             ZeroRational(),
+                                                             exact_bindings,
+                                                             max_eps_order,
+                                                             patch_prefix)
+                                   .Parse();
+    }
+  }
+  return evaluated;
+}
+
+UpperTriangularMatrixEpsilonSeriesPatch GenerateUpperTriangularEpsilonRegularPointSeriesPatch(
+    const DESystem& system,
+    const std::string& variable_name,
+    const std::string& center_expression,
+    const int eta_order,
+    const int max_eps_order,
+    const NumericEvaluationPoint& passive_bindings) {
+  if (eta_order < 0 || max_eps_order < 0) {
+    throw std::invalid_argument(std::string(kMatrixPatchPrefix) +
+                                " requires non-negative eta and epsilon orders");
+  }
+
+  const auto& matrix = ResolveSelectedMatrix(system, variable_name, kMatrixPatchPrefix);
+  const ExactRational center_value =
+      ParseCenterValue(variable_name, center_expression, passive_bindings, kMatrixPatchPrefix);
+  const ExactPassiveBindings exact_bindings = ResolvePassiveBindingsExactly(passive_bindings);
+  const LaurentEtaSeriesMatrix local_series =
+      ExpandMatrixEtaLaurentSeriesLocally(matrix,
+                                          variable_name,
+                                          center_value,
+                                          exact_bindings,
+                                          eta_order,
+                                          max_eps_order,
+                                          kMatrixPatchPrefix);
+  const std::vector<LaurentSeriesMatrix> degree_matrices =
+      BuildEtaLaurentDegreeMatrices(local_series, eta_order);
+  RequireUpperTriangularLaurentLocalSupport(
+      degree_matrices, eta_order, max_eps_order, kMatrixPatchPrefix);
+  const std::vector<LaurentSeriesMatrix> coefficients =
+      ComputeLaurentMatrixPatchCoefficients(degree_matrices, max_eps_order);
+  VerifyLaurentMatrixResidual(
+      degree_matrices, coefficients, max_eps_order, kMatrixPatchPrefix);
+
+  UpperTriangularMatrixEpsilonSeriesPatch patch;
+  patch.center = MakeResolvedPointExpression(variable_name, center_value);
+  patch.order = eta_order;
+  patch.basis_functions = BuildBasisFunctions(variable_name, center_value, eta_order);
+  patch.coefficient_matrices = coefficients;
+  return patch;
+}
+
+LaurentSeriesMatrix EvaluateUpperTriangularMatrixEpsilonPatchResidual(
+    const DESystem& system,
+    const std::string& variable_name,
+    const UpperTriangularMatrixEpsilonSeriesPatch& patch,
+    const std::string& point_expression,
+    const NumericEvaluationPoint& passive_bindings,
+    const int max_eps_order) {
+  const ExactRational center_value =
+      ParseSeriesPatchCenterValue(variable_name, patch.center, passive_bindings, kMatrixResidualPrefix);
+  const ExactRational point_value =
+      ParsePointValue(variable_name, point_expression, passive_bindings, kMatrixResidualPrefix);
+  const LaurentSeriesMatrix coefficient_matrix =
+      EvaluateCoefficientMatrixAsEpsilonLaurent(
+          system, variable_name, point_value, passive_bindings, max_eps_order, kMatrixResidualPrefix);
+  const LaurentSeriesMatrix patch_value =
+      EvaluateLaurentMatrixPolynomial(
+          patch.coefficient_matrices, center_value, point_value, max_eps_order);
+  const LaurentSeriesMatrix patch_derivative =
+      EvaluateLaurentMatrixPolynomialDerivative(
+          patch.coefficient_matrices, center_value, point_value, max_eps_order);
+  return SubtractLaurentMatrices(
+      patch_derivative,
+      MultiplyLaurentMatrices(coefficient_matrix, patch_value, max_eps_order),
+      max_eps_order);
+}
+
+LaurentSeriesMatrix MatchUpperTriangularMatrixEpsilonSeriesPatches(
+    const std::string& variable_name,
+    const UpperTriangularMatrixEpsilonSeriesPatch& left_patch,
+    const UpperTriangularMatrixEpsilonSeriesPatch& right_patch,
+    const std::string& match_point_expression,
+    const std::string& check_point_expression,
+    const NumericEvaluationPoint& passive_bindings,
+    const int max_eps_order) {
+  const ExactRational left_center =
+      ParseSeriesPatchCenterValue(
+          variable_name, left_patch.center, passive_bindings, kMatrixOverlapPrefix);
+  const ExactRational right_center =
+      ParseSeriesPatchCenterValue(
+          variable_name, right_patch.center, passive_bindings, kMatrixOverlapPrefix);
+  const ExactRational match_point =
+      ParsePointValue(variable_name,
+                      match_point_expression,
+                      passive_bindings,
+                      kMatrixOverlapPrefix);
+  const ExactRational check_point =
+      ParsePointValue(variable_name,
+                      check_point_expression,
+                      passive_bindings,
+                      kMatrixOverlapPrefix);
+  RequireDistinctPoints(match_point, check_point, kMatrixOverlapPrefix);
+
+  const LaurentSeriesMatrix left_match =
+      EvaluateLaurentMatrixPolynomial(
+          left_patch.coefficient_matrices, left_center, match_point, max_eps_order);
+  const LaurentSeriesMatrix right_match =
+      EvaluateLaurentMatrixPolynomial(
+          right_patch.coefficient_matrices, right_center, match_point, max_eps_order);
+  const LaurentSeriesMatrix left_check =
+      EvaluateLaurentMatrixPolynomial(
+          left_patch.coefficient_matrices, left_center, check_point, max_eps_order);
+  const LaurentSeriesMatrix right_check =
+      EvaluateLaurentMatrixPolynomial(
+          right_patch.coefficient_matrices, right_center, check_point, max_eps_order);
+
+  const LaurentSeriesMatrix match_matrix =
+      MultiplyLaurentMatrices(
+          right_match,
+          InvertUpperTriangularLaurentMatrix(left_match, max_eps_order, kMatrixOverlapPrefix),
+          max_eps_order);
+  return SubtractLaurentMatrices(
+      right_check,
+      MultiplyLaurentMatrices(match_matrix, left_check, max_eps_order),
+      max_eps_order);
+}
+
+std::vector<LaurentSeries> ParseBoundaryValuesAsEpsilonLaurent(
+    const BoundaryCondition& condition,
+    const NumericEvaluationPoint& passive_bindings,
+    const int max_eps_order) {
+  const ExactPassiveBindings exact_bindings = ResolvePassiveBindingsExactly(passive_bindings);
+  std::vector<LaurentSeries> values;
+  values.reserve(condition.values.size());
+  for (const std::string& value : condition.values) {
+    values.push_back(LaurentSeriesExpressionParser(value,
+                                                   "eps",
+                                                   ZeroRational(),
+                                                   exact_bindings,
+                                                   max_eps_order,
+                                                   kBootstrapSolverPrefix)
+                         .Parse());
+  }
+  return values;
+}
+
+std::vector<LaurentSeries> MultiplyLaurentMatrixVector(
+    const LaurentSeriesMatrix& matrix,
+    const std::vector<LaurentSeries>& vector,
+    const int max_eps_order) {
+  std::vector<LaurentSeries> result(matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    LaurentSeries sum;
+    for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+      sum = AddLaurentSeriesLimited(
+          sum,
+          MultiplyLaurentSeriesLimited(matrix[row][column], vector[column], max_eps_order),
+          max_eps_order);
+    }
+    result[row] = std::move(sum);
+  }
+  return result;
+}
+
+std::vector<SolverDiagnostics::EpsilonCoefficient> SerializeLaurentEpsilonCoefficients(
+    const LaurentSeries& series,
+    const int max_eps_order) {
+  int min_order = 0;
+  bool found = false;
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_eps_order && !coefficient.IsZero()) {
+      min_order = found ? std::min(min_order, order) : order;
+      found = true;
+    }
+  }
+
+  std::vector<SolverDiagnostics::EpsilonCoefficient> coefficients;
+  coefficients.reserve(static_cast<std::size_t>(max_eps_order - min_order + 1));
+  for (int order = min_order; order <= max_eps_order; ++order) {
+    coefficients.push_back(
+        {order, LaurentCoefficient(series, order).ToString(), ZeroRational().ToString()});
+  }
+  return coefficients;
+}
+
+std::optional<int> MinimumLaurentOrderThroughMaxOrder(const LaurentSeries& series,
+                                                      const int max_eps_order) {
+  std::optional<int> minimum_order;
+  for (const auto& [order, coefficient] : series) {
+    if (order <= max_eps_order && !coefficient.IsZero() &&
+        (!minimum_order.has_value() || order < *minimum_order)) {
+      minimum_order = order;
+    }
+  }
+  return minimum_order;
+}
+
+std::optional<int> MinimumLaurentVectorOrderThroughMaxOrder(
+    const std::vector<LaurentSeries>& vector,
+    const int max_eps_order) {
+  std::optional<int> minimum_order;
+  for (const LaurentSeries& cell : vector) {
+    const std::optional<int> cell_order =
+        MinimumLaurentOrderThroughMaxOrder(cell, max_eps_order);
+    if (cell_order.has_value() &&
+        (!minimum_order.has_value() || *cell_order < *minimum_order)) {
+      minimum_order = *cell_order;
+    }
+  }
+  return minimum_order;
+}
+
+std::optional<int> MinimumLaurentMatrixOrderThroughMaxOrder(
+    const LaurentSeriesMatrix& matrix,
+    const int max_eps_order) {
+  std::optional<int> minimum_order;
+  for (const auto& row : matrix) {
+    for (const LaurentSeries& cell : row) {
+      const std::optional<int> cell_order =
+          MinimumLaurentOrderThroughMaxOrder(cell, max_eps_order);
+      if (cell_order.has_value() &&
+          (!minimum_order.has_value() || *cell_order < *minimum_order)) {
+        minimum_order = *cell_order;
+      }
+    }
+  }
+  return minimum_order;
+}
+
+struct EpsilonRegularSolveResult {
+  SolverDiagnostics diagnostics;
+  int minimum_factor_order = 0;
+};
+
+EpsilonRegularSolveResult SolveExactEpsilonRegularPathAtOrder(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const ExactRational& start_value,
+    const ExactRational& target_value,
+    const ExactRational& match_value,
+    const ExactRational& check_value,
+    const NumericEvaluationPoint& passive_bindings,
+    const int computational_eps_order,
+    const int serialized_eps_order) {
+  const BoundaryCondition* start_boundary = nullptr;
+  try {
+    start_boundary = &ResolveStartBoundaryCondition(request, variable_name);
+  } catch (const BoundaryUnsolvedError& error) {
+    return {MakeBoundaryUnsolvedDiagnostics(error), 0};
+  }
+
+  const std::vector<LaurentSeries> start_boundary_values =
+      ParseBoundaryValuesAsEpsilonLaurent(
+          *start_boundary, passive_bindings, computational_eps_order);
+  const PrecisionDecision precision_budget =
+      EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
+  if (precision_budget.status == PrecisionStatus::Rejected) {
+    return {MakeInsufficientPrecisionDiagnostics(precision_budget), 0};
+  }
+
+  const std::string start_expression = MakeResolvedPointExpression(variable_name, start_value);
+  const std::string target_expression = MakeResolvedPointExpression(variable_name, target_value);
+  const std::string match_expression = MakeResolvedPointExpression(variable_name, match_value);
+  const std::string check_expression = MakeResolvedPointExpression(variable_name, check_value);
+
+  const UpperTriangularMatrixEpsilonSeriesPatch start_patch =
+      GenerateUpperTriangularEpsilonRegularPointSeriesPatch(request.system,
+                                                           variable_name,
+                                                           start_expression,
+                                                           kBootstrapContinuationOrder,
+                                                           computational_eps_order,
+                                                           passive_bindings);
+  const UpperTriangularMatrixEpsilonSeriesPatch target_patch =
+      GenerateUpperTriangularEpsilonRegularPointSeriesPatch(request.system,
+                                                           variable_name,
+                                                           target_expression,
+                                                           kBootstrapContinuationOrder,
+                                                           computational_eps_order,
+                                                           passive_bindings);
+  const LaurentSeriesMatrix overlap_mismatch =
+      MatchUpperTriangularMatrixEpsilonSeriesPatches(variable_name,
+                                                     start_patch,
+                                                     target_patch,
+                                                     match_expression,
+                                                     check_expression,
+                                                     passive_bindings,
+                                                     computational_eps_order);
+  const LaurentSeriesMatrix start_residual =
+      EvaluateUpperTriangularMatrixEpsilonPatchResidual(request.system,
+                                                       variable_name,
+                                                       start_patch,
+                                                       check_expression,
+                                                       passive_bindings,
+                                                       computational_eps_order);
+  const LaurentSeriesMatrix target_residual =
+      EvaluateUpperTriangularMatrixEpsilonPatchResidual(request.system,
+                                                       variable_name,
+                                                       target_patch,
+                                                       check_expression,
+                                                       passive_bindings,
+                                                       computational_eps_order);
+
+  if (!IsZeroLaurentMatrixThroughMaxOrder(start_residual, computational_eps_order) ||
+      !IsZeroLaurentMatrixThroughMaxOrder(target_residual, computational_eps_order) ||
+      !IsZeroLaurentMatrixThroughMaxOrder(overlap_mismatch, computational_eps_order)) {
+    return {MakeUnsupportedSolverPathDiagnostics(
+                "exact epsilon-series regular-point continuation checks were nonzero"),
+            0};
+  }
+
+  const LaurentSeriesMatrix transported_fundamental_matrix =
+      EvaluateLaurentMatrixPolynomial(
+          start_patch.coefficient_matrices, start_value, target_value, computational_eps_order);
+  const std::vector<LaurentSeries> transported_target_values =
+      MultiplyLaurentMatrixVector(
+          transported_fundamental_matrix, start_boundary_values, computational_eps_order);
+
+  int minimum_factor_order = 0;
+  const std::optional<int> boundary_min =
+      MinimumLaurentVectorOrderThroughMaxOrder(start_boundary_values, computational_eps_order);
+  if (boundary_min.has_value()) {
+    minimum_factor_order = std::min(minimum_factor_order, *boundary_min);
+  }
+  const std::optional<int> transport_min =
+      MinimumLaurentMatrixOrderThroughMaxOrder(
+          transported_fundamental_matrix, computational_eps_order);
+  if (transport_min.has_value()) {
+    minimum_factor_order = std::min(minimum_factor_order, *transport_min);
+  }
+
+  SolverDiagnostics diagnostics = MakeSuccessfulBootstrapSolveDiagnostics();
+  diagnostics.summary = "Solved by exact one-hop epsilon-series regular-point continuation.";
+  diagnostics.target_values.reserve(transported_target_values.size());
+  diagnostics.target_epsilon_coefficients.reserve(transported_target_values.size());
+  for (const LaurentSeries& value : transported_target_values) {
+    diagnostics.target_values.push_back(LaurentCoefficient(value, 0).ToString());
+    diagnostics.target_epsilon_coefficients.push_back(
+        SerializeLaurentEpsilonCoefficients(value, serialized_eps_order));
+  }
+  return {diagnostics, minimum_factor_order};
+}
+
+SolverDiagnostics SolveExactEpsilonRegularPath(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const ExactRational& start_value,
+    const ExactRational& target_value,
+    const ExactRational& match_value,
+    const ExactRational& check_value,
+    const NumericEvaluationPoint& passive_bindings,
+    const int max_eps_order) {
+  int computational_eps_order = max_eps_order;
+  constexpr int kMaxEpsilonGuardOrders = 64;
+  for (int round = 0; round < 5; ++round) {
+    const EpsilonRegularSolveResult result =
+        SolveExactEpsilonRegularPathAtOrder(request,
+                                            variable_name,
+                                            start_value,
+                                            target_value,
+                                            match_value,
+                                            check_value,
+                                            passive_bindings,
+                                            computational_eps_order,
+                                            max_eps_order);
+    if (!result.diagnostics.success) {
+      return result.diagnostics;
+    }
+
+    const int required_eps_order =
+        max_eps_order - std::min(result.minimum_factor_order, 0);
+    if (required_eps_order <= computational_eps_order) {
+      return result.diagnostics;
+    }
+    if (required_eps_order > max_eps_order + kMaxEpsilonGuardOrders) {
+      return MakeUnsupportedSolverPathDiagnostics(
+          "exact epsilon-series regular-point continuation requires more Laurent guard orders "
+          "than the reviewed direct solver budget");
+    }
+    computational_eps_order = required_eps_order;
+  }
+
+  return MakeUnsupportedSolverPathDiagnostics(
+      "exact epsilon-series regular-point continuation did not stabilize its Laurent guard "
+      "order");
+}
+
 ExactRationalMatrix MakeZeroMatrix(const std::size_t dimension) {
   return ExactRationalMatrix(dimension, std::vector<ExactRational>(dimension, ZeroRational()));
 }
@@ -2563,7 +3652,6 @@ ExactRationalVector MultiplyMatrixVector(const ExactRationalMatrix& matrix,
 }
 
 using ExactSeriesMatrix = std::vector<std::vector<ExactSeries>>;
-using LaurentSeriesMatrix = std::vector<std::vector<LaurentSeries>>;
 
 ExactSeriesMatrix ExpandMatrixSeriesLocally(const std::vector<std::vector<std::string>>& matrix,
                                             const std::string& variable_name,
@@ -5592,6 +6680,28 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
     }
   }
 
+  const ExactRational match_value = ComputeBootstrapMatchPoint(start_value, target_value);
+  const ExactRational check_value = ComputeBootstrapCheckPoint(start_value, target_value);
+  if (live_request.requested_epsilon_order.has_value()) {
+    try {
+      return SolveExactEpsilonRegularPath(live_request,
+                                          variable_name,
+                                          start_value,
+                                          target_value,
+                                          match_value,
+                                          check_value,
+                                          passive_bindings,
+                                          *live_request.requested_epsilon_order);
+    } catch (const std::invalid_argument& error) {
+      return MakeUnsupportedSolverPathDiagnostics(error.what());
+    } catch (const std::runtime_error& error) {
+      if (IsDivisionByZeroError(error)) {
+        return MakeUnsupportedSolverPathDiagnostics(error.what());
+      }
+      throw;
+    }
+  }
+
   const BoundaryCondition* start_boundary = nullptr;
   try {
     start_boundary = &ResolveStartBoundaryCondition(live_request, variable_name);
@@ -5609,8 +6719,6 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
 
   const std::string start_expression = MakeResolvedPointExpression(variable_name, start_value);
   const std::string target_expression = MakeResolvedPointExpression(variable_name, target_value);
-  const ExactRational match_value = ComputeBootstrapMatchPoint(start_value, target_value);
-  const ExactRational check_value = ComputeBootstrapCheckPoint(start_value, target_value);
   const std::string match_expression = MakeResolvedPointExpression(variable_name, match_value);
   const std::string check_expression = MakeResolvedPointExpression(variable_name, check_value);
 

@@ -556,7 +556,11 @@ std::string ResolveBuiltinCutkoskyPhaseSpaceStrategy(const ProblemSpec& spec) {
           "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
           std::to_string(index) +
           " raw prescription to match family.loop_prescriptions on the current reviewed "
-          "provider-selection subset");
+          "provider-selection subset; cut propagator " +
+          std::to_string(index) + " raw provider strategy " +
+          CutkoskyPhaseSpaceProviderStrategyForPrescription(*raw_prescription) +
+          " disagrees with loop-prescription-derived provider strategy " +
+          CutkoskyPhaseSpaceProviderStrategyForPrescription(*derived_prescription));
     }
 
     if (!selected_cut_prescription.has_value()) {

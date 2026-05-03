@@ -8265,9 +8265,12 @@ void PlanEndingSchemeCutkoskyRejectsLoopPrescriptionMismatchBeforeTerminalNodeTe
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "raw prescription to match family.loop_prescriptions",
-      "Batch 63az Cutkosky ending planner should fail before emitting a phase-space terminal "
-      "node when loop-prescription-derived and raw cut prescriptions disagree");
+      "cut propagator 1 raw provider strategy builtin::cutkosky-phase-space::minus_i0 "
+      "disagrees with loop-prescription-derived provider strategy "
+      "builtin::cutkosky-phase-space::plus_i0",
+      "Batch 63be Cutkosky ending planner should fail before emitting a phase-space terminal "
+      "node when loop-prescription-derived and raw cut prescriptions disagree, while naming "
+      "both selected provider strategies");
 }
 
 void PlanEndingSchemeCutkoskyRejectsMixedLoopPrescriptionProviderStrategiesBeforeTerminalNodeTest() {
@@ -12939,9 +12942,12 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopPrescriptionMism
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "raw prescription to match family.loop_prescriptions",
-      "builtin Cutkosky phase-space boundary generation should fail closed when loop-derived and "
-      "raw cut prescriptions disagree on the reviewed provider-selection subset");
+      "cut propagator 1 raw provider strategy builtin::cutkosky-phase-space::minus_i0 "
+      "disagrees with loop-prescription-derived provider strategy "
+      "builtin::cutkosky-phase-space::plus_i0",
+      "Batch 63be builtin Cutkosky phase-space boundary generation should fail closed when "
+      "loop-derived and raw cut prescriptions disagree on the reviewed provider-selection "
+      "subset while naming both selected provider strategies");
 }
 
 void GenerateBuiltinEtaInfinityBoundaryRequestRejectsNonZeroMassTest() {

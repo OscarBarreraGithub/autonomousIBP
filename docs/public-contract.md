@@ -451,7 +451,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   provider selection on cut propagators when one uniform loop-derived/raw-matching prescription
   survives; without loop metadata, uniform raw cut prescriptions can select the reviewed `+i0`,
   `-i0`, or no-prescription provider strategies, and mixed raw cut strategies fail with the
-  later and first-selected cut indices. The Cutkosky ending planner now also consumes
+  later and first-selected cut indices. Loop-derived/raw prescription mismatches now name both
+  the raw and loop-prescription-derived provider strategies on the Cutkosky ending planner and
+  builtin boundary-request paths. The Cutkosky ending planner now also consumes
   the loop-derived/raw-match preflight on that reviewed loop-prescription surface before emitting
   the phase-space terminal node, so ordered `AmfOptions` ending selection fails fast instead of
   falling through to later placeholder endings when those prescription surfaces disagree. The same
@@ -572,7 +574,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   narrow: on the reviewed Cutkosky phase-space boundary-request path only, cut propagators may
   consult this metadata to refine builtin provider strategy selection when every cut propagator
   derives the same prescription and that derived value matches the raw cut
-  `Propagator::prescription`; when loop metadata is absent, uniform raw cut prescriptions may
+  `Propagator::prescription`; loop-derived/raw mismatches fail closed while naming both selected
+  provider strategies. When loop metadata is absent, uniform raw cut prescriptions may
   select the reviewed `+i0`, `-i0`, or no-prescription strategies, while mixed raw cut strategies
   fail closed while naming the later disagreeing cut propagator and the first selected cut
   propagator. Broader builtin

@@ -51,6 +51,19 @@ bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
              std::string::npos;
 }
 
+std::string CutkoskyPhaseSpaceProviderStrategyForPrescription(
+    const FeynmanPrescription prescription) {
+  switch (prescription) {
+    case FeynmanPrescription::PlusI0:
+      return "builtin::cutkosky-phase-space::plus_i0";
+    case FeynmanPrescription::MinusI0:
+      return "builtin::cutkosky-phase-space::minus_i0";
+    case FeynmanPrescription::None:
+      return "builtin::cutkosky-phase-space::none";
+  }
+  return "builtin::cutkosky-phase-space";
+}
+
 std::string JoinIndices(const std::vector<std::size_t>& indices) {
   std::ostringstream stream;
   stream << "[";
@@ -215,7 +228,12 @@ void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
           "ending scheme Cutkosky requires cut propagator " +
           std::to_string(index) +
           " raw prescription to match family.loop_prescriptions before emitting the reviewed "
-          "phase-space terminal node on the current reviewed provider-selection subset");
+          "phase-space terminal node on the current reviewed provider-selection subset; cut "
+          "propagator " +
+          std::to_string(index) + " raw provider strategy " +
+          CutkoskyPhaseSpaceProviderStrategyForPrescription(*raw_prescription) +
+          " disagrees with loop-prescription-derived provider strategy " +
+          CutkoskyPhaseSpaceProviderStrategyForPrescription(*derived_prescription));
     }
 
     if (!selected_cut_prescription.has_value()) {

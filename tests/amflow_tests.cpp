@@ -5854,6 +5854,24 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsFourteenNestedGroupe
          "through fourteen nested grouped lightlike-linear factors");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsFifteenNestedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression =
+      "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(16*(17*(k1*n-k2*n)))))))))))))))+k3*n)";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression ==
+             "x*(((355687428096000)*(k1) + (-355687428096000)*(k2) + (2)*(k3))^2) + "
+             "(2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(16*(17*(k1*n-k2*n)))))))))))))))+k3*n))",
+         "reviewed lightlike linear auxiliary rewrite should carry the common coefficient "
+         "through fifteen nested grouped lightlike-linear factors");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].expression = "k*(n+n)";
@@ -5980,6 +5998,26 @@ void BuiltinPropagatorSelectorSupportsFourteenNestedGroupedCommonLightlikeFactor
   Expect(decision.selected_propagators ==
              std::vector<std::string>{spec.family.propagators[2].expression},
          "builtin Propagator selector should preserve the selected fourteen-nested expression "
+         "metadata for the generated-x route");
+}
+
+void BuiltinPropagatorSelectorSupportsFifteenNestedGroupedCommonLightlikeFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression =
+      "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(16*(17*(k1*n-k2*n)))))))))))))))+k3*n)";
+
+  const amflow::EtaInsertionDecision decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "builtin Propagator selector should inherit fifteen-nested reviewed lightlike-linear "
+         "helper acceptance before falling back to structural selection");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "builtin Propagator selector should preserve the selected fifteen-nested expression "
          "metadata for the generated-x route");
 }
 
@@ -51540,6 +51578,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTwelveNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsThirteenNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsFourteenNestedGroupedCommonFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsFifteenNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
@@ -51548,6 +51587,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest();
     BuiltinPropagatorSelectorSupportsThirteenNestedGroupedCommonLightlikeFactorTest();
     BuiltinPropagatorSelectorSupportsFourteenNestedGroupedCommonLightlikeFactorTest();
+    BuiltinPropagatorSelectorSupportsFifteenNestedGroupedCommonLightlikeFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();

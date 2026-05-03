@@ -13,7 +13,7 @@ namespace amflow {
 
 namespace {
 
-constexpr std::size_t kMaxReviewedGroupedCommonLightlikeLayers = 14;
+constexpr std::size_t kMaxReviewedGroupedCommonLightlikeLayers = 15;
 
 std::string Trim(const std::string& value) {
   std::size_t begin = 0;

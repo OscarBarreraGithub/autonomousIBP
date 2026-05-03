@@ -13000,6 +13000,42 @@ void Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTes
          "missing registry strategy");
 }
 
+void Batch65qAmfOptionsEtaInfinityProviderRegistryNullEntryPreflightsPlanningTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers = {nullptr};
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &providers, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                               amf_options,
+                                                                               {scheme},
+                                                                               request_template,
+                                                                               providers,
+                                                                               solver));
+      },
+      "Batch 65q AmfOptions eta->infinity provider-registry solve should reject null "
+      "providers before user-defined ending planning");
+
+  Expect(message == "boundary provider registry entry 1 is null",
+         "Batch 65q AmfOptions eta->infinity provider-registry solve should preserve the "
+         "reviewed null-provider diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65q AmfOptions eta->infinity provider-registry solve should not plan a "
+         "user-defined ending scheme after null provider-registry rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 65q AmfOptions eta->infinity provider-registry solve should not call the "
+         "solver after null provider-registry rejection");
+}
+
 void Batch65cDeferredEtaInfinityProviderRegistryExposesReviewedStrategyTest() {
   const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers =
       amflow::MakeDeferredEtaInfinityBoundaryProviderRegistry();
@@ -49588,6 +49624,7 @@ int main() {
     Batch65aAmfOptionsEndingSchemeEtaInfinityProviderFailureShortCircuitTest();
     Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryHappyPathTest();
     Batch65bAmfOptionsEndingSchemeEtaInfinityProviderRegistryMissingStrategyTest();
+    Batch65qAmfOptionsEtaInfinityProviderRegistryNullEntryPreflightsPlanningTest();
     Batch65cDeferredEtaInfinityProviderRegistryExposesReviewedStrategyTest();
     Batch65cDeferredEtaInfinityProviderRegistryFailsClosedBeforeSolverTest();
     Batch65cAmfOptionsEndingSchemeEtaInfinityUsesDeferredBuiltinRegistryTest();

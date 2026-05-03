@@ -159,6 +159,16 @@ void ValidateEtaInfinitySolveProblemSpec(const ProblemSpec& spec) {
   }
 }
 
+void ValidateBoundaryProviderRegistryHasNoNullEntries(
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers) {
+  for (std::size_t index = 0; index < providers.size(); ++index) {
+    if (!providers[index]) {
+      throw std::invalid_argument("boundary provider registry entry " +
+                                  std::to_string(index + 1) + " is null");
+    }
+  }
+}
+
 void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
   if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
         return std::isspace(c);
@@ -7253,6 +7263,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const std::string& eta_symbol) {
   ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
   ValidateEtaInfinitySolveProblemSpec(spec);
+  ValidateBoundaryProviderRegistryHasNoNullEntries(providers);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,

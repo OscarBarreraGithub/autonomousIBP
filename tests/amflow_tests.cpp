@@ -15052,6 +15052,78 @@ void Batch63aoAmfOptionsCutkoskySolveValidatesProblemSpecBeforePlanningTest() {
          "ProblemSpec rejection");
 }
 
+void Batch63apPlannedCutkoskySingleProviderValidatesProblemSpecBeforeProviderTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  RecordingStaticBoundaryProvider provider(
+      "",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition("")});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63ap planned Cutkosky single-provider solve should reject malformed "
+      "ProblemSpec before provider validation");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 63ap planned Cutkosky single-provider solve should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63ap planned Cutkosky single-provider solve should not consult the provider "
+         "after malformed ProblemSpec rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63ap planned Cutkosky single-provider solve should not call the solver after "
+         "malformed ProblemSpec rejection");
+}
+
+void Batch63apPlannedCutkoskyProviderRegistryValidatesProblemSpecBeforeProvidersTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  auto provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition("")});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{provider},
+            solver));
+      },
+      "Batch 63ap planned Cutkosky provider-registry solve should reject malformed "
+      "ProblemSpec before provider-registry validation");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 63ap planned Cutkosky provider-registry solve should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(provider->strategy_call_count() == 0 && provider->provide_call_count() == 0,
+         "Batch 63ap planned Cutkosky provider-registry solve should not consult providers "
+         "after malformed ProblemSpec rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63ap planned Cutkosky provider-registry solve should not call the solver "
+         "after malformed ProblemSpec rejection");
+}
+
 void Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest() {
   const std::string message = CaptureInvalidArgumentMessage(
       []() {
@@ -51639,6 +51711,8 @@ int main() {
     Batch63aoNamedCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest();
     Batch63aoAmfOptionsCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest();
     Batch63aoAmfOptionsCutkoskySolveValidatesProblemSpecBeforePlanningTest();
+    Batch63apPlannedCutkoskySingleProviderValidatesProblemSpecBeforeProviderTest();
+    Batch63apPlannedCutkoskyProviderRegistryValidatesProblemSpecBeforeProvidersTest();
     Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest();
     Batch63acAmfOptionsCutkoskySolveRejectsWhitespaceEtaSymbolBeforePlanningTest();
     Batch63aeBuiltinCutkoskyBoundaryRequestRejectsPaddedEtaSymbolTest();

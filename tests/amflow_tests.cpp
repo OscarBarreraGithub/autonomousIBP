@@ -17338,43 +17338,73 @@ void BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest(
                  "the off-path-only carveout");
 }
 
-void BootstrapSeriesSolverRejectsDetouredEtaContinuationPlanOnDefaultExactPathTest() {
+void BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
       MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest baseline_request = request;
   request.eta_continuation_plan =
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
   amflow::ExactComplexRational detour;
-  detour.real = {"1", "1"};
+  detour.real = {"1", "2"};
   detour.imaginary = {"1", "3"};
   request.eta_continuation_plan->contour_points.insert(
       request.eta_continuation_plan->contour_points.begin() + 1, detour);
-  request.eta_continuation_plan->contour_fingerprint = "bootstrap-detoured-complex-plan";
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap no-ledger complex-waypoint eta-continuation-plan coverage should keep the "
+         "baseline exact endpoint path supported");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap no-ledger complex-waypoint eta-continuation-plan coverage should preserve "
+         "the reviewed exact diagnostics when one upper-half-plane waypoint carries no singular "
+         "ledger");
+}
+
+void BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta-1/2)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.system.singular_points = {"eta=1/2"};
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational detour;
+  detour.real = {"1", "2"};
+  detour.imaginary = {"1", "3"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, detour);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=1/2", "1/2", 1)};
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
 
   Expect(!diagnostics.success,
-         "bootstrap eta-continuation-plan coverage should still fail closed when the default "
-         "exact solver sees an actual contour detour");
+         "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage should still "
+         "fail closed when the default exact solver sees branch-changing contour metadata");
   Expect(diagnostics.failure_code == "unsupported_solver_path",
-         "bootstrap eta-continuation-plan coverage should keep unsupported_solver_path for "
-         "detoured eta_continuation_plan requests");
+         "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage should keep "
+         "unsupported_solver_path for detoured eta_continuation_plan requests");
   ExpectContains(diagnostics.summary,
                  "eta_continuation_plan",
-                 "bootstrap eta-continuation-plan coverage should explain that the default exact "
-                 "solver does not execute eta_continuation_plan");
+                 "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
+                 "should explain that the default exact solver does not execute arbitrary "
+                 "eta_continuation_plan metadata");
   ExpectContains(diagnostics.summary,
                  request.eta_continuation_plan->contour_fingerprint,
-                 "bootstrap eta-continuation-plan coverage should report the reviewed contour "
-                 "fingerprint");
+                 "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
+                 "should report the reviewed contour fingerprint");
   ExpectContains(diagnostics.summary,
-                 "only direct real two-point",
-                 "bootstrap eta-continuation-plan coverage should keep the direct-plan carveout "
-                 "narrow");
+                 "without singular-point ledgers",
+                 "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
+                 "should keep branch-changing contour execution deferred");
   ExpectContains(diagnostics.summary,
                  "default-solver complex contour execution remains deferred",
-                 "bootstrap eta-continuation-plan coverage should keep the deferred complex "
-                 "execution status explicit");
+                 "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
+                 "should keep the deferred complex execution status explicit");
 }
 
 void SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest() {
@@ -50703,7 +50733,8 @@ int main() {
     BootstrapSeriesSolverRejectsStaleZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsMismatchedZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest();
-    BootstrapSeriesSolverRejectsDetouredEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactUpperTriangularHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactMixedHappyPathMatchesBootstrapSolverTest();

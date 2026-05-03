@@ -3985,6 +3985,14 @@ bool LiesOnClosedRealEtaContinuationSegment(const ExactRational& point,
          CompareExactRationalForEtaContinuationPlan(point, upper) <= 0;
 }
 
+bool LiesStrictlyInsideRealEtaContinuationSegment(const ExactRational& point,
+                                                 const ExactRational& start,
+                                                 const ExactRational& target) {
+  return LiesOnClosedRealEtaContinuationSegment(point, start, target) &&
+         CompareExactRationalForEtaContinuationPlan(point, start) != 0 &&
+         CompareExactRationalForEtaContinuationPlan(point, target) != 0;
+}
+
 bool IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(
     const ExactRational& point,
     const ExactRational& start,
@@ -4032,6 +4040,65 @@ std::optional<std::string> ReviewedDirectRealEtaContinuationWaypointRejectionRea
              "order";
     }
   }
+  return std::nullopt;
+}
+
+bool EtaContinuationPlanContourPointsAreAllReal(const EtaContinuationPlan& plan) {
+  return std::all_of(plan.contour_points.begin(),
+                     plan.contour_points.end(),
+                     [](const ExactComplexRational& point) {
+                       return point.IsReal();
+                     });
+}
+
+std::optional<std::string> ReviewedBootstrapEtaContinuationWaypointRejectionReason(
+    const SolveRequest& request,
+    const EtaContinuationPlan& plan) {
+  if (EtaContinuationPlanContourPointsAreAllReal(plan)) {
+    return ReviewedDirectRealEtaContinuationWaypointRejectionReason(plan);
+  }
+
+  if (plan.contour_points.size() < 2) {
+    return "default exact solver accepts eta_continuation_plan metadata only with at least two "
+           "contour points";
+  }
+
+  const ExactComplexRational& start = plan.contour_points.front();
+  const ExactComplexRational& target = plan.contour_points.back();
+  if (!start.IsReal() || !target.IsReal()) {
+    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+           "with real contour endpoints";
+  }
+  if (CompareExactRationalForEtaContinuationPlan(start.real, target.real) == 0) {
+    return "default exact solver accepts eta_continuation_plan metadata only with distinct "
+           "real contour endpoints";
+  }
+  for (std::size_t index = 1; index < plan.contour_points.size(); ++index) {
+    if (plan.contour_points[index - 1] == plan.contour_points[index]) {
+      return "default exact solver accepts eta_continuation_plan metadata only with distinct "
+             "adjacent contour points";
+    }
+  }
+  if (!request.system.singular_points.empty() || !plan.singular_points.empty()) {
+    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+           "without singular-point ledgers or system-declared singular points; "
+           "branch-changing contour execution remains deferred";
+  }
+  if (plan.contour_points.size() != 3) {
+    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+           "with one reviewed upper-half-plane interior waypoint";
+  }
+
+  const ExactComplexRational& waypoint = plan.contour_points[1];
+  if (!LiesStrictlyInsideRealEtaContinuationSegment(waypoint.real, start.real, target.real)) {
+    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+           "when the interior waypoint projects strictly between the real endpoints";
+  }
+  if (CompareExactRationalForEtaContinuationPlan(waypoint.imaginary, ZeroRational()) <= 0) {
+    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+           "when the interior waypoint lies in the reviewed upper half-plane";
+  }
+
   return std::nullopt;
 }
 
@@ -4280,10 +4347,10 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
   }
   if (plan.half_plane != EtaContourHalfPlane::Upper) {
     return "default exact solver accepts eta_continuation_plan metadata only when the reviewed "
-           "direct real contour uses the upper-half-plane convention";
+           "contour uses the upper-half-plane convention";
   }
   const std::optional<std::string> waypoint_rejection_reason =
-      ReviewedDirectRealEtaContinuationWaypointRejectionReason(plan);
+      ReviewedBootstrapEtaContinuationWaypointRejectionReason(request, plan);
   if (waypoint_rejection_reason.has_value()) {
     return waypoint_rejection_reason;
   }

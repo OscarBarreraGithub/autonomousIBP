@@ -359,7 +359,7 @@ std::string SupportedCutkoskyPhaseSpaceTerminalNode(const ProblemSpec& spec) {
 }
 
 void ValidateEtaInfinityBoundaryEtaSymbol(const std::string& eta_symbol) {
-  if (eta_symbol.empty()) {
+  if (Trim(eta_symbol).empty()) {
     throw std::invalid_argument(
         "builtin eta->infinity boundary request eta_symbol must not be empty");
   }

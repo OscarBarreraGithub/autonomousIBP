@@ -137,7 +137,9 @@ ExactRational DivideRational(const ExactRational& lhs, const ExactRational& rhs)
 }
 
 void ValidateEtaInfinitySolveEtaSymbol(const std::string& eta_symbol) {
-  if (eta_symbol.empty()) {
+  if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
+        return std::isspace(c);
+      })) {
     throw std::invalid_argument(
         "builtin eta->infinity boundary request eta_symbol must not be empty");
   }

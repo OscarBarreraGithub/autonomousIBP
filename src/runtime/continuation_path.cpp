@@ -175,6 +175,24 @@ std::vector<ExactComplexRational> EvaluateContourPoints(
   return contour_points;
 }
 
+void ValidateEtaContinuationSymbol(const DESystem& system,
+                                   const std::string& eta_symbol) {
+  if (eta_symbol.empty()) {
+    throw std::invalid_argument("eta continuation contour eta_symbol must not be empty");
+  }
+  const bool declares_eta_symbol =
+      std::any_of(system.variables.begin(),
+                  system.variables.end(),
+                  [&eta_symbol](const DifferentiationVariable& variable) {
+                    return variable.name == eta_symbol &&
+                           variable.kind == DifferentiationVariableKind::Eta;
+                  });
+  if (!declares_eta_symbol) {
+    throw std::invalid_argument(
+        "eta continuation contour eta_symbol must name a declared Eta differentiation variable");
+  }
+}
+
 bool SegmentContainsSingularPoint(const ExactComplexRational& start,
                                   const ExactComplexRational& end,
                                   const ExactComplexRational& singular_point) {
@@ -270,9 +288,7 @@ EtaContinuationPlan FinalizeEtaContinuationContourImpl(
     const std::string& target_location,
     const EtaContourHalfPlane half_plane,
     const std::vector<ExactComplexRational>& contour_points) {
-  if (eta_symbol.empty()) {
-    throw std::invalid_argument("eta continuation contour eta_symbol must not be empty");
-  }
+  ValidateEtaContinuationSymbol(system, eta_symbol);
   if (contour_points.size() < 2) {
     throw std::invalid_argument(
         "eta continuation contour requires at least two contour points");
@@ -352,6 +368,7 @@ EtaContinuationPlan FinalizeEtaContinuationContour(
     throw std::invalid_argument(
         "eta continuation contour requires at least two contour-point expressions");
   }
+  ValidateEtaContinuationSymbol(system, eta_symbol);
 
   return FinalizeEtaContinuationContourImpl(system,
                                             spec,
@@ -374,9 +391,7 @@ EtaContinuationPlan PlanEtaContinuationContour(
   if (!validation_messages.empty()) {
     throw std::invalid_argument(JoinMessages(validation_messages));
   }
-  if (eta_symbol.empty()) {
-    throw std::invalid_argument("eta continuation contour eta_symbol must not be empty");
-  }
+  ValidateEtaContinuationSymbol(system, eta_symbol);
 
   const NumericEvaluationPoint evaluation_point = BuildComplexNumericEvaluationPoint(spec);
   const ExactComplexRational start =

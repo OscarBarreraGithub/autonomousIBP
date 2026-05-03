@@ -17601,6 +17601,38 @@ void PlanEtaContinuationContourUpperAndLowerDetoursProduceDistinctBranchLedgerFi
          "endpoints distinctly");
 }
 
+void EtaContinuationContourRejectsUndeclaredEtaSymbolTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+
+  amflow::DESystem system;
+  system.variables = {{"x", amflow::DifferentiationVariableKind::Eta}};
+
+  ExpectInvalidArgument(
+      [&system, &spec]() {
+        static_cast<void>(amflow::PlanEtaContinuationContour(system,
+                                                             spec,
+                                                             "eta",
+                                                             "eta=0",
+                                                             "eta=1",
+                                                             amflow::EtaContourHalfPlane::Upper));
+      },
+      "declared Eta differentiation variable",
+      "automatic complex contour planning should reject eta_symbol values that are not declared "
+      "as Eta variables on the DESystem");
+  ExpectInvalidArgument(
+      [&system, &spec]() {
+        static_cast<void>(amflow::FinalizeEtaContinuationContour(
+            system,
+            spec,
+            "eta",
+            {"eta=0", "eta=1"},
+            amflow::EtaContourHalfPlane::Upper));
+      },
+      "declared Eta differentiation variable",
+      "explicit complex contour finalization should reject eta_symbol values that are not "
+      "declared as Eta variables on the DESystem before evaluating contour points");
+}
+
 void FinalizeEtaContinuationContourRejectsSegmentCrossingEvaluatedSingularPointTest() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.complex_mode = true;
@@ -50161,6 +50193,7 @@ int main() {
     BuildComplexNumericEvaluationPointRejectsImaginaryUnitInExactBindingsTest();
     EvaluateComplexCoefficientExpressionRejectsReservedImaginaryBindingNameTest();
     PlanEtaContinuationContourUpperAndLowerDetoursProduceDistinctBranchLedgerFingerprintsTest();
+    EtaContinuationContourRejectsUndeclaredEtaSymbolTest();
     FinalizeEtaContinuationContourRejectsSegmentCrossingEvaluatedSingularPointTest();
     WriteEtaContinuationPlanManifestPersistsContourPointsAndBranchLedgerTest();
     WriteEtaContinuationPlanManifestRejectsEscapingRunIdTest();

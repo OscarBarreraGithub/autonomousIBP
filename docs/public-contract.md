@@ -365,7 +365,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61ac`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61ae`
+  contour-planner eta-symbol declaration guard, `Batch 61ad` lower-half-plane direct-real
+  metadata guard, and `Batch 61ac`
   duplicate-valued singular-declaration canonical expression guard after the earlier `Batch 61ab`
   canonical singular-ledger order guard, `Batch 61aa`
   duplicate singular-declaration ledger canonicalization, `Batch 61z`
@@ -963,9 +965,10 @@ The first eta-generated solver handoff remains narrow:
   `SolveRequest` carrying that same `eta_continuation_plan`, while non-opt-in solvers keep the
   retained explicit `unsupported_solver_path` diagnostic carrying the contour fingerprint plus
   the persisted manifest path instead of being invoked
-- unsupported or malformed contour-planning inputs on that same reviewed complex-continuation path
-  still fail explicitly with the underlying `invalid_argument` rather than being relabeled as a
-  solver-path diagnostic
+- unsupported or malformed contour-planning inputs on that same reviewed complex-continuation path,
+  including an `eta_symbol` that is not declared as an Eta differentiation variable on the
+  assembled `DESystem`, still fail explicitly with the underlying `invalid_argument` rather than
+  being relabeled as a solver-path diagnostic
 - if reviewed contour planning succeeds but manifest persistence fails, the wrapper still returns
   explicit `unsupported_solver_path` diagnostics that report the contour fingerprint, intended
   manifest path, and artifact-store failure without invoking the supplied solver
@@ -1016,9 +1019,10 @@ The first eta-mode-planned solver handoff stays narrow:
   persistence and either the same live reviewed `eta_continuation_plan` solver handoff for
   opt-in solvers or the same explicit `unsupported_solver_path` diagnostics for non-opt-in
   solvers
-- unsupported or malformed contour-planning inputs on that downstream reviewed continuation path
-  still fail explicitly with the underlying `invalid_argument` after exactly one retained
-  `EtaMode::Plan(spec)` call
+- unsupported or malformed contour-planning inputs on that downstream reviewed continuation path,
+  including an `eta_symbol` that is not declared as an Eta differentiation variable on the
+  assembled `DESystem`, still fail explicitly with the underlying `invalid_argument` after exactly
+  one retained `EtaMode::Plan(spec)` call
 - if reviewed contour planning succeeds but manifest persistence fails downstream, this wrapper
   still preserves the direct eta-generated explicit `unsupported_solver_path` diagnostics after
   exactly one retained `EtaMode::Plan(spec)` call
@@ -1433,6 +1437,7 @@ On the current worktree, that exact evaluator now has a separate narrow complex 
 On the current worktree, the first separate eta-contour and branch-ledger planning surface is now implemented on top of that exact-complex helper layer:
 
 - `EtaContourHalfPlane`, `EtaContourSingularPoint`, `EtaContinuationPlan`, `FinalizeEtaContinuationContour(...)`, and `PlanEtaContinuationContour(...)` form a library-only contour-planning seam over reviewed exact-complex point evaluation
+- both contour-planning entry points now require `eta_symbol` to name a declared Eta differentiation variable on the supplied `DESystem` before exact-complex contour-point evaluation or automatic start/target planning
 - both helpers first evaluate `DESystem.singular_points` through `BuildComplexNumericEvaluationPoint(...)` plus `EvaluateComplexPointExpression(...)`, so the legacy singular-point annotation list becomes a first live complex consumer without widening singular-point discovery itself
 - `FinalizeEtaContinuationContour(...)` takes one explicit ordered contour-point list, resolves every point exactly at the requested complex kinematic binding, canonicalizes evaluated singular points by location using a deterministic representative expression and sorted evaluated-location order, rejects any contour point that lands on an evaluated singular point, rejects any straight contour segment that crosses an evaluated singular point, computes one integer `branch_winding` per unique evaluated singular point through the reviewed `long double` angle-projection subset, and fails explicitly when the exact rational coordinates fall outside that moderate-size reviewed projection range before fingerprinting the resulting contour packet deterministically
 - `PlanEtaContinuationContour(...)` is the narrower automatic planner over that same finalized packet: on the reviewed subset it requires distinct finite start/target locations on one horizontal line, detects evaluated singular points that lie strictly between them on that line, chooses the selected `upper` or `lower` half-plane, inserts one deterministic three-point vertical detour per on-path singular point with clearance equal to one quarter of the minimum reviewed horizontal gap, and then finalizes the resulting contour through the same explicit validator/ledger path

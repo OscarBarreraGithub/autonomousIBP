@@ -877,7 +877,7 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   bool saw_bilinear_term = false;
   for (const SignedTerm& term : terms) {
     if (const std::optional<std::vector<std::string>> grouped_terms =
-            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 6);
+            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 7);
         grouped_terms.has_value()) {
       for (const std::string& grouped_term : *grouped_terms) {
         rendered_terms.push_back(grouped_term);

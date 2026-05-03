@@ -166,6 +166,12 @@ void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
     throw std::invalid_argument(
         "builtin Cutkosky phase-space boundary request eta_symbol must not be empty");
   }
+  if (std::isspace(static_cast<unsigned char>(eta_symbol.front())) != 0 ||
+      std::isspace(static_cast<unsigned char>(eta_symbol.back())) != 0) {
+    throw std::invalid_argument(
+        "builtin Cutkosky phase-space boundary request eta_symbol must not contain leading "
+        "or trailing whitespace");
+  }
 }
 
 std::string Trim(const std::string& value) {

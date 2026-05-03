@@ -366,9 +366,15 @@ void ValidateEtaInfinityBoundaryEtaSymbol(const std::string& eta_symbol) {
 }
 
 void ValidateCutkoskyPhaseSpaceBoundaryEtaSymbol(const std::string& eta_symbol) {
-  if (Trim(eta_symbol).empty()) {
+  const std::string trimmed_eta_symbol = Trim(eta_symbol);
+  if (trimmed_eta_symbol.empty()) {
     throw std::invalid_argument(
         "builtin Cutkosky phase-space boundary request eta_symbol must not be empty");
+  }
+  if (trimmed_eta_symbol != eta_symbol) {
+    throw std::invalid_argument(
+        "builtin Cutkosky phase-space boundary request eta_symbol must not contain leading "
+        "or trailing whitespace");
   }
 }
 

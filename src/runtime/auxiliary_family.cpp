@@ -508,6 +508,48 @@ std::optional<ExactRational> TryEvaluateGroupedExternalFactorCoefficient(
   return EvaluateExactConstantExpression(total, context);
 }
 
+bool LooksLikeNestedGroupedCommonLightlikeLinearFactor(const ProblemSpec& spec,
+                                                       const SignedTerm& term,
+                                                       const std::string& external_symbol) {
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+  const std::set<std::string> selected_external_symbol = {external_symbol};
+  const SplitSequence split = SplitTopLevelByOperators(term.expression, context, "*/");
+
+  bool saw_grouped_external_combination = false;
+  for (std::size_t index = 0; index < split.parts.size(); ++index) {
+    const char separator = index == 0 ? '*' : split.separators[index - 1];
+    const std::string raw_factor = Trim(split.parts[index]);
+
+    try {
+      static_cast<void>(EvaluateExactConstantExpression(raw_factor, context));
+      continue;
+    } catch (const std::runtime_error&) {
+    }
+
+    if (MatchSignedSimpleSymbolFactor(raw_factor, selected_external_symbol).has_value()) {
+      return false;
+    }
+
+    const std::optional<GroupedAdditiveFactor> grouped_factor =
+        MatchGroupedAdditiveFactor(raw_factor);
+    if (separator != '/' && grouped_factor.has_value()) {
+      const std::set<std::string> nested_external_factors =
+          CollectDeclaredExternalFactorsInExpression(spec, grouped_factor->expression);
+      if (nested_external_factors.count(external_symbol) != 0) {
+        if (saw_grouped_external_combination) {
+          return false;
+        }
+        saw_grouped_external_combination = true;
+        continue;
+      }
+    }
+
+    return false;
+  }
+
+  return saw_grouped_external_combination;
+}
+
 std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
     const ProblemSpec& spec,
     const SignedTerm& term,
@@ -739,6 +781,13 @@ std::optional<std::vector<std::string>> TryRenderGroupedCommonCoefficientLoopLin
   std::vector<std::string> rendered_terms;
   for (const SignedTerm& grouped_term :
        SplitTopLevelTerms(grouped_linear_combination, context)) {
+    if (remaining_nested_grouped_common_layers == 0 &&
+        LooksLikeNestedGroupedCommonLightlikeLinearFactor(spec, grouped_term, external_symbol)) {
+      throw std::runtime_error(
+          "reviewed lightlike linear auxiliary rewrite supports at most seventeen nested "
+          "grouped common lightlike-linear factors");
+    }
+
     if (remaining_nested_grouped_common_layers > 0) {
       if (const std::optional<std::vector<std::string>> nested_grouped_terms =
               TryRenderGroupedCommonCoefficientLoopLinearTerms(

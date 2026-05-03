@@ -6205,6 +6205,24 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDen
       "denominators");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEighteenNestedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression =
+      "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(16*(17*(18*(19*(20*(k1*n-k2*n))))))))))))))))))+k3*n)";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "supports at most seventeen nested grouped common lightlike-linear factors",
+      "reviewed lightlike linear auxiliary rewrite should fail closed with a deterministic "
+      "diagnostic beyond the reviewed grouped-common recursion limit");
+}
+
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   const std::string before_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -52402,6 +52420,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEighteenNestedGroupedCommonFactorTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsComplexNumericSubstitutionsTest();

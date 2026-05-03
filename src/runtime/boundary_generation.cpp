@@ -405,6 +405,14 @@ void ValidatePlannedEtaInfinityTerminalNodes(const ProblemSpec& spec,
   }
 }
 
+void ValidatePlannedEtaInfinityDecisionMetadata(const EndingDecision& decision) {
+  if (Trim(decision.terminal_strategy).empty()) {
+    throw BoundaryUnsolvedError(
+        "planned eta->infinity boundary request requires selected ending decision "
+        "terminal_strategy must not be empty");
+  }
+}
+
 void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
                                                     const EndingDecision& decision) {
   const std::string supported_terminal_node = SupportedCutkoskyPhaseSpaceTerminalNode(spec);
@@ -506,6 +514,7 @@ BoundaryRequest GeneratePlannedEtaInfinityBoundaryRequest(
     const std::string& eta_symbol) {
   ValidateProblemSpecForBoundaryGeneration(spec);
   ValidateEtaInfinityBoundaryEtaSymbol(eta_symbol);
+  ValidatePlannedEtaInfinityDecisionMetadata(decision);
   ValidatePlannedEtaInfinityTerminalNodes(spec, decision);
   return GenerateBuiltinEtaInfinityBoundaryRequest(spec, eta_symbol);
 }

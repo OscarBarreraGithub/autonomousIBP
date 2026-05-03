@@ -101,8 +101,8 @@ struct SolveRequest {
   // waypoints, plus the one-waypoint upper-half-plane complex metadata subset
   // when singular ledgers are absent or carry only zero-winding off-path
   // singulars, and the ledgerless/no-system-singular two- through
-  // six-waypoint upper-half-plane complex metadata subsets. Target-endpoint singular
-  // ledgers remain direct-real only.
+  // eight-waypoint upper-half-plane complex metadata subsets. Target-endpoint
+  // singular ledgers remain direct-real only.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;
 };

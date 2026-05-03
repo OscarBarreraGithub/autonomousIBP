@@ -365,7 +365,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61as`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61at`
+  five-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61as`
   four-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61ar`
   three-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61aq`
   two-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61ap`

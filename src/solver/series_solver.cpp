@@ -189,8 +189,24 @@ void ValidateRequiredUniqueBoundaryProviderRegistry(
 
   std::vector<std::string> strategies;
   strategies.reserve(providers.size());
-  for (const auto& provider : providers) {
+  for (std::size_t index = 0; index < providers.size(); ++index) {
+    const auto& provider = providers[index];
     const std::string strategy = provider->Strategy();
+    const bool strategy_is_blank =
+        std::all_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
+          return std::isspace(c) != 0;
+        });
+    if (strategy_is_blank) {
+      throw std::invalid_argument("boundary provider registry entry " +
+                                  std::to_string(index + 1) +
+                                  " strategy must not be empty");
+    }
+    if (std::isspace(static_cast<unsigned char>(strategy.front())) != 0 ||
+        std::isspace(static_cast<unsigned char>(strategy.back())) != 0) {
+      throw std::invalid_argument("boundary provider registry entry " +
+                                  std::to_string(index + 1) +
+                                  " strategy must not contain leading or trailing whitespace");
+    }
     for (const std::string& seen_strategy : strategies) {
       if (seen_strategy == strategy) {
         throw std::invalid_argument(

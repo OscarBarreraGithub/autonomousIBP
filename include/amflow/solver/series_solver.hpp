@@ -100,7 +100,7 @@ struct SolveRequest {
   // path: the original two-point shape plus monotone on-segment direct-real
   // waypoints, plus the one-waypoint upper-half-plane complex metadata subset
   // when singular ledgers are absent or carry only zero-winding off-path
-  // singulars, the two- through nine-waypoint upper-half-plane complex
+  // singulars, the two- through ten-waypoint upper-half-plane complex
   // subsets when every explicit zero-winding singular ledger stays off the
   // direct real segment. Target-endpoint singular ledgers remain direct-real
   // only.

@@ -447,10 +447,12 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   ending planning, provider lookup, boundary attachment, or solver execution.
   Selected Cutkosky phase-space `terminal_strategy` metadata now also rejects internal whitespace
   before provider attachment, matching the existing empty and outer-whitespace selected-decision
-  guardrails without re-planning caller-supplied decisions. Cutkosky phase-space provider-registry
-  wrappers now apply the same internal-whitespace spelling preflight to caller-supplied provider
-  strategy names before ending planning, selected-decision validation, provider attachment, or
-  solver execution.
+  guardrails without re-planning caller-supplied decisions. Cutkosky phase-space single-provider
+  and provider-registry solve wrappers now apply the same empty, outer-whitespace, and
+  internal-whitespace spelling preflights to caller-supplied provider strategy names before ending
+  planning, selected-decision validation, provider attachment, or solver execution; the
+  single-provider path caches the validated strategy for attachment so matched providers still see
+  one caller-observed strategy lookup on the success path.
   Selected eta->infinity `terminal_strategy` metadata now has the same internal-whitespace
   guard on the planned and `AmfOptions` request/solve wrappers, before provider attachment or
   solver execution. Eta->infinity request and solve helpers now also reject outer-whitespace-padded

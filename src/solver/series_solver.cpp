@@ -183,6 +183,52 @@ void ValidateRequiredBoundaryProviderRegistry(
   ValidateBoundaryProviderRegistryHasNoNullEntries(providers);
 }
 
+void ValidateBoundaryProviderStrategySpelling(const std::string& strategy,
+                                              const std::string& subject) {
+  const bool strategy_is_blank =
+      std::all_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
+        return std::isspace(c) != 0;
+      });
+  if (strategy_is_blank) {
+    throw std::invalid_argument(subject + " strategy must not be empty");
+  }
+  if (std::isspace(static_cast<unsigned char>(strategy.front())) != 0 ||
+      std::isspace(static_cast<unsigned char>(strategy.back())) != 0) {
+    throw std::invalid_argument(subject +
+                                " strategy must not contain leading or trailing whitespace");
+  }
+  if (std::any_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
+        return std::isspace(c) != 0;
+      })) {
+    throw std::invalid_argument(subject + " strategy must not contain internal whitespace");
+  }
+}
+
+std::string ValidateSingleBoundaryProviderStrategy(const BoundaryProvider& provider) {
+  const std::string strategy = provider.Strategy();
+  ValidateBoundaryProviderStrategySpelling(strategy, "boundary provider");
+  return strategy;
+}
+
+class CachedStrategyBoundaryProvider final : public BoundaryProvider {
+ public:
+  CachedStrategyBoundaryProvider(const BoundaryProvider& provider, std::string strategy)
+      : provider_(provider), strategy_(std::move(strategy)) {}
+
+  std::string Strategy() const override {
+    return strategy_;
+  }
+
+  BoundaryCondition Provide(const DESystem& system,
+                            const BoundaryRequest& request) const override {
+    return provider_.Provide(system, request);
+  }
+
+ private:
+  const BoundaryProvider& provider_;
+  std::string strategy_;
+};
+
 void ValidateRequiredUniqueBoundaryProviderRegistry(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers) {
   ValidateRequiredBoundaryProviderRegistry(providers);
@@ -192,28 +238,9 @@ void ValidateRequiredUniqueBoundaryProviderRegistry(
   for (std::size_t index = 0; index < providers.size(); ++index) {
     const auto& provider = providers[index];
     const std::string strategy = provider->Strategy();
-    const bool strategy_is_blank =
-        std::all_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
-          return std::isspace(c) != 0;
-        });
-    if (strategy_is_blank) {
-      throw std::invalid_argument("boundary provider registry entry " +
-                                  std::to_string(index + 1) +
-                                  " strategy must not be empty");
-    }
-    if (std::isspace(static_cast<unsigned char>(strategy.front())) != 0 ||
-        std::isspace(static_cast<unsigned char>(strategy.back())) != 0) {
-      throw std::invalid_argument("boundary provider registry entry " +
-                                  std::to_string(index + 1) +
-                                  " strategy must not contain leading or trailing whitespace");
-    }
-    if (std::any_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
-          return std::isspace(c) != 0;
-        })) {
-      throw std::invalid_argument("boundary provider registry entry " +
-                                  std::to_string(index + 1) +
-                                  " strategy must not contain internal whitespace");
-    }
+    ValidateBoundaryProviderStrategySpelling(
+        strategy,
+        "boundary provider registry entry " + std::to_string(index + 1));
     for (const std::string& seen_strategy : strategies) {
       if (seen_strategy == strategy) {
         throw std::invalid_argument(
@@ -261,6 +288,26 @@ SolverDiagnostics SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedRegistry(
 
   const SolveRequest attached_request =
       AttachBoundaryConditionsFromProviderRegistry(solve_request, providers);
+  return solver.Solve(attached_request);
+}
+
+SolverDiagnostics SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedProvider(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const BoundaryProvider& provider,
+    const std::string& provider_strategy,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const CachedStrategyBoundaryProvider cached_provider(provider, provider_strategy);
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProvider(solve_request, cached_provider);
   return solver.Solve(attached_request);
 }
 
@@ -7630,14 +7677,16 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
+  const std::string provider_strategy = ValidateSingleBoundaryProviderStrategy(provider);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
-  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
-                                                                    decision,
-                                                                    request_template,
-                                                                    provider,
-                                                                    solver,
-                                                                    eta_symbol);
+  return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedProvider(spec,
+                                                                  decision,
+                                                                  request_template,
+                                                                  provider,
+                                                                  provider_strategy,
+                                                                  solver,
+                                                                  eta_symbol);
 }
 
 SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
@@ -7682,15 +7731,14 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  const BoundaryRequest boundary_request =
-      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
-
-  SolveRequest solve_request = request_template;
-  solve_request.boundary_requests = {boundary_request};
-
-  const SolveRequest attached_request =
-      AttachBoundaryConditionsFromProvider(solve_request, provider);
-  return solver.Solve(attached_request);
+  const std::string provider_strategy = ValidateSingleBoundaryProviderStrategy(provider);
+  return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedProvider(spec,
+                                                                  decision,
+                                                                  request_template,
+                                                                  provider,
+                                                                  provider_strategy,
+                                                                  solver,
+                                                                  eta_symbol);
 }
 
 SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(

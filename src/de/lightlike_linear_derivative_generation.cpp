@@ -4,6 +4,7 @@
 #include "amflow/solver/coefficient_evaluator.hpp"
 
 #include <cctype>
+#include <exception>
 #include <limits>
 #include <numeric>
 #include <optional>
@@ -588,6 +589,12 @@ GeneratedDerivativeVariable GenerateReviewedLightlikeLinearAuxiliaryDerivativeVa
           "quadratic driver to match an existing transformed-family propagator factor");
     }
     throw;
+  } catch (const std::exception& error) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary derivative generation requires extracted "
+        "quadratic driver coefficients to stay within the reviewed small-integer seed "
+        "matcher: " +
+        std::string(error.what()));
   }
   GeneratedDerivativeVariable generated_variable =
       GenerateInvariantDerivativeVariable(master_basis, seed);

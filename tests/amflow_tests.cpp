@@ -23378,6 +23378,36 @@ void LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuad
          "reduction targets");
 }
 
+void LightlikeLinearAuxiliaryDerivativeGenerationRejectsOverlargeGroupedCommonDriverTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1-k2)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1-k2)^2)";
+  spec.family.propagators[2].expression =
+      "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(16*(17*(18*(19*(k1*n-k2*n))))))))))))))))))";
+
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = "toy_auto_linear_family";
+  master_basis.masters = {
+      {"toy_auto_linear_family", {1, 1, 1}},
+  };
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&]() {
+        static_cast<void>(amflow::GenerateReviewedLightlikeLinearAuxiliaryDerivativeVariable(
+            master_basis, amflow::ApplyReviewedLightlikeLinearAuxiliaryTransform(spec, 2, "x")));
+      },
+      "reviewed lightlike linear auxiliary derivative generation should fail closed when a "
+      "reviewed helper spelling exceeds the seed matcher integer surface");
+  ExpectContains(
+      message,
+      "requires extracted quadratic driver coefficients to stay within the reviewed "
+      "small-integer seed matcher",
+      "reviewed lightlike linear auxiliary derivative generation should report the seed "
+      "matcher integer surface instead of a generic factor-match failure; got: " +
+          message);
+}
+
 void LightlikeLinearAuxiliaryDerivativeGenerationPrefersExactQuadraticDriverOverScaledMatchTest() {
   amflow::ProblemSpec spec;
   spec.family.name = "toy_lightlike_exact_preferred_driver_family";
@@ -53483,6 +53513,7 @@ int main() {
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedNegativeGroupedRationalLoopLinearCombinationTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsMatchedGroupedLoopFactorTest();
     LightlikeLinearAuxiliaryDerivativeGenerationSupportsNonPrimitiveMatchedQuadraticDriverTest();
+    LightlikeLinearAuxiliaryDerivativeGenerationRejectsOverlargeGroupedCommonDriverTest();
     LightlikeLinearAuxiliaryDerivativeGenerationPrefersExactQuadraticDriverOverScaledMatchTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedSummedQuadraticDriversTest();
     LightlikeLinearAuxiliaryDerivativeGenerationRejectsUnmatchedQuadraticDriverTest();

@@ -13,6 +13,8 @@ namespace amflow {
 
 namespace {
 
+constexpr std::size_t kMaxReviewedGroupedCommonLightlikeLayers = 11;
+
 std::string Trim(const std::string& value) {
   std::size_t begin = 0;
   while (begin < value.size() &&
@@ -877,7 +879,12 @@ std::string BuildReviewedLightlikeLoopLinearCombination(const ProblemSpec& spec,
   bool saw_bilinear_term = false;
   for (const SignedTerm& term : terms) {
     if (const std::optional<std::vector<std::string>> grouped_terms =
-            TryRenderGroupedCommonCoefficientLoopLinearTerms(spec, term, external_symbol, "", 10);
+            TryRenderGroupedCommonCoefficientLoopLinearTerms(
+                spec,
+                term,
+                external_symbol,
+                "",
+                kMaxReviewedGroupedCommonLightlikeLayers);
         grouped_terms.has_value()) {
       for (const std::string& grouped_term : *grouped_terms) {
         rendered_terms.push_back(grouped_term);

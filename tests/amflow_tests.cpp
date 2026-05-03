@@ -16412,6 +16412,64 @@ void BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPath
          "real two-point metadata on the default exact solver");
 }
 
+void BootstrapSeriesSolverAcceptsDirectRealWaypointEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational midpoint;
+  midpoint.real = {"1", "2"};
+  midpoint.imaginary = {"0", "1"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, midpoint);
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap direct-real waypoint eta-continuation-plan coverage should keep the "
+         "reviewed exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline_diagnostics),
+         "bootstrap direct-real waypoint eta-continuation-plan coverage should preserve exact "
+         "diagnostics when audited waypoints stay on the same direct real segment");
+}
+
+void BootstrapSeriesSolverRejectsOutOfOrderDirectRealWaypointEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational later_waypoint;
+  later_waypoint.real = {"3", "4"};
+  later_waypoint.imaginary = {"0", "1"};
+  amflow::ExactComplexRational earlier_waypoint;
+  earlier_waypoint.real = {"1", "2"};
+  earlier_waypoint.imaginary = {"0", "1"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, later_waypoint);
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 2, earlier_waypoint);
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap direct-real waypoint eta-continuation-plan coverage should fail closed when "
+         "the direct-real waypoint list backtracks");
+  ExpectContains(diagnostics.summary,
+                 "start-to-target order",
+                 "bootstrap direct-real waypoint eta-continuation-plan coverage should explain "
+                 "the monotone waypoint requirement");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap direct-real waypoint eta-continuation-plan coverage should report "
+                 "the reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -50362,6 +50420,8 @@ int main() {
     BootstrapSeriesSolverRejectsDigitsAboveConfiguredCeilingTest();
     BootstrapSeriesSolverRejectsMalformedBoundaryValueExpressionTest();
     BootstrapSeriesSolverAcceptsDirectRealEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsDirectRealWaypointEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsOutOfOrderDirectRealWaypointEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsUnfingerprintedDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsStaleDirectRealEtaContinuationPlanContourFingerprintTest();
     BootstrapSeriesSolverRejectsLowerHalfPlaneDirectRealEtaContinuationPlanTest();

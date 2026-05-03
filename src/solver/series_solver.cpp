@@ -3983,6 +3983,48 @@ bool IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(
          CompareExactRationalForEtaContinuationPlan(point, target) == 0;
 }
 
+std::optional<std::string> ReviewedDirectRealEtaContinuationWaypointRejectionReason(
+    const EtaContinuationPlan& plan) {
+  if (plan.contour_points.size() < 2) {
+    return "default exact solver accepts eta_continuation_plan metadata only with at least two "
+           "direct real contour points";
+  }
+  const ExactComplexRational& start = plan.contour_points.front();
+  const ExactComplexRational& target = plan.contour_points.back();
+  for (const ExactComplexRational& point : plan.contour_points) {
+    if (!point.IsReal()) {
+      return "default exact solver currently accepts only direct real two-point "
+             "eta_continuation_plan metadata or audited direct-real waypoint metadata; complex "
+             "contour execution remains deferred";
+    }
+  }
+  if (CompareExactRationalForEtaContinuationPlan(start.real, target.real) == 0) {
+    return "default exact solver accepts eta_continuation_plan metadata only with distinct "
+           "direct real contour endpoints";
+  }
+
+  const bool increasing =
+      CompareExactRationalForEtaContinuationPlan(start.real, target.real) < 0;
+  for (std::size_t index = 1; index < plan.contour_points.size(); ++index) {
+    const ExactRational& previous = plan.contour_points[index - 1].real;
+    const ExactRational& current = plan.contour_points[index].real;
+    const int step_comparison = CompareExactRationalForEtaContinuationPlan(previous, current);
+    if (step_comparison == 0) {
+      return "default exact solver accepts eta_continuation_plan metadata only with distinct "
+             "adjacent direct real contour points";
+    }
+    const bool moves_toward_target =
+        increasing ? step_comparison < 0 : step_comparison > 0;
+    if (!moves_toward_target ||
+        !LiesOnClosedRealEtaContinuationSegment(current, start.real, target.real)) {
+      return "default exact solver accepts direct-real waypoint eta_continuation_plan metadata "
+             "only when every waypoint stays on the direct real segment in start-to-target "
+             "order";
+    }
+  }
+  return std::nullopt;
+}
+
 bool EtaContinuationPlanSingularLedgerMatchesSystemDeclarations(
     const DESystem& system,
     const EtaContinuationPlan& plan) {
@@ -4230,20 +4272,14 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
     return "default exact solver accepts eta_continuation_plan metadata only when the reviewed "
            "direct real contour uses the upper-half-plane convention";
   }
-  if (plan.contour_points.size() != 2) {
-    return "default exact solver currently accepts only direct real two-point "
-           "eta_continuation_plan metadata";
+  const std::optional<std::string> waypoint_rejection_reason =
+      ReviewedDirectRealEtaContinuationWaypointRejectionReason(plan);
+  if (waypoint_rejection_reason.has_value()) {
+    return waypoint_rejection_reason;
   }
 
   const ExactComplexRational& start = plan.contour_points.front();
   const ExactComplexRational& target = plan.contour_points.back();
-  if (!start.IsReal() || !target.IsReal()) {
-    return "default exact solver currently accepts only real eta_continuation_plan endpoints";
-  }
-  if (CompareExactRationalForEtaContinuationPlan(start.real, target.real) == 0) {
-    return "default exact solver accepts eta_continuation_plan metadata only with distinct "
-           "direct real contour endpoints";
-  }
   if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when the system declares singular points";

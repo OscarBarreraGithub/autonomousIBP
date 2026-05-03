@@ -96,8 +96,9 @@ struct SolveRequest {
   std::optional<std::string> amf_requested_dimension_expression;
   // Reviewed complex eta continuation metadata for injected solvers that opt
   // into the separate complex contour path. The default exact bootstrap solver
-  // accepts only direct real two-point metadata over its already-reviewed exact
-  // path, with zero-winding off-path or reviewed target-endpoint singular
+  // accepts only audited direct real metadata over its already-reviewed exact
+  // path: the original two-point shape plus monotone on-segment direct-real
+  // waypoints, with zero-winding off-path or reviewed target-endpoint singular
   // ledgers accepted only on the expression/exact-value matching subset.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;

@@ -69,6 +69,12 @@ std::string Trim(const std::string& value) {
   return value.substr(start, end - start);
 }
 
+bool ContainsWhitespace(const std::string& value) {
+  return std::any_of(value.begin(), value.end(), [](const unsigned char current) {
+    return std::isspace(current) != 0;
+  });
+}
+
 void ValidateProblemSpecForBoundaryGeneration(const ProblemSpec& spec) {
   const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
   if (!validation_messages.empty()) {
@@ -375,6 +381,11 @@ void ValidateCutkoskyPhaseSpaceBoundaryEtaSymbol(const std::string& eta_symbol) 
     throw std::invalid_argument(
         "builtin Cutkosky phase-space boundary request eta_symbol must not contain leading "
         "or trailing whitespace");
+  }
+  if (ContainsWhitespace(eta_symbol)) {
+    throw std::invalid_argument(
+        "builtin Cutkosky phase-space boundary request eta_symbol must not contain internal "
+        "whitespace");
   }
 }
 

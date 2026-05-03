@@ -6735,6 +6735,28 @@ void PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest() {
          "lightlike-linear validation");
 }
 
+void PropagatorEtaModeSelectsUniqueValidReviewedLightlikeLinearCandidateTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.propagators.push_back(
+      {"k", "0", amflow::PropagatorKind::Linear, -1, amflow::PropagatorVariant::Linear});
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "Propagator eta mode should select the unique explicit linear propagator that "
+         "validates through the reviewed lightlike-linear helper");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "Propagator eta mode should preserve the unique valid lightlike-linear selected "
+         "expression when another explicit linear declaration is unsupported");
+  Expect(decision.explanation ==
+             "Bootstrap Propagator selector selected the unique reviewed lightlike-linear "
+             "propagator for generated-x routing on the current local declaration-order "
+             "candidate surface",
+         "Propagator eta mode should keep the generated-x explanation when exactly one explicit "
+         "linear candidate validates");
+}
+
 void PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest() {
   const amflow::ProblemSpec spec = MakeBuiltinAllAuxiliarySpec();
   const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
@@ -51403,6 +51425,7 @@ int main() {
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedExternalFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedLoopAndExternalFactorsTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();
+    PropagatorEtaModeSelectsUniqueValidReviewedLightlikeLinearCandidateTest();
     PropagatorEtaModeRejectsAllAuxiliaryPropagatorsTest();
     PropagatorEtaModeDoesNotMutateInputProblemSpecTest();
     MassEtaModeSelectsEqualNonzeroMassGroupTest();

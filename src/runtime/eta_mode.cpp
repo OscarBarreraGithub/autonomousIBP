@@ -68,22 +68,17 @@ std::optional<std::size_t> SelectReviewedPropagatorModeLightlikeLinearIndex(
         *propagator.variant != PropagatorVariant::Linear) {
       continue;
     }
+    try {
+      static_cast<void>(BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, index, "x"));
+    } catch (const std::exception&) {
+      continue;
+    }
     if (selected_index.has_value()) {
       return std::nullopt;
     }
     selected_index = index;
   }
 
-  if (!selected_index.has_value()) {
-    return std::nullopt;
-  }
-
-  try {
-    static_cast<void>(BuildReviewedLightlikeLinearAuxiliaryPropagator(
-        spec, *selected_index, "x"));
-  } catch (const std::exception&) {
-    return std::nullopt;
-  }
   return selected_index;
 }
 

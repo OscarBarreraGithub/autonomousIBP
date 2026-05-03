@@ -45506,6 +45506,12 @@ void MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest() {
   ExpectContains(result.stdout_json, "\"case_study_numeric_profile_maps_preserved\": true",
                  "Milestone M6 qualification self-check should preserve case-study numeric "
                  "profile label maps");
+  ExpectContains(result.stdout_json, "\"case_study_numeric_observed_digits_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve case-study numeric "
+                 "observed-digit maps");
+  ExpectContains(result.stdout_json, "\"case_study_numeric_family_rows_preserved\": true",
+                 "Milestone M6 qualification self-check should preserve case-study numeric "
+                 "family row provenance");
   ExpectContains(result.stdout_json,
                  "\"phase0_and_case_study_blockers_preserved\": true",
                  "Milestone M6 qualification self-check should keep both subverdict blocker "

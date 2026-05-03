@@ -174,6 +174,21 @@ def normalize_positive_int_map(raw: Any, label: str) -> dict[str, int]:
     return values
 
 
+def normalize_nonnegative_int_map(raw: Any, label: str) -> dict[str, int]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise TypeError(f"{label} must be an object")
+    values: dict[str, int] = {}
+    for key, value in raw.items():
+        key_text = normalize_string(key, f"{label} key")
+        if not isinstance(value, int):
+            raise TypeError(f"{label} {key_text} must be an int")
+        expect(value >= 0, f"{label} {key_text} must be nonnegative")
+        values[key_text] = value
+    return values
+
+
 def normalize_string_list_map(raw: Any, label: str) -> dict[str, list[str]]:
     if raw is None:
         return {}
@@ -198,6 +213,78 @@ def normalize_string_map(raw: Any, label: str) -> dict[str, str]:
         key_text = normalize_string(key, f"{label} key")
         values[key_text] = normalize_string(value, f"{label} {key_text}")
     return values
+
+
+def normalize_case_study_numeric_family_summaries(
+    raw: Any,
+    label: str,
+    missing_numeric_ids: list[str],
+) -> list[dict[str, Any]]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise TypeError(f"{label} must be a list")
+    missing_ids = set(missing_numeric_ids)
+    summaries: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise TypeError(f"{label} entries must be objects")
+        family_id = normalize_string(entry.get("id"), f"{label} id")
+        if family_id in seen_ids:
+            raise ValueError(f"duplicate {label} id: {family_id}")
+        seen_ids.add(family_id)
+        observed_digits = entry.get("minimum_observed_correct_digits")
+        if not isinstance(observed_digits, int):
+            raise TypeError(f"{label} {family_id} minimum_observed_correct_digits must be an int")
+        expect(
+            observed_digits >= 0,
+            f"{label} {family_id} minimum_observed_correct_digits must be nonnegative",
+        )
+        required_digits = entry.get("required_minimum_correct_digits")
+        if not isinstance(required_digits, int):
+            raise TypeError(f"{label} {family_id} required_minimum_correct_digits must be an int")
+        expect(
+            required_digits > 0,
+            f"{label} {family_id} required_minimum_correct_digits must be positive",
+        )
+        evidence_path_raw = entry.get("evidence_path", "")
+        if not isinstance(evidence_path_raw, str):
+            raise TypeError(f"{label} {family_id} evidence_path must be a string")
+        evidence_path = evidence_path_raw.strip()
+        if family_id not in missing_ids:
+            expect(evidence_path, f"{label} {family_id} evidence_path must not be empty")
+        summaries.append(
+            {
+                "id": family_id,
+                "status": normalize_string(entry.get("status"), f"{label} {family_id} status"),
+                "minimum_observed_correct_digits": observed_digits,
+                "required_minimum_correct_digits": required_digits,
+                "digit_threshold_met": normalize_bool(
+                    entry.get("digit_threshold_met"), f"{label} {family_id} digit_threshold_met"
+                ),
+                "comparison_passed": normalize_bool(
+                    entry.get("comparison_passed"), f"{label} {family_id} comparison_passed"
+                ),
+                "metadata_matches_readiness": normalize_bool(
+                    entry.get("metadata_matches_readiness"),
+                    f"{label} {family_id} metadata_matches_readiness",
+                ),
+                "digit_threshold_profile": normalize_string(
+                    entry.get("digit_threshold_profile"),
+                    f"{label} {family_id} digit_threshold_profile",
+                ),
+                "failure_code_profile": normalize_string(
+                    entry.get("failure_code_profile"),
+                    f"{label} {family_id} failure_code_profile",
+                ),
+                "regression_profile": normalize_string(
+                    entry.get("regression_profile"), f"{label} {family_id} regression_profile"
+                ),
+                "evidence_path": evidence_path,
+            }
+        )
+    return summaries
 
 
 def load_phase0_qualification_summary(summary_path: Path) -> dict[str, Any]:
@@ -350,11 +437,16 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         summary.get("missing_case_study_numeric_ids", []),
         "case-study qualification missing_case_study_numeric_ids",
     )
+    compared_case_study_ids = normalize_string_list(
+        summary.get("compared_case_study_ids", []),
+        "case-study qualification compared_case_study_ids",
+    )
     expect_unique(case_study_ids, "case-study qualification case_study_ids")
     expect_unique(
         runtime_blocked_ids, "case-study qualification runtime_blocked_case_study_ids"
     )
     expect_unique(missing_numeric_ids, "case-study qualification missing_case_study_numeric_ids")
+    expect_unique(compared_case_study_ids, "case-study qualification compared_case_study_ids")
     (
         digit_thresholds,
         required_failure_codes,
@@ -402,7 +494,28 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         summary.get("case_study_numeric_evidence_present"),
         "case-study qualification case_study_numeric_evidence_present",
     )
+    minimum_observed_digits = normalize_nonnegative_int_map(
+        summary.get("minimum_observed_correct_digits_by_case_study", {}),
+        "case-study qualification minimum_observed_correct_digits_by_case_study",
+    )
+    numeric_family_summaries = normalize_case_study_numeric_family_summaries(
+        summary.get("case_study_numeric_family_summaries", []),
+        "case-study qualification case_study_numeric_family_summaries",
+        missing_numeric_ids,
+    )
     if case_study_numeric_evidence_present:
+        expect(
+            set(compared_case_study_ids) == set(case_study_ids),
+            "case-study qualification compared_case_study_ids must match case_study_ids when numeric evidence is present",
+        )
+        expect(
+            set(minimum_observed_digits) == set(case_study_ids),
+            "case-study qualification observed-digit map must match case_study_ids when numeric evidence is present",
+        )
+        expect(
+            {entry["id"] for entry in numeric_family_summaries} == set(case_study_ids),
+            "case-study qualification numeric family summaries must match case_study_ids when numeric evidence is present",
+        )
         for label, profile_map in [
             (
                 "case-study qualification numeric digit-threshold profile labels",
@@ -418,12 +531,24 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
             ),
         ]:
             expect(set(profile_map) == set(case_study_ids), f"{label} must match case_study_ids")
+        numeric_digit_threshold_by_family = {
+            entry["id"]: entry["minimum_observed_correct_digits"]
+            for entry in numeric_family_summaries
+        }
+        expect(
+            numeric_digit_threshold_by_family == minimum_observed_digits,
+            "case-study qualification numeric family observed digits must match the observed-digit map",
+        )
     else:
         expect(
             not numeric_digit_threshold_profiles
             and not numeric_failure_code_profiles
             and not numeric_regression_profiles,
             "case-study qualification numeric profile-label maps must be empty when numeric evidence is absent",
+        )
+        expect(
+            not compared_case_study_ids and not minimum_observed_digits and not numeric_family_summaries,
+            "case-study qualification numeric provenance must be empty when numeric evidence is absent",
         )
 
     return {
@@ -432,6 +557,7 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
             summary.get("current_state"), "case-study qualification current_state"
         ),
         "case_study_ids": case_study_ids,
+        "compared_case_study_ids": compared_case_study_ids,
         "runtime_blocked_case_study_ids": runtime_blocked_ids,
         "missing_case_study_numeric_ids": missing_numeric_ids,
         "blocked_case_study_families": normalize_runtime_lane_entries(
@@ -449,6 +575,8 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
         ),
         "case_study_numeric_failure_code_profiles_by_family": numeric_failure_code_profiles,
         "case_study_numeric_regression_profiles_by_family": numeric_regression_profiles,
+        "minimum_observed_correct_digits_by_case_study": minimum_observed_digits,
+        "case_study_numeric_family_summaries": numeric_family_summaries,
         "blocking_reasons": normalize_string_list(
             summary.get("blocking_reasons", []), "case-study qualification blocking_reasons"
         ),
@@ -472,9 +600,25 @@ def load_case_study_qualification_summary(summary_path: Path) -> dict[str, Any]:
             summary.get("numeric_metadata_coherent"),
             "case-study qualification numeric_metadata_coherent",
         ),
+        "numeric_family_metadata_matches_readiness": normalize_bool(
+            summary.get("numeric_family_metadata_matches_readiness", False),
+            "case-study qualification numeric_family_metadata_matches_readiness",
+        ),
         "numeric_profile_label_maps_match_readiness": normalize_bool(
             summary.get("numeric_profile_label_maps_match_readiness", False),
             "case-study qualification numeric_profile_label_maps_match_readiness",
+        ),
+        "digit_threshold_profiles_reported": normalize_bool(
+            summary.get("digit_threshold_profiles_reported", False),
+            "case-study qualification digit_threshold_profiles_reported",
+        ),
+        "required_failure_code_profiles_reported": normalize_bool(
+            summary.get("required_failure_code_profiles_reported", False),
+            "case-study qualification required_failure_code_profiles_reported",
+        ),
+        "regression_profiles_reported": normalize_bool(
+            summary.get("regression_profiles_reported", False),
+            "case-study qualification regression_profiles_reported",
         ),
         "case_study_families_qualified": normalize_bool(
             summary.get("case_study_families_qualified"),
@@ -589,6 +733,35 @@ def summarize_milestone_m6_qualification(
             "phase0_regression_profiles_by_benchmark"
         ],
         "case_study_ids": case_study["case_study_ids"],
+        "case_study_numeric_evidence_present": case_study[
+            "case_study_numeric_evidence_present"
+        ],
+        "compared_case_study_ids": case_study["compared_case_study_ids"],
+        "case_study_numeric_comparison_passed": case_study[
+            "case_study_numeric_comparison_passed"
+        ],
+        "all_case_studies_meet_digit_thresholds": case_study[
+            "all_case_studies_meet_digit_thresholds"
+        ],
+        "case_study_numeric_metadata_coherent": case_study["numeric_metadata_coherent"],
+        "case_study_numeric_family_metadata_matches_readiness": case_study[
+            "numeric_family_metadata_matches_readiness"
+        ],
+        "case_study_numeric_profile_label_maps_match_readiness": case_study[
+            "numeric_profile_label_maps_match_readiness"
+        ],
+        "case_study_numeric_digit_threshold_profiles_reported": case_study[
+            "digit_threshold_profiles_reported"
+        ],
+        "case_study_numeric_required_failure_code_profiles_reported": case_study[
+            "required_failure_code_profiles_reported"
+        ],
+        "case_study_numeric_regression_profiles_reported": case_study[
+            "regression_profiles_reported"
+        ],
+        "minimum_observed_correct_digits_by_case_study": case_study[
+            "minimum_observed_correct_digits_by_case_study"
+        ],
         "runtime_blocked_case_study_ids": case_study["runtime_blocked_case_study_ids"],
         "missing_case_study_numeric_ids": case_study["missing_case_study_numeric_ids"],
         "blocked_case_study_families": case_study["blocked_case_study_families"],
@@ -618,6 +791,9 @@ def summarize_milestone_m6_qualification(
         ],
         "case_study_numeric_regression_profiles_by_family": case_study[
             "case_study_numeric_regression_profiles_by_family"
+        ],
+        "case_study_numeric_family_summaries": case_study[
+            "case_study_numeric_family_summaries"
         ],
         "blocked_runtime_lanes": blocked_runtime_lanes,
         "missing_required_failure_codes_across_packet_set": phase0[
@@ -753,6 +929,41 @@ def write_synthetic_case_study_summary(
         if qualified
         else {}
     )
+    minimum_observed_digits = (
+        {"ttbar-h": 125, "one-singular-endpoint-case": 75} if qualified else {}
+    )
+    numeric_family_summaries = (
+        [
+            {
+                "id": "ttbar-h",
+                "status": "digit-threshold-met",
+                "minimum_observed_correct_digits": 125,
+                "required_minimum_correct_digits": 100,
+                "digit_threshold_met": True,
+                "comparison_passed": True,
+                "metadata_matches_readiness": True,
+                "digit_threshold_profile": "2024-tth-light-quark-loop-mi",
+                "failure_code_profile": "default-required-failure-codes",
+                "regression_profile": "current-reviewed-regressions",
+                "evidence_path": "synthetic://ttbar-h-numeric",
+            },
+            {
+                "id": "one-singular-endpoint-case",
+                "status": "digit-threshold-met",
+                "minimum_observed_correct_digits": 75,
+                "required_minimum_correct_digits": 50,
+                "digit_threshold_met": True,
+                "comparison_passed": True,
+                "metadata_matches_readiness": True,
+                "digit_threshold_profile": "core-package-family-default",
+                "failure_code_profile": "default-required-failure-codes",
+                "regression_profile": "current-reviewed-regressions",
+                "evidence_path": "synthetic://one-singular-endpoint-case-numeric",
+            },
+        ]
+        if qualified
+        else []
+    )
     write_json(
         path,
         {
@@ -766,6 +977,9 @@ def write_synthetic_case_study_summary(
                 else "blocked-on-case-study-numeric-evidence"
             ),
             "case_study_ids": ["ttbar-h", "one-singular-endpoint-case"],
+            "compared_case_study_ids": (
+                ["ttbar-h", "one-singular-endpoint-case"] if qualified else []
+            ),
             "runtime_blocked_case_study_ids": (
                 ["one-singular-endpoint-case"] if runtime_blocked else []
             ),
@@ -777,12 +991,18 @@ def write_synthetic_case_study_summary(
             "case_study_numeric_comparison_passed": qualified,
             "all_case_studies_meet_digit_thresholds": qualified,
             "numeric_metadata_coherent": True,
+            "numeric_family_metadata_matches_readiness": qualified,
             "numeric_profile_label_maps_match_readiness": qualified,
+            "digit_threshold_profiles_reported": qualified,
+            "required_failure_code_profiles_reported": qualified,
+            "regression_profiles_reported": qualified,
+            "minimum_observed_correct_digits_by_case_study": minimum_observed_digits,
             "case_study_numeric_digit_threshold_profiles_by_family": (
                 numeric_digit_threshold_profiles
             ),
             "case_study_numeric_failure_code_profiles_by_family": numeric_failure_code_profiles,
             "case_study_numeric_regression_profiles_by_family": numeric_regression_profiles,
+            "case_study_numeric_family_summaries": numeric_family_summaries,
             "case_study_families_qualified": qualified,
             "milestone_m6_ready": False,
             "blocking_reasons": (
@@ -953,6 +1173,28 @@ def run_self_check() -> dict[str, Any]:
                     "ttbar-h": "current-reviewed-regressions",
                     "one-singular-endpoint-case": "current-reviewed-regressions",
                 }
+            ),
+            "case_study_numeric_observed_digits_preserved": (
+                passing_summary["case_study_numeric_evidence_present"]
+                and passing_summary["compared_case_study_ids"]
+                == ["ttbar-h", "one-singular-endpoint-case"]
+                and passing_summary["minimum_observed_correct_digits_by_case_study"] == {
+                    "ttbar-h": 125,
+                    "one-singular-endpoint-case": 75,
+                }
+                and passing_summary["case_study_numeric_comparison_passed"]
+                and passing_summary["all_case_studies_meet_digit_thresholds"]
+            ),
+            "case_study_numeric_family_rows_preserved": (
+                passing_summary["case_study_numeric_metadata_coherent"]
+                and passing_summary["case_study_numeric_family_metadata_matches_readiness"]
+                and passing_summary["case_study_numeric_profile_label_maps_match_readiness"]
+                and passing_summary["case_study_numeric_family_summaries"][0]["evidence_path"]
+                == "synthetic://ttbar-h-numeric"
+                and passing_summary["case_study_numeric_family_summaries"][1][
+                    "minimum_observed_correct_digits"
+                ]
+                == 75
             ),
             "phase0_and_case_study_blockers_preserved": (
                 "phase0: retained packet-set correct-digit scoring has not fully passed"

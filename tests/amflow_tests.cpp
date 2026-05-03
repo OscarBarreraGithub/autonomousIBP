@@ -17460,6 +17460,75 @@ void BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDef
          "ledger");
 }
 
+void BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  baseline_request.system.singular_points = {"eta=2"};
+  amflow::SolveRequest request = baseline_request;
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational detour;
+  detour.real = {"1", "2"};
+  detour.imaginary = {"1", "3"};
+  request.eta_continuation_plan->contour_points.insert(
+      request.eta_continuation_plan->contour_points.begin() + 1, detour);
+  request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+  };
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap off-path-ledger complex-waypoint eta-continuation-plan coverage should keep "
+         "the off-path singular declaration exact baseline solve succeeding");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap off-path-ledger complex-waypoint eta-continuation-plan coverage should "
+         "preserve exact diagnostics when a zero-winding singular ledger stays off the direct "
+         "real segment");
+}
+
+void BootstrapSeriesSolverRejectsTargetEndpointLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::DESystem system = MakeScalarRegularPointSeriesSystem("1/eta");
+  system.singular_points = {"eta=0"};
+  amflow::SolveRequest request =
+      MakeManualStartBoundarySolveRequest(system, "eta", "eta=1", "eta=0", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  amflow::ExactComplexRational start_point;
+  start_point.real = {"1", "1"};
+  start_point.imaginary = {"0", "1"};
+  amflow::ExactComplexRational detour;
+  detour.real = {"1", "2"};
+  detour.imaginary = {"1", "3"};
+  amflow::ExactComplexRational target_point;
+  target_point.real = {"0", "1"};
+  target_point.imaginary = {"0", "1"};
+  request.eta_continuation_plan->contour_points = {start_point, detour, target_point};
+  amflow::EtaContourSingularPoint target_singular =
+      MakeBootstrapEtaContourSingularPointForTests("eta=0", "0", 0);
+  target_singular.value = target_point;
+  request.eta_continuation_plan->singular_points = {target_singular};
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap target-endpoint complex-waypoint eta-continuation-plan coverage should fail "
+         "closed because target-endpoint singular ledgers remain direct-real only");
+  ExpectContains(diagnostics.summary,
+                 "stays off the direct real segment",
+                 "bootstrap target-endpoint complex-waypoint eta-continuation-plan coverage "
+                 "should explain the off-segment-only complex singular-ledger carveout");
+  ExpectContains(diagnostics.summary,
+                 request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap target-endpoint complex-waypoint eta-continuation-plan coverage "
+                 "should report the reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -17494,7 +17563,7 @@ void BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPla
                  "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
                  "should report the reviewed contour fingerprint");
   ExpectContains(diagnostics.summary,
-                 "without singular-point ledgers",
+                 "every branch winding is zero",
                  "bootstrap singular-ledger complex-waypoint eta-continuation-plan coverage "
                  "should keep branch-changing contour execution deferred");
   ExpectContains(diagnostics.summary,
@@ -50867,6 +50936,8 @@ int main() {
     BootstrapSeriesSolverRejectsMismatchedZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverRejectsOnPathZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverAcceptsNoLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsTargetEndpointLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverRejectsSingularLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();
     SolveDifferentialEquationExactScalarHappyPathMatchesBootstrapSolverTest();
     SolveDifferentialEquationExactUpperTriangularHappyPathMatchesBootstrapSolverTest();

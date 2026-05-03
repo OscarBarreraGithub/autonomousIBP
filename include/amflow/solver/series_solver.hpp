@@ -98,8 +98,9 @@ struct SolveRequest {
   // into the separate complex contour path. The default exact bootstrap solver
   // accepts only audited direct real metadata over its already-reviewed exact
   // path: the original two-point shape plus monotone on-segment direct-real
-  // waypoints, with zero-winding off-path or reviewed target-endpoint singular
-  // ledgers accepted only on the expression/exact-value matching subset.
+  // waypoints, plus the one-waypoint upper-half-plane complex metadata subset
+  // when singular ledgers are absent or carry only zero-winding off-path
+  // singulars. Target-endpoint singular ledgers remain direct-real only.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
   int requested_digits = 50;
 };

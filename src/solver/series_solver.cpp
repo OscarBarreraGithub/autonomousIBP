@@ -4126,7 +4126,7 @@ std::optional<std::string> ReviewedBootstrapEtaContinuationWaypointRejectionReas
              "adjacent contour points";
     }
   }
-  if (!request.system.singular_points.empty() || !plan.singular_points.empty()) {
+  if (!request.system.singular_points.empty() && plan.singular_points.empty()) {
     return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
            "without singular-point ledgers or system-declared singular points; "
            "branch-changing contour execution remains deferred";
@@ -4404,6 +4404,7 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
 
   const ExactComplexRational& start = plan.contour_points.front();
   const ExactComplexRational& target = plan.contour_points.back();
+  const bool direct_real_contour = EtaContinuationPlanContourPointsAreAllReal(plan);
   if (request.system.singular_points.empty() && !plan.singular_points.empty()) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when the system declares singular points";
@@ -4417,6 +4418,13 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanStructu
       return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
              "when every evaluated singular point is real on the reviewed direct path; non-real "
              "singular ledgers remain deferred";
+    }
+    if (!direct_real_contour &&
+        LiesOnClosedRealEtaContinuationSegment(singular_point.value.real,
+                                               start.real,
+                                               target.real)) {
+      return "default exact solver accepts complex waypoint eta_continuation_plan singular "
+             "ledgers only when every evaluated singular point stays off the direct real segment";
     }
     if (!IsReviewedEtaContinuationPlanTargetEndpointSingularPoint(singular_point.value.real,
                                                                   start.real,

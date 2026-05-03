@@ -214,6 +214,10 @@ void ValidatePlannedAmfOptionsEtaModeDecisionPayload(
         std::to_string(decision.selected_propagators.size()) + " expressions for " +
         std::to_string(decision.selected_propagator_indices.size()) + " indices");
   }
+  if (decision.selected_propagator_indices.empty()) {
+    throw std::invalid_argument(
+        helper_name + " requires at least one selected propagator index");
+  }
   std::vector<std::size_t> seen_indices;
   seen_indices.reserve(decision.selected_propagator_indices.size());
   for (std::size_t entry_index = 0;

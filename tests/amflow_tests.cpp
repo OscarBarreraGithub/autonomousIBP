@@ -40005,6 +40005,55 @@ void SolvePlannedAmfOptionsEtaModeSeriesRejectsDuplicateSelectedPropagatorIndice
          "exact solver");
 }
 
+void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySelectedPropagatorPayloadTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::ParsedMasterList master_basis;
+  master_basis.family = spec.family.name;
+  master_basis.masters = spec.targets;
+
+  amflow::EtaInsertionDecision empty_selection_decision;
+  empty_selection_decision.mode_name = "CustomMode";
+
+  amflow::AmfOptions amf_options;
+  amf_options.amf_modes = {"CustomMode"};
+  amf_options.use_cache = true;
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-planned-amf-options-empty-selected-payload"));
+  RecordingSeriesSolver solver;
+
+  ExpectInvalidArgument(
+      [&]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEtaModeSeries(
+            spec,
+            master_basis,
+            empty_selection_decision,
+            amf_options,
+            "amf-options-resolved-eta-mode-series",
+            MakeKiraReductionOptions(),
+            layout,
+            std::filesystem::path("/bin/false"),
+            std::filesystem::path("/bin/false"),
+            solver,
+            "eta=0",
+            "eta=1",
+            amflow::PrecisionPolicy{},
+            50,
+            "eta"));
+      },
+      "planned AmfOptions eta-mode helper requires at least one selected propagator index",
+      "generic planned AmfOptions helper should reject an empty selected-propagator payload "
+      "before reducer, cache, or solver work");
+  Expect(CountRegularFilesInDirectory(layout.manifests_dir) == 0,
+         "generic planned AmfOptions empty selected-payload coverage should not write "
+         "manifests");
+  Expect(CountRegularFilesInDirectory(SolvedPathCacheDir(layout)) == 0,
+         "generic planned AmfOptions empty selected-payload coverage should not create cache "
+         "artifacts");
+  Expect(solver.call_count() == 0,
+         "generic planned AmfOptions empty selected-payload coverage should not call the exact "
+         "solver");
+}
+
 void SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::ParsedMasterList master_basis;
@@ -49646,6 +49695,7 @@ int main() {
     SolvePlannedResolvedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsStaleSelectedPropagatorExpressionTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsDuplicateSelectedPropagatorIndicesTest();
+    SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySelectedPropagatorPayloadTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptyModeNameBeforeReducerCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsWhitespacePaddedModeNameBeforeReducerCacheOrSolverTest();
     SolvePlannedAmfOptionsEtaModeSeriesRejectsEmptySolveKindBeforeReducerCacheOrSolverTest();

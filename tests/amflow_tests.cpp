@@ -13365,6 +13365,67 @@ void Batch65mAmfOptionsEtaInfinityRejectsWhitespaceSelectedTerminalStrategyBefor
          "selected-decision metadata is missing");
 }
 
+void Batch65nPlannedEtaInfinityRejectsPaddedSelectedTerminalStrategyTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = " CustomScheme ";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  ExpectBoundaryUnsolved(
+      [&decision]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            amflow::MakeSampleProblemSpec(),
+            decision));
+      },
+      "planned eta->infinity boundary request requires selected ending decision "
+      "terminal_strategy must not contain leading or trailing whitespace",
+      "Batch 65n planned eta->infinity request should reject a non-empty selected terminal "
+      "strategy with outer whitespace");
+}
+
+void Batch65nAmfOptionsEtaInfinityRejectsPaddedSelectedTerminalStrategyBeforeProviderTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"PaddedStrategy"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "\tPaddedStrategy ";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme =
+      std::make_shared<RecordingEndingScheme>(decision, "PaddedStrategy");
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                               amf_options,
+                                                                               {scheme},
+                                                                               request_template,
+                                                                               provider,
+                                                                               solver));
+      },
+      "Batch 65n AmfOptions eta->infinity wrapper should reject padded selected strategy "
+      "metadata before provider attachment");
+
+  Expect(message.find(
+             "planned eta->infinity boundary request requires selected ending decision "
+             "terminal_strategy must not contain leading or trailing whitespace") !=
+             std::string::npos,
+         "Batch 65n AmfOptions eta->infinity wrapper should preserve the selected-decision "
+         "outer-whitespace diagnostic");
+  Expect(scheme->call_count() == 1,
+         "Batch 65n AmfOptions eta->infinity wrapper should still plan the configured ending "
+         "exactly once before validating selected-decision whitespace");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 65n AmfOptions eta->infinity wrapper should stop before provider attachment "
+         "when selected-decision strategy metadata has outer whitespace");
+  Expect(solver.call_count() == 0,
+         "Batch 65n AmfOptions eta->infinity wrapper should stop before solver execution when "
+         "selected-decision strategy metadata has outer whitespace");
+}
+
 void Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::vector<std::string> nested_zero_masses = {
@@ -48907,6 +48968,8 @@ int main() {
     Batch65lAmfOptionsEtaInfinitySolveValidatesEtaSymbolBeforePlanningTest();
     Batch65mPlannedEtaInfinityRejectsEmptySelectedTerminalStrategyTest();
     Batch65mAmfOptionsEtaInfinityRejectsWhitespaceSelectedTerminalStrategyBeforeProviderTest();
+    Batch65nPlannedEtaInfinityRejectsPaddedSelectedTerminalStrategyTest();
+    Batch65nAmfOptionsEtaInfinityRejectsPaddedSelectedTerminalStrategyBeforeProviderTest();
     Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();

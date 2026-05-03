@@ -4154,19 +4154,37 @@ std::optional<std::string> ReviewedBootstrapEtaContinuationWaypointRejectionReas
            "without singular-point ledgers or system-declared singular points; "
            "branch-changing contour execution remains deferred";
   }
-  if (plan.contour_points.size() != 3) {
+  if (plan.contour_points.size() < 3 || plan.contour_points.size() > 4) {
     return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
-           "with one reviewed upper-half-plane interior waypoint";
+           "with one or two reviewed upper-half-plane interior waypoints";
+  }
+  if (plan.contour_points.size() == 4 && !plan.singular_points.empty()) {
+    return "default exact solver accepts two-complex-waypoint eta_continuation_plan metadata "
+           "only without singular-point ledgers; singular detour execution remains deferred";
   }
 
-  const ExactComplexRational& waypoint = plan.contour_points[1];
-  if (!LiesStrictlyInsideRealEtaContinuationSegment(waypoint.real, start.real, target.real)) {
-    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
-           "when the interior waypoint projects strictly between the real endpoints";
-  }
-  if (CompareExactRationalForEtaContinuationPlan(waypoint.imaginary, ZeroRational()) <= 0) {
-    return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
-           "when the interior waypoint lies in the reviewed upper half-plane";
+  const bool increasing =
+      CompareExactRationalForEtaContinuationPlan(start.real, target.real) < 0;
+  ExactRational previous_projection = start.real;
+  for (std::size_t index = 1; index + 1 < plan.contour_points.size(); ++index) {
+    const ExactComplexRational& waypoint = plan.contour_points[index];
+    if (!LiesStrictlyInsideRealEtaContinuationSegment(waypoint.real, start.real, target.real)) {
+      return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+             "when every interior waypoint projects strictly between the real endpoints";
+    }
+    const int step_comparison =
+        CompareExactRationalForEtaContinuationPlan(previous_projection, waypoint.real);
+    const bool moves_toward_target =
+        increasing ? step_comparison < 0 : step_comparison > 0;
+    if (!moves_toward_target) {
+      return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+             "when every interior waypoint projection stays in start-to-target order";
+    }
+    if (CompareExactRationalForEtaContinuationPlan(waypoint.imaginary, ZeroRational()) <= 0) {
+      return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
+             "when every interior waypoint lies in the reviewed upper half-plane";
+    }
+    previous_projection = waypoint.real;
   }
 
   return std::nullopt;

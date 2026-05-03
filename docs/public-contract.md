@@ -365,7 +365,8 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61av`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61aw`
+  eight-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61av`
   seven-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61au`
   six-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61at`
   five-waypoint off-path zero-winding singular-ledger complex metadata slice, `Batch 61as`
@@ -403,10 +404,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `eta_continuation_plan` metadata, monotone on-segment direct-real waypoint metadata, exactly
   one upper-half-plane complex waypoint between real endpoints with no singular declarations or
   an explicit zero-winding singular ledger whose evaluated point stays off the direct real segment,
-  exactly two, three, four, five, or six ordered upper-half-plane complex waypoints between real
-  endpoints when every explicit zero-winding singular ledger stays off the direct real segment, or exactly two, three,
-  four, five, six, seven, or eight ordered upper-half-plane complex waypoints between real endpoints only
-  on the ledgerless/no-system-singular metadata subset, with a non-empty reviewed contour fingerprint
+  or exactly two, three, four, five, six, seven, or eight ordered upper-half-plane complex waypoints
+  between real endpoints when every explicit zero-winding singular ledger stays off the direct real
+  segment, with a non-empty reviewed contour fingerprint
   that exactly matches the plan metadata on its already-reviewed exact path. For direct-real
   metadata, this still includes evaluated
   ledgerless system-declared singular surfaces only when every declared singular point evaluates
@@ -424,7 +424,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   ledger value is real on the reviewed direct path; every recorded branch winding is zero; and
   each evaluated ledger point is either off the direct real segment or exactly the distinct
   singular target endpoint on the reviewed mixed exact path. It still rejects actual
-  seven-plus-waypoint singular-ledger detours, nine-plus-waypoint ledgerless detours, or
+  nine-plus-waypoint complex detours,
   branch-changing contour detours, stale contour fingerprints, duplicate direct-real contour endpoints,
   stale or value-mismatched ledgers,
   ledgerless interior on-segment, stale target-endpoint, or non-real singular declarations,

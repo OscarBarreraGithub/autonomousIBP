@@ -5818,7 +5818,7 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTwelveNestedGroupedC
          "through twelve nested grouped lightlike-linear factors");
 }
 
-void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsThirteenNestedGroupedCommonFactorTest() {
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsThirteenNestedGroupedCommonFactorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.loop_momenta = {"k1", "k2", "k3"};
   spec.family.propagators[0].expression = "(k1)^2";
@@ -5826,14 +5826,14 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsThirteenNestedGrouped
   spec.family.propagators[2].expression =
       "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(k1*n-k2*n)))))))))))))+k3*n)";
 
-  ExpectRuntimeError(
-      [&spec]() {
-        static_cast<void>(
-            amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
-      },
-      "coefficient evaluation requires a numeric binding for symbol \"n\"",
-      "reviewed lightlike linear auxiliary rewrite should keep grouped-common recursion "
-      "beyond twelve nested layers outside this batch");
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression ==
+             "x*(((1307674368000)*(k1) + (-1307674368000)*(k2) + (2)*(k3))^2) + "
+             "(2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(k1*n-k2*n)))))))))))))+k3*n))",
+         "reviewed lightlike linear auxiliary rewrite should carry the common coefficient "
+         "through thirteen nested grouped lightlike-linear factors");
 }
 
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest() {
@@ -5923,6 +5923,26 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsT
   Expect(signed_loop.expression == "x*(((-1)*(k))^2) + ((-k)*n)",
          "reviewed lightlike linear auxiliary rewrite should fold a unary sign on the direct "
          "loop factor into the loop-driver coefficient");
+}
+
+void BuiltinPropagatorSelectorSupportsThirteenNestedGroupedCommonLightlikeFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression =
+      "2*(3*(4*(5*(6*(7*(8*(9*(10*(11*(12*(13*(14*(15*(k1*n-k2*n)))))))))))))+k3*n)";
+
+  const amflow::EtaInsertionDecision decision =
+      amflow::MakeBuiltinEtaMode("Propagator")->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "builtin Propagator selector should inherit thirteen-nested reviewed lightlike-linear "
+         "helper acceptance before falling back to structural selection");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "builtin Propagator selector should preserve the selected thirteen-nested expression "
+         "metadata for the generated-x route");
 }
 
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest() {
@@ -50982,13 +51002,14 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTenNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsElevenNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTwelveNestedGroupedCommonFactorTest();
-    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsThirteenNestedGroupedCommonFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsThirteenNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSquaredScalarProductRuleTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedSquaredScalarProductRuleTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSignedDirectFactorsTest();
+    BuiltinPropagatorSelectorSupportsThirteenNestedGroupedCommonLightlikeFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEmptySymbolTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsOutOfRangeIndexTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsImplicitLinearMetadataTest();

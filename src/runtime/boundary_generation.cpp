@@ -453,10 +453,16 @@ void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,
 }
 
 void ValidatePlannedCutkoskyPhaseSpaceDecisionMetadata(const EndingDecision& decision) {
-  if (Trim(decision.terminal_strategy).empty()) {
+  const std::string trimmed_terminal_strategy = Trim(decision.terminal_strategy);
+  if (trimmed_terminal_strategy.empty()) {
     throw BoundaryUnsolvedError(
         "planned Cutkosky phase-space boundary request requires selected ending decision "
         "terminal_strategy must not be empty");
+  }
+  if (trimmed_terminal_strategy != decision.terminal_strategy) {
+    throw BoundaryUnsolvedError(
+        "planned Cutkosky phase-space boundary request requires selected ending decision "
+        "terminal_strategy must not contain leading or trailing whitespace");
   }
 }
 

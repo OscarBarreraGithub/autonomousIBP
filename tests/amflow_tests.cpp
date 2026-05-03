@@ -13871,6 +13871,69 @@ void Batch63zAmfOptionsCutkoskyRejectsWhitespaceSelectedTerminalStrategyBeforePr
          "selected-decision metadata is missing");
 }
 
+void Batch63adPlannedCutkoskyRejectsPaddedSelectedTerminalStrategyTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = " CustomCutkosky ";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+
+  ExpectBoundaryUnsolved(
+      [&decision]() {
+        static_cast<void>(amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+            MakeReviewedCutkoskyPhaseSpaceSpec(),
+            decision));
+      },
+      "planned Cutkosky phase-space boundary request requires selected ending decision "
+      "terminal_strategy must not contain leading or trailing whitespace",
+      "Batch 63ad planned Cutkosky request should reject a non-empty selected terminal "
+      "strategy with outer whitespace");
+}
+
+void Batch63adAmfOptionsCutkoskyRejectsPaddedSelectedTerminalStrategyBeforeProviderTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"PaddedStrategy"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "\tPaddedStrategy ";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme =
+      std::make_shared<RecordingEndingScheme>(decision, "PaddedStrategy");
+  RecordingStaticBoundaryProvider provider(
+      "builtin::cutkosky-phase-space::minus_i0",
+      {MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63ad AmfOptions Cutkosky wrapper should reject padded selected strategy "
+      "metadata before provider attachment");
+
+  Expect(message.find(
+             "planned Cutkosky phase-space boundary request requires selected ending decision "
+             "terminal_strategy must not contain leading or trailing whitespace") !=
+             std::string::npos,
+         "Batch 63ad AmfOptions Cutkosky wrapper should preserve the selected-decision "
+         "outer-whitespace diagnostic");
+  Expect(scheme->call_count() == 1,
+         "Batch 63ad AmfOptions Cutkosky wrapper should still plan the configured ending "
+         "exactly once before validating selected-decision whitespace");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63ad AmfOptions Cutkosky wrapper should stop before provider attachment when "
+         "selected-decision strategy metadata has outer whitespace");
+  Expect(solver.call_count() == 0,
+         "Batch 63ad AmfOptions Cutkosky wrapper should stop before solver execution when "
+         "selected-decision strategy metadata has outer whitespace");
+}
+
 void Batch63aaNamedCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest() {
   amflow::EndingDecision decision;
   decision.terminal_strategy = "ProbeScheme";
@@ -49075,6 +49138,8 @@ int main() {
     Batch63yPlannedCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest();
     Batch63zPlannedCutkoskyRejectsEmptySelectedTerminalStrategyTest();
     Batch63zAmfOptionsCutkoskyRejectsWhitespaceSelectedTerminalStrategyBeforeProviderTest();
+    Batch63adPlannedCutkoskyRejectsPaddedSelectedTerminalStrategyTest();
+    Batch63adAmfOptionsCutkoskyRejectsPaddedSelectedTerminalStrategyBeforeProviderTest();
     Batch63aaNamedCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
     Batch63abAmfOptionsCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
     Batch63abAmfOptionsCutkoskySolveValidatesEtaSymbolBeforePlanningTest();

@@ -37,6 +37,8 @@ bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
              std::string::npos ||
          message.find("ending scheme Cutkosky requires target ") !=
              std::string::npos ||
+         message.find("ending scheme Cutkosky requires connected cut component") !=
+             std::string::npos ||
          message.find("ending scheme Cutkosky requires a connected cut surface") !=
              std::string::npos;
 }
@@ -80,6 +82,15 @@ std::string JoinNames(const std::vector<std::string>& names) {
   return stream.str();
 }
 
+std::string DescribeCutComponent(const CutkoskyPhaseSpaceCutComponent& component) {
+  std::ostringstream stream;
+  stream << "cuts=" << JoinIndices(component.cut_propagator_indices)
+         << " loops=" << JoinNames(component.loop_momenta)
+         << " active_top_level_sectors="
+         << JoinSectors(component.active_top_level_sectors);
+  return stream.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream stream;
@@ -88,10 +99,7 @@ std::string DescribeCutComponents(
     if (index != 0) {
       stream << ", ";
     }
-    stream << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
-           << " loops=" << JoinNames(components[index].loop_momenta)
-           << " active_top_level_sectors="
-           << JoinSectors(components[index].active_top_level_sectors);
+    stream << DescribeCutComponent(components[index]);
   }
   stream << "]";
   return stream.str();
@@ -199,6 +207,18 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
           JoinSectors(spec.family.top_level_sectors) +
           " before emitting the reviewed phase-space terminal node on the current reviewed "
           "multi-top-sector support subset");
+    }
+    for (const CutkoskyPhaseSpaceCutComponent& component : topology.cut_components) {
+      if (!component.active_top_level_sectors.empty()) {
+        continue;
+      }
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires connected cut component " +
+          DescribeCutComponent(component) +
+          " to share at least one declared top-level sector " +
+          JoinSectors(spec.family.top_level_sectors) +
+          " before emitting the reviewed phase-space terminal node on the current reviewed "
+          "component top-sector support subset");
     }
   }
 

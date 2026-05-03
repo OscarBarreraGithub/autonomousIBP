@@ -8205,6 +8205,20 @@ void PlanEndingSchemeCutkoskyRejectsInactiveMultiTopSectorCutTest() {
       "node when no reviewed top sector activates one of the cut propagators");
 }
 
+void PlanEndingSchemeCutkoskyRejectsSplitMultiTopSectorCutComponentTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {1, 32};
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
+      },
+      "connected cut component cuts=[0, 5] loops=[k1, k2] "
+      "active_top_level_sectors=[] to share at least one declared top-level sector [1, 32]",
+      "Batch 63au Cutkosky ending planner should fail before emitting a phase-space terminal "
+      "node when a connected cut component is split across disjoint declared top sectors");
+}
+
 void PlanEndingSchemeCutkoskyRejectsTargetMissingCutSupportTest() {
   amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   spec.targets[0].indices[5] = 0;
@@ -8564,6 +8578,22 @@ void PlanAmfOptionsEndingSchemeRejectsInactiveMultiTopSectorCutBeforeFallbackTes
       "cut propagator 5 to be active in at least one declared top-level sector [1, 3]",
       "Batch 63ao AmfOptions ending planner should fail fast when the reviewed top-sector "
       "set omits a Cutkosky cut propagator instead of falling through to a placeholder ending");
+}
+
+void PlanAmfOptionsEndingSchemeRejectsSplitMultiTopSectorCutComponentBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {1, 32};
+  const amflow::AmfOptions amf_options;
+
+  ExpectRuntimeError(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
+      },
+      "connected cut component cuts=[0, 5] loops=[k1, k2] "
+      "active_top_level_sectors=[] to share at least one declared top-level sector [1, 32]",
+      "Batch 63au AmfOptions ending planner should fail fast when a connected Cutkosky cut "
+      "component is split across disjoint declared top sectors instead of falling through to a "
+      "placeholder ending");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsTargetMissingCutSupportBeforeFallbackTest() {
@@ -11525,17 +11555,31 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsInactiveMultiTopSect
       "top-sector set that omits a cut propagator before provider routing");
 }
 
-void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAcceptsDistributedMultiTopSectorCutsTest() {
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsSplitMultiTopSectorCutComponentTest() {
   amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   spec.family.top_level_sectors = {1, 32};
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "connected cut component cuts=[0, 5] loops=[k1, k2] "
+      "active_top_level_sectors=[] to share at least one declared top-level sector [1, 32]",
+      "Batch 63au builtin Cutkosky phase-space boundary generation should reject a connected "
+      "cut component split across disjoint declared top sectors before provider routing");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAcceptsCommonMultiTopSectorCutComponentTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {1, 32, 127};
 
   const amflow::BoundaryRequest request =
       amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec);
 
   Expect(request.strategy == "builtin::cutkosky-phase-space::minus_i0",
-         "Batch 63ao builtin Cutkosky phase-space boundary generation should accept the "
-         "reviewed multi-top-sector subset when every cut is active in at least one declared "
-         "sector");
+         "Batch 63au builtin Cutkosky phase-space boundary generation should accept the "
+         "reviewed multi-top-sector subset when every connected cut component shares at least "
+         "one declared active sector");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsTargetMissingCutSupportTest() {
@@ -52064,6 +52108,7 @@ int main() {
     PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest();
     PlanEndingSchemeCutkoskyRejectsInactiveSingleTopSectorCutTest();
     PlanEndingSchemeCutkoskyRejectsInactiveMultiTopSectorCutTest();
+    PlanEndingSchemeCutkoskyRejectsSplitMultiTopSectorCutComponentTest();
     PlanEndingSchemeCutkoskyRejectsTargetMissingCutSupportTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
@@ -52082,6 +52127,7 @@ int main() {
     PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsInactiveSingleTopSectorCutBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsInactiveMultiTopSectorCutBeforeFallbackTest();
+    PlanAmfOptionsEndingSchemeRejectsSplitMultiTopSectorCutComponentBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsTargetMissingCutSupportBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
@@ -52195,7 +52241,8 @@ int main() {
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsInactiveSingleTopSectorCutTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsInactiveMultiTopSectorCutTest();
-    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAcceptsDistributedMultiTopSectorCutsTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsSplitMultiTopSectorCutComponentTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestAcceptsCommonMultiTopSectorCutComponentTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsTargetMissingCutSupportTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();

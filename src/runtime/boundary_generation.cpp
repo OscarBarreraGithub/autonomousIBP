@@ -107,6 +107,15 @@ bool IsReviewedEtaInfinityZeroMassLiteral(const std::string& value) {
   return IsReviewedEtaInfinityBareZeroMassLiteral(trimmed);
 }
 
+std::string DescribeCutComponent(const CutkoskyPhaseSpaceCutComponent& component) {
+  std::ostringstream out;
+  out << "cuts=" << JoinIndices(component.cut_propagator_indices)
+      << " loops=" << JoinNames(component.loop_momenta)
+      << " active_top_level_sectors="
+      << JoinSectors(component.active_top_level_sectors);
+  return out.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream out;
@@ -115,10 +124,7 @@ std::string DescribeCutComponents(
     if (index != 0) {
       out << ", ";
     }
-    out << "cuts=" << JoinIndices(components[index].cut_propagator_indices)
-        << " loops=" << JoinNames(components[index].loop_momenta)
-        << " active_top_level_sectors="
-        << JoinSectors(components[index].active_top_level_sectors);
+    out << DescribeCutComponent(components[index]);
   }
   out << "]";
   return out.str();
@@ -323,6 +329,18 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
           " to be active in at least one declared top-level sector " +
           JoinSectors(spec.family.top_level_sectors) +
           " on the current reviewed multi-top-sector support subset");
+    }
+    for (const CutkoskyPhaseSpaceCutComponent& component : topology.cut_components) {
+      if (!component.active_top_level_sectors.empty()) {
+        continue;
+      }
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires connected cut "
+          "component " +
+          DescribeCutComponent(component) +
+          " to share at least one declared top-level sector " +
+          JoinSectors(spec.family.top_level_sectors) +
+          " on the current reviewed component top-sector support subset");
     }
   }
 

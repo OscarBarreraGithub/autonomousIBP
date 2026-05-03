@@ -18365,10 +18365,11 @@ void BootstrapSeriesSolverAcceptsSixComplexWaypointsEtaContinuationPlanOnDefault
          "real endpoints");
 }
 
-void BootstrapSeriesSolverRejectsSevenComplexWaypointsEtaContinuationPlanTest() {
+void BootstrapSeriesSolverAcceptsSevenComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
       MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  amflow::SolveRequest baseline_request = request;
   request.eta_continuation_plan =
       MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
   for (int numerator = 1; numerator <= 7; ++numerator) {
@@ -18380,19 +18381,46 @@ void BootstrapSeriesSolverRejectsSevenComplexWaypointsEtaContinuationPlanTest() 
   }
   RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
 
+  const amflow::SolverDiagnostics baseline = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
+
+  Expect(baseline.success,
+         "bootstrap seven-complex-waypoint eta-continuation-plan coverage should keep the "
+         "baseline exact endpoint path supported");
+  Expect(SameSolverDiagnostics(diagnostics, baseline),
+         "bootstrap seven-complex-waypoint eta-continuation-plan coverage should preserve exact "
+         "diagnostics when all reviewed upper-half-plane waypoints stay ordered between the "
+         "real endpoints");
+}
+
+void BootstrapSeriesSolverRejectsEightComplexWaypointsEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(request.start_location, request.target_location);
+  for (int numerator = 1; numerator <= 8; ++numerator) {
+    amflow::ExactComplexRational detour;
+    detour.real = {std::to_string(numerator), "9"};
+    detour.imaginary = {"1", std::to_string(numerator + 4)};
+    request.eta_continuation_plan->contour_points.insert(
+        request.eta_continuation_plan->contour_points.begin() + numerator, detour);
+  }
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(*request.eta_continuation_plan);
+
   const amflow::SolverDiagnostics diagnostics = solver.Solve(request);
 
   Expect(!diagnostics.success && diagnostics.failure_code == "unsupported_solver_path",
-         "bootstrap seven-complex-waypoint eta-continuation-plan coverage should keep broader "
+         "bootstrap eight-complex-waypoint eta-continuation-plan coverage should keep broader "
          "complex contour metadata off the default exact solver path");
   ExpectContains(diagnostics.summary,
-                 "one, two, three, four, five, or six reviewed upper-half-plane interior "
+                 "one, two, three, four, five, six, or seven reviewed upper-half-plane interior "
                  "waypoints",
-                 "bootstrap seven-complex-waypoint eta-continuation-plan coverage should "
-                 "explain the reviewed six-waypoint cap");
+                 "bootstrap eight-complex-waypoint eta-continuation-plan coverage should "
+                 "explain the reviewed seven-waypoint cap");
   ExpectContains(diagnostics.summary,
                  request.eta_continuation_plan->contour_fingerprint,
-                 "bootstrap seven-complex-waypoint eta-continuation-plan coverage should report "
+                 "bootstrap eight-complex-waypoint eta-continuation-plan coverage should report "
                  "the reviewed contour fingerprint");
 }
 
@@ -51973,7 +52001,8 @@ int main() {
     BootstrapSeriesSolverAcceptsFourComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsFiveComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
     BootstrapSeriesSolverAcceptsSixComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
-    BootstrapSeriesSolverRejectsSevenComplexWaypointsEtaContinuationPlanTest();
+    BootstrapSeriesSolverAcceptsSevenComplexWaypointsEtaContinuationPlanOnDefaultExactPathTest();
+    BootstrapSeriesSolverRejectsEightComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsOutOfOrderTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsSingularLedgerTwoComplexWaypointsEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsOffPathZeroWindingLedgerComplexWaypointEtaContinuationPlanOnDefaultExactPathTest();

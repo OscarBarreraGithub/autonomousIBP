@@ -6201,6 +6201,21 @@ void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsComplexNumericS
       "substitution surfaces outside the generated-x selector");
 }
 
+void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsBareComplexModeTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.complex_numeric_substitutions.clear();
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(spec));
+      },
+      "requires complex_mode to be disabled",
+      "reviewed lightlike linear automatic selection should keep bare complex-mode surfaces "
+      "outside the generated-x selector");
+}
+
 void SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.propagators[2].variant.reset();
@@ -6463,6 +6478,29 @@ void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest() {
   Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
          "reviewed lightlike-linear Propagator selection should not mutate the input problem "
          "spec");
+}
+
+void PropagatorEtaModeFallsBackForBareComplexModeLightlikeLinearSurfaceTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.complex_mode = true;
+  spec.kinematics.complex_numeric_substitutions.clear();
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{0, 1, 2},
+         "Propagator eta mode should preserve structural fallback when bare complex_mode keeps "
+         "the generated-x selector unavailable");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[0].expression,
+                                      spec.family.propagators[1].expression,
+                                      spec.family.propagators[2].expression},
+         "Propagator eta mode should preserve declaration-order structural expressions when "
+         "bare complex_mode disables generated-x routing");
+  Expect(decision.explanation ==
+             "Bootstrap structural selector selected 3 non-auxiliary propagators in "
+             "declaration order for mode Propagator",
+         "Propagator eta mode should keep the structural-selector explanation on bare "
+         "complex_mode surfaces");
 }
 
 void PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest() {
@@ -51878,6 +51916,7 @@ int main() {
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsComplexNumericSubstitutionsTest();
+    SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsBareComplexModeTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMissingExplicitLinearVariantTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexRejectsMultipleExplicitLinearPropagatorsTest();
     ApplyReviewedLightlikeLinearAuxiliaryTransformHappyPathTest();
@@ -51891,6 +51930,7 @@ int main() {
     PrescriptionEtaModeSupportsReviewedPassiveLinearSubsetTest();
     PropagatorEtaModeSelectsAllNonAuxiliaryPropagatorsTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorTest();
+    PropagatorEtaModeFallsBackForBareComplexModeLightlikeLinearSurfaceTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSpectatorExternalTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSquaredScalarProductRuleTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedSquaredScalarProductRuleTest();

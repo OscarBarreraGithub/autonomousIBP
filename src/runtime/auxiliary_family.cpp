@@ -974,6 +974,11 @@ std::size_t SelectReviewedLightlikeLinearAuxiliaryPropagatorIndex(const ProblemS
         "reviewed lightlike linear auxiliary automatic selection requires no complex numeric "
         "substitutions on the current generated-x selector surface");
   }
+  if (spec.complex_mode) {
+    throw std::runtime_error(
+        "reviewed lightlike linear auxiliary automatic selection requires complex_mode to be "
+        "disabled on the current generated-x selector surface");
+  }
 
   std::optional<std::size_t> selected_index;
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {

@@ -57,7 +57,7 @@ void SelectNonAuxiliaryPropagators(const ProblemSpec& spec, EtaInsertionDecision
 
 std::optional<std::size_t> SelectReviewedPropagatorModeLightlikeLinearIndex(
     const ProblemSpec& spec) {
-  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+  if (spec.complex_mode || !spec.kinematics.complex_numeric_substitutions.empty()) {
     return std::nullopt;
   }
 

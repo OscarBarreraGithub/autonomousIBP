@@ -443,8 +443,11 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   Cutkosky request/attach seam now consults that metadata to refine builtin phase-space
   provider selection on cut propagators when one uniform loop-derived/raw-matching prescription
   survives; without loop metadata, uniform raw cut prescriptions can select the reviewed `+i0`,
-  `-i0`, or no-prescription provider strategies. The same reviewed strategy vocabulary is now
-  available through a deferred builtin
+  `-i0`, or no-prescription provider strategies. The Cutkosky ending planner now also consumes
+  the loop-derived/raw-match preflight on that reviewed loop-prescription surface before emitting
+  the phase-space terminal node, so ordered `AmfOptions` ending selection fails fast instead of
+  falling through to later placeholder endings when those prescription surfaces disagree. The same
+  reviewed strategy vocabulary is now available through a deferred builtin
   Cutkosky phase-space provider registry that matches the legacy, `+i0`, `-i0`, and no-prescription
   request strategies but still returns typed `boundary_unsolved` before solver execution because
   automatic boundary values remain unavailable. A no-provider `AmfOptions` Cutkosky wrapper now

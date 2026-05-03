@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 
@@ -31,6 +32,10 @@ bool IsCutkoskyPrescriptionVocabularyFailure(const std::string& message) {
 bool IsMalformedCutkoskyPlanningFailure(const std::exception& error) {
   const std::string message = error.what();
   return IsCutkoskyPrescriptionVocabularyFailure(message) ||
+         message.find("ending scheme Cutkosky could not derive a loop-prescription-backed "
+                      "provider strategy") != std::string::npos ||
+         message.find("ending scheme Cutkosky requires all cut propagators to resolve to the "
+                      "same loop-prescription-backed provider strategy") != std::string::npos ||
          message.find("ending scheme Cutkosky only supports standard/cut propagators") !=
              std::string::npos ||
          message.find("ending scheme Cutkosky requires cut propagator ") !=
@@ -143,6 +148,59 @@ std::vector<std::size_t> CollectCutPropagatorIndices(const ProblemSpec& spec) {
     }
   }
   return cut_indices;
+}
+
+void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
+  if (spec.family.loop_prescriptions.empty()) {
+    return;
+  }
+
+  std::optional<FeynmanPrescription> selected_cut_prescription;
+  for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
+    const Propagator& propagator = spec.family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    const std::optional<FeynmanPrescription> derived_prescription =
+        DerivePropagatorPrescriptionFromLoopPrescriptions(spec.family, propagator);
+    if (!derived_prescription.has_value()) {
+      throw std::runtime_error(
+          "ending scheme Cutkosky could not derive a loop-prescription-backed provider "
+          "strategy for cut propagator " +
+          std::to_string(index) +
+          " from family.loop_prescriptions before emitting the reviewed phase-space terminal "
+          "node");
+    }
+
+    const std::optional<FeynmanPrescription> raw_prescription =
+        ParseFeynmanPrescription(propagator.prescription);
+    if (!raw_prescription.has_value()) {
+      throw std::invalid_argument("family.propagators[" + std::to_string(index) +
+                                  "].prescription must be one of -1 (-i0), 0 (none), or 1 "
+                                  "(+i0)");
+    }
+
+    if (*derived_prescription != *raw_prescription) {
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires cut propagator " +
+          std::to_string(index) +
+          " raw prescription to match family.loop_prescriptions before emitting the reviewed "
+          "phase-space terminal node on the current reviewed provider-selection subset");
+    }
+
+    if (!selected_cut_prescription.has_value()) {
+      selected_cut_prescription = *derived_prescription;
+      continue;
+    }
+
+    if (*selected_cut_prescription != *derived_prescription) {
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires all cut propagators to resolve to the same "
+          "loop-prescription-backed provider strategy before emitting the reviewed "
+          "phase-space terminal node on the current reviewed provider-selection subset");
+    }
+  }
 }
 
 std::string EtaInfinityTerminalNode(const ProblemSpec& spec) {
@@ -265,6 +323,8 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
           "reviewed component target-support subset");
     }
   }
+
+  ValidateCutkoskyLoopPrescriptionProviderSurface(spec);
 }
 
 void ValidateUserDefinedEndingSchemeRegistry(

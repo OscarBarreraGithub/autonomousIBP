@@ -3465,7 +3465,20 @@ std::optional<std::size_t> SelectReviewedSingleExplicitLinearDecisionIndex(
         "reviewed single explicit-linear generated-x route requires selected propagator "
         "expression metadata for exactly one selected index");
   }
-  if (decision.selected_propagators.front() != selected.expression) {
+  const std::string& selected_expression_metadata = decision.selected_propagators.front();
+  const std::string trimmed_selected_expression_metadata =
+      Trim(selected_expression_metadata);
+  if (trimmed_selected_expression_metadata.empty()) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route requires non-empty selected "
+        "propagator expression metadata");
+  }
+  if (trimmed_selected_expression_metadata != selected_expression_metadata) {
+    throw std::invalid_argument(
+        "reviewed single explicit-linear generated-x route requires selected propagator "
+        "expression metadata without outer whitespace");
+  }
+  if (selected_expression_metadata != selected.expression) {
     throw std::invalid_argument(
         "reviewed single explicit-linear generated-x route selected propagator expression "
         "metadata does not match selected index " +

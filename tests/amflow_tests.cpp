@@ -32287,6 +32287,77 @@ void SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest() {
          "direct single-linear stale-payload rejection should not call the supplied solver");
 }
 
+void SolveEtaGeneratedSeriesRejectsWhitespaceSingleLinearDecisionPayloadTest() {
+  const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+
+  amflow::EtaInsertionDecision whitespace_decision;
+  whitespace_decision.mode_name = "DirectLinear";
+  whitespace_decision.selected_propagator_indices = {2};
+  whitespace_decision.selected_propagators = {" \t "};
+  whitespace_decision.explanation = "direct whitespace single explicit linear propagator";
+  const amflow::ArtifactLayout whitespace_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-whitespace-payload"));
+  RecordingSeriesSolver whitespace_solver;
+
+  ExpectInvalidArgument(
+      [&spec, &whitespace_decision, &whitespace_layout, &whitespace_solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            whitespace_decision,
+            MakeKiraReductionOptions(),
+            whitespace_layout,
+            whitespace_layout.root / "bin" / "unused-kira.sh",
+            whitespace_layout.root / "bin" / "unused-fermat.sh",
+            whitespace_solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            71,
+            "x"));
+      },
+      "requires non-empty selected propagator expression metadata",
+      "direct single-linear route should reject whitespace-only selected-propagator metadata "
+      "before lightlike reducer or solver execution");
+  Expect(whitespace_solver.call_count() == 0,
+         "direct single-linear whitespace-payload rejection should not call the supplied "
+         "solver");
+
+  amflow::EtaInsertionDecision padded_decision;
+  padded_decision.mode_name = "DirectLinear";
+  padded_decision.selected_propagator_indices = {2};
+  padded_decision.selected_propagators = {
+      " \t" + spec.family.propagators[2].expression + " \n",
+  };
+  padded_decision.explanation = "direct padded single explicit linear propagator";
+  const amflow::ArtifactLayout padded_layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-padded-payload"));
+  RecordingSeriesSolver padded_solver;
+
+  ExpectInvalidArgument(
+      [&spec, &padded_decision, &padded_layout, &padded_solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            padded_decision,
+            MakeKiraReductionOptions(),
+            padded_layout,
+            padded_layout.root / "bin" / "unused-kira.sh",
+            padded_layout.root / "bin" / "unused-fermat.sh",
+            padded_solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            71,
+            "x"));
+      },
+      "requires selected propagator expression metadata without outer whitespace",
+      "direct single-linear route should reject padded selected-propagator metadata before "
+      "lightlike reducer or solver execution");
+  Expect(padded_solver.call_count() == 0,
+         "direct single-linear padded-payload rejection should not call the supplied solver");
+}
+
 void SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest() {
   const amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   amflow::EtaInsertionDecision decision;
@@ -53020,6 +53091,7 @@ int main() {
     SolveEtaGeneratedSeriesSupportsReviewedLinearPropagatorSubsetTest();
     SolveEtaGeneratedSeriesRoutesSingleLinearDecisionThroughLightlikeDerivativeTest();
     SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest();
+    SolveEtaGeneratedSeriesRejectsWhitespaceSingleLinearDecisionPayloadTest();
     SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();

@@ -4219,10 +4219,10 @@ std::optional<std::string> ReviewedBootstrapEtaContinuationWaypointRejectionReas
            "without singular-point ledgers or system-declared singular points; "
            "branch-changing contour execution remains deferred";
   }
-  if (plan.contour_points.size() < 3 || plan.contour_points.size() > 15) {
+  if (plan.contour_points.size() < 3 || plan.contour_points.size() > 16) {
     return "default exact solver accepts complex waypoint eta_continuation_plan metadata only "
-           "with one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, or "
-           "thirteen reviewed upper-half-plane interior waypoints";
+           "with one, two, three, four, five, six, seven, eight, nine, ten, eleven, twelve, "
+           "thirteen, or fourteen reviewed upper-half-plane interior waypoints";
   }
   const bool increasing =
       CompareExactRationalForEtaContinuationPlan(start.real, target.real) < 0;

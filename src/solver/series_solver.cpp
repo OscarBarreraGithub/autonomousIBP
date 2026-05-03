@@ -4210,9 +4210,10 @@ std::optional<std::string> ReviewedBootstrapEtaContinuationWaypointRejectionReas
            "with one, two, three, four, five, six, seven, or eight reviewed upper-half-plane "
            "interior waypoints";
   }
-  if (plan.contour_points.size() >= 4 && !plan.singular_points.empty()) {
+  if (plan.contour_points.size() >= 5 && !plan.singular_points.empty()) {
     return "default exact solver accepts multi-complex-waypoint eta_continuation_plan metadata "
-           "only without singular-point ledgers; singular detour execution remains deferred";
+           "only with at most two reviewed interior waypoints and off-path zero-winding "
+           "singular ledgers; singular detour execution remains deferred";
   }
 
   const bool increasing =

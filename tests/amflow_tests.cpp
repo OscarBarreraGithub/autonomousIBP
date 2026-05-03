@@ -11503,6 +11503,42 @@ void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest() {
          "ProblemSpec");
 }
 
+void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTargetActivationTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.targets.push_back({"planar_double_box", {1, 1, 1, 1, 1, 0, 1}});
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+
+  const amflow::CutkoskyPhaseSpaceTopology topology =
+      amflow::AnalyzeCutkoskyPhaseSpaceCutTopology(spec);
+
+  const std::vector<std::string> all_target_labels = {
+      "planar_double_box[1,1,1,1,1,1,1]",
+      "planar_double_box[1,1,1,1,1,0,1]",
+  };
+  const std::vector<std::string> full_cut_target_labels = {
+      "planar_double_box[1,1,1,1,1,1,1]",
+  };
+
+  Expect(topology.cut_supports.size() == 2,
+         "Batch 63av Cutkosky topology should retain the reviewed cut propagators while "
+         "reporting target activation");
+  Expect(topology.cut_supports[0].active_target_labels == all_target_labels,
+         "Batch 63av Cutkosky topology should report target labels that keep the first cut "
+         "propagator active in target declaration order");
+  Expect(topology.cut_supports[1].active_target_labels == full_cut_target_labels,
+         "Batch 63av Cutkosky topology should report only target labels that keep the second "
+         "cut propagator active");
+  Expect(topology.cut_components.size() == 1,
+         "Batch 63av Cutkosky topology should keep connected cuts in one component while "
+         "reporting component target activation");
+  Expect(topology.cut_components[0].active_target_labels == full_cut_target_labels,
+         "Batch 63av Cutkosky topology should report only target labels that activate every "
+         "cut in the connected component");
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "Batch 63av Cutkosky target activation telemetry should not mutate the input "
+         "ProblemSpec");
+}
+
 void AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest() {
   amflow::ProblemSpec spec = MakeDisconnectedCutkoskyPhaseSpaceSpec();
   spec.family.top_level_sectors = {1, 8, 127};
@@ -52341,6 +52377,7 @@ int main() {
     GenerateBuiltinEtaInfinityBoundaryRequestAcceptsNestedParenthesizedZeroMassTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsCutLoopSupportsTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTopSectorActivationTest();
+    AnalyzeCutkoskyPhaseSpaceCutTopologyReportsTargetActivationTest();
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest();

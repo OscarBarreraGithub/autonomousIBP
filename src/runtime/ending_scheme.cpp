@@ -123,11 +123,6 @@ std::string CutkoskyPhaseSpaceTerminalNode(const ProblemSpec& spec) {
   return spec.family.name + "::cutkosky-phase-space";
 }
 
-bool IsPropagatorActiveInTarget(const std::size_t propagator_index,
-                                const TargetIntegral& target) {
-  return propagator_index < target.indices.size() && target.indices[propagator_index] > 0;
-}
-
 void ValidateTraditionEndingSurface(const ProblemSpec& spec) {
   const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
   if (cut_indices.empty()) {
@@ -161,7 +156,7 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
   }
 
   const CutkoskyPhaseSpaceTopology topology =
-      AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+      AnalyzeCutkoskyPhaseSpaceCutTopology(spec);
   for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
     if (!support.loop_momenta.empty()) {
       continue;
@@ -223,12 +218,15 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
   }
 
   for (const TargetIntegral& target : spec.targets) {
+    const std::string target_label = target.Label();
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (IsPropagatorActiveInTarget(support.propagator_index, target)) {
+      if (std::find(support.active_target_labels.begin(),
+                    support.active_target_labels.end(),
+                    target_label) != support.active_target_labels.end()) {
         continue;
       }
       throw std::runtime_error(
-          "ending scheme Cutkosky requires target " + target.Label() +
+          "ending scheme Cutkosky requires target " + target_label +
           " to keep cut propagator " + std::to_string(support.propagator_index) +
           " active before emitting the reviewed phase-space terminal node on the current "
           "reviewed target-support subset");

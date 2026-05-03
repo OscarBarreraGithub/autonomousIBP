@@ -192,6 +192,17 @@ std::vector<int> IntersectActiveTopLevelSectors(const std::vector<int>& lhs,
   return intersection;
 }
 
+std::vector<std::string> IntersectActiveTargetLabels(const std::vector<std::string>& lhs,
+                                                     const std::vector<std::string>& rhs) {
+  std::vector<std::string> intersection;
+  for (const std::string& label : lhs) {
+    if (std::find(rhs.begin(), rhs.end(), label) != rhs.end()) {
+      intersection.push_back(label);
+    }
+  }
+  return intersection;
+}
+
 std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutSupport>& cut_supports,
     const std::vector<std::string>& declared_loop_order) {
@@ -207,6 +218,7 @@ std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     std::vector<std::size_t> queue = {seed};
     visited[seed] = true;
     bool initialized_component_sectors = false;
+    bool initialized_component_targets = false;
     for (std::size_t cursor = 0; cursor < queue.size(); ++cursor) {
       const std::size_t current = queue[cursor];
       const CutkoskyPhaseSpaceCutSupport& support = cut_supports[current];
@@ -218,6 +230,13 @@ std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
       } else {
         component.active_top_level_sectors = IntersectActiveTopLevelSectors(
             component.active_top_level_sectors, support.active_top_level_sectors);
+      }
+      if (!initialized_component_targets) {
+        component.active_target_labels = support.active_target_labels;
+        initialized_component_targets = true;
+      } else {
+        component.active_target_labels = IntersectActiveTargetLabels(
+            component.active_target_labels, support.active_target_labels);
       }
 
       for (std::size_t candidate = 0; candidate < cut_supports.size(); ++candidate) {
@@ -239,6 +258,43 @@ std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
     components.push_back(std::move(component));
   }
   return components;
+}
+
+CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopologyImpl(
+    const FamilyDefinition& family,
+    const std::vector<TargetIntegral>* targets) {
+  CutkoskyPhaseSpaceTopology topology;
+  for (std::size_t index = 0; index < family.propagators.size(); ++index) {
+    const Propagator& propagator = family.propagators[index];
+    if (propagator.kind != PropagatorKind::Cut) {
+      continue;
+    }
+
+    CutkoskyPhaseSpaceCutSupport support;
+    support.propagator_index = index;
+    const std::set<std::string> identifiers = ExtractIdentifiers(propagator.expression);
+    for (const std::string& loop_momentum : family.loop_momenta) {
+      if (identifiers.find(loop_momentum) != identifiers.end()) {
+        support.loop_momenta.push_back(loop_momentum);
+      }
+    }
+    for (const int sector : family.top_level_sectors) {
+      if (IsPropagatorActiveInTopLevelSector(index, sector)) {
+        support.active_top_level_sectors.push_back(sector);
+      }
+    }
+    if (targets != nullptr) {
+      for (const TargetIntegral& target : *targets) {
+        if (IsPropagatorActiveInTarget(index, target)) {
+          support.active_target_labels.push_back(target.Label());
+        }
+      }
+    }
+    topology.cut_supports.push_back(std::move(support));
+  }
+  topology.cut_components =
+      BuildCutComponents(topology.cut_supports, family.loop_momenta);
+  return topology;
 }
 
 void ValidateBuiltinEtaInfinitySubset(const ProblemSpec& spec) {
@@ -285,7 +341,7 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
   }
 
   const CutkoskyPhaseSpaceTopology topology =
-      AnalyzeCutkoskyPhaseSpaceCutTopology(spec.family);
+      AnalyzeCutkoskyPhaseSpaceCutTopology(spec);
   for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
     if (!support.loop_momenta.empty()) {
       continue;
@@ -345,13 +401,16 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
   }
 
   for (const TargetIntegral& target : spec.targets) {
+    const std::string target_label = target.Label();
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (IsPropagatorActiveInTarget(support.propagator_index, target)) {
+      if (std::find(support.active_target_labels.begin(),
+                    support.active_target_labels.end(),
+                    target_label) != support.active_target_labels.end()) {
         continue;
       }
       throw BoundaryUnsolvedError(
           "builtin Cutkosky phase-space boundary request generation requires target " +
-          target.Label() + " to keep cut propagator " +
+          target_label + " to keep cut propagator " +
           std::to_string(support.propagator_index) +
           " active on the current reviewed target-support subset");
     }
@@ -611,31 +670,12 @@ void ValidatePlannedCutkoskyPhaseSpaceDecisionMetadata(const EndingDecision& dec
 
 CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
     const FamilyDefinition& family) {
-  CutkoskyPhaseSpaceTopology topology;
-  for (std::size_t index = 0; index < family.propagators.size(); ++index) {
-    const Propagator& propagator = family.propagators[index];
-    if (propagator.kind != PropagatorKind::Cut) {
-      continue;
-    }
+  return AnalyzeCutkoskyPhaseSpaceCutTopologyImpl(family, nullptr);
+}
 
-    CutkoskyPhaseSpaceCutSupport support;
-    support.propagator_index = index;
-    const std::set<std::string> identifiers = ExtractIdentifiers(propagator.expression);
-    for (const std::string& loop_momentum : family.loop_momenta) {
-      if (identifiers.find(loop_momentum) != identifiers.end()) {
-        support.loop_momenta.push_back(loop_momentum);
-      }
-    }
-    for (const int sector : family.top_level_sectors) {
-      if (IsPropagatorActiveInTopLevelSector(index, sector)) {
-        support.active_top_level_sectors.push_back(sector);
-      }
-    }
-    topology.cut_supports.push_back(std::move(support));
-  }
-  topology.cut_components =
-      BuildCutComponents(topology.cut_supports, family.loop_momenta);
-  return topology;
+CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
+    const ProblemSpec& spec) {
+  return AnalyzeCutkoskyPhaseSpaceCutTopologyImpl(spec.family, &spec.targets);
 }
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(const ProblemSpec& spec,

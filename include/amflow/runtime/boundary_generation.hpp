@@ -18,12 +18,14 @@ struct CutkoskyPhaseSpaceCutSupport {
   std::size_t propagator_index = 0;
   std::vector<std::string> loop_momenta;
   std::vector<int> active_top_level_sectors;
+  std::vector<std::string> active_target_labels;
 };
 
 struct CutkoskyPhaseSpaceCutComponent {
   std::vector<std::size_t> cut_propagator_indices;
   std::vector<std::string> loop_momenta;
   std::vector<int> active_top_level_sectors;
+  std::vector<std::string> active_target_labels;
 };
 
 struct CutkoskyPhaseSpaceTopology {
@@ -33,6 +35,8 @@ struct CutkoskyPhaseSpaceTopology {
 
 CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
     const FamilyDefinition& family);
+CutkoskyPhaseSpaceTopology AnalyzeCutkoskyPhaseSpaceCutTopology(
+    const ProblemSpec& spec);
 
 BoundaryRequest GenerateBuiltinEtaInfinityBoundaryRequest(
     const ProblemSpec& spec,

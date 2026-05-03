@@ -8201,9 +8201,11 @@ void PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest() {
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "ending scheme Cutkosky requires cut propagator 0 to carry declared loop-momentum support",
+      "ending scheme Cutkosky requires cut propagator 0 to carry declared loop-momentum "
+      "support; active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]]",
       "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
-      "cut topology lacks loop support");
+      "cut topology lacks loop support, while preserving the reviewed activation telemetry");
 }
 
 void PlanEndingSchemeCutkoskyRejectsInvalidRawPrescriptionBeforeTerminalNodeTest() {
@@ -11610,9 +11612,12 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyT
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "no declared loop momentum support",
+      "builtin Cutkosky phase-space boundary request generation requires cut propagator 0 "
+      "to carry declared loop-momentum support; active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]]",
       "builtin Cutkosky phase-space boundary generation should reject cut propagators that "
-      "carry no declared loop-momentum topology before provider routing");
+      "carry no declared loop-momentum topology before provider routing, while preserving the "
+      "reviewed activation telemetry");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest() {

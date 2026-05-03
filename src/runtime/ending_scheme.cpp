@@ -99,6 +99,14 @@ std::string DescribeCutComponentWithTargetLabels(
   return stream.str();
 }
 
+std::string DescribeCutSupportActivation(const CutkoskyPhaseSpaceCutSupport& support) {
+  std::ostringstream stream;
+  stream << "active_top_level_sectors="
+         << JoinSectors(support.active_top_level_sectors)
+         << " active_target_labels=" << JoinNames(support.active_target_labels);
+  return stream.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream stream;
@@ -186,8 +194,10 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
     throw std::runtime_error(
         "ending scheme Cutkosky requires cut propagator " +
         std::to_string(support.propagator_index) +
-        " to carry declared loop-momentum support before emitting the reviewed phase-space "
-        "terminal node; no declared loop momentum support found in expression \"" +
+        " to carry declared loop-momentum support; " +
+        DescribeCutSupportActivation(support) +
+        " before emitting the reviewed phase-space terminal node; no declared loop momentum "
+        "support found in expression \"" +
         spec.family.propagators[support.propagator_index].expression + "\"");
   }
 

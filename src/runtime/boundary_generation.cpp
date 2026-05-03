@@ -124,6 +124,14 @@ std::string DescribeCutComponentWithTargetLabels(
   return out.str();
 }
 
+std::string DescribeCutSupportActivation(const CutkoskyPhaseSpaceCutSupport& support) {
+  std::ostringstream out;
+  out << "active_top_level_sectors="
+      << JoinSectors(support.active_top_level_sectors)
+      << " active_target_labels=" << JoinNames(support.active_target_labels);
+  return out.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream out;
@@ -371,9 +379,10 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
     throw BoundaryUnsolvedError(
         "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
         std::to_string(support.propagator_index) +
-        " to carry declared loop-momentum support; no declared loop momentum support found "
-        "in expression \"" + spec.family.propagators[support.propagator_index].expression +
-        "\"");
+        " to carry declared loop-momentum support; " +
+        DescribeCutSupportActivation(support) +
+        "; no declared loop momentum support found in expression \"" +
+        spec.family.propagators[support.propagator_index].expression + "\"");
   }
 
   if (topology.cut_components.size() > 1) {

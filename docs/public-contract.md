@@ -478,7 +478,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   every cut propagator must mention at least one declared loop momentum, all cut supports must
   belong to one connected component induced by shared declared loop-momentum support, and when
   exactly one `family.top_level_sectors` mask is declared every cut propagator must be active in
-  that mask before provider routing; when several masks are declared, every cut propagator must be
+  that mask before provider routing; loop-free cut-support failures now report the same per-cut
+  `active_top_level_sectors=[...]` and `active_target_labels=[...]` telemetry before provider
+  routing. When several masks are declared, every cut propagator must be
   active in at least one declared mask and the connected cut component must share at least one
   declared mask that activates every cut in that component before provider routing, and every
   declared target integral must keep each connected cut component at positive support through the
@@ -575,9 +577,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `FamilyDefinition` overload remains target-list-free and therefore reports empty target-label
   telemetry. This telemetry is declaration-order only and still does not parse graph
   components, classify physical cut regions, or produce boundary values. The
-  reviewed disconnected-cut diagnostics now include the cut propagator index set, declared
-  loop-momentum support set, component top-sector activation set, and component target-label
-  activation set for each disconnected component. The reviewed Cutkosky
+  reviewed loop-free cut-support diagnostics now include the cut propagator's top-sector and
+  target-label activation telemetry, and reviewed disconnected-cut diagnostics now include the
+  cut propagator index set, declared loop-momentum support set, component top-sector activation
+  set, and component target-label activation set for each disconnected component. The reviewed Cutkosky
   boundary-request preflight consumes the shared topology support, connectivity, declared
   top-sector activation, connected-component common-sector telemetry, and `ProblemSpec` target
   activation telemetry before provider strategy routing
@@ -1465,7 +1468,9 @@ The first boundary-request and manual boundary-attachment seams are also bootstr
   also rejects connected multi-top-sector cut components whose cuts have no common declared active
   sector, and target-support failures now report the connected cut component plus
   `active_target_labels=[...]` before provider routing, without adding graph/component polynomial
-  analysis
+  analysis. Loop-free cut-support diagnostics on those same paths now also report the offending
+  cut's `active_top_level_sectors=[...]` and `active_target_labels=[...]` telemetry before
+  provider routing
 - `BootstrapSeriesSolver` now requires an explicit manual start boundary on its supported Batch 39 subset and returns typed `boundary_unsolved` for missing or incompatible explicit start-boundary attachment before continuation begins
 - Batch 44 keeps the provider seam separate from solving: `BootstrapSeriesSolver` and `SolveDifferentialEquation(...)` remain unchanged and do not consult `BoundaryProvider`
 - Batch 45 and Batch 46 still do not add builtin or registered eta-infinity boundary providers, eta-to-infinity or phase-space boundary value computation, or automatic `BoundaryCondition` generation. The current reviewed runtime now also generates one reviewed Cutkosky phase-space request shape, one single-provider `AmfOptions` phase-space attach-and-solve wrapper, one caller-supplied provider-registry attach seam plus matching phase-space wrapper overloads, and one deferred builtin Cutkosky provider registry over the reviewed strategy vocabulary, but automatic boundary-value generation and direct `SolveDifferentialEquation(...)` provider consultation remain deferred

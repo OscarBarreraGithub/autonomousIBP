@@ -3867,6 +3867,33 @@ int CompareExactRationalForEtaContinuationPlan(const ExactRational& lhs,
   return !difference.numerator.empty() && difference.numerator.front() == '-' ? -1 : 1;
 }
 
+int CompareExactComplexForEtaContinuationPlan(const ExactComplexRational& lhs,
+                                              const ExactComplexRational& rhs) {
+  const int real_comparison =
+      CompareExactRationalForEtaContinuationPlan(lhs.real, rhs.real);
+  if (real_comparison != 0) {
+    return real_comparison;
+  }
+  return CompareExactRationalForEtaContinuationPlan(lhs.imaginary, rhs.imaginary);
+}
+
+bool EtaContinuationPlanSingularLedgerUsesCanonicalOrder(
+    const EtaContinuationPlan& plan) {
+  for (std::size_t index = 1; index < plan.singular_points.size(); ++index) {
+    const EtaContourSingularPoint& previous = plan.singular_points[index - 1];
+    const EtaContourSingularPoint& current = plan.singular_points[index];
+    const int value_comparison =
+        CompareExactComplexForEtaContinuationPlan(previous.value, current.value);
+    if (value_comparison > 0) {
+      return false;
+    }
+    if (value_comparison == 0 && previous.expression > current.expression) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool LiesOnClosedRealEtaContinuationSegment(const ExactRational& point,
                                             const ExactRational& start,
                                             const ExactRational& target) {
@@ -4032,6 +4059,16 @@ std::optional<std::string> ReviewedDirectRealBootstrapEtaContinuationPlanLedgerV
   if (declared_singular_value_keys != ledger_singular_value_keys) {
     return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
            "when every ledger value matches a system-declared singular point by exact value";
+  }
+
+  try {
+    if (!EtaContinuationPlanSingularLedgerUsesCanonicalOrder(plan)) {
+      return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+             "when they preserve the contour planner's canonical singular-ledger order";
+    }
+  } catch (const std::exception&) {
+    return "default exact solver accepts eta_continuation_plan singular-point ledgers only "
+           "when they preserve the contour planner's canonical singular-ledger order";
   }
 
   for (const EtaContourSingularPoint& singular_point : plan.singular_points) {

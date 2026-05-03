@@ -365,8 +365,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   fall back to live execution. This still falls well short of full `Batch 59` / `Batch 60`:
   broader Kira preparation artifacts, reducer-facing symbolic dimension overrides, and broader
   arbitrary symbolic runtime behavior remain deferred
-- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61aa`
-  duplicate singular-declaration ledger canonicalization after the earlier `Batch 61z`
+- current worktree `Batch 61` continuation-plan slices now include the narrow `Batch 61ab`
+  canonical singular-ledger order guard after the earlier `Batch 61aa`
+  duplicate singular-declaration ledger canonicalization, `Batch 61z`
   stale direct-real contour-fingerprint guard, `Batch 61y` duplicate-endpoint guard,
   `Batch 61x` singular-ledger expression/value fail-closed guard, `Batch 61w`
   unfingerprinted-plan guard, `Batch 61v` non-real singular-ledger guard, and `Batch 61u`
@@ -388,7 +389,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   matching the existing value-matched singular-ledger behavior. Evaluated singular ledgers are
   accepted only when every
   ledger expression matches, or exact evaluated ledger value matches, a unique exact evaluated
-  system-declared singular point after duplicate equivalent declarations are canonicalized; every
+  system-declared singular point after duplicate equivalent declarations are canonicalized; the
+  caller-supplied ledger order preserves the contour planner's canonical exact value/expression
+  order; every
   ledger value is real on the reviewed direct path; every recorded branch winding is zero; and
   each evaluated ledger point is either off the direct real segment or exactly the distinct
   singular target endpoint on the reviewed mixed exact path. It still rejects actual

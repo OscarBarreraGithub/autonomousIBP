@@ -15684,6 +15684,52 @@ void BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaCo
          "zero-winding plan ledger");
 }
 
+void BootstrapSeriesSolverRejectsNonCanonicalSingularLedgerOrderEtaContinuationPlanTest() {
+  amflow::BootstrapSeriesSolver solver;
+  amflow::SolveRequest baseline_request = MakeManualStartBoundarySolveRequest(
+      MakeScalarRegularPointSeriesSystem("1/(eta+1)"), "eta", "eta=0", "eta=1", {"7/11"});
+  baseline_request.system.singular_points = {"eta=2", "eta=3"};
+  amflow::SolveRequest canonical_request = baseline_request;
+  canonical_request.eta_continuation_plan =
+      MakeBootstrapEtaContinuationPlanForTests(canonical_request.start_location,
+                                               canonical_request.target_location);
+  canonical_request.eta_continuation_plan->singular_points = {
+      MakeBootstrapEtaContourSingularPointForTests("eta=2", "2", 0),
+      MakeBootstrapEtaContourSingularPointForTests("eta=3", "3", 0),
+  };
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(
+      *canonical_request.eta_continuation_plan);
+
+  amflow::SolveRequest reversed_request = canonical_request;
+  std::reverse(reversed_request.eta_continuation_plan->singular_points.begin(),
+               reversed_request.eta_continuation_plan->singular_points.end());
+  RefreshBootstrapEtaContinuationPlanFingerprintForTests(
+      *reversed_request.eta_continuation_plan);
+
+  const amflow::SolverDiagnostics baseline_diagnostics = solver.Solve(baseline_request);
+  const amflow::SolverDiagnostics canonical_diagnostics = solver.Solve(canonical_request);
+  const amflow::SolverDiagnostics reversed_diagnostics = solver.Solve(reversed_request);
+
+  Expect(baseline_diagnostics.success,
+         "bootstrap canonical-ledger-order coverage should keep the off-path exact baseline "
+         "solve succeeding");
+  Expect(SameSolverDiagnostics(canonical_diagnostics, baseline_diagnostics),
+         "bootstrap canonical-ledger-order coverage should accept the contour-planner ordered "
+         "zero-winding singular ledger");
+  Expect(!reversed_diagnostics.success &&
+             reversed_diagnostics.failure_code == "unsupported_solver_path",
+         "bootstrap canonical-ledger-order coverage should fail closed when a caller supplies "
+         "the same reviewed singular ledger values in noncanonical order");
+  ExpectContains(reversed_diagnostics.summary,
+                 "canonical singular-ledger order",
+                 "bootstrap canonical-ledger-order coverage should explain the contour-planner "
+                 "order requirement");
+  ExpectContains(reversed_diagnostics.summary,
+                 reversed_request.eta_continuation_plan->contour_fingerprint,
+                 "bootstrap canonical-ledger-order coverage should report the caller-supplied "
+                 "reviewed contour fingerprint");
+}
+
 void BootstrapSeriesSolverRejectsLedgerlessOnPathDirectRealEtaContinuationPlanTest() {
   amflow::BootstrapSeriesSolver solver;
   amflow::SolveRequest request = MakeManualStartBoundarySolveRequest(
@@ -49040,6 +49086,7 @@ int main() {
     BootstrapSeriesSolverAcceptsZeroWindingDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsValueMatchedZeroWindingEtaContinuationPlanLedgerTest();
     BootstrapSeriesSolverAcceptsCanonicalizedDuplicateSingularDeclarationsEtaContinuationPlanLedgerTest();
+    BootstrapSeriesSolverRejectsNonCanonicalSingularLedgerOrderEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsLedgerlessOnPathDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverRejectsLedgerlessStaleTargetEndpointDirectRealEtaContinuationPlanTest();
     BootstrapSeriesSolverAcceptsTargetEndpointZeroWindingEtaContinuationPlanLedgerTest();

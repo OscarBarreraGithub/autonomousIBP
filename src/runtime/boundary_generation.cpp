@@ -434,6 +434,11 @@ void ValidatePlannedEtaInfinityDecisionMetadata(const EndingDecision& decision) 
         "planned eta->infinity boundary request requires selected ending decision "
         "terminal_strategy must not contain leading or trailing whitespace");
   }
+  if (ContainsWhitespace(decision.terminal_strategy)) {
+    throw BoundaryUnsolvedError(
+        "planned eta->infinity boundary request requires selected ending decision "
+        "terminal_strategy must not contain internal whitespace");
+  }
 }
 
 void ValidatePlannedCutkoskyPhaseSpaceTerminalNodes(const ProblemSpec& spec,

@@ -13801,6 +13801,67 @@ void Batch65nAmfOptionsEtaInfinityRejectsPaddedSelectedTerminalStrategyBeforePro
          "selected-decision strategy metadata has outer whitespace");
 }
 
+void Batch65sPlannedEtaInfinityRejectsInternalWhitespaceSelectedTerminalStrategyTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "Custom Strategy";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+
+  ExpectBoundaryUnsolved(
+      [&decision]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            amflow::MakeSampleProblemSpec(),
+            decision));
+      },
+      "planned eta->infinity boundary request requires selected ending decision "
+      "terminal_strategy must not contain internal whitespace",
+      "Batch 65s planned eta->infinity request should reject selected terminal strategy "
+      "metadata with internal whitespace");
+}
+
+void Batch65sAmfOptionsEtaInfinityRejectsInternalWhitespaceSelectedTerminalStrategyBeforeProviderTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"InternalWhitespaceStrategy"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "Internal Whitespace Strategy";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(
+      decision,
+      "InternalWhitespaceStrategy");
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureBoundaryUnsolvedMessage(
+      [&spec, &amf_options, &scheme, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                               amf_options,
+                                                                               {scheme},
+                                                                               request_template,
+                                                                               provider,
+                                                                               solver));
+      },
+      "Batch 65s AmfOptions eta->infinity wrapper should reject internal-whitespace selected "
+      "strategy metadata before provider attachment");
+
+  Expect(message.find(
+             "planned eta->infinity boundary request requires selected ending decision "
+             "terminal_strategy must not contain internal whitespace") != std::string::npos,
+         "Batch 65s AmfOptions eta->infinity wrapper should preserve the selected-decision "
+         "internal-whitespace diagnostic");
+  Expect(scheme->call_count() == 1,
+         "Batch 65s AmfOptions eta->infinity wrapper should still plan the configured ending "
+         "exactly once before validating selected-decision internal whitespace");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 65s AmfOptions eta->infinity wrapper should stop before provider attachment "
+         "when selected-decision strategy metadata has internal whitespace");
+  Expect(solver.call_count() == 0,
+         "Batch 65s AmfOptions eta->infinity wrapper should stop before solver execution when "
+         "selected-decision strategy metadata has internal whitespace");
+}
+
 void Batch65oBuiltinEtaInfinityBoundaryRequestRejectsWhitespaceEtaSymbolTest() {
   const std::string message = CaptureInvalidArgumentMessage(
       []() {
@@ -50062,6 +50123,8 @@ int main() {
     Batch65mAmfOptionsEtaInfinityRejectsWhitespaceSelectedTerminalStrategyBeforeProviderTest();
     Batch65nPlannedEtaInfinityRejectsPaddedSelectedTerminalStrategyTest();
     Batch65nAmfOptionsEtaInfinityRejectsPaddedSelectedTerminalStrategyBeforeProviderTest();
+    Batch65sPlannedEtaInfinityRejectsInternalWhitespaceSelectedTerminalStrategyTest();
+    Batch65sAmfOptionsEtaInfinityRejectsInternalWhitespaceSelectedTerminalStrategyBeforeProviderTest();
     Batch65oBuiltinEtaInfinityBoundaryRequestRejectsWhitespaceEtaSymbolTest();
     Batch65oAmfOptionsEtaInfinitySolveRejectsWhitespaceEtaSymbolBeforePlanningTest();
     Batch65pNamedEtaInfinityBoundaryRequestValidatesProblemSpecBeforePlanningTest();

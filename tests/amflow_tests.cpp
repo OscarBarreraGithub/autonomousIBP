@@ -8212,8 +8212,10 @@ void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
-      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]], cuts=[3] loops=[k2] "
+      "active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]]]",
       "Cutkosky ending planner should fail before emitting a phase-space terminal node when "
       "the reviewed cut surface splits into disconnected components");
 }
@@ -8587,8 +8589,10 @@ void PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallback
       [&spec, &amf_options]() {
         static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
-      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]], cuts=[3] loops=[k2] "
+      "active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]]]",
       "AmfOptions ending planner should fail fast on disconnected Cutkosky cut topology "
       "instead of falling through to a later placeholder ending");
 }
@@ -11604,8 +11608,10 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutCompo
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127], "
-      "cuts=[3] loops=[k2] active_top_level_sectors=[127]]",
+      "disconnected cut components: [cuts=[0] loops=[k1] active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]], cuts=[3] loops=[k2] "
+      "active_top_level_sectors=[127] "
+      "active_target_labels=[planar_double_box[1,1,1,1,1,1,1]]]",
       "builtin Cutkosky phase-space boundary generation should reject disconnected cut "
       "components before provider routing");
 }

@@ -91,6 +91,14 @@ std::string DescribeCutComponent(const CutkoskyPhaseSpaceCutComponent& component
   return stream.str();
 }
 
+std::string DescribeCutComponentWithTargetLabels(
+    const CutkoskyPhaseSpaceCutComponent& component) {
+  std::ostringstream stream;
+  stream << DescribeCutComponent(component)
+         << " active_target_labels=" << JoinNames(component.active_target_labels);
+  return stream.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream stream;
@@ -100,6 +108,20 @@ std::string DescribeCutComponents(
       stream << ", ";
     }
     stream << DescribeCutComponent(components[index]);
+  }
+  stream << "]";
+  return stream.str();
+}
+
+std::string DescribeCutComponentsWithTargetLabels(
+    const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
+  std::ostringstream stream;
+  stream << "[";
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (index != 0) {
+      stream << ", ";
+    }
+    stream << DescribeCutComponentWithTargetLabels(components[index]);
   }
   stream << "]";
   return stream.str();
@@ -173,7 +195,7 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
     throw std::runtime_error(
         "ending scheme Cutkosky requires a connected cut surface before emitting the reviewed "
         "phase-space terminal node; disconnected cut components: " +
-        DescribeCutComponents(topology.cut_components));
+        DescribeCutComponentsWithTargetLabels(topology.cut_components));
   }
 
   if (spec.family.top_level_sectors.size() == 1) {

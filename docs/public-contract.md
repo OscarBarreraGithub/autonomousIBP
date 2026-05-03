@@ -574,9 +574,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   `FamilyDefinition` overload remains target-list-free and therefore reports empty target-label
   telemetry. This telemetry is declaration-order only and still does not parse graph
   components, classify physical cut regions, or produce boundary values. The
-  reviewed disconnected-cut diagnostics now include both the cut propagator index set and declared
-  loop-momentum support set plus component top-sector activation set for each disconnected
-  component. The reviewed Cutkosky
+  reviewed disconnected-cut diagnostics now include the cut propagator index set, declared
+  loop-momentum support set, component top-sector activation set, and component target-label
+  activation set for each disconnected component. The reviewed Cutkosky
   boundary-request preflight consumes the shared topology support, connectivity, declared
   top-sector activation, connected-component common-sector telemetry, and `ProblemSpec` target
   activation telemetry before provider strategy routing
@@ -1458,8 +1458,9 @@ The first boundary-request and manual boundary-attachment seams are also bootstr
 - the reviewed phase-space request/attach wrappers now consult `family.loop_prescriptions` or, when absent, uniform raw cut prescriptions only for builtin provider-strategy refinement on cut propagators after the reviewed loop-support/connected-component, top-sector activation, target activation, and component target-support preflights, while broader topological cut analysis and automatic boundary-value generation remain deferred
 - disconnected Cutkosky cut-surface diagnostics on both ending planning and builtin boundary-
   request generation now report each disconnected component as
-  `cuts=[...] loops=[...] active_top_level_sectors=[...]`, preserving the reviewed declaration-order
-  cut indices, loop support, and component top-sector activation; the same component telemetry now
+  `cuts=[...] loops=[...] active_top_level_sectors=[...] active_target_labels=[...]`,
+  preserving the reviewed declaration-order cut indices, loop support, component top-sector
+  activation, and component target-label activation; the same component telemetry now
   also rejects connected multi-top-sector cut components whose cuts have no common declared active
   sector, and target-support failures now report the connected cut component plus
   `active_target_labels=[...]` before provider routing, without adding graph/component polynomial

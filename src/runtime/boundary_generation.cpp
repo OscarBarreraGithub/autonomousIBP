@@ -116,6 +116,14 @@ std::string DescribeCutComponent(const CutkoskyPhaseSpaceCutComponent& component
   return out.str();
 }
 
+std::string DescribeCutComponentWithTargetLabels(
+    const CutkoskyPhaseSpaceCutComponent& component) {
+  std::ostringstream out;
+  out << DescribeCutComponent(component)
+      << " active_target_labels=" << JoinNames(component.active_target_labels);
+  return out.str();
+}
+
 std::string DescribeCutComponents(
     const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
   std::ostringstream out;
@@ -125,6 +133,20 @@ std::string DescribeCutComponents(
       out << ", ";
     }
     out << DescribeCutComponent(components[index]);
+  }
+  out << "]";
+  return out.str();
+}
+
+std::string DescribeCutComponentsWithTargetLabels(
+    const std::vector<CutkoskyPhaseSpaceCutComponent>& components) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < components.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << DescribeCutComponentWithTargetLabels(components[index]);
   }
   out << "]";
   return out.str();
@@ -358,7 +380,7 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
     throw BoundaryUnsolvedError(
         "builtin Cutkosky phase-space boundary request generation requires a connected cut "
         "surface on the current reviewed phase-space subset; disconnected cut components: " +
-        DescribeCutComponents(topology.cut_components));
+        DescribeCutComponentsWithTargetLabels(topology.cut_components));
   }
 
   if (spec.family.top_level_sectors.size() == 1) {

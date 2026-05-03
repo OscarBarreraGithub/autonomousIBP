@@ -207,6 +207,13 @@ void ValidateRequiredUniqueBoundaryProviderRegistry(
                                   std::to_string(index + 1) +
                                   " strategy must not contain leading or trailing whitespace");
     }
+    if (std::any_of(strategy.begin(), strategy.end(), [](const unsigned char c) {
+          return std::isspace(c) != 0;
+        })) {
+      throw std::invalid_argument("boundary provider registry entry " +
+                                  std::to_string(index + 1) +
+                                  " strategy must not contain internal whitespace");
+    }
     for (const std::string& seen_strategy : strategies) {
       if (seen_strategy == strategy) {
         throw std::invalid_argument(

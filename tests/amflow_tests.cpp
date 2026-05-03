@@ -16181,6 +16181,85 @@ void Batch63akPlannedCutkoskyProviderRegistryPaddedStrategyPreflightsDecisionVal
          "padded provider-strategy rejection");
 }
 
+void Batch63alAmfOptionsCutkoskyProviderRegistryInternalWhitespaceStrategyPreflightsPlanningTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  auto provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{provider},
+            solver));
+      },
+      "Batch 63al AmfOptions Cutkosky provider-registry solve should reject internal-"
+      "whitespace provider strategies before user-defined ending planning");
+
+  Expect(message ==
+             "boundary provider registry entry 1 strategy must not contain internal whitespace",
+         "Batch 63al AmfOptions Cutkosky provider-registry solve should preserve the "
+         "internal-whitespace provider-strategy diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63al AmfOptions Cutkosky provider-registry solve should not plan a "
+         "user-defined ending scheme after internal-whitespace provider-strategy rejection");
+  Expect(provider->strategy_call_count() == 1 && provider->provide_call_count() == 0,
+         "Batch 63al AmfOptions Cutkosky provider-registry solve should validate provider "
+         "strategy metadata without provider attachment");
+  Expect(solver.call_count() == 0,
+         "Batch 63al AmfOptions Cutkosky provider-registry solve should not call the solver "
+         "after internal-whitespace provider-strategy rejection");
+}
+
+void Batch63alPlannedCutkoskyProviderRegistryInternalWhitespaceStrategyPreflightsDecisionValidationTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+  auto provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::minus i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{provider},
+            solver));
+      },
+      "Batch 63al planned Cutkosky provider-registry solve should reject internal-whitespace "
+      "provider strategies before selected-decision validation");
+
+  Expect(message ==
+             "boundary provider registry entry 1 strategy must not contain internal whitespace",
+         "Batch 63al planned Cutkosky provider-registry solve should preserve the "
+         "internal-whitespace provider-strategy diagnostic");
+  Expect(provider->strategy_call_count() == 1 && provider->provide_call_count() == 0,
+         "Batch 63al planned Cutkosky provider-registry solve should reject internal-whitespace "
+         "provider strategy metadata before request generation or provider attachment");
+  Expect(solver.call_count() == 0,
+         "Batch 63al planned Cutkosky provider-registry solve should not call the solver after "
+         "internal-whitespace provider-strategy rejection");
+}
+
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
   amflow::BootstrapSeriesSolver solver;
   const amflow::SolverDiagnostics diagnostics = solver.Solve(MakeBoundarySolveRequest());
@@ -51000,6 +51079,8 @@ int main() {
     Batch63ajPlannedCutkoskyProviderRegistryDuplicateStrategyPreflightsDecisionValidationTest();
     Batch63akAmfOptionsCutkoskyProviderRegistryEmptyStrategyPreflightsPlanningTest();
     Batch63akPlannedCutkoskyProviderRegistryPaddedStrategyPreflightsDecisionValidationTest();
+    Batch63alAmfOptionsCutkoskyProviderRegistryInternalWhitespaceStrategyPreflightsPlanningTest();
+    Batch63alPlannedCutkoskyProviderRegistryInternalWhitespaceStrategyPreflightsDecisionValidationTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

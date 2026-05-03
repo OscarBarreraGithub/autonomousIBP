@@ -158,6 +158,7 @@ void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
   }
 
   std::optional<FeynmanPrescription> selected_cut_prescription;
+  std::size_t selected_cut_index = 0;
   for (std::size_t index = 0; index < spec.family.propagators.size(); ++index) {
     const Propagator& propagator = spec.family.propagators[index];
     if (propagator.kind != PropagatorKind::Cut) {
@@ -193,6 +194,7 @@ void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
 
     if (!selected_cut_prescription.has_value()) {
       selected_cut_prescription = *derived_prescription;
+      selected_cut_index = index;
       continue;
     }
 
@@ -200,7 +202,10 @@ void ValidateCutkoskyLoopPrescriptionProviderSurface(const ProblemSpec& spec) {
       throw std::runtime_error(
           "ending scheme Cutkosky requires all cut propagators to resolve to the same "
           "loop-prescription-backed provider strategy before emitting the reviewed "
-          "phase-space terminal node on the current reviewed provider-selection subset");
+          "phase-space terminal node on the current reviewed provider-selection subset; cut "
+          "propagator " +
+          std::to_string(index) + " disagrees with cut propagator " +
+          std::to_string(selected_cut_index));
     }
   }
 }

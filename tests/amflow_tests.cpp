@@ -49314,6 +49314,32 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
                  "C++ vs AMFlow comparator self-check should reject missing C++ integrals");
   ExpectContains(result.stdout_json, "\"failed_cpp_status_rejected\": true",
                  "C++ vs AMFlow comparator self-check should reject non-success C++ payloads");
+  ExpectContains(result.stdout_json, "\"amflow_suffix_family_normalized\": true",
+                 "C++ vs AMFlow comparator self-check should normalize retained AMFlow cache "
+                 "family suffixes");
+  ExpectContains(result.stdout_json, "\"explicit_family_alias_normalized\": true",
+                 "C++ vs AMFlow comparator self-check should honor explicit family aliases");
+}
+
+void ExtractAmflowSolveSeriesStateSelfCheckCoversMatrixAndBoundaryMetadataTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-solve-series-state-extractor-self-check",
+      "tools/reference-harness/scripts/extract_amflow_solve_series_state.py",
+      {"--self-check"},
+      "AMFlow solve-series state extractor self-check");
+  Expect(result.stderr_log.empty(),
+         "AMFlow solve-series state extractor self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"state_extracted\": true",
+                 "AMFlow solve-series state extractor should parse the retained-state shape");
+  ExpectContains(result.stdout_json,
+                 "\"boundary_state_kind\": "
+                 "\"amflow_eta_infinity_asymptotic_with_subsystem_samples\"",
+                 "AMFlow solve-series state extractor should preserve the asymptotic boundary "
+                 "state kind");
+  ExpectContains(result.stdout_json, "\"cpp_ingest_supported\": false",
+                 "AMFlow solve-series state extractor should not claim direct C++ ingest for "
+                 "AMFlow eta-infinity boundary state");
 }
 
 void Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest() {
@@ -54308,6 +54334,7 @@ int main() {
     Phase0ReferenceComparatorSelfCheckCoversMismatchFailuresTest();
     Phase0ReferenceComparatorMatchesRetainedRequiredSetTest();
     CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest();
+    ExtractAmflowSolveSeriesStateSelfCheckCoversMatrixAndBoundaryMetadataTest();
     Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest();
     Phase0ReferencePacketSetComparatorMatchesRetainedPacketSetTest();
     Phase0CorrectDigitScorerSelfCheckCoversThresholdAndSkeletonFailuresTest();

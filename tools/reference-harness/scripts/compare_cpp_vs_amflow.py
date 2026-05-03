@@ -15,6 +15,7 @@ from typing import Any
 
 IntegralKey = tuple[str, tuple[int, ...]]
 CoefficientMap = dict[int, tuple[Decimal, Decimal]]
+FamilyAliasMap = dict[str, str]
 ZERO_COMPLEX = (Decimal(0), Decimal(0))
 
 INTEGRAL_RE = re.compile(r"^j\[\s*([A-Za-z_][A-Za-z0-9_]*)\s*,(.*)\]$")
@@ -38,6 +39,29 @@ def write_json(payload: dict[str, Any]) -> None:
 
 def integral_label(family: str, indices: tuple[int, ...]) -> str:
   return f"{family}[{','.join(str(index) for index in indices)}]"
+
+
+def normalize_family_name(family: str, aliases: FamilyAliasMap) -> str:
+  if family in aliases:
+    return aliases[family]
+  if family.endswith("_amflow") and len(family) > len("_amflow"):
+    return family[:-len("_amflow")]
+  return family
+
+
+def normalize_key_map(raw: dict[IntegralKey, CoefficientMap],
+                      aliases: FamilyAliasMap,
+                      source_label: str) -> dict[IntegralKey, CoefficientMap]:
+  normalized: dict[IntegralKey, CoefficientMap] = {}
+  for key, coefficients in raw.items():
+    normalized_key = (normalize_family_name(key[0], aliases), key[1])
+    if normalized_key in normalized:
+      raise RuntimeError(
+          f"{source_label} integrals collide after family normalization: "
+          f"{integral_label(*key)} -> {integral_label(*normalized_key)}"
+      )
+    normalized[normalized_key] = coefficients
+  return normalized
 
 
 def parse_integral_label(label: str) -> IntegralKey:
@@ -319,10 +343,14 @@ def compare_cpp_vs_amflow(
     cpp_result_path: Path,
     amflow_golden_path: Path,
     tolerance_digits: int,
+    family_aliases: FamilyAliasMap | None = None,
 ) -> dict[str, Any]:
   getcontext().prec = max(120, tolerance_digits + 40)
   cpp_payload, cpp = load_cpp_result(cpp_result_path)
   amflow = load_amflow_golden(amflow_golden_path)
+  aliases = family_aliases or {}
+  cpp = normalize_key_map(cpp, aliases, "C++")
+  amflow = normalize_key_map(amflow, aliases, "AMFlow")
   requested_epsilon_order = cpp_requested_epsilon_order(cpp_payload)
 
   all_keys = sorted(set(cpp) | set(amflow), key=lambda item: (item[0], item[1]))
@@ -409,6 +437,8 @@ def compare_cpp_vs_amflow(
       "amflow_golden": str(amflow_golden_path),
       "benchmark_id": cpp_payload.get("benchmark_id", ""),
       "tolerance_digits": tolerance_digits,
+      "family_aliases": aliases,
+      "default_family_suffix_normalization": "_amflow -> stripped",
       "passed": passed,
       "matched_integral_count": len(set(cpp) & set(amflow)),
       "compared_coefficient_count": compared_coefficients,
@@ -543,6 +573,35 @@ def run_self_check() -> dict[str, Any]:
         tolerance_digits=30,
     )
 
+    suffix_root = root / "suffix-family-normalization"
+    suffix_cpp, suffix_amflow = write_synthetic_inputs(suffix_root)
+    suffix_payload = load_json(suffix_cpp)
+    suffix_payload["family"] = "toy_amflow"
+    suffix_payload["targets"] = ["toy_amflow[1]"]
+    suffix_payload["results"][0]["integral"] = "toy_amflow[1]"
+    suffix_cpp.write_text(json.dumps(suffix_payload, indent=2, sort_keys=True) + "\n",
+                          encoding="utf-8")
+    suffix_normalized = compare_cpp_vs_amflow(
+        cpp_result_path=suffix_cpp,
+        amflow_golden_path=suffix_amflow,
+        tolerance_digits=30,
+    )
+
+    alias_root = root / "explicit-family-alias"
+    alias_cpp, alias_amflow = write_synthetic_inputs(alias_root)
+    alias_payload = load_json(alias_cpp)
+    alias_payload["family"] = "cpp_box"
+    alias_payload["targets"] = ["cpp_box[1]"]
+    alias_payload["results"][0]["integral"] = "cpp_box[1]"
+    alias_cpp.write_text(json.dumps(alias_payload, indent=2, sort_keys=True) + "\n",
+                         encoding="utf-8")
+    alias_normalized = compare_cpp_vs_amflow(
+        cpp_result_path=alias_cpp,
+        amflow_golden_path=alias_amflow,
+        tolerance_digits=30,
+        family_aliases={"cpp_box": "toy"},
+    )
+
   return {
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
@@ -551,6 +610,8 @@ def run_self_check() -> dict[str, Any]:
       "missing_integral_rejected": not missing["passed"] and bool(missing["failures"]),
       "failed_cpp_status_rejected": failed_status_rejected,
       "positive_order_above_request_ignored": bounded["passed"],
+      "amflow_suffix_family_normalized": suffix_normalized["passed"],
+      "explicit_family_alias_normalized": alias_normalized["passed"],
       "summary_written": False,
   }
 
@@ -560,8 +621,32 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
   parser.add_argument("--cpp-result", type=Path)
   parser.add_argument("--amflow-golden", type=Path)
   parser.add_argument("--tolerance-digits", type=int, default=30)
+  parser.add_argument(
+      "--family-alias",
+      action="append",
+      default=[],
+      metavar="FROM=TO",
+      help=(
+          "Normalize one result family name before matching; may be repeated. "
+          "The comparator also strips a trailing _amflow suffix by default."
+      ),
+  )
   parser.add_argument("--self-check", action="store_true")
   return parser.parse_args(argv)
+
+
+def parse_family_aliases(raw_aliases: list[str]) -> FamilyAliasMap:
+  aliases: FamilyAliasMap = {}
+  for raw_alias in raw_aliases:
+    if raw_alias.count("=") != 1:
+      raise ValueError(f"--family-alias must have FROM=TO syntax: {raw_alias!r}")
+    source, target = (part.strip() for part in raw_alias.split("=", 1))
+    if not source or not target:
+      raise ValueError(f"--family-alias must not contain empty names: {raw_alias!r}")
+    if source in aliases and aliases[source] != target:
+      raise ValueError(f"conflicting --family-alias mapping for {source!r}")
+    aliases[source] = target
+  return aliases
 
 
 def main(argv: list[str]) -> int:
@@ -578,6 +663,8 @@ def main(argv: list[str]) -> int:
               "missing_integral_rejected",
               "failed_cpp_status_rejected",
               "positive_order_above_request_ignored",
+              "amflow_suffix_family_normalized",
+              "explicit_family_alias_normalized",
           )
       ) else 1
 
@@ -588,6 +675,7 @@ def main(argv: list[str]) -> int:
         cpp_result_path=args.cpp_result,
         amflow_golden_path=args.amflow_golden,
         tolerance_digits=args.tolerance_digits,
+        family_aliases=parse_family_aliases(args.family_alias),
     )
     write_json(payload)
     return 0 if payload["passed"] else 1

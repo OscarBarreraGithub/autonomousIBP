@@ -163,6 +163,43 @@ and `specs/parity-matrix.yaml`.
 
 The bootstrap-only state is allowed for repository setup and interface work. It is not sufficient to claim `Phase 0` parity is passing.
 
+## Automatic Loop Solve-Series State
+
+The retained `automatic_loop` `box1` AMFlow cache now has a repo-local state extraction path:
+
+```bash
+python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
+  --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/1 \
+  --out /tmp/automatic_loop.amflow-state.json
+```
+
+The committed mirror
+`tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json` records the actual cached
+master basis, `eta` coefficient matrix, AMFlow eta-infinity boundary metadata, epsilon sample
+points, and Kira target/reduction context for `box1`. This is intentionally not named
+`automatic_loop.yaml` and intentionally reports `cpp_solve_series_ingest.supported = false`.
+Shipping a C++ `solve_series` YAML from this state today would be dishonest: the retained AMFlow
+boundary is an asymptotic eta-infinity/subsystem-sample boundary, the physical comparison endpoint
+is the singular `eta -> 0` limit reached through complex continuation, and the current C++ CLI
+accepts only finite-point explicit real exact boundary values on the reviewed direct path.
+
+The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
+`_amflow` suffix by default and accepts explicit mappings such as:
+
+```bash
+python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
+  --cpp-result /tmp/automatic_loop.cpp-result.json \
+  --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_loop/golden-manifest.json \
+  --family-alias box1_amflow=box1 \
+  --tolerance-digits 30
+```
+
+The remaining end-to-end parity work is to add a real C++ boundary representation for AMFlow's
+eta-infinity asymptotic state, complex continuation, and singular `eta -> 0` extraction, then emit
+`tools/reference-harness/specs/phase0/automatic_loop.yaml` from the extracted state and run
+`amflow-cli solve-series` against the retained golden manifest. Until then this lane is extraction
+evidence and comparator plumbing only, not a phase-0 parity pass.
+
 ## Current Canonical Cluster Gates
 
 - light repo inspection can happen on the login node, but real builds, tests, reducer jobs,

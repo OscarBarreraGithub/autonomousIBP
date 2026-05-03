@@ -58,14 +58,14 @@ python3 tools/reference-harness/scripts/fetch_upstream_amflow.py \
   --cpc-url https://example.invalid/amflow-cpc.zip
 ```
 
-All twenty-four harness helpers also expose a local `--self-check` mode for the regression cases fixed in
+All twenty-five harness helpers also expose a local `--self-check` mode for the regression cases fixed in
 Batch 2 and the new M5/M6 catalog/scaffold coherence lock, including the theory-backed
 `next_runtime_lane` blocker hints for the still-deferred `b61n` / `b62p` / `b63n` / `b64ag`
 surfaces and the `optional_capture_packet` grouping for the retained `de-d0-pair` and retained
 `user-hook-pair`, the retained phase-0 packet-set qualification verdict, the case-study-family
 numeric summary producer, the case-study-family qualification verdict, the M6 qualification
-verdict composer, the C++ solve-series versus AMFlow ingester, plus the blocked M7
-release-readiness and qualification-corpus audits:
+verdict composer, the C++ solve-series versus AMFlow ingester, the AMFlow solve-series state
+extractor, plus the blocked M7 release-readiness and qualification-corpus audits:
 
 ```bash
 python3 tools/reference-harness/scripts/bootstrap_reference_harness.py \
@@ -99,6 +99,9 @@ python3 tools/reference-harness/scripts/compare_case_study_numeric_results.py \
   --self-check
 
 python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
+  --self-check
+
+python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
   --self-check
 
 python3 tools/reference-harness/scripts/compare_phase0_results_to_reference.py \
@@ -148,11 +151,12 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 ```
 
-`amflow-tests` now exercises all twenty-four helper self-checks through the configured
+`amflow-tests` now exercises all twenty-five helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
-case-study numeric summary producer, the C++ solve-series versus AMFlow ingester, retained
-phase-0 packet-set qualification verdict, the blocked/pass case-study-family qualification
+case-study numeric summary producer, the C++ solve-series versus AMFlow ingester, AMFlow
+solve-series state extraction, retained phase-0 packet-set qualification verdict, the
+blocked/pass case-study-family qualification
 verdict, blocked/pass M6 qualification verdict,
 blocked release-readiness with
 qualification-corpus, performance-review, diagnostic-review, docs-completion, and parity-signoff
@@ -319,6 +323,25 @@ a structured pass/fail JSON summary, and exits nonzero on missing integrals, non
 result status, or digit agreement below the requested tolerance. Omitted AMFlow or C++
 coefficients inside the compared ε range are treated as implicit zeros, so explicit zero
 coefficients emitted by the C++ JSON do not fail against AMFlow rule lists that omit zero terms.
+Family names are normalized before matching: the comparator strips a trailing `_amflow` suffix by
+default and also accepts repeated `--family-alias FROM=TO` mappings for explicit C++/AMFlow naming
+bridges.
+
+To inspect the retained AMFlow state behind the `automatic_loop` solve-series system without
+claiming that the current C++ solver can ingest its physical boundary yet:
+
+```bash
+python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
+  --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/1 \
+  --out /tmp/automatic_loop.amflow-state.json
+```
+
+The extractor emits the real cached master order, `eta` coefficient matrix, Kira target/reduction
+metadata, and AMFlow eta-infinity boundary files. Its JSON intentionally reports
+`cpp_solve_series_ingest.supported = false`: AMFlow stores an asymptotic eta-infinity boundary
+with subsystem epsilon samples and then continues through a complex contour to the singular
+physical `eta -> 0` endpoint, while the current C++ `solve-series` CLI accepts only finite-point
+explicit real exact boundary values on its reviewed direct path.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

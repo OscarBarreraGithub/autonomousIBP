@@ -6211,6 +6211,24 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDen
       "denominators");
 }
 
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsGroupedLoopFactorDenominatorsTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "n/(k1-k2)";
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(
+            amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
+      },
+      "keeps loop momenta out of denominators",
+      "reviewed lightlike linear auxiliary rewrite should reject grouped loop factors in "
+      "denominators with the same deterministic helper-local diagnostic as direct loop "
+      "factors");
+}
+
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEighteenNestedGroupedCommonFactorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.loop_momenta = {"k1", "k2", "k3"};
@@ -52918,6 +52936,7 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsNonLightlikeExternalSurfaceTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsMultipleExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsSignedDirectFactorDenominatorsTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsGroupedLoopFactorDenominatorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsEighteenNestedGroupedCommonFactorTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexHappyPathTest();
     SelectReviewedLightlikeLinearAuxiliaryPropagatorIndexIgnoresUnsupportedExplicitLinearCandidatesTest();

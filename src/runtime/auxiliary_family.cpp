@@ -351,6 +351,28 @@ std::set<std::string> CollectDeclaredExternalFactorsInExpression(
   return declared_external_factors;
 }
 
+bool ContainsSignedSymbolFactorInExpression(const std::string& expression,
+                                            const std::set<std::string>& symbols) {
+  const std::string context = "reviewed lightlike linear auxiliary rewrite";
+  for (const SignedTerm& term : SplitTopLevelTerms(Trim(expression), context)) {
+    std::vector<FlatFactor> flat_factors;
+    AppendFlattenedFactors(term.expression, context, '*', flat_factors);
+    for (const FlatFactor& factor_entry : flat_factors) {
+      if (MatchSignedSimpleSymbolFactor(factor_entry.factor, symbols).has_value()) {
+        return true;
+      }
+
+      const std::optional<GroupedAdditiveFactor> grouped_factor =
+          MatchGroupedAdditiveFactor(factor_entry.factor);
+      if (grouped_factor.has_value() &&
+          ContainsSignedSymbolFactorInExpression(grouped_factor->expression, symbols)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::string RequireReviewedLightlikeExternalSymbol(const ProblemSpec& spec,
                                                    const Propagator& propagator) {
   const std::set<std::string> used_external_momenta =
@@ -645,6 +667,24 @@ std::optional<std::string> RenderReviewedLightlikeLoopLinearTerm(
                                 "-1");
       }
       continue;
+    }
+
+    if (factor_entry.separator == '/') {
+      const std::optional<GroupedAdditiveFactor> grouped_denominator =
+          MatchGroupedAdditiveFactor(raw_factor);
+      if (grouped_denominator.has_value()) {
+        if (ContainsSignedSymbolFactorInExpression(grouped_denominator->expression,
+                                                   selected_external_symbol)) {
+          throw std::runtime_error(
+              "reviewed lightlike linear auxiliary rewrite keeps the external symbol out of "
+              "denominators");
+        }
+        if (ContainsSignedSymbolFactorInExpression(grouped_denominator->expression,
+                                                   loop_momenta)) {
+          throw std::runtime_error("reviewed lightlike linear auxiliary rewrite keeps loop "
+                                   "momenta out of denominators");
+        }
+      }
     }
 
     const ExactRational coefficient_piece = EvaluateExactConstantExpression(

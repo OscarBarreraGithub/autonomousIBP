@@ -1140,7 +1140,7 @@ The first mixed eta-mode-list solver wrapper is also bootstrap-only:
   `SolveEtaGeneratedSeries(...)`
 - it is a narrow ordered-selection wrapper: it resolves builtin and user-defined names in caller order, probes planning in that same order, and carries the winning `EtaInsertionDecision` forward without re-planning the selected mode
 - empty mixed-name lists fail locally with a deterministic argument error
-- unknown-name or registry-validation failures from `ResolveEtaMode(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately
+- unknown-name or registry-validation failures from `ResolveEtaMode(...)` preserve the existing resolver diagnostics unchanged and stop selection immediately; empty or whitespace-only user-defined registry names are rejected before any earlier builtin entry can win planning
 - if no mode in the caller-supplied list reaches solve selection, the final planning failure from `EtaMode::Plan(...)` is preserved unchanged and the supplied solver is not invoked
 - standard planning failures from `EtaMode::Plan(...)` are treated as ordered fallback misses until the caller-supplied list exhausts
 - downstream eta-generated `DESystem` construction failures from the selected mode preserve the existing `SolveResolvedEtaModeSeries(...)` / `SolveEtaGeneratedSeries(...)` diagnostics unchanged and do not trigger fallback to later names
@@ -1304,7 +1304,7 @@ The first `AmfOptions`-fed eta-mode decision and execution helpers are also boot
 The first user-defined eta-mode resolver seam is also bootstrap-only:
 
 - `ResolveEtaMode(...)` takes one eta-mode name plus a caller-supplied `const std::vector<std::shared_ptr<EtaMode>>& user_defined_modes`
-- it validates the full supplied user-defined registry on every call before resolution proceeds: null entries, duplicate user-defined names anywhere in the registry, and user-defined names that collide with builtin eta-mode names anywhere in the registry fail locally with deterministic argument errors
+- it validates the full supplied user-defined registry on every call before resolution proceeds: null entries, empty or whitespace-only names, duplicate user-defined names anywhere in the registry, and user-defined names that collide with builtin eta-mode names anywhere in the registry fail locally with deterministic argument errors
 - after registry validation, it is a one-name resolution hook: builtin names still resolve through the accepted builtin table when no user-defined mode claims the same name, while a unique non-builtin user-defined name returns the exact registered `EtaMode` instance unchanged
 - resolution itself is name-only and does not call `EtaMode::Plan(...)`
 - unresolved names preserve the existing `unknown eta mode: <name>` diagnostic surface

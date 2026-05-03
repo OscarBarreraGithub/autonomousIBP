@@ -1074,6 +1074,9 @@ void ValidateUserDefinedEtaModeRegistry(
     }
 
     const std::string mode_name = user_defined_mode->Name();
+    if (Trim(mode_name).empty()) {
+      throw std::invalid_argument("user-defined eta mode name must not be empty");
+    }
     if (IsBuiltinEtaModeName(mode_name)) {
       throw std::invalid_argument("user-defined eta mode conflicts with builtin eta mode: " +
                                   mode_name);

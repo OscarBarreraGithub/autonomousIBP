@@ -6955,6 +6955,40 @@ void ResolveEtaModeRejectsUnknownNameWithUserDefinedRegistryTest() {
          "eta-mode resolver should not plan user-defined modes when resolution fails");
 }
 
+void ResolveEtaModeRejectsEmptyUserDefinedNamesTest() {
+  const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  amflow::EtaInsertionDecision empty_name_decision;
+  empty_name_decision.mode_name = "";
+  empty_name_decision.selected_propagator_indices = {0};
+  empty_name_decision.selected_propagators = {spec.family.propagators[0].expression};
+  const auto empty_name_mode =
+      std::make_shared<RecordingEtaMode>(empty_name_decision, "");
+  const auto whitespace_name_mode =
+      std::make_shared<RecordingEtaMode>(empty_name_decision, " \t ");
+
+  ExpectInvalidArgument(
+      [&empty_name_mode]() {
+        static_cast<void>(amflow::ResolveEtaMode("All", {empty_name_mode}));
+      },
+      "user-defined eta mode name must not be empty",
+      "eta-mode resolver should reject empty user-defined names before resolving an unrelated "
+      "builtin name");
+  Expect(empty_name_mode->call_count() == 0,
+         "eta-mode resolver should not plan empty-name user-defined modes while rejecting the "
+         "registry");
+
+  ExpectInvalidArgument(
+      [&whitespace_name_mode]() {
+        static_cast<void>(amflow::ResolveEtaMode("All", {whitespace_name_mode}));
+      },
+      "user-defined eta mode name must not be empty",
+      "eta-mode resolver should reject whitespace-only user-defined names before resolving an "
+      "unrelated builtin name");
+  Expect(whitespace_name_mode->call_count() == 0,
+         "eta-mode resolver should not plan whitespace-only-name user-defined modes while "
+         "rejecting the registry");
+}
+
 void ResolveEtaModeRejectsDuplicateMatchingUserDefinedNamesTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   amflow::EtaInsertionDecision custom_decision;
@@ -7470,6 +7504,27 @@ void PlanAmfOptionsEtaModeRejectsRegistryValidationFailureTest() {
       "AmfOptions eta-mode planner should preserve registry-validation diagnostics");
   Expect(first_mode->call_count() == 0 && second_mode->call_count() == 0,
          "AmfOptions eta-mode planner should stop immediately when registry validation fails");
+
+  amflow::EtaInsertionDecision empty_name_decision;
+  empty_name_decision.mode_name = "";
+  empty_name_decision.selected_propagator_indices = {0};
+  empty_name_decision.selected_propagators = {spec.family.propagators[0].expression};
+  const auto empty_name_mode =
+      std::make_shared<RecordingEtaMode>(empty_name_decision, "");
+  const amflow::AmfOptions builtin_first_options =
+      MakePoisonedAmfOptions({"All", "CustomMode"});
+
+  ExpectInvalidArgument(
+      [&builtin_first_options, &empty_name_mode]() {
+        static_cast<void>(amflow::PlanAmfOptionsEtaMode(
+            amflow::MakeSampleProblemSpec(), builtin_first_options, {empty_name_mode}));
+      },
+      "user-defined eta mode name must not be empty",
+      "AmfOptions eta-mode planner should preflight empty user-defined names before an "
+      "earlier builtin mode can plan successfully");
+  Expect(empty_name_mode->call_count() == 0,
+         "AmfOptions eta-mode planner should not plan an empty-name user mode while rejecting "
+         "the registry");
 }
 
 void PlanAmfOptionsEtaModeExhaustedKnownModesPreservesLastDiagnosticTest() {
@@ -49977,6 +50032,7 @@ int main() {
     ResolveEtaModeResolvesBuiltinNameWithoutUserDefinedOverrideTest();
     ResolveEtaModeResolvesUniqueUserDefinedModeTest();
     ResolveEtaModeRejectsUnknownNameWithUserDefinedRegistryTest();
+    ResolveEtaModeRejectsEmptyUserDefinedNamesTest();
     ResolveEtaModeRejectsDuplicateMatchingUserDefinedNamesTest();
     ResolveEtaModeRejectsDuplicateUserDefinedNamesUnrelatedToQueryTest();
     ResolveEtaModeRejectsBuiltinNameCollisionsTest();

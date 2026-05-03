@@ -3435,6 +3435,7 @@ std::optional<std::size_t> SelectReviewedSingleExplicitLinearDecisionIndex(
     const ProblemSpec& spec,
     const EtaInsertionDecision& decision) {
   if (decision.selected_propagator_indices.size() != 1 ||
+      spec.complex_mode ||
       !spec.kinematics.complex_numeric_substitutions.empty()) {
     return std::nullopt;
   }

@@ -32767,6 +32767,56 @@ void SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest() {
          "direct single-linear blank-name rejection should not call the supplied solver");
 }
 
+void SolveEtaGeneratedSeriesFallsBackForBareComplexModeSingleLinearDecisionBeforeLightlikeRouteTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.complex_mode = true;
+  const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
+  amflow::EtaInsertionDecision decision;
+  decision.mode_name = "DirectLinear";
+  decision.selected_propagator_indices = {2};
+  decision.selected_propagators = {spec.family.propagators[2].expression};
+  decision.explanation = "direct bare-complex-mode single explicit linear propagator";
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-eta-solver-direct-lightlike-bare-complex-mode"));
+  RecordingSeriesSolver solver;
+  solver.returned_diagnostics.success = true;
+  solver.returned_diagnostics.summary = "unexpected direct bare-complex-mode lightlike solve";
+
+  const std::string message = CaptureRuntimeErrorMessage(
+      [&spec, &decision, &layout, &solver]() {
+        static_cast<void>(amflow::SolveEtaGeneratedSeries(
+            spec,
+            MakeAutoInvariantLinearMasterBasis(),
+            decision,
+            MakeKiraReductionOptions(),
+            layout,
+            layout.root / "bin" / "unused-kira.sh",
+            layout.root / "bin" / "unused-fermat.sh",
+            solver,
+            "x=0",
+            "x=1",
+            MakeDistinctPrecisionPolicy(),
+            71,
+            "x"));
+      },
+      "direct single-linear bare-complex-mode coverage should fall back to ordinary "
+      "eta-generated validation instead of lightlike reduction");
+
+  Expect(amflow::SerializeProblemSpecYaml(spec) == original_yaml,
+         "direct single-linear bare-complex-mode rejection should not mutate reviewed inputs");
+  ExpectContains(message,
+                 "KiraBackend supports linear propagators only on the reviewed "
+                 "invariant-independent loop-external subset",
+                 "direct single-linear bare-complex-mode coverage should reach ordinary "
+                 "eta-generated Kira validation");
+  ExpectContains(message,
+                 "propagator 2 has expression \"(k*n) + x\"",
+                 "direct single-linear bare-complex-mode coverage should validate the "
+                 "eta-inserted linear propagator instead of the reviewed lightlike rewrite");
+  Expect(solver.call_count() == 0,
+         "direct single-linear bare-complex-mode rejection should not call the supplied solver");
+}
+
 void SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest() {
   const amflow::ProblemSpec spec = MakeUnsupportedK0SmokeProblemSpecForTests();
   const amflow::EtaInsertionDecision decision = amflow::MakeBuiltinEtaMode("All")->Plan(spec);
@@ -53483,6 +53533,7 @@ int main() {
     SolveEtaGeneratedSeriesRejectsStaleSingleLinearDecisionPayloadTest();
     SolveEtaGeneratedSeriesRejectsWhitespaceSingleLinearDecisionPayloadTest();
     SolveEtaGeneratedSeriesRejectsBlankSingleLinearDecisionNameTest();
+    SolveEtaGeneratedSeriesFallsBackForBareComplexModeSingleLinearDecisionBeforeLightlikeRouteTest();
     SolveEtaGeneratedSeriesRejectsUnsupportedPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsComplexPhysicalKinematicsBeforeDEConstructionTest();
     SolveEtaGeneratedSeriesRejectsMalformedComplexBindingsBeforeDEConstructionTest();

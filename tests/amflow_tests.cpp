@@ -14914,6 +14914,106 @@ void Batch63abAmfOptionsCutkoskySolveValidatesEtaSymbolBeforePlanningTest() {
          "eta_symbol rejection");
 }
 
+void Batch63aoNamedCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &scheme]() {
+        static_cast<void>(amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+            spec,
+            "ProbeScheme",
+            {scheme}));
+      },
+      "Batch 63ao named Cutkosky boundary request should reject malformed ProblemSpec "
+      "before user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 63ao named Cutkosky boundary request should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63ao named Cutkosky boundary request should not plan a user-defined ending "
+         "scheme after malformed ProblemSpec rejection");
+}
+
+void Batch63aoAmfOptionsCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &scheme]() {
+        static_cast<void>(
+            amflow::GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(
+                spec,
+                amf_options,
+                {scheme}));
+      },
+      "Batch 63ao AmfOptions Cutkosky boundary request should reject malformed ProblemSpec "
+      "before user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 63ao AmfOptions Cutkosky boundary request should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63ao AmfOptions Cutkosky boundary request should not plan a user-defined "
+         "ending scheme after malformed ProblemSpec rejection");
+}
+
+void Batch63aoAmfOptionsCutkoskySolveValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.name.clear();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  RecordingStaticBoundaryProvider provider(
+      "builtin::cutkosky-phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            provider,
+            solver));
+      },
+      "Batch 63ao AmfOptions Cutkosky solve should reject malformed ProblemSpec before "
+      "user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 63ao AmfOptions Cutkosky solve should preserve the malformed ProblemSpec "
+         "diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63ao AmfOptions Cutkosky solve should not plan a user-defined ending "
+         "scheme after malformed ProblemSpec rejection");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 63ao AmfOptions Cutkosky solve should not consult the provider after "
+         "malformed ProblemSpec rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63ao AmfOptions Cutkosky solve should not call the solver after malformed "
+         "ProblemSpec rejection");
+}
+
 void Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest() {
   const std::string message = CaptureInvalidArgumentMessage(
       []() {
@@ -51468,6 +51568,9 @@ int main() {
     Batch63aaNamedCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
     Batch63abAmfOptionsCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
     Batch63abAmfOptionsCutkoskySolveValidatesEtaSymbolBeforePlanningTest();
+    Batch63aoNamedCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest();
+    Batch63aoAmfOptionsCutkoskyBoundaryRequestValidatesProblemSpecBeforePlanningTest();
+    Batch63aoAmfOptionsCutkoskySolveValidatesProblemSpecBeforePlanningTest();
     Batch63acBuiltinCutkoskyBoundaryRequestRejectsWhitespaceEtaSymbolTest();
     Batch63acAmfOptionsCutkoskySolveRejectsWhitespaceEtaSymbolBeforePlanningTest();
     Batch63aeBuiltinCutkoskyBoundaryRequestRejectsPaddedEtaSymbolTest();

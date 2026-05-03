@@ -7970,6 +7970,19 @@ void PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest() {
       "the reviewed cut surface splits into disconnected components");
 }
 
+void PlanEndingSchemeCutkoskyRejectsInactiveSingleTopSectorCutTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {31};
+
+  ExpectRuntimeError(
+      [&spec]() {
+        static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
+      },
+      "cut propagator 5 to be active in the single declared top-level sector 31",
+      "Batch 63an Cutkosky ending planner should fail before emitting a phase-space terminal "
+      "node when the reviewed single top sector omits a cut propagator");
+}
+
 void PlanEndingSchemeUserDefinedHappyPathTest() {
   const amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::string original_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -8286,6 +8299,21 @@ void PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallback
       "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
       "AmfOptions ending planner should fail fast on disconnected Cutkosky cut topology "
       "instead of falling through to a later placeholder ending");
+}
+
+void PlanAmfOptionsEndingSchemeRejectsInactiveSingleTopSectorCutBeforeFallbackTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {31};
+  const amflow::AmfOptions amf_options;
+
+  ExpectRuntimeError(
+      [&spec, &amf_options]() {
+        static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
+      },
+      "cut propagator 5 to be active in the single declared top-level sector 31",
+      "Batch 63an AmfOptions ending planner should fail fast when the reviewed single top "
+      "sector omits a Cutkosky cut propagator instead of falling through to a placeholder "
+      "ending");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest() {
@@ -11169,6 +11197,19 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutCompo
       "disconnected cut components: [cuts=[0] loops=[k1], cuts=[3] loops=[k2]]",
       "builtin Cutkosky phase-space boundary generation should reject disconnected cut "
       "components before provider routing");
+}
+
+void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsInactiveSingleTopSectorCutTest() {
+  amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  spec.family.top_level_sectors = {31};
+
+  ExpectBoundaryUnsolved(
+      [&spec]() {
+        static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
+      },
+      "cut propagator 5 to be active in the single declared top-level sector 31",
+      "Batch 63an builtin Cutkosky phase-space boundary generation should reject a reviewed "
+      "single top sector that omits a cut propagator before provider routing");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest() {
@@ -51183,6 +51224,7 @@ int main() {
     PlanEndingSchemeCutkoskyRejectsLoopFreeCutTopologyTest();
     PlanEndingSchemeCutkoskyRejectsInvalidRawPrescriptionBeforeTerminalNodeTest();
     PlanEndingSchemeCutkoskyRejectsDisconnectedCutComponentsTest();
+    PlanEndingSchemeCutkoskyRejectsInactiveSingleTopSectorCutTest();
     PlanEndingSchemeUserDefinedHappyPathTest();
     PlanEndingSchemeRejectsUnknownNameWithUserDefinedRegistryTest();
     PlanEndingSchemeRejectsRegistryValidationFailureTest();
@@ -51198,6 +51240,7 @@ int main() {
     PlanAmfOptionsEndingSchemeRejectsInvalidCutkoskyPrescriptionBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsLoopFreeCutkoskyTopologyBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsDisconnectedCutkoskyTopologyBeforeFallbackTest();
+    PlanAmfOptionsEndingSchemeRejectsInactiveSingleTopSectorCutBeforeFallbackTest();
     PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest();
     PlanAmfOptionsEndingSchemeRejectsUnknownNameImmediatelyTest();
     PlanAmfOptionsEndingSchemeExhaustedKnownModesPreservesLastDiagnosticTest();
@@ -51307,6 +51350,7 @@ int main() {
     AnalyzeCutkoskyPhaseSpaceCutTopologyReportsDisconnectedCutComponentsTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsLoopFreeCutTopologyTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsDisconnectedCutComponentsTest();
+    GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsInactiveSingleTopSectorCutTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest();
     GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesRawCutPrescriptionProviderStrategiesTest();
     GeneratePlannedEtaInfinityBoundaryRequestBuiltinHappyPathTest();

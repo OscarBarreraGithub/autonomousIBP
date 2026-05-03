@@ -248,6 +248,25 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
         "surface on the current reviewed phase-space subset; disconnected cut components: " +
         DescribeCutComponents(topology.cut_components));
   }
+
+  if (spec.family.top_level_sectors.size() == 1) {
+    const int sector = spec.family.top_level_sectors.front();
+    const unsigned long long sector_mask =
+        sector > 0 ? static_cast<unsigned long long>(sector) : 0ULL;
+    const std::size_t max_supported_bits = sizeof(sector_mask) * 8;
+    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+      if (support.propagator_index < max_supported_bits &&
+          (sector_mask & (1ULL << support.propagator_index)) != 0ULL) {
+        continue;
+      }
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
+          std::to_string(support.propagator_index) +
+          " to be active in the single declared top-level sector " +
+          std::to_string(sector) +
+          " on the current reviewed top-sector support subset");
+    }
+  }
 }
 
 std::string CutkoskyPhaseSpaceProviderStrategyForPrescription(

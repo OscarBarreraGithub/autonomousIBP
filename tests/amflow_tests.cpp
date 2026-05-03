@@ -8266,9 +8266,12 @@ void PlanEndingSchemeCutkoskyRejectsTargetMissingCutSupportTest() {
       [&spec]() {
         static_cast<void>(amflow::PlanEndingScheme(spec, "Cutkosky", {}));
       },
-      "target planar_double_box[1,1,1,1,1,0,1] to keep cut propagator 5 active",
-      "Batch 63ar Cutkosky ending planner should fail before emitting a phase-space terminal "
-      "node when a reviewed target integral leaves the cut surface");
+      "target planar_double_box[1,1,1,1,1,0,1] to keep connected cut component "
+      "cuts=[0, 5] loops=[k1, k2] active_top_level_sectors=[127] "
+      "with active_target_labels=[] active",
+      "Batch 63aw Cutkosky ending planner should fail before emitting a phase-space terminal "
+      "node with component target-support telemetry when a reviewed target integral leaves "
+      "the cut surface");
 }
 
 void PlanEndingSchemeUserDefinedHappyPathTest() {
@@ -8644,9 +8647,12 @@ void PlanAmfOptionsEndingSchemeRejectsTargetMissingCutSupportBeforeFallbackTest(
       [&spec, &amf_options]() {
         static_cast<void>(amflow::PlanAmfOptionsEndingScheme(spec, amf_options, {}));
       },
-      "target planar_double_box[1,1,1,1,1,0,1] to keep cut propagator 5 active",
-      "Batch 63ar AmfOptions ending planner should fail fast when a reviewed target integral "
-      "leaves the Cutkosky cut surface instead of falling through to a placeholder ending");
+      "target planar_double_box[1,1,1,1,1,0,1] to keep connected cut component "
+      "cuts=[0, 5] loops=[k1, k2] active_top_level_sectors=[127] "
+      "with active_target_labels=[] active",
+      "Batch 63aw AmfOptions ending planner should fail fast with component target-support "
+      "telemetry when a reviewed target integral leaves the Cutkosky cut surface instead of "
+      "falling through to a placeholder ending");
 }
 
 void PlanAmfOptionsEndingSchemeRejectsEmptyEndingSchemeListTest() {
@@ -11665,9 +11671,11 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsTargetMissingCutSupp
       [&spec]() {
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
-      "target planar_double_box[1,1,1,1,1,0,1] to keep cut propagator 5 active",
-      "Batch 63ar builtin Cutkosky phase-space boundary generation should reject a reviewed "
-      "target integral that leaves the cut surface before provider routing");
+      "target planar_double_box[1,1,1,1,1,0,1] to keep connected cut component "
+      "cuts=[0, 5] loops=[k1, k2] active_top_level_sectors=[127] "
+      "with active_target_labels=[] active",
+      "Batch 63aw builtin Cutkosky phase-space boundary generation should reject a reviewed "
+      "target integral with component target-support telemetry before provider routing");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestUsesLoopPrescriptionAwareProviderStrategiesTest() {

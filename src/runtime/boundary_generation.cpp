@@ -402,17 +402,18 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
 
   for (const TargetIntegral& target : spec.targets) {
     const std::string target_label = target.Label();
-    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (std::find(support.active_target_labels.begin(),
-                    support.active_target_labels.end(),
-                    target_label) != support.active_target_labels.end()) {
+    for (const CutkoskyPhaseSpaceCutComponent& component : topology.cut_components) {
+      if (std::find(component.active_target_labels.begin(),
+                    component.active_target_labels.end(),
+                    target_label) != component.active_target_labels.end()) {
         continue;
       }
       throw BoundaryUnsolvedError(
           "builtin Cutkosky phase-space boundary request generation requires target " +
-          target_label + " to keep cut propagator " +
-          std::to_string(support.propagator_index) +
-          " active on the current reviewed target-support subset");
+          target_label + " to keep connected cut component " +
+          DescribeCutComponent(component) +
+          " with active_target_labels=" + JoinNames(component.active_target_labels) +
+          " active on the current reviewed component target-support subset");
     }
   }
 }

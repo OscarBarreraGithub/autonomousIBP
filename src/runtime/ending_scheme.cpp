@@ -219,17 +219,18 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
 
   for (const TargetIntegral& target : spec.targets) {
     const std::string target_label = target.Label();
-    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (std::find(support.active_target_labels.begin(),
-                    support.active_target_labels.end(),
-                    target_label) != support.active_target_labels.end()) {
+    for (const CutkoskyPhaseSpaceCutComponent& component : topology.cut_components) {
+      if (std::find(component.active_target_labels.begin(),
+                    component.active_target_labels.end(),
+                    target_label) != component.active_target_labels.end()) {
         continue;
       }
       throw std::runtime_error(
           "ending scheme Cutkosky requires target " + target_label +
-          " to keep cut propagator " + std::to_string(support.propagator_index) +
+          " to keep connected cut component " + DescribeCutComponent(component) +
+          " with active_target_labels=" + JoinNames(component.active_target_labels) +
           " active before emitting the reviewed phase-space terminal node on the current "
-          "reviewed target-support subset");
+          "reviewed component target-support subset");
     }
   }
 }

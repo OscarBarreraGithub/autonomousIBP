@@ -568,6 +568,7 @@ BoundaryRequest GenerateAmfOptionsEndingSchemeCutkoskyPhaseSpaceBoundaryRequest(
     const AmfOptions& amf_options,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceBoundaryEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);

@@ -143,6 +143,13 @@ void ValidateEtaInfinitySolveEtaSymbol(const std::string& eta_symbol) {
   }
 }
 
+void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
+  if (eta_symbol.empty()) {
+    throw std::invalid_argument(
+        "builtin Cutkosky phase-space boundary request eta_symbol must not be empty");
+  }
+}
+
 std::string Trim(const std::string& value) {
   std::size_t start = 0;
   while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start]))) {
@@ -7209,6 +7216,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SolveRequest& request_template,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
@@ -7228,6 +7236,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const BoundaryProvider& provider,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
@@ -7246,6 +7255,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,

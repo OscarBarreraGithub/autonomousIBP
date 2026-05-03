@@ -144,7 +144,9 @@ void ValidateEtaInfinitySolveEtaSymbol(const std::string& eta_symbol) {
 }
 
 void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
-  if (eta_symbol.empty()) {
+  if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
+        return std::isspace(c);
+      })) {
     throw std::invalid_argument(
         "builtin Cutkosky phase-space boundary request eta_symbol must not be empty");
   }

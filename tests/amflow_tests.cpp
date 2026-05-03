@@ -5643,12 +5643,29 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsDoublyNestedGroupedC
          "through two nested grouped lightlike-linear factors");
 }
 
-void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsTriplyNestedGroupedCommonFactorTest() {
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTriplyNestedGroupedCommonFactorTest() {
   amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
   spec.family.loop_momenta = {"k1", "k2", "k3"};
   spec.family.propagators[0].expression = "(k1)^2";
   spec.family.propagators[1].expression = "(-s)*((k1)^2)";
   spec.family.propagators[2].expression = "2*(3*(4*(5*(k1*n-k2*n)))+k3*n)";
+
+  const amflow::Propagator rewritten =
+      amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x");
+
+  Expect(rewritten.expression ==
+             "x*(((120)*(k1) + (-120)*(k2) + (2)*(k3))^2) + "
+             "(2*(3*(4*(5*(k1*n-k2*n)))+k3*n))",
+         "reviewed lightlike linear auxiliary rewrite should carry the common coefficient "
+         "through three nested grouped lightlike-linear factors");
+}
+
+void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsQuadruplyNestedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "2*(3*(4*(5*(6*(k1*n-k2*n))))+k3*n)";
 
   ExpectRuntimeError(
       [&spec]() {
@@ -5656,8 +5673,8 @@ void BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsTriplyNestedGroupedCo
             amflow::BuildReviewedLightlikeLinearAuxiliaryPropagator(spec, 2, "x"));
       },
       "coefficient evaluation requires a numeric binding for symbol \"n\"",
-      "reviewed lightlike linear auxiliary rewrite should keep deeper grouped-common "
-      "recursion outside this batch");
+      "reviewed lightlike linear auxiliary rewrite should keep grouped-common recursion "
+      "beyond three nested layers outside this batch");
 }
 
 void BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest() {
@@ -6223,6 +6240,25 @@ PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithDoublyNestedGrouped
   Expect(decision.selected_propagators ==
              std::vector<std::string>{spec.family.propagators[2].expression},
          "reviewed lightlike-linear Propagator selection should preserve the doubly nested "
+         "grouped common-factor expression");
+}
+
+void
+PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithTriplyNestedGroupedCommonFactorTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantLinearProblemSpec();
+  spec.family.loop_momenta = {"k1", "k2", "k3"};
+  spec.family.propagators[0].expression = "(k1)^2";
+  spec.family.propagators[1].expression = "(-s)*((k1)^2)";
+  spec.family.propagators[2].expression = "2*(3*(4*(5*(k1*n-k2*n)))+k3*n)";
+  const auto mode = amflow::MakeBuiltinEtaMode("Propagator");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>{2},
+         "reviewed lightlike-linear Propagator selection should treat three nested grouped "
+         "common factors as the same unique lightlike-linear slot");
+  Expect(decision.selected_propagators ==
+             std::vector<std::string>{spec.family.propagators[2].expression},
+         "reviewed lightlike-linear Propagator selection should preserve the triply nested "
          "grouped common-factor expression");
 }
 
@@ -48282,7 +48318,8 @@ int main() {
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedCommonGroupedLoopFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsDoublyNestedGroupedCommonFactorTest();
-    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsTriplyNestedGroupedCommonFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsTriplyNestedGroupedCommonFactorTest();
+    BuildReviewedLightlikeLinearAuxiliaryPropagatorRejectsQuadruplyNestedGroupedCommonFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedExternalFactorTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsGroupedLoopAndExternalFactorsTest();
     BuildReviewedLightlikeLinearAuxiliaryPropagatorSupportsSpectatorExternalMomentaTest();
@@ -48315,6 +48352,7 @@ int main() {
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithSignedGroupedCommonFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithNestedGroupedCommonFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithDoublyNestedGroupedCommonFactorTest();
+    PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithTriplyNestedGroupedCommonFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedExternalFactorTest();
     PropagatorEtaModeSelectsReviewedLightlikeLinearPropagatorWithGroupedLoopAndExternalFactorsTest();
     PropagatorEtaModeFallsBackForUnsupportedLightlikeLinearSurfaceTest();

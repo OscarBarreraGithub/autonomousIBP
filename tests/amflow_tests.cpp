@@ -12855,9 +12855,11 @@ void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedLoopPrescriptio
         static_cast<void>(amflow::GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequest(spec));
       },
       "requires all cut propagators to resolve to the same loop-prescription-backed provider "
-      "strategy",
+      "strategy on the current reviewed provider-selection subset; cut propagator 3 "
+      "disagrees with cut propagator 0",
       "builtin Cutkosky phase-space boundary generation should fail closed when the cut surface "
-      "would require multiple loop-prescription-backed provider strategies");
+      "would require multiple loop-prescription-backed provider strategies while naming the "
+      "disagreeing cut indices");
 }
 
 void GenerateBuiltinCutkoskyPhaseSpaceBoundaryRequestRejectsMixedRawCutProviderStrategiesTest() {

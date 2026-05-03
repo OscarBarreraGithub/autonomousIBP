@@ -537,6 +537,7 @@ BoundaryRequest GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
     const std::string& ending_scheme_name,
     const std::vector<std::shared_ptr<EndingScheme>>& user_defined_schemes,
     const std::string& eta_symbol) {
+  ValidateCutkoskyPhaseSpaceBoundaryEtaSymbol(eta_symbol);
   const EndingDecision decision =
       PlanEndingScheme(spec, ending_scheme_name, user_defined_schemes);
   return GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);

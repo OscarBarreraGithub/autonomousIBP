@@ -13679,6 +13679,32 @@ void Batch63zAmfOptionsCutkoskyRejectsWhitespaceSelectedTerminalStrategyBeforePr
          "selected-decision metadata is missing");
 }
 
+void Batch63aaNamedCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest() {
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&scheme]() {
+        static_cast<void>(amflow::GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(
+            MakeReviewedCutkoskyPhaseSpaceSpec(),
+            "ProbeScheme",
+            {scheme},
+            ""));
+      },
+      "Batch 63aa named Cutkosky request should reject an empty eta symbol before "
+      "planning the named ending");
+
+  Expect(message ==
+             "builtin Cutkosky phase-space boundary request eta_symbol must not be empty",
+         "Batch 63aa named Cutkosky request should preserve the builtin empty eta_symbol "
+         "diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63aa named Cutkosky request should not plan the named ending when "
+         "eta_symbol is empty");
+}
+
 void Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest() {
   const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
   const std::string original_spec_yaml = amflow::SerializeProblemSpecYaml(spec);
@@ -48571,6 +48597,7 @@ int main() {
     Batch63yAmfOptionsCutkoskyEmptyEtaSymbolPreflightsStaleTerminalNodeTest();
     Batch63zPlannedCutkoskyRejectsEmptySelectedTerminalStrategyTest();
     Batch63zAmfOptionsCutkoskyRejectsWhitespaceSelectedTerminalStrategyBeforeProviderTest();
+    Batch63aaNamedCutkoskyBoundaryRequestValidatesEtaSymbolBeforePlanningTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceHappyPathTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpaceFallsThroughInvalidArgumentPlanningFailureTest();
     Batch63fAmfOptionsEndingSchemeCutkoskyPhaseSpacePlanningShortCircuitTest();

@@ -52,6 +52,19 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return stream.str();
 }
 
+std::string JoinSectors(const std::vector<int>& sectors) {
+  std::ostringstream stream;
+  stream << "[";
+  for (std::size_t index = 0; index < sectors.size(); ++index) {
+    if (index != 0) {
+      stream << ", ";
+    }
+    stream << sectors[index];
+  }
+  stream << "]";
+  return stream.str();
+}
+
 std::string JoinNames(const std::vector<std::string>& names) {
   std::ostringstream stream;
   stream << "[";
@@ -96,6 +109,24 @@ std::string EtaInfinityTerminalNode(const ProblemSpec& spec) {
 
 std::string CutkoskyPhaseSpaceTerminalNode(const ProblemSpec& spec) {
   return spec.family.name + "::cutkosky-phase-space";
+}
+
+bool IsPropagatorActiveInTopLevelSector(const std::size_t propagator_index,
+                                        const int sector) {
+  if (sector <= 0) {
+    return false;
+  }
+  const unsigned long long sector_mask = static_cast<unsigned long long>(sector);
+  const std::size_t max_supported_bits = sizeof(sector_mask) * 8;
+  return propagator_index < max_supported_bits &&
+         (sector_mask & (1ULL << propagator_index)) != 0ULL;
+}
+
+bool IsPropagatorActiveInAnyTopLevelSector(const std::size_t propagator_index,
+                                           const std::vector<int>& sectors) {
+  return std::any_of(sectors.begin(), sectors.end(), [propagator_index](const int sector) {
+    return IsPropagatorActiveInTopLevelSector(propagator_index, sector);
+  });
 }
 
 void ValidateTraditionEndingSurface(const ProblemSpec& spec) {
@@ -153,12 +184,8 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
 
   if (spec.family.top_level_sectors.size() == 1) {
     const int sector = spec.family.top_level_sectors.front();
-    const unsigned long long sector_mask =
-        sector > 0 ? static_cast<unsigned long long>(sector) : 0ULL;
-    const std::size_t max_supported_bits = sizeof(sector_mask) * 8;
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (support.propagator_index < max_supported_bits &&
-          (sector_mask & (1ULL << support.propagator_index)) != 0ULL) {
+      if (IsPropagatorActiveInTopLevelSector(support.propagator_index, sector)) {
         continue;
       }
       throw std::runtime_error(
@@ -168,6 +195,20 @@ void ValidateCutkoskyEndingSurface(const ProblemSpec& spec) {
           std::to_string(sector) +
           " before emitting the reviewed phase-space terminal node on the current reviewed "
           "top-sector support subset");
+    }
+  } else if (spec.family.top_level_sectors.size() > 1) {
+    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+      if (IsPropagatorActiveInAnyTopLevelSector(support.propagator_index,
+                                                spec.family.top_level_sectors)) {
+        continue;
+      }
+      throw std::runtime_error(
+          "ending scheme Cutkosky requires cut propagator " +
+          std::to_string(support.propagator_index) +
+          " to be active in at least one declared top-level sector " +
+          JoinSectors(spec.family.top_level_sectors) +
+          " before emitting the reviewed phase-space terminal node on the current reviewed "
+          "multi-top-sector support subset");
     }
   }
 }

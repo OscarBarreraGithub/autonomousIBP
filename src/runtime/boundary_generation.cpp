@@ -43,6 +43,19 @@ std::string JoinIndices(const std::vector<std::size_t>& indices) {
   return out.str();
 }
 
+std::string JoinSectors(const std::vector<int>& sectors) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < sectors.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << sectors[index];
+  }
+  out << "]";
+  return out.str();
+}
+
 std::string JoinNames(const std::vector<std::string>& names) {
   std::ostringstream out;
   out << "[";
@@ -142,6 +155,24 @@ bool ShareLoopMomentum(const CutkoskyPhaseSpaceCutSupport& lhs,
     }
   }
   return false;
+}
+
+bool IsPropagatorActiveInTopLevelSector(const std::size_t propagator_index,
+                                        const int sector) {
+  if (sector <= 0) {
+    return false;
+  }
+  const unsigned long long sector_mask = static_cast<unsigned long long>(sector);
+  const std::size_t max_supported_bits = sizeof(sector_mask) * 8;
+  return propagator_index < max_supported_bits &&
+         (sector_mask & (1ULL << propagator_index)) != 0ULL;
+}
+
+bool IsPropagatorActiveInAnyTopLevelSector(const std::size_t propagator_index,
+                                           const std::vector<int>& sectors) {
+  return std::any_of(sectors.begin(), sectors.end(), [propagator_index](const int sector) {
+    return IsPropagatorActiveInTopLevelSector(propagator_index, sector);
+  });
 }
 
 std::vector<CutkoskyPhaseSpaceCutComponent> BuildCutComponents(
@@ -251,12 +282,8 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
 
   if (spec.family.top_level_sectors.size() == 1) {
     const int sector = spec.family.top_level_sectors.front();
-    const unsigned long long sector_mask =
-        sector > 0 ? static_cast<unsigned long long>(sector) : 0ULL;
-    const std::size_t max_supported_bits = sizeof(sector_mask) * 8;
     for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
-      if (support.propagator_index < max_supported_bits &&
-          (sector_mask & (1ULL << support.propagator_index)) != 0ULL) {
+      if (IsPropagatorActiveInTopLevelSector(support.propagator_index, sector)) {
         continue;
       }
       throw BoundaryUnsolvedError(
@@ -265,6 +292,19 @@ void ValidateBuiltinCutkoskyPhaseSpaceSubset(const ProblemSpec& spec) {
           " to be active in the single declared top-level sector " +
           std::to_string(sector) +
           " on the current reviewed top-sector support subset");
+    }
+  } else if (spec.family.top_level_sectors.size() > 1) {
+    for (const CutkoskyPhaseSpaceCutSupport& support : topology.cut_supports) {
+      if (IsPropagatorActiveInAnyTopLevelSector(support.propagator_index,
+                                                spec.family.top_level_sectors)) {
+        continue;
+      }
+      throw BoundaryUnsolvedError(
+          "builtin Cutkosky phase-space boundary request generation requires cut propagator " +
+          std::to_string(support.propagator_index) +
+          " to be active in at least one declared top-level sector " +
+          JoinSectors(spec.family.top_level_sectors) +
+          " on the current reviewed multi-top-sector support subset");
     }
   }
 }

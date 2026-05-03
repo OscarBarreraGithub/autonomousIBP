@@ -183,6 +183,24 @@ void ValidateRequiredBoundaryProviderRegistry(
   ValidateBoundaryProviderRegistryHasNoNullEntries(providers);
 }
 
+void ValidateRequiredUniqueBoundaryProviderRegistry(
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers) {
+  ValidateRequiredBoundaryProviderRegistry(providers);
+
+  std::vector<std::string> strategies;
+  strategies.reserve(providers.size());
+  for (const auto& provider : providers) {
+    const std::string strategy = provider->Strategy();
+    for (const std::string& seen_strategy : strategies) {
+      if (seen_strategy == strategy) {
+        throw std::invalid_argument(
+            "boundary provider registry contains duplicate strategy: " + strategy);
+      }
+    }
+    strategies.push_back(strategy);
+  }
+}
+
 void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
   if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
         return std::isspace(c);
@@ -203,6 +221,24 @@ void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
         "builtin Cutkosky phase-space boundary request eta_symbol must not contain internal "
         "whitespace");
   }
+}
+
+SolverDiagnostics SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedRegistry(
+    const ProblemSpec& spec,
+    const EndingDecision& decision,
+    const SolveRequest& request_template,
+    const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol) {
+  const BoundaryRequest boundary_request =
+      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
+
+  SolveRequest solve_request = request_template;
+  solve_request.boundary_requests = {boundary_request};
+
+  const SolveRequest attached_request =
+      AttachBoundaryConditionsFromProviderRegistry(solve_request, providers);
+  return solver.Solve(attached_request);
 }
 
 std::string Trim(const std::string& value) {
@@ -7553,15 +7589,15 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateCutkoskyPhaseSpaceSolveEtaSymbol(eta_symbol);
-  ValidateRequiredBoundaryProviderRegistry(providers);
+  ValidateRequiredUniqueBoundaryProviderRegistry(providers);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
-  return SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(spec,
-                                                                    decision,
-                                                                    request_template,
-                                                                    providers,
-                                                                    solver,
-                                                                    eta_symbol);
+  return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedRegistry(spec,
+                                                                  decision,
+                                                                  request_template,
+                                                                  providers,
+                                                                  solver,
+                                                                  eta_symbol);
 }
 
 SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
@@ -7604,16 +7640,13 @@ SolverDiagnostics SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
     const std::vector<std::shared_ptr<BoundaryProvider>>& providers,
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
-  ValidateRequiredBoundaryProviderRegistry(providers);
-  const BoundaryRequest boundary_request =
-      GeneratePlannedCutkoskyPhaseSpaceBoundaryRequest(spec, decision, eta_symbol);
-
-  SolveRequest solve_request = request_template;
-  solve_request.boundary_requests = {boundary_request};
-
-  const SolveRequest attached_request =
-      AttachBoundaryConditionsFromProviderRegistry(solve_request, providers);
-  return solver.Solve(attached_request);
+  ValidateRequiredUniqueBoundaryProviderRegistry(providers);
+  return SolvePlannedCutkoskyPhaseSpaceSeriesWithValidatedRegistry(spec,
+                                                                  decision,
+                                                                  request_template,
+                                                                  providers,
+                                                                  solver,
+                                                                  eta_symbol);
 }
 
 SolverDiagnostics SolveResolvedEtaModeSeries(

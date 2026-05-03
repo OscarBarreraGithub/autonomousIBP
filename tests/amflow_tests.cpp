@@ -15503,9 +15503,9 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryHappyPathTest() {
          "planning probe per configured scheme");
   Expect(baseline_cutkosky_provider->strategy_call_count() == 1 &&
              baseline_cutkosky_provider->provide_call_count() == 1 &&
-             wrapper_noise_provider->strategy_call_count() == 1 &&
+             wrapper_noise_provider->strategy_call_count() == 2 &&
              wrapper_noise_provider->provide_call_count() == 0 &&
-             wrapper_cutkosky_provider->strategy_call_count() == 1 &&
+             wrapper_cutkosky_provider->strategy_call_count() == 2 &&
              wrapper_cutkosky_provider->provide_call_count() == 1,
          "Batch 63g Cutkosky registry wrapper should preserve the single-provider happy path "
          "while consulting only the matching phase-space provider from the registry");
@@ -15577,9 +15577,9 @@ void Batch63kAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryUsesLoopPrescriptio
          "template on the loop-prescription-aware happy path");
   Expect(baseline_cutkosky_provider->strategy_call_count() == 1 &&
              baseline_cutkosky_provider->provide_call_count() == 1 &&
-             wrapper_legacy_provider->strategy_call_count() == 1 &&
+             wrapper_legacy_provider->strategy_call_count() == 2 &&
              wrapper_legacy_provider->provide_call_count() == 0 &&
-             wrapper_cutkosky_provider->strategy_call_count() == 1 &&
+             wrapper_cutkosky_provider->strategy_call_count() == 2 &&
              wrapper_cutkosky_provider->provide_call_count() == 1,
          "Batch 63k Cutkosky registry wrapper should select only the loop-prescription-matched "
          "phase-space provider from the registry");
@@ -15740,7 +15740,7 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShor
       "eta @ cutkosky-phase-space",
       "Batch 63g Cutkosky registry wrapper should preserve missing-provider diagnostics before "
       "solver execution");
-  Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0,
+  Expect(noise_provider->strategy_call_count() == 2 && noise_provider->provide_call_count() == 0,
          "Batch 63g Cutkosky registry wrapper should validate registered providers before "
          "reporting missing phase-space coverage");
   Expect(solver.call_count() == 0,
@@ -15791,8 +15791,8 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShor
   Expect(composed_message == baseline_message,
          "Batch 63g Cutkosky registry wrapper should preserve matched-provider "
          "boundary_unsolved diagnostics unchanged");
-  Expect(noise_provider->strategy_call_count() == 1 && noise_provider->provide_call_count() == 0 &&
-             wrapper_provider->strategy_call_count() == 1 &&
+  Expect(noise_provider->strategy_call_count() == 2 && noise_provider->provide_call_count() == 0 &&
+             wrapper_provider->strategy_call_count() == 2 &&
              wrapper_provider->provide_call_count() == 1,
          "Batch 63g Cutkosky registry wrapper should stop after the matched provider reports "
          "boundary_unsolved");
@@ -15966,6 +15966,102 @@ void Batch63aiPlannedCutkoskyProviderRegistryNullEntryPreflightsDecisionValidati
   Expect(solver.call_count() == 0,
          "Batch 63ai planned Cutkosky provider-registry solve should not call the solver after "
          "null provider rejection");
+}
+
+void Batch63ajAmfOptionsCutkoskyProviderRegistryDuplicateStrategyPreflightsPlanningTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  auto first_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto second_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &first_provider, &second_provider,
+       &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{first_provider,
+                                                                   second_provider},
+            solver));
+      },
+      "Batch 63aj AmfOptions Cutkosky provider-registry solve should reject duplicate "
+      "provider strategies before user-defined ending planning");
+
+  Expect(message ==
+             "boundary provider registry contains duplicate strategy: "
+             "builtin::cutkosky-phase-space::minus_i0",
+         "Batch 63aj AmfOptions Cutkosky provider-registry solve should preserve the "
+         "duplicate-provider diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63aj AmfOptions Cutkosky provider-registry solve should not plan a "
+         "user-defined ending scheme after duplicate provider-strategy rejection");
+  Expect(first_provider->strategy_call_count() == 1 &&
+             second_provider->strategy_call_count() == 1 &&
+             first_provider->provide_call_count() == 0 &&
+             second_provider->provide_call_count() == 0,
+         "Batch 63aj AmfOptions Cutkosky provider-registry solve should validate duplicate "
+         "strategies without provider attachment");
+  Expect(solver.call_count() == 0,
+         "Batch 63aj AmfOptions Cutkosky provider-registry solve should not call the solver "
+         "after duplicate provider-strategy rejection");
+}
+
+void Batch63ajPlannedCutkoskyProviderRegistryDuplicateStrategyPreflightsDecisionValidationTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+  auto first_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  auto second_provider = std::make_shared<RecordingStaticBoundaryProvider>(
+      "builtin::cutkosky-phase-space::minus_i0",
+      std::vector<amflow::BoundaryCondition>{MakeCutkoskyPhaseSpaceBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &first_provider, &second_provider, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            std::vector<std::shared_ptr<amflow::BoundaryProvider>>{first_provider,
+                                                                   second_provider},
+            solver));
+      },
+      "Batch 63aj planned Cutkosky provider-registry solve should reject duplicate provider "
+      "strategies before selected-decision validation");
+
+  Expect(message ==
+             "boundary provider registry contains duplicate strategy: "
+             "builtin::cutkosky-phase-space::minus_i0",
+         "Batch 63aj planned Cutkosky provider-registry solve should preserve the "
+         "duplicate-provider diagnostic");
+  Expect(first_provider->strategy_call_count() == 1 &&
+             second_provider->strategy_call_count() == 1 &&
+             first_provider->provide_call_count() == 0 &&
+             second_provider->provide_call_count() == 0,
+         "Batch 63aj planned Cutkosky provider-registry solve should reject duplicate "
+         "strategies before request generation or provider attachment");
+  Expect(solver.call_count() == 0,
+         "Batch 63aj planned Cutkosky provider-registry solve should not call the solver after "
+         "duplicate provider-strategy rejection");
 }
 
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
@@ -50677,6 +50773,8 @@ int main() {
     Batch63ahPlannedCutkoskyProviderRegistryEmptyPreflightsDecisionValidationTest();
     Batch63aiAmfOptionsCutkoskyProviderRegistryNullEntryPreflightsPlanningTest();
     Batch63aiPlannedCutkoskyProviderRegistryNullEntryPreflightsDecisionValidationTest();
+    Batch63ajAmfOptionsCutkoskyProviderRegistryDuplicateStrategyPreflightsPlanningTest();
+    Batch63ajPlannedCutkoskyProviderRegistryDuplicateStrategyPreflightsDecisionValidationTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

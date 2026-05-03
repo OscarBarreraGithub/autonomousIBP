@@ -13518,6 +13518,103 @@ void Batch65oAmfOptionsEtaInfinitySolveRejectsWhitespaceEtaSymbolBeforePlanningT
          "whitespace eta_symbol rejection");
 }
 
+void Batch65pNamedEtaInfinityBoundaryRequestValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.name.clear();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &scheme]() {
+        static_cast<void>(amflow::GeneratePlannedEtaInfinityBoundaryRequest(
+            spec,
+            "ProbeScheme",
+            {scheme}));
+      },
+      "Batch 65p named eta->infinity boundary request should reject malformed "
+      "ProblemSpec before user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 65p named eta->infinity boundary request should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65p named eta->infinity boundary request should not plan a user-defined "
+         "ending scheme after malformed ProblemSpec rejection");
+}
+
+void Batch65pAmfOptionsEtaInfinityBoundaryRequestValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.name.clear();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &scheme]() {
+        static_cast<void>(amflow::GenerateAmfOptionsEndingSchemeEtaInfinityBoundaryRequest(
+            spec,
+            amf_options,
+            {scheme}));
+      },
+      "Batch 65p AmfOptions eta->infinity boundary request should reject malformed "
+      "ProblemSpec before user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 65p AmfOptions eta->infinity boundary request should preserve the malformed "
+         "ProblemSpec diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65p AmfOptions eta->infinity boundary request should not plan a "
+         "user-defined ending scheme after malformed ProblemSpec rejection");
+}
+
+void Batch65pAmfOptionsEtaInfinitySolveValidatesProblemSpecBeforePlanningTest() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.name.clear();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeEtaInfinitySolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::eta->infinity"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  RecordingStaticBoundaryProvider provider("builtin::eta->infinity",
+                                           {MakeEtaInfinityBoundaryCondition()});
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &provider, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeEtaInfinitySeries(spec,
+                                                                               amf_options,
+                                                                               {scheme},
+                                                                               request_template,
+                                                                               provider,
+                                                                               solver));
+      },
+      "Batch 65p AmfOptions eta->infinity solve should reject malformed ProblemSpec before "
+      "user-defined planning");
+
+  Expect(message.find("family.name must not be empty") != std::string::npos,
+         "Batch 65p AmfOptions eta->infinity solve should preserve the malformed ProblemSpec "
+         "diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 65p AmfOptions eta->infinity solve should not plan a user-defined ending "
+         "scheme after malformed ProblemSpec rejection");
+  Expect(provider.strategy_call_count() == 0 && provider.provide_call_count() == 0,
+         "Batch 65p AmfOptions eta->infinity solve should not consult the provider after "
+         "malformed ProblemSpec rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 65p AmfOptions eta->infinity solve should not call the solver after "
+         "malformed ProblemSpec rejection");
+}
+
 void Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   const std::vector<std::string> nested_zero_masses = {
@@ -49316,6 +49413,9 @@ int main() {
     Batch65nAmfOptionsEtaInfinityRejectsPaddedSelectedTerminalStrategyBeforeProviderTest();
     Batch65oBuiltinEtaInfinityBoundaryRequestRejectsWhitespaceEtaSymbolTest();
     Batch65oAmfOptionsEtaInfinitySolveRejectsWhitespaceEtaSymbolBeforePlanningTest();
+    Batch65pNamedEtaInfinityBoundaryRequestValidatesProblemSpecBeforePlanningTest();
+    Batch65pAmfOptionsEtaInfinityBoundaryRequestValidatesProblemSpecBeforePlanningTest();
+    Batch65pAmfOptionsEtaInfinitySolveValidatesProblemSpecBeforePlanningTest();
     Batch65kAmfOptionsEndingSchemeEtaInfinityAcceptsNestedZeroMassThroughSolveTest();
     Batch65aAmfOptionsEndingSchemeEtaInfinityIgnoresInertAmfOptionsFieldsTest();
     Batch63tPlannedCutkoskyBoundaryRequestUsesSelectedDecisionTest();

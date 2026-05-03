@@ -145,6 +145,20 @@ void ValidateEtaInfinitySolveEtaSymbol(const std::string& eta_symbol) {
   }
 }
 
+void ValidateEtaInfinitySolveProblemSpec(const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    std::ostringstream message;
+    for (std::size_t index = 0; index < validation_messages.size(); ++index) {
+      if (index != 0) {
+        message << "; ";
+      }
+      message << validation_messages[index];
+    }
+    throw std::invalid_argument(message.str());
+  }
+}
+
 void ValidateCutkoskyPhaseSpaceSolveEtaSymbol(const std::string& eta_symbol) {
   if (std::all_of(eta_symbol.begin(), eta_symbol.end(), [](const unsigned char c) {
         return std::isspace(c);
@@ -7185,6 +7199,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
+  ValidateEtaInfinitySolveProblemSpec(spec);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(
@@ -7205,6 +7220,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
+  ValidateEtaInfinitySolveProblemSpec(spec);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,
@@ -7224,6 +7240,7 @@ SolverDiagnostics SolveAmfOptionsEndingSchemeEtaInfinitySeries(
     const SeriesSolver& solver,
     const std::string& eta_symbol) {
   ValidateEtaInfinitySolveEtaSymbol(eta_symbol);
+  ValidateEtaInfinitySolveProblemSpec(spec);
   const EndingDecision decision =
       PlanAmfOptionsEndingScheme(spec, amf_options, user_defined_schemes);
   return SolvePlannedAmfOptionsEndingSchemeEtaInfinitySeries(spec,

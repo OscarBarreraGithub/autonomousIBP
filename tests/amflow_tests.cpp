@@ -15683,6 +15683,73 @@ void Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCirc
          "validation fails");
 }
 
+void Batch63ahAmfOptionsCutkoskyProviderRegistryEmptyPreflightsPlanningTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::AmfOptions amf_options =
+      MakePoisonedAmfOptions({"NotUsed"}, {"ProbeScheme"});
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"planar_double_box::cutkosky-phase-space"};
+  const auto scheme = std::make_shared<RecordingEndingScheme>(decision, "ProbeScheme");
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers;
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &amf_options, &request_template, &scheme, &providers, &solver]() {
+        static_cast<void>(amflow::SolveAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            amf_options,
+            {scheme},
+            request_template,
+            providers,
+            solver));
+      },
+      "Batch 63ah AmfOptions Cutkosky provider-registry solve should reject empty provider "
+      "registries before user-defined ending planning");
+
+  Expect(message == "boundary provider registry must not be empty",
+         "Batch 63ah AmfOptions Cutkosky provider-registry solve should preserve the "
+         "empty-provider-registry diagnostic");
+  Expect(scheme->call_count() == 0,
+         "Batch 63ah AmfOptions Cutkosky provider-registry solve should not plan a "
+         "user-defined ending scheme after empty provider-registry rejection");
+  Expect(solver.call_count() == 0,
+         "Batch 63ah AmfOptions Cutkosky provider-registry solve should not call the solver "
+         "after empty provider-registry rejection");
+}
+
+void Batch63ahPlannedCutkoskyProviderRegistryEmptyPreflightsDecisionValidationTest() {
+  const amflow::ProblemSpec spec = MakeReviewedCutkoskyPhaseSpaceSpec();
+  const amflow::SolveRequest request_template = MakeCutkoskyPhaseSpaceSolveTemplateRequest();
+
+  amflow::EndingDecision decision;
+  decision.terminal_strategy = "ProbeScheme";
+  decision.terminal_nodes = {"stale::cutkosky-phase-space"};
+  const std::vector<std::shared_ptr<amflow::BoundaryProvider>> providers;
+  RecordingSeriesSolver solver;
+
+  const std::string message = CaptureInvalidArgumentMessage(
+      [&spec, &decision, &request_template, &providers, &solver]() {
+        static_cast<void>(amflow::SolvePlannedAmfOptionsEndingSchemeCutkoskyPhaseSpaceSeries(
+            spec,
+            decision,
+            request_template,
+            providers,
+            solver));
+      },
+      "Batch 63ah planned Cutkosky provider-registry solve should reject empty provider "
+      "registries before selected-decision validation");
+
+  Expect(message == "boundary provider registry must not be empty",
+         "Batch 63ah planned Cutkosky provider-registry solve should preserve the "
+         "empty-provider-registry diagnostic");
+  Expect(solver.call_count() == 0,
+         "Batch 63ah planned Cutkosky provider-registry solve should not call the solver after "
+         "empty provider-registry rejection");
+}
+
 void BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest() {
   amflow::BootstrapSeriesSolver solver;
   const amflow::SolverDiagnostics diagnostics = solver.Solve(MakeBoundarySolveRequest());
@@ -50208,6 +50275,8 @@ int main() {
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryMissingProviderShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryProviderFailureShortCircuitTest();
     Batch63gAmfOptionsEndingSchemeCutkoskyPhaseSpaceRegistryValidationShortCircuitTest();
+    Batch63ahAmfOptionsCutkoskyProviderRegistryEmptyPreflightsPlanningTest();
+    Batch63ahPlannedCutkoskyProviderRegistryEmptyPreflightsDecisionValidationTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedForIncompleteManualAttachmentTest();
     BootstrapSeriesSolverReturnsBoundaryUnsolvedWithoutExplicitStartBoundaryTest();
     BootstrapSeriesSolverExactScalarOneHopHappyPathTest();

@@ -884,18 +884,19 @@ The target-reduction application seam is deliberately narrower than full automat
   direct master solve, emitting target-aligned epsilon coefficients and a top-level
   `target_reduction` status object on success
 - the `solve-series` AMFlow-state JSON path also accepts retained
-  `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` state it now
-  evaluates the retained leading eta-infinity subsystem-sample boundary coefficients, applies the
-  first retained `eta=0` branch-log endpoint coefficient transport for `box1[1,0,1,0]`, and reports
-  `runtime_application: "applied-after-eta-zero-first-branch-log-endpoint-transport"` after
-  applying target reduction to coefficients with that first endpoint correction. The same result
-  JSON now emits a top-level `continuation` audit object carrying the start/target locations,
-  reviewed singular `eta` locations, `transport_applied: true`, `transport_scope:
-  "first-eta-zero-branch-log-endpoint-coefficient-only"`,
+  `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` and `box2`
+  states it evaluates the retained leading eta-infinity subsystem-sample boundary coefficients,
+  applies the first retained `eta=0` branch-log endpoint coefficient transport for
+  `<family>[1,0,1,0]`, and applies target reduction to coefficients with that first endpoint
+  correction. A single state result still emits the top-level `continuation` audit object carrying
+  the start/target locations, reviewed singular `eta` locations, `transport_applied: true`,
+  `transport_scope: "first-eta-zero-branch-log-endpoint-coefficient-only"`,
   `full_eta_zero_contour_applied: false`, and `runtime_application:
   "eta-infinity-de-asymptotic-first-coefficient+eta-zero-first-branch-log-endpoint-coefficient"`.
-  Full singular eta-to-zero contour execution and higher endpoint extraction remain outside this
-  path.
+  The committed automatic-loop fixture may also be an `amflow_solve_series_state_bundle`; the CLI
+  evaluates each contained state independently and emits one combined comparator-readable `results`
+  array plus per-family `state_results`. Full singular eta-to-zero contour execution and higher
+  endpoint extraction remain outside this path.
 
 The first DE-assembly ingestion path is intentionally narrow:
 

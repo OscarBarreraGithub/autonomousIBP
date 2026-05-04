@@ -48645,7 +48645,7 @@ void SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest() {
 void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
-      FreshTempDir("amflow-solve-series-cli-automatic-loop-amflow-state");
+      FreshTempDir("amflow-solve-series-cli-automatic-loop-amflow-state-bundle");
   const std::filesystem::path state_path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) /
       "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json";
@@ -48669,80 +48669,41 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   const std::string json = ReadFile(output_path);
   ExpectContains(json, "\"benchmark_id\": \"automatic_loop\"",
                  "AMFlow state ingestion should preserve the benchmark id");
-  ExpectContains(json, "\"family\": \"box1\"",
-                 "AMFlow state ingestion should preserve the state family");
+  ExpectContains(json, "\"family\": \"multiple\"",
+                 "AMFlow state-bundle ingestion should report a combined result family");
+  ExpectContains(json, "\"families\": [",
+                 "AMFlow state-bundle ingestion should publish the retained families");
+  ExpectContains(json, "\"box1\"",
+                 "AMFlow state-bundle ingestion should include the retained box1 family");
+  ExpectContains(json, "\"box2\"",
+                 "AMFlow state-bundle ingestion should include the retained box2 family");
+  ExpectContains(json, "\"state_count\": 2",
+                 "AMFlow state-bundle ingestion should record both retained family states");
   ExpectContains(json, "\"integral\": \"box1[2,0,1,0]\"",
-                 "AMFlow state ingestion should expose retained reduction targets in the output");
-  ExpectContains(json,
-                 "\"kind\": \"amflow_eta_infinity_asymptotic_with_subsystem_samples\"",
-                 "AMFlow state ingestion should preserve the eta-infinity boundary kind");
-  ExpectContains(json, "\"epsilon_sample_count\": 10",
-                 "AMFlow state ingestion should preserve the subsystem epsilon-sample count");
-  ExpectContains(json, "\"accepted_by_solve_series\": true",
-                 "AMFlow state ingestion should distinguish accepted state input from solved "
-                 "boundary data");
-  ExpectContains(json, "\"target_reduction\": {",
-                 "AMFlow state ingestion should publish retained target-reduction metadata");
-  ExpectContains(json, "\"continuation\": {",
-                 "AMFlow state ingestion should publish explicit Gap B continuation metadata");
-  ExpectContains(json, "\"start_location\": \"infinity\"",
-                 "AMFlow state ingestion should expose the eta-continuation start point");
-  ExpectContains(json, "\"target_location\": \"eta=0\"",
-                 "AMFlow state ingestion should expose the singular eta-continuation endpoint");
-  ExpectContains(json, "\"singular_points\": [",
-                 "AMFlow state ingestion should expose reviewed singular eta locations");
-  ExpectContains(json, "\"eta=0\"",
-                 "AMFlow state ingestion should expose the endpoint singular location");
-  ExpectContains(json, "\"eta=1\"",
-                 "AMFlow state ingestion should expose the internal singular location");
-  ExpectContains(json, "\"eta=100\"",
-                 "AMFlow state ingestion should expose the second internal singular location");
-  ExpectContains(json, "\"transport_applied\": true",
-                 "AMFlow state ingestion should claim only the reviewed first eta=0 endpoint "
-                 "coefficient transport that ran on this path");
-  ExpectContains(json,
-                 "\"transport_scope\": "
-                 "\"first-eta-zero-branch-log-endpoint-coefficient-only\"",
-                 "AMFlow state ingestion should make the partial endpoint-transport scope "
-                 "machine-readable");
-  ExpectContains(json, "\"full_eta_zero_contour_applied\": false",
-                 "AMFlow state ingestion should keep full contour execution explicitly false");
-  ExpectContains(json, "\"eta_infinity_asymptotic_transport_applied\": true",
-                 "AMFlow state ingestion should apply the first DE-derived eta-infinity "
-                 "asymptotic transport coefficient");
+                 "AMFlow state-bundle ingestion should expose box1 retained reduction targets");
+  ExpectContains(json, "\"integral\": \"box2[2,1,1,1]\"",
+                 "AMFlow state-bundle ingestion should expose box2 retained reduction targets");
+  ExpectContains(json, "\"state_results\": [",
+                 "AMFlow state-bundle ingestion should publish per-family transport metadata");
   ExpectContains(json, "\"eta_infinity_asymptotic_transported_master_count\": 1",
-                 "AMFlow state ingestion should report the one unambiguous transported "
-                 "asymptotic master coefficient set");
-  ExpectContains(json, "\"eta_zero_endpoint_transport_applied\": true",
-                 "AMFlow state ingestion should expose the reviewed first endpoint transport");
+                 "AMFlow state-bundle ingestion should report each retained family's first "
+                 "asymptotic transport coefficient");
   ExpectContains(json, "\"eta_zero_endpoint_transported_master_count\": 1",
-                 "AMFlow state ingestion should count the one endpoint-transported master");
+                 "AMFlow state-bundle ingestion should count each retained family's first "
+                 "endpoint-transported master");
   ExpectContains(json, "\"box1[1,0,1,0]\"",
-                 "AMFlow state ingestion should identify the endpoint-transported master");
-  ExpectContains(json,
-                 "\"runtime_application\": "
-                 "\"eta-infinity-de-asymptotic-first-coefficient+"
-                 "eta-zero-first-branch-log-endpoint-coefficient\"",
-                 "AMFlow state ingestion should label the first asymptotic and endpoint "
-                 "transport layers");
-  ExpectContains(json,
-                 "\"runtime_boundary_provider\": "
-                 "\"retained-asymptotic-subsystem-sample-boundary-evaluator+"
-                 "eta-infinity-de-asymptotic-transport+"
-                 "eta-zero-first-branch-log-endpoint-transport\"",
-                 "AMFlow state ingestion should report the retained boundary evaluator plus "
-                 "first asymptotic and endpoint transports");
-  ExpectContains(json,
-                 "\"runtime_application\": "
-                 "\"applied-after-eta-zero-first-branch-log-endpoint-transport\"",
-                 "AMFlow state ingestion should apply retained target reduction after the "
-                 "endpoint transport coefficient exists");
+                 "AMFlow state-bundle ingestion should identify the box1 endpoint transport");
+  ExpectContains(json, "\"box2[1,0,1,0]\"",
+                 "AMFlow state-bundle ingestion should identify the box2 endpoint transport");
   ExpectContains(json, "\"epsilon_orders\": [",
                  "AMFlow state ingestion should emit comparator-readable epsilon coefficients");
   ExpectContains(json, "\"order\": -",
                  "AMFlow state ingestion should expose Laurent pole boundary coefficients");
   ExpectContains(json, "\"exact_real\": \"-1/100\"",
                  "AMFlow state ingestion should expose the transported box1[2,0,1,0] pole "
+                 "coefficient through retained target reduction");
+  ExpectContains(json, "\"exact_real\": \"1/50\"",
+                 "AMFlow state ingestion should expose a retained box2[2,1,1,1] Laurent "
                  "coefficient through retained target reduction");
   ExpectContains(json, "\"status\": \"success\"",
                  "AMFlow state ingestion should report boundary-evaluation success");
@@ -48761,6 +48722,66 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
              std::string::npos,
          "AMFlow state ingestion should not claim full endpoint master values before the full "
          "continuation exists");
+
+  const std::filesystem::path audit_script_path = run_root / "assert_bundle_audit.py";
+  const std::filesystem::path audit_stdout_path = run_root / "audit-stdout.log";
+  const std::filesystem::path audit_stderr_path = run_root / "audit-stderr.log";
+  OverwriteTextFile(
+      audit_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+states = {state["family"]: state for state in payload["state_results"]}
+assert set(states) == {"box1", "box2"}, states
+for family, state in states.items():
+    boundary = state["boundary_state"]
+    assert boundary["kind"] == "amflow_eta_infinity_asymptotic_with_subsystem_samples"
+    assert boundary["location"] == "infinity"
+    assert boundary["direction"] == "NegIm"
+    assert boundary["epsilon_sample_count"] == 10
+    assert boundary["accepted_by_solve_series"] is True
+    assert boundary["runtime_boundary_provider"] == (
+        "retained-asymptotic-subsystem-sample-boundary-evaluator+"
+        "eta-infinity-de-asymptotic-transport+"
+        "eta-zero-first-branch-log-endpoint-transport"
+    )
+
+    continuation = state["continuation"]
+    assert continuation["variable"] == "eta"
+    assert continuation["start_location"] == "infinity"
+    assert continuation["target_location"] == "eta=0"
+    assert continuation["transport_scope"] == "first-eta-zero-branch-log-endpoint-coefficient-only"
+    assert continuation["full_eta_zero_contour_applied"] is False
+    assert continuation["eta_infinity_asymptotic_transport_applied"] is True
+    assert continuation["eta_zero_endpoint_transport_applied"] is True
+    assert continuation["eta_infinity_asymptotic_transported_master_count"] == 1
+    assert continuation["eta_zero_endpoint_transported_master_count"] == 1
+    assert f"{family}[1,0,1,0]" in continuation["eta_zero_endpoint_transported_integrals"]
+    assert continuation["runtime_application"] == (
+        "eta-infinity-de-asymptotic-first-coefficient+"
+        "eta-zero-first-branch-log-endpoint-coefficient"
+    )
+    assert "higher endpoint extraction remain deferred" in continuation["blocked_reason"]
+
+    target_reduction = state["target_reduction"]
+    assert target_reduction["accepted_by_solve_series"] is True
+    assert target_reduction["runtime_application"] == (
+        "applied-after-eta-zero-first-branch-log-endpoint-transport"
+    )
+)PY");
+  const std::string audit_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(audit_script_path.string()) + " " +
+      ShellSingleQuote(output_path.string()) + " >" +
+      ShellSingleQuote(audit_stdout_path.string()) + " 2>" +
+      ShellSingleQuote(audit_stderr_path.string());
+  Expect(RunShellCommand(audit_command) == 0,
+         "AMFlow state-bundle JSON should preserve per-family boundary, continuation, and "
+         "target-reduction audit objects; stderr=" +
+             (std::filesystem::exists(audit_stderr_path) ? ReadFile(audit_stderr_path)
+                                                         : std::string{}));
 }
 
 struct ReferenceHarnessSelfCheckRun {

@@ -165,36 +165,37 @@ The bootstrap-only state is allowed for repository setup and interface work. It 
 
 ## Automatic Loop Solve-Series State
 
-The retained `automatic_loop` `box1` AMFlow cache now has a repo-local state extraction path:
+The retained `automatic_loop` `box1` and `box2` AMFlow caches now have repo-local state
+extraction paths:
 
 ```bash
 python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
   --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/1 \
-  --out /tmp/automatic_loop.amflow-state.json
+  --reduction-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/0 \
+  --out /tmp/automatic_loop.box1.amflow-state.json
+
+python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
+  --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box2_amflow/1 \
+  --reduction-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box2_amflow/0 \
+  --out /tmp/automatic_loop.box2.amflow-state.json
 ```
 
 The committed mirror
-`tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json` records the actual cached
-master basis, `eta` coefficient matrix, reviewed singular `eta` locations, AMFlow eta-infinity
-boundary metadata, epsilon sample points, and Kira target/reduction context for `box1`. This is
-intentionally not named
+`tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json` is an
+`amflow_solve_series_state_bundle` containing the retained `box1` and `box2` states. Each state
+records the actual cached master basis, `eta` coefficient matrix, reviewed singular `eta`
+locations, AMFlow eta-infinity boundary metadata, epsilon sample points, and Kira
+target/reduction context. This is intentionally not named
 `automatic_loop.yaml`, and the retained extractor metadata still reports the state-capture-time
 `cpp_solve_series_ingest.supported = false`. The C++ `solve-series` CLI can now accept this JSON
-shape directly, preserve the AMFlow eta-infinity boundary metadata in its result JSON, replay the
-retained leading subsystem-sample boundary coefficients, fit their epsilon Laurent series, apply
-the first unambiguous DE-derived eta-infinity asymptotic transport coefficient, and apply the
-first retained `eta=0` branch-log endpoint coefficient transport for
-`box1[1,0,1,0]` before applying the retained `box1` target reduction. The comparator-facing
-JSON now also includes the retained `box1` reduction masters recorded in the AMFlow state, so
-the constant-master parity evidence is visible instead of being reported as missing. It also emits a
-top-level `continuation` audit object with `transport_applied = true` only for that first
-endpoint coefficient, `transport_scope =
-first-eta-zero-branch-log-endpoint-coefficient-only`,
-`full_eta_zero_contour_applied = false`, `eta_infinity_asymptotic_transport_applied = true` for
-the first infinity-side DE step, the start/target locations, the transported master label, and the
-reviewed singular locations, so retained infinity-side transport evidence and first
-endpoint-coefficient evidence are separated from the still-deferred full endpoint contour. This
-closes the previous structured `boundary_unsolved` stop for this state. Shipping a full parity
+bundle directly, replay each family through the same retained eta-infinity subsystem-sample
+boundary evaluator, fit epsilon Laurent series, apply the first unambiguous DE-derived
+eta-infinity asymptotic transport coefficient, apply the first retained `eta=0` branch-log
+endpoint coefficient transport for `<family>[1,0,1,0]`, and then apply the retained family-local
+target reduction. The comparator-facing JSON now includes both retained reduction targets and
+retained reduction masters for `box1` and `box2`; the current retained comparison has
+`matched_integral_count=12`, `compared_coefficient_count=54`, and
+`passed_coefficient_count=24` at `--eps-order 2 --digits 40 --tolerance-digits 30`. Shipping a full parity
 claim from this result would still be dishonest: the physical comparison endpoint is the singular
 `eta -> 0` limit reached through complex continuation, and the current C++ runtime does not yet
 perform the full contour or higher-order singular endpoint extraction on the retained
@@ -208,13 +209,14 @@ python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
   --cpp-result /tmp/automatic_loop.cpp-result.json \
   --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_loop/golden-manifest.json \
   --family-alias box1_amflow=box1 \
+  --family-alias box2_amflow=box2 \
   --tolerance-digits 30
 ```
 
 The remaining end-to-end parity work is to add the complex continuation, singular `eta -> 0`
-extraction, and any missing sibling-family coverage needed for the retained golden manifest. The
-current JSON-state run is boundary-evaluation evidence and comparator plumbing only, not a
-phase-0 parity pass.
+extraction, and higher endpoint coefficients needed for the retained golden manifest. The current
+JSON-state bundle run is boundary-evaluation evidence and comparator plumbing only, not a phase-0
+parity pass.
 
 ## Current Canonical Cluster Gates
 

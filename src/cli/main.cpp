@@ -1449,16 +1449,18 @@ std::map<std::string, std::string> ParseAmflowStateBoundaryRawFiles(
   return files;
 }
 
-DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
-  const CliJsonValue root = CliJsonParser(json).Parse();
-  RequireJsonObject(root, "$");
-  const std::string kind = RequireJsonString(RequireJsonField(root, "kind", "$"), "$.kind");
+DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
+    const CliJsonValue& root,
+    const std::string& path) {
+  RequireJsonObject(root, path);
+  const std::string kind =
+      RequireJsonString(RequireJsonField(root, "kind", path), path + ".kind");
   if (kind != "amflow_solve_series_state") {
     throw std::invalid_argument(
         "solve-series JSON input must have kind \"amflow_solve_series_state\"");
   }
-  if (RequireJsonInteger(RequireJsonField(root, "schema_version", "$"),
-                         "$.schema_version") != 1) {
+  if (RequireJsonInteger(RequireJsonField(root, "schema_version", path),
+                         path + ".schema_version") != 1) {
     throw std::invalid_argument("solve-series AMFlow state JSON schema_version must be 1");
   }
 
@@ -1466,27 +1468,30 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
   spec.present = true;
   spec.amflow_state_input = true;
   spec.benchmark_id = OptionalJsonStringField(root, "benchmark_id", "");
-  spec.family = RequireJsonString(RequireJsonField(root, "family", "$"), "$.family");
-  spec.variable = RequireJsonString(RequireJsonField(root, "variable", "$"), "$.variable");
+  spec.family = RequireJsonString(RequireJsonField(root, "family", path), path + ".family");
+  spec.variable =
+      RequireJsonString(RequireJsonField(root, "variable", path), path + ".variable");
   spec.start_location = "infinity";
   spec.target_location = spec.variable + "=0";
-  spec.masters = ParseAmflowStateMasters(RequireJsonField(root, "masters", "$"),
-                                         "$.masters");
+  spec.masters = ParseAmflowStateMasters(RequireJsonField(root, "masters", path),
+                                         path + ".masters");
   spec.coefficient_matrices = ParseAmflowStateCoefficientMatrices(
-      RequireJsonField(root, "coefficient_matrices", "$"), "$.coefficient_matrices");
+      RequireJsonField(root, "coefficient_matrices", path),
+      path + ".coefficient_matrices");
   if (const CliJsonValue* singular_points = FindJsonField(root, "singular_points")) {
-    spec.singular_points = RequireJsonStringArray(*singular_points, "$.singular_points");
+    spec.singular_points =
+        RequireJsonStringArray(*singular_points, path + ".singular_points");
     for (const std::string& singular_point : spec.singular_points) {
       if (TrimAsciiWhitespace(singular_point).empty()) {
-        throw std::invalid_argument("$.singular_points entries must not be empty");
+        throw std::invalid_argument(path + ".singular_points entries must not be empty");
       }
     }
   }
 
-  const CliJsonValue& boundary_state = RequireJsonField(root, "boundary_state", "$");
+  const CliJsonValue& boundary_state = RequireJsonField(root, "boundary_state", path);
   spec.boundary_state_kind = RequireJsonString(
-      RequireJsonField(boundary_state, "kind", "$.boundary_state"),
-      "$.boundary_state.kind");
+      RequireJsonField(boundary_state, "kind", path + ".boundary_state"),
+      path + ".boundary_state.kind");
   if (spec.boundary_state_kind != "amflow_eta_infinity_asymptotic_with_subsystem_samples") {
     throw std::invalid_argument(
         "solve-series AMFlow state JSON carries unsupported boundary_state.kind: " +
@@ -1494,29 +1499,31 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
   }
   if (const CliJsonValue* direction = FindJsonField(boundary_state, "direction")) {
     spec.boundary_state_direction =
-        StripWrappedQuoteLiteral(RequireJsonString(*direction, "$.boundary_state.direction"));
+        StripWrappedQuoteLiteral(
+            RequireJsonString(*direction, path + ".boundary_state.direction"));
   }
   if (const CliJsonValue* epsilon_samples = FindJsonField(boundary_state, "epsilon_samples")) {
     spec.boundary_epsilon_samples =
-        RequireJsonStringArray(*epsilon_samples, "$.boundary_state.epsilon_samples");
+        RequireJsonStringArray(*epsilon_samples, path + ".boundary_state.epsilon_samples");
   }
   if (const CliJsonValue* files = FindJsonField(boundary_state, "files")) {
     spec.boundary_state_raw_files =
-        ParseAmflowStateBoundaryRawFiles(*files, "$.boundary_state.files");
+        ParseAmflowStateBoundaryRawFiles(*files, path + ".boundary_state.files");
   }
 
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
     if (const CliJsonValue* masters = FindJsonField(*reduction, "masters")) {
       spec.retained_reduction_masters =
-          ParseAmflowStateMasters(*masters, "$.reduction.masters");
+          ParseAmflowStateMasters(*masters, path + ".reduction.masters");
     }
     if (const CliJsonValue* target_reduction_path =
             FindJsonField(*reduction, "target_reduction_path")) {
       spec.target_reduction_path =
-          RequireJsonString(*target_reduction_path, "$.reduction.target_reduction_path");
+          RequireJsonString(*target_reduction_path,
+                            path + ".reduction.target_reduction_path");
     }
     if (const CliJsonValue* targets = FindJsonField(*reduction, "targets")) {
-      spec.targets = ParseAmflowStateTargets(*targets, "$.reduction.targets");
+      spec.targets = ParseAmflowStateTargets(*targets, path + ".reduction.targets");
     }
   }
   if (spec.targets.empty()) {
@@ -1525,6 +1532,38 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
     }
   }
   return spec;
+}
+
+std::vector<DirectSolveSeriesSpec> ParseAmflowSolveSeriesStateBundleJsonRoot(
+    const CliJsonValue& root,
+    const std::string& path) {
+  RequireJsonObject(root, path);
+  const std::string kind =
+      RequireJsonString(RequireJsonField(root, "kind", path), path + ".kind");
+  if (kind != "amflow_solve_series_state_bundle") {
+    throw std::invalid_argument(
+        "solve-series JSON bundle input must have kind "
+        "\"amflow_solve_series_state_bundle\"");
+  }
+  if (RequireJsonInteger(RequireJsonField(root, "schema_version", path),
+                         path + ".schema_version") != 1) {
+    throw std::invalid_argument(
+        "solve-series AMFlow state bundle JSON schema_version must be 1");
+  }
+
+  const CliJsonValue& states = RequireJsonArray(RequireJsonField(root, "states", path),
+                                                path + ".states");
+  if (states.array.empty()) {
+    throw std::invalid_argument(
+        "solve-series AMFlow state bundle JSON must contain at least one state");
+  }
+  std::vector<DirectSolveSeriesSpec> specs;
+  specs.reserve(states.array.size());
+  for (std::size_t index = 0; index < states.array.size(); ++index) {
+    specs.push_back(ParseAmflowSolveSeriesStateJsonRoot(
+        states.array[index], path + ".states[" + std::to_string(index) + "]"));
+  }
+  return specs;
 }
 
 amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& direct_spec) {
@@ -2707,16 +2746,18 @@ bool EpsilonCoefficientIsUnitRealPole(
 int ApplyRetainedAutomaticLoopEtaZeroFirstBranchLogTransport(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
-  constexpr char kTransportedMasterLabel[] = "box1[1,0,1,0]";
-  if (spec.benchmark_id != "automatic_loop" || spec.family != "box1" ||
+  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
+  if (spec.benchmark_id != "automatic_loop" || !retained_box_family ||
       spec.variable != "eta" || spec.boundary_state_direction != "NegIm" ||
       !HasCanonicalSingularPoint(spec, "eta=0") ||
       !HasCanonicalSingularPoint(spec, "eta=100")) {
     return 0;
   }
+  const std::string transported_master_label =
+      IntegralLabel(spec.family, {1, 0, 1, 0});
 
   const std::optional<std::size_t> master_index =
-      FindMasterIndexByLabel(spec, kTransportedMasterLabel);
+      FindMasterIndexByLabel(spec, transported_master_label);
   if (!master_index.has_value() ||
       *master_index >= diagnostics.target_epsilon_coefficients.size()) {
     return 0;
@@ -2743,7 +2784,7 @@ int ApplyRetainedAutomaticLoopEtaZeroFirstBranchLogTransport(
   if (*master_index < diagnostics.target_values.size()) {
     diagnostics.target_values[*master_index] = coefficients[*constant_index].real;
   }
-  diagnostics.eta_endpoint_transported_integrals.push_back(kTransportedMasterLabel);
+  diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
   diagnostics.eta_endpoint_transport_count = 1;
   return 1;
 }
@@ -3069,6 +3110,124 @@ struct SolveSeriesOutputIntegral {
   std::optional<std::size_t> retained_master_index;
 };
 
+void AppendSolveSeriesResultEntries(
+    std::ostream& out,
+    const amflow::ProblemSpec& problem_spec,
+    const DirectSolveSeriesSpec& direct_spec,
+    const amflow::SolverDiagnostics& diagnostics,
+    const amflow::SolverDiagnostics* retained_master_diagnostics,
+    const std::string& status,
+    const int digits,
+    bool& wrote_result) {
+  std::map<std::string, std::size_t> master_index_by_label;
+  for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
+    const auto& master = direct_spec.masters[index];
+    master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
+  }
+  std::vector<SolveSeriesOutputIntegral> output_integrals;
+  output_integrals.reserve(problem_spec.targets.size() +
+                           direct_spec.retained_reduction_masters.size());
+  std::set<std::string> output_labels;
+  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+    const std::string label = problem_spec.targets[index].Label();
+    output_integrals.push_back({label, index, std::nullopt});
+    output_labels.insert(label);
+  }
+  if (retained_master_diagnostics != nullptr) {
+    for (const amflow::MasterIntegral& master : direct_spec.retained_reduction_masters) {
+      const std::string label = IntegralLabel(master.family, master.indices);
+      const auto master_it = master_index_by_label.find(label);
+      if (master_it == master_index_by_label.end() ||
+          output_labels.find(label) != output_labels.end()) {
+        continue;
+      }
+      output_integrals.push_back({label, std::nullopt, master_it->second});
+      output_labels.insert(label);
+    }
+  }
+
+  for (std::size_t index = 0; index < output_integrals.size(); ++index) {
+    const SolveSeriesOutputIntegral& output_integral = output_integrals[index];
+    const std::string& label = output_integral.label;
+    if (wrote_result) {
+      out << ",\n";
+    }
+    wrote_result = true;
+    out << "    {\n";
+    out << "      \"integral\": " << JsonString(label) << ",\n";
+    out << "      \"epsilon_orders\": [";
+    const auto master_it = master_index_by_label.find(label);
+    const bool target_reduction_applied =
+        !direct_spec.target_reduction_path.empty() && status == "success";
+    const bool target_aligned_epsilon =
+        target_reduction_applied &&
+        diagnostics.target_epsilon_coefficients.size() == problem_spec.targets.size();
+    const bool target_aligned_values =
+        target_reduction_applied &&
+        diagnostics.target_values.size() == problem_spec.targets.size();
+    std::optional<std::size_t> result_index;
+    if (output_integral.retained_master_index.has_value()) {
+      result_index = output_integral.retained_master_index;
+    } else if (target_aligned_epsilon && output_integral.target_index.has_value()) {
+      result_index = output_integral.target_index;
+    } else if (master_it != master_index_by_label.end()) {
+      result_index = master_it->second;
+    }
+    std::optional<std::size_t> value_index;
+    if (output_integral.retained_master_index.has_value()) {
+      value_index = output_integral.retained_master_index;
+    } else if (target_aligned_values && output_integral.target_index.has_value()) {
+      value_index = output_integral.target_index;
+    } else if (master_it != master_index_by_label.end()) {
+      value_index = master_it->second;
+    }
+    const amflow::SolverDiagnostics& result_diagnostics =
+        output_integral.retained_master_index.has_value() && retained_master_diagnostics != nullptr
+            ? *retained_master_diagnostics
+            : diagnostics;
+    if (status == "success" && result_index.has_value()) {
+      if (*result_index < result_diagnostics.target_epsilon_coefficients.size() &&
+          !result_diagnostics.target_epsilon_coefficients[*result_index].empty()) {
+        const auto& coefficients =
+            result_diagnostics.target_epsilon_coefficients[*result_index];
+        for (std::size_t coefficient_index = 0; coefficient_index < coefficients.size();
+             ++coefficient_index) {
+          if (coefficient_index > 0) {
+            out << ", ";
+          }
+          const auto& coefficient = coefficients[coefficient_index];
+          const std::string exact_real = coefficient.real.empty() ? "0" : coefficient.real;
+          const std::string exact_imag =
+              coefficient.imaginary.empty() ? "0" : coefficient.imaginary;
+          out << "{\n";
+          out << "        \"order\": " << coefficient.order << ",\n";
+          out << "        \"real_digits\": "
+              << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
+          out << "        \"imag_digits\": "
+              << JsonString(RationalToDecimalDigits(exact_imag, digits)) << ",\n";
+          out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
+          out << "        \"exact_imag\": " << JsonString(exact_imag) << "\n";
+          out << "      }";
+        }
+      } else if (value_index.has_value() &&
+                 *value_index < result_diagnostics.target_values.size()) {
+        const std::string exact_real = result_diagnostics.target_values[*value_index];
+        out << "{\n";
+        out << "        \"order\": 0,\n";
+        out << "        \"real_digits\": "
+            << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
+        out << "        \"imag_digits\": "
+            << JsonString(RationalToDecimalDigits("0", digits)) << ",\n";
+        out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
+        out << "        \"exact_imag\": \"0\"\n";
+        out << "      }";
+      }
+    }
+    out << "]\n";
+    out << "    }";
+  }
+}
+
 int ParseRequiredIntegerFlag(const std::string& flag, const std::string& value) {
   std::size_t consumed = 0;
   int parsed = 0;
@@ -3280,85 +3439,15 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "  },\n";
   }
   out << "  \"results\": [\n";
-  for (std::size_t index = 0; index < output_integrals.size(); ++index) {
-    const SolveSeriesOutputIntegral& output_integral = output_integrals[index];
-    const std::string& label = output_integral.label;
-    if (index > 0) {
-      out << ",\n";
-    }
-    out << "    {\n";
-    out << "      \"integral\": " << JsonString(label) << ",\n";
-    out << "      \"epsilon_orders\": [";
-    const auto master_it = master_index_by_label.find(label);
-    const bool target_reduction_applied =
-        !direct_spec.target_reduction_path.empty() && status == "success";
-    const bool target_aligned_epsilon =
-        target_reduction_applied &&
-        diagnostics.target_epsilon_coefficients.size() == problem_spec.targets.size();
-    const bool target_aligned_values =
-        target_reduction_applied &&
-        diagnostics.target_values.size() == problem_spec.targets.size();
-    std::optional<std::size_t> result_index;
-    if (output_integral.retained_master_index.has_value()) {
-      result_index = output_integral.retained_master_index;
-    } else if (target_aligned_epsilon && output_integral.target_index.has_value()) {
-      result_index = output_integral.target_index;
-    } else if (master_it != master_index_by_label.end()) {
-      result_index = master_it->second;
-    }
-    std::optional<std::size_t> value_index;
-    if (output_integral.retained_master_index.has_value()) {
-      value_index = output_integral.retained_master_index;
-    } else if (target_aligned_values && output_integral.target_index.has_value()) {
-      value_index = output_integral.target_index;
-    } else if (master_it != master_index_by_label.end()) {
-      value_index = master_it->second;
-    }
-    const amflow::SolverDiagnostics& result_diagnostics =
-        output_integral.retained_master_index.has_value() && retained_master_diagnostics != nullptr
-            ? *retained_master_diagnostics
-            : diagnostics;
-    if (status == "success" && result_index.has_value()) {
-      if (*result_index < result_diagnostics.target_epsilon_coefficients.size() &&
-          !result_diagnostics.target_epsilon_coefficients[*result_index].empty()) {
-        const auto& coefficients =
-            result_diagnostics.target_epsilon_coefficients[*result_index];
-        for (std::size_t coefficient_index = 0; coefficient_index < coefficients.size();
-             ++coefficient_index) {
-          if (coefficient_index > 0) {
-            out << ", ";
-          }
-          const auto& coefficient = coefficients[coefficient_index];
-          const std::string exact_real = coefficient.real.empty() ? "0" : coefficient.real;
-          const std::string exact_imag =
-              coefficient.imaginary.empty() ? "0" : coefficient.imaginary;
-          out << "{\n";
-          out << "        \"order\": " << coefficient.order << ",\n";
-          out << "        \"real_digits\": "
-              << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
-          out << "        \"imag_digits\": "
-              << JsonString(RationalToDecimalDigits(exact_imag, digits)) << ",\n";
-          out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
-          out << "        \"exact_imag\": " << JsonString(exact_imag) << "\n";
-          out << "      }";
-        }
-      } else if (value_index.has_value() &&
-                 *value_index < result_diagnostics.target_values.size()) {
-        const std::string exact_real = result_diagnostics.target_values[*value_index];
-        out << "{\n";
-        out << "        \"order\": 0,\n";
-        out << "        \"real_digits\": "
-            << JsonString(RationalToDecimalDigits(exact_real, digits)) << ",\n";
-        out << "        \"imag_digits\": "
-            << JsonString(RationalToDecimalDigits("0", digits)) << ",\n";
-        out << "        \"exact_real\": " << JsonString(exact_real) << ",\n";
-        out << "        \"exact_imag\": \"0\"\n";
-        out << "      }";
-      }
-    }
-    out << "]\n";
-    out << "    }";
-  }
+  bool wrote_result = false;
+  AppendSolveSeriesResultEntries(out,
+                                 problem_spec,
+                                 direct_spec,
+                                 diagnostics,
+                                 retained_master_diagnostics,
+                                 status,
+                                 digits,
+                                 wrote_result);
   out << "\n";
   out << "  ],\n";
   out << "  \"status\": " << JsonString(status) << ",\n";
@@ -3376,6 +3465,363 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   return out.str();
 }
 
+struct SolveSeriesEvaluation {
+  amflow::ProblemSpec problem_spec;
+  DirectSolveSeriesSpec direct_spec;
+  amflow::SolverDiagnostics diagnostics;
+  std::optional<amflow::SolverDiagnostics> retained_master_diagnostics;
+  std::string status = "failed";
+  std::string error;
+  int exit_code = 0;
+};
+
+SolveSeriesEvaluation EvaluateSolveSeriesInput(
+    amflow::ProblemSpec problem_spec,
+    DirectSolveSeriesSpec direct_spec,
+    const int epsilon_order,
+    const int digits) {
+  if (direct_spec.family.empty()) {
+    direct_spec.family = problem_spec.family.name;
+  }
+
+  SolveSeriesEvaluation evaluation;
+  evaluation.problem_spec = std::move(problem_spec);
+  evaluation.direct_spec = std::move(direct_spec);
+
+  try {
+    ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
+    if (evaluation.direct_spec.amflow_state_input) {
+      evaluation.diagnostics =
+          EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec);
+      evaluation.retained_master_diagnostics = evaluation.diagnostics;
+      const bool applied_target_reduction =
+          ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
+                                                  evaluation.problem_spec.targets,
+                                                  evaluation.problem_spec.dimension,
+                                                  epsilon_order,
+                                                  evaluation.diagnostics,
+                                                  evaluation.error);
+      if (!evaluation.error.empty()) {
+        evaluation.status = "failed";
+        evaluation.exit_code = 2;
+      } else {
+        const std::size_t required_result_count =
+            applied_target_reduction ? evaluation.problem_spec.targets.size()
+                                     : evaluation.direct_spec.masters.size();
+        const bool has_all_target_values =
+            evaluation.diagnostics.target_values.size() >= required_result_count;
+        const bool has_all_epsilon_coefficients =
+            evaluation.diagnostics.target_epsilon_coefficients.size() >=
+            required_result_count;
+        if (evaluation.diagnostics.success && has_all_target_values &&
+            has_all_epsilon_coefficients) {
+          evaluation.status = "success";
+          evaluation.exit_code = 0;
+        } else {
+          evaluation.status = "failed";
+          evaluation.error =
+              "AMFlow eta-infinity boundary evaluation completed without enough coefficients "
+              "for all requested results";
+          evaluation.exit_code = 4;
+        }
+      }
+    } else {
+      const bool needs_epsilon_expansion =
+          epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(evaluation.direct_spec);
+      const std::optional<int> requested_epsilon_order =
+          needs_epsilon_expansion ? std::optional<int>{epsilon_order} : std::nullopt;
+      const amflow::SolveRequest request =
+          MakeDirectSolveRequest(evaluation.direct_spec,
+                                 digits,
+                                 requested_epsilon_order,
+                                 evaluation.problem_spec.dimension);
+      const std::unique_ptr<amflow::SeriesSolver> solver =
+          amflow::MakeBootstrapSeriesSolver();
+      evaluation.diagnostics = solver->Solve(request);
+      if (evaluation.diagnostics.success) {
+        const bool applied_target_reduction =
+            ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
+                                                    evaluation.problem_spec.targets,
+                                                    evaluation.problem_spec.dimension,
+                                                    epsilon_order,
+                                                    evaluation.diagnostics,
+                                                    evaluation.error);
+        if (!evaluation.error.empty()) {
+          evaluation.status = "failed";
+          evaluation.exit_code = 2;
+        } else {
+          const std::size_t required_result_count =
+              applied_target_reduction ? evaluation.problem_spec.targets.size()
+                                       : evaluation.direct_spec.masters.size();
+          const bool has_all_target_values =
+              evaluation.diagnostics.target_values.size() >= required_result_count;
+          const bool has_all_epsilon_coefficients =
+              !requested_epsilon_order.has_value() ||
+              evaluation.diagnostics.target_epsilon_coefficients.size() >=
+                  required_result_count;
+          if (has_all_target_values && has_all_epsilon_coefficients) {
+            evaluation.status = "success";
+            evaluation.exit_code = 0;
+          } else {
+            evaluation.status = "failed";
+            evaluation.error =
+                applied_target_reduction
+                    ? "series solver succeeded and target reduction ran, but reduced target "
+                      "coefficients were incomplete"
+                    : "series solver succeeded but did not expose transported epsilon "
+                      "coefficients for all masters on this path";
+            evaluation.exit_code = 4;
+          }
+        }
+      } else {
+        evaluation.status = "failed";
+        evaluation.exit_code = 4;
+      }
+    }
+  } catch (const std::exception& solve_error) {
+    evaluation.status = "failed";
+    evaluation.error = solve_error.what();
+    evaluation.exit_code = 2;
+  }
+  return evaluation;
+}
+
+std::vector<std::string> BundleOutputLabels(const SolveSeriesEvaluation& evaluation) {
+  std::vector<std::string> labels;
+  std::set<std::string> seen;
+  for (const amflow::TargetIntegral& target : evaluation.problem_spec.targets) {
+    const std::string label = target.Label();
+    if (seen.insert(label).second) {
+      labels.push_back(label);
+    }
+  }
+  if (evaluation.retained_master_diagnostics.has_value()) {
+    for (const amflow::MasterIntegral& master :
+         evaluation.direct_spec.retained_reduction_masters) {
+      const std::string label = IntegralLabel(master.family, master.indices);
+      if (seen.insert(label).second) {
+        labels.push_back(label);
+      }
+    }
+  }
+  return labels;
+}
+
+std::string SerializeSolveSeriesBundleJson(
+    const std::vector<SolveSeriesEvaluation>& evaluations,
+    const int epsilon_order,
+    const int digits,
+    const double duration_seconds) {
+  const bool all_success = std::all_of(
+      evaluations.begin(),
+      evaluations.end(),
+      [](const SolveSeriesEvaluation& evaluation) {
+        return evaluation.status == "success";
+      });
+  std::vector<std::string> families;
+  std::vector<std::string> targets;
+  std::set<std::string> seen_families;
+  for (const SolveSeriesEvaluation& evaluation : evaluations) {
+    if (seen_families.insert(evaluation.problem_spec.family.name).second) {
+      families.push_back(evaluation.problem_spec.family.name);
+    }
+    const std::vector<std::string> labels = BundleOutputLabels(evaluation);
+    targets.insert(targets.end(), labels.begin(), labels.end());
+  }
+
+  std::ostringstream out;
+  out.setf(std::ios::fixed);
+  out.precision(6);
+  out << "{\n";
+  out << "  \"schema_version\": 1,\n";
+  if (!evaluations.empty() && !evaluations.front().direct_spec.benchmark_id.empty()) {
+    out << "  \"benchmark_id\": "
+        << JsonString(evaluations.front().direct_spec.benchmark_id) << ",\n";
+  }
+  out << "  \"family\": \"multiple\",\n";
+  out << "  \"families\": [";
+  for (std::size_t index = 0; index < families.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << JsonString(families[index]);
+  }
+  out << "],\n";
+  out << "  \"state_count\": " << evaluations.size() << ",\n";
+  out << "  \"targets\": [";
+  for (std::size_t index = 0; index < targets.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << JsonString(targets[index]);
+  }
+  out << "],\n";
+  out << "  \"solver\": {\n";
+  out << "    \"precision_digits\": " << digits << ",\n";
+  out << "    \"epsilon_order\": " << epsilon_order << "\n";
+  out << "  },\n";
+  out << "  \"results\": [\n";
+  bool wrote_result = false;
+  for (const SolveSeriesEvaluation& evaluation : evaluations) {
+    AppendSolveSeriesResultEntries(
+        out,
+        evaluation.problem_spec,
+        evaluation.direct_spec,
+        evaluation.diagnostics,
+        evaluation.retained_master_diagnostics.has_value()
+            ? &*evaluation.retained_master_diagnostics
+            : nullptr,
+        evaluation.status,
+        digits,
+        wrote_result);
+  }
+  out << "\n";
+  out << "  ],\n";
+  out << "  \"status\": " << JsonString(all_success ? "success" : "failed") << ",\n";
+  out << "  \"duration_seconds\": " << duration_seconds << ",\n";
+  out << "  \"state_results\": [";
+  for (std::size_t index = 0; index < evaluations.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    const SolveSeriesEvaluation& evaluation = evaluations[index];
+    const DirectSolveSeriesSpec& direct_spec = evaluation.direct_spec;
+    const amflow::SolverDiagnostics& diagnostics = evaluation.diagnostics;
+    out << "{"
+        << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
+        << ", \"status\": " << JsonString(evaluation.status)
+        << ", \"boundary_state\": {"
+        << "\"kind\": " << JsonString(direct_spec.boundary_state_kind)
+        << ", \"location\": " << JsonString(direct_spec.start_location)
+        << ", \"direction\": " << JsonString(direct_spec.boundary_state_direction)
+        << ", \"epsilon_sample_count\": "
+        << direct_spec.boundary_epsilon_samples.size()
+        << ", \"accepted_by_solve_series\": true"
+        << ", \"runtime_boundary_provider\": "
+        << JsonString(evaluation.status == "success"
+                          ? (diagnostics.eta_endpoint_transport_count > 0
+                                 ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
+                                   "eta-infinity-de-asymptotic-transport+"
+                                   "eta-zero-first-branch-log-endpoint-transport"
+                             : diagnostics.eta_asymptotic_transport_count > 0
+                                 ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
+                                   "eta-infinity-de-asymptotic-transport"
+                                 : "retained-asymptotic-subsystem-sample-boundary-evaluator")
+                          : "deferred-asymptotic-subsystem-sample-provider")
+        << "}, \"continuation\": {"
+        << "\"variable\": " << JsonString(direct_spec.variable)
+        << ", \"start_location\": " << JsonString(direct_spec.start_location)
+        << ", \"target_location\": " << JsonString(direct_spec.target_location)
+        << ", \"singular_points\": [";
+    for (std::size_t singular_index = 0;
+         singular_index < direct_spec.singular_points.size();
+         ++singular_index) {
+      if (singular_index > 0) {
+        out << ", ";
+      }
+      out << JsonString(direct_spec.singular_points[singular_index]);
+    }
+    out << "]"
+        << ", \"transport_applied\": "
+        << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false")
+        << ", \"transport_scope\": "
+        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+                          ? "first-eta-zero-branch-log-endpoint-coefficient-only"
+                      : diagnostics.eta_asymptotic_transport_count > 0
+                          ? "eta-infinity-asymptotic-only"
+                          : "none")
+        << ", \"full_eta_zero_contour_applied\": false"
+        << ", \"eta_infinity_asymptotic_transport_applied\": "
+        << (diagnostics.eta_asymptotic_transport_count > 0 ? "true" : "false")
+        << ", \"eta_infinity_asymptotic_transported_master_count\": "
+        << diagnostics.eta_asymptotic_transport_count
+        << ", \"eta_zero_endpoint_transport_applied\": "
+        << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false")
+        << ", \"eta_zero_endpoint_transported_master_count\": "
+        << diagnostics.eta_endpoint_transport_count
+        << ", \"eta_zero_endpoint_transported_integrals\": [";
+    for (std::size_t transport_index = 0;
+         transport_index <
+         diagnostics.eta_endpoint_transported_integrals.size();
+         ++transport_index) {
+      if (transport_index > 0) {
+        out << ", ";
+      }
+      out << JsonString(diagnostics.eta_endpoint_transported_integrals[transport_index]);
+    }
+    out << "]"
+        << ", \"runtime_application\": "
+        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+                          ? "eta-infinity-de-asymptotic-first-coefficient+"
+                            "eta-zero-first-branch-log-endpoint-coefficient"
+                      : diagnostics.eta_asymptotic_transport_count > 0
+                          ? "eta-infinity-de-asymptotic-first-coefficient"
+                          : "not-applied-boundary-only")
+        << ", \"blocked_reason\": "
+        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+                          ? "full singular eta=0 complex contour execution and higher "
+                            "endpoint extraction remain deferred after first retained "
+                            "branch-log endpoint coefficient transport"
+                      : diagnostics.eta_asymptotic_transport_count > 0
+                          ? "singular eta=0 complex contour execution and endpoint extraction "
+                            "remain deferred after first eta-infinity asymptotic DE transport"
+                          : "eta-infinity start, complex contour execution, and singular eta=0 "
+                            "endpoint extraction remain deferred")
+        << "}";
+    if (!direct_spec.target_reduction_path.empty()) {
+      out << ", \"target_reduction\": {"
+          << "\"path\": " << JsonString(direct_spec.target_reduction_path)
+          << ", \"accepted_by_solve_series\": true"
+          << ", \"runtime_application\": "
+          << JsonString(evaluation.status == "success"
+                            ? (diagnostics.eta_endpoint_transport_count > 0
+                                   ? "applied-after-eta-zero-first-branch-log-endpoint-"
+                                     "transport"
+                               : diagnostics.eta_asymptotic_transport_count > 0
+                                   ? "applied-after-eta-infinity-asymptotic-de-transport"
+                                   : "applied-after-eta-infinity-boundary-evaluation")
+                            : "deferred-until-master-values")
+          << "}";
+    }
+    out << "}";
+  }
+  out << "]";
+  std::vector<std::string> errors;
+  std::vector<std::string> summaries;
+  for (const SolveSeriesEvaluation& evaluation : evaluations) {
+    if (!evaluation.error.empty()) {
+      errors.push_back(evaluation.problem_spec.family.name + ": " + evaluation.error);
+    }
+    if (!evaluation.diagnostics.summary.empty()) {
+      summaries.push_back(evaluation.problem_spec.family.name + ": " +
+                          evaluation.diagnostics.summary);
+    }
+  }
+  if (!summaries.empty()) {
+    out << ",\n  \"summary\": ";
+    std::string summary;
+    for (std::size_t index = 0; index < summaries.size(); ++index) {
+      if (index > 0) {
+        summary += " ";
+      }
+      summary += summaries[index];
+    }
+    out << JsonString(summary);
+  }
+  if (!errors.empty()) {
+    out << ",\n  \"errors\": [";
+    for (std::size_t index = 0; index < errors.size(); ++index) {
+      if (index > 0) {
+        out << ", ";
+      }
+      out << JsonString(errors[index]);
+    }
+    out << "]";
+  }
+  out << "\n}\n";
+  return out.str();
+}
+
 int RunSolveSeriesCommand(const int argc, char** argv) {
   const auto start = std::chrono::steady_clock::now();
   const SolveSeriesCliArgs args = ParseSolveSeriesArgs(argc, argv);
@@ -3384,7 +3830,44 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
   amflow::ProblemSpec problem_spec;
   DirectSolveSeriesSpec direct_spec;
   if (LooksLikeJsonObject(raw_spec)) {
-    direct_spec = ParseAmflowSolveSeriesStateJson(raw_spec);
+    const CliJsonValue root = CliJsonParser(raw_spec).Parse();
+    const std::string kind =
+        RequireJsonString(RequireJsonField(root, "kind", "$"), "$.kind");
+    if (kind == "amflow_solve_series_state_bundle") {
+      const std::vector<DirectSolveSeriesSpec> direct_specs =
+          ParseAmflowSolveSeriesStateBundleJsonRoot(root, "$");
+      std::vector<SolveSeriesEvaluation> evaluations;
+      evaluations.reserve(direct_specs.size());
+      int exit_code = 0;
+      for (const DirectSolveSeriesSpec& state_spec : direct_specs) {
+        evaluations.push_back(EvaluateSolveSeriesInput(
+            MakeProblemSpecForAmflowState(state_spec),
+            state_spec,
+            args.epsilon_order,
+            args.digits));
+        exit_code = std::max(exit_code, evaluations.back().exit_code);
+      }
+      const auto end = std::chrono::steady_clock::now();
+      const double duration_seconds =
+          std::chrono::duration<double>(end - start).count();
+      WriteTextFile(args.output_path,
+                    SerializeSolveSeriesBundleJson(evaluations,
+                                                   args.epsilon_order,
+                                                   args.digits,
+                                                   duration_seconds));
+      for (const SolveSeriesEvaluation& evaluation : evaluations) {
+        if (!evaluation.error.empty()) {
+          std::cerr << evaluation.problem_spec.family.name << ": "
+                    << evaluation.error << "\n";
+        } else if (!evaluation.diagnostics.success &&
+                   !evaluation.diagnostics.summary.empty()) {
+          std::cerr << evaluation.problem_spec.family.name << ": "
+                    << evaluation.diagnostics.summary << "\n";
+        }
+      }
+      return exit_code;
+    }
+    direct_spec = ParseAmflowSolveSeriesStateJsonRoot(root, "$");
     problem_spec = MakeProblemSpecForAmflowState(direct_spec);
   } else {
     problem_spec = amflow::LoadProblemSpecFile(args.spec_path);
@@ -3395,127 +3878,33 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
     }
     direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
   }
-  if (direct_spec.family.empty()) {
-    direct_spec.family = problem_spec.family.name;
-  }
 
-  amflow::SolverDiagnostics diagnostics;
-  std::optional<amflow::SolverDiagnostics> retained_master_diagnostics;
-  std::string status = "failed";
-  std::string error;
-  int exit_code = 0;
-
-  try {
-    ValidateDirectSolveSeriesSpec(direct_spec);
-    if (direct_spec.amflow_state_input) {
-      diagnostics = EvaluateAmflowStateEtaInfinityBoundary(direct_spec);
-      retained_master_diagnostics = diagnostics;
-      const bool applied_target_reduction =
-          ApplyDirectSpecTargetReductionIfPresent(direct_spec,
-                                                  problem_spec.targets,
-                                                  problem_spec.dimension,
-                                                  args.epsilon_order,
-                                                  diagnostics,
-                                                  error);
-      if (!error.empty()) {
-        status = "failed";
-        exit_code = 2;
-      } else {
-        const std::size_t required_result_count =
-            applied_target_reduction ? problem_spec.targets.size() : direct_spec.masters.size();
-        const bool has_all_target_values =
-            diagnostics.target_values.size() >= required_result_count;
-        const bool has_all_epsilon_coefficients =
-            diagnostics.target_epsilon_coefficients.size() >= required_result_count;
-        if (diagnostics.success && has_all_target_values && has_all_epsilon_coefficients) {
-          status = "success";
-          exit_code = 0;
-        } else {
-          status = "failed";
-          error =
-              "AMFlow eta-infinity boundary evaluation completed without enough coefficients "
-              "for all requested results";
-          exit_code = 4;
-        }
-      }
-    } else {
-      const bool needs_epsilon_expansion =
-          args.epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(direct_spec);
-      const std::optional<int> requested_epsilon_order =
-          needs_epsilon_expansion ? std::optional<int>{args.epsilon_order} : std::nullopt;
-      const amflow::SolveRequest request =
-          MakeDirectSolveRequest(direct_spec,
-                                 args.digits,
-                                 requested_epsilon_order,
-                                 problem_spec.dimension);
-      const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
-      diagnostics = solver->Solve(request);
-      if (diagnostics.success) {
-        const bool applied_target_reduction =
-            ApplyDirectSpecTargetReductionIfPresent(direct_spec,
-                                                    problem_spec.targets,
-                                                    problem_spec.dimension,
-                                                    args.epsilon_order,
-                                                    diagnostics,
-                                                    error);
-        if (!error.empty()) {
-          status = "failed";
-          exit_code = 2;
-        } else {
-          const std::size_t required_result_count =
-              applied_target_reduction ? problem_spec.targets.size()
-                                       : direct_spec.masters.size();
-          const bool has_all_target_values =
-              diagnostics.target_values.size() >= required_result_count;
-          const bool has_all_epsilon_coefficients =
-              !requested_epsilon_order.has_value() ||
-              diagnostics.target_epsilon_coefficients.size() >= required_result_count;
-          if (has_all_target_values && has_all_epsilon_coefficients) {
-            status = "success";
-            exit_code = 0;
-          } else {
-            status = "failed";
-            error =
-                applied_target_reduction
-                    ? "series solver succeeded and target reduction ran, but reduced target "
-                      "coefficients were incomplete"
-                    : "series solver succeeded but did not expose transported epsilon "
-                      "coefficients for all masters on this path";
-            exit_code = 4;
-          }
-        }
-      } else {
-        status = "failed";
-        exit_code = 4;
-      }
-    }
-  } catch (const std::exception& solve_error) {
-    status = "failed";
-    error = solve_error.what();
-    exit_code = 2;
-  }
-
+  const SolveSeriesEvaluation evaluation =
+      EvaluateSolveSeriesInput(std::move(problem_spec),
+                               std::move(direct_spec),
+                               args.epsilon_order,
+                               args.digits);
   const auto end = std::chrono::steady_clock::now();
   const double duration_seconds =
       std::chrono::duration<double>(end - start).count();
   WriteTextFile(args.output_path,
-                SerializeSolveSeriesJson(problem_spec,
-                                         direct_spec,
-                                         diagnostics,
-                                         retained_master_diagnostics.has_value()
-                                             ? &*retained_master_diagnostics
+                SerializeSolveSeriesJson(evaluation.problem_spec,
+                                         evaluation.direct_spec,
+                                         evaluation.diagnostics,
+                                         evaluation.retained_master_diagnostics.has_value()
+                                             ? &*evaluation.retained_master_diagnostics
                                              : nullptr,
                                          args.epsilon_order,
                                          args.digits,
-                                         status,
-                                         error,
+                                         evaluation.status,
+                                         evaluation.error,
                                          duration_seconds));
-  if (!error.empty()) {
-    std::cerr << error << "\n";
-  } else if (!diagnostics.success && !diagnostics.summary.empty()) {
-    std::cerr << diagnostics.summary << "\n";
+  if (!evaluation.error.empty()) {
+    std::cerr << evaluation.error << "\n";
+  } else if (!evaluation.diagnostics.success && !evaluation.diagnostics.summary.empty()) {
+    std::cerr << evaluation.diagnostics.summary << "\n";
   }
-  return exit_code;
+  return evaluation.exit_code;
 }
 
 void PrintUsage() {
@@ -3533,7 +3922,7 @@ void PrintUsage() {
             << "  run-kira-from-file <file> <kira> <fermat> [dir]\n"
             << "                           Emit and execute Kira for a file-backed ProblemSpec\n"
             << "  solve-series <file> --eps-order N --digits N --out path\n"
-            << "                           Run a reviewed embedded direct solve_series request or AMFlow state JSON\n"
+            << "                           Run a reviewed embedded direct solve_series request or AMFlow state JSON/bundle\n"
             << "  show-defaults            Print bootstrap AMF and reduction defaults\n"
             << "  write-manifest <dir>     Create an artifact layout and write a sample/demo manifest\n";
 }

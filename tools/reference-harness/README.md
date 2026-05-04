@@ -327,27 +327,31 @@ Family names are normalized before matching: the comparator strips a trailing `_
 default and also accepts repeated `--family-alias FROM=TO` mappings for explicit C++/AMFlow naming
 bridges.
 
-To inspect the retained AMFlow state behind the `automatic_loop` solve-series system without
+To inspect the retained AMFlow states behind the `automatic_loop` solve-series system without
 claiming that the current C++ solver can evaluate its physical boundary yet:
 
 ```bash
 python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
   --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/1 \
-  --out /tmp/automatic_loop.amflow-state.json
+  --reduction-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box1_amflow/0 \
+  --out /tmp/automatic_loop.box1.amflow-state.json
+
+python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
+  --system-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box2_amflow/1 \
+  --reduction-dir /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/generated-config/phase0/automatic_loop/primary/cache/box2_amflow/0 \
+  --out /tmp/automatic_loop.box2.amflow-state.json
 ```
 
 The extractor emits the real cached master order, `eta` coefficient matrix, inferred singular
 `eta` locations, Kira target/reduction metadata, and AMFlow eta-infinity boundary files. Its JSON
 retains the state-capture-time
-`cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load that
-JSON shape directly, evaluate the retained leading asymptotic eta-infinity boundary coefficients
-from subsystem epsilon samples, apply the first retained `eta=0` branch-log endpoint coefficient
-transport for `box1[1,0,1,0]`, and then apply the retained target reduction. The result JSON also
-emits a top-level `continuation` audit object with `transport_applied = true` scoped by
-`transport_scope = first-eta-zero-branch-log-endpoint-coefficient-only`,
-`full_eta_zero_contour_applied = false`, the start/target locations, the endpoint-transported
-master label, and the reviewed singular locations. It still does not perform the full complex
-continuation or higher-order singular `eta -> 0` endpoint extraction needed for parity.
+`cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load either
+one extracted JSON state or the committed `automatic_loop` state bundle, evaluate the retained
+leading asymptotic eta-infinity boundary coefficients from subsystem epsilon samples, apply the
+first retained `eta=0` branch-log endpoint coefficient transport for `<family>[1,0,1,0]` on
+`box1` and `box2`, and then apply the retained target reduction. It still does not perform the
+full complex continuation or higher-order singular `eta -> 0` endpoint extraction needed for
+parity.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

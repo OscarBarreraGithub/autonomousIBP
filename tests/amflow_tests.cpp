@@ -48697,30 +48697,46 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
                  "AMFlow state ingestion should expose the internal singular location");
   ExpectContains(json, "\"eta=100\"",
                  "AMFlow state ingestion should expose the second internal singular location");
-  ExpectContains(json, "\"transport_applied\": false",
-                 "AMFlow state ingestion should not claim singular eta=0 endpoint transport on "
-                 "this path");
+  ExpectContains(json, "\"transport_applied\": true",
+                 "AMFlow state ingestion should claim only the reviewed first eta=0 endpoint "
+                 "coefficient transport that ran on this path");
+  ExpectContains(json,
+                 "\"transport_scope\": "
+                 "\"first-eta-zero-branch-log-endpoint-coefficient-only\"",
+                 "AMFlow state ingestion should make the partial endpoint-transport scope "
+                 "machine-readable");
+  ExpectContains(json, "\"full_eta_zero_contour_applied\": false",
+                 "AMFlow state ingestion should keep full contour execution explicitly false");
   ExpectContains(json, "\"eta_infinity_asymptotic_transport_applied\": true",
                  "AMFlow state ingestion should apply the first DE-derived eta-infinity "
                  "asymptotic transport coefficient");
   ExpectContains(json, "\"eta_infinity_asymptotic_transported_master_count\": 1",
                  "AMFlow state ingestion should report the one unambiguous transported "
                  "asymptotic master coefficient set");
+  ExpectContains(json, "\"eta_zero_endpoint_transport_applied\": true",
+                 "AMFlow state ingestion should expose the reviewed first endpoint transport");
+  ExpectContains(json, "\"eta_zero_endpoint_transported_master_count\": 1",
+                 "AMFlow state ingestion should count the one endpoint-transported master");
+  ExpectContains(json, "\"box1[1,0,1,0]\"",
+                 "AMFlow state ingestion should identify the endpoint-transported master");
   ExpectContains(json,
                  "\"runtime_application\": "
-                 "\"eta-infinity-de-asymptotic-first-coefficient\"",
-                 "AMFlow state ingestion should label the first asymptotic DE transport layer");
+                 "\"eta-infinity-de-asymptotic-first-coefficient+"
+                 "eta-zero-first-branch-log-endpoint-coefficient\"",
+                 "AMFlow state ingestion should label the first asymptotic and endpoint "
+                 "transport layers");
   ExpectContains(json,
                  "\"runtime_boundary_provider\": "
                  "\"retained-asymptotic-subsystem-sample-boundary-evaluator+"
-                 "eta-infinity-de-asymptotic-transport\"",
+                 "eta-infinity-de-asymptotic-transport+"
+                 "eta-zero-first-branch-log-endpoint-transport\"",
                  "AMFlow state ingestion should report the retained boundary evaluator plus "
-                 "first asymptotic DE transport");
+                 "first asymptotic and endpoint transports");
   ExpectContains(json,
                  "\"runtime_application\": "
-                 "\"applied-after-eta-infinity-asymptotic-de-transport\"",
+                 "\"applied-after-eta-zero-first-branch-log-endpoint-transport\"",
                  "AMFlow state ingestion should apply retained target reduction after the "
-                 "asymptotic DE transport coefficient exists");
+                 "endpoint transport coefficient exists");
   ExpectContains(json, "\"epsilon_orders\": [",
                  "AMFlow state ingestion should emit comparator-readable epsilon coefficients");
   ExpectContains(json, "\"order\": -",
@@ -48734,16 +48750,17 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
          "AMFlow state ingestion should close the boundary_unsolved failure code on this path");
   ExpectContains(json, "Applied first eta-infinity DE asymptotic transport",
                  "AMFlow state ingestion should describe the first numeric Gap B sub-piece");
-  ExpectContains(json, "Singular eta->0 complex continuation is not applied",
+  ExpectContains(json, "Full singular eta->0 complex contour execution",
                  "AMFlow state ingestion should keep the remaining Gap B non-claim visible");
   ExpectContains(json,
-                 "Applied retained Kira target reduction after eta-infinity asymptotic DE "
+                 "Applied retained Kira target reduction after first eta=0 endpoint coefficient "
                  "transport.",
-                 "AMFlow state ingestion should describe target reduction after asymptotic "
+                 "AMFlow state ingestion should describe target reduction after endpoint "
                  "transport");
   Expect(json.find("Applied retained Kira target reduction to endpoint master values.") ==
              std::string::npos,
-         "AMFlow state ingestion should not claim endpoint master values before continuation");
+         "AMFlow state ingestion should not claim full endpoint master values before the full "
+         "continuation exists");
 }
 
 struct ReferenceHarnessSelfCheckRun {

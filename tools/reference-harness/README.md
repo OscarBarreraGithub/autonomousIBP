@@ -341,11 +341,13 @@ The extractor emits the real cached master order, `eta` coefficient matrix, infe
 retains the state-capture-time
 `cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load that
 JSON shape directly, evaluate the retained leading asymptotic eta-infinity boundary coefficients
-from subsystem epsilon samples, and apply the retained target reduction to those boundary
-coefficients. The result JSON also emits a top-level `continuation` audit object with
-`transport_applied = false`, the start/target locations, and the reviewed singular locations. It
-still does not perform the complex continuation or singular `eta -> 0` endpoint extraction needed
-for parity.
+from subsystem epsilon samples, apply the first retained `eta=0` branch-log endpoint coefficient
+transport for `box1[1,0,1,0]`, and then apply the retained target reduction. The result JSON also
+emits a top-level `continuation` audit object with `transport_applied = true` scoped by
+`transport_scope = first-eta-zero-branch-log-endpoint-coefficient-only`,
+`full_eta_zero_contour_applied = false`, the start/target locations, the endpoint-transported
+master label, and the reviewed singular locations. It still does not perform the full complex
+continuation or higher-order singular `eta -> 0` endpoint extraction needed for parity.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

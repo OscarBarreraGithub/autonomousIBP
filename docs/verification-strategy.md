@@ -183,17 +183,22 @@ intentionally not named
 shape directly, preserve the AMFlow eta-infinity boundary metadata in its result JSON, replay the
 retained leading subsystem-sample boundary coefficients, fit their epsilon Laurent series, apply
 the first unambiguous DE-derived eta-infinity asymptotic transport coefficient, and apply the
-retained `box1` target reduction after that asymptotic transport layer. The comparator-facing
+first retained `eta=0` branch-log endpoint coefficient transport for
+`box1[1,0,1,0]` before applying the retained `box1` target reduction. The comparator-facing
 JSON now also includes the retained `box1` reduction masters recorded in the AMFlow state, so
 the constant-master parity evidence is visible instead of being reported as missing. It also emits a
-top-level `continuation` audit object with `transport_applied = false` for the singular
-`eta=0` endpoint, `eta_infinity_asymptotic_transport_applied = true` for the first infinity-side
-DE step, the start/target locations, and the reviewed singular locations, so retained
-infinity-side transport evidence is separated from the still-deferred endpoint contour. This closes the
-previous structured `boundary_unsolved` stop for this state. Shipping a parity claim from this
-result would still be dishonest: the physical comparison endpoint is the singular `eta -> 0`
-limit reached through complex continuation, and the current C++ runtime does not yet perform that
-continuation or singular endpoint extraction on the retained AMFlow-state path.
+top-level `continuation` audit object with `transport_applied = true` only for that first
+endpoint coefficient, `transport_scope =
+first-eta-zero-branch-log-endpoint-coefficient-only`,
+`full_eta_zero_contour_applied = false`, `eta_infinity_asymptotic_transport_applied = true` for
+the first infinity-side DE step, the start/target locations, the transported master label, and the
+reviewed singular locations, so retained infinity-side transport evidence and first
+endpoint-coefficient evidence are separated from the still-deferred full endpoint contour. This
+closes the previous structured `boundary_unsolved` stop for this state. Shipping a full parity
+claim from this result would still be dishonest: the physical comparison endpoint is the singular
+`eta -> 0` limit reached through complex continuation, and the current C++ runtime does not yet
+perform the full contour or higher-order singular endpoint extraction on the retained
+AMFlow-state path.
 
 The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
 `_amflow` suffix by default and accepts explicit mappings such as:

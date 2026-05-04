@@ -87,6 +87,8 @@ struct SolverDiagnostics {
   std::string summary;
   std::vector<std::string> target_values;
   int eta_asymptotic_transport_count = 0;
+  int eta_endpoint_transport_count = 0;
+  std::vector<std::string> eta_endpoint_transported_integrals;
   struct EpsilonCoefficient {
     int order = 0;
     std::string real;

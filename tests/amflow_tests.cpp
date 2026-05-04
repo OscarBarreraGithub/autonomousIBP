@@ -48779,6 +48779,12 @@ for family, state in states.items():
     )
 
 results = {result["integral"]: result for result in payload["results"]}
+assert "Suppressed " in payload["summary"]
+assert "above eps^1" in payload["summary"]
+for integral, result in results.items():
+    assert all(raw_order["order"] <= 1 for raw_order in result["epsilon_orders"]), (
+        integral, result["epsilon_orders"]
+    )
 def coefficient(integral, order):
     for raw_order in results[integral]["epsilon_orders"]:
         if raw_order["order"] == order:

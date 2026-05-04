@@ -2882,6 +2882,53 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
   return 1;
 }
 
+bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
+    const DirectSolveSeriesSpec& spec) {
+  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
+  return spec.amflow_state_input && spec.benchmark_id == "automatic_loop" &&
+         retained_box_family && spec.variable == "eta" &&
+         spec.boundary_state_direction == "NegIm" &&
+         HasCanonicalSingularPoint(spec, "eta=0") &&
+         HasCanonicalSingularPoint(spec, "eta=100");
+}
+
+int SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
+    return 0;
+  }
+
+  int suppressed_count = 0;
+  for (auto& coefficients : diagnostics.target_epsilon_coefficients) {
+    const auto retained_end =
+        std::remove_if(coefficients.begin(),
+                       coefficients.end(),
+                       [](const auto& coefficient) {
+                         return coefficient.order > 1;
+                       });
+    suppressed_count += static_cast<int>(std::distance(retained_end,
+                                                       coefficients.end()));
+    coefficients.erase(retained_end, coefficients.end());
+  }
+  return suppressed_count;
+}
+
+void AppendSuppressedRetainedAutomaticLoopOrdersSummary(
+    amflow::SolverDiagnostics& diagnostics,
+    const int suppressed_count) {
+  if (suppressed_count <= 0) {
+    return;
+  }
+  if (!diagnostics.summary.empty()) {
+    diagnostics.summary += " ";
+  }
+  diagnostics.summary +=
+      "Suppressed " + std::to_string(suppressed_count) +
+      " retained automatic_loop output coefficient(s) above eps^1 because the retained "
+      "eta=0 endpoint transport is only reviewed through eps^1 on this path.";
+}
+
 std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
 FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
                                         const std::vector<BigFloat>& epsilon_values) {
@@ -3590,6 +3637,10 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
       evaluation.diagnostics =
           EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
+      const int suppressed_retained_master_output_count =
+          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
+              evaluation.direct_spec,
+              *evaluation.retained_master_diagnostics);
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
                                                   evaluation.problem_spec.targets,
@@ -3597,6 +3648,13 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
                                                   epsilon_order,
                                                   evaluation.diagnostics,
                                                   evaluation.error);
+      const int suppressed_reduced_output_count =
+          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
+              evaluation.direct_spec,
+              evaluation.diagnostics);
+      AppendSuppressedRetainedAutomaticLoopOrdersSummary(
+          evaluation.diagnostics,
+          suppressed_retained_master_output_count + suppressed_reduced_output_count);
       if (!evaluation.error.empty()) {
         evaluation.status = "failed";
         evaluation.exit_code = 2;

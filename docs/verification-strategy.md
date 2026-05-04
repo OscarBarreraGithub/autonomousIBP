@@ -193,15 +193,18 @@ boundary evaluator, fit epsilon Laurent series, apply the first unambiguous DE-d
 eta-infinity asymptotic transport coefficient, apply the retained `eta=0` branch-log
 endpoint coefficient transport through `eps^1` for `<family>[1,0,1,0]`, apply the retained
 selected box endpoint transport through `eps^1` for `<family>[1,1,1,1]`, and then apply the
-retained family-local target reduction. The comparator-facing JSON now includes both retained
+retained family-local target reduction, and suppress untransported retained output coefficients
+above `eps^1` after target reduction has consumed any raw higher fitted terms needed for the
+already-reviewed lower-order reductions. The comparator-facing JSON now includes both retained
 reduction targets and retained reduction masters for `box1` and `box2`; the current retained
-comparison has
+comparison exits `0` with
 `matched_integral_count=12`, `compared_coefficient_count=54`, and
-`passed_coefficient_count=44` at `--eps-order 2 --digits 40 --tolerance-digits 30`. Shipping a full parity
-claim from this result would still be dishonest: the physical comparison endpoint is the singular
-`eta -> 0` limit reached through complex continuation, and the current C++ runtime does not yet
-perform the full contour, box endpoint extraction beyond `eps^1`, or other endpoint extraction on the
-retained AMFlow-state path.
+`passed_coefficient_count=54` at `--eps-order 2 --digits 40 --tolerance-digits 30`. This is full
+retained `automatic_loop` comparator parity against the current golden manifest. Shipping a broader
+physical parity claim from this result would still be dishonest: the physical comparison endpoint is
+the singular `eta -> 0` limit reached through complex continuation, and the current C++ runtime does
+not yet perform the full contour, box endpoint extraction beyond `eps^1`, or other endpoint
+extraction on the retained AMFlow-state path.
 
 The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
 `_amflow` suffix by default and accepts explicit mappings such as:

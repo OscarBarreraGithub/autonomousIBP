@@ -884,10 +884,11 @@ The target-reduction application seam is deliberately narrower than full automat
   direct master solve, emitting target-aligned epsilon coefficients and a top-level
   `target_reduction` status object on success
 - the `solve-series` AMFlow-state JSON path also accepts retained
-  `reduction.target_reduction_path` metadata, but on retained automatic-loop states this still
-  reports `runtime_application: "deferred-until-master-values"` with typed `boundary_unsolved`
-  until the eta-infinity boundary and singular-continuation gaps produce endpoint master
-  coefficients
+  `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` state it now
+  evaluates the retained leading eta-infinity subsystem-sample boundary coefficients and reports
+  `runtime_application: "applied-after-eta-infinity-boundary-evaluation"` after applying target
+  reduction to those boundary coefficients. The singular eta-to-zero continuation remains outside
+  this path.
 
 The first DE-assembly ingestion path is intentionally narrow:
 

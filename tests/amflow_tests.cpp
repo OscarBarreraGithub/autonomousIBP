@@ -48642,7 +48642,7 @@ void SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest() {
                  "guarded solve-series JSON should report success");
 }
 
-void SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest() {
+void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
       FreshTempDir("amflow-solve-series-cli-automatic-loop-amflow-state");
@@ -48659,9 +48659,10 @@ void SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest(
       ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
       " 2>" + ShellSingleQuote(stderr_path.string());
 
-  Expect(RunShellCommand(command) != 0,
-         "AMFlow eta-infinity state ingestion should run through solve-series and fail at the "
-         "truthful deferred boundary provider, not at JSON/YAML parsing");
+  Expect(RunShellCommand(command) == 0,
+         "AMFlow eta-infinity state ingestion should evaluate retained subsystem-sample "
+         "boundary coefficients; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
   Expect(std::filesystem::exists(output_path),
          "AMFlow eta-infinity state ingestion should still write a solve-series JSON result");
 
@@ -48682,13 +48683,31 @@ void SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest(
                  "boundary data");
   ExpectContains(json, "\"target_reduction\": {",
                  "AMFlow state ingestion should publish retained target-reduction metadata");
-  ExpectContains(json, "\"runtime_application\": \"deferred-until-master-values\"",
-                 "AMFlow state ingestion should not pretend target reduction ran before "
-                 "endpoint master values exist");
-  ExpectContains(json, "\"failure_code\": \"boundary_unsolved\"",
-                 "AMFlow state ingestion should fail with the typed boundary-unsolved blocker");
-  ExpectContains(json, "asymptotic/subsystem-sample boundary evaluation",
-                 "AMFlow state ingestion should report the remaining runtime boundary gap");
+  ExpectContains(json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-asymptotic-subsystem-sample-boundary-evaluator\"",
+                 "AMFlow state ingestion should report the retained boundary evaluator");
+  ExpectContains(json,
+                 "\"runtime_application\": "
+                 "\"applied-after-eta-infinity-boundary-evaluation\"",
+                 "AMFlow state ingestion should apply retained target reduction after boundary "
+                 "coefficients exist");
+  ExpectContains(json, "\"epsilon_orders\": [",
+                 "AMFlow state ingestion should emit comparator-readable epsilon coefficients");
+  ExpectContains(json, "\"order\": -",
+                 "AMFlow state ingestion should expose Laurent pole boundary coefficients");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "AMFlow state ingestion should report boundary-evaluation success");
+  Expect(json.find("\"failure_code\": \"boundary_unsolved\"") == std::string::npos,
+         "AMFlow state ingestion should close the boundary_unsolved failure code on this path");
+  ExpectContains(json, "Singular eta->0 complex continuation is not applied",
+                 "AMFlow state ingestion should keep the remaining Gap B non-claim visible");
+  ExpectContains(json,
+                 "Applied retained Kira target reduction to eta-infinity boundary coefficients.",
+                 "AMFlow state ingestion should describe target reduction as boundary-only");
+  Expect(json.find("Applied retained Kira target reduction to endpoint master values.") ==
+             std::string::npos,
+         "AMFlow state ingestion should not claim endpoint master values before continuation");
 }
 
 struct ReferenceHarnessSelfCheckRun {
@@ -54573,7 +54592,7 @@ int main() {
     SolveSeriesCliAppliesParsedTargetReductionOnDirectSolvedPathTest();
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
-    SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest();
+    SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

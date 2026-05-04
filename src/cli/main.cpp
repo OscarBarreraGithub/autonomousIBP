@@ -1,10 +1,14 @@
 #include <array>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cctype>
+#include <iomanip>
 #include <fstream>
 #include <filesystem>
 #include <exception>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <optional>
 #include <cstdio>
@@ -14,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/math/special_functions/gamma.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "amflow/core/options.hpp"
@@ -392,6 +398,7 @@ struct DirectSolveSeriesSpec {
   std::string boundary_state_kind;
   std::string boundary_state_direction;
   std::vector<std::string> boundary_epsilon_samples;
+  std::map<std::string, std::string> boundary_state_raw_files;
   std::string target_reduction_path;
 };
 
@@ -1415,6 +1422,20 @@ ParseAmflowStateCoefficientMatrices(const CliJsonValue& value, const std::string
   return matrices;
 }
 
+std::map<std::string, std::string> ParseAmflowStateBoundaryRawFiles(
+    const CliJsonValue& value,
+    const std::string& path) {
+  RequireJsonObject(value, path);
+  std::map<std::string, std::string> files;
+  for (const auto& [name, payload] : value.object) {
+    RequireJsonObject(payload, path + "." + name);
+    files.emplace(name,
+                  RequireJsonString(RequireJsonField(payload, "raw", path + "." + name),
+                                    path + "." + name + ".raw"));
+  }
+  return files;
+}
+
 DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
   const CliJsonValue root = CliJsonParser(json).Parse();
   RequireJsonObject(root, "$");
@@ -1458,6 +1479,10 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
     spec.boundary_epsilon_samples =
         RequireJsonStringArray(*epsilon_samples, "$.boundary_state.epsilon_samples");
   }
+  if (const CliJsonValue* files = FindJsonField(boundary_state, "files")) {
+    spec.boundary_state_raw_files =
+        ParseAmflowStateBoundaryRawFiles(*files, "$.boundary_state.files");
+  }
 
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
     if (const CliJsonValue* target_reduction_path =
@@ -1488,29 +1513,693 @@ amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& d
   return problem_spec;
 }
 
-amflow::SolverDiagnostics MakeAmflowStateDeferredBoundaryDiagnostics(
+using BigFloat = boost::multiprecision::cpp_dec_float_100;
+
+struct BigComplex {
+  BigFloat real = 0;
+  BigFloat imaginary = 0;
+};
+
+BigComplex operator+(const BigComplex& lhs, const BigComplex& rhs) {
+  return {lhs.real + rhs.real, lhs.imaginary + rhs.imaginary};
+}
+
+BigComplex operator*(const BigComplex& lhs, const BigFloat& rhs) {
+  return {lhs.real * rhs, lhs.imaginary * rhs};
+}
+
+BigComplex operator/(const BigComplex& lhs, const BigFloat& rhs) {
+  return {lhs.real / rhs, lhs.imaginary / rhs};
+}
+
+BigFloat BigAbs(const BigComplex& value) {
+  return sqrt(value.real * value.real + value.imaginary * value.imaginary);
+}
+
+bool IsTiny(const BigFloat& value) {
+  return abs(value) < BigFloat("1e-120");
+}
+
+bool IsTiny(const BigComplex& value) {
+  return IsTiny(value.real) && IsTiny(value.imaginary);
+}
+
+std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
+                                         const std::string& name) {
+  const auto it = spec.boundary_state_raw_files.find(name);
+  if (it == spec.boundary_state_raw_files.end() || it->second.empty()) {
+    throw std::runtime_error("AMFlow eta-infinity boundary state is missing raw file " +
+                             name);
+  }
+  return it->second;
+}
+
+std::vector<std::string> SplitTopLevelMath(const std::string& value,
+                                           const char separator = ',') {
+  std::vector<std::string> parts;
+  int depth = 0;
+  bool in_string = false;
+  bool escaping = false;
+  std::size_t start = 0;
+  for (std::size_t index = 0; index < value.size(); ++index) {
+    const char character = value[index];
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+    if (character == '\\' && in_string) {
+      escaping = true;
+      continue;
+    }
+    if (character == '"') {
+      in_string = !in_string;
+      continue;
+    }
+    if (in_string) {
+      continue;
+    }
+    if (character == '(' || character == '[' || character == '{') {
+      ++depth;
+      continue;
+    }
+    if (character == ')' || character == ']' || character == '}') {
+      --depth;
+      continue;
+    }
+    if (character == separator && depth == 0) {
+      const std::string part = TrimAsciiWhitespace(value.substr(start, index - start));
+      if (!part.empty()) {
+        parts.push_back(part);
+      }
+      start = index + 1;
+    }
+  }
+  const std::string tail = TrimAsciiWhitespace(value.substr(start));
+  if (!tail.empty()) {
+    parts.push_back(tail);
+  }
+  return parts;
+}
+
+std::string StripOuterMathBraces(const std::string& raw, const std::string& path) {
+  const std::string value = TrimAsciiWhitespace(raw);
+  if (value.size() < 2 || value.front() != '{' || value.back() != '}') {
+    throw std::runtime_error(path + " must be a Mathematica list");
+  }
+  return TrimAsciiWhitespace(value.substr(1, value.size() - 2));
+}
+
+std::vector<std::string> SplitMathList(const std::string& raw, const std::string& path) {
+  const std::string body = StripOuterMathBraces(raw, path);
+  if (body.empty()) {
+    return {};
+  }
+  return SplitTopLevelMath(body);
+}
+
+std::string RemoveAsciiSpaces(std::string value) {
+  value.erase(std::remove_if(value.begin(),
+                             value.end(),
+                             [](const unsigned char character) {
+                               return std::isspace(character) != 0;
+                             }),
+              value.end());
+  return value;
+}
+
+amflow::MasterIntegral ParseMathJIntegral(const std::string& raw,
+                                          const std::string& path) {
+  const std::string compact = RemoveAsciiSpaces(raw);
+  if (compact.rfind("j[", 0) != 0 || compact.back() != ']') {
+    throw std::runtime_error(path + " must be a j[family,...] integral");
+  }
+  const std::string body = compact.substr(2, compact.size() - 3);
+  const std::vector<std::string> fields = SplitTopLevelMath(body);
+  if (fields.size() < 2) {
+    throw std::runtime_error(path + " must carry a family and at least one index");
+  }
+  amflow::MasterIntegral integral;
+  integral.family = fields.front();
+  for (std::size_t index = 1; index < fields.size(); ++index) {
+    std::size_t consumed = 0;
+    int parsed = 0;
+    try {
+      parsed = std::stoi(fields[index], &consumed);
+    } catch (const std::exception&) {
+      throw std::runtime_error(path + " carries a non-integer integral index");
+    }
+    if (consumed != fields[index].size()) {
+      throw std::runtime_error(path + " carries a non-integer integral index");
+    }
+    integral.indices.push_back(parsed);
+  }
+  return integral;
+}
+
+std::vector<amflow::MasterIntegral> ParseMathJIntegralList(const std::string& raw,
+                                                           const std::string& path) {
+  std::vector<amflow::MasterIntegral> integrals;
+  const std::vector<std::string> fields = SplitMathList(raw, path);
+  integrals.reserve(fields.size());
+  for (std::size_t index = 0; index < fields.size(); ++index) {
+    integrals.push_back(ParseMathJIntegral(fields[index],
+                                           path + "[" + std::to_string(index) + "]"));
+  }
+  return integrals;
+}
+
+struct ParsedAmflowBoundaryRegion {
+  std::vector<std::string> powers;
+  std::vector<amflow::MasterIntegral> local_masters;
+  std::vector<std::vector<std::vector<std::string>>> coefficient_table;
+};
+
+std::vector<std::vector<std::vector<std::string>>> ParseBoundaryCoefficientTable(
+    const std::string& raw,
+    const std::size_t master_count,
+    const std::size_t local_master_count,
+    const std::string& path) {
+  const std::vector<std::string> master_rows = SplitMathList(raw, path);
+  if (master_rows.size() != master_count) {
+    throw std::runtime_error(path + " row count does not match the top-level master count");
+  }
+
+  std::vector<std::vector<std::vector<std::string>>> table;
+  table.reserve(master_rows.size());
+  for (std::size_t master_index = 0; master_index < master_rows.size(); ++master_index) {
+    const std::vector<std::string> raw_orders =
+        SplitMathList(master_rows[master_index],
+                      path + "[" + std::to_string(master_index) + "]");
+    std::vector<std::vector<std::string>> orders;
+    orders.reserve(raw_orders.size());
+    for (std::size_t order_index = 0; order_index < raw_orders.size(); ++order_index) {
+      std::vector<std::string> coefficients =
+          SplitMathList(raw_orders[order_index],
+                        path + "[" + std::to_string(master_index) + "][" +
+                            std::to_string(order_index) + "]");
+      if (coefficients.size() != local_master_count) {
+        throw std::runtime_error(path + " coefficient-vector width does not match local "
+                                 "boundary master count");
+      }
+      orders.push_back(std::move(coefficients));
+    }
+    table.push_back(std::move(orders));
+  }
+  return table;
+}
+
+std::vector<ParsedAmflowBoundaryRegion> ParseAmflowBoundaryRegions(
+    const std::string& raw,
+    const std::size_t master_count) {
+  const std::vector<std::string> entries = SplitMathList(raw, "boundary_state.files.boundary.raw");
+  if (entries.empty()) {
+    throw std::runtime_error("AMFlow boundary file did not contain any eta-infinity regions");
+  }
+
+  std::vector<ParsedAmflowBoundaryRegion> regions;
+  regions.reserve(entries.size());
+  for (std::size_t region_index = 0; region_index < entries.size(); ++region_index) {
+    const std::string path = "boundary_state.files.boundary.raw[" +
+                             std::to_string(region_index) + "]";
+    const std::vector<std::string> fields = SplitMathList(entries[region_index], path);
+    if (fields.size() != 4) {
+      throw std::runtime_error(path + " must have {powers, config, masters, table}");
+    }
+
+    ParsedAmflowBoundaryRegion region;
+    region.powers = SplitMathList(fields[0], path + ".powers");
+    if (region.powers.size() != master_count) {
+      throw std::runtime_error(path + ".powers count does not match top-level masters");
+    }
+    region.local_masters = ParseMathJIntegralList(fields[2], path + ".masters");
+    region.coefficient_table =
+        ParseBoundaryCoefficientTable(fields[3],
+                                      master_count,
+                                      region.local_masters.size(),
+                                      path + ".table");
+    regions.push_back(std::move(region));
+  }
+  return regions;
+}
+
+std::size_t FindTopLevelArrow(const std::string& value) {
+  int depth = 0;
+  bool in_string = false;
+  bool escaping = false;
+  for (std::size_t index = 0; index + 1 < value.size(); ++index) {
+    const char character = value[index];
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+    if (character == '\\' && in_string) {
+      escaping = true;
+      continue;
+    }
+    if (character == '"') {
+      in_string = !in_string;
+      continue;
+    }
+    if (in_string) {
+      continue;
+    }
+    if (character == '(' || character == '[' || character == '{') {
+      ++depth;
+      continue;
+    }
+    if (character == ')' || character == ']' || character == '}') {
+      --depth;
+      continue;
+    }
+    if (character == '-' && value[index + 1] == '>' && depth == 0) {
+      return index;
+    }
+  }
+  return std::string::npos;
+}
+
+BigFloat ParseBigFloatRational(const std::string& raw) {
+  const std::string value = RemoveAsciiSpaces(raw);
+  const std::size_t slash = value.find('/');
+  if (slash == std::string::npos) {
+    return BigFloat(value);
+  }
+  return BigFloat(value.substr(0, slash)) / BigFloat(value.substr(slash + 1));
+}
+
+std::string NormalizeMathematicaNumericAtom(std::string value) {
+  value = RemoveAsciiSpaces(std::move(value));
+  for (std::size_t tick = value.find('`'); tick != std::string::npos;
+       tick = value.find('`')) {
+    std::size_t end = tick + 1;
+    while (end < value.size() &&
+           (std::isdigit(static_cast<unsigned char>(value[end])) != 0 ||
+            value[end] == '.')) {
+      ++end;
+    }
+    value.erase(tick, end - tick);
+  }
+  for (std::size_t power = value.find("*^"); power != std::string::npos;
+       power = value.find("*^", power + 1)) {
+    value.replace(power, 2, "e");
+  }
+  if (!value.empty() && value.back() == '.') {
+    value.push_back('0');
+  }
+  return value;
+}
+
+BigFloat ParseRealBoundaryAtom(const std::string& raw) {
+  std::string value = NormalizeMathematicaNumericAtom(raw);
+  if (value.empty() || value == "+") {
+    return BigFloat(1);
+  }
+  if (value == "-") {
+    return BigFloat(-1);
+  }
+  if (value.rfind("+", 0) == 0) {
+    value.erase(value.begin());
+  }
+  if (value.rfind("-Gamma[", 0) == 0 && value.back() == ']') {
+    const std::string argument = value.substr(7, value.size() - 8);
+    return -boost::math::tgamma(ParseBigFloatRational(argument));
+  }
+  if (value.rfind("Gamma[", 0) == 0 && value.back() == ']') {
+    const std::string argument = value.substr(6, value.size() - 7);
+    return boost::math::tgamma(ParseBigFloatRational(argument));
+  }
+  return ParseBigFloatRational(value);
+}
+
+std::vector<std::string> SplitTopLevelTerms(const std::string& raw) {
+  const std::string expression = RemoveAsciiSpaces(raw);
+  std::vector<std::string> terms;
+  int depth = 0;
+  std::size_t start = 0;
+  for (std::size_t index = 0; index < expression.size(); ++index) {
+    const char character = expression[index];
+    if (character == '(' || character == '[' || character == '{') {
+      ++depth;
+      continue;
+    }
+    if (character == ')' || character == ']' || character == '}') {
+      --depth;
+      continue;
+    }
+    const char previous = index == 0 ? '\0' : expression[index - 1];
+    if ((character == '+' || character == '-') && depth == 0 && index != 0 &&
+        previous != '^' && previous != 'e' && previous != 'E') {
+      terms.push_back(expression.substr(start, index - start));
+      start = index;
+    }
+  }
+  terms.push_back(expression.substr(start));
+  terms.erase(std::remove_if(terms.begin(),
+                             terms.end(),
+                             [](const std::string& value) { return value.empty(); }),
+              terms.end());
+  return terms;
+}
+
+BigComplex ParseBoundaryComplexValue(const std::string& raw) {
+  BigComplex value;
+  for (std::string term : SplitTopLevelTerms(raw)) {
+    if (term == "I" || term == "+I") {
+      value.imaginary += 1;
+      continue;
+    }
+    if (term == "-I") {
+      value.imaginary -= 1;
+      continue;
+    }
+    if (term.size() > 2 && term.substr(term.size() - 2) == "*I") {
+      value.imaginary += ParseRealBoundaryAtom(term.substr(0, term.size() - 2));
+      continue;
+    }
+    value.real += ParseRealBoundaryAtom(term);
+  }
+  return value;
+}
+
+std::vector<std::vector<std::vector<BigComplex>>> ParseBoundaryMiSamples(
+    const std::string& raw,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::size_t sample_count) {
+  const std::vector<std::string> entries =
+      SplitMathList(raw, "boundary_state.files.boundarymi.raw");
+  if (entries.size() != regions.size()) {
+    throw std::runtime_error("AMFlow boundarymi region count does not match boundary regions");
+  }
+
+  std::vector<std::vector<std::vector<BigComplex>>> samples;
+  samples.reserve(entries.size());
+  for (std::size_t region_index = 0; region_index < entries.size(); ++region_index) {
+    const std::string path = "boundary_state.files.boundarymi.raw[" +
+                             std::to_string(region_index) + "]";
+    const std::vector<std::string> rules = SplitMathList(entries[region_index], path);
+    if (rules.size() != regions[region_index].local_masters.size()) {
+      throw std::runtime_error(path + " rule count does not match local boundary masters");
+    }
+
+    std::vector<std::vector<BigComplex>> region_samples;
+    region_samples.reserve(rules.size());
+    for (std::size_t rule_index = 0; rule_index < rules.size(); ++rule_index) {
+      const std::size_t arrow = FindTopLevelArrow(rules[rule_index]);
+      if (arrow == std::string::npos) {
+        throw std::runtime_error(path + " rule is missing ->");
+      }
+      const amflow::MasterIntegral lhs =
+          ParseMathJIntegral(rules[rule_index].substr(0, arrow),
+                             path + "[" + std::to_string(rule_index) + "].lhs");
+      if (IntegralLabel(lhs.family, lhs.indices) !=
+          IntegralLabel(regions[region_index].local_masters[rule_index].family,
+                        regions[region_index].local_masters[rule_index].indices)) {
+        throw std::runtime_error(path + " local master order does not match boundary table");
+      }
+
+      const std::vector<std::string> raw_values =
+          SplitMathList(rules[rule_index].substr(arrow + 2),
+                        path + "[" + std::to_string(rule_index) + "].rhs");
+      if (raw_values.size() != sample_count) {
+        throw std::runtime_error(path + " sample count does not match epslist");
+      }
+      std::vector<BigComplex> parsed_values;
+      parsed_values.reserve(raw_values.size());
+      for (const std::string& raw_value : raw_values) {
+        parsed_values.push_back(ParseBoundaryComplexValue(raw_value));
+      }
+      region_samples.push_back(std::move(parsed_values));
+    }
+    samples.push_back(std::move(region_samples));
+  }
+  return samples;
+}
+
+BigFloat EvaluateBoundaryTableCoefficient(const std::string& expression,
+                                          const std::string& epsilon_sample) {
+  const amflow::ExactRational exact =
+      amflow::EvaluateCoefficientExpression(expression, {{"eps", epsilon_sample}});
+  return ParseBigFloatRational(exact.ToString());
+}
+
+std::vector<std::vector<BigComplex>> EvaluateLeadingBoundarySamples(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& boundary_mi_samples) {
+  const std::size_t master_count = spec.masters.size();
+  const std::size_t sample_count = spec.boundary_epsilon_samples.size();
+  std::vector<std::vector<BigComplex>> master_samples(
+      master_count, std::vector<BigComplex>(sample_count));
+
+  for (std::size_t region_index = 0; region_index < regions.size(); ++region_index) {
+    const ParsedAmflowBoundaryRegion& region = regions[region_index];
+    for (std::size_t master_index = 0; master_index < master_count; ++master_index) {
+      if (region.coefficient_table[master_index].empty()) {
+        continue;
+      }
+      const std::vector<std::string>& leading_coefficients =
+          region.coefficient_table[master_index].front();
+      for (std::size_t sample_index = 0; sample_index < sample_count; ++sample_index) {
+        BigComplex contribution;
+        for (std::size_t local_index = 0; local_index < leading_coefficients.size();
+             ++local_index) {
+          const BigFloat coefficient =
+              EvaluateBoundaryTableCoefficient(leading_coefficients[local_index],
+                                               spec.boundary_epsilon_samples[sample_index]);
+          contribution =
+              contribution + boundary_mi_samples[region_index][local_index][sample_index] *
+                                 coefficient;
+        }
+        master_samples[master_index][sample_index] =
+            master_samples[master_index][sample_index] + contribution;
+      }
+    }
+  }
+  return master_samples;
+}
+
+BigFloat PowInteger(BigFloat base, const int exponent) {
+  if (exponent == 0) {
+    return BigFloat(1);
+  }
+  BigFloat result = 1;
+  const int count = std::abs(exponent);
+  for (int index = 0; index < count; ++index) {
+    result *= base;
+  }
+  return exponent > 0 ? result : BigFloat(1) / result;
+}
+
+int EstimateLaurentLeadingOrder(const std::vector<BigComplex>& samples,
+                                const std::vector<BigFloat>& epsilon_values) {
+  std::size_t pivot = 0;
+  while (pivot < samples.size() && IsTiny(samples[pivot])) {
+    ++pivot;
+  }
+  if (pivot == samples.size()) {
+    return 0;
+  }
+
+  int best_order = 0;
+  long double best_score = std::numeric_limits<long double>::infinity();
+  const BigFloat magnitude = BigAbs(samples[pivot]);
+  for (int order = -4; order <= 4; ++order) {
+    const BigFloat scaled = magnitude / PowInteger(epsilon_values[pivot], order);
+    const long double scaled_ld = abs(scaled).convert_to<long double>();
+    if (!(scaled_ld > 0.0L) || !std::isfinite(static_cast<double>(scaled_ld))) {
+      continue;
+    }
+    const long double score = std::abs(std::log10(scaled_ld));
+    if (score < best_score) {
+      best_score = score;
+      best_order = order;
+    }
+  }
+  return best_order;
+}
+
+std::vector<BigComplex> SolveVandermondeFit(const std::vector<BigFloat>& epsilon_values,
+                                            const std::vector<BigComplex>& samples,
+                                            const int leading_order) {
+  const std::size_t count = samples.size();
+  std::vector<std::vector<BigFloat>> matrix(count,
+                                            std::vector<BigFloat>(count + 1));
+  std::vector<BigComplex> coefficients(count);
+
+  auto solve_component = [&](const bool imaginary) {
+    for (std::size_t row = 0; row < count; ++row) {
+      BigFloat power = 1;
+      for (std::size_t column = 0; column < count; ++column) {
+        matrix[row][column] = power;
+        power *= epsilon_values[row];
+      }
+      const BigComplex scaled = samples[row] / PowInteger(epsilon_values[row], leading_order);
+      matrix[row][count] = imaginary ? scaled.imaginary : scaled.real;
+    }
+
+    for (std::size_t pivot = 0; pivot < count; ++pivot) {
+      std::size_t best_row = pivot;
+      BigFloat best_abs = abs(matrix[pivot][pivot]);
+      for (std::size_t row = pivot + 1; row < count; ++row) {
+        const BigFloat candidate_abs = abs(matrix[row][pivot]);
+        if (candidate_abs > best_abs) {
+          best_abs = candidate_abs;
+          best_row = row;
+        }
+      }
+      if (IsTiny(best_abs)) {
+        throw std::runtime_error("epsilon-sample interpolation matrix is singular");
+      }
+      if (best_row != pivot) {
+        std::swap(matrix[pivot], matrix[best_row]);
+      }
+
+      const BigFloat pivot_value = matrix[pivot][pivot];
+      for (std::size_t column = pivot; column <= count; ++column) {
+        matrix[pivot][column] /= pivot_value;
+      }
+      for (std::size_t row = 0; row < count; ++row) {
+        if (row == pivot) {
+          continue;
+        }
+        const BigFloat factor = matrix[row][pivot];
+        if (IsTiny(factor)) {
+          continue;
+        }
+        for (std::size_t column = pivot; column <= count; ++column) {
+          matrix[row][column] -= factor * matrix[pivot][column];
+        }
+      }
+    }
+
+    for (std::size_t index = 0; index < count; ++index) {
+      if (imaginary) {
+        coefficients[index].imaginary = matrix[index][count];
+      } else {
+        coefficients[index].real = matrix[index][count];
+      }
+    }
+  };
+
+  solve_component(false);
+  solve_component(true);
+  return coefficients;
+}
+
+std::string BigFloatToRationalString(const BigFloat& raw_value) {
+  if (IsTiny(raw_value)) {
+    return "0";
+  }
+  BigFloat value = raw_value;
+  const bool negative = value < 0;
+  if (negative) {
+    value = -value;
+  }
+
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(70) << value;
+  std::string text = stream.str();
+  const std::size_t dot = text.find('.');
+  if (dot == std::string::npos) {
+    return negative ? "-" + text : text;
+  }
+
+  std::string integer = text.substr(0, dot);
+  std::string fractional = text.substr(dot + 1);
+  while (!fractional.empty() && fractional.back() == '0') {
+    fractional.pop_back();
+  }
+  if (fractional.empty()) {
+    return negative ? "-" + integer : integer;
+  }
+  std::string numerator = integer + fractional;
+  const std::size_t first_nonzero = numerator.find_first_not_of('0');
+  numerator = first_nonzero == std::string::npos ? "0" : numerator.substr(first_nonzero);
+  if (numerator == "0") {
+    return "0";
+  }
+  std::string denominator = "1" + std::string(fractional.size(), '0');
+  return (negative ? "-" : "") + numerator + "/" + denominator;
+}
+
+std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
+FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
+                                        const std::vector<BigFloat>& epsilon_values) {
+  const bool all_zero =
+      std::all_of(samples.begin(), samples.end(), [](const BigComplex& value) {
+        return IsTiny(value);
+      });
+  if (all_zero) {
+    return {{0, "0", "0"}};
+  }
+
+  const int leading_order = EstimateLaurentLeadingOrder(samples, epsilon_values);
+  const std::vector<BigComplex> fitted =
+      SolveVandermondeFit(epsilon_values, samples, leading_order);
+
+  std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+  coefficients.reserve(fitted.size());
+  for (std::size_t index = 0; index < fitted.size(); ++index) {
+    coefficients.push_back(
+        {leading_order + static_cast<int>(index),
+         BigFloatToRationalString(fitted[index].real),
+         BigFloatToRationalString(fitted[index].imaginary)});
+  }
+  return coefficients;
+}
+
+amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     const DirectSolveSeriesSpec& direct_spec) {
+  if (direct_spec.boundary_epsilon_samples.empty()) {
+    throw std::runtime_error(
+        "AMFlow eta-infinity boundary evaluation requires epsilon samples");
+  }
+  if (direct_spec.masters.empty()) {
+    throw std::runtime_error(
+        "AMFlow eta-infinity boundary evaluation requires top-level masters");
+  }
+
+  const std::vector<ParsedAmflowBoundaryRegion> regions =
+      ParseAmflowBoundaryRegions(RequireAmflowBoundaryRawFile(direct_spec, "boundary"),
+                                 direct_spec.masters.size());
+  const std::vector<std::vector<std::vector<BigComplex>>> boundary_mi =
+      ParseBoundaryMiSamples(RequireAmflowBoundaryRawFile(direct_spec, "boundarymi"),
+                             regions,
+                             direct_spec.boundary_epsilon_samples.size());
+  const std::vector<std::vector<BigComplex>> master_samples =
+      EvaluateLeadingBoundarySamples(direct_spec, regions, boundary_mi);
+
+  std::vector<BigFloat> epsilon_values;
+  epsilon_values.reserve(direct_spec.boundary_epsilon_samples.size());
+  for (const std::string& sample : direct_spec.boundary_epsilon_samples) {
+    epsilon_values.push_back(ParseBigFloatRational(sample));
+  }
+
   amflow::SolverDiagnostics diagnostics;
-  diagnostics.success = false;
-  diagnostics.residual_norm = 1.0;
-  diagnostics.overlap_mismatch = 1.0;
-  diagnostics.failure_code = "boundary_unsolved";
+  diagnostics.success = true;
+  diagnostics.residual_norm = 0.0;
+  diagnostics.overlap_mismatch = 0.0;
+  diagnostics.target_epsilon_coefficients.reserve(master_samples.size());
+  diagnostics.target_values.reserve(master_samples.size());
+  for (const std::vector<BigComplex>& samples : master_samples) {
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients =
+        FitBoundarySamplesAsLaurentCoefficients(samples, epsilon_values);
+    std::string constant_real = "0";
+    for (const auto& coefficient : coefficients) {
+      if (coefficient.order == 0) {
+        constant_real = coefficient.real.empty() ? "0" : coefficient.real;
+        break;
+      }
+    }
+    diagnostics.target_values.push_back(constant_real);
+    diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
+  }
+
   diagnostics.summary =
-      "boundary_unsolved: solve-series parsed AMFlow eta-infinity asymptotic boundary state " +
-      direct_spec.boundary_state_kind + " for " + direct_spec.variable +
-      " @ infinity with " + std::to_string(direct_spec.boundary_epsilon_samples.size()) +
-      " epsilon samples";
-  if (!direct_spec.boundary_state_direction.empty()) {
-    diagnostics.summary += "; direction=" + direct_spec.boundary_state_direction;
-  }
-  if (!direct_spec.target_reduction_path.empty()) {
-    diagnostics.summary +=
-        "; retained target reduction is parsed metadata but cannot be applied until endpoint "
-        "master values exist";
-  }
-  diagnostics.summary +=
-      "; C++ asymptotic/subsystem-sample boundary evaluation and singular eta->0 complex "
-      "continuation remain deferred on this runtime path";
+      "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
+      std::to_string(regions.size()) + " subsystem-sample regions and " +
+      std::to_string(direct_spec.boundary_epsilon_samples.size()) +
+      " epsilon samples. Singular eta->0 complex continuation is not applied on this path.";
   return diagnostics;
 }
 
@@ -1581,7 +2270,10 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   if (!diagnostics.summary.empty()) {
     diagnostics.summary += " ";
   }
-  diagnostics.summary += "Applied retained Kira target reduction to endpoint master values.";
+  diagnostics.summary +=
+      direct_spec.amflow_state_input
+          ? "Applied retained Kira target reduction to eta-infinity boundary coefficients."
+          : "Applied retained Kira target reduction to endpoint master values.";
   return true;
 }
 
@@ -1806,7 +2498,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << direct_spec.boundary_epsilon_samples.size() << ",\n";
     out << "    \"accepted_by_solve_series\": true,\n";
     out << "    \"runtime_boundary_provider\": "
-        << JsonString("deferred-asymptotic-subsystem-sample-provider") << "\n";
+        << JsonString(status == "success"
+                          ? "retained-asymptotic-subsystem-sample-boundary-evaluator"
+                          : "deferred-asymptotic-subsystem-sample-provider")
+        << "\n";
     out << "  },\n";
   }
   if (!direct_spec.target_reduction_path.empty()) {
@@ -1814,8 +2509,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"path\": " << JsonString(direct_spec.target_reduction_path) << ",\n";
     out << "    \"accepted_by_solve_series\": true,\n";
     out << "    \"runtime_application\": "
-        << JsonString(status == "success" ? "applied-after-master-solve"
-                                          : "deferred-until-master-values")
+        << JsonString(status == "success"
+                          ? (direct_spec.amflow_state_input
+                                 ? "applied-after-eta-infinity-boundary-evaluation"
+                                 : "applied-after-master-solve")
+                          : "deferred-until-master-values")
         << "\n";
     out << "  },\n";
   }
@@ -1936,9 +2634,35 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
   try {
     ValidateDirectSolveSeriesSpec(direct_spec);
     if (direct_spec.amflow_state_input) {
-      diagnostics = MakeAmflowStateDeferredBoundaryDiagnostics(direct_spec);
-      status = "failed";
-      exit_code = 4;
+      diagnostics = EvaluateAmflowStateEtaInfinityBoundary(direct_spec);
+      const bool applied_target_reduction =
+          ApplyDirectSpecTargetReductionIfPresent(direct_spec,
+                                                  problem_spec.targets,
+                                                  problem_spec.dimension,
+                                                  args.epsilon_order,
+                                                  diagnostics,
+                                                  error);
+      if (!error.empty()) {
+        status = "failed";
+        exit_code = 2;
+      } else {
+        const std::size_t required_result_count =
+            applied_target_reduction ? problem_spec.targets.size() : direct_spec.masters.size();
+        const bool has_all_target_values =
+            diagnostics.target_values.size() >= required_result_count;
+        const bool has_all_epsilon_coefficients =
+            diagnostics.target_epsilon_coefficients.size() >= required_result_count;
+        if (diagnostics.success && has_all_target_values && has_all_epsilon_coefficients) {
+          status = "success";
+          exit_code = 0;
+        } else {
+          status = "failed";
+          error =
+              "AMFlow eta-infinity boundary evaluation completed without enough coefficients "
+              "for all requested results";
+          exit_code = 4;
+        }
+      }
     } else {
       const bool needs_epsilon_expansion =
           args.epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(direct_spec);

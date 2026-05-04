@@ -179,12 +179,13 @@ master basis, `eta` coefficient matrix, AMFlow eta-infinity boundary metadata, e
 points, and Kira target/reduction context for `box1`. This is intentionally not named
 `automatic_loop.yaml`, and the retained extractor metadata still reports the state-capture-time
 `cpp_solve_series_ingest.supported = false`. The C++ `solve-series` CLI can now accept this JSON
-shape directly, preserve the AMFlow eta-infinity boundary metadata in its result JSON, and fail
-with a typed `boundary_unsolved` diagnostic instead of rejecting the file as YAML. Shipping a
-passing C++ `solve_series` YAML/result from this state would still be dishonest: the retained
-AMFlow boundary is an asymptotic eta-infinity/subsystem-sample boundary, the physical comparison
-endpoint is the singular `eta -> 0` limit reached through complex continuation, and the current
-C++ runtime does not yet evaluate that asymptotic boundary or apply the retained target reduction.
+shape directly, preserve the AMFlow eta-infinity boundary metadata in its result JSON, replay the
+retained leading subsystem-sample boundary coefficients, fit their epsilon Laurent series, and
+apply the retained `box1` target reduction to those boundary coefficients. This closes the
+previous structured `boundary_unsolved` stop for this state. Shipping a parity claim from this
+result would still be dishonest: the physical comparison endpoint is the singular `eta -> 0`
+limit reached through complex continuation, and the current C++ runtime does not yet perform that
+continuation or singular endpoint extraction on the retained AMFlow-state path.
 
 The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
 `_amflow` suffix by default and accepts explicit mappings such as:
@@ -197,11 +198,10 @@ python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
   --tolerance-digits 30
 ```
 
-The remaining end-to-end parity work is to add a real C++ boundary evaluator for AMFlow's
-eta-infinity asymptotic state, complex continuation, singular `eta -> 0` extraction, and target
-reduction application, then promote the deferred JSON-state run into a successful
-`amflow-cli solve-series` candidate against the retained golden manifest. Until then this lane is
-state-ingestion evidence and comparator plumbing only, not a phase-0 parity pass.
+The remaining end-to-end parity work is to add the complex continuation, singular `eta -> 0`
+extraction, and any missing sibling-family coverage needed for the retained golden manifest. The
+current JSON-state run is boundary-evaluation evidence and comparator plumbing only, not a
+phase-0 parity pass.
 
 ## Current Canonical Cluster Gates
 

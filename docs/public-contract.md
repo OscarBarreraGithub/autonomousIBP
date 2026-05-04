@@ -886,13 +886,13 @@ The target-reduction application seam is deliberately narrower than full automat
 - the `solve-series` AMFlow-state JSON path also accepts retained
   `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` and `box2`
   states it evaluates the retained leading eta-infinity subsystem-sample boundary coefficients,
-  applies the first retained `eta=0` branch-log endpoint coefficient transport for
-  `<family>[1,0,1,0]`, and applies target reduction to coefficients with that first endpoint
+  applies the retained `eta=0` branch-log endpoint coefficient transport through `eps^1` for
+  `<family>[1,0,1,0]`, and applies target reduction to coefficients with that endpoint
   correction. A single state result still emits the top-level `continuation` audit object carrying
   the start/target locations, reviewed singular `eta` locations, `transport_applied: true`,
-  `transport_scope: "first-eta-zero-branch-log-endpoint-coefficient-only"`,
+  `transport_scope: "eta-zero-branch-log-endpoint-coefficients-through-eps1"`,
   `full_eta_zero_contour_applied: false`, and `runtime_application:
-  "eta-infinity-de-asymptotic-first-coefficient+eta-zero-first-branch-log-endpoint-coefficient"`.
+  "eta-infinity-de-asymptotic-first-coefficient+eta-zero-branch-log-endpoint-coefficients-through-eps1"`.
   The committed automatic-loop fixture may also be an `amflow_solve_series_state_bundle`; the CLI
   evaluates each contained state independently and emits one combined comparator-readable `results`
   array plus per-family `state_results`. Full singular eta-to-zero contour execution and higher

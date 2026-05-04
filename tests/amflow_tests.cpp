@@ -48714,8 +48714,8 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   ExpectContains(json, "Full singular eta->0 complex contour execution",
                  "AMFlow state ingestion should keep the remaining Gap B non-claim visible");
   ExpectContains(json,
-                 "Applied retained Kira target reduction after first eta=0 endpoint coefficient "
-                 "transport.",
+                 "Applied retained Kira target reduction after eta=0 endpoint coefficient "
+                 "transport through eps^1.",
                  "AMFlow state ingestion should describe target reduction after endpoint "
                  "transport");
   Expect(json.find("Applied retained Kira target reduction to endpoint master values.") ==
@@ -48745,14 +48745,14 @@ for family, state in states.items():
     assert boundary["runtime_boundary_provider"] == (
         "retained-asymptotic-subsystem-sample-boundary-evaluator+"
         "eta-infinity-de-asymptotic-transport+"
-        "eta-zero-first-branch-log-endpoint-transport"
+        "eta-zero-branch-log-endpoint-transport-through-eps1"
     )
 
     continuation = state["continuation"]
     assert continuation["variable"] == "eta"
     assert continuation["start_location"] == "infinity"
     assert continuation["target_location"] == "eta=0"
-    assert continuation["transport_scope"] == "first-eta-zero-branch-log-endpoint-coefficient-only"
+    assert continuation["transport_scope"] == "eta-zero-branch-log-endpoint-coefficients-through-eps1"
     assert continuation["full_eta_zero_contour_applied"] is False
     assert continuation["eta_infinity_asymptotic_transport_applied"] is True
     assert continuation["eta_zero_endpoint_transport_applied"] is True
@@ -48761,15 +48761,35 @@ for family, state in states.items():
     assert f"{family}[1,0,1,0]" in continuation["eta_zero_endpoint_transported_integrals"]
     assert continuation["runtime_application"] == (
         "eta-infinity-de-asymptotic-first-coefficient+"
-        "eta-zero-first-branch-log-endpoint-coefficient"
+        "eta-zero-branch-log-endpoint-coefficients-through-eps1"
     )
     assert "higher endpoint extraction remain deferred" in continuation["blocked_reason"]
 
     target_reduction = state["target_reduction"]
     assert target_reduction["accepted_by_solve_series"] is True
     assert target_reduction["runtime_application"] == (
-        "applied-after-eta-zero-first-branch-log-endpoint-transport"
+        "applied-after-eta-zero-branch-log-endpoint-transport-through-eps1"
     )
+
+results = {result["integral"]: result for result in payload["results"]}
+def coefficient(integral, order):
+    for raw_order in results[integral]["epsilon_orders"]:
+        if raw_order["order"] == order:
+            return raw_order
+    raise AssertionError((integral, order, results[integral]["epsilon_orders"]))
+
+for family in ("box1", "box2"):
+    eps1 = coefficient(f"{family}[1,0,1,0]", 1)
+    assert eps1["real_digits"].startswith("1.3065206180024462797913033457818255194072")
+    assert eps1["imag_digits"].startswith("-9.9977600100429466476679408652356165059178")
+
+box1_reduced_eps1 = coefficient("box1[2,0,1,0]", 1)
+assert box1_reduced_eps1["real_digits"].startswith("-0.0767129231978169473707629334468408721189")
+assert box1_reduced_eps1["imag_digits"].startswith("0.1628094531722253312459322763179462227431")
+
+box2_reduced_eps1 = coefficient("box2[1,-1,1,0]", 1)
+assert box2_reduced_eps1["real_digits"].startswith("-65.326030900122313989565167289091275970361")
+assert box2_reduced_eps1["imag_digits"].startswith("499.88800050214733238339704326178082529589")
 )PY");
   const std::string audit_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +

@@ -348,9 +348,10 @@ retains the state-capture-time
 `cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load either
 one extracted JSON state or the committed `automatic_loop` state bundle, evaluate the retained
 leading asymptotic eta-infinity boundary coefficients from subsystem epsilon samples, apply the
-first retained `eta=0` branch-log endpoint coefficient transport for `<family>[1,0,1,0]` on
-`box1` and `box2`, and then apply the retained target reduction. It still does not perform the
-full complex continuation or higher-order singular `eta -> 0` endpoint extraction needed for
+retained `eta=0` branch-log endpoint coefficient transport for `<family>[1,0,1,0]` plus the
+retained leading box pole endpoint transport for `<family>[1,1,1,1]` on `box1` and `box2`, and
+then apply the retained target reduction. It still does not perform the full complex continuation,
+finite box endpoint extraction, or higher-order singular `eta -> 0` endpoint extraction needed for
 parity.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the

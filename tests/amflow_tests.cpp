@@ -48683,6 +48683,24 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
                  "boundary data");
   ExpectContains(json, "\"target_reduction\": {",
                  "AMFlow state ingestion should publish retained target-reduction metadata");
+  ExpectContains(json, "\"continuation\": {",
+                 "AMFlow state ingestion should publish explicit Gap B continuation metadata");
+  ExpectContains(json, "\"start_location\": \"infinity\"",
+                 "AMFlow state ingestion should expose the eta-continuation start point");
+  ExpectContains(json, "\"target_location\": \"eta=0\"",
+                 "AMFlow state ingestion should expose the singular eta-continuation endpoint");
+  ExpectContains(json, "\"singular_points\": [",
+                 "AMFlow state ingestion should expose reviewed singular eta locations");
+  ExpectContains(json, "\"eta=0\"",
+                 "AMFlow state ingestion should expose the endpoint singular location");
+  ExpectContains(json, "\"eta=1\"",
+                 "AMFlow state ingestion should expose the internal singular location");
+  ExpectContains(json, "\"eta=100\"",
+                 "AMFlow state ingestion should expose the second internal singular location");
+  ExpectContains(json, "\"transport_applied\": false",
+                 "AMFlow state ingestion should not claim eta transport on this path");
+  ExpectContains(json, "\"runtime_application\": \"not-applied-boundary-only\"",
+                 "AMFlow state ingestion should mark Gap B transport as deferred");
   ExpectContains(json,
                  "\"runtime_boundary_provider\": "
                  "\"retained-asymptotic-subsystem-sample-boundary-evaluator\"",
@@ -49589,6 +49607,8 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
                  "family suffixes");
   ExpectContains(result.stdout_json, "\"explicit_family_alias_normalized\": true",
                  "C++ vs AMFlow comparator self-check should honor explicit family aliases");
+  ExpectContains(result.stdout_json, "\"passed_coefficient_count_reported\": true",
+                 "C++ vs AMFlow comparator self-check should report passing coefficient counts");
 }
 
 void ExtractAmflowSolveSeriesStateSelfCheckCoversMatrixAndBoundaryMetadataTest() {
@@ -49610,6 +49630,14 @@ void ExtractAmflowSolveSeriesStateSelfCheckCoversMatrixAndBoundaryMetadataTest()
   ExpectContains(result.stdout_json, "\"cpp_ingest_supported\": false",
                  "AMFlow solve-series state extractor should not claim direct C++ ingest for "
                  "AMFlow eta-infinity boundary state");
+  ExpectContains(result.stdout_json, "\"singular_points\": [",
+                 "AMFlow solve-series state extractor should publish inferred singular eta "
+                 "locations");
+  ExpectContains(result.stdout_json, "\"eta=-1\"",
+                 "AMFlow solve-series state extractor should infer linear denominator "
+                 "singularities");
+  ExpectContains(result.stdout_json, "\"eta=0\"",
+                 "AMFlow solve-series state extractor should infer the eta-origin pole");
 }
 
 void Phase0ReferencePacketSetComparatorSelfCheckAggregatesCapturedPacketPairsTest() {

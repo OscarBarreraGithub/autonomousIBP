@@ -394,6 +394,7 @@ struct DirectSolveSeriesSpec {
   std::vector<amflow::MasterIntegral> masters;
   std::vector<amflow::TargetIntegral> targets;
   std::map<std::string, std::vector<std::vector<std::string>>> coefficient_matrices;
+  std::vector<std::string> singular_points;
   std::vector<amflow::BoundaryCondition> boundary_conditions;
   std::string boundary_state_kind;
   std::string boundary_state_direction;
@@ -824,6 +825,11 @@ DirectSolveSeriesSpec ParseDirectSolveSeriesSpec(const std::string& yaml) {
         ++index;
         continue;
       }
+      if (field == "singular_points") {
+        spec.singular_points = ParseCliYamlStringList(nested, field_value);
+        ++index;
+        continue;
+      }
       if (field == "masters") {
         if (!field_value.empty()) {
           FailCliYamlParse(nested.number, "masters must use block list syntax");
@@ -878,6 +884,11 @@ void ValidateDirectSolveSeriesSpec(const DirectSolveSeriesSpec& spec) {
   if (spec.coefficient_matrices.find(spec.variable) == spec.coefficient_matrices.end()) {
     throw std::invalid_argument("solve_series.coefficient_matrices must include variable " +
                                 spec.variable);
+  }
+  for (const std::string& singular_point : spec.singular_points) {
+    if (TrimAsciiWhitespace(singular_point).empty()) {
+      throw std::invalid_argument("solve_series.singular_points entries must not be empty");
+    }
   }
   if (spec.boundary_conditions.empty() && !spec.amflow_state_input) {
     throw std::invalid_argument("solve_series.boundary_conditions must not be empty");
@@ -1461,6 +1472,14 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
                                          "$.masters");
   spec.coefficient_matrices = ParseAmflowStateCoefficientMatrices(
       RequireJsonField(root, "coefficient_matrices", "$"), "$.coefficient_matrices");
+  if (const CliJsonValue* singular_points = FindJsonField(root, "singular_points")) {
+    spec.singular_points = RequireJsonStringArray(*singular_points, "$.singular_points");
+    for (const std::string& singular_point : spec.singular_points) {
+      if (TrimAsciiWhitespace(singular_point).empty()) {
+        throw std::invalid_argument("$.singular_points entries must not be empty");
+      }
+    }
+  }
 
   const CliJsonValue& boundary_state = RequireJsonField(root, "boundary_state", "$");
   spec.boundary_state_kind = RequireJsonString(
@@ -2199,7 +2218,8 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
       std::to_string(regions.size()) + " subsystem-sample regions and " +
       std::to_string(direct_spec.boundary_epsilon_samples.size()) +
-      " epsilon samples. Singular eta->0 complex continuation is not applied on this path.";
+      " epsilon samples. Singular eta->0 complex continuation is not applied on this path; "
+      "the solve result records the reviewed Gap B continuation audit separately.";
   return diagnostics;
 }
 
@@ -2330,6 +2350,7 @@ amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
       {spec.variable, amflow::DifferentiationVariableKind::Eta},
   };
   request.system.coefficient_matrices = spec.coefficient_matrices;
+  request.system.singular_points = spec.singular_points;
   request.boundary_conditions = spec.boundary_conditions;
   request.boundary_requests.reserve(spec.boundary_conditions.size());
   for (const amflow::BoundaryCondition& condition : spec.boundary_conditions) {
@@ -2501,6 +2522,25 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << JsonString(status == "success"
                           ? "retained-asymptotic-subsystem-sample-boundary-evaluator"
                           : "deferred-asymptotic-subsystem-sample-provider")
+        << "\n";
+    out << "  },\n";
+    out << "  \"continuation\": {\n";
+    out << "    \"variable\": " << JsonString(direct_spec.variable) << ",\n";
+    out << "    \"start_location\": " << JsonString(direct_spec.start_location) << ",\n";
+    out << "    \"target_location\": " << JsonString(direct_spec.target_location) << ",\n";
+    out << "    \"singular_points\": [";
+    for (std::size_t index = 0; index < direct_spec.singular_points.size(); ++index) {
+      if (index > 0) {
+        out << ", ";
+      }
+      out << JsonString(direct_spec.singular_points[index]);
+    }
+    out << "],\n";
+    out << "    \"transport_applied\": false,\n";
+    out << "    \"runtime_application\": \"not-applied-boundary-only\",\n";
+    out << "    \"blocked_reason\": "
+        << JsonString("eta-infinity start, complex contour execution, and singular eta=0 "
+                      "endpoint extraction remain deferred")
         << "\n";
     out << "  },\n";
   }

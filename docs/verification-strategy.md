@@ -175,13 +175,17 @@ python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
 
 The committed mirror
 `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json` records the actual cached
-master basis, `eta` coefficient matrix, AMFlow eta-infinity boundary metadata, epsilon sample
-points, and Kira target/reduction context for `box1`. This is intentionally not named
+master basis, `eta` coefficient matrix, reviewed singular `eta` locations, AMFlow eta-infinity
+boundary metadata, epsilon sample points, and Kira target/reduction context for `box1`. This is
+intentionally not named
 `automatic_loop.yaml`, and the retained extractor metadata still reports the state-capture-time
 `cpp_solve_series_ingest.supported = false`. The C++ `solve-series` CLI can now accept this JSON
 shape directly, preserve the AMFlow eta-infinity boundary metadata in its result JSON, replay the
 retained leading subsystem-sample boundary coefficients, fit their epsilon Laurent series, and
-apply the retained `box1` target reduction to those boundary coefficients. This closes the
+apply the retained `box1` target reduction to those boundary coefficients. It also emits a
+top-level `continuation` audit object with `transport_applied = false`, the start/target
+locations, and the reviewed singular locations, so retained boundary evidence is separated from
+the still-deferred Gap B transport. This closes the
 previous structured `boundary_unsolved` stop for this state. Shipping a parity claim from this
 result would still be dishonest: the physical comparison endpoint is the singular `eta -> 0`
 limit reached through complex continuation, and the current C++ runtime does not yet perform that

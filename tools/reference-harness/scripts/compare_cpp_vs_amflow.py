@@ -358,6 +358,7 @@ def compare_cpp_vs_amflow(
   failures: list[str] = []
   minimum_digit_agreement: int | None = None
   compared_coefficients = 0
+  passed_coefficients = 0
 
   for key in all_keys:
     label = integral_label(*key)
@@ -401,6 +402,8 @@ def compare_cpp_vs_amflow(
             f"{label} eps^{order} has real/imag agreement {real_digits}/{imag_digits}, "
             f"below tolerance {tolerance_digits}"
         )
+      else:
+        passed_coefficients += 1
       minimum_digit_agreement = (
           min(real_digits, imag_digits)
           if minimum_digit_agreement is None
@@ -442,6 +445,7 @@ def compare_cpp_vs_amflow(
       "passed": passed,
       "matched_integral_count": len(set(cpp) & set(amflow)),
       "compared_coefficient_count": compared_coefficients,
+      "passed_coefficient_count": passed_coefficients,
       "minimum_digit_agreement": minimum_digit_agreement if minimum_digit_agreement is not None else 0,
       "integrals": integral_summaries,
       "failures": failures,
@@ -612,6 +616,10 @@ def run_self_check() -> dict[str, Any]:
       "positive_order_above_request_ignored": bounded["passed"],
       "amflow_suffix_family_normalized": suffix_normalized["passed"],
       "explicit_family_alias_normalized": alias_normalized["passed"],
+      "passed_coefficient_count_reported": (
+          matching["passed_coefficient_count"] == matching["compared_coefficient_count"]
+          and mismatch["passed_coefficient_count"] < mismatch["compared_coefficient_count"]
+      ),
       "summary_written": False,
   }
 

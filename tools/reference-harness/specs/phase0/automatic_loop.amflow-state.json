@@ -87,6 +87,11 @@
       ]
     ]
   },
+  "singular_points": [
+    "eta=0",
+    "eta=1",
+    "eta=100"
+  ],
   "cpp_solve_series_ingest": {
     "reason": "The retained AMFlow state uses eta-infinity asymptotic boundary data, subsystem numerical epsilon samples, complex continuation, and a singular eta -> 0 physical endpoint.  C++ solve-series can load this JSON state shape, but the physical asymptotic/subsystem-sample boundary evaluator and complex singular endpoint extraction remain deferred.",
     "supported": false

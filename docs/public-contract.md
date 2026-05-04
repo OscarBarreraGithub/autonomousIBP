@@ -887,8 +887,10 @@ The target-reduction application seam is deliberately narrower than full automat
   `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` state it now
   evaluates the retained leading eta-infinity subsystem-sample boundary coefficients and reports
   `runtime_application: "applied-after-eta-infinity-boundary-evaluation"` after applying target
-  reduction to those boundary coefficients. The singular eta-to-zero continuation remains outside
-  this path.
+  reduction to those boundary coefficients. The same result JSON now emits a top-level
+  `continuation` audit object carrying the start/target locations, reviewed singular `eta`
+  locations, `transport_applied: false`, and `runtime_application: "not-applied-boundary-only"`.
+  The singular eta-to-zero continuation remains outside this path.
 
 The first DE-assembly ingestion path is intentionally narrow:
 

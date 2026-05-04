@@ -336,13 +336,16 @@ python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
   --out /tmp/automatic_loop.amflow-state.json
 ```
 
-The extractor emits the real cached master order, `eta` coefficient matrix, Kira target/reduction
-metadata, and AMFlow eta-infinity boundary files. Its JSON retains the state-capture-time
+The extractor emits the real cached master order, `eta` coefficient matrix, inferred singular
+`eta` locations, Kira target/reduction metadata, and AMFlow eta-infinity boundary files. Its JSON
+retains the state-capture-time
 `cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load that
 JSON shape directly, evaluate the retained leading asymptotic eta-infinity boundary coefficients
 from subsystem epsilon samples, and apply the retained target reduction to those boundary
-coefficients. It still does not perform the complex continuation or singular `eta -> 0` endpoint
-extraction needed for parity.
+coefficients. The result JSON also emits a top-level `continuation` audit object with
+`transport_applied = false`, the start/target locations, and the reviewed singular locations. It
+still does not perform the complex continuation or singular `eta -> 0` endpoint extraction needed
+for parity.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

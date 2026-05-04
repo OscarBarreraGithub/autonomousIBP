@@ -123,6 +123,62 @@ def parse_matrix(path: Path) -> list[list[str]]:
   return matrix
 
 
+def singular_label(variable: str, value: int) -> str:
+  return f"{variable}={value}"
+
+
+def add_singular_label(labels: set[str], variable: str, value: int) -> None:
+  labels.add(singular_label(variable, value))
+
+
+def infer_singular_points_from_matrix(matrix: list[list[str]], variable: str) -> list[str]:
+  labels: set[str] = set()
+  variable_pattern = re.escape(variable)
+  zero_pattern = re.compile(
+      rf"[/(*]\s*{variable_pattern}(?:\s*\^\s*\d+)?(?=[)\s*/+*\-]|$)")
+  linear_patterns = [
+      (re.compile(rf"\(\s*(-?\d+)\s*\+\s*{variable_pattern}\s*\)"),
+       lambda match: -int(match.group(1))),
+      (re.compile(rf"\(\s*(-?\d+)\s*-\s*{variable_pattern}\s*\)"),
+       lambda match: int(match.group(1))),
+      (re.compile(rf"\(\s*{variable_pattern}\s*\+\s*(-?\d+)\s*\)"),
+       lambda match: -int(match.group(1))),
+      (re.compile(rf"\(\s*{variable_pattern}\s*-\s*(-?\d+)\s*\)"),
+       lambda match: int(match.group(1))),
+  ]
+  quadratic_pattern = re.compile(
+      rf"\(\s*(\d+)\s*-\s*(\d+)\s*\*\s*{variable_pattern}\s*\+\s*"
+      rf"{variable_pattern}\s*\^\s*2\s*\)")
+
+  for row in matrix:
+    for cell in row:
+      if zero_pattern.search(cell):
+        add_singular_label(labels, variable, 0)
+      for pattern, root_from_match in linear_patterns:
+        for match in pattern.finditer(cell):
+          add_singular_label(labels, variable, root_from_match(match))
+      for match in quadratic_pattern.finditer(cell):
+        constant = int(match.group(1))
+        linear = int(match.group(2))
+        discriminant = linear * linear - 4 * constant
+        if discriminant < 0:
+          continue
+        sqrt_discriminant = int(discriminant**0.5)
+        if sqrt_discriminant * sqrt_discriminant != discriminant:
+          continue
+        for numerator in (linear - sqrt_discriminant, linear + sqrt_discriminant):
+          if numerator % 2 == 0:
+            add_singular_label(labels, variable, numerator // 2)
+
+  def label_key(label: str) -> tuple[int, str]:
+    try:
+      return (int(label.split("=", 1)[1]), label)
+    except ValueError:
+      return (0, label)
+
+  return sorted(labels, key=label_key)
+
+
 def parse_eps_samples(path: Path) -> list[str]:
   if not path.exists():
     return []
@@ -188,6 +244,7 @@ def extract_state(system_dir: Path,
       "variable": variable,
       "masters": masters,
       "coefficient_matrices": {variable: matrix},
+      "singular_points": infer_singular_points_from_matrix(matrix, variable),
       "amflow_config": {
           "raw": raw_file_payload(system_dir / "config"),
       },
@@ -253,6 +310,7 @@ def run_self_check() -> dict[str, Any]:
       "state_extracted": payload["kind"] == "amflow_solve_series_state",
       "master_count": len(payload["masters"]),
       "matrix_dimension": len(payload["coefficient_matrices"]["eta"]),
+      "singular_points": payload["singular_points"],
       "boundary_state_kind": payload["boundary_state"]["kind"],
       "cpp_ingest_supported": payload["cpp_solve_series_ingest"]["supported"],
       "inferred_reduction_targets": payload["reduction"]["targets"],

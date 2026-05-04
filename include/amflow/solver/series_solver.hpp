@@ -86,6 +86,7 @@ struct SolverDiagnostics {
   std::string failure_code;
   std::string summary;
   std::vector<std::string> target_values;
+  int eta_asymptotic_transport_count = 0;
   struct EpsilonCoefficient {
     int order = 0;
     std::string real;

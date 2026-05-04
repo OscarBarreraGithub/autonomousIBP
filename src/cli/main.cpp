@@ -392,6 +392,7 @@ struct DirectSolveSeriesSpec {
   std::string start_location;
   std::string target_location;
   std::vector<amflow::MasterIntegral> masters;
+  std::vector<amflow::MasterIntegral> retained_reduction_masters;
   std::vector<amflow::TargetIntegral> targets;
   std::map<std::string, std::vector<std::vector<std::string>>> coefficient_matrices;
   std::vector<std::string> singular_points;
@@ -1504,6 +1505,10 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
   }
 
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
+    if (const CliJsonValue* masters = FindJsonField(*reduction, "masters")) {
+      spec.retained_reduction_masters =
+          ParseAmflowStateMasters(*masters, "$.reduction.masters");
+    }
     if (const CliJsonValue* target_reduction_path =
             FindJsonField(*reduction, "target_reduction_path")) {
       spec.target_reduction_path =
@@ -1561,6 +1566,10 @@ bool IsTiny(const BigFloat& value) {
 
 bool IsTiny(const BigComplex& value) {
   return IsTiny(value.real) && IsTiny(value.imaginary);
+}
+
+bool NearlyEqual(const BigFloat& lhs, const BigFloat& rhs) {
+  return abs(lhs - rhs) < BigFloat("1e-60");
 }
 
 std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
@@ -1997,6 +2006,499 @@ std::vector<std::vector<BigComplex>> EvaluateLeadingBoundarySamples(
   return master_samples;
 }
 
+std::vector<std::vector<std::vector<BigComplex>>> EvaluateBoundaryRegionContributionSamples(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& boundary_mi_samples) {
+  const std::size_t master_count = spec.masters.size();
+  const std::size_t sample_count = spec.boundary_epsilon_samples.size();
+  std::vector<std::vector<std::vector<BigComplex>>> region_contributions(
+      regions.size(),
+      std::vector<std::vector<BigComplex>>(
+          master_count, std::vector<BigComplex>(sample_count)));
+
+  for (std::size_t region_index = 0; region_index < regions.size(); ++region_index) {
+    const ParsedAmflowBoundaryRegion& region = regions[region_index];
+    for (std::size_t master_index = 0; master_index < master_count; ++master_index) {
+      if (region.coefficient_table[master_index].empty()) {
+        continue;
+      }
+      const std::vector<std::string>& leading_coefficients =
+          region.coefficient_table[master_index].front();
+      for (std::size_t sample_index = 0; sample_index < sample_count; ++sample_index) {
+        BigComplex contribution;
+        for (std::size_t local_index = 0; local_index < leading_coefficients.size();
+             ++local_index) {
+          const BigFloat coefficient =
+              EvaluateBoundaryTableCoefficient(leading_coefficients[local_index],
+                                               spec.boundary_epsilon_samples[sample_index]);
+          contribution =
+              contribution + boundary_mi_samples[region_index][local_index][sample_index] *
+                                 coefficient;
+        }
+        region_contributions[region_index][master_index][sample_index] = contribution;
+      }
+    }
+  }
+
+  return region_contributions;
+}
+
+struct InfinityEtaSeries {
+  std::map<int, BigFloat> coefficients_by_degree;
+};
+
+void PruneTinyInfinityEtaTerms(InfinityEtaSeries& series) {
+  for (auto it = series.coefficients_by_degree.begin();
+       it != series.coefficients_by_degree.end();) {
+    if (IsTiny(it->second)) {
+      it = series.coefficients_by_degree.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+InfinityEtaSeries MakeConstantInfinityEtaSeries(const BigFloat& value) {
+  InfinityEtaSeries series;
+  if (!IsTiny(value)) {
+    series.coefficients_by_degree.emplace(0, value);
+  }
+  return series;
+}
+
+InfinityEtaSeries MakeEtaInfinityEtaSeries() {
+  InfinityEtaSeries series;
+  series.coefficients_by_degree.emplace(1, BigFloat(1));
+  return series;
+}
+
+InfinityEtaSeries AddInfinityEtaSeries(InfinityEtaSeries lhs,
+                                       const InfinityEtaSeries& rhs,
+                                       const BigFloat& sign = BigFloat(1)) {
+  for (const auto& [degree, coefficient] : rhs.coefficients_by_degree) {
+    lhs.coefficients_by_degree[degree] += sign * coefficient;
+  }
+  PruneTinyInfinityEtaTerms(lhs);
+  return lhs;
+}
+
+InfinityEtaSeries MultiplyInfinityEtaSeries(const InfinityEtaSeries& lhs,
+                                            const InfinityEtaSeries& rhs) {
+  InfinityEtaSeries result;
+  for (const auto& [left_degree, left_coefficient] : lhs.coefficients_by_degree) {
+    for (const auto& [right_degree, right_coefficient] : rhs.coefficients_by_degree) {
+      result.coefficients_by_degree[left_degree + right_degree] +=
+          left_coefficient * right_coefficient;
+    }
+  }
+  PruneTinyInfinityEtaTerms(result);
+  return result;
+}
+
+std::optional<std::pair<int, BigFloat>> LeadingInfinityEtaTerm(
+    const InfinityEtaSeries& series) {
+  if (series.coefficients_by_degree.empty()) {
+    return std::nullopt;
+  }
+  const auto it = series.coefficients_by_degree.rbegin();
+  return std::make_pair(it->first, it->second);
+}
+
+InfinityEtaSeries DivideInfinityEtaSeries(const InfinityEtaSeries& numerator,
+                                          const InfinityEtaSeries& denominator,
+                                          const std::string& expression) {
+  const std::optional<std::pair<int, BigFloat>> numerator_leading =
+      LeadingInfinityEtaTerm(numerator);
+  const std::optional<std::pair<int, BigFloat>> denominator_leading =
+      LeadingInfinityEtaTerm(denominator);
+  if (!numerator_leading.has_value()) {
+    return {};
+  }
+  if (!denominator_leading.has_value() || IsTiny(denominator_leading->second)) {
+    throw std::runtime_error("eta-infinity DE asymptotic transport encountered zero leading "
+                             "denominator in \"" +
+                             expression + "\"");
+  }
+
+  InfinityEtaSeries result;
+  result.coefficients_by_degree.emplace(
+      numerator_leading->first - denominator_leading->first,
+      numerator_leading->second / denominator_leading->second);
+  return result;
+}
+
+InfinityEtaSeries PowerInfinityEtaSeries(const InfinityEtaSeries& base,
+                                         const int exponent,
+                                         const std::string& expression) {
+  if (exponent < 0) {
+    return DivideInfinityEtaSeries(MakeConstantInfinityEtaSeries(BigFloat(1)),
+                                   PowerInfinityEtaSeries(base, -exponent, expression),
+                                   expression);
+  }
+  InfinityEtaSeries result = MakeConstantInfinityEtaSeries(BigFloat(1));
+  for (int index = 0; index < exponent; ++index) {
+    result = MultiplyInfinityEtaSeries(result, base);
+  }
+  return result;
+}
+
+class InfinityEtaSeriesParser {
+ public:
+  InfinityEtaSeriesParser(std::string expression, BigFloat epsilon_value)
+      : expression_(std::move(expression)), epsilon_value_(std::move(epsilon_value)) {}
+
+  InfinityEtaSeries Parse() {
+    InfinityEtaSeries value = ParseExpression();
+    SkipSpaces();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("eta-infinity DE asymptotic parser found trailing input in \"" +
+                               expression_ + "\"");
+    }
+    return value;
+  }
+
+ private:
+  void SkipSpaces() {
+    while (position_ < expression_.size() &&
+           std::isspace(static_cast<unsigned char>(expression_[position_])) != 0) {
+      ++position_;
+    }
+  }
+
+  bool Match(const char expected) {
+    SkipSpaces();
+    if (position_ >= expression_.size() || expression_[position_] != expected) {
+      return false;
+    }
+    ++position_;
+    return true;
+  }
+
+  InfinityEtaSeries ParseExpression() {
+    InfinityEtaSeries value = ParseTerm();
+    while (true) {
+      if (Match('+')) {
+        value = AddInfinityEtaSeries(std::move(value), ParseTerm());
+        continue;
+      }
+      if (Match('-')) {
+        value = AddInfinityEtaSeries(std::move(value), ParseTerm(), BigFloat(-1));
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  InfinityEtaSeries ParseTerm() {
+    InfinityEtaSeries value = ParsePower();
+    while (true) {
+      if (Match('*')) {
+        value = MultiplyInfinityEtaSeries(value, ParsePower());
+        continue;
+      }
+      if (Match('/')) {
+        value = DivideInfinityEtaSeries(value, ParsePower(), expression_);
+        continue;
+      }
+      break;
+    }
+    return value;
+  }
+
+  InfinityEtaSeries ParsePower() {
+    InfinityEtaSeries value = ParseUnary();
+    if (!Match('^')) {
+      return value;
+    }
+    const int exponent = ParseIntegerExponent();
+    return PowerInfinityEtaSeries(value, exponent, expression_);
+  }
+
+  InfinityEtaSeries ParseUnary() {
+    if (Match('+')) {
+      return ParseUnary();
+    }
+    if (Match('-')) {
+      return AddInfinityEtaSeries(MakeConstantInfinityEtaSeries(BigFloat(0)),
+                                  ParseUnary(),
+                                  BigFloat(-1));
+    }
+    return ParsePrimary();
+  }
+
+  int ParseIntegerExponent() {
+    SkipSpaces();
+    bool negative = false;
+    if (position_ < expression_.size() &&
+        (expression_[position_] == '+' || expression_[position_] == '-')) {
+      negative = expression_[position_] == '-';
+      ++position_;
+    }
+    const std::size_t begin = position_;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      ++position_;
+    }
+    if (begin == position_) {
+      throw std::runtime_error("eta-infinity DE asymptotic parser requires integer powers in \"" +
+                               expression_ + "\"");
+    }
+    const int exponent = std::stoi(expression_.substr(begin, position_ - begin));
+    return negative ? -exponent : exponent;
+  }
+
+  InfinityEtaSeries ParsePrimary() {
+    SkipSpaces();
+    if (Match('(')) {
+      InfinityEtaSeries value = ParseExpression();
+      if (!Match(')')) {
+        throw std::runtime_error("eta-infinity DE asymptotic parser expected ')' in \"" +
+                                 expression_ + "\"");
+      }
+      return value;
+    }
+
+    if (position_ < expression_.size() &&
+        std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      const std::size_t begin = position_;
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        ++position_;
+      }
+      return MakeConstantInfinityEtaSeries(
+          BigFloat(expression_.substr(begin, position_ - begin)));
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isalpha(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '_')) {
+      const std::size_t begin = position_;
+      ++position_;
+      while (position_ < expression_.size() &&
+             (std::isalnum(static_cast<unsigned char>(expression_[position_])) != 0 ||
+              expression_[position_] == '_')) {
+        ++position_;
+      }
+      const std::string identifier = expression_.substr(begin, position_ - begin);
+      if (identifier == "eta") {
+        return MakeEtaInfinityEtaSeries();
+      }
+      if (identifier == "eps") {
+        return MakeConstantInfinityEtaSeries(epsilon_value_);
+      }
+      throw std::runtime_error("eta-infinity DE asymptotic parser requires a numeric binding for "
+                               "symbol \"" +
+                               identifier + "\" in \"" + expression_ + "\"");
+    }
+
+    throw std::runtime_error("eta-infinity DE asymptotic parser found malformed expression \"" +
+                             expression_ + "\"");
+  }
+
+  std::string expression_;
+  BigFloat epsilon_value_;
+  std::size_t position_ = 0;
+};
+
+std::optional<std::pair<int, BigFloat>> LeadingInfinityEtaTerm(
+    const std::string& expression,
+    const BigFloat& epsilon_value) {
+  return LeadingInfinityEtaTerm(
+      InfinityEtaSeriesParser(expression, epsilon_value).Parse());
+}
+
+BigFloat EvaluatePowerExpressionAtEpsilon(const std::string& expression,
+                                          const std::string& epsilon_sample) {
+  return ParseBigFloatRational(
+      amflow::EvaluateCoefficientExpression(expression, {{"eps", epsilon_sample}}).ToString());
+}
+
+std::vector<std::string> DistinctDeclaredPowerExpressions(
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::size_t master_index) {
+  std::vector<std::string> powers;
+  for (const ParsedAmflowBoundaryRegion& region : regions) {
+    if (master_index >= region.powers.size()) {
+      continue;
+    }
+    if (std::find(powers.begin(), powers.end(), region.powers[master_index]) ==
+        powers.end()) {
+      powers.push_back(region.powers[master_index]);
+    }
+  }
+  return powers;
+}
+
+struct AsymptoticSourceCoefficient {
+  BigFloat power;
+  BigComplex coefficient;
+};
+
+std::vector<std::vector<AsymptoticSourceCoefficient>> BuildAsymptoticSourceCoefficients(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
+    const std::size_t sample_index) {
+  std::vector<std::vector<AsymptoticSourceCoefficient>> source_by_master(spec.masters.size());
+  for (std::size_t region_index = 0; region_index < regions.size(); ++region_index) {
+    for (std::size_t master_index = 0; master_index < spec.masters.size(); ++master_index) {
+      const BigComplex coefficient =
+          region_contributions[region_index][master_index][sample_index];
+      if (IsTiny(coefficient)) {
+        continue;
+      }
+      source_by_master[master_index].push_back(
+          {EvaluatePowerExpressionAtEpsilon(regions[region_index].powers[master_index],
+                                            spec.boundary_epsilon_samples[sample_index]),
+           coefficient});
+    }
+  }
+  return source_by_master;
+}
+
+std::optional<BigComplex> TryComputeAsymptoticTransportCandidate(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<std::vector<AsymptoticSourceCoefficient>>& source_by_master,
+    const std::size_t target_master_index,
+    const std::string& target_power_expression,
+    const std::size_t sample_index) {
+  const BigFloat epsilon_value =
+      ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]);
+  const BigFloat target_power =
+      EvaluatePowerExpressionAtEpsilon(target_power_expression,
+                                       spec.boundary_epsilon_samples[sample_index]);
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end() ||
+      target_master_index >= matrix_it->second.size()) {
+    return std::nullopt;
+  }
+
+  BigFloat diagonal_residue = 0;
+  const std::string& diagonal_expression =
+      matrix_it->second[target_master_index][target_master_index];
+  const std::optional<std::pair<int, BigFloat>> diagonal_leading =
+      LeadingInfinityEtaTerm(diagonal_expression, epsilon_value);
+  if (diagonal_leading.has_value()) {
+    if (diagonal_leading->first > -1) {
+      return std::nullopt;
+    }
+    if (diagonal_leading->first == -1) {
+      diagonal_residue = diagonal_leading->second;
+    }
+  }
+
+  BigComplex rhs;
+  for (std::size_t source_master_index = 0; source_master_index < spec.masters.size();
+       ++source_master_index) {
+    if (source_master_index == target_master_index ||
+        source_master_index >= matrix_it->second[target_master_index].size()) {
+      continue;
+    }
+    const std::optional<std::pair<int, BigFloat>> source_matrix_leading =
+        LeadingInfinityEtaTerm(matrix_it->second[target_master_index][source_master_index],
+                               epsilon_value);
+    if (!source_matrix_leading.has_value()) {
+      continue;
+    }
+    for (const AsymptoticSourceCoefficient& source :
+         source_by_master[source_master_index]) {
+      if (!NearlyEqual(BigFloat(source_matrix_leading->first) + source.power,
+                       target_power - BigFloat(1))) {
+        continue;
+      }
+      rhs = rhs + source.coefficient * source_matrix_leading->second;
+    }
+  }
+
+  if (IsTiny(rhs)) {
+    return BigComplex{};
+  }
+  const BigFloat denominator = target_power - diagonal_residue;
+  if (IsTiny(denominator)) {
+    return std::nullopt;
+  }
+  return rhs / denominator;
+}
+
+int ApplyEtaInfinityAsymptoticTransportFromDE(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
+    std::vector<std::vector<BigComplex>>& master_samples) {
+  try {
+    if (regions.empty() || spec.boundary_epsilon_samples.empty()) {
+      return 0;
+    }
+
+    const std::vector<std::vector<AsymptoticSourceCoefficient>> first_sample_sources =
+        BuildAsymptoticSourceCoefficients(spec, regions, region_contributions, 0);
+    int transported_count = 0;
+    for (std::size_t master_index = 0; master_index < master_samples.size(); ++master_index) {
+      const bool already_has_boundary =
+          std::any_of(master_samples[master_index].begin(),
+                      master_samples[master_index].end(),
+                      [](const BigComplex& sample) { return !IsTiny(sample); });
+      if (already_has_boundary) {
+        continue;
+      }
+
+      std::vector<std::string> viable_power_expressions;
+      for (const std::string& power_expression :
+           DistinctDeclaredPowerExpressions(regions, master_index)) {
+        const std::optional<BigComplex> candidate =
+            TryComputeAsymptoticTransportCandidate(spec,
+                                                   first_sample_sources,
+                                                   master_index,
+                                                   power_expression,
+                                                   0);
+        if (candidate.has_value() && !IsTiny(*candidate)) {
+          viable_power_expressions.push_back(power_expression);
+        }
+      }
+      if (viable_power_expressions.size() != 1) {
+        continue;
+      }
+
+      std::vector<BigComplex> transported_samples(spec.boundary_epsilon_samples.size());
+      bool all_samples_supported = true;
+      bool any_nonzero = false;
+      for (std::size_t sample_index = 0;
+           sample_index < spec.boundary_epsilon_samples.size();
+           ++sample_index) {
+        const std::vector<std::vector<AsymptoticSourceCoefficient>> sources =
+            sample_index == 0
+                ? first_sample_sources
+                : BuildAsymptoticSourceCoefficients(
+                      spec, regions, region_contributions, sample_index);
+        const std::optional<BigComplex> candidate =
+            TryComputeAsymptoticTransportCandidate(spec,
+                                                   sources,
+                                                   master_index,
+                                                   viable_power_expressions.front(),
+                                                   sample_index);
+        if (!candidate.has_value()) {
+          all_samples_supported = false;
+          break;
+        }
+        transported_samples[sample_index] = *candidate;
+        any_nonzero = any_nonzero || !IsTiny(*candidate);
+      }
+      if (!all_samples_supported || !any_nonzero) {
+        continue;
+      }
+
+      master_samples[master_index] = std::move(transported_samples);
+      ++transported_count;
+    }
+
+    return transported_count;
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
+
 BigFloat PowInteger(BigFloat base, const int exponent) {
   if (exponent == 0) {
     return BigFloat(1);
@@ -2185,7 +2687,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
       ParseBoundaryMiSamples(RequireAmflowBoundaryRawFile(direct_spec, "boundarymi"),
                              regions,
                              direct_spec.boundary_epsilon_samples.size());
-  const std::vector<std::vector<BigComplex>> master_samples =
+  const std::vector<std::vector<std::vector<BigComplex>>> region_contributions =
+      EvaluateBoundaryRegionContributionSamples(direct_spec, regions, boundary_mi);
+  std::vector<std::vector<BigComplex>> master_samples =
       EvaluateLeadingBoundarySamples(direct_spec, regions, boundary_mi);
 
   std::vector<BigFloat> epsilon_values;
@@ -2193,11 +2697,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   for (const std::string& sample : direct_spec.boundary_epsilon_samples) {
     epsilon_values.push_back(ParseBigFloatRational(sample));
   }
+  const int transported_asymptotic_count =
+      ApplyEtaInfinityAsymptoticTransportFromDE(direct_spec,
+                                                regions,
+                                                region_contributions,
+                                                master_samples);
 
   amflow::SolverDiagnostics diagnostics;
   diagnostics.success = true;
   diagnostics.residual_norm = 0.0;
   diagnostics.overlap_mismatch = 0.0;
+  diagnostics.eta_asymptotic_transport_count = transported_asymptotic_count;
   diagnostics.target_epsilon_coefficients.reserve(master_samples.size());
   diagnostics.target_values.reserve(master_samples.size());
   for (const std::vector<BigComplex>& samples : master_samples) {
@@ -2217,9 +2727,16 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   diagnostics.summary =
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
       std::to_string(regions.size()) + " subsystem-sample regions and " +
-      std::to_string(direct_spec.boundary_epsilon_samples.size()) +
-      " epsilon samples. Singular eta->0 complex continuation is not applied on this path; "
-      "the solve result records the reviewed Gap B continuation audit separately.";
+      std::to_string(direct_spec.boundary_epsilon_samples.size()) + " epsilon samples.";
+  if (transported_asymptotic_count > 0) {
+    diagnostics.summary +=
+        " Applied first eta-infinity DE asymptotic transport to " +
+        std::to_string(transported_asymptotic_count) +
+        " missing master coefficient set(s).";
+  }
+  diagnostics.summary +=
+      " Singular eta->0 complex continuation is not applied on this path; the solve result "
+      "records the reviewed Gap B continuation audit separately.";
   return diagnostics;
 }
 
@@ -2290,10 +2807,16 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   if (!diagnostics.summary.empty()) {
     diagnostics.summary += " ";
   }
-  diagnostics.summary +=
-      direct_spec.amflow_state_input
-          ? "Applied retained Kira target reduction to eta-infinity boundary coefficients."
-          : "Applied retained Kira target reduction to endpoint master values.";
+  if (direct_spec.amflow_state_input &&
+      diagnostics.eta_asymptotic_transport_count > 0) {
+    diagnostics.summary +=
+        "Applied retained Kira target reduction after eta-infinity asymptotic DE transport.";
+  } else {
+    diagnostics.summary +=
+        direct_spec.amflow_state_input
+            ? "Applied retained Kira target reduction to eta-infinity boundary coefficients."
+            : "Applied retained Kira target reduction to endpoint master values.";
+  }
   return true;
 }
 
@@ -2422,6 +2945,12 @@ struct SolveSeriesCliArgs {
   int digits = -1;
 };
 
+struct SolveSeriesOutputIntegral {
+  std::string label;
+  std::optional<std::size_t> target_index;
+  std::optional<std::size_t> retained_master_index;
+};
+
 int ParseRequiredIntegerFlag(const std::string& flag, const std::string& value) {
   std::size_t consumed = 0;
   int parsed = 0;
@@ -2478,6 +3007,7 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
 std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                      const DirectSolveSeriesSpec& direct_spec,
                                      const amflow::SolverDiagnostics& diagnostics,
+                                     const amflow::SolverDiagnostics* retained_master_diagnostics,
                                      const int epsilon_order,
                                      const int digits,
                                      const std::string& status,
@@ -2487,6 +3017,27 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
     const auto& master = direct_spec.masters[index];
     master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
+  }
+  std::vector<SolveSeriesOutputIntegral> output_integrals;
+  output_integrals.reserve(problem_spec.targets.size() +
+                           direct_spec.retained_reduction_masters.size());
+  std::set<std::string> output_labels;
+  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+    const std::string label = problem_spec.targets[index].Label();
+    output_integrals.push_back({label, index, std::nullopt});
+    output_labels.insert(label);
+  }
+  if (retained_master_diagnostics != nullptr) {
+    for (const amflow::MasterIntegral& master : direct_spec.retained_reduction_masters) {
+      const std::string label = IntegralLabel(master.family, master.indices);
+      const auto master_it = master_index_by_label.find(label);
+      if (master_it == master_index_by_label.end() ||
+          output_labels.find(label) != output_labels.end()) {
+        continue;
+      }
+      output_integrals.push_back({label, std::nullopt, master_it->second});
+      output_labels.insert(label);
+    }
   }
 
   std::ostringstream out;
@@ -2499,11 +3050,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   }
   out << "  \"family\": " << JsonString(problem_spec.family.name) << ",\n";
   out << "  \"targets\": [";
-  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+  for (std::size_t index = 0; index < output_integrals.size(); ++index) {
     if (index > 0) {
       out << ", ";
     }
-    out << JsonString(problem_spec.targets[index].Label());
+    out << JsonString(output_integrals[index].label);
   }
   out << "],\n";
   out << "  \"solver\": {\n";
@@ -2520,7 +3071,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"accepted_by_solve_series\": true,\n";
     out << "    \"runtime_boundary_provider\": "
         << JsonString(status == "success"
-                          ? "retained-asymptotic-subsystem-sample-boundary-evaluator"
+                          ? (diagnostics.eta_asymptotic_transport_count > 0
+                                 ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
+                                   "eta-infinity-de-asymptotic-transport"
+                                 : "retained-asymptotic-subsystem-sample-boundary-evaluator")
                           : "deferred-asymptotic-subsystem-sample-provider")
         << "\n";
     out << "  },\n";
@@ -2537,10 +3091,21 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "],\n";
     out << "    \"transport_applied\": false,\n";
-    out << "    \"runtime_application\": \"not-applied-boundary-only\",\n";
+    out << "    \"eta_infinity_asymptotic_transport_applied\": "
+        << (diagnostics.eta_asymptotic_transport_count > 0 ? "true" : "false") << ",\n";
+    out << "    \"eta_infinity_asymptotic_transported_master_count\": "
+        << diagnostics.eta_asymptotic_transport_count << ",\n";
+    out << "    \"runtime_application\": "
+        << JsonString(diagnostics.eta_asymptotic_transport_count > 0
+                          ? "eta-infinity-de-asymptotic-first-coefficient"
+                          : "not-applied-boundary-only")
+        << ",\n";
     out << "    \"blocked_reason\": "
-        << JsonString("eta-infinity start, complex contour execution, and singular eta=0 "
-                      "endpoint extraction remain deferred")
+        << JsonString(diagnostics.eta_asymptotic_transport_count > 0
+                          ? "singular eta=0 complex contour execution and endpoint extraction "
+                            "remain deferred after first eta-infinity asymptotic DE transport"
+                          : "eta-infinity start, complex contour execution, and singular eta=0 "
+                            "endpoint extraction remain deferred")
         << "\n";
     out << "  },\n";
   }
@@ -2551,15 +3116,18 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"runtime_application\": "
         << JsonString(status == "success"
                           ? (direct_spec.amflow_state_input
-                                 ? "applied-after-eta-infinity-boundary-evaluation"
+                                 ? (diagnostics.eta_asymptotic_transport_count > 0
+                                        ? "applied-after-eta-infinity-asymptotic-de-transport"
+                                        : "applied-after-eta-infinity-boundary-evaluation")
                                  : "applied-after-master-solve")
                           : "deferred-until-master-values")
         << "\n";
     out << "  },\n";
   }
   out << "  \"results\": [\n";
-  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
-    const std::string label = problem_spec.targets[index].Label();
+  for (std::size_t index = 0; index < output_integrals.size(); ++index) {
+    const SolveSeriesOutputIntegral& output_integral = output_integrals[index];
+    const std::string& label = output_integral.label;
     if (index > 0) {
       out << ",\n";
     }
@@ -2575,22 +3143,31 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     const bool target_aligned_values =
         target_reduction_applied &&
         diagnostics.target_values.size() == problem_spec.targets.size();
-    const std::optional<std::size_t> result_index =
-        target_aligned_epsilon
-            ? std::optional<std::size_t>{index}
-            : (master_it != master_index_by_label.end()
-                   ? std::optional<std::size_t>{master_it->second}
-                   : std::nullopt);
-    const std::optional<std::size_t> value_index =
-        target_aligned_values
-            ? std::optional<std::size_t>{index}
-            : (master_it != master_index_by_label.end()
-                   ? std::optional<std::size_t>{master_it->second}
-                   : std::nullopt);
+    std::optional<std::size_t> result_index;
+    if (output_integral.retained_master_index.has_value()) {
+      result_index = output_integral.retained_master_index;
+    } else if (target_aligned_epsilon && output_integral.target_index.has_value()) {
+      result_index = output_integral.target_index;
+    } else if (master_it != master_index_by_label.end()) {
+      result_index = master_it->second;
+    }
+    std::optional<std::size_t> value_index;
+    if (output_integral.retained_master_index.has_value()) {
+      value_index = output_integral.retained_master_index;
+    } else if (target_aligned_values && output_integral.target_index.has_value()) {
+      value_index = output_integral.target_index;
+    } else if (master_it != master_index_by_label.end()) {
+      value_index = master_it->second;
+    }
+    const amflow::SolverDiagnostics& result_diagnostics =
+        output_integral.retained_master_index.has_value() && retained_master_diagnostics != nullptr
+            ? *retained_master_diagnostics
+            : diagnostics;
     if (status == "success" && result_index.has_value()) {
-      if (*result_index < diagnostics.target_epsilon_coefficients.size() &&
-          !diagnostics.target_epsilon_coefficients[*result_index].empty()) {
-        const auto& coefficients = diagnostics.target_epsilon_coefficients[*result_index];
+      if (*result_index < result_diagnostics.target_epsilon_coefficients.size() &&
+          !result_diagnostics.target_epsilon_coefficients[*result_index].empty()) {
+        const auto& coefficients =
+            result_diagnostics.target_epsilon_coefficients[*result_index];
         for (std::size_t coefficient_index = 0; coefficient_index < coefficients.size();
              ++coefficient_index) {
           if (coefficient_index > 0) {
@@ -2610,8 +3187,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
           out << "        \"exact_imag\": " << JsonString(exact_imag) << "\n";
           out << "      }";
         }
-      } else if (value_index.has_value() && *value_index < diagnostics.target_values.size()) {
-        const std::string exact_real = diagnostics.target_values[*value_index];
+      } else if (value_index.has_value() &&
+                 *value_index < result_diagnostics.target_values.size()) {
+        const std::string exact_real = result_diagnostics.target_values[*value_index];
         out << "{\n";
         out << "        \"order\": 0,\n";
         out << "        \"real_digits\": "
@@ -2667,6 +3245,7 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
   }
 
   amflow::SolverDiagnostics diagnostics;
+  std::optional<amflow::SolverDiagnostics> retained_master_diagnostics;
   std::string status = "failed";
   std::string error;
   int exit_code = 0;
@@ -2675,6 +3254,7 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
     ValidateDirectSolveSeriesSpec(direct_spec);
     if (direct_spec.amflow_state_input) {
       diagnostics = EvaluateAmflowStateEtaInfinityBoundary(direct_spec);
+      retained_master_diagnostics = diagnostics;
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(direct_spec,
                                                   problem_spec.targets,
@@ -2767,6 +3347,9 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
                 SerializeSolveSeriesJson(problem_spec,
                                          direct_spec,
                                          diagnostics,
+                                         retained_master_diagnostics.has_value()
+                                             ? &*retained_master_diagnostics
+                                             : nullptr,
                                          args.epsilon_order,
                                          args.digits,
                                          status,

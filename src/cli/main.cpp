@@ -21,6 +21,7 @@
 #include "amflow/io/problem_spec_io.hpp"
 #include "amflow/io/sample_data.hpp"
 #include "amflow/kira/kira_backend.hpp"
+#include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/solver/series_solver.hpp"
 
@@ -391,6 +392,7 @@ struct DirectSolveSeriesSpec {
   std::string boundary_state_kind;
   std::string boundary_state_direction;
   std::vector<std::string> boundary_epsilon_samples;
+  std::string target_reduction_path;
 };
 
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
@@ -807,6 +809,11 @@ DirectSolveSeriesSpec ParseDirectSolveSeriesSpec(const std::string& yaml) {
       }
       if (field == "target_location") {
         spec.target_location = ParseCliYamlString(nested, field_value);
+        ++index;
+        continue;
+      }
+      if (field == "target_reduction_path") {
+        spec.target_reduction_path = ParseCliYamlString(nested, field_value);
         ++index;
         continue;
       }
@@ -1453,6 +1460,11 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
   }
 
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
+    if (const CliJsonValue* target_reduction_path =
+            FindJsonField(*reduction, "target_reduction_path")) {
+      spec.target_reduction_path =
+          RequireJsonString(*target_reduction_path, "$.reduction.target_reduction_path");
+    }
     if (const CliJsonValue* targets = FindJsonField(*reduction, "targets")) {
       spec.targets = ParseAmflowStateTargets(*targets, "$.reduction.targets");
     }
@@ -1491,10 +1503,86 @@ amflow::SolverDiagnostics MakeAmflowStateDeferredBoundaryDiagnostics(
   if (!direct_spec.boundary_state_direction.empty()) {
     diagnostics.summary += "; direction=" + direct_spec.boundary_state_direction;
   }
+  if (!direct_spec.target_reduction_path.empty()) {
+    diagnostics.summary +=
+        "; retained target reduction is parsed metadata but cannot be applied until endpoint "
+        "master values exist";
+  }
   diagnostics.summary +=
       "; C++ asymptotic/subsystem-sample boundary evaluation and singular eta->0 complex "
       "continuation remain deferred on this runtime path";
   return diagnostics;
+}
+
+std::optional<std::filesystem::path> TargetReductionReducerRootFromRulePath(
+    const std::filesystem::path& rule_path,
+    const std::string& family) {
+  if (rule_path.empty() || rule_path.filename() != "kira_target.m") {
+    return std::nullopt;
+  }
+  const std::filesystem::path family_dir = rule_path.parent_path();
+  if (family_dir.empty() || family_dir.filename() != family) {
+    return std::nullopt;
+  }
+  const std::filesystem::path results_dir = family_dir.parent_path();
+  if (results_dir.empty() || results_dir.filename() != "results") {
+    return std::nullopt;
+  }
+  const std::filesystem::path reducer_root = results_dir.parent_path();
+  if (reducer_root.empty()) {
+    return std::nullopt;
+  }
+  return reducer_root;
+}
+
+bool ApplyDirectSpecTargetReductionIfPresent(
+    const DirectSolveSeriesSpec& direct_spec,
+    const std::vector<amflow::TargetIntegral>& requested_targets,
+    const std::string& dimension_expression,
+    const int epsilon_order,
+    amflow::SolverDiagnostics& diagnostics,
+    std::string& error) {
+  if (direct_spec.target_reduction_path.empty()) {
+    return false;
+  }
+
+  const std::optional<std::filesystem::path> reducer_root =
+      TargetReductionReducerRootFromRulePath(direct_spec.target_reduction_path,
+                                             direct_spec.family);
+  if (!reducer_root.has_value()) {
+    error = "solve-series target_reduction_path must point to "
+            "results/<family>/kira_target.m";
+    return false;
+  }
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult reduction_result =
+      backend.ParseReductionResult(*reducer_root, direct_spec.family);
+  diagnostics.target_epsilon_coefficients =
+      amflow::ApplyParsedTargetReductionToEpsilonCoefficients(
+          reduction_result,
+          requested_targets,
+          direct_spec.masters,
+          diagnostics.target_epsilon_coefficients,
+          dimension_expression,
+          epsilon_order);
+  diagnostics.target_values.clear();
+  diagnostics.target_values.reserve(diagnostics.target_epsilon_coefficients.size());
+  for (const auto& coefficients : diagnostics.target_epsilon_coefficients) {
+    std::string exact_real = "0";
+    for (const auto& coefficient : coefficients) {
+      if (coefficient.order == 0) {
+        exact_real = coefficient.real.empty() ? "0" : coefficient.real;
+        break;
+      }
+    }
+    diagnostics.target_values.push_back(exact_real);
+  }
+  if (!diagnostics.summary.empty()) {
+    diagnostics.summary += " ";
+  }
+  diagnostics.summary += "Applied retained Kira target reduction to endpoint master values.";
+  return true;
 }
 
 std::string RationalToDecimalDigits(const std::string& exact_value, const int digits) {
@@ -1721,6 +1809,16 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << JsonString("deferred-asymptotic-subsystem-sample-provider") << "\n";
     out << "  },\n";
   }
+  if (!direct_spec.target_reduction_path.empty()) {
+    out << "  \"target_reduction\": {\n";
+    out << "    \"path\": " << JsonString(direct_spec.target_reduction_path) << ",\n";
+    out << "    \"accepted_by_solve_series\": true,\n";
+    out << "    \"runtime_application\": "
+        << JsonString(status == "success" ? "applied-after-master-solve"
+                                          : "deferred-until-master-values")
+        << "\n";
+    out << "  },\n";
+  }
   out << "  \"results\": [\n";
   for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
     const std::string label = problem_spec.targets[index].Label();
@@ -1731,11 +1829,30 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "      \"integral\": " << JsonString(label) << ",\n";
     out << "      \"epsilon_orders\": [";
     const auto master_it = master_index_by_label.find(label);
-    if (status == "success" && master_it != master_index_by_label.end()) {
-      const std::size_t master_index = master_it->second;
-      if (master_index < diagnostics.target_epsilon_coefficients.size() &&
-          !diagnostics.target_epsilon_coefficients[master_index].empty()) {
-        const auto& coefficients = diagnostics.target_epsilon_coefficients[master_index];
+    const bool target_reduction_applied =
+        !direct_spec.target_reduction_path.empty() && status == "success";
+    const bool target_aligned_epsilon =
+        target_reduction_applied &&
+        diagnostics.target_epsilon_coefficients.size() == problem_spec.targets.size();
+    const bool target_aligned_values =
+        target_reduction_applied &&
+        diagnostics.target_values.size() == problem_spec.targets.size();
+    const std::optional<std::size_t> result_index =
+        target_aligned_epsilon
+            ? std::optional<std::size_t>{index}
+            : (master_it != master_index_by_label.end()
+                   ? std::optional<std::size_t>{master_it->second}
+                   : std::nullopt);
+    const std::optional<std::size_t> value_index =
+        target_aligned_values
+            ? std::optional<std::size_t>{index}
+            : (master_it != master_index_by_label.end()
+                   ? std::optional<std::size_t>{master_it->second}
+                   : std::nullopt);
+    if (status == "success" && result_index.has_value()) {
+      if (*result_index < diagnostics.target_epsilon_coefficients.size() &&
+          !diagnostics.target_epsilon_coefficients[*result_index].empty()) {
+        const auto& coefficients = diagnostics.target_epsilon_coefficients[*result_index];
         for (std::size_t coefficient_index = 0; coefficient_index < coefficients.size();
              ++coefficient_index) {
           if (coefficient_index > 0) {
@@ -1755,8 +1872,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
           out << "        \"exact_imag\": " << JsonString(exact_imag) << "\n";
           out << "      }";
         }
-      } else if (master_index < diagnostics.target_values.size()) {
-        const std::string exact_real = diagnostics.target_values[master_index];
+      } else if (value_index.has_value() && *value_index < diagnostics.target_values.size()) {
+        const std::string exact_real = diagnostics.target_values[*value_index];
         out << "{\n";
         out << "        \"order\": 0,\n";
         out << "        \"real_digits\": "
@@ -1807,6 +1924,9 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
     }
     direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
   }
+  if (direct_spec.family.empty()) {
+    direct_spec.family = problem_spec.family.name;
+  }
 
   amflow::SolverDiagnostics diagnostics;
   std::string status = "failed";
@@ -1832,19 +1952,38 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
       const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
       diagnostics = solver->Solve(request);
       if (diagnostics.success) {
-        const bool has_all_target_values =
-            diagnostics.target_values.size() >= direct_spec.masters.size();
-        const bool has_all_epsilon_coefficients =
-            !requested_epsilon_order.has_value() ||
-            diagnostics.target_epsilon_coefficients.size() >= direct_spec.masters.size();
-        if (has_all_target_values && has_all_epsilon_coefficients) {
-          status = "success";
-          exit_code = 0;
-        } else {
+        const bool applied_target_reduction =
+            ApplyDirectSpecTargetReductionIfPresent(direct_spec,
+                                                    problem_spec.targets,
+                                                    problem_spec.dimension,
+                                                    args.epsilon_order,
+                                                    diagnostics,
+                                                    error);
+        if (!error.empty()) {
           status = "failed";
-          error = "series solver succeeded but did not expose transported epsilon coefficients "
-                  "for all masters on this path";
-          exit_code = 4;
+          exit_code = 2;
+        } else {
+          const std::size_t required_result_count =
+              applied_target_reduction ? problem_spec.targets.size()
+                                       : direct_spec.masters.size();
+          const bool has_all_target_values =
+              diagnostics.target_values.size() >= required_result_count;
+          const bool has_all_epsilon_coefficients =
+              !requested_epsilon_order.has_value() ||
+              diagnostics.target_epsilon_coefficients.size() >= required_result_count;
+          if (has_all_target_values && has_all_epsilon_coefficients) {
+            status = "success";
+            exit_code = 0;
+          } else {
+            status = "failed";
+            error =
+                applied_target_reduction
+                    ? "series solver succeeded and target reduction ran, but reduced target "
+                      "coefficients were incomplete"
+                    : "series solver succeeded but did not expose transported epsilon "
+                      "coefficients for all masters on this path";
+            exit_code = 4;
+          }
         }
       } else {
         status = "failed";

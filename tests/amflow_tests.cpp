@@ -31,6 +31,7 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/kira_insert_prefactors.hpp"
+#include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/auxiliary_family.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/boundary_generation.hpp"
@@ -10647,6 +10648,124 @@ void KiraParsedResultsCanonicalizeDuplicateTermsTest() {
          "canonicalized duplicate terms should preserve the master label");
   Expect(summed_rule.terms[0].coefficient == "5",
          "numeric duplicate coefficients should be combined exactly");
+}
+
+amflow::SolverDiagnostics::EpsilonCoefficient EpsilonCoefficient(
+    const int order,
+    const std::string& real,
+    const std::string& imaginary = "0") {
+  return {order, real, imaginary};
+}
+
+std::string RealCoefficientAt(
+    const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>& coefficients,
+    const int order) {
+  for (const auto& coefficient : coefficients) {
+    if (coefficient.order == order) {
+      return coefficient.real;
+    }
+  }
+  return "missing";
+}
+
+void KiraTargetReductionApplicationExpandsRetainedAutomaticLoopCoefficientsTest() {
+  const std::filesystem::path root =
+      FreshTempDir("amflow-kira-target-reduction-automatic-loop");
+  const std::filesystem::path results_root = root / "results" / "box1";
+  std::filesystem::create_directories(results_root);
+  OverwriteTextFile(results_root / "masters",
+                    "box1[0,1,0,1] # 10\n"
+                    "box1[1,0,1,0] #  5\n"
+                    "box1[1,1,1,1] # 15\n");
+  OverwriteTextFile(results_root / "kira_target.m",
+                    "{\n"
+                    "box1[2,0,1,0] -> \n"
+                    " + box1[1,0,1,0]*((-d+3)/100)\n"
+                    ",\n"
+                    "box1[-2,1,1,2] -> \n"
+                    " + box1[0,1,0,1]*((d^2+394*d+78408)/(2*d-8))\n"
+                    ",\n"
+                    "box1[1,2,2,1] -> \n"
+                    " + box1[1,1,1,1]*((-d^2+11*d-30)/100)\n"
+                    " + box1[1,0,1,0]*((d^2-8*d+15)/250000)\n"
+                    " + box1[0,1,0,1]*((d^2-8*d+15)/25)\n"
+                    "}\n");
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult reduction_result =
+      backend.ParseReductionResult(root, "box1");
+  const std::vector<amflow::TargetIntegral> targets = {
+      {"box1", {2, 0, 1, 0}},
+      {"box1", {-2, 1, 1, 2}},
+      {"box1", {1, 2, 2, 1}},
+  };
+  const std::vector<amflow::MasterIntegral> available_masters = {
+      {"box1", {1, 0, 0, 0}, ""},
+      {"box1", {1, 0, 1, 0}, ""},
+      {"box1", {0, 1, 0, 1}, ""},
+      {"box1", {1, 1, 0, 1}, ""},
+      {"box1", {1, 1, 1, 1}, ""},
+  };
+  const std::vector<std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>>
+      master_coefficients = {
+          {},
+          {EpsilonCoefficient(0, "100")},
+          {EpsilonCoefficient(1, "1")},
+          {},
+          {EpsilonCoefficient(0, "50")},
+      };
+
+  const auto reduced = amflow::ApplyParsedTargetReductionToEpsilonCoefficients(
+      reduction_result,
+      targets,
+      available_masters,
+      master_coefficients,
+      "4 - 2*eps",
+      2);
+
+  Expect(reduced.size() == 3,
+         "target reduction application should emit one epsilon series per requested target");
+  Expect(RealCoefficientAt(reduced[0], 0) == "-1" &&
+             RealCoefficientAt(reduced[0], 1) == "2",
+         "target reduction application should expand the first retained automatic_loop target");
+  Expect(RealCoefficientAt(reduced[1], 0) == "-20000" &&
+             RealCoefficientAt(reduced[1], 1) == "201" &&
+             RealCoefficientAt(reduced[1], 2) == "-1",
+         "target reduction application should preserve pole cancellations against master "
+         "epsilon powers");
+  Expect(RealCoefficientAt(reduced[2], 0) == "-2501/2500" &&
+             RealCoefficientAt(reduced[2], 1) == "-76/25" &&
+             RealCoefficientAt(reduced[2], 2) == "-1249/625",
+         "target reduction application should combine every retained target-reduction term");
+}
+
+void KiraTargetReductionApplicationRejectsMissingEndpointMasterTest() {
+  const std::filesystem::path root =
+      FreshTempDir("amflow-kira-target-reduction-missing-master");
+  const std::filesystem::path results_root = root / "results" / "box1";
+  std::filesystem::create_directories(results_root);
+  OverwriteTextFile(results_root / "masters",
+                    "box1[0,1,0,1] # 10\n"
+                    "box1[1,0,1,0] #  5\n");
+  OverwriteTextFile(results_root / "kira_target.m",
+                    "{box1[2,0,1,0] -> box1[1,0,1,0] + box1[0,1,0,1]}\n");
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult reduction_result =
+      backend.ParseReductionResult(root, "box1");
+
+  ExpectInvalidArgument(
+      [&reduction_result]() {
+        static_cast<void>(amflow::ApplyParsedTargetReductionToEpsilonCoefficients(
+            reduction_result,
+            {{"box1", {2, 0, 1, 0}}},
+            {{"box1", {1, 0, 1, 0}, ""}},
+            {{EpsilonCoefficient(0, "1")}},
+            "4 - 2*eps",
+            1));
+      },
+      "references master without available epsilon coefficients",
+      "target reduction application should fail closed when endpoint master values are missing");
 }
 
 void ReductionAssemblyHappyPathTest() {
@@ -48280,6 +48399,89 @@ void SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest() {
                  "solve-series JSON should report successful solver status");
 }
 
+void SolveSeriesCliAppliesParsedTargetReductionOnDirectSolvedPathTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-target-reduction");
+  const std::filesystem::path reducer_family_root =
+      run_root / "reducer/results/toy_scalar_family";
+  std::filesystem::create_directories(reducer_family_root);
+  OverwriteTextFile(reducer_family_root / "masters", "toy_scalar_family[1] # 1\n");
+  OverwriteTextFile(
+      reducer_family_root / "kira_target.m",
+      "{toy_scalar_family[2] -> toy_scalar_family[1]*((d-2)/2)}\n");
+
+  const std::filesystem::path spec_path = run_root / "target-reduction-direct.yaml";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::string target_reduction_path =
+      (reducer_family_root / "kira_target.m").string();
+  OverwriteTextFile(
+      spec_path,
+      "family:\n"
+      "  name: \"toy_scalar_family\"\n"
+      "  loop_momenta: [\"k\"]\n"
+      "  top_level_sectors: [1]\n"
+      "  propagators:\n"
+      "    - expression: \"k^2\"\n"
+      "      mass: \"0\"\n"
+      "      kind: \"standard\"\n"
+      "      prescription: -1\n"
+      "kinematics:\n"
+      "  invariants: [\"s\"]\n"
+      "  numeric_substitutions:\n"
+      "    s: \"1\"\n"
+      "targets:\n"
+      "  - family: \"toy_scalar_family\"\n"
+      "    indices: [2]\n"
+      "dimension: \"4 - 2*eps\"\n"
+      "complex_mode: false\n"
+      "solve_series:\n"
+      "  benchmark_id: \"target_reduction_direct\"\n"
+      "  variable: \"eta\"\n"
+      "  start_location: \"eta=0\"\n"
+      "  target_location: \"eta=2\"\n"
+      "  target_reduction_path: \"" +
+          target_reduction_path +
+          "\"\n"
+          "  masters:\n"
+          "    - family: \"toy_scalar_family\"\n"
+          "      indices: [1]\n"
+          "      label: \"I\"\n"
+          "  coefficient_matrices:\n"
+          "    eta:\n"
+          "      - [\"1/(eta+1)\"]\n"
+          "  boundary_conditions:\n"
+          "    - variable: \"eta\"\n"
+          "      location: \"eta=0\"\n"
+          "      values: [\"1\"]\n"
+          "      strategy: \"manual\"\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(spec_path.string()) + " --eps-order 1 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "solve-series CLI should apply parsed target reduction after a direct solve; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"target_reduction\": {",
+                 "solve-series JSON should publish direct target-reduction metadata");
+  ExpectContains(json, "\"runtime_application\": \"applied-after-master-solve\"",
+                 "solve-series JSON should report that direct target reduction ran");
+  ExpectContains(json, "\"integral\": \"toy_scalar_family[2]\"",
+                 "solve-series JSON should emit the requested reduced target, not the master");
+  ExpectContains(json, "\"exact_real\": \"3\"",
+                 "solve-series JSON should keep the reduced target epsilon^0 coefficient");
+  ExpectContains(json, "\"exact_real\": \"-3\"",
+                 "solve-series JSON should emit the target-reduction epsilon coefficient");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "solve-series JSON should remain successful after target reduction");
+}
+
 void SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root = FreshTempDir("amflow-solve-series-cli-tiny-eps");
@@ -48478,6 +48680,11 @@ void SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest(
   ExpectContains(json, "\"accepted_by_solve_series\": true",
                  "AMFlow state ingestion should distinguish accepted state input from solved "
                  "boundary data");
+  ExpectContains(json, "\"target_reduction\": {",
+                 "AMFlow state ingestion should publish retained target-reduction metadata");
+  ExpectContains(json, "\"runtime_application\": \"deferred-until-master-values\"",
+                 "AMFlow state ingestion should not pretend target reduction ran before "
+                 "endpoint master values exist");
   ExpectContains(json, "\"failure_code\": \"boundary_unsolved\"",
                  "AMFlow state ingestion should fail with the typed boundary-unsolved blocker");
   ExpectContains(json, "asymptotic/subsystem-sample boundary evaluation",
@@ -53454,6 +53661,8 @@ int main() {
     KiraParsedResultsRejectNonlinearRulesTest();
     KiraParsedResultsRejectInconsistentMastersTest();
     KiraParsedResultsCanonicalizeDuplicateTermsTest();
+    KiraTargetReductionApplicationExpandsRetainedAutomaticLoopCoefficientsTest();
+    KiraTargetReductionApplicationRejectsMissingEndpointMasterTest();
     ReductionAssemblyHappyPathTest();
     ReductionAssemblyRejectsEmptyMasterBasisTest();
     ReductionAssemblyRejectsDerivativeTargetArityMismatchTest();
@@ -54361,6 +54570,7 @@ int main() {
     RepoLocalSpecCopyDoesNotReceiveFrozenFixtureProvenanceTest();
     ExternalSpecDoesNotClaimCleanRepoStatusWhenGitProbeUnavailableTest();
     SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest();
+    SolveSeriesCliAppliesParsedTargetReductionOnDirectSolvedPathTest();
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest();

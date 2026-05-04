@@ -52,6 +52,10 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   the current worktree also carries the local-only narrow `Batch 64a` through `Batch 64bt`
   linear-propagator packets, which likewise stay below the last fully accepted public/runtime
   contract;
+  the current worktree also carries one local-only Gap C parity slice that can apply parsed Kira
+  target-reduction rules to caller-supplied endpoint master epsilon coefficients, while still
+  leaving automatic-loop endpoint master production blocked on eta-infinity boundary evaluation
+  and singular eta-to-zero continuation;
   durable clean-candidate evidence is recorded here for `Batch 50b` via job `5482487` for candidate
   `/n/holylabs/schwartz_lab/Lab/obarrera/autonomousIBP-artifacts/candidates/b50b-final-clean-candidate-20260413T133615Z-775743d3`,
   and `Batch 50b` remains internal-only despite being landed on `main`
@@ -625,6 +629,14 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - `ArtifactManifest`: reproducibility metadata for reducer-run artifacts
 - `SolvedPathCacheManifest`: deterministic solved-path cache metadata for the reviewed `UseCache` replay slice on the `AmfOptions` eta solve wrappers, including the current-worktree replayable deferred complex-continuation diagnostics on the planned helper path and the direct eta-generated handoff path
 - `ParsedMasterList` and `ParsedReductionResult`: deterministic typed views of Kira `masters` and `kira_target.m` artifacts for the bootstrap reducer boundary; parsed coefficient normalization strips Kira-local `prefactor[...]` and `prefactor(...)` wrappers before the expressions flow into the evaluator-facing reduction result
+- `ApplyParsedTargetReductionToEpsilonCoefficients(...)`: a post-solve Kira target-reduction
+  application helper over an already parsed `ParsedReductionResult`, requested targets, available
+  endpoint masters, and caller-supplied endpoint master epsilon coefficients. It expands real Kira
+  coefficient expressions as Laurent series in `eps`, binds `d`/`dimension` through the supplied
+  dimension expression, applies those coefficients to complex master epsilon coefficients, and
+  returns one epsilon-coefficient vector per requested target. It is intentionally post-solve only:
+  it does not generate endpoint master values, execute Kira, evaluate eta-infinity subsystem
+  samples, or perform singular eta-to-zero continuation
 - `ReducedDerivativeVariableInput` plus `AssembleReducedDESystem(...)`: the first typed ingestion path from already-reduced derivative targets into a `DESystem`
 - `GeneratedDerivativeVariable` plus `GenerateEtaDerivativeVariable(...)`: typed eta-only unreduced derivative rows built from the accepted auxiliary-family transform
 - `InvariantDerivativeSeed` plus `GenerateInvariantDerivativeVariable(...)`: typed invariant unreduced derivative rows generated from explicit precomputed denominator-derivative expressions
@@ -858,6 +870,24 @@ The bootstrap also exposes a deterministic parsed-result surface for Kira artifa
 - nonlinear master occurrences such as inverse powers, explicit powers, nested function calls, or denominator-position master factors are rejected locally instead of being treated as linear coefficients
 - parsed reduction terms are canonicalized per master by combining duplicate coefficients and dropping zero-net terms before identity rules are appended
 - if `kira_target.m` is missing or reduces to no explicit rules, the parser falls back to identity rules over the parsed master basis, matching the current AMFlow Kira interface bootstrap behavior
+
+The target-reduction application seam is deliberately narrower than full automatic parity:
+
+- available endpoint master values are matched by canonical `<family>[indices...]` labels, not by
+  display labels or reducer-local order alone
+- coefficient expressions currently use the reviewed arithmetic subset with `eps`, `d`, and
+  `dimension`; unsupported symbols or malformed Laurent expressions fail as argument errors
+- missing rules for requested targets, duplicate available endpoint masters, and target rules that
+  reference masters without supplied endpoint epsilon coefficients fail closed before emitting
+  reduced target output
+- the direct `solve_series` YAML path now accepts `target_reduction_path` and applies it after the
+  direct master solve, emitting target-aligned epsilon coefficients and a top-level
+  `target_reduction` status object on success
+- the `solve-series` AMFlow-state JSON path also accepts retained
+  `reduction.target_reduction_path` metadata, but on retained automatic-loop states this still
+  reports `runtime_application: "deferred-until-master-values"` with typed `boundary_unsolved`
+  until the eta-infinity boundary and singular-continuation gaps produce endpoint master
+  coefficients
 
 The first DE-assembly ingestion path is intentionally narrow:
 

@@ -378,13 +378,19 @@ struct CliYamlLine {
 
 struct DirectSolveSeriesSpec {
   bool present = false;
+  bool amflow_state_input = false;
   std::string benchmark_id;
+  std::string family;
   std::string variable;
   std::string start_location;
   std::string target_location;
   std::vector<amflow::MasterIntegral> masters;
+  std::vector<amflow::TargetIntegral> targets;
   std::map<std::string, std::vector<std::vector<std::string>>> coefficient_matrices;
   std::vector<amflow::BoundaryCondition> boundary_conditions;
+  std::string boundary_state_kind;
+  std::string boundary_state_direction;
+  std::vector<std::string> boundary_epsilon_samples;
 };
 
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
@@ -859,8 +865,11 @@ void ValidateDirectSolveSeriesSpec(const DirectSolveSeriesSpec& spec) {
     throw std::invalid_argument("solve_series.coefficient_matrices must include variable " +
                                 spec.variable);
   }
-  if (spec.boundary_conditions.empty()) {
+  if (spec.boundary_conditions.empty() && !spec.amflow_state_input) {
     throw std::invalid_argument("solve_series.boundary_conditions must not be empty");
+  }
+  if (spec.amflow_state_input && spec.boundary_state_kind.empty()) {
+    throw std::invalid_argument("AMFlow solve-series state boundary_state.kind must not be empty");
   }
 }
 
@@ -933,6 +942,559 @@ std::string JsonString(const std::string& value) {
   }
   out << '"';
   return out.str();
+}
+
+struct CliJsonValue {
+  enum class Kind {
+    Null,
+    Boolean,
+    Number,
+    String,
+    Array,
+    Object,
+  };
+
+  Kind kind = Kind::Null;
+  bool boolean_value = false;
+  std::string scalar;
+  std::vector<CliJsonValue> array;
+  std::map<std::string, CliJsonValue> object;
+};
+
+class CliJsonParser {
+ public:
+  explicit CliJsonParser(const std::string& input) : input_(input) {}
+
+  CliJsonValue Parse() {
+    SkipWhitespace();
+    CliJsonValue value = ParseValue();
+    SkipWhitespace();
+    if (position_ != input_.size()) {
+      throw std::runtime_error("solve-series JSON parse error: unexpected trailing input");
+    }
+    return value;
+  }
+
+ private:
+  [[noreturn]] void Fail(const std::string& message) const {
+    throw std::runtime_error("solve-series JSON parse error at byte " +
+                             std::to_string(position_) + ": " + message);
+  }
+
+  void SkipWhitespace() {
+    while (position_ < input_.size() &&
+           std::isspace(static_cast<unsigned char>(input_[position_])) != 0) {
+      ++position_;
+    }
+  }
+
+  bool Consume(const char expected) {
+    if (position_ < input_.size() && input_[position_] == expected) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  char Peek() const {
+    return position_ < input_.size() ? input_[position_] : '\0';
+  }
+
+  void ExpectLiteral(const std::string& literal) {
+    if (input_.compare(position_, literal.size(), literal) != 0) {
+      Fail("expected " + literal);
+    }
+    position_ += literal.size();
+  }
+
+  static int HexValue(const char value) {
+    if (value >= '0' && value <= '9') {
+      return value - '0';
+    }
+    if (value >= 'a' && value <= 'f') {
+      return 10 + value - 'a';
+    }
+    if (value >= 'A' && value <= 'F') {
+      return 10 + value - 'A';
+    }
+    return -1;
+  }
+
+  std::string ParseStringLiteral() {
+    if (!Consume('"')) {
+      Fail("expected string");
+    }
+
+    std::string value;
+    while (position_ < input_.size()) {
+      const char character = input_[position_++];
+      if (character == '"') {
+        return value;
+      }
+      if (static_cast<unsigned char>(character) < 0x20) {
+        Fail("unescaped control character in string");
+      }
+      if (character != '\\') {
+        value.push_back(character);
+        continue;
+      }
+      if (position_ >= input_.size()) {
+        Fail("unterminated escape sequence");
+      }
+      const char escaped = input_[position_++];
+      switch (escaped) {
+        case '"':
+        case '\\':
+        case '/':
+          value.push_back(escaped);
+          break;
+        case 'b':
+          value.push_back('\b');
+          break;
+        case 'f':
+          value.push_back('\f');
+          break;
+        case 'n':
+          value.push_back('\n');
+          break;
+        case 'r':
+          value.push_back('\r');
+          break;
+        case 't':
+          value.push_back('\t');
+          break;
+        case 'u': {
+          if (position_ + 4 > input_.size()) {
+            Fail("incomplete unicode escape");
+          }
+          int codepoint = 0;
+          for (int index = 0; index < 4; ++index) {
+            const int hex = HexValue(input_[position_++]);
+            if (hex < 0) {
+              Fail("invalid unicode escape");
+            }
+            codepoint = codepoint * 16 + hex;
+          }
+          value.push_back(codepoint >= 0x20 && codepoint < 0x7f
+                              ? static_cast<char>(codepoint)
+                              : '?');
+          break;
+        }
+        default:
+          Fail("unsupported escape sequence");
+      }
+    }
+    Fail("unterminated string");
+  }
+
+  CliJsonValue ParseArray() {
+    CliJsonValue value;
+    value.kind = CliJsonValue::Kind::Array;
+    Consume('[');
+    SkipWhitespace();
+    if (Consume(']')) {
+      return value;
+    }
+    while (true) {
+      value.array.push_back(ParseValue());
+      SkipWhitespace();
+      if (Consume(']')) {
+        return value;
+      }
+      if (!Consume(',')) {
+        Fail("expected ',' or ']'");
+      }
+      SkipWhitespace();
+    }
+  }
+
+  CliJsonValue ParseObject() {
+    CliJsonValue value;
+    value.kind = CliJsonValue::Kind::Object;
+    Consume('{');
+    SkipWhitespace();
+    if (Consume('}')) {
+      return value;
+    }
+    while (true) {
+      if (Peek() != '"') {
+        Fail("expected object key");
+      }
+      const std::string key = ParseStringLiteral();
+      SkipWhitespace();
+      if (!Consume(':')) {
+        Fail("expected ':' after object key");
+      }
+      SkipWhitespace();
+      CliJsonValue member = ParseValue();
+      if (!value.object.emplace(key, std::move(member)).second) {
+        Fail("duplicate object key: " + key);
+      }
+      SkipWhitespace();
+      if (Consume('}')) {
+        return value;
+      }
+      if (!Consume(',')) {
+        Fail("expected ',' or '}'");
+      }
+      SkipWhitespace();
+    }
+  }
+
+  CliJsonValue ParseNumber() {
+    const std::size_t start = position_;
+    Consume('-');
+    if (Peek() == '0') {
+      ++position_;
+    } else if (std::isdigit(static_cast<unsigned char>(Peek())) != 0) {
+      while (std::isdigit(static_cast<unsigned char>(Peek())) != 0) {
+        ++position_;
+      }
+    } else {
+      Fail("expected number");
+    }
+    if (Consume('.')) {
+      if (std::isdigit(static_cast<unsigned char>(Peek())) == 0) {
+        Fail("expected fractional digits");
+      }
+      while (std::isdigit(static_cast<unsigned char>(Peek())) != 0) {
+        ++position_;
+      }
+    }
+    if (Peek() == 'e' || Peek() == 'E') {
+      ++position_;
+      if (Peek() == '+' || Peek() == '-') {
+        ++position_;
+      }
+      if (std::isdigit(static_cast<unsigned char>(Peek())) == 0) {
+        Fail("expected exponent digits");
+      }
+      while (std::isdigit(static_cast<unsigned char>(Peek())) != 0) {
+        ++position_;
+      }
+    }
+
+    CliJsonValue value;
+    value.kind = CliJsonValue::Kind::Number;
+    value.scalar = input_.substr(start, position_ - start);
+    return value;
+  }
+
+  CliJsonValue ParseValue() {
+    SkipWhitespace();
+    const char character = Peek();
+    if (character == '"') {
+      CliJsonValue value;
+      value.kind = CliJsonValue::Kind::String;
+      value.scalar = ParseStringLiteral();
+      return value;
+    }
+    if (character == '{') {
+      return ParseObject();
+    }
+    if (character == '[') {
+      return ParseArray();
+    }
+    if (character == '-' || std::isdigit(static_cast<unsigned char>(character)) != 0) {
+      return ParseNumber();
+    }
+    if (input_.compare(position_, 4, "true") == 0) {
+      ExpectLiteral("true");
+      CliJsonValue value;
+      value.kind = CliJsonValue::Kind::Boolean;
+      value.boolean_value = true;
+      return value;
+    }
+    if (input_.compare(position_, 5, "false") == 0) {
+      ExpectLiteral("false");
+      CliJsonValue value;
+      value.kind = CliJsonValue::Kind::Boolean;
+      value.boolean_value = false;
+      return value;
+    }
+    if (input_.compare(position_, 4, "null") == 0) {
+      ExpectLiteral("null");
+      return {};
+    }
+    Fail("expected JSON value");
+  }
+
+  const std::string& input_;
+  std::size_t position_ = 0;
+};
+
+bool LooksLikeJsonObject(const std::string& value) {
+  const std::size_t first = value.find_first_not_of(" \t\r\n");
+  return first != std::string::npos && value[first] == '{';
+}
+
+const CliJsonValue& RequireJsonObject(const CliJsonValue& value, const std::string& path) {
+  if (value.kind != CliJsonValue::Kind::Object) {
+    throw std::runtime_error(path + " must be a JSON object");
+  }
+  return value;
+}
+
+const CliJsonValue& RequireJsonArray(const CliJsonValue& value, const std::string& path) {
+  if (value.kind != CliJsonValue::Kind::Array) {
+    throw std::runtime_error(path + " must be a JSON array");
+  }
+  return value;
+}
+
+const CliJsonValue& RequireJsonField(const CliJsonValue& object,
+                                     const std::string& field,
+                                     const std::string& path) {
+  RequireJsonObject(object, path);
+  const auto it = object.object.find(field);
+  if (it == object.object.end()) {
+    throw std::runtime_error(path + "." + field + " is required");
+  }
+  return it->second;
+}
+
+const CliJsonValue* FindJsonField(const CliJsonValue& object, const std::string& field) {
+  if (object.kind != CliJsonValue::Kind::Object) {
+    return nullptr;
+  }
+  const auto it = object.object.find(field);
+  return it == object.object.end() ? nullptr : &it->second;
+}
+
+std::string RequireJsonString(const CliJsonValue& value, const std::string& path) {
+  if (value.kind != CliJsonValue::Kind::String) {
+    throw std::runtime_error(path + " must be a JSON string");
+  }
+  return value.scalar;
+}
+
+std::string OptionalJsonStringField(const CliJsonValue& object,
+                                    const std::string& field,
+                                    const std::string& fallback) {
+  const CliJsonValue* value = FindJsonField(object, field);
+  return value == nullptr ? fallback : RequireJsonString(*value, field);
+}
+
+int RequireJsonInteger(const CliJsonValue& value, const std::string& path) {
+  if (value.kind != CliJsonValue::Kind::Number) {
+    throw std::runtime_error(path + " must be a JSON integer");
+  }
+  if (value.scalar.find_first_of(".eE") != std::string::npos) {
+    throw std::runtime_error(path + " must be a JSON integer");
+  }
+  std::size_t consumed = 0;
+  int parsed = 0;
+  try {
+    parsed = std::stoi(value.scalar, &consumed);
+  } catch (const std::exception&) {
+    throw std::runtime_error(path + " is outside the supported integer range");
+  }
+  if (consumed != value.scalar.size()) {
+    throw std::runtime_error(path + " must be a JSON integer");
+  }
+  return parsed;
+}
+
+std::vector<int> RequireJsonIntegerArray(const CliJsonValue& value,
+                                         const std::string& path) {
+  const CliJsonValue& array = RequireJsonArray(value, path);
+  std::vector<int> parsed;
+  parsed.reserve(array.array.size());
+  for (std::size_t index = 0; index < array.array.size(); ++index) {
+    parsed.push_back(RequireJsonInteger(array.array[index],
+                                        path + "[" + std::to_string(index) + "]"));
+  }
+  return parsed;
+}
+
+std::vector<std::string> RequireJsonStringArray(const CliJsonValue& value,
+                                                const std::string& path) {
+  const CliJsonValue& array = RequireJsonArray(value, path);
+  std::vector<std::string> parsed;
+  parsed.reserve(array.array.size());
+  for (std::size_t index = 0; index < array.array.size(); ++index) {
+    parsed.push_back(RequireJsonString(array.array[index],
+                                       path + "[" + std::to_string(index) + "]"));
+  }
+  return parsed;
+}
+
+std::string StripWrappedQuoteLiteral(const std::string& value) {
+  if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+    return value.substr(1, value.size() - 2);
+  }
+  return value;
+}
+
+amflow::MasterIntegral ParseAmflowStateMaster(const CliJsonValue& value,
+                                              const std::string& path) {
+  RequireJsonObject(value, path);
+  amflow::MasterIntegral master;
+  master.family = RequireJsonString(RequireJsonField(value, "family", path),
+                                    path + ".family");
+  master.indices = RequireJsonIntegerArray(RequireJsonField(value, "indices", path),
+                                           path + ".indices");
+  master.label = OptionalJsonStringField(value, "label", "");
+  if (master.family.empty()) {
+    throw std::runtime_error(path + ".family must not be empty");
+  }
+  if (master.indices.empty()) {
+    throw std::runtime_error(path + ".indices must not be empty");
+  }
+  return master;
+}
+
+amflow::TargetIntegral ParseAmflowStateTarget(const CliJsonValue& value,
+                                              const std::string& path) {
+  RequireJsonObject(value, path);
+  amflow::TargetIntegral target;
+  target.family = RequireJsonString(RequireJsonField(value, "family", path),
+                                    path + ".family");
+  target.indices = RequireJsonIntegerArray(RequireJsonField(value, "indices", path),
+                                           path + ".indices");
+  if (target.family.empty()) {
+    throw std::runtime_error(path + ".family must not be empty");
+  }
+  if (target.indices.empty()) {
+    throw std::runtime_error(path + ".indices must not be empty");
+  }
+  return target;
+}
+
+std::vector<amflow::MasterIntegral> ParseAmflowStateMasters(const CliJsonValue& value,
+                                                            const std::string& path) {
+  const CliJsonValue& array = RequireJsonArray(value, path);
+  std::vector<amflow::MasterIntegral> masters;
+  masters.reserve(array.array.size());
+  for (std::size_t index = 0; index < array.array.size(); ++index) {
+    masters.push_back(ParseAmflowStateMaster(array.array[index],
+                                             path + "[" + std::to_string(index) + "]"));
+  }
+  return masters;
+}
+
+std::vector<amflow::TargetIntegral> ParseAmflowStateTargets(const CliJsonValue& value,
+                                                            const std::string& path) {
+  const CliJsonValue& array = RequireJsonArray(value, path);
+  std::vector<amflow::TargetIntegral> targets;
+  targets.reserve(array.array.size());
+  for (std::size_t index = 0; index < array.array.size(); ++index) {
+    targets.push_back(ParseAmflowStateTarget(array.array[index],
+                                             path + "[" + std::to_string(index) + "]"));
+  }
+  return targets;
+}
+
+std::vector<std::vector<std::string>> ParseAmflowStateStringMatrix(
+    const CliJsonValue& value,
+    const std::string& path) {
+  const CliJsonValue& rows = RequireJsonArray(value, path);
+  std::vector<std::vector<std::string>> matrix;
+  matrix.reserve(rows.array.size());
+  for (std::size_t row_index = 0; row_index < rows.array.size(); ++row_index) {
+    matrix.push_back(RequireJsonStringArray(
+        rows.array[row_index], path + "[" + std::to_string(row_index) + "]"));
+  }
+  return matrix;
+}
+
+std::map<std::string, std::vector<std::vector<std::string>>>
+ParseAmflowStateCoefficientMatrices(const CliJsonValue& value, const std::string& path) {
+  RequireJsonObject(value, path);
+  std::map<std::string, std::vector<std::vector<std::string>>> matrices;
+  for (const auto& [variable, matrix] : value.object) {
+    matrices.emplace(variable, ParseAmflowStateStringMatrix(matrix, path + "." + variable));
+  }
+  return matrices;
+}
+
+DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJson(const std::string& json) {
+  const CliJsonValue root = CliJsonParser(json).Parse();
+  RequireJsonObject(root, "$");
+  const std::string kind = RequireJsonString(RequireJsonField(root, "kind", "$"), "$.kind");
+  if (kind != "amflow_solve_series_state") {
+    throw std::invalid_argument(
+        "solve-series JSON input must have kind \"amflow_solve_series_state\"");
+  }
+  if (RequireJsonInteger(RequireJsonField(root, "schema_version", "$"),
+                         "$.schema_version") != 1) {
+    throw std::invalid_argument("solve-series AMFlow state JSON schema_version must be 1");
+  }
+
+  DirectSolveSeriesSpec spec;
+  spec.present = true;
+  spec.amflow_state_input = true;
+  spec.benchmark_id = OptionalJsonStringField(root, "benchmark_id", "");
+  spec.family = RequireJsonString(RequireJsonField(root, "family", "$"), "$.family");
+  spec.variable = RequireJsonString(RequireJsonField(root, "variable", "$"), "$.variable");
+  spec.start_location = "infinity";
+  spec.target_location = spec.variable + "=0";
+  spec.masters = ParseAmflowStateMasters(RequireJsonField(root, "masters", "$"),
+                                         "$.masters");
+  spec.coefficient_matrices = ParseAmflowStateCoefficientMatrices(
+      RequireJsonField(root, "coefficient_matrices", "$"), "$.coefficient_matrices");
+
+  const CliJsonValue& boundary_state = RequireJsonField(root, "boundary_state", "$");
+  spec.boundary_state_kind = RequireJsonString(
+      RequireJsonField(boundary_state, "kind", "$.boundary_state"),
+      "$.boundary_state.kind");
+  if (spec.boundary_state_kind != "amflow_eta_infinity_asymptotic_with_subsystem_samples") {
+    throw std::invalid_argument(
+        "solve-series AMFlow state JSON carries unsupported boundary_state.kind: " +
+        spec.boundary_state_kind);
+  }
+  if (const CliJsonValue* direction = FindJsonField(boundary_state, "direction")) {
+    spec.boundary_state_direction =
+        StripWrappedQuoteLiteral(RequireJsonString(*direction, "$.boundary_state.direction"));
+  }
+  if (const CliJsonValue* epsilon_samples = FindJsonField(boundary_state, "epsilon_samples")) {
+    spec.boundary_epsilon_samples =
+        RequireJsonStringArray(*epsilon_samples, "$.boundary_state.epsilon_samples");
+  }
+
+  if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
+    if (const CliJsonValue* targets = FindJsonField(*reduction, "targets")) {
+      spec.targets = ParseAmflowStateTargets(*targets, "$.reduction.targets");
+    }
+  }
+  if (spec.targets.empty()) {
+    for (const amflow::MasterIntegral& master : spec.masters) {
+      spec.targets.push_back({master.family, master.indices});
+    }
+  }
+  return spec;
+}
+
+amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& direct_spec) {
+  amflow::ProblemSpec problem_spec;
+  problem_spec.family.name = direct_spec.family;
+  problem_spec.targets = direct_spec.targets;
+  problem_spec.dimension = "4 - 2*eps";
+  problem_spec.complex_mode = true;
+  problem_spec.notes =
+      "generated in-memory from amflow_solve_series_state for solve-series ingestion";
+  return problem_spec;
+}
+
+amflow::SolverDiagnostics MakeAmflowStateDeferredBoundaryDiagnostics(
+    const DirectSolveSeriesSpec& direct_spec) {
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = "boundary_unsolved";
+  diagnostics.summary =
+      "boundary_unsolved: solve-series parsed AMFlow eta-infinity asymptotic boundary state " +
+      direct_spec.boundary_state_kind + " for " + direct_spec.variable +
+      " @ infinity with " + std::to_string(direct_spec.boundary_epsilon_samples.size()) +
+      " epsilon samples";
+  if (!direct_spec.boundary_state_direction.empty()) {
+    diagnostics.summary += "; direction=" + direct_spec.boundary_state_direction;
+  }
+  diagnostics.summary +=
+      "; C++ asymptotic/subsystem-sample boundary evaluation and singular eta->0 complex "
+      "continuation remain deferred on this runtime path";
+  return diagnostics;
 }
 
 std::string RationalToDecimalDigits(const std::string& exact_value, const int digits) {
@@ -1147,6 +1709,18 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   out << "    \"precision_digits\": " << digits << ",\n";
   out << "    \"epsilon_order\": " << epsilon_order << "\n";
   out << "  },\n";
+  if (direct_spec.amflow_state_input) {
+    out << "  \"boundary_state\": {\n";
+    out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
+    out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
+    out << "    \"direction\": " << JsonString(direct_spec.boundary_state_direction) << ",\n";
+    out << "    \"epsilon_sample_count\": "
+        << direct_spec.boundary_epsilon_samples.size() << ",\n";
+    out << "    \"accepted_by_solve_series\": true,\n";
+    out << "    \"runtime_boundary_provider\": "
+        << JsonString("deferred-asymptotic-subsystem-sample-provider") << "\n";
+    out << "  },\n";
+  }
   out << "  \"results\": [\n";
   for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
     const std::string label = problem_spec.targets[index].Label();
@@ -1217,16 +1791,23 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
 int RunSolveSeriesCommand(const int argc, char** argv) {
   const auto start = std::chrono::steady_clock::now();
   const SolveSeriesCliArgs args = ParseSolveSeriesArgs(argc, argv);
+  const std::string raw_spec = ReadTextFile(args.spec_path);
 
-  const amflow::ProblemSpec problem_spec = amflow::LoadProblemSpecFile(args.spec_path);
-  const auto messages = LoadedSpecValidationMessages(problem_spec);
-  if (!messages.empty()) {
-    PrintMessages(std::cerr, messages);
-    return 2;
+  amflow::ProblemSpec problem_spec;
+  DirectSolveSeriesSpec direct_spec;
+  if (LooksLikeJsonObject(raw_spec)) {
+    direct_spec = ParseAmflowSolveSeriesStateJson(raw_spec);
+    problem_spec = MakeProblemSpecForAmflowState(direct_spec);
+  } else {
+    problem_spec = amflow::LoadProblemSpecFile(args.spec_path);
+    const auto messages = LoadedSpecValidationMessages(problem_spec);
+    if (!messages.empty()) {
+      PrintMessages(std::cerr, messages);
+      return 2;
+    }
+    direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
   }
 
-  const std::string raw_spec = ReadTextFile(args.spec_path);
-  DirectSolveSeriesSpec direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
   amflow::SolverDiagnostics diagnostics;
   std::string status = "failed";
   std::string error;
@@ -1234,35 +1815,41 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
 
   try {
     ValidateDirectSolveSeriesSpec(direct_spec);
-    const bool needs_epsilon_expansion =
-        args.epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(direct_spec);
-    const std::optional<int> requested_epsilon_order =
-        needs_epsilon_expansion ? std::optional<int>{args.epsilon_order} : std::nullopt;
-    const amflow::SolveRequest request =
-        MakeDirectSolveRequest(direct_spec,
-                               args.digits,
-                               requested_epsilon_order,
-                               problem_spec.dimension);
-    const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
-    diagnostics = solver->Solve(request);
-    if (diagnostics.success) {
-      const bool has_all_target_values =
-          diagnostics.target_values.size() >= direct_spec.masters.size();
-      const bool has_all_epsilon_coefficients =
-          !requested_epsilon_order.has_value() ||
-          diagnostics.target_epsilon_coefficients.size() >= direct_spec.masters.size();
-      if (has_all_target_values && has_all_epsilon_coefficients) {
-        status = "success";
-        exit_code = 0;
-      } else {
-        status = "failed";
-        error = "series solver succeeded but did not expose transported epsilon coefficients "
-                "for all masters on this path";
-        exit_code = 4;
-      }
-    } else {
+    if (direct_spec.amflow_state_input) {
+      diagnostics = MakeAmflowStateDeferredBoundaryDiagnostics(direct_spec);
       status = "failed";
       exit_code = 4;
+    } else {
+      const bool needs_epsilon_expansion =
+          args.epsilon_order > 0 || DirectSolveSeriesSpecContainsEpsilon(direct_spec);
+      const std::optional<int> requested_epsilon_order =
+          needs_epsilon_expansion ? std::optional<int>{args.epsilon_order} : std::nullopt;
+      const amflow::SolveRequest request =
+          MakeDirectSolveRequest(direct_spec,
+                                 args.digits,
+                                 requested_epsilon_order,
+                                 problem_spec.dimension);
+      const std::unique_ptr<amflow::SeriesSolver> solver = amflow::MakeBootstrapSeriesSolver();
+      diagnostics = solver->Solve(request);
+      if (diagnostics.success) {
+        const bool has_all_target_values =
+            diagnostics.target_values.size() >= direct_spec.masters.size();
+        const bool has_all_epsilon_coefficients =
+            !requested_epsilon_order.has_value() ||
+            diagnostics.target_epsilon_coefficients.size() >= direct_spec.masters.size();
+        if (has_all_target_values && has_all_epsilon_coefficients) {
+          status = "success";
+          exit_code = 0;
+        } else {
+          status = "failed";
+          error = "series solver succeeded but did not expose transported epsilon coefficients "
+                  "for all masters on this path";
+          exit_code = 4;
+        }
+      } else {
+        status = "failed";
+        exit_code = 4;
+      }
     }
   } catch (const std::exception& solve_error) {
     status = "failed";
@@ -1305,7 +1892,7 @@ void PrintUsage() {
             << "  run-kira-from-file <file> <kira> <fermat> [dir]\n"
             << "                           Emit and execute Kira for a file-backed ProblemSpec\n"
             << "  solve-series <file> --eps-order N --digits N --out path\n"
-            << "                           Run a reviewed embedded direct solve_series request and write JSON\n"
+            << "                           Run a reviewed embedded direct solve_series request or AMFlow state JSON\n"
             << "  show-defaults            Print bootstrap AMF and reduction defaults\n"
             << "  write-manifest <dir>     Create an artifact layout and write a sample/demo manifest\n";
 }

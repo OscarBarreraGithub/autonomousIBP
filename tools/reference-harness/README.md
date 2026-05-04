@@ -328,7 +328,7 @@ default and also accepts repeated `--family-alias FROM=TO` mappings for explicit
 bridges.
 
 To inspect the retained AMFlow state behind the `automatic_loop` solve-series system without
-claiming that the current C++ solver can ingest its physical boundary yet:
+claiming that the current C++ solver can evaluate its physical boundary yet:
 
 ```bash
 python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
@@ -337,11 +337,11 @@ python3 tools/reference-harness/scripts/extract_amflow_solve_series_state.py \
 ```
 
 The extractor emits the real cached master order, `eta` coefficient matrix, Kira target/reduction
-metadata, and AMFlow eta-infinity boundary files. Its JSON intentionally reports
-`cpp_solve_series_ingest.supported = false`: AMFlow stores an asymptotic eta-infinity boundary
-with subsystem epsilon samples and then continues through a complex contour to the singular
-physical `eta -> 0` endpoint, while the current C++ `solve-series` CLI accepts only finite-point
-explicit real exact boundary values on its reviewed direct path.
+metadata, and AMFlow eta-infinity boundary files. Its JSON retains the state-capture-time
+`cpp_solve_series_ingest.supported = false` note. The C++ `solve-series` CLI can now load that
+JSON shape directly and publish a structured deferred `boundary_unsolved` result, but it still
+does not evaluate AMFlow's asymptotic eta-infinity boundary with subsystem epsilon samples, perform
+the complex continuation, or apply the retained target reduction.
 
 To compare one candidate phase-0 packet root against one retained reference packet root on the
 first actual M6 comparator path:

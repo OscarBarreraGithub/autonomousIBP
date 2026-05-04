@@ -3,10 +3,10 @@
 
 The output is deliberately a state JSON, not a C++ ProblemSpec YAML.  AMFlow's
 phase-0 automatic_loop cache stores an eta-infinity asymptotic boundary plus
-subsystem boundary samples; the current C++ solve-series CLI accepts only
-finite-point explicit boundary values.  This helper preserves the real cached
-matrix and boundary metadata without translating it into a boundary shape the
-C++ solver cannot yet ingest honestly.
+subsystem boundary samples.  This helper preserves the real cached matrix and
+boundary metadata without translating it into finite-point explicit boundary
+values.  The C++ solve-series CLI may load this state JSON, but the physical
+eta-infinity boundary evaluator remains deferred.
 """
 
 from __future__ import annotations
@@ -207,8 +207,9 @@ def extract_state(system_dir: Path,
           "reason": (
               "The retained AMFlow state uses eta-infinity asymptotic boundary data, "
               "subsystem numerical epsilon samples, complex continuation, and a singular "
-              "eta -> 0 physical endpoint.  The current C++ solve-series CLI accepts only "
-              "finite-point explicit real exact boundary values on its reviewed exact path."
+              "eta -> 0 physical endpoint.  C++ solve-series can load this JSON state "
+              "shape, but the physical asymptotic/subsystem-sample boundary evaluator "
+              "and complex singular endpoint extraction remain deferred."
           ),
       },
   }

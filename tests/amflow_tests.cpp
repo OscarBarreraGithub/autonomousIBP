@@ -48440,6 +48440,50 @@ void SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest() {
                  "guarded solve-series JSON should report success");
 }
 
+void SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-automatic-loop-amflow-state");
+  const std::filesystem::path state_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) != 0,
+         "AMFlow eta-infinity state ingestion should run through solve-series and fail at the "
+         "truthful deferred boundary provider, not at JSON/YAML parsing");
+  Expect(std::filesystem::exists(output_path),
+         "AMFlow eta-infinity state ingestion should still write a solve-series JSON result");
+
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"benchmark_id\": \"automatic_loop\"",
+                 "AMFlow state ingestion should preserve the benchmark id");
+  ExpectContains(json, "\"family\": \"box1\"",
+                 "AMFlow state ingestion should preserve the state family");
+  ExpectContains(json, "\"integral\": \"box1[2,0,1,0]\"",
+                 "AMFlow state ingestion should expose retained reduction targets in the output");
+  ExpectContains(json,
+                 "\"kind\": \"amflow_eta_infinity_asymptotic_with_subsystem_samples\"",
+                 "AMFlow state ingestion should preserve the eta-infinity boundary kind");
+  ExpectContains(json, "\"epsilon_sample_count\": 10",
+                 "AMFlow state ingestion should preserve the subsystem epsilon-sample count");
+  ExpectContains(json, "\"accepted_by_solve_series\": true",
+                 "AMFlow state ingestion should distinguish accepted state input from solved "
+                 "boundary data");
+  ExpectContains(json, "\"failure_code\": \"boundary_unsolved\"",
+                 "AMFlow state ingestion should fail with the typed boundary-unsolved blocker");
+  ExpectContains(json, "asymptotic/subsystem-sample boundary evaluation",
+                 "AMFlow state ingestion should report the remaining runtime boundary gap");
+}
+
 struct ReferenceHarnessSelfCheckRun {
   std::string stdout_json;
   std::string stderr_log;
@@ -54319,6 +54363,7 @@ int main() {
     SolveSeriesCliWritesComparableJsonForTinyDirectSpecTest();
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
+    SolveSeriesCliAcceptsAutomaticLoopAmflowStateJsonAsDeferredBoundaryRunTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

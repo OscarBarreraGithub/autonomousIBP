@@ -192,15 +192,15 @@ bundle directly, replay each family through the same retained eta-infinity subsy
 boundary evaluator, fit epsilon Laurent series, apply the first unambiguous DE-derived
 eta-infinity asymptotic transport coefficient, apply the retained `eta=0` branch-log
 endpoint coefficient transport through `eps^1` for `<family>[1,0,1,0]`, apply the retained
-leading box pole endpoint transport through `eps^-1` for `<family>[1,1,1,1]`, and then apply
-the retained family-local target reduction. The comparator-facing JSON now includes both retained
+selected box endpoint transport through `eps^1` for `<family>[1,1,1,1]`, and then apply the
+retained family-local target reduction. The comparator-facing JSON now includes both retained
 reduction targets and retained reduction masters for `box1` and `box2`; the current retained
 comparison has
 `matched_integral_count=12`, `compared_coefficient_count=54`, and
-`passed_coefficient_count=36` at `--eps-order 2 --digits 40 --tolerance-digits 30`. Shipping a full parity
+`passed_coefficient_count=44` at `--eps-order 2 --digits 40 --tolerance-digits 30`. Shipping a full parity
 claim from this result would still be dishonest: the physical comparison endpoint is the singular
 `eta -> 0` limit reached through complex continuation, and the current C++ runtime does not yet
-perform the full contour, finite box endpoint extraction, or higher endpoint extraction on the
+perform the full contour, box endpoint extraction beyond `eps^1`, or other endpoint extraction on the
 retained AMFlow-state path.
 
 The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
@@ -216,7 +216,7 @@ python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
 ```
 
 The remaining end-to-end parity work is to add the complex continuation, singular `eta -> 0`
-extraction, finite box endpoint terms, and higher endpoint coefficients needed for the retained
+extraction, higher box endpoint terms, and the remaining endpoint coefficients needed for the retained
 golden manifest. The current
 JSON-state bundle run is boundary-evaluation evidence and comparator plumbing only, not a phase-0
 parity pass.

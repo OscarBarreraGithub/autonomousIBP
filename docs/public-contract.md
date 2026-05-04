@@ -887,8 +887,8 @@ The target-reduction application seam is deliberately narrower than full automat
   `reduction.target_reduction_path` metadata. On the retained automatic-loop `box1` and `box2`
   states it evaluates the retained leading eta-infinity subsystem-sample boundary coefficients,
   applies the retained `eta=0` branch-log endpoint coefficient transport through `eps^1` for
-  `<family>[1,0,1,0]`, applies the retained leading box pole endpoint transport through
-  `eps^-1` for `<family>[1,1,1,1]`, and applies target reduction to coefficients with those
+  `<family>[1,0,1,0]`, applies the retained selected box endpoint transport through
+  `eps^1` for `<family>[1,1,1,1]`, and applies target reduction to coefficients with those
   endpoint corrections. A single state result still emits the top-level `continuation` audit object carrying
   the start/target locations, reviewed singular `eta` locations, `transport_applied: true`,
   `transport_scope: "eta-zero-selected-endpoint-coefficients"`,
@@ -896,8 +896,8 @@ The target-reduction application seam is deliberately narrower than full automat
   "eta-infinity-de-asymptotic-first-coefficient+eta-zero-selected-endpoint-coefficients"`.
   The committed automatic-loop fixture may also be an `amflow_solve_series_state_bundle`; the CLI
   evaluates each contained state independently and emits one combined comparator-readable `results`
-  array plus per-family `state_results`. Full singular eta-to-zero contour execution, finite box
-  endpoint terms, and higher endpoint extraction remain outside this path.
+  array plus per-family `state_results`. Full singular eta-to-zero contour execution, box endpoint
+  terms beyond `eps^1`, and other endpoint extraction remain outside this path.
 
 The first DE-assembly ingestion path is intentionally narrow:
 

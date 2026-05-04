@@ -48696,10 +48696,10 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   ExpectContains(json, "\"box2[1,0,1,0]\"",
                  "AMFlow state-bundle ingestion should identify the box2 endpoint transport");
   ExpectContains(json, "\"box1[1,1,1,1]\"",
-                 "AMFlow state-bundle ingestion should identify the box1 leading-pole endpoint "
+                 "AMFlow state-bundle ingestion should identify the box1 selected box endpoint "
                  "transport");
   ExpectContains(json, "\"box2[1,1,1,1]\"",
-                 "AMFlow state-bundle ingestion should identify the box2 leading-pole endpoint "
+                 "AMFlow state-bundle ingestion should identify the box2 selected box endpoint "
                  "transport");
   ExpectContains(json, "\"epsilon_orders\": [",
                  "AMFlow state ingestion should emit comparator-readable epsilon coefficients");
@@ -48770,7 +48770,7 @@ for family, state in states.items():
         "eta-infinity-de-asymptotic-first-coefficient+"
         "eta-zero-selected-endpoint-coefficients"
     )
-    assert "finite box endpoint terms" in continuation["blocked_reason"]
+    assert "box endpoint terms beyond eps^1" in continuation["blocked_reason"]
 
     target_reduction = state["target_reduction"]
     assert target_reduction["accepted_by_solve_series"] is True
@@ -48794,6 +48794,12 @@ for family in ("box1", "box2"):
     box_subpole = coefficient(f"{family}[1,1,1,1]", -1)
     assert box_subpole["real_digits"].startswith("0.1151920303158231417849801417906706655457")
     assert box_subpole["imag_digits"].startswith("-0.0628318530717958647692528676655900576839")
+    box_finite = coefficient(f"{family}[1,1,1,1]", 0)
+    assert box_finite["real_digits"].startswith("0.0717676394539071033024811789529867730515")
+    assert box_finite["imag_digits"].startswith("0.0362675298478320699922626906254208003821")
+    box_eps1 = coefficient(f"{family}[1,1,1,1]", 1)
+    assert box_eps1["real_digits"].startswith("-0.0021069524891457300180705891942823943241")
+    assert box_eps1["imag_digits"].startswith("0.0447480094841221271314800074344401708644")
 
 box1_reduced_eps1 = coefficient("box1[2,0,1,0]", 1)
 assert box1_reduced_eps1["real_digits"].startswith("-0.0767129231978169473707629334468408721189")
@@ -48808,12 +48814,24 @@ assert box1_box_target_pole["real_digits"].startswith("0.00080000000000000000000
 box1_box_target_subpole = coefficient("box1[1,2,2,1]", -1)
 assert box1_box_target_subpole["real_digits"].startswith("-0.0399078406063164628356996028358134133109")
 assert box1_box_target_subpole["imag_digits"].startswith("0.0012566370614359172953850573533118011536")
+box1_box_target_finite = coefficient("box1[1,2,2,1]", 0)
+assert box1_box_target_finite["real_digits"].startswith("-0.0636455184685626576519733785032060736287")
+assert box1_box_target_finite["imag_digits"].startswith("0.0030319942167367513133560676738938694418")
+box1_box_target_eps1 = coefficient("box1[1,2,2,1]", 1)
+assert box1_box_target_eps1["real_digits"].startswith("0.0635515494403763370372959179741043013140")
+assert box1_box_target_eps1["imag_digits"].startswith("-0.0005177468176403603648045751161295066668")
 
 box2_box_target_pole = coefficient("box2[2,1,1,1]", -2)
 assert box2_box_target_pole["real_digits"].startswith("-0.0004000000000000000000000000000000000000")
 box2_box_target_subpole = coefficient("box2[2,1,1,1]", -1)
 assert box2_box_target_subpole["real_digits"].startswith("0.0203519203031582314178498014179067066554")
 assert box2_box_target_subpole["imag_digits"].startswith("-0.0006283185307179586476925286766559005768")
+box2_box_target_finite = coefficient("box2[2,1,1,1]", 0)
+assert box2_box_target_finite["real_digits"].startswith("0.0114772037028248766565941728236952324205")
+assert box2_box_target_finite["imag_digits"].startswith("-0.0008939617629575965954624304470575931498")
+box2_box_target_eps1 = coefficient("box2[2,1,1,1]", 1)
+assert box2_box_target_eps1["real_digits"].startswith("-0.0432475914642490500678017144174389467286")
+assert box2_box_target_eps1["imag_digits"].startswith("0.0011728306917978626711600538868528177162")
 )PY");
   const std::string audit_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +

@@ -2827,7 +2827,7 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(
   return 1;
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBoxLeadingPoleTransport(
+int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
   const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
@@ -2852,7 +2852,7 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxLeadingPoleTransport(
   const BigFloat euler_gamma(
       "0.5772156649015328606065120900824024310421593359399235988057672348848677");
   const BigFloat log_s = log(BigFloat(100));
-  // Retained automatic_loop massless-box leading endpoint terms at s=100 on the NegIm branch.
+  // Retained automatic_loop massless-box endpoint terms at s=100 on the NegIm branch.
   UpsertEpsilonCoefficient(coefficients,
                            -2,
                            BigComplex{-BigFloat(1) / BigFloat(25), BigFloat(0)});
@@ -2861,6 +2861,22 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxLeadingPoleTransport(
       -1,
       BigComplex{(log_s + BigFloat(2) * euler_gamma) / BigFloat(50),
                  -pi / BigFloat(50)});
+  UpsertEpsilonCoefficient(
+      coefficients,
+      0,
+      BigComplex{
+          BigFloat(
+              "0.0717676394539071033024811789529867730515741936760636414079"),
+          BigFloat(
+              "0.0362675298478320699922626906254208003821532836274520161728")});
+  UpsertEpsilonCoefficient(
+      coefficients,
+      1,
+      BigComplex{
+          BigFloat(
+              "-0.0021069524891457300180705891942823943241501477797369415191"),
+          BigFloat(
+              "0.0447480094841221271314800074344401708644433853244972176455")});
 
   diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
   return 1;
@@ -2949,8 +2965,8 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   const int endpoint_transport_count =
       ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(direct_spec,
                                                                      diagnostics) +
-      ApplyRetainedAutomaticLoopEtaZeroBoxLeadingPoleTransport(direct_spec,
-                                                               diagnostics);
+      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(direct_spec,
+                                                                       diagnostics);
   diagnostics.eta_endpoint_transport_count = endpoint_transport_count;
 
   diagnostics.summary =
@@ -2969,7 +2985,7 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         std::to_string(endpoint_transport_count) + " master coefficient set(s).";
   }
   diagnostics.summary +=
-      " Full singular eta->0 complex contour execution, finite box endpoint terms, and higher "
+      " Full singular eta->0 complex contour execution, higher box endpoint terms, and other "
       "endpoint extraction remain deferred on this path; the solve result records the reviewed "
       "Gap B continuation audit separately.";
   return diagnostics;
@@ -3490,9 +3506,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << ",\n";
     out << "    \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, finite box "
-                            "endpoint terms, and higher endpoint extraction remain deferred "
-                            "after retained selected endpoint coefficient transport"
+                          ? "full singular eta=0 complex contour execution, box endpoint terms "
+                            "beyond eps^1, and other endpoint extraction remain "
+                            "deferred after retained selected endpoint coefficient transport"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"
@@ -3839,8 +3855,8 @@ std::string SerializeSolveSeriesBundleJson(
                           : "not-applied-boundary-only")
         << ", \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, finite box "
-                            "endpoint terms, and higher endpoint extraction remain deferred "
+                          ? "full singular eta=0 complex contour execution, box endpoint terms "
+                            "beyond eps^1, and other endpoint extraction remain deferred "
                             "after retained selected endpoint coefficient transport"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "

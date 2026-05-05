@@ -1,0 +1,25 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps8/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps6 reference pointer for automatic_loop comparator audits, captured with epsorder = 8 on 2026-05-05.",
+    "This manifest intentionally points at the same fresh epsorder=8 sol1/sol2 outputs as automatic_loop.eps5-golden-manifest.json, but names the eps^6 validation surface explicitly.",
+    "Local run completed on holy7c04109.rc.fas.harvard.edu inside parent SLURM allocation 10006275 using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-eps8 tree was copied from work-eps6, then automatic_loop copied sol outputs and cache state were removed before running; run.wl was changed to epsorder = 8.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps8/logs/local-cap-autoloop-eps8.20260505T045046.out with sha256 ae9cfc95baabb74557c1c1d1e6a29055b7dbb5e40c7e02381c3d9d60d98133e0.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 8 printed coefficients through positive eps^6; both sol1 and sol2 contain explicit eps^6 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12.",
+    "sol1 sha256 22131066d89b2dca41ea048475ade977b0357b2deb6bc333a4ea42c50d730710; sol2 sha256 bb111071c5b90bb714c8c74898c62bb43b10ec26648c5b6cfe12a69fd65ca0a1."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps8/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps8/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

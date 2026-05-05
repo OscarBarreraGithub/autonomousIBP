@@ -4,42 +4,31 @@
   "compare_cpp_vs_amflow_outputs": [
     "sol1"
   ],
-  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/run-manifest.json",
-  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary",
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured",
+  "capture_status": "capture-failed",
+  "backup_match_ok": false,
+  "rerun_match_ok": true,
   "notes": [
-    "PARTIAL progress skeleton for the upstream AMFlow phase-0 feynman_prescription capture; this is not a promoted reference golden.",
-    "Primary completed under parent SLURM allocation 10006275 on holy7c04109.rc.fas.harvard.edu and produced real Mathematica-evaluated sol1/sol2 outputs with nonzero complex coefficients.",
-    "The 80-minute guard stopped the rerun after sol1 and before rerun sol2, bundled-backup comparison, rerun reproducibility comparison, and promotion to work/goldens/phase0/feynman_prescription/golden-manifest.json.",
-    "Resume with a longer walltime using capture_phase0_reference.py --root /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work --benchmark-id feynman_prescription --resume-existing before treating this benchmark as reference-captured.",
+    "Tracked pointer for the retained upstream AMFlow phase-0 feynman_prescription primary/rerun golden outputs; the external comparison summary remains capture-failed until the bundled-backup mismatch is resolved.",
+    "Primary and rerun Mathematica/Kira outputs are reproducible for sol1 and sol2 with canonical SHAs 2a1046763aeb250158b56f723f5767caa6719ef2eb47c9b4ed002b10d51d8a50 and 7c439527d8dcd431f9318cb8f9353e93275adda4b8ebac1082f9d84d0be49459.",
+    "The frozen upstream backup/kira_sol1 and backup/kira_sol2 files do not match the current real Wolfram/Kira output basis; the capture summary intentionally preserves that bundled-backup mismatch instead of treating it as parity evidence.",
     "The solve-series comparator view is scoped to sol1 because sol1 and sol2 contain the same loopxloop integral keys for opposite Feynman prescriptions; a full comparator view needs prescription-aware output selection or namespacing."
   ],
   "outputs": [
     {
       "canonical_sha256": "2a1046763aeb250158b56f723f5767caa6719ef2eb47c9b4ed002b10d51d8a50",
-      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/canonical/sol1.canonical.txt",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured/canonical/sol1.canonical.txt",
       "name": "sol1",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/sol1"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured/sol1"
     },
     {
       "canonical_sha256": "7c439527d8dcd431f9318cb8f9353e93275adda4b8ebac1082f9d84d0be49459",
-      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/canonical/sol2.canonical.txt",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured/canonical/sol2.canonical.txt",
       "name": "sol2",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/sol2"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured/sol2"
     }
   ],
-  "partial_progress": {
-    "parent_slurm_job_id": "10006275",
-    "prepared_run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/state/phase0-runs/feynman_prescription/rerun",
-    "primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/results/phase0/feynman_prescription/primary/run-manifest.json",
-    "rerun_partial_outputs": [
-      {
-        "name": "sol1",
-        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/state/phase0-runs/feynman_prescription/rerun/amflow/examples/feynman_prescription/sol1"
-      }
-    ],
-    "timeout_exit_code": 124,
-    "timeout_finished_at": "2026-05-05T01:40:07-04:00"
-  },
   "schema_version": 1,
-  "status": "partial-progress-timeboxed"
+  "status": "capture-failed-retained-golden"
 }

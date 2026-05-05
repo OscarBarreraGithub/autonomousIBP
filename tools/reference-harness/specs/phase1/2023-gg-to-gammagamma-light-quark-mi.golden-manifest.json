@@ -1,0 +1,200 @@
+{
+  "benchmark_id": "2023-gg-to-gammagamma-light-quark-mi",
+  "capture_profile": {
+    "benchmark_class": "phase1-selected-additional-candidate-dedicated-capture",
+    "black_box_dot": 1,
+    "black_box_rank": 2,
+    "epsorder": 2,
+    "family": "ggGammaGammaLightQuarkPI",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "mw2": "1",
+      "s12": "-1/2",
+      "s23": "-1/3",
+      "s13_derived": "5/6",
+      "x": "1/2",
+      "y": "1/3"
+    },
+    "kinematic_region": "paper region B rational point",
+    "precision_goal_digits": 50,
+    "raw_scalar_targets": [
+      "I^P_I_111000000, topology-P_I seed integral from the paper's master-integral list",
+      "I^P_I_101001000, topology-P_I scalar support integral from the paper's master-integral list",
+      "I^P_I_011001000, topology-P_I scalar support integral from the paper's master-integral list"
+    ],
+    "source_reference": "DOI 10.1140/epjc/s10052-023-12032-6 / Eur.Phys.J.C 83 (2023) 906, topology P_I eqs. (3.1)-(3.3), region variables eq. (3.7)",
+    "topology": "P_I"
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T15:23:58-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/examples/gg_to_gammagamma_light_quark_pi",
+  "notes": [
+    "This benchmark is an eligible phase-1 additional selected candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md.",
+    "It is not one of the six prompt phase-0 feature rows, not one of the ten case-study scaffold IDs, and not one of the four prior phase-1 captures diphoton-heavy-quark-form-factors, 2024-box-integrals-fermion-bubbles, single-top-planar-nonplanar, or 2024-gg-to-tth-one-loop-oeps2.",
+    "The lane intentionally selects the paper's simple planar P_I single-mass topology at a rational region-B point, with s13 derived from p4 -> -p1-p2-p3 instead of supplied as an independent inconsistent invariant.",
+    "The output is a dedicated AMFlow/Kira packet for three raw scalar topology-P_I integrals expanded through eps^2 at the 50-digit goal. No C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "c0d0ec1b8a508261276730242b6c64c26fa61d13bcc8322601ff6808a3f3059b",
+      "name": "sol-2023-gg-to-gammagamma-light-quark-pi-region-b",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/examples/gg_to_gammagamma_light_quark_pi/sol-2023-gg-to-gammagamma-light-quark-pi-region-b",
+      "present_at_capture": true,
+      "size_bytes": 287
+    },
+    {
+      "canonical_sha256": "ce8a58e9c9b7138d3eeab3829d6685ae33b821d3da9dd83ff2d51d03864e8bd2",
+      "name": "sol-2023-gg-to-gammagamma-light-quark-pi-region-b.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/examples/gg_to_gammagamma_light_quark_pi/sol-2023-gg-to-gammagamma-light-quark-pi-region-b.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 665
+    },
+    {
+      "canonical_sha256": "48c7c135cce39bccb39f0272e980d12d3e62340055fa0fafb1311c5610f138c9",
+      "name": "sol-2023-gg-to-gammagamma-light-quark-pi-region-b.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/examples/gg_to_gammagamma_light_quark_pi/sol-2023-gg-to-gammagamma-light-quark-pi-region-b.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 1109
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2023-gg-to-gammagamma-light-quark-mi from the phase-1 additional selected candidates; exclusions against phase-0/M5 rows, ten case-study IDs, and prior phase-1 captures passed."
+    },
+    {
+      "role": "B",
+      "scope": "manifest and capture-template conformance",
+      "status": "APPROVE",
+      "verdict": "Lane101 follows the prior phase-1 pattern with a root golden manifest, adjacent .lane101 capture scripts, hashed outputs, source/toolchain/log provenance, explicit non-claims, and fail-closed verifier behavior."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake build produced amflow, amflow-tests, singular-runtime-lane-tests, and amflow-cli with empty stderr; compare_cpp_vs_amflow.py --self-check reported all assertion checks true."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "The capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, and AMFSystemSolution execution; verifier passed 3 target rules, 21 finite/nonzero coefficients, min precision 50, and zero imaginary component."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/examples/gg_to_gammagamma_light_quark_pi",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:03:56"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane101_local_capture.log",
+        "sha256": "597a7c0a7b3a0989a9e24ecc7da675d89efd7197f64e93bdbce8cea8947ba317",
+        "size_bytes": 19322
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/run-manifest.10006275.txt",
+      "sha256": "2dd1d1b140ead43911e70a720d4431a81da41a6731072eaa4f56e1b8dda3d747",
+      "size_bytes": 2155
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-gg-to-gammagamma-light-quark-mi.lane101/capture_gg_to_gammagamma_light_quark_pi.sbatch",
+        "sha256": "3bca9fb863eb520d8c8e88c9e21dcb698f222d85d5450b5c3f3280f520214331"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-gg-to-gammagamma-light-quark-mi.lane101/run.wl",
+        "sha256": "26e89d560447790c58894a169ad83aa1e963cda38c0bb5ea97a302e868fc46b3"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-gg-to-gammagamma-light-quark-mi.lane101/verify_output.wl",
+        "sha256": "34ab1ab060fd440d5d2885dd683ad71466eeecdbb8c5f7eec478e9c83f86d09f"
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "https://gitlab.com/multiloop-pku/amflow.git"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane101-gg-to-gammagamma-light-quark-mi/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d"
+      }
+    ],
+    "source_article": {
+      "doi": "10.1140/epjc/s10052-023-12032-6",
+      "title": "Master integrals for electroweak corrections to gg -> gamma gamma: light quark contributions",
+      "url": "https://link.springer.com/article/10.1140/epjc/s10052-023-12032-6"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T15:23:58-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 4",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane101_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane101_cmake_build.stdout",
+        "sha256": "853ffac30402cb87752aaca5da72064f4c1243036c4775ecb225b541c016defd",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane101_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Dedicated topology-P_I AMFlow/Kira run reduced three targets to four masters, constructed six AMF systems, solved them in 226 seconds, wrote solution and metadata, and the verifier passed on 21 finite Mathematica numeric coefficients.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 21,
+      "max_abs_imaginary_component": "0",
+      "min_precision": "50.",
+      "sample_coefficients": [
+        "0",
+        "0",
+        "0.5`50.",
+        "0",
+        "0",
+        "0"
+      ],
+      "solution_rule_count": 4,
+      "target_rule_count": 3
+    }
+  }
+}

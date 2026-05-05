@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "case_study_id": "diphoton-heavy-quark-form-factors",
+  "lane": "lane102",
+  "evidence_kind": "dedicated-amflow-packet-slurm-final-status",
+  "captured_at": "2026-05-05T15:18:24-04:00",
+  "repo_head_at_assessment": "b81ae2d32768efc62010217a6332e86da6927ff4",
+  "status": "dedicated-amflow-output-produced-but-verifier-failed",
+  "comparison_passed": false,
+  "minimum_observed_correct_digits": null,
+  "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+  "scheduler": {
+    "job_id": "10204166",
+    "job_name": "lane80-diphoton-200d",
+    "squeue_state_at_assessment": "not-listed",
+    "sacct_state": "FAILED",
+    "exit_code": "4:0",
+    "elapsed": "02:33:49",
+    "start": "2026-05-05T12:31:24",
+    "end": "2026-05-05T15:05:13",
+    "node": "holy8a24108",
+    "batch_max_rss": "12457264K",
+    "sacct_command": "sacct -j 10204166 --format=JobID,JobName,State,ExitCode,Elapsed,Start,End,NodeList%30,MaxRSS%12 -P",
+    "scontrol_status": "slurm_load_jobs error: Invalid job id specified"
+  },
+  "paths": {
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d",
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors",
+    "stdout": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.out",
+    "stderr": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.err",
+    "run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/run-manifest.10204166.txt",
+    "solution": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+    "metadata": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.meta.wl",
+    "verify_output": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.verify.txt"
+  },
+  "output_files": {
+    "solution": {
+      "present": true,
+      "size_bytes": 56601,
+      "mtime": "2026-05-05 15:04:56.283795816 -0400",
+      "sha256": "591c4dcb4c4448e3c5b68a196aa635ae9943fb77236b2f407dee03d1fe8a2b22"
+    },
+    "metadata": {
+      "present": true,
+      "size_bytes": 571,
+      "mtime": "2026-05-05 15:04:56.290897169 -0400",
+      "sha256": "79c25dd68e0d0336797e9eac812b71ec2bb81697181e480414066fd08c31fc8d"
+    },
+    "verify_output": {
+      "present": true,
+      "size_bytes": 9525,
+      "mtime": "2026-05-05 15:05:13.955203577 -0400",
+      "sha256": "4b652ae5b038d17e4c46b1911730f90bd7d0912e3b2896d3e8170c205d274ad4"
+    }
+  },
+  "amflow_stdout_summary": {
+    "system_1_solve_seconds": 7622,
+    "black_box_amflow_finished_seconds": 9179,
+    "solve_integrals_finished_seconds": 9190,
+    "kernel_exit": 0,
+    "stdout_evidence_lines": {
+      "system_1_solved": 277,
+      "solve_integrals_finished": 280,
+      "kernel_exit": 282,
+      "output_hashes": "284-287",
+      "verifier_failure": "305-311"
+    }
+  },
+  "verifier": {
+    "exit_code": 4,
+    "requested_targets": [
+      "j[diphotonNPL,1,1,1,1,1,1,1,0,0]",
+      "j[diphotonNPL,1,1,1,1,1,1,1,-1,0]",
+      "j[diphotonNPL,1,1,1,1,2,1,1,0,0]",
+      "j[diphotonNPL,1,1,1,1,1,1,1,-1,-1]"
+    ],
+    "family_symbols": [
+      "diphotonNPL"
+    ],
+    "reported_solution_rule_count": 74,
+    "reported_numeric_coefficient_count": 5,
+    "reported_min_displayed_precision": "199.99999999999994",
+    "precision_goal_metadata": 200,
+    "epsorder_metadata": 4,
+    "failure": "VERIFY FAIL: expected J39-J42 target count",
+    "failure_mode": "verifier expected exactly four rules although AMFlow returned auxiliary solution rules; verifier also used CoefficientList on Laurent expressions with negative eps powers"
+  },
+  "kira_parser_assessment": {
+    "lane95_issue_observed": false,
+    "searched_patterns": [
+      "invalid coefficient string",
+      "pyred::parser_error",
+      "parser_error",
+      "invalid coefficient"
+    ],
+    "searched_paths": [
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.out",
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.err",
+      "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/cache"
+    ],
+    "search_exit_code": 1,
+    "decision": "Do not resubmit solely to apply the lane95 Kira parser wrapper."
+  },
+  "next_step": {
+    "preserve_external_output": true,
+    "fix_verifier": "Require requested J39-J42 targets as a subset of the AMFlow solution rules and extract Laurent coefficients with negative eps powers safely.",
+    "then_promote": "Create a retained dedicated diphoton golden manifest and add matching C++ diphoton ingest/comparator support at the 200-digit profile.",
+    "rerun_gates": [
+      "compare_case_study_numeric_results.py",
+      "qualify_case_study_families.py",
+      "qualify_milestone_m6.py"
+    ]
+  },
+  "alternative_paths": [
+    {
+      "case_study_id": "ttbar-h",
+      "evidence": "tools/reference-harness/specs/case-studies/ttbar-h.numeric-evidence.json",
+      "comparison_passed": true,
+      "minimum_observed_correct_digits": 999,
+      "tolerance_digits": 100,
+      "limitation": "This is a known 100-digit proxy for ttbar-h only; it cannot retire the current diphoton 200-digit blocker without an explicit reviewed selected-surface change."
+    }
+  ],
+  "withheld_claims": [
+    "No dedicated diphoton verifier pass is claimed.",
+    "No dedicated diphoton retained golden manifest is committed by this sidecar.",
+    "No C++ diphoton ingest/comparator support is claimed.",
+    "No 200-digit diphoton comparison pass is claimed.",
+    "No M6, M7, parity sign-off, qualification-corpus, or release-readiness closure is claimed."
+  ]
+}

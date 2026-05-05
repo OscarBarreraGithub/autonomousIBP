@@ -158,12 +158,33 @@ Current M6 blockers to preserve:
 Lane78 adds a fail-closed diphoton-heavy-quark-form-factors scaffold rather
 than a passing case-study row. The selected anchor
 `2023-diphoton-heavy-quark-form-factors` carries the 200-digit profile, but the
-repository has no dedicated diphoton AMFlow packet or C++ state for the
-non-planar double-box master-integral family. A fresh automatic_loop eps16 proxy
-replay at 240 requested digits against the real epsorder=18 AMFlow sol1/sol2
-manifest failed the 200-digit comparator with only 56 minimum observed correct
-digits. TODO: close this family only after adding a dedicated 200-digit
-diphoton capture plus C++ ingest/comparator support for that packet.
+repository has no committed dedicated diphoton golden packet or C++ state for
+the non-planar double-box master-integral family. A fresh automatic_loop eps16
+proxy replay at 240 requested digits against the real epsorder=18 AMFlow
+sol1/sol2 manifest failed the 200-digit comparator with only 56 minimum observed
+correct digits.
+
+Lane102 checked the dedicated diphoton SLURM job `10204166` after the lane85
+watch and committed the final-status sidecar at
+`tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane102-final-status.json`.
+The scheduler reports `FAILED` with exit code `4:0`, but the failure is
+post-processing, not Kira parsing: the Wolfram kernel exited `0`,
+`SolveIntegrals` finished in 9190s, stdout/stderr show no `invalid coefficient
+string "I"` failure, and the run manifest records SHA256 hashes for the
+external solution and metadata files. The verifier then failed because it
+requires exactly four output rules even though AMFlow returned a 74-rule
+solution containing auxiliary masters, and its coefficient extraction calls
+`CoefficientList` on Laurent terms with negative powers of `eps`.
+
+Concrete next step: do not resubmit this packet only to add the lane95 Kira
+wrapper. Preserve the external `10204166` solution and metadata, fix the lane80
+verifier/postprocessor to require the requested J39-J42 targets as a subset and
+to extract Laurent coefficients safely, then promote a retained dedicated
+golden manifest plus C++ diphoton ingest/comparator support at the 200-digit
+profile. The existing `ttbar-h` SRL-5 exact-endpoint proxy is the known
+100-digit alternative path (`999` observed digits at a `100`-digit tolerance),
+but it cannot retire the current diphoton 200-digit blocker without an explicit
+reviewed change to the selected case-study surface.
 
 Singular runtime lane status: SRL-1 and SRL-2 are landed, lane64 adds SRL-3
 branch/prescription ledger support, lane68 adds the first narrow SRL-4 live
@@ -175,9 +196,9 @@ comparison summary, and records `999` observed correct digits for the live
 SRL-4 endpoint coefficient. The case-study readiness frontier no longer reports
 `one-singular-endpoint-case -> b62p`; the singular family now remains in the M6
 surface as a matrix-only anchor with numeric evidence rather than as a runtime
-blocker. This does not close M6: non-singular case-study numeric rows are still
-missing or partial, phase-0 qualification remains separate, and the M6 composer
-must still pass before any milestone closure claim.
+blocker. This does not close M6: the diphoton case-study row still fails the
+frozen 200-digit threshold, phase-0 qualification remains separate, and the M6
+composer must still pass before any milestone closure claim.
 
 M6 overall status remains TODO/FAILING.
 
@@ -187,8 +208,9 @@ M6 overall status remains TODO/FAILING.
    packet roots expected by the M6 packet-set tools.
 2. Run packet-set comparison, packet-set correct-digit scoring, failure-code
    audit, and `qualify_phase0_packet_set.py` with synchronized labels.
-3. Produce numeric evidence sidecars for every selected case-study family at the
-   frozen thresholds.
+3. Finish the diphoton dedicated packet post-processing first: validate the
+   saved `10204166` J39-J42 subset, promote a retained golden manifest, and add
+   the matching C++ ingest/comparator path at the frozen 200-digit threshold.
 4. Run `compare_case_study_numeric_results.py` and
    `qualify_case_study_families.py`.
 5. Retire any pending runtime-lane blockers only with reviewed runtime/numeric

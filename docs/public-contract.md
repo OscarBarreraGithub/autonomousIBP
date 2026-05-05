@@ -148,9 +148,9 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   per-family rows match the compared case-study ids, preserve the observed-digit map, and keep
   non-missing rows aligned with the top-level digit/failure/regression profile-coherence booleans
   plus the published numeric profile-label maps.
-  In the current retained repo state it keeps the singular case-study runtime-lane blocker and the
-  absence of compared case-study numerics explicit, keeps the phase-0 verdict prerequisite
-  separate, and does not mark `Milestone M6` complete.
+  In the current retained repo state it keeps the diphoton 200-digit threshold failure explicit,
+  keeps the phase-0 verdict prerequisite separate, records that all ten case-study numeric
+  sidecars are present, and does not mark `Milestone M6` complete.
   `tools/reference-harness/scripts/qualify_milestone_m6.py` now composes the reviewed phase-0
   packet-set verdict and the reviewed case-study-family verdict into one M6-scoped blocked/pass
   summary. It requires both subverdicts to pass, requires pending phase-0 runtime-lane blockers
@@ -175,13 +175,13 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - current worktree now also carries the first executable M7 helper on top of that scaffold only:
   `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one machine-readable
   `qualification_readiness.py` summary plus the release-signoff checklist, audits the checklist
-  source/doc targets inside the repo, preserves the blocked `b61n` / `b62p` / `b63n` / `b64ag`
-  runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
+  source/doc targets inside the repo, preserves the blocked `b61n` / `b63n` / `b64ag`
+  phase-0 runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
   release-readiness summary. The current worktree now also lets that helper optionally consume
   the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
   phase-0 correct-digit and failure-code blockers explicitly, the retained case-study-family
-  qualification verdict so the singular runtime-lane blocker and missing case-study numeric
-  evidence remain visible to M7, plus one qualification-corpus sidecar so closed-corpus blockers
+  qualification verdict so the diphoton 200-digit threshold blocker remains visible to M7,
+  plus one qualification-corpus sidecar so closed-corpus blockers
   remain visible to M7, plus one performance-review summary sidecar so timing/scope/rebuild
   review blockers remain visible to M7, plus one diagnostic-review summary sidecar so typed-
   failure review blockers remain visible to M7, plus one docs-completion sidecar so docs-

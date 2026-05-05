@@ -2,9 +2,10 @@
 
 ## Scope
 
-This is a design-only survey for the next coverage horizon after the closed or
-near-closed phase-0/M5/M6 work. It does not modify runtime behavior and does not
-claim new parity, M6 closure, M7 closure, or release readiness.
+This is a design-only survey for the next coverage horizon after the closed M5
+work and the still-blocked M6 qualification work. It does not modify runtime
+behavior and does not claim new parity, M6 closure, M7 closure, or release
+readiness.
 
 The roadmap uses "phase-1" most narrowly for loop-core parity evidence: the port
 must show that it constructs the right DE systems and Kira reduction spans on
@@ -110,10 +111,13 @@ The shortest useful next chain is to turn
 `diphoton-heavy-quark-form-factors` from a failed proxy scaffold into a dedicated
 case-study packet:
 
-1. Complete a dedicated AMFlow capture for the selected diphoton heavy-quark
-   form-factor family at the frozen 200-digit profile. The current lane80
-   scaffold already records scripts and a partial-progress packet, but explicitly
-   says no dedicated output is committed and no C++ diphoton state was extracted.
+1. Complete post-processing for the dedicated AMFlow capture of the selected
+   diphoton heavy-quark form-factor family at the frozen 200-digit profile. The
+   external lane80 SLURM job `10204166` produced a solution and metadata, as
+   recorded in
+   `tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane102-final-status.json`,
+   but the verifier failed on the 74-rule AMFlow output and no dedicated output
+   is committed or paired with a C++ diphoton state.
 2. Promote the dedicated AMFlow output into a retained golden manifest with
    canonical output hashes, run metadata, selected family/target metadata, and
    the exact tolerance profile.

@@ -4,6 +4,11 @@
   "lane": "lane85",
   "evidence_kind": "dedicated-amflow-packet-slurm-watch-partial",
   "status": "still-running-at-lane85-watch-cap",
+  "superseded_by": {
+    "lane": "lane102",
+    "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane102-final-status.json",
+    "reason": "Job 10204166 later left RUNNING state; the lane102 sidecar records the final FAILED 4:0 scheduler state, kernel-exit 0, produced solution/metadata hashes, and verifier failure."
+  },
   "comparison_passed": false,
   "minimum_observed_correct_digits": null,
   "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
@@ -173,10 +178,10 @@
     "The existing automatic_loop proxy remains a failing proxy and is not promoted."
   ],
   "role_verdicts": {
-    "role_a": "APPROVE partial-progress path; BLOCK promotion because job 10204166 is still RUNNING and no solution/meta/verify outputs exist.",
-    "role_b": "APPROVE partial-progress path; BLOCK promotion until the dedicated packet can replace the stale proxy provenance and pass comparator evidence.",
-    "role_c": "APPROVE partial-progress path; build and comparator self-check pass, while the current proxy comparator remains failed at 56 digits.",
-    "role_d": "APPROVE anti-fake fail-closed path; BLOCK promotion because real dedicated diphoton packet numerics are absent and the retained proxy is automatic_loop, not diphotonNPL."
+    "role_a": "APPROVE partial-progress path at the lane85 watch; BLOCK promotion because job 10204166 was RUNNING at that watch point and the solution/meta/verify outputs had not yet been observed. Superseded for current status by the lane102 final-status sidecar.",
+    "role_b": "APPROVE partial-progress path at the lane85 watch; BLOCK promotion until the dedicated packet can replace the stale proxy provenance and pass comparator evidence. Superseded for current status by the lane102 final-status sidecar.",
+    "role_c": "APPROVE partial-progress path at the lane85 watch; build and comparator self-check pass, while the current proxy comparator remains failed at 56 digits. Superseded for current status by the lane102 final-status sidecar.",
+    "role_d": "APPROVE anti-fake fail-closed path at the lane85 watch; BLOCK promotion because real dedicated diphoton packet numerics had not yet been observed and the retained proxy was automatic_loop, not diphotonNPL. Superseded for current status by the lane102 final-status sidecar."
   },
   "anti_fake_parity_gate": {
     "status": "APPROVE_FAIL_CLOSED",

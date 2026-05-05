@@ -1,0 +1,120 @@
+{
+  "benchmark_id": "single-top-planar-nonplanar",
+  "capture_profile": {
+    "benchmark_class": "phase1-selected-qualification-row-dedicated-capture",
+    "black_box_dot": 2,
+    "black_box_rank": 2,
+    "epsorder": 4,
+    "family": "singleTopPL1",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "S12": "-968/45",
+      "S23": "704/45",
+      "mw2": "974",
+      "x": "45/11"
+    },
+    "kinematic_region": "Euclidean",
+    "precision_goal_digits": 50,
+    "raw_scalar_targets": [
+      "I_PL1(0,0,0,0,1,0,0,2,2), the single-scale seed in eq. (4.4)",
+      "I_PL1(1,1,1,0,1,1,0,1,1), a scalar top-sector PL1 support integral"
+    ],
+    "source_reference": "arXiv:2302.02729 / JHEP05(2023)131, Table 2 PL1 propagators and Table 4 Euclidean point E1",
+    "topology": "PL1"
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T14:27:04-04:00",
+  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean",
+  "notes": [
+    "This benchmark is an eligible phase-1 selected qualification row from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md; it is not diphoton-heavy-quark-form-factors and not 2024-box-integrals-fermion-bubbles.",
+    "The capture intentionally uses the paper's first Euclidean point where all master integrals are real, avoiding the complex-kinematics lane95 Kira parser surface.",
+    "This is a fail-closed partial-progress manifest because the dedicated AMFlow Mathematica job was still running at capture time and had not produced a solution file.",
+    "The targets are raw scalar integrals in the paper's PL1 family, not canonical-basis g30/g34 values; no C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": null,
+      "name": "sol-single-top-pl1-euclidean",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean",
+      "present_at_capture": false
+    },
+    {
+      "canonical_sha256": null,
+      "name": "sol-single-top-pl1-euclidean.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean.meta.wl",
+      "present_at_capture": false
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean",
+    "logs": {
+      "stderr": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/logs/lane96-st-pl1.10248008.err",
+        "sha256_at_capture": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes_at_capture": 0
+      },
+      "stdout": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/logs/lane96-st-pl1.10248008.out",
+        "sha256_at_capture": "54af734522f8cd1af77a9e68ecd070a94b91202a1b08d14a4cb39b4ca238108d",
+        "size_bytes_at_capture": 6511
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/run-manifest.10248008.txt",
+      "sha256": "d512970e7e5f8daa0660827bc4ac946747262bb07c92ca2e45579697f4dd24d5"
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/single-top-planar-nonplanar.lane96/capture_single_top_pl1_euclidean.sbatch",
+        "sha256": "be425be7f490f629fd6899e6da5bd3bbfd9e25e84d19eaf3df4eab426c17d046"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/single-top-planar-nonplanar.lane96/run.wl",
+        "sha256": "57024dc0b0d6cedbb57283e7e39d436949e81812d2203af71ed5780ea2d35247"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/single-top-planar-nonplanar.lane96/verify_output.wl",
+        "sha256": "b1d062d31cbd3f1b05b4d7831b9e69aeb0718c450cf1a805feb78accf35e3d01"
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "remote": "https://gitlab.com/multiloop-pku/amflow.git"
+    },
+    "slurm": {
+      "allocated_partition": "sapphire",
+      "cpus_per_task": 8,
+      "elapsed_at_capture": "00:01:42",
+      "job_id": "10248008",
+      "job_name": "lane96-st-pl1",
+      "node_at_capture": "holy8a24106",
+      "state_at_capture": "RUNNING",
+      "time_limit": "04:00:00"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "partial-progress-submitted-running",
+  "verification": {
+    "anti_fake_parity_gate": "fail-closed",
+    "build_gate": "passed",
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane96_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Dedicated PL1 Euclidean run loaded AMFlow, generated the 50-digit epsorder-4 numeric config, reduced the two target integrals to 31 masters, and started constructing AMF differential equations. No solution file was present.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": false,
+    "withheld_reason": "The live Mathematica/Kira run had not produced sol-single-top-pl1-euclidean or metadata at capture time."
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "case_study_id": "package-double-box",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 58,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow",
+  "benchmark_id": "automatic_loop",
+  "case_study_family_rationale": "The package-double-box case-study family is the matrix-only qualification anchor for the baseline package family. This evidence uses the retained automatic_loop box1/box2 package-family state and the real eps2 AMFlow manifest.",
+  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 2 --digits 80 --out tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json --tolerance-digits 50",
+  "comparison_summary": {
+    "matched_integral_count": 12,
+    "compared_coefficient_count": 54,
+    "passed_coefficient_count": 54,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 58,
+    "tolerance_digits": 50
+  },
+  "withheld_claims": [
+    "This sidecar qualifies only the package-double-box case-study family numeric row.",
+    "This sidecar does not provide numeric evidence for the remaining M6 case-study families.",
+    "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
+    "This sidecar does not claim Milestone M6 closure."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps14/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps12 reference pointer for automatic_loop comparator audits, captured with epsorder = 14 on 2026-05-05.",
+    "This manifest intentionally points at the same fresh epsorder=14 sol1/sol2 outputs as automatic_loop.eps11-golden-manifest.json, but names the eps^12 validation surface explicitly.",
+    "SLURM job 10135109 completed on holy8a24106.rc.fas.harvard.edu partition sapphire using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-eps14 tree was copied from work-eps12, then automatic_loop copied sol outputs, copied cache state, and copied logs were removed before running; run.wl was changed to epsorder = 14.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps14/logs/cap-autoloop-eps14.10135109.out with sha256 8a042a1171ff4036afcc5f5fb3b69cee269154624beaf6a13739adbf76d4bd56; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T08:39:10-04:00 to 2026-05-05T08:43:24-04:00.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 14 printed coefficients through positive eps^12; both sol1 and sol2 contain explicit eps^12 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12, eps^9: 12, eps^10: 12, eps^11: 12, eps^12: 12.",
+    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 348 Decimal real/imag components; both files contained 141 Mathematica precision marks and all eps^11/eps^12 components parsed as numeric.",
+    "sol1 sha256 c951eeca00c03fb3370a403e3e508743bde38882ca5b76f22d116e9f3c1484b2; sol2 sha256 6e979f311284c16e62eec0dc29f9540ef87277d5d2852fed9c7403551fbfd891."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps14/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps14/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

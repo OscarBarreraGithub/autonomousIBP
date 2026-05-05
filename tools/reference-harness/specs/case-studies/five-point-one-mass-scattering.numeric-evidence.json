@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "case_study_id": "five-point-one-mass-scattering",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 59,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow",
+  "benchmark_id": "complex_kinematics",
+  "case_study_family_rationale": "The five-point-one-mass-scattering case-study family is a default-floor literature-anchor row whose selected benchmark stresses AMFlow in physical-region and near-singular kinematics. No dedicated five-point literature packet is frozen in this repository yet, so this evidence uses the retained complex_kinematics physical-region state as the nearest current matrix-only proxy with complex-valued coefficients and a real C++/AMFlow comparator replay.",
+  "source_state_path": "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 50",
+  "comparison_summary": {
+    "matched_integral_count": 7,
+    "compared_coefficient_count": 14,
+    "passed_coefficient_count": 14,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 59,
+    "tolerance_digits": 50
+  },
+  "withheld_claims": [
+    "This sidecar qualifies only the five-point-one-mass-scattering case-study family numeric row.",
+    "This sidecar does not freeze or claim a dedicated five-point one-mass literature packet.",
+    "This sidecar does not provide numeric evidence for the remaining M6 case-study families.",
+    "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
+    "This sidecar does not claim Milestone M6 closure."
+  ]
+}

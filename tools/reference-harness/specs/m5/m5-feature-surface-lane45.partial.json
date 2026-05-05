@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "scope": "m5-feature-surface",
+  "m0b_accepted": true,
+  "examples": [
+    {
+      "id": "automatic_loop",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_loop.eps8.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "automatic_phasespace",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_phasespace.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "automatic_vs_manual",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_vs_manual.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "complex_kinematics",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/complex_kinematics.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "differential_equation_solver",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/differential_equation_solver.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "feynman_prescription",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/feynman_prescription.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "linear_propagator",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/linear_propagator.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "spacetime_dimension",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/spacetime_dimension.summary.json",
+      "blockers": [
+        "Retained upstream reference capture exists, but no passing C++/AMFlow comparator summary exists for spacetime_dimension.",
+        "Lane42 probe of retained spacetime_dimension AMFlow state did not produce a C++ result."
+      ]
+    },
+    {
+      "id": "user_defined_amfmode",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_amfmode.summary.json",
+      "blockers": [
+        "Retained upstream reference capture exists, but no passing C++/AMFlow comparator summary exists for user_defined_amfmode."
+      ]
+    },
+    {
+      "id": "user_defined_ending",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_ending.summary.json",
+      "blockers": [
+        "Retained upstream reference capture exists, but no passing C++/AMFlow comparator summary exists for user_defined_ending."
+      ]
+    }
+  ],
+  "runtime_features": [
+    {
+      "id": "arbitrary_D0",
+      "evidence_kind": "approved-retained-state-exception",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/arbitrary_D0",
+      "exception_reference": "runtime-feature-evidence-lane45.json#features/arbitrary_D0",
+      "blockers": []
+    },
+    {
+      "id": "fixed_eps",
+      "evidence_kind": "live-solver-path",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/fixed_eps",
+      "exception_reference": "",
+      "blockers": []
+    },
+    {
+      "id": "complex_kinematics",
+      "evidence_kind": "live-solver-path",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/complex_kinematics",
+      "exception_reference": "",
+      "blockers": []
+    },
+    {
+      "id": "linear_propagators",
+      "evidence_kind": "live-solver-path",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/linear_propagators",
+      "exception_reference": "",
+      "blockers": []
+    },
+    {
+      "id": "phase_space_integration",
+      "evidence_kind": "live-solver-path",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/phase_space_integration",
+      "exception_reference": "",
+      "blockers": []
+    },
+    {
+      "id": "feynman_prescription",
+      "evidence_kind": "live-solver-path",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/feynman_prescription",
+      "exception_reference": "",
+      "blockers": []
+    },
+    {
+      "id": "singular_kinematics_guardrails",
+      "evidence_kind": "approved-retained-state-exception",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/singular_kinematics_guardrails",
+      "exception_reference": "runtime-feature-evidence-lane45.json#features/singular_kinematics_guardrails",
+      "blockers": []
+    },
+    {
+      "id": "user_defined_hooks",
+      "evidence_kind": "approved-retained-state-exception",
+      "evidence_path": "runtime-feature-evidence-lane45.json#features/user_defined_hooks",
+      "exception_reference": "runtime-feature-evidence-lane45.json#features/user_defined_hooks",
+      "blockers": []
+    }
+  ]
+}

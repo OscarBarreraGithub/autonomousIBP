@@ -1,0 +1,413 @@
+{
+  "schema_version": 1,
+  "scope": "m5-runtime-feature-evidence",
+  "status": "accepted-runtime-feature-evidence",
+  "lane": "lane45",
+  "generated_at": "2026-05-05T11:47:52.842564+00:00",
+  "git_head": "87366bc0fd0b0b509d72d01e7cfc4fead62a16cc",
+  "working_tree_status_at_generation": [
+    " M docs/implementation-ledger.md",
+    " M docs/milestones/m5-m6-closure-plan.md",
+    " M tests/amflow_tests.cpp",
+    "?? docs/theory/singular-runtime-lane.md",
+    "?? kira.log",
+    "?? tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
+    "?? tools/reference-harness/specs/m5/comparisons/lane45/",
+    "?? tools/reference-harness/specs/m5/proof-runs/"
+  ],
+  "does_not_claim_m5_closure": true,
+  "does_not_claim_m6": true,
+  "does_not_claim_m7": true,
+  "does_not_claim_release_readiness": true,
+  "anti_fake_parity_gate": {
+    "policy": "Every live-solver row points to a lane45 command output and comparator JSON generated in this run; exception rows point to fresh gate logs plus retained reference summaries or source tests.",
+    "fresh_gate_root": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate",
+    "binary_sha256": {
+      "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli": "60210eddbe429ed197bd162f8f7365343d2cdbc938d08798ef2113f593b074a8",
+      "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-tests": "f4e3cdf8ebe243cd967552e4ef31f2259aed0f42742634ed03ed456e1c6168df"
+    }
+  },
+  "features": [
+    {
+      "id": "arbitrary_D0",
+      "implemented_slices": [
+        "Fresh lane45 amflow-tests gate executed exact D0 and dimension-expression plumbing tests in the current worktree binary.",
+        "Retained upstream spacetime_dimension reference capture has primary/rerun SHA matches for sol13D and sol73D."
+      ],
+      "evidence": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "tests/amflow_tests.cpp:20226",
+        "tests/amflow_tests.cpp:20249",
+        "tests/amflow_tests.cpp:25661",
+        "tests/amflow_tests.cpp:46332",
+        "tests/amflow_tests.cpp:46854",
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/spacetime_dimension.summary.json"
+      ],
+      "scope_limits": [
+        "This row is accepted as a retained-state/test-backed exception; it does not add a new C++ spacetime_dimension coefficient comparator."
+      ],
+      "status": "accepted",
+      "evidence_kind": "approved-retained-state-exception",
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-tests",
+        "/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin/ctest --test-dir /tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build --output-on-failure"
+      ],
+      "artifact_sha256": {
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log": "7d1620d421a4aada2b19b6f31d6fe1b360f0cbe86295a69b14d4034dc93957f5"
+      },
+      "gate_summary": {
+        "amflow_tests_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "ctest_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "amflow_tests_passed": true,
+        "ctest_passed": true
+      },
+      "blockers": []
+    },
+    {
+      "id": "fixed_eps",
+      "status": "accepted",
+      "evidence_kind": "live-solver-path",
+      "implemented_slices": [
+        "Fresh lane45 amflow-cli solve-series run requested epsilon order 8 on the retained automatic_loop AMFlow state bundle.",
+        "Lane45 comparator passed all retained automatic_loop eps8 coefficients at the M5 30-digit tolerance."
+      ],
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 8 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json",
+        "python3 /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json --tolerance-digits 30 > /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/comparisons/lane45/automatic_loop.eps8.compare.json"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json",
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_loop.eps8.compare.json",
+        "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+        "tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "artifact_sha256": {
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json": "ff9b7f81de007a71f0c13c562d467edd903038de8805c0ac5a5774be2104497d",
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_loop.eps8.compare.json": "809a796fc17431708dfc9a9fd92a93998a9dbcad928267abb65b0851b4df17b2"
+      },
+      "run_summary": {
+        "status": "success",
+        "benchmark_id": "automatic_loop",
+        "epsilon_order": 8,
+        "precision_digits": 40,
+        "target_count": 12,
+        "duration_seconds": 0.910356
+      },
+      "comparison_summary": {
+        "passed": true,
+        "compared_coefficient_count": 126,
+        "passed_coefficient_count": 126,
+        "minimum_digit_agreement": 41,
+        "tolerance_digits": 30,
+        "failure_count": 0
+      },
+      "scope_limits": [
+        "This is retained automatic_loop fixed-epsilon-order evidence, not a claim that every future fixed-eps surface is closed."
+      ],
+      "blockers": []
+    },
+    {
+      "id": "complex_kinematics",
+      "status": "accepted",
+      "evidence_kind": "live-solver-path",
+      "implemented_slices": [
+        "Fresh lane45 solve-series run ingested the retained complex_kinematics loop solution-sample cache.",
+        "Lane45 comparator passed the retained complex solution-sample coefficients at 30 digits."
+      ],
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/complex_kinematics.cpp-result.json",
+        "python3 /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/complex_kinematics.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 30 > /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/comparisons/lane45/complex_kinematics.compare.json"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/proof-runs/lane45/complex_kinematics.cpp-result.json",
+        "tools/reference-harness/specs/m5/comparisons/lane45/complex_kinematics.compare.json",
+        "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+        "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "artifact_sha256": {
+        "tools/reference-harness/specs/m5/proof-runs/lane45/complex_kinematics.cpp-result.json": "d0866c29d5084e0dce48faf07b6cc5ae2758d35e2c5ce04d7dafc561eb993773",
+        "tools/reference-harness/specs/m5/comparisons/lane45/complex_kinematics.compare.json": "429d4d585423653daa34c0534c9486451f3fa3f34dd69c29b2cbfd0a3196113b"
+      },
+      "run_summary": {
+        "status": "success",
+        "benchmark_id": "complex_kinematics",
+        "epsilon_order": 0,
+        "precision_digits": 40,
+        "target_count": 7,
+        "duration_seconds": 0.004417
+      },
+      "comparison_summary": {
+        "passed": true,
+        "compared_coefficient_count": 14,
+        "passed_coefficient_count": 14,
+        "minimum_digit_agreement": 41,
+        "tolerance_digits": 30,
+        "failure_count": 0
+      },
+      "scope_limits": [
+        "Full live complex eta-contour endpoint reconstruction remains outside this retained-state proof package."
+      ],
+      "blockers": []
+    },
+    {
+      "id": "linear_propagators",
+      "status": "accepted",
+      "evidence_kind": "live-solver-path",
+      "implemented_slices": [
+        "Fresh lane45 solve-series run ingested the retained linear_propagator finite solution-sample cache.",
+        "Lane45 comparator passed the retained gauge-link linear-propagator coefficients at 30 digits."
+      ],
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json --eps-order 4 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/linear_propagator.cpp-result.json",
+        "python3 /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/linear_propagator.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json --tolerance-digits 30 > /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/comparisons/lane45/linear_propagator.compare.json"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/proof-runs/lane45/linear_propagator.cpp-result.json",
+        "tools/reference-harness/specs/m5/comparisons/lane45/linear_propagator.compare.json",
+        "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
+        "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "artifact_sha256": {
+        "tools/reference-harness/specs/m5/proof-runs/lane45/linear_propagator.cpp-result.json": "578c8d21734fd5175711f4a606fcbe72df369872b6b45e922e67282e43209e59",
+        "tools/reference-harness/specs/m5/comparisons/lane45/linear_propagator.compare.json": "44660450822b369320a1ca3a5f2ec2f90a80f58d0366668a2a7959018d82685d"
+      },
+      "run_summary": {
+        "status": "success",
+        "benchmark_id": "linear_propagator",
+        "epsilon_order": 4,
+        "precision_digits": 40,
+        "target_count": 9,
+        "duration_seconds": 0.034612
+      },
+      "comparison_summary": {
+        "passed": true,
+        "compared_coefficient_count": 57,
+        "passed_coefficient_count": 57,
+        "minimum_digit_agreement": 31,
+        "tolerance_digits": 30,
+        "failure_count": 0
+      },
+      "scope_limits": [
+        "Full live gauge-link boundary reconstruction and endpoint contour execution remain outside this retained-state proof package."
+      ],
+      "blockers": []
+    },
+    {
+      "id": "phase_space_integration",
+      "status": "accepted",
+      "evidence_kind": "live-solver-path",
+      "implemented_slices": [
+        "Fresh lane45 solve-series run ingested the retained automatic_phasespace solution-sample cache and Cutkosky metadata.",
+        "Lane45 comparator passed the retained phase-space coefficients at 30 digits."
+      ],
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json --eps-order 0 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/automatic_phasespace.cpp-result.json",
+        "python3 /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/automatic_phasespace.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json --tolerance-digits 30 > /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/comparisons/lane45/automatic_phasespace.compare.json"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_phasespace.cpp-result.json",
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_phasespace.compare.json",
+        "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json",
+        "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "artifact_sha256": {
+        "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_phasespace.cpp-result.json": "edb54f1ce6e7d2c991c1585940d49904e8a79cbbc3eba002b9e4f20196f61f22",
+        "tools/reference-harness/specs/m5/comparisons/lane45/automatic_phasespace.compare.json": "a8038301920922fc934a79bfda0778feea6a1ddc0b21e2c90fba1b2a033b5282"
+      },
+      "run_summary": {
+        "status": "success",
+        "benchmark_id": "automatic_phasespace",
+        "epsilon_order": 0,
+        "precision_digits": 40,
+        "target_count": 5,
+        "duration_seconds": 0.107984
+      },
+      "comparison_summary": {
+        "passed": true,
+        "compared_coefficient_count": 11,
+        "passed_coefficient_count": 11,
+        "minimum_digit_agreement": 39,
+        "tolerance_digits": 30,
+        "failure_count": 0
+      },
+      "scope_limits": [
+        "Full live Cutkosky phase-space boundary reconstruction from cut propagators remains outside this retained-state proof package."
+      ],
+      "blockers": []
+    },
+    {
+      "id": "feynman_prescription",
+      "status": "accepted",
+      "evidence_kind": "live-solver-path",
+      "implemented_slices": [
+        "Fresh lane45 solve-series run ingested the retained feynman_prescription solution-sample cache with prescription metadata.",
+        "Lane45 comparator passed the retained prescription-aware sol1 coefficient surface at 30 digits."
+      ],
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json --eps-order 2 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/feynman_prescription.cpp-result.json",
+        "python3 /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/feynman_prescription.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json --tolerance-digits 30 > /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/comparisons/lane45/feynman_prescription.compare.json"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/proof-runs/lane45/feynman_prescription.cpp-result.json",
+        "tools/reference-harness/specs/m5/comparisons/lane45/feynman_prescription.compare.json",
+        "tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json",
+        "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/cmake-build.log"
+      ],
+      "artifact_sha256": {
+        "tools/reference-harness/specs/m5/proof-runs/lane45/feynman_prescription.cpp-result.json": "17feaae48f3e6930ef5b29faad1a41df964bc3c50b714cee8549aa72e50316ef",
+        "tools/reference-harness/specs/m5/comparisons/lane45/feynman_prescription.compare.json": "69e1b2ecc7e83c697f4acc8201146d27be37d350821eef6b25575152d8b92078"
+      },
+      "run_summary": {
+        "status": "success",
+        "benchmark_id": "feynman_prescription",
+        "epsilon_order": 2,
+        "precision_digits": 40,
+        "target_count": 16,
+        "duration_seconds": 0.05992
+      },
+      "comparison_summary": {
+        "passed": true,
+        "compared_coefficient_count": 76,
+        "passed_coefficient_count": 76,
+        "minimum_digit_agreement": 39,
+        "tolerance_digits": 30,
+        "failure_count": 0
+      },
+      "scope_limits": [
+        "Opposite-prescription and full live prescription-aware runtime behavior remain outside this retained-state proof package."
+      ],
+      "blockers": []
+    },
+    {
+      "id": "singular_kinematics_guardrails",
+      "implemented_slices": [
+        "Fresh lane45 amflow-tests gate executed physical-kinematics guardrail, singular-point, contour, and deterministic/non-mutating tests.",
+        "The tested runtime surface rejects unsupported, singular, and near-singular physical kinematics before downstream DE construction on reviewed paths."
+      ],
+      "evidence": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "tests/amflow_tests.cpp:4239",
+        "tests/amflow_tests.cpp:4290",
+        "tests/amflow_tests.cpp:4334",
+        "tests/amflow_tests.cpp:21622",
+        "tests/amflow_tests.cpp:29689",
+        "tests/amflow_tests.cpp:34565",
+        "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+        "src/runtime/physical_kinematics_guardrails.cpp"
+      ],
+      "scope_limits": [
+        "This row is accepted as a guardrail exception; it does not publish a new coefficient-bearing physical-region runtime subset."
+      ],
+      "status": "accepted",
+      "evidence_kind": "approved-retained-state-exception",
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-tests",
+        "/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin/ctest --test-dir /tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build --output-on-failure"
+      ],
+      "artifact_sha256": {
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log": "7d1620d421a4aada2b19b6f31d6fe1b360f0cbe86295a69b14d4034dc93957f5"
+      },
+      "gate_summary": {
+        "amflow_tests_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "ctest_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "amflow_tests_passed": true,
+        "ctest_passed": true
+      },
+      "blockers": []
+    },
+    {
+      "id": "user_defined_hooks",
+      "implemented_slices": [
+        "Fresh lane45 amflow-tests gate executed user-defined AMF mode and ending-scheme resolution, planning, cache, and exact-D0 tests.",
+        "Retained upstream user_defined_amfmode and user_defined_ending reference captures have primary/rerun SHA matches."
+      ],
+      "evidence": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "tests/amflow_tests.cpp:7398",
+        "tests/amflow_tests.cpp:8111",
+        "tests/amflow_tests.cpp:8449",
+        "tests/amflow_tests.cpp:41094",
+        "tests/amflow_tests.cpp:42286",
+        "tests/amflow_tests.cpp:47153",
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_amfmode.summary.json",
+        "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_ending.summary.json"
+      ],
+      "scope_limits": [
+        "This row is accepted as a retained-state/test-backed exception; lane45 does not claim the user-defined example rows covered by lane44."
+      ],
+      "status": "accepted",
+      "evidence_kind": "approved-retained-state-exception",
+      "commands": [
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-tests",
+        "/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin/ctest --test-dir /tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build --output-on-failure"
+      ],
+      "artifact_sha256": {
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+        "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log": "7d1620d421a4aada2b19b6f31d6fe1b360f0cbe86295a69b14d4034dc93957f5"
+      },
+      "gate_summary": {
+        "amflow_tests_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/amflow-tests.log",
+        "ctest_log": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/logs/ctest.log",
+        "amflow_tests_passed": true,
+        "ctest_passed": true
+      },
+      "blockers": []
+    }
+  ],
+  "prior_parity_unchanged_check": {
+    "policy": "The committed lane45 live-solver comparator summaries preserve lane39 pass/count/tolerance fields for the same retained surfaces.",
+    "all_core_parity_unchanged": true,
+    "checks": [
+      {
+        "feature_id": "fixed_eps",
+        "lane39_comparison": "tools/reference-harness/specs/m5/comparisons/lane39/automatic_loop.eps8.compare.json",
+        "lane45_comparison": "tools/reference-harness/specs/m5/comparisons/lane45/automatic_loop.eps8.compare.json",
+        "core_parity_unchanged": true,
+        "lane39_minimum_digit_agreement": 41,
+        "lane45_minimum_digit_agreement": 41
+      },
+      {
+        "feature_id": "phase_space_integration",
+        "lane39_comparison": "tools/reference-harness/specs/m5/comparisons/lane39/automatic_phasespace.compare.json",
+        "lane45_comparison": "tools/reference-harness/specs/m5/comparisons/lane45/automatic_phasespace.compare.json",
+        "core_parity_unchanged": true,
+        "lane39_minimum_digit_agreement": 39,
+        "lane45_minimum_digit_agreement": 39
+      },
+      {
+        "feature_id": "complex_kinematics",
+        "lane39_comparison": "tools/reference-harness/specs/m5/comparisons/lane39/complex_kinematics.compare.json",
+        "lane45_comparison": "tools/reference-harness/specs/m5/comparisons/lane45/complex_kinematics.compare.json",
+        "core_parity_unchanged": true,
+        "lane39_minimum_digit_agreement": 41,
+        "lane45_minimum_digit_agreement": 41
+      },
+      {
+        "feature_id": "feynman_prescription",
+        "lane39_comparison": "tools/reference-harness/specs/m5/comparisons/lane39/feynman_prescription.compare.json",
+        "lane45_comparison": "tools/reference-harness/specs/m5/comparisons/lane45/feynman_prescription.compare.json",
+        "core_parity_unchanged": true,
+        "lane39_minimum_digit_agreement": 39,
+        "lane45_minimum_digit_agreement": 39
+      },
+      {
+        "feature_id": "linear_propagators",
+        "lane39_comparison": "tools/reference-harness/specs/m5/comparisons/lane39/linear_propagator.compare.json",
+        "lane45_comparison": "tools/reference-harness/specs/m5/comparisons/lane45/linear_propagator.compare.json",
+        "core_parity_unchanged": true,
+        "lane39_minimum_digit_agreement": 31,
+        "lane45_minimum_digit_agreement": 31
+      }
+    ]
+  }
+}

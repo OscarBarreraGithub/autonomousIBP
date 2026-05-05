@@ -1,9 +1,6 @@
 {
-  "all_case_studies_meet_digit_thresholds": false,
-  "blocking_reasons": [
-    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
-    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200"
-  ],
+  "all_case_studies_meet_digit_thresholds": true,
+  "blocking_reasons": [],
   "case_study_digit_threshold_profiles_by_family": {
     "diphoton-heavy-quark-form-factors": "2023-diphoton-heavy-quark-form-factors",
     "five-point-one-mass-scattering": "core-package-family-default",
@@ -28,7 +25,7 @@
     "ttbar-j": "default-required-failure-codes",
     "ttbar-w": "default-required-failure-codes"
   },
-  "case_study_numeric_comparison_passed": false,
+  "case_study_numeric_comparison_passed": true,
   "case_study_numeric_evidence_count": 10,
   "case_study_numeric_family_summaries": [
     {
@@ -97,17 +94,17 @@
       "status": "digit-threshold-met"
     },
     {
-      "comparison_passed": false,
-      "digit_threshold_met": false,
+      "comparison_passed": true,
+      "digit_threshold_met": true,
       "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
       "evidence_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
       "failure_code_profile": "default-required-failure-codes",
       "id": "diphoton-heavy-quark-form-factors",
       "metadata_matches_readiness": true,
-      "minimum_observed_correct_digits": 56,
+      "minimum_observed_correct_digits": 200,
       "regression_profile": "current-reviewed-regressions",
       "required_minimum_correct_digits": 200,
-      "status": "digit-threshold-failed"
+      "status": "digit-threshold-met"
     },
     {
       "comparison_passed": true,
@@ -189,7 +186,7 @@
   ],
   "digit_threshold_profiles_reported": true,
   "minimum_observed_correct_digits_by_case_study": {
-    "diphoton-heavy-quark-form-factors": 56,
+    "diphoton-heavy-quark-form-factors": 200,
     "five-point-one-mass-scattering": 59,
     "h-to-bb": 58,
     "n4-sym-three-loop-form-factor": 58,

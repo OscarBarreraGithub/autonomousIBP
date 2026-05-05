@@ -664,10 +664,10 @@ The first case-study-family qualification verdict remains blocked on purpose:
 `tools/reference-harness/scripts/qualify_case_study_families.py` consumes the
 machine-readable case-study readiness summary, can consume one case-study numeric
 comparison summary, and writes one blocked/pass case-study-family verdict. In the current
-retained repo state all ten case-study numeric sidecars are present and the singular row is
-no longer a runtime-lane blocker, but the diphoton row still fails the frozen 200-digit
-threshold. The verdict keeps the phase-0 packet-set verdict as a separate prerequisite and
-does not claim that `Milestone M6` has closed.
+retained repo state all ten case-study numeric sidecars are present, the singular row is
+no longer a runtime-lane blocker, and the lane103 dedicated diphoton verifier evidence
+meets the frozen 200-digit threshold. The verdict keeps the phase-0 packet-set verdict as
+a separate prerequisite and does not claim that `Milestone M6` has closed.
 The first case-study numeric summary producer is similarly narrow:
 `tools/reference-harness/scripts/compare_case_study_numeric_results.py` consumes that reviewed
 case-study readiness summary plus explicit numeric evidence sidecars, validates the family ids and
@@ -694,9 +694,9 @@ performance-review summary sidecar, one diagnostic-review summary sidecar, one d
 summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets, and writes one blocked
 release-readiness summary that keeps the current
 `b61n` / `b63n` / `b64ag` phase-0 runtime frontier, phase-0 correct-digit/failure-code
-blockers, the diphoton case-study threshold blocker, qualification-corpus blockers,
-performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
-and the final parity-signoff blocker path visible without claiming that `Milestone M6` or
+blockers, qualification-corpus blockers, performance-review blockers, typed-failure
+diagnostic-review blockers, docs-alignment blockers, and the final parity-signoff blocker path
+visible without claiming that `Milestone M6` or
 `Milestone M7` has closed.
 The `Milestone M7 qualification-corpus release-readiness producer` is the first populated
 qualification-corpus sidecar producer:

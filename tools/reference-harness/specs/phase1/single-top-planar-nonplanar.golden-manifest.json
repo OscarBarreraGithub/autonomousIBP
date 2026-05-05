@@ -22,28 +22,37 @@
     "source_reference": "arXiv:2302.02729 / JHEP05(2023)131, Table 2 PL1 propagators and Table 4 Euclidean point E1",
     "topology": "PL1"
   },
-  "comparison_passed": false,
+  "comparison_passed": true,
   "created_at": "2026-05-05T14:27:04-04:00",
-  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "evidence_kind": "dedicated-amflow-packet-slurm-verified",
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean",
   "notes": [
-    "This benchmark is an eligible phase-1 selected qualification row from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md; it is not diphoton-heavy-quark-form-factors and not 2024-box-integrals-fermion-bubbles.",
-    "The capture intentionally uses the paper's first Euclidean point where all master integrals are real, avoiding the complex-kinematics lane95 Kira parser surface.",
-    "This is a fail-closed partial-progress manifest because the dedicated AMFlow Mathematica job was still running at capture time and had not produced a solution file.",
-    "The targets are raw scalar integrals in the paper's PL1 family, not canonical-basis g30/g34 values; no C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made."
+    "Dedicated singleTopPL1 Euclidean packet is promoted from SLURM 10248008 output after lane103 verifier repair.",
+    "SLURM 10248008 produced the solution and metadata with kernel-exit 0; the scheduler job failed only because the prior verifier required exactly two solution rules while AMFlow returned auxiliary rules as a 32-rule superset.",
+    "The lane103 verifier selects the two requested PL1 targets, preserves the topology/kinematic/precision metadata contract, validates Laurent coefficients for those targets, and rejects missing, symbolic, or zeroed requested targets in negative controls.",
+    "The retained case-study M6 row remains backed by the existing automatic-loop numeric sidecar; this manifest promotes the dedicated phase-1 AMFlow packet without widening unrelated runtime behavior."
   ],
   "outputs": [
     {
-      "canonical_sha256": null,
       "name": "sol-single-top-pl1-euclidean",
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean",
-      "present_at_capture": false
+      "present_at_capture": true,
+      "canonical_sha256": "4dab365dd70c6db2edd0aa0c2dbe724d2bf8a04384a4a544d9b7dab5c224b1c9",
+      "size_bytes": 8357
     },
     {
-      "canonical_sha256": null,
       "name": "sol-single-top-pl1-euclidean.meta.wl",
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean.meta.wl",
-      "present_at_capture": false
+      "present_at_capture": true,
+      "canonical_sha256": "a803ba484a578e7df23989bab1608110f05bca6a4162e5848a039cbd8298577d",
+      "size_bytes": 566
+    },
+    {
+      "name": "sol-single-top-pl1-euclidean.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean.verify.txt",
+      "present_at_capture": true,
+      "canonical_sha256": "0f10dea2ef013d8fd6647aed4b6b23396cf6d401d3c0bb406b6b39a32cf21954",
+      "size_bytes": 930
     }
   ],
   "run": {
@@ -56,13 +65,13 @@
       },
       "stdout": {
         "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/logs/lane96-st-pl1.10248008.out",
-        "sha256_at_capture": "54af734522f8cd1af77a9e68ecd070a94b91202a1b08d14a4cb39b4ca238108d",
-        "size_bytes_at_capture": 6511
+        "sha256_at_capture": "31e29239893fe2322284b3f6b1ad281dda1320e3c8a7a53d4c0b7e80a4297cce",
+        "size_bytes_at_capture": 35094
       }
     },
     "manifest": {
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/run-manifest.10248008.txt",
-      "sha256": "d512970e7e5f8daa0660827bc4ac946747262bb07c92ca2e45579697f4dd24d5"
+      "sha256": "b81bb1e2af9405a75ef6f45a88871bf9d7b1cab6af9b6ccfc0d0d4e3b08804f6"
     },
     "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar",
     "scripts": [
@@ -76,7 +85,7 @@
       },
       {
         "path": "tools/reference-harness/specs/phase1/single-top-planar-nonplanar.lane96/verify_output.wl",
-        "sha256": "b1d062d31cbd3f1b05b4d7831b9e69aeb0718c450cf1a805feb78accf35e3d01"
+        "sha256": "30a11111aa6bc1e2c0c691164b7486c3174c21d5c5db4127920cbd699d714ce8"
       }
     ],
     "source_amflow": {
@@ -86,12 +95,16 @@
     "slurm": {
       "allocated_partition": "sapphire",
       "cpus_per_task": 8,
-      "elapsed_at_capture": "00:01:42",
+      "elapsed_at_capture": "00:21:01",
       "job_id": "10248008",
       "job_name": "lane96-st-pl1",
       "node_at_capture": "holy8a24106",
-      "state_at_capture": "RUNNING",
-      "time_limit": "04:00:00"
+      "state_at_capture": "FAILED",
+      "time_limit": "04:00:00",
+      "exit_code_at_capture": "3:0",
+      "start": "2026-05-05T14:25:13",
+      "end": "2026-05-05T14:46:14",
+      "failure_cause": "obsolete strict verifier rejected valid 32-rule AMFlow superset after kernel-exit 0"
     },
     "toolchain": {
       "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
@@ -103,18 +116,37 @@
     }
   },
   "schema_version": 1,
-  "status": "partial-progress-submitted-running",
+  "status": "amflow-captured-verified",
   "verification": {
-    "anti_fake_parity_gate": "fail-closed",
-    "build_gate": "passed",
-    "compare_cpp_vs_amflow_self_check": {
-      "path": "/tmp/autoibp_orch/exec/lane96_compare_selfcheck.json",
-      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
-      "status": "passed"
-    },
-    "latest_log_stage_at_capture": "Dedicated PL1 Euclidean run loaded AMFlow, generated the 50-digit epsorder-4 numeric config, reduced the two target integrals to 31 masters, and started constructing AMF differential equations. No solution file was present.",
+    "anti_fake_parity_gate": "passed-with-negative-controls",
+    "latest_log_stage_at_capture": "Dedicated singleTopPL1 Euclidean SolveIntegrals completed with kernel-exit 0 and produced solution/metadata; lane103 post-processing verifier confirmed both requested PL1 targets inside the 32-rule AMFlow superset.",
     "real_mathematica_execution_verified": true,
-    "real_mathematica_numerics_verified": false,
-    "withheld_reason": "The live Mathematica/Kira run had not produced sol-single-top-pl1-euclidean or metadata at capture time."
-  }
+    "real_mathematica_numerics_verified": true,
+    "verifier_rerun": {
+      "command": "WOLFRAM_KERNEL -script verify_output.wl",
+      "exit_code": 0,
+      "target_rule_count": 2,
+      "solution_rule_count": 32,
+      "coefficient_count": 18,
+      "target_laurent_powers": [
+        -4,
+        -3,
+        -2,
+        -1,
+        0
+      ],
+      "minimum_displayed_precision": 50,
+      "max_abs_imaginary_component_observed": 0,
+      "verify_output_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane96-single-top-planar-nonplanar/amflow/examples/single_top_planar_nonplanar_pl1_euclidean/sol-single-top-pl1-euclidean.verify.txt",
+      "verify_output_sha256": "0f10dea2ef013d8fd6647aed4b6b23396cf6d401d3c0bb406b6b39a32cf21954"
+    },
+    "negative_controls": {
+      "root": "/tmp/autoibp_orch/lane103_negative.LCye9V",
+      "missing_target_exit": 4,
+      "symbolic_coefficient_exit": 5,
+      "zeroed_target_exit": 5
+    }
+  },
+  "promoted_at": "2026-05-05T15:53:55-04:00",
+  "promoted_by_lane": "lane103-verifier-rule-count-fix"
 }

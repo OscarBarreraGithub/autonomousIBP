@@ -1,0 +1,40 @@
+{
+  "blocking_reasons": [
+    "qualification closure note has not been reviewed",
+    "performance review summary has not been reviewed",
+    "diagnostic review summary has not been reviewed",
+    "docs completion note has not been reviewed"
+  ],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "blocked-on-prerequisite-release-reviews",
+  "diagnostic_review_summary_reviewed": false,
+  "docs_completion_note_reviewed": false,
+  "missing_or_blocked_parity_paths": [
+    "diagnostic-review-summary",
+    "docs-completion-note",
+    "performance-review-summary",
+    "qualification-closure-note"
+  ],
+  "parity_signoff_complete": false,
+  "parity_signoff_required_inputs_preserved": true,
+  "parity_signoff_required_outputs_preserved": true,
+  "performance_review_summary_reviewed": false,
+  "prerequisite_review_sections_preserved": true,
+  "qualification_closure_reviewed": false,
+  "required_release_review_sections": [
+    "qualification-corpus",
+    "performance-review",
+    "diagnostic-review",
+    "docs-completion"
+  ],
+  "schema_version": 1,
+  "scope": "release-parity-signoff",
+  "withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "withheld_claims_reviewed": true
+}

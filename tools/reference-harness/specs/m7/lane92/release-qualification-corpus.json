@@ -4,17 +4,10 @@
     "retained packet-set correct-digit scoring has not fully passed",
     "retained packet-set is missing published failure-code audits",
     "retained packet-set is missing required typed failure codes",
-    "case-study numeric comparison has not fully passed",
-    "case-study correct-digit thresholds have not fully passed",
-    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
-    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200",
     "closed benchmark-family coverage statement is not reviewed"
   ],
-  "case_study_families_qualified": false,
+  "case_study_families_qualified": true,
   "case_study_qualification_blockers": [
-    "case-study:blocked-on-case-study-comparison",
-    "case-study-comparison",
-    "case-study-correct-digits",
     "case-study-requires-phase0-verdict"
   ],
   "case_study_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/case-study-qualification.json",
@@ -30,9 +23,6 @@
     "phase0-packet-set:blocked-on-correct-digit-thresholds",
     "phase0-failure-code-audit",
     "phase0-required-failure-codes",
-    "case-study:blocked-on-case-study-comparison",
-    "case-study-comparison",
-    "case-study-correct-digits",
     "case-study-requires-phase0-verdict"
   ],
   "pending_phase0_ids": [

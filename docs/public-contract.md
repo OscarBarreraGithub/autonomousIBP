@@ -180,7 +180,7 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
   release-readiness summary. The current worktree now also lets that helper optionally consume
   the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
   phase-0 correct-digit and failure-code blockers explicitly, the retained case-study-family
-  qualification verdict so the diphoton 200-digit threshold blocker remains visible to M7,
+  qualification verdict so the now-qualified case-study surface and phase-0 prerequisite remain visible to M7,
   plus one qualification-corpus sidecar so closed-corpus blockers
   remain visible to M7, plus one performance-review summary sidecar so timing/scope/rebuild
   review blockers remain visible to M7, plus one diagnostic-review summary sidecar so typed-

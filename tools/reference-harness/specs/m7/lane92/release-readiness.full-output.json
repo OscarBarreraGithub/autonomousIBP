@@ -36,8 +36,8 @@
     "single-top-planar-nonplanar",
     "one-singular-endpoint-case"
   ],
-  "case_study_families_qualified": false,
-  "case_study_family_current_state": "blocked-on-case-study-comparison",
+  "case_study_families_qualified": true,
+  "case_study_family_current_state": "case-study-families-qualified",
   "case_study_literature_anchor_ids": [
     "ttbar-j",
     "ttbar-h",
@@ -50,18 +50,10 @@
   ],
   "case_study_missing_numeric_ids": [],
   "case_study_qualification_blockers": [
-    "case-study:blocked-on-case-study-comparison",
-    "case-study-comparison",
-    "case-study-correct-digits",
     "case-study-requires-phase0-verdict"
   ],
   "case_study_qualification_blockers_preserved": true,
-  "case_study_qualification_blocking_reasons": [
-    "case-study numeric comparison has not fully passed",
-    "case-study correct-digit thresholds have not fully passed",
-    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
-    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200"
-  ],
+  "case_study_qualification_blocking_reasons": [],
   "case_study_qualification_evidence_present": true,
   "case_study_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/case-study-qualification.json",
   "case_study_runtime_blocked_ids": [],
@@ -243,6 +235,9 @@
   ],
   "docs_missing_or_stale_paths": [],
   "parity_missing_or_blocked_paths": [
+    "diagnostic-review-summary",
+    "docs-completion-note",
+    "performance-review-summary",
     "qualification-closure-note"
   ],
   "parity_required_release_review_sections": [
@@ -254,16 +249,25 @@
   "parity_signoff_blockers": [
     "parity-signoff-incomplete",
     "parity-qualification-closure",
+    "parity-performance-review-summary",
+    "parity-diagnostic-review-summary",
+    "parity-docs-completion-note",
+    "parity-path:diagnostic-review-summary",
+    "parity-path:docs-completion-note",
+    "parity-path:performance-review-summary",
     "parity-path:qualification-closure-note"
   ],
   "parity_signoff_blockers_preserved": true,
   "parity_signoff_blocking_reasons": [
-    "qualification closure note has not been reviewed"
+    "qualification closure note has not been reviewed",
+    "performance review summary has not been reviewed",
+    "diagnostic review summary has not been reviewed",
+    "docs completion note has not been reviewed"
   ],
   "parity_signoff_complete": false,
-  "parity_signoff_current_state": "blocked-on-qualification-closure",
+  "parity_signoff_current_state": "blocked-on-prerequisite-release-reviews",
   "parity_signoff_evidence_present": true,
-  "parity_signoff_summary_path": "tools/reference-harness/specs/m7/lane83/release-parity-signoff.json",
+  "parity_signoff_summary_path": "tools/reference-harness/specs/m7/lane92/release-parity-signoff.json",
   "parity_signoff_withheld_claims": [
     "This summary does not claim final parity sign-off.",
     "This summary does not claim Milestone M6 closure.",
@@ -352,7 +356,6 @@
   "qualification_corpus_blockers": [
     "qualification-corpus-review-incomplete",
     "qualification-corpus-phase0-qualified",
-    "qualification-corpus-case-study-qualified",
     "qualification-corpus-closed-coverage-statement",
     "qualification-path:phase0-pending:automatic_phasespace",
     "qualification-path:phase0-pending:complex_kinematics",
@@ -361,9 +364,6 @@
     "qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds",
     "qualification-path:phase0-failure-code-audit",
     "qualification-path:phase0-required-failure-codes",
-    "qualification-path:case-study:blocked-on-case-study-comparison",
-    "qualification-path:case-study-comparison",
-    "qualification-path:case-study-correct-digits",
     "qualification-path:case-study-requires-phase0-verdict"
   ],
   "qualification_corpus_blockers_preserved": true,
@@ -371,10 +371,6 @@
     "retained packet-set correct-digit scoring has not fully passed",
     "retained packet-set is missing published failure-code audits",
     "retained packet-set is missing required typed failure codes",
-    "case-study numeric comparison has not fully passed",
-    "case-study correct-digit thresholds have not fully passed",
-    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
-    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200",
     "closed benchmark-family coverage statement is not reviewed"
   ],
   "qualification_corpus_current_state": "blocked-on-qualification-corpus-closure",
@@ -387,9 +383,6 @@
     "phase0-packet-set:blocked-on-correct-digit-thresholds",
     "phase0-failure-code-audit",
     "phase0-required-failure-codes",
-    "case-study:blocked-on-case-study-comparison",
-    "case-study-comparison",
-    "case-study-correct-digits",
     "case-study-requires-phase0-verdict"
   ],
   "qualification_corpus_pending_phase0_ids": [
@@ -428,9 +421,6 @@
         "phase0-failure-code-audit",
         "phase0-required-failure-codes",
         "case-study-numerics",
-        "case-study:blocked-on-case-study-comparison",
-        "case-study-comparison",
-        "case-study-correct-digits",
         "case-study-requires-phase0-verdict"
       ],
       "current_state": "blocked-on-qualification-closure",
@@ -461,9 +451,6 @@
         "phase0-failure-code-audit",
         "phase0-required-failure-codes",
         "case-study-numerics",
-        "case-study:blocked-on-case-study-comparison",
-        "case-study-comparison",
-        "case-study-correct-digits",
         "case-study-requires-phase0-verdict"
       ],
       "current_state": "captured-but-phase0-not-qualified",
@@ -479,7 +466,6 @@
       "blockers": [
         "qualification-corpus-review-incomplete",
         "qualification-corpus-phase0-qualified",
-        "qualification-corpus-case-study-qualified",
         "qualification-corpus-closed-coverage-statement",
         "qualification-path:phase0-pending:automatic_phasespace",
         "qualification-path:phase0-pending:complex_kinematics",
@@ -488,9 +474,6 @@
         "qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds",
         "qualification-path:phase0-failure-code-audit",
         "qualification-path:phase0-required-failure-codes",
-        "qualification-path:case-study:blocked-on-case-study-comparison",
-        "qualification-path:case-study-comparison",
-        "qualification-path:case-study-correct-digits",
         "qualification-path:case-study-requires-phase0-verdict"
       ],
       "id": "qualification-corpus",
@@ -557,6 +540,12 @@
       "blockers": [
         "parity-signoff-incomplete",
         "parity-qualification-closure",
+        "parity-performance-review-summary",
+        "parity-diagnostic-review-summary",
+        "parity-docs-completion-note",
+        "parity-path:diagnostic-review-summary",
+        "parity-path:docs-completion-note",
+        "parity-path:performance-review-summary",
         "parity-path:qualification-closure-note",
         "qualification-corpus",
         "milestone-m6"

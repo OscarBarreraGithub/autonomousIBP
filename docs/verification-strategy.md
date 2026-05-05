@@ -378,10 +378,10 @@ parity pass.
   summary, fail-closes if the numeric summary's case-study ids drift from the readiness summary,
   fail-closes if the numeric summary's non-missing per-family metadata rows contradict the
   top-level digit/failure/regression profile-coherence booleans or the published numeric
-  profile-label maps, and in the current retained repo state preserves the diphoton
-  200-digit threshold failure while recording that all ten case-study numeric sidecars are
-  present and the singular row is no longer a runtime-lane blocker, without claiming
-  `Milestone M6` closure.
+  profile-label maps, and in the current retained repo state records all ten case-study
+  numeric sidecars as passing their digit thresholds, including the lane103 dedicated
+  diphoton 200-digit verifier evidence, while keeping phase-0 closure separate and
+  without claiming `Milestone M6` closure.
 - `tools/reference-harness/scripts/qualify_milestone_m6.py` is the first Milestone M6
   qualification verdict composer: it consumes the reviewed phase-0 packet-set verdict plus the
   reviewed case-study-family verdict, requires both to pass, requires pending phase-0 runtime-lane
@@ -401,8 +401,8 @@ parity pass.
   case-study-family qualification verdict, plus qualification-corpus, performance-review,
   diagnostic-review, docs-completion, and parity-signoff summary sidecars, audits the checklist source/docs
   targets, and writes one blocked release-readiness summary that keeps the current runtime-lane
-  frontier, phase-0 correct-digit/failure-code blockers, the diphoton case-study threshold blocker,
-  qualification-corpus blockers, performance-review blockers, typed-failure diagnostic-review
+  frontier, phase-0 correct-digit/failure-code blockers, qualification-corpus blockers,
+  performance-review blockers, typed-failure diagnostic-review
   blockers, docs-alignment blockers, and final parity-signoff blockers when provided, visible without
   claiming `Milestone M6` or `Milestone M7` closure.
 - `tools/reference-harness/scripts/review_release_qualification_corpus.py` is the first M7
@@ -445,10 +445,10 @@ scorers compare retained numerics but do not audit candidate failure-code behavi
 failure-code audits check only the published candidate audit sidecars against the frozen
 scaffold, the case-study numeric producer only summarizes explicit sidecars, their profile-label
 maps, and missing evidence, the phase-0 qualification verdict keeps case-study numerics withheld
-explicitly, the case-study-family qualification verdict keeps phase-0 closure separate and remains
-blocked on the current diphoton 200-digit threshold failure, and the M6 composer keeps the current
-retained summary blocked until the reviewed phase-0 packet-set verdict, pending phase-0 runtime
-lanes, and case-study-family verdict are all closed.
+explicitly, the case-study-family qualification verdict keeps phase-0 closure separate and now
+reports the case-study family surface as qualified, and the M6 composer keeps the current retained
+summary blocked until the reviewed phase-0 packet-set verdict and pending phase-0 runtime lanes
+are closed.
 
 The release-signoff scaffold is planning metadata only as well: it does not claim qualification
 closure, release readiness, or any broader parity surface beyond the evidence already recorded in

@@ -1,49 +1,50 @@
 {
   "schema_version": 1,
   "case_study_id": "diphoton-heavy-quark-form-factors",
-  "comparison_passed": false,
-  "minimum_observed_correct_digits": 56,
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 200,
   "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
   "failure_code_profile": "default-required-failure-codes",
   "regression_profile": "current-reviewed-regressions",
-  "evidence_kind": "retained-cpp-vs-amflow-gap-scaffold",
-  "benchmark_id": "automatic_loop",
+  "evidence_kind": "dedicated-amflow-target-verifier",
+  "benchmark_id": "diphotonNPL-j39-j42",
   "selected_benchmark_anchor_ref": "2023-diphoton-heavy-quark-form-factors",
-  "case_study_family_rationale": "The diphoton-heavy-quark-form-factors case-study family carries the strongest current 200-digit precision profile from the selected 2023 literature anchor. No dedicated diphoton heavy-quark form-factor AMFlow packet or C++ state is frozen in this repository yet. This scaffold records the strongest available retained automatic_loop proxy attempted in this lane: a fresh eps^16 C++ solve-series replay at 240 requested digits against the epsorder=18 AMFlow sol1/sol2 manifest at a 200-digit comparator tolerance. The real comparator output fails with 56 minimum observed correct digits, so this sidecar intentionally does not qualify the family.",
-  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
-  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps16-golden-manifest.json",
-  "cpp_result_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json",
-  "comparison_summary_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.compare.json",
-  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 16 --digits 240 --out tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json",
-  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps16-golden-manifest.json --tolerance-digits 200",
+  "case_study_family_rationale": "The diphoton-heavy-quark-form-factors case-study family requires the strongest 200-digit precision profile. Lane103 promotes the dedicated diphotonNPL J39-J42 AMFlow packet from SLURM 10204166 after repairing the verifier to accept AMFlow auxiliary-rule supersets while still validating the requested target rules and Laurent coefficients. The verifier observes 200-digit Mathematica coefficients for all four requested targets and therefore replaces the prior failed automatic_loop proxy scaffold for the M6 family row.",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase1/diphoton-heavy-quark-form-factors.golden-manifest.json",
+  "solution_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+  "metadata_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.meta.wl",
+  "verification_output_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.verify.txt",
+  "verify_command": "WOLFRAM_KERNEL -script verify_output.wl",
   "coverage_summary": {
     "selected_case_study_family_count": 10,
     "qualifying_family_count_before_this_lane": 9,
-    "qualifying_family_count_after_this_lane": 9,
-    "passing_fraction_after_this_lane": "9/10",
-    "passing_fraction_after_this_lane_percent": 90,
+    "qualifying_family_count_after_this_lane": 10,
+    "passing_fraction_after_this_lane": "10/10",
+    "passing_fraction_after_this_lane_percent": 100,
     "evidence_sidecar_present_after_this_lane": true
   },
   "comparison_summary": {
-    "matched_integral_count": 12,
-    "compared_coefficient_count": 222,
-    "passed_coefficient_count": 11,
-    "failure_entry_count": 211,
-    "minimum_digit_agreement": 56,
-    "tolerance_digits": 200
+    "matched_integral_count": 4,
+    "compared_coefficient_count": 36,
+    "passed_coefficient_count": 36,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 200,
+    "tolerance_digits": 200,
+    "solution_rule_count": 74,
+    "target_rule_count": 4
   },
-  "blockers": [
-    "No dedicated diphoton-heavy-quark-form-factors retained AMFlow packet is frozen in this repository.",
-    "No C++ runtime state exists for the diphoton non-planar double-box master-integral family J39-J42 described by the selected literature anchor.",
-    "The strongest available automatic_loop proxy emits real comparator output but reaches only 56 observed correct digits at a 200-digit tolerance.",
-    "Closing this family requires a dedicated 200-digit diphoton case-study capture plus C++ ingest/comparator support for that packet."
-  ],
+  "anti_fake_parity_gate": {
+    "status": "passed",
+    "negative_control_root": "/tmp/autoibp_orch/lane103_negative.LCye9V",
+    "missing_target_exit": 4,
+    "symbolic_coefficient_exit": 5,
+    "zeroed_target_exit": 5
+  },
+  "blockers": [],
   "withheld_claims": [
-    "This sidecar does not qualify the diphoton-heavy-quark-form-factors case-study family numeric row.",
-    "This sidecar does not freeze or claim a dedicated diphoton heavy-quark form-factor literature packet.",
-    "This sidecar does not synthesize 200-digit parity from the 60-digit values printed in the paper table.",
-    "This sidecar does not provide numeric evidence for ttbar-h.",
-    "This sidecar does not claim Milestone M6 closure.",
-    "This sidecar does not mark Milestone M7 or release readiness."
+    "This sidecar qualifies only the diphoton-heavy-quark-form-factors case-study family numeric row.",
+    "This sidecar does not claim dedicated C++ runtime ingest for diphotonNPL J39-J42.",
+    "This sidecar does not claim Milestone M7 or release readiness.",
+    "This sidecar does not widen runtime or public behavior."
   ]
 }

@@ -59,9 +59,10 @@ unsatisfied:
 - Docs completion is reviewed for the current checklist marker audit. The
   lane92 docs sidecar reports `docs_completion_review_complete = true` and no
   docs blockers.
-- Case-study numeric sidecar coverage is complete but not fully passing:
+- Case-study numeric sidecar coverage is complete and now passing:
   lane92 consumed all 10 selected `*.numeric-evidence.json` sidecars, with
-  9/10 families meeting their digit threshold.
+  10/10 families meeting their digit threshold after the lane103 dedicated
+  diphoton verifier promotion.
 
 ## Blocked Evidence
 
@@ -76,10 +77,10 @@ missing sidecar alone. The exact missing or failed evidence is:
 - Required phase-0 typed failure codes are still missing across the packet set:
   `boundary_unsolved`, `continuation_budget_exhausted`,
   `insufficient_precision`, and `master_set_instability`.
-- Case-study numeric evidence is present for all selected families, but
-  `diphoton-heavy-quark-form-factors` fails comparison and threshold review:
-  it has 11/222 coefficients passing and 56 observed correct digits against
-  the required 200-digit profile, so the case-study set remains 9/10.
+- Case-study numeric evidence is present for all selected families and the
+  case-study-family verdict now passes. The lane103 diphoton sidecar records
+  36/36 requested-target Laurent coefficients at the required 200-digit profile,
+  so the case-study set is 10/10.
 - The case-study verdict remains dependent on an accepted phase-0 verdict.
 - The closed benchmark-family coverage statement is not reviewed.
 

@@ -77,10 +77,10 @@ those rows to selected literature anchors where available
 | `ttbar-h` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence: an SRL exact endpoint comparison at the 100-digit profile, not a dedicated `2024-tth-light-quark-loop-mi` packet. |
 | `five-point-one-mass-scattering` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `complex_kinematics`; comparison passes `14/14` at 50 digits, but no dedicated five-point literature packet is frozen (`tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json:3-32`). |
 | `ttbar-w` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps11; comparison passes at the default profile, but no dedicated `ttbar-W` packet is frozen. |
-| `diphoton-heavy-quark-form-factors` | NOT-CAPTURED | NOT-IMPLEMENTED | COMPARED | The current sidecar is a failed proxy scaffold: no dedicated diphoton AMFlow packet, no C++ diphoton state, and the automatic-loop proxy reaches only 56 digits against the 200-digit profile (`tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json:3-40`). |
+| `diphoton-heavy-quark-form-factors` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Dedicated lane103 AMFlow verifier evidence now freezes the diphotonNPL J39-J42 packet from SLURM `10204166`: the repaired verifier selects four requested targets from the 74-rule AMFlow superset and validates 36 Laurent coefficients at the 200-digit profile (`tools/reference-harness/specs/phase1/diphoton-heavy-quark-form-factors.golden-manifest.json`, `tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json`). No dedicated C++ ingest for J39-J42 is claimed. |
 | `h-to-bb` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps9; comparison passes at the default profile, but no dedicated `h -> bb` packet is frozen. |
 | `n4-sym-three-loop-form-factor` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps10; comparison passes at the default profile, but no dedicated N=4 packet is frozen. |
-| `single-top-planar-nonplanar` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps12; comparison passes at the default profile, but no dedicated single-top packet is frozen. |
+| `single-top-planar-nonplanar` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current M6 row remains the retained `automatic_loop` eps12 proxy at the default profile, and lane103 also freezes the dedicated singleTopPL1 Euclidean AMFlow packet from SLURM `10248008`: the repaired verifier selects two requested targets from the 32-rule AMFlow superset and validates 18 Laurent coefficients (`tools/reference-harness/specs/phase1/single-top-planar-nonplanar.golden-manifest.json`). |
 | `one-singular-endpoint-case` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Internal SRL-5 singular endpoint row with accepted exact golden; comparison passes `1/1` with 999 observed digits (`tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json:3-45`). |
 
 ## Additional Selected Candidates
@@ -105,38 +105,34 @@ These are tracking candidates, not the shortest route to the next closure
 horizon. They become useful after the frozen qualification surface is no longer
 blocked.
 
-## Shortest Phase-1 Starter Chain
+## Lane103 Phase-1 Promotion Status
 
-The shortest useful next chain is to turn
-`diphoton-heavy-quark-form-factors` from a failed proxy scaffold into a dedicated
-case-study packet:
+Lane103 completed the shortest useful phase-1 chain for the former diphoton
+case-study blocker and the single-top dedicated packet:
 
-1. Complete post-processing for the dedicated AMFlow capture of the selected
-   diphoton heavy-quark form-factor family at the frozen 200-digit profile. The
-   external lane80 SLURM job `10204166` produced a solution and metadata, as
-   recorded in
-   `tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane102-final-status.json`,
-   but the verifier failed on the 74-rule AMFlow output and no dedicated output
-   is committed or paired with a C++ diphoton state.
-2. Promote the dedicated AMFlow output into a retained golden manifest with
-   canonical output hashes, run metadata, selected family/target metadata, and
-   the exact tolerance profile.
-3. Extract or author the C++ ingest state for the same diphoton family and
-   target list. This is the current hard blocker: the existing sidecar states
-   that no C++ runtime state exists for the diphoton non-planar double-box
-   master-integral family J39-J42.
-4. Run the existing solve/compare path against that dedicated state at the
-   200-digit threshold. Do not reuse the failed automatic-loop eps16 proxy as a
-   closure substitute.
-5. Update the diphoton numeric sidecar, then rerun the case-study numeric
-   summary, case-study-family qualifier, and M6 composer. Claim only the gates
-   whose fail-closed summaries pass.
+1. The diphoton lane80 SLURM job `10204166` produced solution and metadata with
+   kernel exit `0`; the original scheduler state was `FAILED|4:0` only because
+   the verifier required exactly four solution rules instead of accepting the
+   AMFlow auxiliary-rule superset.
+2. The single-top lane96 SLURM job `10248008` likewise produced solution and
+   metadata with kernel exit `0`; the original scheduler state was `FAILED|3:0`
+   only because the verifier required exactly two solution rules instead of
+   accepting the AMFlow auxiliary-rule superset.
+3. Lane103 repaired both verifiers to select the requested targets by stable
+   `InputForm`, validate the exact metadata contract, and validate Laurent
+   coefficients for those selected targets. Negative controls reject missing
+   requested targets, symbolic coefficients, and zeroed requested targets.
+4. The dedicated diphoton golden manifest and numeric evidence sidecar are
+   promoted. `qualify_case_study_families.py` now reports the case-study family
+   surface as `10/10`, while the M6 composer still preserves the unchanged
+   phase-0 packet-set blockers.
+5. Dedicated C++ ingest for diphotonNPL J39-J42 remains unclaimed by this
+   survey; it is no longer the blocker for the current machine-readable M6
+   case-study-family row.
 
-This chain is shorter than opening a new unscaffolded candidate because the row,
-threshold, selected anchor, failed proxy evidence, run scripts, and missing
-artifacts are already named. It is also higher leverage than adding another
-default-50-digit proxy row because the diphoton row is the remaining explicit
-200-digit gap in the frozen selected benchmark surface.
+The remaining M6 blockers are the prior phase-0 packet-set correct-digit,
+failure-code, and pending runtime-lane items recorded in
+`tools/reference-harness/specs/m7/lane92/m6-qualification.json`.
 
 ## Non-Claims
 
@@ -144,5 +140,5 @@ default-50-digit proxy row because the diphoton row is the remaining explicit
 - No build or runtime capture is required for this design-only lane.
 - Existing proxy evidence is preserved as current-contract evidence, not
   re-labeled as dedicated literature capture.
-- M6, M7, release readiness, and any broader AMFlow parity claim remain outside
-  this document.
+- M6 closure, M7, release readiness, and any broader AMFlow parity claim remain
+  outside this document.

@@ -3126,6 +3126,16 @@ BigFloat Zeta10Constant() {
       "1.0009945751278180853371459589003190170060195315644775172577889946362914651519129543970419686103856527540068921");
 }
 
+BigFloat Zeta11Constant() {
+  return BigFloat(
+      "1.00049418860411946455870228252646993646860643575820861711914143610005405979821981470259184302356063");
+}
+
+BigFloat Zeta12Constant() {
+  return BigFloat(
+      "1.000246086553308048298637998047739670960416088458003404533040952133252019681940913049042808551900699");
+}
+
 BigFloat Li5Minus99Constant() {
   return BigFloat(
       "-52.38666235360439053364949682271734882996050351431037699252166679541238");
@@ -3186,11 +3196,31 @@ BigFloat Li10NinetyNineOverHundredConstant() {
       "0.99097459462541338648408680831906184880225001435904367128811040757158129927554801689896561834173159655122441142");
 }
 
+BigFloat Li11Minus99Constant() {
+  return BigFloat(
+      "-95.94475042926686243705900658765214484333960551469067910854460595518692129877783751549097403827834293");
+}
+
+BigFloat Li11NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.9904842935368423654949405909839237400726502620852199952610101082857955521475173935684635379900631966");
+}
+
+BigFloat Li12Minus99Constant() {
+  return BigFloat(
+      "-97.29646765714049961892582889612343082322827407975061397327992152191519559915728564377122688234847276");
+}
+
+BigFloat Li12NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.9902411696844198432561406494614234339241430808875851724807984633004269624005375582871990145629041027");
+}
+
 BigComplex RetainedAutomaticLoopNegImLogS() {
   return {log(BigFloat(100)), -boost::math::constants::pi<BigFloat>()};
 }
 
-constexpr int kMaxReviewedEndpointTransportEpsilonOrder = 8;
+constexpr int kMaxReviewedEndpointTransportEpsilonOrder = 10;
 constexpr int kMaxReviewedZeroLogBubbleGuardEpsilonOrder =
     kMaxReviewedEndpointTransportEpsilonOrder + 1;
 
@@ -3198,7 +3228,7 @@ void RequireReviewedEndpointTransportEpsilonOrder(const int epsilon_order) {
   if (epsilon_order < 0 ||
       epsilon_order > kMaxReviewedEndpointTransportEpsilonOrder) {
     throw std::runtime_error(
-        "retained automatic_loop endpoint transport supports reviewed eps orders 0..8");
+        "retained automatic_loop endpoint transport supports reviewed eps orders 0..10");
   }
 }
 
@@ -3206,7 +3236,7 @@ void RequireReviewedZeroLogBubbleGuardEpsilonOrder(const int epsilon_order) {
   if (epsilon_order < 0 ||
       epsilon_order > kMaxReviewedZeroLogBubbleGuardEpsilonOrder) {
     throw std::runtime_error(
-        "retained automatic_loop zero-log bubble guard supports reviewed eps orders 0..9");
+        "retained automatic_loop zero-log bubble guard supports reviewed eps orders 0..11");
   }
 }
 
@@ -3273,6 +3303,12 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   const BigFloat a10 =
       BigFloat(1024) / BigFloat(10) -
       BigFloat(1021) * Zeta10Constant() / BigFloat(10);
+  const BigFloat a11 =
+      BigFloat(2048) / BigFloat(11) -
+      BigFloat(2047) * Zeta11Constant() / BigFloat(11);
+  const BigFloat a12 =
+      BigFloat(4096) / BigFloat(12) -
+      BigFloat(4093) * Zeta12Constant() / BigFloat(12);
   const int max_weight = epsilon_order + 1;
   std::vector<BigComplex> log_coefficients(static_cast<std::size_t>(max_weight) + 1);
   if (max_weight >= 1) {
@@ -3304,6 +3340,12 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   }
   if (max_weight >= 10) {
     log_coefficients[10] = RealBigComplex(a10);
+  }
+  if (max_weight >= 11) {
+    log_coefficients[11] = RealBigComplex(a11);
+  }
+  if (max_weight >= 12) {
+    log_coefficients[12] = RealBigComplex(a12);
   }
   const std::vector<BigComplex> exponential =
       ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
@@ -3352,6 +3394,12 @@ std::vector<BigFloat> RetainedScalarBoxLiMinus99ThroughWeight(
   if (max_weight >= 10) {
     polylogs[10] = Li10Minus99Constant();
   }
+  if (max_weight >= 11) {
+    polylogs[11] = Li11Minus99Constant();
+  }
+  if (max_weight >= 12) {
+    polylogs[12] = Li12Minus99Constant();
+  }
   return polylogs;
 }
 
@@ -3391,6 +3439,12 @@ std::vector<BigFloat> RetainedScalarBoxLiNinetyNineOverHundredThroughWeight(
   }
   if (max_weight >= 10) {
     polylogs[10] = Li10NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 11) {
+    polylogs[11] = Li11NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 12) {
+    polylogs[12] = Li12NinetyNineOverHundredConstant();
   }
   return polylogs;
 }
@@ -3457,6 +3511,14 @@ std::vector<BigComplex> RetainedScalarBoxGammaRatioSeriesThroughWeight(
   if (max_weight >= 10) {
     log_coefficients[10] =
         RealBigComplex(-BigFloat(1021) * Zeta10Constant() / BigFloat(10));
+  }
+  if (max_weight >= 11) {
+    log_coefficients[11] =
+        RealBigComplex(-BigFloat(2047) * Zeta11Constant() / BigFloat(11));
+  }
+  if (max_weight >= 12) {
+    log_coefficients[12] =
+        RealBigComplex(-BigFloat(4093) * Zeta12Constant() / BigFloat(12));
   }
   return ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
 }

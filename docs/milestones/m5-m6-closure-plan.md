@@ -155,6 +155,16 @@ Current M6 blockers to preserve:
 - singular endpoint qualification remains outside this M5 closure claim until M6 evidence retires it
 - M7 and release-readiness review sidecars remain separate non-claims
 
+Lane78 adds a fail-closed diphoton-heavy-quark-form-factors scaffold rather
+than a passing case-study row. The selected anchor
+`2023-diphoton-heavy-quark-form-factors` carries the 200-digit profile, but the
+repository has no dedicated diphoton AMFlow packet or C++ state for the
+non-planar double-box master-integral family. A fresh automatic_loop eps16 proxy
+replay at 240 requested digits against the real epsorder=18 AMFlow sol1/sol2
+manifest failed the 200-digit comparator with only 56 minimum observed correct
+digits. TODO: close this family only after adding a dedicated 200-digit
+diphoton capture plus C++ ingest/comparator support for that packet.
+
 Singular runtime lane status: SRL-1 and SRL-2 are landed, lane64 adds SRL-3
 branch/prescription ledger support, lane68 adds the first narrow SRL-4 live
 eta-zero endpoint extraction path for the reviewed exact simple-pole Frobenius

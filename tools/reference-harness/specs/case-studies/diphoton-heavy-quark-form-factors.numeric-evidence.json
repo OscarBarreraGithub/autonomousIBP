@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "case_study_id": "diphoton-heavy-quark-form-factors",
+  "comparison_passed": false,
+  "minimum_observed_correct_digits": 56,
+  "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow-gap-scaffold",
+  "benchmark_id": "automatic_loop",
+  "selected_benchmark_anchor_ref": "2023-diphoton-heavy-quark-form-factors",
+  "case_study_family_rationale": "The diphoton-heavy-quark-form-factors case-study family carries the strongest current 200-digit precision profile from the selected 2023 literature anchor. No dedicated diphoton heavy-quark form-factor AMFlow packet or C++ state is frozen in this repository yet. This scaffold records the strongest available retained automatic_loop proxy attempted in this lane: a fresh eps^16 C++ solve-series replay at 240 requested digits against the epsorder=18 AMFlow sol1/sol2 manifest at a 200-digit comparator tolerance. The real comparator output fails with 56 minimum observed correct digits, so this sidecar intentionally does not qualify the family.",
+  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps16-golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 16 --digits 240 --out tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps16-golden-manifest.json --tolerance-digits 200",
+  "coverage_summary": {
+    "selected_case_study_family_count": 10,
+    "qualifying_family_count_before_this_lane": 9,
+    "qualifying_family_count_after_this_lane": 9,
+    "passing_fraction_after_this_lane": "9/10",
+    "passing_fraction_after_this_lane_percent": 90,
+    "evidence_sidecar_present_after_this_lane": true
+  },
+  "comparison_summary": {
+    "matched_integral_count": 12,
+    "compared_coefficient_count": 222,
+    "passed_coefficient_count": 11,
+    "failure_entry_count": 211,
+    "minimum_digit_agreement": 56,
+    "tolerance_digits": 200
+  },
+  "blockers": [
+    "No dedicated diphoton-heavy-quark-form-factors retained AMFlow packet is frozen in this repository.",
+    "No C++ runtime state exists for the diphoton non-planar double-box master-integral family J39-J42 described by the selected literature anchor.",
+    "The strongest available automatic_loop proxy emits real comparator output but reaches only 56 observed correct digits at a 200-digit tolerance.",
+    "Closing this family requires a dedicated 200-digit diphoton case-study capture plus C++ ingest/comparator support for that packet."
+  ],
+  "withheld_claims": [
+    "This sidecar does not qualify the diphoton-heavy-quark-form-factors case-study family numeric row.",
+    "This sidecar does not freeze or claim a dedicated diphoton heavy-quark form-factor literature packet.",
+    "This sidecar does not synthesize 200-digit parity from the 60-digit values printed in the paper table.",
+    "This sidecar does not provide numeric evidence for ttbar-h.",
+    "This sidecar does not claim Milestone M6 closure.",
+    "This sidecar does not mark Milestone M7 or release readiness."
+  ]
+}

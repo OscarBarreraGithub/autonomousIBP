@@ -579,8 +579,10 @@ def extract_state(system_dir: Path,
     cpp_ingest_reason = (
         "The retained AMFlow phase-space state carries Prescription/Cut metadata "
         "and solution epsilon samples.  C++ solve-series can fit those retained "
-        "solution samples and apply retained target reduction; full Cutkosky "
-        "phase-space boundary reconstruction from cut propagators remains deferred."
+        "solution samples and emit retained output integrals directly; full "
+        "Cutkosky phase-space boundary reconstruction from cut propagators remains "
+        "deferred, and retained target-reduction application remains deferred when "
+        "target_reduction_path is empty."
     )
   elif retained_loop_solution_payload is not None:
     cpp_ingest_supported = True

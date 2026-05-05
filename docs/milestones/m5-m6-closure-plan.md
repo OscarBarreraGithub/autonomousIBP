@@ -18,6 +18,7 @@ Milestone closure verdict: REJECT M5 closure and REJECT M6 closure.
 - Canonical docs: `docs/full-amflow-completion-roadmap.md`, `docs/verification-strategy.md`, `docs/implementation-ledger.md`, `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`, `docs/parity-contract.md`.
 - Probe summaries: `/tmp/autoibp_orch/exec/lane20_probe/*.compare.json` and matching `*.cpp.json`.
 - Lane21 forward-roll evidence: `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.cpp.json` and `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.compare.json`.
+- Lane29 forward-roll evidence: `tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json`, `/tmp/autoibp_orch/exec/lane29_feynman_prescription.cpp-result.json`, `/tmp/autoibp_orch/exec/lane29_feynman_prescription.compare.json`, and `/tmp/autoibp_orch/exec/lane29_parity_rerun/aggregate.json`.
 
 ## Exact Acceptance Criteria
 
@@ -48,12 +49,14 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 - `automatic_vs_manual` retained-state C++/AMFlow comparison is now passing as a narrow regression. Lane24 rerun evidence reports `89/89`, `minimum_digit_agreement=36`, `tolerance_digits=30`; this replaces the older lane20 failed plain-ProblemSpec probe but still needs M5 acceptance as a live/direct feature-surface path or a packet-shaped retained-state exception.
 - `complex_kinematics` retained-sample comparison is now passing as a narrow regression through the positive-order eps2 surface. Lane24 rerun evidence reports the eps-through-zero surface at `14/14` and the `complex_kinematics.eps2` surface at `28/28`, both with `minimum_digit_agreement=41` and `tolerance_digits=30`; full complex eta-contour endpoint reconstruction remains deferred.
 - `differential_equation_solver` retained finite-start DE transport comparison is passing for the tracked `sol2` surface. Lane21 evidence: `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.compare.json` reports `passed=true`, `matched_integral_count=3`, `compared_coefficient_count=3`, `passed_coefficient_count=3`, `minimum_digit_agreement=30`, `tolerance_digits=30`, and no failures. The C++ summary in `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.cpp.json` says it applied finite-start differential-equation transport from retained solution samples to `eta=1/10` and reconstructed one solution-basis output integral from the retained Kira relation. This is a retained-state parity surface only; full live finite-start boundary solving remains deferred and does not close M5 by itself.
+- `feynman_prescription` retained `sol1` solution-sample comparison is now passing as a narrow regression. Lane29 evidence reports `passed=true`, `matched_integral_count=16`, `compared_coefficient_count=76`, `passed_coefficient_count=76`, `minimum_digit_agreement=39`, `tolerance_digits=30`, and no failures for `tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json` against the retained scoped `sol1` golden.
 - `linear_propagator` retained solution-sample comparison is now passing as a narrow regression. Lane24 rerun evidence reports `57/57`, `minimum_digit_agreement=31`, `tolerance_digits=30`; this supersedes the older lane20 `29/57` failing probe while preserving the distinction between retained-sample parity and a full live gauge-link runtime gate.
 
 ### M5 PARTIAL Criteria
 
 - `automatic_phasespace` is partial for true M5 because the passing evidence is retained sample ingestion, not full phase-space integration through the live solver path required by Phase F.
 - `automatic_vs_manual`, `complex_kinematics`, and `linear_propagator` are partial for true M5 for the same reason: they now have passing retained-state or retained-sample numeric surfaces, but the Phase F closure gate still needs accepted live-path evidence or an explicit fail-closed retained-state exception policy.
+- `feynman_prescription` is partial for true M5 because Lane29 proves retained `sol1` solution-sample parity only. The retained golden pointer is now reference-captured with requested-integral backup scope, but this C++ state does not broaden that into full auxiliary-basis equivalence, full live Cutkosky/prescription boundary reconstruction, or opposite-prescription output handling.
 - The default `differential_equation_solver.golden-manifest.json` `sol1` comparator surface remains non-passing in the all-manifest aggregate (`0/3`) because the current retained C++ state is the reviewed `sol2` transport check. M5 needs this old surface either repaired, retired as structural/non-current, or explicitly excluded by a fail-closed manifest-selection rule.
 - `spacetime_dimension` / arbitrary `D0` is partial/TODO. Optional captured evidence exists, but the Phase F live-path arbitrary-D0 gate remains unclosed.
 - User-defined `AMFMode` and `EndingScheme` are partial/TODO. Optional retained captures and planning surfaces exist, but there is no accepted coefficient-bearing C++ parity packet for those execution paths.
@@ -61,15 +64,14 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 
 ### M5 FAILING Criteria
 
-- `feynman_prescription` is failing as a C++ closure input. Its retained capture-failed reference pointer is present in the current worktree, but Lane24 rerun evidence still reports `solve-series` exit `3`, no C++ result JSON, and `0/76` scoped coefficients passing at unchanged 30-digit tolerance.
-- The lane24 all-manifest packet-wide aggregate remains failing: `400/479` current manifest-surface coefficients pass at 30 digits. The latest-per-benchmark view is `266/342`, where the missing `76` passing coefficients are the retained feynman prescription C++ gap. This is substantial progress over Lane 12's `54/217`, but not M5 closure.
+- The lane29 all-manifest packet-wide aggregate remains failing: `476/479` current manifest-surface coefficients pass at 30 digits when rerun with HEAD copies of the dirty DE and feynman wrapper manifests to avoid unrelated worktree edits changing the arithmetic. The remaining coefficient failure is the old default `differential_equation_solver` `sol1` surface at `0/3`; this is substantial progress over Lane 24's `400/479`, but not M5 closure.
 
 ### M5 TODO Criteria
 
-- Add prescription-aware C++ solve-series support for `feynman_prescription` and compare it against the retained scoped `sol1` golden without weakening tolerance.
+- Preserve the Lane29 `feynman_prescription` retained `sol1` regression (`76/76`, `minimum_digit_agreement=39`) while keeping the requested-integral backup scope distinct from full auxiliary-basis equivalence and adding live phase-space/prescription runtime evidence where Phase F requires it.
 - Repair, retire, or explicitly classify the old `differential_equation_solver` `sol1` manifest surface so all-manifest packet scoring cannot be confused with the reviewed passing `sol2` transport check.
 - Add live solver-path evidence or accepted retained-state exception criteria for `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `spacetime_dimension`, user hooks, fixed-`eps`, and singular physical-region coverage.
-- Keep the Lane24 passing retained surfaces as regressions: `automatic_loop.eps4` `78/78`, `automatic_phasespace` `11/11`, `automatic_vs_manual` `89/89`, `complex_kinematics.eps2` `28/28`, `differential_equation_solver.sol2` `3/3`, and `linear_propagator` `57/57`.
+- Keep the Lane24/Lane29 passing retained surfaces as regressions: `automatic_loop.eps4` `78/78`, `automatic_phasespace` `11/11`, `automatic_vs_manual` `89/89`, `complex_kinematics.eps2` `28/28`, `differential_equation_solver.sol2` `3/3`, `feynman_prescription` `76/76`, and `linear_propagator` `57/57`.
 - Add the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, or metadata-only feature slices.
 
 M5 overall status: PARTIAL/FAILING, not closeable.
@@ -104,7 +106,7 @@ M6 overall status: TODO/FAILING, not closeable.
 
 ## Shortest Atomic Landing Chain
 
-1. Add `feynman_prescription` C++ parity. Keep the retained golden pointer visible as capture-blocked until the backup mismatch is resolved, add prescription-aware solve-series support, and drive the scoped comparator from `0/76` to passing without hardcoding coefficients or weakening tolerance.
+1. Preserve the Lane29 `feynman_prescription` retained `sol1` parity regression. Keep the retained golden pointer's requested-integral backup scope distinct from full auxiliary-basis equivalence, and do not treat retained solution-sample parity as full live prescription runtime closure.
 2. Resolve the DE manifest split. Preserve the passing `differential_equation_solver.sol2` `3/3` transport regression, then either repair the default `sol1` comparator surface, retire it as structural/non-current, or teach the fail-closed M5 helper how to select the reviewed numeric surface.
 3. Finish the retained-state/direct runtime acceptance path for `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`; keep structural outputs separate from solve-series numeric comparison.
 4. Turn `automatic_phasespace` retained-sample parity into accepted M5 phase-space support. Keep the `11/11` comparison as a regression, then land the smallest live Cutkosky/prescription runtime slice needed for Phase F.
@@ -118,7 +120,7 @@ M6 overall status: TODO/FAILING, not closeable.
 
 ## Worker Prompt Skeletons
 
-Worker 1, `feynman_prescription` C++ parity: Start from the retained feynman prescription pointer and the Lane24 `0/76` comparison gap. Add prescription-aware solve-series input/runtime support for the scoped `sol1` comparator view, preserve the full `sol1`/`sol2` opposite-prescription reference provenance, and compare against `feynman_prescription.golden-manifest.json` at unchanged 30-digit tolerance. Do not hide the backup mismatch or treat the reference pointer itself as C++ parity.
+Worker 1, `feynman_prescription` retained parity maintenance: Preserve Lane29's retained `sol1` solution-sample comparison (`76/76`, `minimum_digit_agreement=39`) and keep it in the parity rerun set. Then add the smallest live prescription/phase-space runtime slice needed for Phase F while keeping requested-integral backup acceptance distinct from full auxiliary-basis equivalence. Do not weaken tolerance or treat retained solution samples as full live runtime closure.
 
 Worker 2, `automatic_vs_manual` M5 acceptance: Preserve the Lane24 passing retained-state comparison for the upstream `tt` benchmark (`89/89`, `minimum_digit_agreement=36`) and decide whether M5 accepts that retained-state surface or still requires a direct live `solve_series` path. Keep automatic/manual family scoping explicit, compare against `automatic_vs_manual.golden-manifest.json` at unchanged 30-digit tolerance, and retain tests that fail on fallback/no-DE input rather than silently producing a pass.
 
@@ -126,7 +128,7 @@ Worker 3, complex/D0/DE coverage: Add tracked, reviewed C++ comparison surfaces 
 
 Worker 4, `linear_propagator` M5 acceptance: Preserve the Lane24 passing retained solution-sample comparison (`57/57`, `minimum_digit_agreement=31`) and convert it into accepted M5 evidence only if the fail-closed criteria allow retained-sample parity for this feature. If live gauge-link runtime evidence is still required, add it without weakening tolerance, and keep the old `gaugex->1` parser regression protected if it still applies.
 
-Worker 5, phase-space and prescription runtime: Keep `automatic_phasespace` `11/11` retained-sample comparison as a regression, then add the smallest live Cutkosky phase-space boundary/runtime slice and opposite-prescription handling needed for Phase F. For `feynman_prescription`, start from the retained golden pointer and the Lane24 `0/76` C++ gap. Unsupported provider or boundary surfaces must fail with typed `boundary_unsolved`, not metadata-only success.
+Worker 5, phase-space and prescription runtime: Keep `automatic_phasespace` `11/11` and Lane29 `feynman_prescription` `76/76` retained-sample comparisons as regressions, then add the smallest live Cutkosky phase-space boundary/runtime slice and opposite-prescription handling needed for Phase F. Unsupported provider or boundary surfaces must fail with typed `boundary_unsolved`, not metadata-only success.
 
 Worker 6, fixed-eps/D0/singular runtime: Close the non-example Phase F runtime gaps with coefficient-bearing evidence. Add one fixed-`eps` comparison, one arbitrary-D0 comparison through `spacetime_dimension`, and one singular physical-region subset that either passes against an accepted golden or has an explicitly reviewed typed-failure contract. Retire the singular endpoint blocker only with runtime evidence, not guardrail metadata alone.
 
@@ -144,7 +146,7 @@ Worker 12, final M6 composer: Run `qualify_milestone_m6.py` only after the phase
 
 ## Feasibility Assessment
 
-M5 closure is feasible, but not as a documentation-only or single-lane cleanup. Lane24 removes several numeric blockers by showing retained-surface parity for `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `automatic_phasespace`, `automatic_loop.eps4`, and `differential_equation_solver.sol2`. The remaining work is still real implementation and qualification work: prescription-aware C++ parity for `feynman_prescription`, a clear fail-closed rule for the DE `sol1`/`sol2` manifest split, accepted live-path or retained-state exception criteria for the feature surfaces, D0/fixed-eps/user-hook coverage, and phase-space/prescription live-path evidence.
+M5 closure is feasible, but not as a documentation-only or single-lane cleanup. Lane24 removes several numeric blockers by showing retained-surface parity for `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `automatic_phasespace`, `automatic_loop.eps4`, and `differential_equation_solver.sol2`; Lane29 removes the retained `feynman_prescription` scoped `sol1` numeric gap by moving it from `0/76` to `76/76`. The remaining work is still real implementation and qualification work: a clear fail-closed rule for the DE `sol1`/`sol2` manifest split, accepted live-path or retained-state exception criteria for the feature surfaces, D0/fixed-eps/user-hook coverage, feynman requested-integral backup scope versus full auxiliary-basis equivalence, live opposite-prescription handling, and phase-space/prescription live-path evidence.
 
 M6 closure is not feasible until M5 closes. Even after M5, M6 requires candidate packet publishing, passing phase-0 packet qualification, explicit case-study numeric sidecars at the frozen digit thresholds, and retirement of the singular endpoint blocker. The harness scaffolding exists, so this is not a blank infrastructure project, but it still needs targeted infrastructure investment in packet-shaped candidate output, failure-code sidecars, and case-study numeric evidence production. Current evidence supports planning and partial retained-state progress, not immediate M5/M6 closure.
 

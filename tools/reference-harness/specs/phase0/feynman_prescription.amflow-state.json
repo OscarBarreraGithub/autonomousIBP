@@ -521,7 +521,7 @@
     ]
   },
   "cpp_solve_series_ingest": {
-    "reason": "The retained AMFlow phase-space state carries Prescription/Cut metadata and solution epsilon samples.  C++ solve-series can fit those retained solution samples and apply retained target reduction; full Cutkosky phase-space boundary reconstruction from cut propagators remains deferred.",
+    "reason": "The retained AMFlow phase-space state carries Prescription/Cut metadata and solution epsilon samples. C++ solve-series can fit those retained solution samples and emit retained output integrals directly; full Cutkosky phase-space boundary reconstruction from cut propagators and retained target-reduction application remain deferred when target_reduction_path is empty.",
     "supported": true
   },
   "family": "loopxloop",

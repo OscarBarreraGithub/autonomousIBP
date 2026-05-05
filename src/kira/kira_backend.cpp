@@ -2237,9 +2237,15 @@ ParsedReductionResult KiraBackend::ParseReductionResult(
                              result.rule_path.string());
   }
 
+  const std::string rule_body = Trim(content.substr(1, content.size() - 2));
+  if (rule_body.empty()) {
+    result.status = ParsedReductionStatus::IdentityFallback;
+    result.rules = MakeIdentityRules(result.master_list.masters);
+    return result;
+  }
+
   const std::vector<std::string> entries = SplitTopLevel(
-      content.substr(1, content.size() - 2), ',', "Kira reduction rule file " +
-                                                     result.rule_path.string());
+      rule_body, ',', "Kira reduction rule file " + result.rule_path.string());
   std::set<std::string> seen_targets;
   std::vector<ParsedReductionRule> explicit_rules;
   for (std::size_t index = 0; index < entries.size(); ++index) {

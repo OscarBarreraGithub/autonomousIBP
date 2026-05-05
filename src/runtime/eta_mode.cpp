@@ -654,15 +654,16 @@ bool IsSubsetOf(const std::vector<std::size_t>& subset, const std::vector<std::s
   return std::includes(superset.begin(), superset.end(), subset.begin(), subset.end());
 }
 
-std::vector<std::size_t> IntersectWithSortedIndices(const std::vector<std::size_t>& values,
-                                                    const std::vector<std::size_t>& keep) {
-  std::vector<std::size_t> intersection;
-  std::set_intersection(values.begin(),
-                        values.end(),
-                        keep.begin(),
-                        keep.end(),
-                        std::back_inserter(intersection));
-  return intersection;
+bool GroupIntersectsCutCandidate(const std::vector<std::size_t>& group,
+                                 const BranchLoopCandidateAnalysis& analysis) {
+  for (const std::size_t index : group) {
+    if (!std::binary_search(analysis.uncut_candidate_indices.begin(),
+                            analysis.uncut_candidate_indices.end(),
+                            index)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool CompareIndexGroups(const std::vector<std::size_t>& left,
@@ -817,7 +818,9 @@ std::vector<std::vector<std::size_t>> BuildBranchGroups(
                         coefficient_variables.begin(),
                         coefficient_variables.end(),
                         std::back_inserter(branch));
-    branch = IntersectWithSortedIndices(branch, analysis.uncut_candidate_indices);
+    if (GroupIntersectsCutCandidate(branch, analysis)) {
+      continue;
+    }
     if (!branch.empty()) {
       groups.push_back(std::move(branch));
     }
@@ -872,7 +875,9 @@ std::vector<std::vector<std::size_t>> BuildLoopGroups(
     }
     std::sort(group.begin(), group.end());
     group.erase(std::unique(group.begin(), group.end()), group.end());
-    group = IntersectWithSortedIndices(group, analysis.uncut_candidate_indices);
+    if (GroupIntersectsCutCandidate(group, analysis)) {
+      continue;
+    }
     if (!group.empty()) {
       groups.push_back(std::move(group));
     }

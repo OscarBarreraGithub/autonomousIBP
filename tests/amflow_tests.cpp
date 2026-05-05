@@ -2043,6 +2043,12 @@ amflow::ProblemSpec MakeBranchLoopAllCutActiveSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeBranchLoopMixedCutGroupSpec() {
+  amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
+  spec.family.propagators[1].kind = amflow::PropagatorKind::Cut;
+  return spec;
+}
+
 amflow::ProblemSpec MakeBranchLoopEmptyFirstSymanzikSupportSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.family.top_level_sectors = {1};
@@ -7191,6 +7197,40 @@ void LoopEtaModeHappyPathTest() {
              std::string::npos,
          "Loop eta mode should report when topology-group first choices collapse onto repeated "
          "propagators");
+}
+
+void BranchEtaModeDropsGroupsThatIntersectCutPropagatorsTest() {
+  const amflow::ProblemSpec spec = MakeBranchLoopMixedCutGroupSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Branch");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>({5, 3}),
+         "Branch eta mode should drop a mixed cut/noncut group before representative selection");
+  Expect(std::find(decision.selected_propagator_indices.begin(),
+                   decision.selected_propagator_indices.end(),
+                   0) == decision.selected_propagator_indices.end(),
+         "Branch eta mode should not select an uncut representative from a group that also "
+         "contains a cut propagator");
+  Expect(decision.explanation.find("Supported Branch selector chose 2 unique uncut propagators "
+                                   "from 2 topology groups") != std::string::npos,
+         "Branch eta mode should report only cut-disjoint topology groups");
+}
+
+void LoopEtaModeDropsGroupsThatIntersectCutPropagatorsTest() {
+  const amflow::ProblemSpec spec = MakeBranchLoopMixedCutGroupSpec();
+  const auto mode = amflow::MakeBuiltinEtaMode("Loop");
+  const amflow::EtaInsertionDecision decision = mode->Plan(spec);
+
+  Expect(decision.selected_propagator_indices == std::vector<std::size_t>({3}),
+         "Loop eta mode should drop mixed cut/noncut groups before representative selection");
+  Expect(std::find(decision.selected_propagator_indices.begin(),
+                   decision.selected_propagator_indices.end(),
+                   0) == decision.selected_propagator_indices.end(),
+         "Loop eta mode should not select an uncut representative from a group that also contains "
+         "a cut propagator");
+  Expect(decision.explanation.find("Supported Loop selector chose 1 unique uncut propagators "
+                                   "from 1 topology groups") != std::string::npos,
+         "Loop eta mode should report only cut-disjoint topology groups");
 }
 
 void UnsupportedBuiltinEtaModesRejectTest() {
@@ -54025,6 +54065,8 @@ int main() {
     MassEtaModeSkipsAuxiliaryMembersInsideChosenMassGroupTest();
     BranchEtaModeHappyPathTest();
     LoopEtaModeHappyPathTest();
+    BranchEtaModeDropsGroupsThatIntersectCutPropagatorsTest();
+    LoopEtaModeDropsGroupsThatIntersectCutPropagatorsTest();
     UnsupportedBuiltinEtaModesRejectTest();
     UnsupportedBuiltinEtaModesRejectRepeatedSignGrammarTest();
     UnsupportedBuiltinEtaModesRejectTooManyTopSectorPropagatorsTest();

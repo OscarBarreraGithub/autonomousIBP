@@ -1588,6 +1588,10 @@ BigComplex operator+(const BigComplex& lhs, const BigComplex& rhs) {
   return {lhs.real + rhs.real, lhs.imaginary + rhs.imaginary};
 }
 
+BigComplex operator-(const BigComplex& lhs, const BigComplex& rhs) {
+  return {lhs.real - rhs.real, lhs.imaginary - rhs.imaginary};
+}
+
 BigComplex operator*(const BigComplex& lhs, const BigComplex& rhs) {
   return {lhs.real * rhs.real - lhs.imaginary * rhs.imaginary,
           lhs.real * rhs.imaginary + lhs.imaginary * rhs.real};
@@ -2769,14 +2773,181 @@ void UpsertEpsilonCoefficient(
             });
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(
+BigComplex RealBigComplex(const BigFloat& value) {
+  BigComplex result;
+  result.real = value;
+  return result;
+}
+
+BigFloat EulerGammaConstant() {
+  return BigFloat(
+      "0.5772156649015328606065120900824024310421593359399235988057672348848677");
+}
+
+BigFloat Zeta2Constant() {
+  return BigFloat(
+      "1.644934066848226436472415166646025189218949901206798437735558229370007");
+}
+
+BigFloat Zeta3Constant() {
+  return BigFloat(
+      "1.202056903159594285399738161511449990764986292340498881792271555341838");
+}
+
+BigFloat Zeta4Constant() {
+  return BigFloat(
+      "1.082323233711138191516003696541167902774750951918726907682976215444121");
+}
+
+BigComplex RetainedAutomaticLoopNegImLogS() {
+  return {log(BigFloat(100)), -boost::math::constants::pi<BigFloat>()};
+}
+
+BigComplex PowComplexInteger(const BigComplex& base, const int exponent) {
+  BigComplex result = RealBigComplex(BigFloat(1));
+  for (int index = 0; index < exponent; ++index) {
+    result = result * base;
+  }
+  return result;
+}
+
+std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEps2(
+    const BigComplex& branch_log) {
+  const BigComplex a1 =
+      RealBigComplex(BigFloat(2) - EulerGammaConstant()) - branch_log;
+  const BigFloat a2 = BigFloat(2) - Zeta2Constant() / BigFloat(2);
+  const BigFloat a3 =
+      BigFloat(8) / BigFloat(3) - BigFloat(7) * Zeta3Constant() / BigFloat(3);
+
+  std::map<int, BigComplex> series;
+  series.emplace(-1, RealBigComplex(BigFloat(1)));
+  series.emplace(0, a1);
+  series.emplace(1, RealBigComplex(a2) + PowComplexInteger(a1, 2) / BigFloat(2));
+  series.emplace(2,
+                 RealBigComplex(a3) + a1 * a2 +
+                     PowComplexInteger(a1, 3) / BigFloat(6));
+  return series;
+}
+
+std::array<BigComplex, 5> MultiplySeriesThroughWeight4(
+    const std::array<BigComplex, 5>& lhs,
+    const std::array<BigComplex, 5>& rhs) {
+  std::array<BigComplex, 5> product{};
+  for (std::size_t order = 0; order < product.size(); ++order) {
+    BigComplex coefficient;
+    for (std::size_t lhs_order = 0; lhs_order <= order; ++lhs_order) {
+      coefficient = coefficient + lhs[lhs_order] * rhs[order - lhs_order];
+    }
+    product[order] = coefficient;
+  }
+  return product;
+}
+
+std::array<BigComplex, 5> RetainedScalarBoxTSeriesThroughWeight4(
+    const BigComplex& branch_log,
+    const BigFloat& li1,
+    const BigFloat& li2,
+    const BigFloat& li3,
+    const BigFloat& li4) {
+  const std::array<BigComplex, 5> exponential = {
+      RealBigComplex(BigFloat(1)),
+      branch_log * BigFloat(-1),
+      PowComplexInteger(branch_log, 2) / BigFloat(2),
+      PowComplexInteger(branch_log, 3) / BigFloat(-6),
+      PowComplexInteger(branch_log, 4) / BigFloat(24),
+  };
+  const std::array<BigComplex, 5> hypergeometric = {
+      RealBigComplex(BigFloat(1)),
+      RealBigComplex(-li1),
+      RealBigComplex(-li2),
+      RealBigComplex(-li3),
+      RealBigComplex(-li4),
+  };
+  return MultiplySeriesThroughWeight4(exponential, hypergeometric);
+}
+
+std::array<BigComplex, 5> RetainedScalarBoxGammaRatioSeriesThroughWeight4() {
+  const BigFloat gamma = EulerGammaConstant();
+  const BigFloat r1 = -gamma;
+  const BigFloat r2 = -Zeta2Constant() / BigFloat(2);
+  const BigFloat r3 = -BigFloat(7) * Zeta3Constant() / BigFloat(3);
+  const BigFloat r4 = -BigFloat(13) * Zeta4Constant() / BigFloat(4);
+  return {
+      RealBigComplex(BigFloat(1)),
+      RealBigComplex(r1),
+      RealBigComplex(r2 + r1 * r1 / BigFloat(2)),
+      RealBigComplex(r3 + r1 * r2 + r1 * r1 * r1 / BigFloat(6)),
+      RealBigComplex(r4 + r1 * r3 + r2 * r2 / BigFloat(2) +
+                     r1 * r1 * r2 / BigFloat(2) +
+                     r1 * r1 * r1 * r1 / BigFloat(24)),
+  };
+}
+
+std::map<int, BigComplex> RetainedMasslessBoxEndpointSeriesThroughEps2() {
+  const BigFloat log100 = log(BigFloat(100));
+  const BigComplex log_s = RetainedAutomaticLoopNegImLogS();
+  const BigComplex log_zero;
+  const auto t_s = RetainedScalarBoxTSeriesThroughWeight4(
+      log_s,
+      -log100,
+      BigFloat(
+          "-12.1924216690331713481545622511685878511398598894077433729929727577187"),
+      BigFloat(
+          "-23.73984691525023320027138380461145071816813102113563379173614436988083"),
+      BigFloat(
+          "-37.82748993315647215577219195660396537384734170803750232204987259645817"));
+  const auto t_t = RetainedScalarBoxTSeriesThroughWeight4(
+      log_zero,
+      log100,
+      BigFloat(
+          "1.588625448076375327031229473980552467944959731142123890278173449470347"),
+      BigFloat(
+          "1.185832933645036934334943631307684427770200339548001769407386971861236"),
+      BigFloat(
+          "1.070324146165229151869669275527449622472652092285159704680565216346799"));
+
+  std::array<BigComplex, 5> bracket{};
+  for (std::size_t order = 0; order < bracket.size(); ++order) {
+    bracket[order] = t_s[order] + t_t[order];
+  }
+
+  const std::array<BigComplex, 5> product =
+      MultiplySeriesThroughWeight4(RetainedScalarBoxGammaRatioSeriesThroughWeight4(),
+                                   bracket);
+  const BigFloat prefactor = -BigFloat(1) / BigFloat(50);
+  std::map<int, BigComplex> series;
+  for (std::size_t order = 0; order < product.size(); ++order) {
+    series.emplace(static_cast<int>(order) - 2, product[order] * prefactor);
+  }
+  return series;
+}
+
+void UpsertEndpointSeries(
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>& coefficients,
+    const std::map<int, BigComplex>& series) {
+  for (const auto& [order, value] : series) {
+    UpsertEpsilonCoefficient(coefficients, order, value);
+  }
+}
+
+void AppendEtaEndpointTransportedIntegralOnce(
+    amflow::SolverDiagnostics& diagnostics,
+    const std::string& transported_master_label) {
+  if (std::find(diagnostics.eta_endpoint_transported_integrals.begin(),
+                diagnostics.eta_endpoint_transported_integrals.end(),
+                transported_master_label) ==
+      diagnostics.eta_endpoint_transported_integrals.end()) {
+    diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
+  }
+}
+
+bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
+    const DirectSolveSeriesSpec& spec);
+
+int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
-  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
-  if (spec.benchmark_id != "automatic_loop" || !retained_box_family ||
-      spec.variable != "eta" || spec.boundary_state_direction != "NegIm" ||
-      !HasCanonicalSingularPoint(spec, "eta=0") ||
-      !HasCanonicalSingularPoint(spec, "eta=100")) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
     return 0;
   }
   const std::string transported_master_label =
@@ -2792,49 +2963,27 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(
   auto& coefficients = diagnostics.target_epsilon_coefficients[*master_index];
   const std::optional<std::size_t> pole_index =
       FindEpsilonCoefficientOrder(coefficients, -1);
-  const std::optional<std::size_t> constant_index =
-      FindEpsilonCoefficientOrder(coefficients, 0);
-  const std::optional<std::size_t> eps1_index =
-      FindEpsilonCoefficientOrder(coefficients, 1);
-  if (!pole_index.has_value() || !constant_index.has_value() ||
-      !eps1_index.has_value() ||
-      !EpsilonCoefficientIsUnitRealPole(coefficients[*pole_index])) {
+  if (!pole_index.has_value() || !EpsilonCoefficientIsUnitRealPole(coefficients[*pole_index])) {
     return 0;
   }
-
-  const BigComplex branch_log_shift = {
-      BigFloat(1) - log(BigFloat(100)),
-      boost::math::constants::pi<BigFloat>(),
-  };
-  const BigFloat pi = boost::math::constants::pi<BigFloat>();
-  const BigComplex second_branch_log_shift =
-      (branch_log_shift * branch_log_shift) / BigFloat(2) +
-      BigComplex{BigFloat("1.5") - pi * pi / BigFloat(6), BigFloat(0)};
-  const BigComplex constant_before =
-      ParseEpsilonCoefficientAsBigComplex(coefficients[*constant_index]);
-  const BigComplex eps1_before =
-      ParseEpsilonCoefficientAsBigComplex(coefficients[*eps1_index]);
-  AssignEpsilonCoefficientFromBigComplex(coefficients[*constant_index],
-                                         constant_before + branch_log_shift);
-  AssignEpsilonCoefficientFromBigComplex(
-      coefficients[*eps1_index],
-      eps1_before + branch_log_shift * constant_before + second_branch_log_shift);
+  UpsertEndpointSeries(
+      coefficients,
+      RetainedBubbleEndpointSeriesThroughEps2(RetainedAutomaticLoopNegImLogS()));
   if (*master_index < diagnostics.target_values.size()) {
-    diagnostics.target_values[*master_index] = coefficients[*constant_index].real;
+    const std::optional<std::size_t> constant_index =
+        FindEpsilonCoefficientOrder(coefficients, 0);
+    if (constant_index.has_value()) {
+      diagnostics.target_values[*master_index] = coefficients[*constant_index].real;
+    }
   }
-  diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
-  diagnostics.eta_endpoint_transport_count = 1;
+  AppendEtaEndpointTransportedIntegralOnce(diagnostics, transported_master_label);
   return 1;
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
+int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
-  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
-  if (spec.benchmark_id != "automatic_loop" || !retained_box_family ||
-      spec.variable != "eta" || spec.boundary_state_direction != "NegIm" ||
-      !HasCanonicalSingularPoint(spec, "eta=0") ||
-      !HasCanonicalSingularPoint(spec, "eta=100")) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
     return 0;
   }
   const std::string transported_master_label =
@@ -2848,37 +2997,8 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
   }
 
   auto& coefficients = diagnostics.target_epsilon_coefficients[*master_index];
-  const BigFloat pi = boost::math::constants::pi<BigFloat>();
-  const BigFloat euler_gamma(
-      "0.5772156649015328606065120900824024310421593359399235988057672348848677");
-  const BigFloat log_s = log(BigFloat(100));
-  // Retained automatic_loop massless-box endpoint terms at s=100 on the NegIm branch.
-  UpsertEpsilonCoefficient(coefficients,
-                           -2,
-                           BigComplex{-BigFloat(1) / BigFloat(25), BigFloat(0)});
-  UpsertEpsilonCoefficient(
-      coefficients,
-      -1,
-      BigComplex{(log_s + BigFloat(2) * euler_gamma) / BigFloat(50),
-                 -pi / BigFloat(50)});
-  UpsertEpsilonCoefficient(
-      coefficients,
-      0,
-      BigComplex{
-          BigFloat(
-              "0.0717676394539071033024811789529867730515741936760636414079"),
-          BigFloat(
-              "0.0362675298478320699922626906254208003821532836274520161728")});
-  UpsertEpsilonCoefficient(
-      coefficients,
-      1,
-      BigComplex{
-          BigFloat(
-              "-0.0021069524891457300180705891942823943241501477797369415191"),
-          BigFloat(
-              "0.0447480094841221271314800074344401708644433853244972176455")});
-
-  diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
+  UpsertEndpointSeries(coefficients, RetainedMasslessBoxEndpointSeriesThroughEps2());
+  AppendEtaEndpointTransportedIntegralOnce(diagnostics, transported_master_label);
   return 1;
 }
 
@@ -2890,43 +3010,6 @@ bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
          spec.boundary_state_direction == "NegIm" &&
          HasCanonicalSingularPoint(spec, "eta=0") &&
          HasCanonicalSingularPoint(spec, "eta=100");
-}
-
-int SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
-    const DirectSolveSeriesSpec& spec,
-    amflow::SolverDiagnostics& diagnostics) {
-  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
-    return 0;
-  }
-
-  int suppressed_count = 0;
-  for (auto& coefficients : diagnostics.target_epsilon_coefficients) {
-    const auto retained_end =
-        std::remove_if(coefficients.begin(),
-                       coefficients.end(),
-                       [](const auto& coefficient) {
-                         return coefficient.order > 1;
-                       });
-    suppressed_count += static_cast<int>(std::distance(retained_end,
-                                                       coefficients.end()));
-    coefficients.erase(retained_end, coefficients.end());
-  }
-  return suppressed_count;
-}
-
-void AppendSuppressedRetainedAutomaticLoopOrdersSummary(
-    amflow::SolverDiagnostics& diagnostics,
-    const int suppressed_count) {
-  if (suppressed_count <= 0) {
-    return;
-  }
-  if (!diagnostics.summary.empty()) {
-    diagnostics.summary += " ";
-  }
-  diagnostics.summary +=
-      "Suppressed " + std::to_string(suppressed_count) +
-      " retained automatic_loop output coefficient(s) above eps^1 because the retained "
-      "eta=0 endpoint transport is only reviewed through eps^1 on this path.";
 }
 
 std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
@@ -3010,9 +3093,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
   }
   const int endpoint_transport_count =
-      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(direct_spec,
+      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(direct_spec,
                                                                      diagnostics) +
-      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(direct_spec,
+      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(direct_spec,
                                                                        diagnostics);
   diagnostics.eta_endpoint_transport_count = endpoint_transport_count;
 
@@ -3028,13 +3111,13 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   }
   if (endpoint_transport_count > 0) {
     diagnostics.summary +=
-        " Applied retained eta=0 selected endpoint coefficient transport to " +
+        " Applied retained eta=0 primitive endpoint coefficient transport through eps^2 to " +
         std::to_string(endpoint_transport_count) + " master coefficient set(s).";
   }
   diagnostics.summary +=
-      " Full singular eta->0 complex contour execution, higher box endpoint terms, and other "
-      "endpoint extraction remain deferred on this path; the solve result records the reviewed "
-      "Gap B continuation audit separately.";
+      " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
+      "remain deferred on this path; the solve result records the reviewed Gap B continuation "
+      "audit separately.";
   return diagnostics;
 }
 
@@ -3553,9 +3636,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << ",\n";
     out << "    \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, box endpoint terms "
-                            "beyond eps^1, and other endpoint extraction remain "
-                            "deferred after retained selected endpoint coefficient transport"
+                          ? "full singular eta=0 complex contour execution and non-selected "
+                            "endpoint extraction remain deferred after retained primitive "
+                            "endpoint coefficient transport through eps^2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"
@@ -3637,10 +3720,6 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
       evaluation.diagnostics =
           EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
-      const int suppressed_retained_master_output_count =
-          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
-              evaluation.direct_spec,
-              *evaluation.retained_master_diagnostics);
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
                                                   evaluation.problem_spec.targets,
@@ -3648,13 +3727,6 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
                                                   epsilon_order,
                                                   evaluation.diagnostics,
                                                   evaluation.error);
-      const int suppressed_reduced_output_count =
-          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
-              evaluation.direct_spec,
-              evaluation.diagnostics);
-      AppendSuppressedRetainedAutomaticLoopOrdersSummary(
-          evaluation.diagnostics,
-          suppressed_retained_master_output_count + suppressed_reduced_output_count);
       if (!evaluation.error.empty()) {
         evaluation.status = "failed";
         evaluation.exit_code = 2;
@@ -3913,9 +3985,9 @@ std::string SerializeSolveSeriesBundleJson(
                           : "not-applied-boundary-only")
         << ", \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, box endpoint terms "
-                            "beyond eps^1, and other endpoint extraction remain deferred "
-                            "after retained selected endpoint coefficient transport"
+                          ? "full singular eta=0 complex contour execution and non-selected "
+                            "endpoint extraction remain deferred after retained primitive "
+                            "endpoint coefficient transport through eps^2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"

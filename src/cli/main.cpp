@@ -3445,10 +3445,9 @@ FitSolutionSamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
   }
 
   const int leading_order = EstimateLaurentLeadingOrder(samples, epsilon_values);
-  const int retained_sample_order =
-      leading_order + static_cast<int>(samples.size()) - 1;
+  constexpr int kRetainedSolutionSampleGuardTerms = 15;
   const int max_fit_order =
-      std::max(requested_epsilon_order + 8, retained_sample_order);
+      requested_epsilon_order + kRetainedSolutionSampleGuardTerms;
   const int coefficient_count =
       std::max(1, max_fit_order - leading_order + 1);
   const std::size_t fit_sample_count =

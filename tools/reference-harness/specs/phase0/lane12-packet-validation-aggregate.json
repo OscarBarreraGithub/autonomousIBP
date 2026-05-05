@@ -1,0 +1,2520 @@
+{
+  "benchmarks": [
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json",
+      "benchmark_id": "automatic_loop",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 58
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        }
+      ],
+      "compare_exit_code": 0,
+      "compare_failure": null,
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/automatic_loop.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+      "explicit_amflow_coefficient_count": 54,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": 41,
+      "order_counts": {
+        "-1": 12,
+        "-2": 6,
+        "0": 12,
+        "1": 12,
+        "2": 12
+      },
+      "passed_coefficient_count": 54,
+      "probe_status": "success",
+      "solve_exit_code": 0
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+      "benchmark_id": "automatic_phasespace",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,-1,1,0,1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,0,1,0,1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,1,1,0,1,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane12_packet_validation/runs/automatic_phasespace.cpp-result.json'",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/automatic_phasespace.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+      "explicit_amflow_coefficient_count": 11,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "-1": 2,
+        "-2": 2,
+        "-3": 2,
+        "0": 5
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "no_cpp_result_json",
+      "solve_exit_code": 3
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json",
+      "benchmark_id": "automatic_vs_manual",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,0,1,1,0,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,0,1,1,0,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[0,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,1,1,1,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,0,1,1,1,1,0,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "failed_cpp_status",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/automatic_vs_manual.cpp-result.json status must be success",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/automatic_vs_manual.compare.json",
+      "cpp_input_probe": "specs/problem-spec.k0-smoke.yaml",
+      "explicit_amflow_coefficient_count": 86,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "-1": 25,
+        "-2": 20,
+        "-3": 9,
+        "-4": 7,
+        "0": 25
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "failed_cpp_status",
+      "solve_exit_code": 2
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+      "benchmark_id": "complex_kinematics",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[1,0,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane12_packet_validation/runs/complex_kinematics.cpp-result.json'",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/complex_kinematics.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+      "explicit_amflow_coefficient_count": 14,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "-1": 6,
+        "-2": 1,
+        "0": 7
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "no_cpp_result_json",
+      "solve_exit_code": 3
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json",
+      "benchmark_id": "differential_equation_solver",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "sunrise[1,1,1,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "sunrise[1,1,1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "sunrise[2,1,1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane12_packet_validation/runs/differential_equation_solver.cpp-result.json'",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/differential_equation_solver.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json",
+      "explicit_amflow_coefficient_count": 3,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "0": 3
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "no_cpp_result_json",
+      "solve_exit_code": 3
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json",
+      "benchmark_id": "linear_propagator",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": null,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane12_packet_validation/runs/linear_propagator.cpp-result.json'",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/linear_propagator.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json",
+      "explicit_amflow_coefficient_count": 49,
+      "included_in_promoted_aggregate": true,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "-1": 7,
+        "-2": 5,
+        "0": 9,
+        "1": 7,
+        "2": 7,
+        "3": 7,
+        "4": 7
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "no_cpp_result_json",
+      "solve_exit_code": 3
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+      "benchmark_id": "feynman_prescription",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "partial_reference_no_cpp_result_json",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_exit_code": 1,
+      "compare_failure": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane12_packet_validation/runs/feynman_prescription.cpp-result.json'",
+      "compare_json": "/tmp/autoibp_orch/exec/lane12_packet_validation/runs/feynman_prescription.compare.json",
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+      "explicit_amflow_coefficient_count": 76,
+      "included_in_promoted_aggregate": false,
+      "minimum_digit_agreement": null,
+      "order_counts": {
+        "-1": 16,
+        "-2": 12,
+        "0": 16,
+        "1": 16,
+        "2": 16
+      },
+      "passed_coefficient_count": 0,
+      "probe_status": "partial_reference_no_cpp_result_json",
+      "solve_exit_code": 3
+    }
+  ],
+  "counting_policy": "successful comparator rows use compare_cpp_vs_amflow output; failed or missing C++ result probes count every explicit AMFlow coefficient loaded from the retained manifest as zero passed with unavailable digit agreement",
+  "fresh_build_gate": {
+    "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --target amflow-cli",
+    "exit_code": 0
+  },
+  "including_partial_feynman_visibility_aggregate": {
+    "explicit_amflow_coefficient_count": 293,
+    "passed_coefficient_count": 54
+  },
+  "promoted_reference_captured_aggregate": {
+    "explicit_amflow_coefficient_count": 217,
+    "passed_coefficient_count": 54
+  },
+  "schema_version": 1,
+  "summary": "lane12 phase0 packet validation aggregate",
+  "tolerance_digits": 30
+}

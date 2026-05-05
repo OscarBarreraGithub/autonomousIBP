@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps24/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps22 reference pointer for automatic_loop comparator audits, captured with epsorder = 24 on 2026-05-05.",
+    "This manifest intentionally points at the same fresh epsorder=24 sol1/sol2 outputs as automatic_loop.eps21-golden-manifest.json, but names the eps^22 validation surface explicitly.",
+    "SLURM job 10233615 completed on holy8a24109.rc.fas.harvard.edu partition sapphire using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-eps24 tree was copied from work-eps22, then automatic_loop copied sol outputs, copied cache state, and copied logs were removed before running; run.wl was changed to epsorder = 24.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps24/logs/cap-autoloop-eps24.10233615.out with sha256 192636f7ccce08736757e4e7df4dc2c9de50b169b60ce7c1bceb6dac86bbb0f4; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T13:50:20-04:00 to 2026-05-05T13:55:24-04:00; sacct reported COMPLETED|0:0|00:05:09.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 24 printed coefficients through positive eps^22; both sol1 and sol2 contain explicit eps^22 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12, eps^9: 12, eps^10: 12, eps^11: 12, eps^12: 12, eps^13: 12, eps^14: 12, eps^15: 12, eps^16: 12, eps^17: 12, eps^18: 12, eps^19: 12, eps^20: 12, eps^21: 12, eps^22: 12.",
+    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 588 Decimal real/imag components; each file contained 241 Mathematica precision marks and all eps^21/eps^22 components parsed as numeric, nonzero pairs, and distinct from lower-order coefficients for the same integral.",
+    "sol1 sha256 ed59e31f761d4259c02588503ad08d0afaaaa2a812f441191e524767df4621a6; sol2 sha256 89f16a46df0d0990ec85fdda00655c7caac574b314e2ab5c05dc04df0fc7c66c."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps24/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps24/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

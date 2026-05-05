@@ -3324,6 +3324,23 @@ std::string MakeAutoInvariantHappyRuleFile() {
          "}\n";
 }
 
+std::string MakeAutoInvariantFullDenominatorMassRuleFile() {
+  return "{\n"
+         "  toy_auto_family[1,2,1] -> 2*toy_auto_family[1,1,1] + "
+         "3*toy_auto_family[0,-1,2],\n"
+         "  toy_auto_family[0,1,2] -> 5*toy_auto_family[1,1,1] + "
+         "7*toy_auto_family[0,-1,2],\n"
+         "  toy_auto_family[1,1,2] -> 23*toy_auto_family[1,1,1] + "
+         "29*toy_auto_family[0,-1,2],\n"
+         "  toy_auto_family[0,0,2] -> 19*toy_auto_family[1,1,1] + "
+         "11*toy_auto_family[0,-1,2],\n"
+         "  toy_auto_family[-1,-1,3] -> 13*toy_auto_family[1,1,1] + "
+         "17*toy_auto_family[0,-1,2],\n"
+         "  toy_auto_family[0,-1,3] -> 31*toy_auto_family[1,1,1] + "
+         "37*toy_auto_family[0,-1,2]\n"
+         "}\n";
+}
+
 std::string MakeAutoInvariantMissingGeneratedTargetRuleFile() {
   return "{\n"
          "  toy_auto_family[1,2,1] -> 2*toy_auto_family[1,1,1] + "
@@ -24205,12 +24222,15 @@ void BuildInvariantDerivativeSeedAllowsInvariantIndependentMassPropagatorTest() 
                  std::vector<int>({0, 0, 0}),
          "automatic invariant seed construction should keep invariant-independent-mass constant "
          "derivative terms unchanged");
-  Expect(seed.propagator_derivatives[2].terms.size() == 1 &&
+  Expect(seed.propagator_derivatives[2].terms.size() == 2 &&
              seed.propagator_derivatives[2].terms[0].coefficient == "-1" &&
              seed.propagator_derivatives[2].terms[0].factor_indices ==
-                 std::vector<int>({-1, 0, 0}),
-         "automatic invariant seed construction should keep invariant-independent-mass "
-         "representable factor matches unchanged");
+                 std::vector<int>({-1, 0, 0}) &&
+             seed.propagator_derivatives[2].terms[1].coefficient == "msq" &&
+             seed.propagator_derivatives[2].terms[1].factor_indices ==
+                 std::vector<int>({0, 0, 0}),
+         "automatic invariant seed construction should decompose raw factors through the full "
+         "invariant-independent-mass denominator plus the constant remainder");
   Expect(amflow::SerializeProblemSpecYaml(spec) == before_yaml,
          "automatic invariant seed construction should not mutate invariant-independent mass "
          "inputs");
@@ -24227,27 +24247,36 @@ void BuildInvariantDerivativeSeedCompositionWithInvariantIndependentMassTest() {
   Expect(generated_variable.rows.size() == 2,
          "automatic invariant seed construction should still compose with invariant generation "
          "when masses are invariant-independent");
-  Expect(generated_variable.rows[0].terms.size() == 2 &&
+  Expect(generated_variable.rows[0].terms.size() == 3 &&
              generated_variable.rows[0].terms[0].target.Label() == "toy_auto_family[1,2,1]" &&
              generated_variable.rows[0].terms[0].coefficient == "-1" &&
              generated_variable.rows[0].terms[1].target.Label() == "toy_auto_family[0,1,2]" &&
              generated_variable.rows[0].terms[1].coefficient == "(-1)*(-1)",
          "automatic invariant seed construction should preserve row-0 generated targets with "
          "invariant-independent masses");
-  Expect(generated_variable.rows[1].terms.size() == 2 &&
+  Expect(generated_variable.rows[0].terms.size() == 3 &&
+             generated_variable.rows[0].terms[2].target.Label() == "toy_auto_family[1,1,2]" &&
+             generated_variable.rows[0].terms[2].coefficient == "(-1)*(msq)",
+         "automatic invariant seed construction should compose row-0 mass-remainder targets "
+         "from full-denominator matching");
+  Expect(generated_variable.rows[1].terms.size() == 3 &&
              generated_variable.rows[1].terms[0].target.Label() == "toy_auto_family[0,0,2]" &&
              generated_variable.rows[1].terms[0].coefficient == "1" &&
              generated_variable.rows[1].terms[1].target.Label() == "toy_auto_family[-1,-1,3]" &&
-             generated_variable.rows[1].terms[1].coefficient == "(-2)*(-1)",
-         "automatic invariant seed construction should preserve row-1 generated targets with "
-         "invariant-independent masses");
-  Expect(generated_variable.reduction_targets.size() == 4 &&
+             generated_variable.rows[1].terms[1].coefficient == "(-2)*(-1)" &&
+             generated_variable.rows[1].terms[2].target.Label() == "toy_auto_family[0,-1,3]" &&
+             generated_variable.rows[1].terms[2].coefficient == "(-2)*(msq)",
+         "automatic invariant seed construction should compose row-1 mass-remainder targets "
+         "from full-denominator matching");
+  Expect(generated_variable.reduction_targets.size() == 6 &&
              generated_variable.reduction_targets[0].Label() == "toy_auto_family[1,2,1]" &&
              generated_variable.reduction_targets[1].Label() == "toy_auto_family[0,1,2]" &&
-             generated_variable.reduction_targets[2].Label() == "toy_auto_family[0,0,2]" &&
-             generated_variable.reduction_targets[3].Label() == "toy_auto_family[-1,-1,3]",
+             generated_variable.reduction_targets[2].Label() == "toy_auto_family[1,1,2]" &&
+             generated_variable.reduction_targets[3].Label() == "toy_auto_family[0,0,2]" &&
+             generated_variable.reduction_targets[4].Label() == "toy_auto_family[-1,-1,3]" &&
+             generated_variable.reduction_targets[5].Label() == "toy_auto_family[0,-1,3]",
          "automatic invariant seed construction should preserve reduction-target order with "
-         "invariant-independent masses");
+         "full-denominator mass remainders");
 }
 
 void BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagatorTest() {
@@ -24261,12 +24290,16 @@ void BuildInvariantDerivativeSeedAllowsInvariantIndependentRationalMassPropagato
              seed.propagator_derivatives[1].terms[0].coefficient == "1" &&
              seed.propagator_derivatives[1].terms[0].factor_indices ==
                  std::vector<int>({0, 0, 0}) &&
-             seed.propagator_derivatives[2].terms.size() == 1 &&
+             seed.propagator_derivatives[2].terms.size() == 2 &&
              seed.propagator_derivatives[2].terms[0].coefficient == "-1" &&
              seed.propagator_derivatives[2].terms[0].factor_indices ==
-                 std::vector<int>({-1, 0, 0}),
+                 std::vector<int>({-1, 0, 0}) &&
+             seed.propagator_derivatives[2].terms[1].coefficient == "1/2" &&
+             seed.propagator_derivatives[2].terms[1].factor_indices ==
+                 std::vector<int>({0, 0, 0}),
          "automatic invariant seed construction should preserve the reviewed derivative surface "
-         "for invariant-independent rational propagator masses");
+         "for invariant-independent rational propagator masses while retaining the full-"
+         "denominator remainder");
 }
 
 void BuildInvariantDerivativeSeedSupportsReviewedLinearPropagatorSubsetTest() {
@@ -24450,9 +24483,9 @@ void BuildInvariantDerivativeSeedRejectsNormalizedDuplicatePropagatorsTest() {
       [&spec]() {
         static_cast<void>(amflow::BuildInvariantDerivativeSeed(spec, "s"));
       },
-      "requires unique propagator expressions for factor matching",
+      "requires unique propagator denominators for factor matching",
       "automatic invariant seed construction should reject sign-flipped duplicate propagator "
-      "expressions");
+      "denominators");
 }
 
 void GeneratedDerivativeAssemblyHappyPathTest() {
@@ -28776,6 +28809,67 @@ void RunInvariantGeneratedReductionAutomaticHappyPathTest() {
              matrix_it->second[1][1] == "(1)*(11) + ((-2)*(-1))*(17)",
          "automatic invariant-generated wrapper should preserve the reviewed invariant matrix "
          "entries");
+}
+
+void RunInvariantGeneratedReductionAutomaticFullDenominatorMassRemainderTest() {
+  amflow::ProblemSpec spec = MakeAutoInvariantHappyProblemSpec();
+  spec.family.propagators[0].mass = "msq";
+  const amflow::ParsedMasterList master_basis = MakeAutoInvariantHappyMasterBasis();
+  const amflow::ArtifactLayout layout = amflow::EnsureArtifactLayout(
+      FreshTempDir("amflow-bootstrap-invariant-auto-generated-mass-denominator-wrapper"));
+  const std::filesystem::path kira_path =
+      layout.root / "bin" / "fake-kira-auto-mass-denominator-copy.sh";
+  const std::filesystem::path fermat_path = layout.root / "bin" / "fake-fermat.sh";
+  std::filesystem::create_directories(kira_path.parent_path());
+  WriteExecutableScript(
+      kira_path,
+      MakeAutoInvariantResultScript(true, MakeAutoInvariantFullDenominatorMassRuleFile()));
+  WriteExecutableScript(fermat_path, "#!/bin/sh\nexit 0\n");
+
+  const amflow::InvariantGeneratedReductionExecution execution =
+      amflow::RunInvariantGeneratedReduction(spec,
+                                             master_basis,
+                                             "s",
+                                             MakeKiraReductionOptions(),
+                                             layout,
+                                             kira_path,
+                                             fermat_path);
+
+  Expect(execution.execution_result.Succeeded() &&
+             execution.parsed_reduction_result.has_value() &&
+             execution.assembled_system.has_value(),
+         "automatic invariant-generated wrapper should execute with full-denominator "
+         "mass-remainder targets");
+  Expect(execution.preparation.generated_variable.reduction_targets.size() == 6,
+         "automatic invariant-generated wrapper should expose mass-remainder reduction targets");
+  Expect(execution.preparation.backend_preparation.generated_files.at("target") ==
+             "toy_auto_family[1,2,1]\n"
+             "toy_auto_family[0,1,2]\n"
+             "toy_auto_family[1,1,2]\n"
+             "toy_auto_family[0,0,2]\n"
+             "toy_auto_family[-1,-1,3]\n"
+             "toy_auto_family[0,-1,3]\n",
+         "automatic invariant-generated wrapper should preserve full-denominator mass-remainder "
+         "target order through preparation");
+  Expect(execution.parsed_reduction_result->status == amflow::ParsedReductionStatus::ParsedRules &&
+             execution.parsed_reduction_result->explicit_rule_count == 6 &&
+             execution.parsed_reduction_result->rules.size() == 8,
+         "automatic invariant-generated wrapper should require explicit rules for the generated "
+         "mass-remainder targets");
+  const auto matrix_it = execution.assembled_system->coefficient_matrices.find("s");
+  Expect(matrix_it != execution.assembled_system->coefficient_matrices.end(),
+         "automatic invariant-generated wrapper should populate the invariant matrix with "
+         "mass-remainder terms");
+  Expect(matrix_it->second[0][0] ==
+                 "(-1)*(2) + ((-1)*(-1))*(5) + ((-1)*(msq))*(23)" &&
+             matrix_it->second[0][1] ==
+                 "(-1)*(3) + ((-1)*(-1))*(7) + ((-1)*(msq))*(29)" &&
+             matrix_it->second[1][0] ==
+                 "(1)*(19) + ((-2)*(-1))*(13) + ((-2)*(msq))*(31)" &&
+             matrix_it->second[1][1] ==
+                 "(1)*(11) + ((-2)*(-1))*(17) + ((-2)*(msq))*(37)",
+         "automatic invariant-generated wrapper should assemble the full-denominator "
+         "mass-remainder matrix entries instead of dropping them");
 }
 
 void RunInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest() {
@@ -54821,6 +54915,7 @@ int main() {
     RunInvariantGeneratedReductionRejectsIdentityFallbackResultsTest();
     RunInvariantGeneratedReductionRejectsMissingExplicitRuleForMasterTargetTest();
     RunInvariantGeneratedReductionAutomaticHappyPathTest();
+    RunInvariantGeneratedReductionAutomaticFullDenominatorMassRemainderTest();
     RunInvariantGeneratedReductionAutomaticSupportsReviewedLinearPropagatorSubsetTest();
     RunInvariantGeneratedReductionAutomaticMultipleTopLevelSectorsHappyPathTest();
     RunInvariantGeneratedReductionAutomaticExecutionFailureTest();

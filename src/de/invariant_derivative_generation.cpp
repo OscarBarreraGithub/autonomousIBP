@@ -917,6 +917,13 @@ struct Monomial {
   std::vector<int> factor_indices;
 };
 
+struct PropagatorFactorSurface {
+  Expr expression;
+  Expr denominator;
+  Expr mass;
+  bool has_nonzero_mass = false;
+};
+
 struct LeadingNumericFactor {
   Rational coefficient = Rational(1);
   Expr remainder;
@@ -943,18 +950,18 @@ Monomial MakeKnownFactorMonomial(const std::size_t index,
 
 std::optional<Monomial> TryExpandKnownPropagatorFactor(
     const Expr& expr,
-    const std::vector<Expr>& propagator_expressions,
+    const std::vector<PropagatorFactorSurface>& propagator_surfaces,
     const std::size_t factor_count) {
-  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
-    if (ExprEquals(expr, propagator_expressions[index])) {
+  for (std::size_t index = 0; index < propagator_surfaces.size(); ++index) {
+    if (ExprEquals(expr, propagator_surfaces[index].denominator)) {
       return MakeKnownFactorMonomial(index, factor_count, Rational(1));
     }
   }
 
   const LeadingNumericFactor expr_factor = SplitLeadingNumericFactor(expr);
-  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
+  for (std::size_t index = 0; index < propagator_surfaces.size(); ++index) {
     const LeadingNumericFactor propagator_factor =
-        SplitLeadingNumericFactor(propagator_expressions[index]);
+        SplitLeadingNumericFactor(propagator_surfaces[index].denominator);
     if (!ExprEquals(expr_factor.remainder, propagator_factor.remainder)) {
       continue;
     }
@@ -965,16 +972,76 @@ std::optional<Monomial> TryExpandKnownPropagatorFactor(
   return std::nullopt;
 }
 
+std::vector<Monomial> ExpandMassLiteralMonomial(const Expr& mass,
+                                                const std::set<std::string>& allowed_scalar_symbols,
+                                                const std::size_t factor_count,
+                                                const Rational& coefficient) {
+  if (coefficient.IsZero()) {
+    return {};
+  }
+  if (mass.kind == ExprKind::Number) {
+    const Rational numeric = coefficient * mass.number;
+    if (numeric.IsZero()) {
+      return {};
+    }
+    return {Monomial{numeric, {}, std::vector<int>(factor_count, 0)}};
+  }
+  if (mass.kind == ExprKind::Symbol && allowed_scalar_symbols.count(mass.symbol) > 0) {
+    return {Monomial{coefficient, {mass.symbol}, std::vector<int>(factor_count, 0)}};
+  }
+  throw std::runtime_error("automatic invariant seed construction encountered unsupported "
+                           "propagator mass remainder while matching full denominators: " +
+                           DescribeExpr(mass));
+}
+
+std::optional<std::vector<Monomial>> TryExpandPropagatorExpressionRemainder(
+    const Expr& expr,
+    const std::vector<PropagatorFactorSurface>& propagator_surfaces,
+    const std::set<std::string>& allowed_scalar_symbols,
+    const std::size_t factor_count) {
+  const LeadingNumericFactor expr_factor = SplitLeadingNumericFactor(expr);
+  for (std::size_t index = 0; index < propagator_surfaces.size(); ++index) {
+    const LeadingNumericFactor expression_factor =
+        SplitLeadingNumericFactor(propagator_surfaces[index].expression);
+    if (!ExprEquals(expr_factor.remainder, expression_factor.remainder)) {
+      continue;
+    }
+
+    const Rational coefficient =
+        expr_factor.coefficient * expression_factor.coefficient.Reciprocal();
+    std::vector<Monomial> monomials = {
+        MakeKnownFactorMonomial(index, factor_count, coefficient)};
+    if (propagator_surfaces[index].has_nonzero_mass) {
+      std::vector<Monomial> mass_remainder = ExpandMassLiteralMonomial(
+          propagator_surfaces[index].mass,
+          allowed_scalar_symbols,
+          factor_count,
+          coefficient * Rational(-1));
+      monomials.insert(monomials.end(),
+                       std::make_move_iterator(mass_remainder.begin()),
+                       std::make_move_iterator(mass_remainder.end()));
+    }
+    return monomials;
+  }
+  return std::nullopt;
+}
+
 std::vector<Monomial> ExpandMonomials(
     const Expr& expr,
-    const std::vector<Expr>& propagator_expressions,
+    const std::vector<PropagatorFactorSurface>& propagator_surfaces,
     const std::set<std::string>& allowed_scalar_symbols,
     const std::size_t factor_count) {
   if (expr.kind != ExprKind::Number && expr.kind != ExprKind::Symbol) {
     if (std::optional<Monomial> known_factor =
-            TryExpandKnownPropagatorFactor(expr, propagator_expressions, factor_count);
+            TryExpandKnownPropagatorFactor(expr, propagator_surfaces, factor_count);
         known_factor.has_value()) {
       return {*known_factor};
+    }
+    if (std::optional<std::vector<Monomial>> expression_remainder =
+            TryExpandPropagatorExpressionRemainder(
+                expr, propagator_surfaces, allowed_scalar_symbols, factor_count);
+        expression_remainder.has_value()) {
+      return *expression_remainder;
     }
   }
 
@@ -999,7 +1066,7 @@ std::vector<Monomial> ExpandMonomials(
       std::vector<Monomial> monomials;
       for (const auto& term : expr.terms) {
         auto term_monomials =
-            ExpandMonomials(term, propagator_expressions, allowed_scalar_symbols, factor_count);
+            ExpandMonomials(term, propagator_surfaces, allowed_scalar_symbols, factor_count);
         monomials.insert(monomials.end(),
                          std::make_move_iterator(term_monomials.begin()),
                          std::make_move_iterator(term_monomials.end()));
@@ -1011,7 +1078,7 @@ std::vector<Monomial> ExpandMonomials(
           {Rational(1), {}, std::vector<int>(factor_count, 0)}};
       for (const auto& factor : expr.terms) {
         const auto factor_monomials =
-            ExpandMonomials(factor, propagator_expressions, allowed_scalar_symbols, factor_count);
+            ExpandMonomials(factor, propagator_surfaces, allowed_scalar_symbols, factor_count);
         if (factor_monomials.empty()) {
           return {};
         }
@@ -1251,8 +1318,9 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
     }
   }
 
-  std::vector<Expr> propagator_expressions;
-  propagator_expressions.reserve(spec.family.propagators.size());
+  std::set<std::string> coefficient_symbols = invariant_symbols;
+  std::vector<PropagatorFactorSurface> propagator_surfaces;
+  propagator_surfaces.reserve(spec.family.propagators.size());
   for (const auto& propagator : spec.family.propagators) {
     if (propagator.kind == PropagatorKind::Cut || propagator.kind == PropagatorKind::Auxiliary) {
       throw std::runtime_error("automatic invariant seed construction supports Standard "
@@ -1267,6 +1335,9 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
       throw std::runtime_error("automatic invariant seed construction supports only propagator "
                                "mass entries \"0\", invariant-independent identifiers, or "
                                "rational constants in the bootstrap subset");
+    }
+    if (IsIdentifierLiteral(trimmed_mass)) {
+      coefficient_symbols.insert(trimmed_mass);
     }
     Expr expression = ExprParser(propagator.expression).Parse();
     switch (EffectivePropagatorVariant(propagator)) {
@@ -1284,23 +1355,30 @@ InvariantDerivativeSeed BuildInvariantDerivativeSeed(const ProblemSpec& spec,
         }
         break;
     }
-    propagator_expressions.push_back(std::move(expression));
+    Expr mass = ExprParser(trimmed_mass).Parse();
+    PropagatorFactorSurface surface;
+    surface.expression = expression;
+    surface.denominator = MakeAdd({expression, mass});
+    surface.has_nonzero_mass = !IsZero(mass);
+    surface.mass = std::move(mass);
+    propagator_surfaces.push_back(std::move(surface));
   }
 
-  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
+  for (std::size_t index = 0; index < propagator_surfaces.size(); ++index) {
     for (std::size_t prior = 0; prior < index; ++prior) {
-      if (ExprEquals(propagator_expressions[index], propagator_expressions[prior])) {
+      if (ExprEquals(propagator_surfaces[index].denominator,
+                     propagator_surfaces[prior].denominator)) {
         throw std::runtime_error("automatic invariant seed construction requires unique "
-                                 "propagator expressions for factor matching");
+                                 "propagator denominators for factor matching");
       }
     }
   }
 
-  for (std::size_t index = 0; index < propagator_expressions.size(); ++index) {
+  for (std::size_t index = 0; index < propagator_surfaces.size(); ++index) {
     const Expr derivative =
-        DifferentiateExpr(propagator_expressions[index], invariant_name, context);
+        DifferentiateExpr(propagator_surfaces[index].denominator, invariant_name, context);
     const auto monomials = ExpandMonomials(
-        derivative, propagator_expressions, invariant_symbols, propagator_expressions.size());
+        derivative, propagator_surfaces, coefficient_symbols, propagator_surfaces.size());
     for (const auto& monomial : monomials) {
       const std::string coefficient = RenderCoefficient(monomial);
       if (coefficient == "0") {

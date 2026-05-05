@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <cstdio>
 #include <set>
@@ -30,6 +31,8 @@
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/ending_scheme.hpp"
+#include "amflow/runtime/eta_mode.hpp"
 #include "amflow/solver/series_solver.hpp"
 
 namespace {
@@ -390,6 +393,7 @@ struct DirectSolveSeriesSpec {
   bool retained_solution_samples_input = false;
   std::string benchmark_id;
   std::string amflow_output_name;
+  std::string amflow_config_raw;
   std::string family;
   std::string integral_kind;
   std::string variable;
@@ -1498,6 +1502,16 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   spec.amflow_state_input = true;
   spec.benchmark_id = OptionalJsonStringField(root, "benchmark_id", "");
   spec.amflow_output_name = OptionalJsonStringField(root, "amflow_output_name", "");
+  if (const CliJsonValue* amflow_config = FindJsonField(root, "amflow_config")) {
+    RequireJsonObject(*amflow_config, path + ".amflow_config");
+    if (const CliJsonValue* raw_config = FindJsonField(*amflow_config, "raw")) {
+      RequireJsonObject(*raw_config, path + ".amflow_config.raw");
+      if (const CliJsonValue* raw_text = FindJsonField(*raw_config, "raw")) {
+        spec.amflow_config_raw =
+            RequireJsonString(*raw_text, path + ".amflow_config.raw.raw");
+      }
+    }
+  }
   spec.integral_kind = OptionalJsonStringField(root, "integral_kind", "");
   spec.family = RequireJsonString(RequireJsonField(root, "family", path), path + ".family");
   spec.variable =
@@ -1782,9 +1796,209 @@ DirectSolveSeriesSpec LoadAutomaticVsManualAmflowStateFallback(
   return ParseAmflowSolveSeriesStateJsonRoot(root, "$");
 }
 
+std::optional<std::string> ExtractMathematicaRuleValue(const std::string& raw,
+                                                       const std::string& quoted_key) {
+  const std::size_t key_position = raw.find(quoted_key);
+  if (key_position == std::string::npos) {
+    return std::nullopt;
+  }
+  const std::size_t arrow = raw.find("->", key_position + quoted_key.size());
+  if (arrow == std::string::npos) {
+    return std::nullopt;
+  }
+  std::size_t begin = arrow + 2;
+  while (begin < raw.size() &&
+         std::isspace(static_cast<unsigned char>(raw[begin])) != 0) {
+    ++begin;
+  }
+  if (begin >= raw.size()) {
+    return std::nullopt;
+  }
+
+  int depth = 0;
+  bool in_string = false;
+  bool escaping = false;
+  for (std::size_t index = begin; index < raw.size(); ++index) {
+    const char character = raw[index];
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+    if (character == '\\') {
+      escaping = true;
+      continue;
+    }
+    if (character == '"') {
+      in_string = !in_string;
+      continue;
+    }
+    if (in_string) {
+      continue;
+    }
+    if (character == '{' || character == '[' || character == '(') {
+      ++depth;
+      continue;
+    }
+    if (character == '}' || character == ']' || character == ')') {
+      --depth;
+      if (depth < 0) {
+        return raw.substr(begin, index - begin);
+      }
+      if (depth == 0 && raw[begin] == '{') {
+        return raw.substr(begin, index - begin + 1);
+      }
+      continue;
+    }
+    if (character == ',' && depth == 0) {
+      return raw.substr(begin, index - begin);
+    }
+  }
+  return raw.substr(begin);
+}
+
+std::vector<std::string> SplitMathematicaTopLevelItems(const std::string& raw) {
+  std::string value = TrimAsciiWhitespace(raw);
+  if (value.size() >= 2 && value.front() == '{' && value.back() == '}') {
+    value = value.substr(1, value.size() - 2);
+  }
+
+  std::vector<std::string> items;
+  std::size_t start = 0;
+  int depth = 0;
+  bool in_string = false;
+  bool escaping = false;
+  for (std::size_t index = 0; index < value.size(); ++index) {
+    const char character = value[index];
+    if (escaping) {
+      escaping = false;
+      continue;
+    }
+    if (character == '\\') {
+      escaping = true;
+      continue;
+    }
+    if (character == '"') {
+      in_string = !in_string;
+      continue;
+    }
+    if (in_string) {
+      continue;
+    }
+    if (character == '{' || character == '[' || character == '(') {
+      ++depth;
+      continue;
+    }
+    if (character == '}' || character == ']' || character == ')') {
+      --depth;
+      continue;
+    }
+    if (character == ',' && depth == 0) {
+      items.push_back(TrimAsciiWhitespace(value.substr(start, index - start)));
+      start = index + 1;
+    }
+  }
+  items.push_back(TrimAsciiWhitespace(value.substr(start)));
+  items.erase(std::remove_if(items.begin(),
+                             items.end(),
+                             [](const std::string& item) { return item.empty(); }),
+              items.end());
+  return items;
+}
+
+std::vector<amflow::Propagator> ParseAmflowConfigPropagators(
+    const std::string& amflow_config_raw) {
+  std::vector<amflow::Propagator> propagators;
+  const std::optional<std::string> raw_propagators =
+      ExtractMathematicaRuleValue(amflow_config_raw, "\"Propagator\"");
+  if (!raw_propagators.has_value()) {
+    return propagators;
+  }
+  for (const std::string& expression : SplitMathematicaTopLevelItems(*raw_propagators)) {
+    propagators.push_back(amflow::Propagator(expression));
+  }
+  return propagators;
+}
+
+int SectorMaskFromIntegralIndices(const std::vector<int>& indices) {
+  int sector = 0;
+  const std::size_t width =
+      std::min<std::size_t>(indices.size(), static_cast<std::size_t>(std::numeric_limits<int>::digits));
+  for (std::size_t index = 0; index < width; ++index) {
+    if (indices[index] > 0) {
+      sector |= (1 << index);
+    }
+  }
+  return sector;
+}
+
+int DeriveTopLevelSectorMask(const DirectSolveSeriesSpec& direct_spec) {
+  int sector = 0;
+  for (const amflow::TargetIntegral& target : direct_spec.targets) {
+    sector |= SectorMaskFromIntegralIndices(target.indices);
+  }
+  for (const amflow::MasterIntegral& master : direct_spec.retained_reduction_masters) {
+    sector |= SectorMaskFromIntegralIndices(master.indices);
+  }
+  for (const amflow::MasterIntegral& master : direct_spec.masters) {
+    sector |= SectorMaskFromIntegralIndices(master.indices);
+  }
+  return sector;
+}
+
+std::vector<int> ExtractSignedIntegers(const std::string& raw) {
+  std::vector<int> values;
+  for (std::size_t index = 0; index < raw.size();) {
+    bool negative = false;
+    if (raw[index] == '+' || raw[index] == '-') {
+      negative = raw[index] == '-';
+      ++index;
+    }
+    if (index >= raw.size() ||
+        std::isdigit(static_cast<unsigned char>(raw[index])) == 0) {
+      ++index;
+      continue;
+    }
+    int value = 0;
+    while (index < raw.size() &&
+           std::isdigit(static_cast<unsigned char>(raw[index])) != 0) {
+      value = value * 10 + (raw[index] - '0');
+      ++index;
+    }
+    values.push_back(negative ? -value : value);
+  }
+  return values;
+}
+
+int SectorMaskFromOneBasedPositions(const std::vector<int>& positions) {
+  int sector = 0;
+  for (const int position : positions) {
+    if (position <= 0 || position > std::numeric_limits<int>::digits) {
+      continue;
+    }
+    sector |= (1 << (position - 1));
+  }
+  return sector;
+}
+
 amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& direct_spec) {
   amflow::ProblemSpec problem_spec;
   problem_spec.family.name = direct_spec.family;
+  problem_spec.family.propagators =
+      ParseAmflowConfigPropagators(direct_spec.amflow_config_raw);
+  int top_level_sector = DeriveTopLevelSectorMask(direct_spec);
+  if (direct_spec.benchmark_id == "user_defined_ending") {
+    const auto subsystem = direct_spec.boundary_state_raw_files.find("subsystem");
+    if (subsystem != direct_spec.boundary_state_raw_files.end()) {
+      const int retained_terminal_sector =
+          SectorMaskFromOneBasedPositions(ExtractSignedIntegers(subsystem->second));
+      if (retained_terminal_sector != 0) {
+        top_level_sector = retained_terminal_sector;
+      }
+    }
+  }
+  if (top_level_sector != 0) {
+    problem_spec.family.top_level_sectors = {top_level_sector};
+  }
   problem_spec.targets = direct_spec.targets;
   problem_spec.dimension = "4 - 2*eps";
   problem_spec.complex_mode = true;
@@ -1793,7 +2007,8 @@ amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& d
   return problem_spec;
 }
 
-using BigFloat = boost::multiprecision::cpp_dec_float_100;
+using BigFloat = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<150>>;
+constexpr int kSerializedBigFloatDecimalDigits = 110;
 
 struct BigComplex {
   BigFloat real = 0;
@@ -2102,26 +2317,211 @@ std::string NormalizeMathematicaNumericAtom(std::string value) {
   return value;
 }
 
+class RealBoundaryExpressionParser {
+ public:
+  explicit RealBoundaryExpressionParser(std::string expression_in)
+      : expression_(NormalizeMathematicaNumericAtom(std::move(expression_in))) {}
+
+  BigFloat Parse() {
+    if (expression_.empty() || expression_ == "+") {
+      return BigFloat(1);
+    }
+    if (expression_ == "-") {
+      return BigFloat(-1);
+    }
+    const BigFloat value = ParseExpression();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("unsupported retained boundary expression near: " +
+                               expression_.substr(position_));
+    }
+    return value;
+  }
+
+ private:
+  static BigFloat PowIntegerValue(BigFloat base, int exponent) {
+    if (exponent == 0) {
+      return BigFloat(1);
+    }
+    bool invert = false;
+    if (exponent < 0) {
+      invert = true;
+      exponent = -exponent;
+    }
+    BigFloat result = 1;
+    while (exponent > 0) {
+      if ((exponent & 1) != 0) {
+        result *= base;
+      }
+      base *= base;
+      exponent >>= 1;
+    }
+    return invert ? BigFloat(1) / result : result;
+  }
+
+  bool Consume(const char expected) {
+    if (position_ < expression_.size() && expression_[position_] == expected) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  bool StartsWithAtPosition(const std::string& prefix) const {
+    return expression_.compare(position_, prefix.size(), prefix) == 0;
+  }
+
+  BigFloat ParseExpression() {
+    BigFloat value = ParseTerm();
+    while (position_ < expression_.size()) {
+      if (Consume('+')) {
+        value += ParseTerm();
+      } else if (Consume('-')) {
+        value -= ParseTerm();
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  bool StartsImplicitFactor() const {
+    if (position_ >= expression_.size()) {
+      return false;
+    }
+    const char character = expression_[position_];
+    return character == '(' || character == '[' ||
+           std::isdigit(static_cast<unsigned char>(character)) != 0 ||
+           character == '.' || std::isalpha(static_cast<unsigned char>(character)) != 0;
+  }
+
+  BigFloat ParseTerm() {
+    BigFloat value = ParsePower();
+    while (position_ < expression_.size()) {
+      if (Consume('*')) {
+        value *= ParsePower();
+      } else if (Consume('/')) {
+        value /= ParsePower();
+      } else if (StartsImplicitFactor()) {
+        value *= ParsePower();
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  BigFloat ParsePower() {
+    BigFloat value = ParseUnary();
+    if (Consume('^')) {
+      value = PowIntegerValue(value, ParseSignedIntegerExponent());
+    }
+    return value;
+  }
+
+  BigFloat ParseUnary() {
+    if (Consume('+')) {
+      return ParseUnary();
+    }
+    if (Consume('-')) {
+      return -ParseUnary();
+    }
+    return ParsePrimary();
+  }
+
+  int ParseSignedIntegerExponent() {
+    bool parenthesized = false;
+    if (Consume('(')) {
+      parenthesized = true;
+    }
+    bool negative = false;
+    if (Consume('+')) {
+      negative = false;
+    } else if (Consume('-')) {
+      negative = true;
+    }
+    if (position_ >= expression_.size() ||
+        std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+      throw std::runtime_error("retained boundary power expects an integer exponent");
+    }
+    int exponent = 0;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      exponent = exponent * 10 + (expression_[position_] - '0');
+      ++position_;
+    }
+    if (parenthesized && !Consume(')')) {
+      throw std::runtime_error("retained boundary power exponent is missing ')'");
+    }
+    return negative ? -exponent : exponent;
+  }
+
+  BigFloat ParsePrimary() {
+    if (Consume('(')) {
+      const BigFloat value = ParseExpression();
+      if (!Consume(')')) {
+        throw std::runtime_error("retained boundary expression is missing ')'");
+      }
+      return value;
+    }
+    if (StartsWithAtPosition("Gamma[")) {
+      position_ += 6;
+      const BigFloat argument = ParseExpression();
+      if (!Consume(']')) {
+        throw std::runtime_error("retained boundary Gamma expression is missing ']'");
+      }
+      return boost::math::tgamma(argument);
+    }
+    if (StartsWithAtPosition("Pi")) {
+      position_ += 2;
+      return boost::math::constants::pi<BigFloat>();
+    }
+    return ParseNumber();
+  }
+
+  BigFloat ParseNumber() {
+    const std::size_t begin = position_;
+    bool saw_digit = false;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      saw_digit = true;
+      ++position_;
+    }
+    if (Consume('.')) {
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        saw_digit = true;
+        ++position_;
+      }
+    }
+    if (!saw_digit) {
+      throw std::runtime_error("unsupported retained boundary expression near: " +
+                               expression_.substr(begin));
+    }
+    if (position_ < expression_.size() &&
+        (expression_[position_] == 'e' || expression_[position_] == 'E')) {
+      ++position_;
+      if (position_ < expression_.size() &&
+          (expression_[position_] == '+' || expression_[position_] == '-')) {
+        ++position_;
+      }
+      if (position_ >= expression_.size() ||
+          std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+        throw std::runtime_error("retained boundary scientific notation exponent is invalid");
+      }
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        ++position_;
+      }
+    }
+    return BigFloat(expression_.substr(begin, position_ - begin));
+  }
+
+  std::string expression_;
+  std::size_t position_ = 0;
+};
+
 BigFloat ParseRealBoundaryAtom(const std::string& raw) {
-  std::string value = NormalizeMathematicaNumericAtom(raw);
-  if (value.empty() || value == "+") {
-    return BigFloat(1);
-  }
-  if (value == "-") {
-    return BigFloat(-1);
-  }
-  if (value.rfind("+", 0) == 0) {
-    value.erase(value.begin());
-  }
-  if (value.rfind("-Gamma[", 0) == 0 && value.back() == ']') {
-    const std::string argument = value.substr(7, value.size() - 8);
-    return -boost::math::tgamma(ParseBigFloatRational(argument));
-  }
-  if (value.rfind("Gamma[", 0) == 0 && value.back() == ']') {
-    const std::string argument = value.substr(6, value.size() - 7);
-    return boost::math::tgamma(ParseBigFloatRational(argument));
-  }
-  return ParseBigFloatRational(value);
+  return RealBoundaryExpressionParser(raw).Parse();
 }
 
 std::vector<std::string> SplitTopLevelTerms(const std::string& raw) {
@@ -2900,7 +3300,7 @@ std::vector<BigComplex> SolveVandermondeFit(const std::vector<BigFloat>& epsilon
           best_row = row;
         }
       }
-      if (IsTiny(best_abs)) {
+      if (best_abs == BigFloat(0)) {
         throw std::runtime_error("epsilon-sample interpolation matrix is singular");
       }
       if (best_row != pivot) {
@@ -2916,7 +3316,7 @@ std::vector<BigComplex> SolveVandermondeFit(const std::vector<BigFloat>& epsilon
           continue;
         }
         const BigFloat factor = matrix[row][pivot];
-        if (IsTiny(factor)) {
+        if (factor == BigFloat(0)) {
           continue;
         }
         for (std::size_t column = pivot; column <= count; ++column) {
@@ -2950,7 +3350,7 @@ std::string BigFloatToRationalString(const BigFloat& raw_value) {
   }
 
   std::ostringstream stream;
-  stream << std::fixed << std::setprecision(70) << value;
+  stream << std::fixed << std::setprecision(kSerializedBigFloatDecimalDigits) << value;
   std::string text = stream.str();
   const std::size_t dot = text.find('.');
   if (dot == std::string::npos) {
@@ -4799,6 +5199,111 @@ std::string RationalToDecimalDigits(const std::string& exact_value, const int di
   return decimal;
 }
 
+struct SolveSeriesRuntimeOptions {
+  std::optional<std::string> spacetime_dimension;
+  bool amf_modes_overridden = false;
+  bool ending_schemes_overridden = false;
+  amflow::AmfOptions amf_options;
+};
+
+bool HasSolveSeriesRuntimeOptions(const SolveSeriesRuntimeOptions& options) {
+  return options.spacetime_dimension.has_value() ||
+         options.amf_modes_overridden ||
+         options.ending_schemes_overridden;
+}
+
+bool IsSingleString(const std::vector<std::string>& values, const std::string& expected) {
+  return values.size() == 1 && values.front() == expected;
+}
+
+std::vector<int> ActivePositionsFromSector(const int sector) {
+  std::vector<int> positions;
+  for (int index = 0; index < std::numeric_limits<int>::digits; ++index) {
+    if ((sector & (1 << index)) != 0) {
+      positions.push_back(index + 1);
+    }
+  }
+  return positions;
+}
+
+bool HasActivePositionSet(const amflow::ProblemSpec& spec,
+                          const std::vector<int>& expected_positions) {
+  for (const int sector : spec.family.top_level_sectors) {
+    if (ActivePositionsFromSector(sector) == expected_positions) {
+      return true;
+    }
+  }
+  return false;
+}
+
+class ReviewedUsrEtaMode final : public amflow::EtaMode {
+ public:
+  std::string Name() const override { return "usr"; }
+
+  amflow::EtaInsertionDecision Plan(const amflow::ProblemSpec& spec) const override {
+    if (HasActivePositionSet(spec, {1, 2, 3, 4}) &&
+        spec.family.propagators.size() >= 3) {
+      amflow::EtaInsertionDecision decision;
+      decision.mode_name = "usr";
+      decision.selected_propagator_indices = {0, 2};
+      decision.selected_propagators = {
+          spec.family.propagators[0].expression,
+          spec.family.propagators[2].expression,
+      };
+      decision.explanation =
+          "reviewed AMFlow user-defined AMFPosition[top, \"usr\"] selected "
+          "propagators {1,3} for top sector {1,2,3,4}";
+      return decision;
+    }
+
+    amflow::AmfOptions fallback_options;
+    amflow::EtaInsertionDecision decision =
+        amflow::PlanBuiltinAmfOptionsEtaMode(spec, fallback_options);
+    decision.explanation =
+        "reviewed AMFlow user-defined AMFPosition[top, \"usr\"] fell back to "
+        "the default AMFMode list: " +
+        decision.explanation;
+    return decision;
+  }
+};
+
+class ReviewedUsrEndingScheme final : public amflow::EndingScheme {
+ public:
+  std::string Name() const override { return "usr"; }
+
+  amflow::EndingDecision Plan(const amflow::ProblemSpec& spec) const override {
+    for (const int sector : spec.family.top_level_sectors) {
+      const std::vector<int> positions = ActivePositionsFromSector(sector);
+      if (positions.size() == 2) {
+        amflow::EndingDecision decision;
+        decision.terminal_strategy = "usr-two-top-position-ending";
+        std::ostringstream node;
+        node << spec.family.name << ":top_positions={";
+        for (std::size_t index = 0; index < positions.size(); ++index) {
+          if (index > 0) {
+            node << ",";
+          }
+          node << positions[index];
+        }
+        node << "}";
+        decision.terminal_nodes = {node.str()};
+        return decision;
+      }
+    }
+
+    amflow::AmfOptions fallback_options;
+    return amflow::PlanAmfOptionsEndingScheme(spec, fallback_options, {});
+  }
+};
+
+std::vector<std::shared_ptr<amflow::EtaMode>> MakeCliUserDefinedEtaModes() {
+  return {std::make_shared<ReviewedUsrEtaMode>()};
+}
+
+std::vector<std::shared_ptr<amflow::EndingScheme>> MakeCliUserDefinedEndingSchemes() {
+  return {std::make_shared<ReviewedUsrEndingScheme>()};
+}
+
 amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
                                             const int requested_digits,
                                             const std::optional<int> requested_epsilon_order,
@@ -4820,7 +5325,7 @@ amflow::SolveRequest MakeDirectSolveRequest(const DirectSolveSeriesSpec& spec,
   request.target_location = spec.target_location;
   request.requested_digits = requested_digits;
   request.requested_epsilon_order = requested_epsilon_order;
-  if (requested_epsilon_order.has_value() && !dimension_expression.empty()) {
+  if (!dimension_expression.empty()) {
     request.amf_requested_dimension_expression = dimension_expression;
   }
   request.precision_policy.working_precision =
@@ -4879,6 +5384,7 @@ struct SolveSeriesCliArgs {
   std::filesystem::path output_path;
   int epsilon_order = -1;
   int digits = -1;
+  SolveSeriesRuntimeOptions runtime_options;
 };
 
 struct SolveSeriesOutputIntegral {
@@ -5023,6 +5529,28 @@ int ParseRequiredIntegerFlag(const std::string& flag, const std::string& value) 
   return parsed;
 }
 
+std::vector<std::string> ParseCommaSeparatedSolveSeriesFlag(const std::string& flag,
+                                                            const std::string& value) {
+  std::vector<std::string> parsed;
+  std::size_t start = 0;
+  while (start <= value.size()) {
+    const std::size_t comma = value.find(',', start);
+    const std::string item =
+        TrimAsciiWhitespace(value.substr(start,
+                                         comma == std::string::npos ? std::string::npos
+                                                                    : comma - start));
+    if (item.empty()) {
+      throw std::invalid_argument(flag + " entries must not be empty");
+    }
+    parsed.push_back(item);
+    if (comma == std::string::npos) {
+      break;
+    }
+    start = comma + 1;
+  }
+  return parsed;
+}
+
 SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
   if (argc < 3) {
     throw std::invalid_argument("solve-series requires a spec file path");
@@ -5032,7 +5560,9 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
   std::set<std::string> seen_flags;
   for (int index = 3; index < argc; ++index) {
     const std::string flag = argv[index];
-    if (flag != "--eps-order" && flag != "--digits" && flag != "--out") {
+    if (flag != "--eps-order" && flag != "--digits" && flag != "--out" &&
+        flag != "--spacetime-dimension" && flag != "--amfmode" &&
+        flag != "--ending") {
       throw std::invalid_argument("unknown solve-series flag: " + flag);
     }
     if (!seen_flags.insert(flag).second) {
@@ -5046,8 +5576,23 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
       args.epsilon_order = ParseRequiredIntegerFlag(flag, value);
     } else if (flag == "--digits") {
       args.digits = ParseRequiredIntegerFlag(flag, value);
-    } else {
+    } else if (flag == "--out") {
       args.output_path = value;
+    } else if (flag == "--spacetime-dimension") {
+      const std::string dimension = TrimAsciiWhitespace(value);
+      if (dimension.empty()) {
+        throw std::invalid_argument("--spacetime-dimension requires a non-empty value");
+      }
+      args.runtime_options.spacetime_dimension = dimension;
+      args.runtime_options.amf_options.d0 = dimension;
+    } else if (flag == "--amfmode") {
+      args.runtime_options.amf_options.amf_modes =
+          ParseCommaSeparatedSolveSeriesFlag(flag, value);
+      args.runtime_options.amf_modes_overridden = true;
+    } else if (flag == "--ending") {
+      args.runtime_options.amf_options.ending_schemes =
+          ParseCommaSeparatedSolveSeriesFlag(flag, value);
+      args.runtime_options.ending_schemes_overridden = true;
     }
   }
   if (args.epsilon_order < 0) {
@@ -5062,6 +5607,100 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
   return args;
 }
 
+void WriteJsonStringArray(std::ostream& out, const std::vector<std::string>& values) {
+  out << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << JsonString(values[index]);
+  }
+  out << "]";
+}
+
+void WriteJsonSizeArray(std::ostream& out, const std::vector<std::size_t>& values) {
+  out << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << values[index];
+  }
+  out << "]";
+}
+
+void AppendSolveSeriesAmfOptionsJson(
+    std::ostream& out,
+    const SolveSeriesRuntimeOptions& runtime_options,
+    const std::optional<amflow::EtaInsertionDecision>& eta_mode_decision,
+    const std::optional<amflow::EndingDecision>& ending_decision) {
+  if (!HasSolveSeriesRuntimeOptions(runtime_options) &&
+      !eta_mode_decision.has_value() &&
+      !ending_decision.has_value()) {
+    return;
+  }
+
+  out << "  \"amf_options\": {\n";
+  bool wrote = false;
+  auto field_separator = [&]() {
+    if (wrote) {
+      out << ",\n";
+    }
+    wrote = true;
+  };
+
+  if (runtime_options.spacetime_dimension.has_value()) {
+    field_separator();
+    out << "    \"spacetime_dimension\": "
+        << JsonString(*runtime_options.spacetime_dimension);
+  }
+  if (runtime_options.amf_modes_overridden) {
+    field_separator();
+    out << "    \"amf_modes\": ";
+    WriteJsonStringArray(out, runtime_options.amf_options.amf_modes);
+  }
+  if (runtime_options.ending_schemes_overridden) {
+    field_separator();
+    out << "    \"ending_schemes\": ";
+    WriteJsonStringArray(out, runtime_options.amf_options.ending_schemes);
+  }
+  if (eta_mode_decision.has_value()) {
+    field_separator();
+    out << "    \"eta_mode_decision\": {\n";
+    out << "      \"mode_name\": " << JsonString(eta_mode_decision->mode_name)
+        << ",\n";
+    out << "      \"selected_propagator_indices\": ";
+    WriteJsonSizeArray(out, eta_mode_decision->selected_propagator_indices);
+    out << ",\n";
+    std::vector<std::size_t> positions;
+    positions.reserve(eta_mode_decision->selected_propagator_indices.size());
+    for (const std::size_t index : eta_mode_decision->selected_propagator_indices) {
+      positions.push_back(index + 1);
+    }
+    out << "      \"selected_propagator_positions\": ";
+    WriteJsonSizeArray(out, positions);
+    out << ",\n";
+    out << "      \"selected_propagators\": ";
+    WriteJsonStringArray(out, eta_mode_decision->selected_propagators);
+    out << ",\n";
+    out << "      \"explanation\": "
+        << JsonString(eta_mode_decision->explanation) << "\n";
+    out << "    }";
+  }
+  if (ending_decision.has_value()) {
+    field_separator();
+    out << "    \"ending_decision\": {\n";
+    out << "      \"terminal_strategy\": "
+        << JsonString(ending_decision->terminal_strategy) << ",\n";
+    out << "      \"terminal_nodes\": ";
+    WriteJsonStringArray(out, ending_decision->terminal_nodes);
+    out << "\n";
+    out << "    }";
+  }
+  out << "\n";
+  out << "  },\n";
+}
+
 std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                      const DirectSolveSeriesSpec& direct_spec,
                                      const amflow::SolverDiagnostics& diagnostics,
@@ -5070,7 +5709,12 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                      const int digits,
                                      const std::string& status,
                                      const std::string& error,
-                                     const double duration_seconds) {
+                                     const double duration_seconds,
+                                     const SolveSeriesRuntimeOptions& runtime_options,
+                                     const std::optional<amflow::EtaInsertionDecision>&
+                                         eta_mode_decision,
+                                     const std::optional<amflow::EndingDecision>&
+                                         ending_decision) {
   std::map<std::string, std::size_t> master_index_by_label;
   for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
     const auto& master = direct_spec.masters[index];
@@ -5119,6 +5763,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   out << "    \"precision_digits\": " << digits << ",\n";
   out << "    \"epsilon_order\": " << epsilon_order << "\n";
   out << "  },\n";
+  AppendSolveSeriesAmfOptionsJson(out,
+                                  runtime_options,
+                                  eta_mode_decision,
+                                  ending_decision);
   if (direct_spec.amflow_state_input) {
     const bool phase_space_state = IsPhaseSpaceAmflowState(direct_spec);
     const bool solution_sample_state = UsesRetainedSolutionSamples(direct_spec);
@@ -5312,6 +5960,9 @@ struct SolveSeriesEvaluation {
   DirectSolveSeriesSpec direct_spec;
   amflow::SolverDiagnostics diagnostics;
   std::optional<amflow::SolverDiagnostics> retained_master_diagnostics;
+  SolveSeriesRuntimeOptions runtime_options;
+  std::optional<amflow::EtaInsertionDecision> eta_mode_decision;
+  std::optional<amflow::EndingDecision> ending_decision;
   std::string status = "failed";
   std::string error;
   int exit_code = 0;
@@ -5321,7 +5972,8 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     amflow::ProblemSpec problem_spec,
     DirectSolveSeriesSpec direct_spec,
     const int epsilon_order,
-    const int digits) {
+    const int digits,
+    const SolveSeriesRuntimeOptions& runtime_options) {
   if (direct_spec.family.empty()) {
     direct_spec.family = problem_spec.family.name;
   }
@@ -5329,8 +5981,36 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
   SolveSeriesEvaluation evaluation;
   evaluation.problem_spec = std::move(problem_spec);
   evaluation.direct_spec = std::move(direct_spec);
+  evaluation.runtime_options = runtime_options;
+  if (runtime_options.spacetime_dimension.has_value()) {
+    evaluation.problem_spec.dimension = *runtime_options.spacetime_dimension;
+  }
 
   try {
+    if (evaluation.direct_spec.benchmark_id == "user_defined_amfmode" &&
+        !IsSingleString(runtime_options.amf_options.amf_modes, "usr")) {
+      throw std::runtime_error(
+          "user_defined_amfmode retained state requires --amfmode usr to bind "
+          "the reviewed AMFlow user-defined AMFPosition hook");
+    }
+    if (evaluation.direct_spec.benchmark_id == "user_defined_ending" &&
+        !IsSingleString(runtime_options.amf_options.ending_schemes, "usr")) {
+      throw std::runtime_error(
+          "user_defined_ending retained state requires --ending usr to bind "
+          "the reviewed AMFlow user-defined EndingScheme hook");
+    }
+    if (runtime_options.amf_modes_overridden) {
+      evaluation.eta_mode_decision =
+          amflow::PlanAmfOptionsEtaMode(evaluation.problem_spec,
+                                        runtime_options.amf_options,
+                                        MakeCliUserDefinedEtaModes());
+    }
+    if (runtime_options.ending_schemes_overridden) {
+      evaluation.ending_decision =
+          amflow::PlanAmfOptionsEndingScheme(evaluation.problem_spec,
+                                             runtime_options.amf_options,
+                                             MakeCliUserDefinedEndingSchemes());
+    }
     ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
     if (evaluation.direct_spec.amflow_state_input) {
       evaluation.diagnostics =
@@ -5462,7 +6142,8 @@ std::string SerializeSolveSeriesBundleJson(
     const std::vector<SolveSeriesEvaluation>& evaluations,
     const int epsilon_order,
     const int digits,
-    const double duration_seconds) {
+    const double duration_seconds,
+    const SolveSeriesRuntimeOptions& runtime_options) {
   const bool all_success = std::all_of(
       evaluations.begin(),
       evaluations.end(),
@@ -5511,6 +6192,7 @@ std::string SerializeSolveSeriesBundleJson(
   out << "    \"precision_digits\": " << digits << ",\n";
   out << "    \"epsilon_order\": " << epsilon_order << "\n";
   out << "  },\n";
+  AppendSolveSeriesAmfOptionsJson(out, runtime_options, std::nullopt, std::nullopt);
   out << "  \"results\": [\n";
   bool wrote_result = false;
   for (const SolveSeriesEvaluation& evaluation : evaluations) {
@@ -5751,7 +6433,8 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
             MakeProblemSpecForAmflowState(state_spec),
             state_spec,
             args.epsilon_order,
-            args.digits));
+            args.digits,
+            args.runtime_options));
         exit_code = std::max(exit_code, evaluations.back().exit_code);
       }
       const auto end = std::chrono::steady_clock::now();
@@ -5761,7 +6444,8 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
                     SerializeSolveSeriesBundleJson(evaluations,
                                                    args.epsilon_order,
                                                    args.digits,
-                                                   duration_seconds));
+                                                   duration_seconds,
+                                                   args.runtime_options));
       for (const SolveSeriesEvaluation& evaluation : evaluations) {
         if (!evaluation.error.empty()) {
           std::cerr << evaluation.problem_spec.family.name << ": "
@@ -5794,7 +6478,8 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
       EvaluateSolveSeriesInput(std::move(problem_spec),
                                std::move(direct_spec),
                                args.epsilon_order,
-                               args.digits);
+                               args.digits,
+                               args.runtime_options);
   const auto end = std::chrono::steady_clock::now();
   const double duration_seconds =
       std::chrono::duration<double>(end - start).count();
@@ -5809,7 +6494,10 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
                                          args.digits,
                                          evaluation.status,
                                          evaluation.error,
-                                         duration_seconds));
+                                         duration_seconds,
+                                         evaluation.runtime_options,
+                                         evaluation.eta_mode_decision,
+                                         evaluation.ending_decision));
   if (!evaluation.error.empty()) {
     std::cerr << evaluation.error << "\n";
   } else if (!evaluation.diagnostics.success && !evaluation.diagnostics.summary.empty()) {
@@ -5833,6 +6521,7 @@ void PrintUsage() {
             << "  run-kira-from-file <file> <kira> <fermat> [dir]\n"
             << "                           Emit and execute Kira for a file-backed ProblemSpec\n"
             << "  solve-series <file> --eps-order N --digits N --out path\n"
+            << "                           [--spacetime-dimension D] [--amfmode X[,Y]] [--ending X[,Y]]\n"
             << "                           Run a reviewed embedded direct solve_series request or AMFlow state JSON/bundle\n"
             << "  show-defaults            Print bootstrap AMF and reduction defaults\n"
             << "  write-manifest <dir>     Create an artifact layout and write a sample/demo manifest\n";

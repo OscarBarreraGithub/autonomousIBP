@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "user_defined_ending",
+  "family": "box1",
+  "targets": ["box1[-2,1,1,2]"],
+  "solver": {
+    "precision_digits": 60,
+    "epsilon_order": 3
+  },
+  "amf_options": {
+    "ending_schemes": ["usr"],
+    "ending_decision": {
+      "terminal_strategy": "usr-two-top-position-ending",
+      "terminal_nodes": ["box1:top_positions={2,3}"]
+    }
+  },
+  "boundary_state": {
+    "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
+    "location": "infinity",
+    "direction": "NegIm",
+    "epsilon_sample_count": 15,
+    "integral_kind": "loop",
+    "accepted_by_solve_series": true,
+    "runtime_boundary_provider": "retained-asymptotic-subsystem-sample-boundary-evaluator+eta-infinity-de-asymptotic-transport"
+  },
+  "continuation": {
+    "variable": "eta",
+    "start_location": "infinity",
+    "target_location": "eta=0",
+    "singular_points": ["eta=0", "eta=1", "eta=100"],
+    "transport_applied": false,
+    "transport_scope": "eta-infinity-asymptotic-only",
+    "full_eta_zero_contour_applied": false,
+    "eta_infinity_asymptotic_transport_applied": true,
+    "eta_infinity_asymptotic_transported_master_count": 1,
+    "eta_zero_endpoint_transport_applied": false,
+    "eta_zero_endpoint_transported_master_count": 0,
+    "eta_zero_endpoint_transported_integrals": [],
+    "runtime_application": "eta-infinity-de-asymptotic-first-coefficient",
+    "blocked_reason": "singular eta=0 complex contour execution and endpoint extraction remain deferred after first eta-infinity asymptotic DE transport"
+  },
+  "target_reduction": {
+    "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/generated-config/phase0/user_defined_ending/primary/cache/box1_reduce/results/box1/kira_target.m",
+    "accepted_by_solve_series": true,
+    "runtime_application": "applied-after-eta-infinity-asymptotic-de-transport"
+  },
+  "results": [
+    {
+      "integral": "box1[-2,1,1,2]",
+      "epsilon_orders": [{
+        "order": -2,
+        "real_digits": "-20000.000000000000000000000000000000000000000000000000000000000000",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-20000",
+        "exact_imag": "0"
+      }, {
+        "order": -1,
+        "real_digits": "-28254.686701969342787869758198351951379156813281201528023884655302",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-14127343350984671393934879099175975689578406640600764011942327651151323/500000000000000000000000000000000000000000000000000000000000000000",
+        "exact_imag": "0"
+      }, {
+        "order": 0,
+        "real_digits": "-43508.832322178816059181035023902656021357772979355293745282020905",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-435088323221788160591810350239026560213577729793552937452820209051403184077/10000000000000000000000000000000000000000000000000000000000000000000000",
+        "exact_imag": "0"
+      }, {
+        "order": 1,
+        "real_digits": "-39906.695495366434910188496695310049870650175156253009619519973949",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-399066954953664349101884966953100498706501751562530096195199739492900881093/10000000000000000000000000000000000000000000000000000000000000000000000",
+        "exact_imag": "0"
+      }, {
+        "order": 2,
+        "real_digits": "-46432.740647336900103354654855188969708695242162347194802607701688",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-116081851618342250258386637137972424271738105405867987006519254220289161107/2500000000000000000000000000000000000000000000000000000000000000000000",
+        "exact_imag": "0"
+      }, {
+        "order": 3,
+        "real_digits": "-38636.129823631113410272787700987135510898012622799368197819412465",
+        "imag_digits": "0.000000000000000000000000000000000000000000000000000000000000",
+        "exact_real": "-24147581139769445881420492313116959694311257889249605123637132791223582321/625000000000000000000000000000000000000000000000000000000000000000000",
+        "exact_imag": "0"
+      }]
+    }
+  ],
+  "status": "success",
+  "duration_seconds": 0.118364,
+  "summary": "Evaluated retained AMFlow eta-infinity leading boundary coefficients from 2 subsystem-sample regions and 15 epsilon samples. Applied first eta-infinity DE asymptotic transport to 1 missing master coefficient set(s). Full singular eta->0 complex contour execution and non-selected endpoint extraction remain deferred on this path; the solve result records the reviewed Gap B continuation audit separately. Applied retained Kira target reduction after eta-infinity asymptotic DE transport."
+}

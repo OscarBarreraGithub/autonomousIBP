@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "lane": "lane50",
+  "scope": "M5 user-defined feature-parity implementation evidence",
+  "implementation_summary": {
+    "spacetime_dimension": "solve-series accepts --spacetime-dimension and applies the expression to the C++ ProblemSpec and SolveRequest dimension binding.",
+    "user_defined_amfmode": "solve-series accepts --amfmode, registers the reviewed AMFlow usr AMFPosition hook, and emits the selected eta insertion decision.",
+    "user_defined_ending": "solve-series accepts --ending, registers the reviewed AMFlow usr EndingScheme hook, and emits the terminal ending decision.",
+    "retained_state_parser": "retained boundary parsing now supports Gamma products, ratios, powers, Pi, and Mathematica scientific notation in real boundary expressions."
+  },
+  "feature_rows": [
+    {
+      "id": "spacetime_dimension",
+      "probe_scope": "direct non-default dimension flag probe",
+      "command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/specs/spacetime_dimension.direct-default-d.flag-probe.yaml --eps-order 1 --digits 50 --spacetime-dimension 7/3 --out tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json",
+      "comparison": "tools/reference-harness/specs/m5/comparisons/lane50/spacetime_dimension.direct-flag.compare.json",
+      "anti_fake_control": "The same direct input without --spacetime-dimension outputs exact_real=4; with --spacetime-dimension 7/3 it outputs exact_real=7/3 and matches the non-default AMFlow golden.",
+      "evidence_kind": "live-solver-path"
+    },
+    {
+      "id": "user_defined_amfmode",
+      "probe_scope": "scoped retained target box1[-2,1,1,2] from the AMFlow user_defined_amfmode example; retained-state scoped exception, not full live AMFlow regeneration",
+      "command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/states/user_defined_amfmode.scoped.raw-state.json --eps-order 3 --digits 60 --amfmode usr --out tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json",
+      "comparison": "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_amfmode.scoped.compare.json",
+      "anti_fake_control": "The scoped retained state exits 2 without --amfmode usr. With --amfmode usr it emits eta_mode_decision.mode_name=usr and selected_propagator_positions=[1,3], then matches six AMFlow coefficients.",
+      "evidence_kind": "approved-retained-state-exception"
+    },
+    {
+      "id": "user_defined_ending",
+      "probe_scope": "scoped retained target box1[-2,1,1,2] from the AMFlow user_defined_ending final_usr example; retained-state scoped exception, not full live AMFlow regeneration",
+      "command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/states/user_defined_ending.final_usr.scoped.raw-state.json --eps-order 3 --digits 60 --ending usr --out tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_ending.final_usr.scoped.cpp-result.json",
+      "comparison": "tools/reference-harness/specs/m5/comparisons/lane50/user_defined_ending.final_usr.scoped.compare.json",
+      "anti_fake_control": "The scoped retained state exits 2 without --ending usr. With --ending usr it emits ending_decision.terminal_strategy=usr-two-top-position-ending and matches six AMFlow coefficients.",
+      "evidence_kind": "approved-retained-state-exception"
+    }
+  ],
+  "qualifier": {
+    "sidecar": "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json",
+    "result": "/tmp/autoibp_orch/exec/lane50_m5_qualification.json",
+    "status": "m5_feature_parity_passed=true, aggregate 390/390 compared coefficients"
+  },
+  "non_claims": [
+    "The lane50 evidence does not claim full retained spacetime_dimension sol73D endpoint parity.",
+    "The lane50 evidence does not claim full user_defined_amfmode endpoint-sensitive box output parity.",
+    "The lane50 evidence does not claim full user_defined_ending endpoint-sensitive box output parity.",
+    "M6, M7, and release readiness remain out of scope."
+  ]
+}

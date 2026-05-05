@@ -1,0 +1,48 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/m5/lane50/goldens/spacetime_dimension.direct-nondefault-d.amflow-golden.txt",
+  "benchmark_id": "lane44_spacetime_dimension_direct",
+  "compared_coefficient_count": 2,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "2.3333333333333333333333333333333333333333333333333333333333333333",
+          "cpp_imag": "0E-50",
+          "cpp_present": true,
+          "cpp_real": "2.33333333333333333333333333333333333333333333333333",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 51
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": false,
+          "amflow_real": "0",
+          "cpp_imag": "0E-50",
+          "cpp_present": true,
+          "cpp_real": "0E-50",
+          "imag_agreement_digits": 999,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "lane44_dim_family[1]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 1,
+  "minimum_digit_agreement": 51,
+  "passed": true,
+  "passed_coefficient_count": 2,
+  "schema_version": 1,
+  "tolerance_digits": 30
+}

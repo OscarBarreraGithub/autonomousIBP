@@ -1,0 +1,35 @@
+{
+  "blocking_reasons": [
+    "typed failure-path preservation review is not complete",
+    "retained unstable-run diagnostic evidence has not been reviewed"
+  ],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "blocked-on-missing-typed-failure-review",
+  "diagnostic_review_complete": false,
+  "diagnostic_review_required_inputs_preserved": true,
+  "diagnostic_review_required_outputs_preserved": true,
+  "known_regression_outcomes_reviewed": true,
+  "missing_or_degraded_diagnostic_paths": [
+    "retained-unstable-run-evidence",
+    "typed-failure-path-review"
+  ],
+  "qualification_scaffold_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/qualification-benchmarks.json",
+  "required_failure_code_profiles_reviewed": true,
+  "reviewed_failure_code_profiles": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ],
+  "schema_version": 1,
+  "scope": "release-diagnostic-review",
+  "typed_failure_paths_preserved": false,
+  "unstable_run_evidence_reviewed": false,
+  "withheld_claims": [
+    "This summary does not claim diagnostic review completion.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run runtime diagnostics or widen runtime behavior."
+  ]
+}

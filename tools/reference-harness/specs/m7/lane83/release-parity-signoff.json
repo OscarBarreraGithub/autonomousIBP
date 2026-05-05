@@ -1,0 +1,278 @@
+{
+  "blocking_reasons": [
+    "qualification closure note has not been reviewed"
+  ],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "blocked-on-qualification-closure",
+  "diagnostic_review_summary_reviewed": true,
+  "docs_completion_note_reviewed": true,
+  "evidence_snapshot": {
+    "anti_fake_parity_gate": {
+      "accepted_real_claims": [
+        "Fresh lane83 phase-0 aggregate at current HEAD is 2831/3359 across the 27 tracked manifest surfaces, including automatic_loop.eps17 through automatic_loop.eps20.",
+        "automatic_loop.eps17 and automatic_loop.eps18 still pass at 234/234 and 246/246; newly tracked automatic_loop.eps19 and automatic_loop.eps20 are honest C++ solve-path misses counted as 0/258 and 0/270.",
+        "Committed M5 all-phase closure remains CLOSED at 390/390 with explicit non-claims for M6, M7, and release readiness.",
+        "Current case-study numeric evidence has all 10 sidecars present and 9/10 families passing.",
+        "The passing case-study subset is 783/783 coefficients; the all-sidecar accounting is 794/1005 because diphoton-heavy-quark-form-factors contributes 11/222 at 56 observed digits below its required 200-digit threshold.",
+        "Performance review, diagnostic review, and docs completion are reviewed; qualification closure and final parity sign-off remain blocked."
+      ],
+      "rejected_unqualified_claims": [
+        "This sidecar does not claim Milestone M6 closure.",
+        "This sidecar does not claim Milestone M7 closure.",
+        "This sidecar does not claim final parity sign-off.",
+        "This sidecar does not claim release readiness.",
+        "This sidecar does not claim full current-HEAD phase-0 parity while automatic_loop.eps19 and automatic_loop.eps20 fail.",
+        "This sidecar does not treat the diphoton-heavy-quark-form-factors family as qualified."
+      ],
+      "role_d_verdict": "APPROVE current-HEAD lane83 phase-0 runtime aggregate 2831/3359 as measured lane83 evidence after eps19/eps20 became tracked; approve M5 390/390 and current case-study 9/10 with 783/783 passing subset and 794/1005 all-sidecar accounting; reject full phase-0 parity, M6, M7, and release readiness while eps19/eps20 and diphoton-heavy-quark-form-factors remain blocked."
+    },
+    "m5_all_phase": {
+      "aggregate_compared_coefficient_count": 390,
+      "aggregate_passed_coefficient_count": 390,
+      "blocking_reasons": [],
+      "current_state": "CLOSED/all-phase",
+      "does_not_claim_m6": true,
+      "does_not_claim_m7": true,
+      "does_not_claim_release_readiness": true,
+      "m5_all_phase_closed": true,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane83_m5_qualification.json",
+      "source_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json"
+    },
+    "m6_case_study_numeric_evidence": {
+      "all_sidecar_compared_coefficient_count": 1005,
+      "all_sidecar_passed_coefficient_count": 794,
+      "blocked_family_ids": [
+        "diphoton-heavy-quark-form-factors"
+      ],
+      "blocking_reasons": [
+        "case-study numeric comparison has not fully passed",
+        "case-study correct-digit thresholds have not fully passed",
+        "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
+        "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200"
+      ],
+      "case_study_families_qualified": false,
+      "compared_family_count": 10,
+      "current_state": "blocked-on-case-study-comparison",
+      "diphoton_blocker": {
+        "compared_coefficient_count": 222,
+        "id": "diphoton-heavy-quark-form-factors",
+        "minimum_digit_agreement": 56,
+        "passed_coefficient_count": 11,
+        "required_minimum_correct_digits": 200,
+        "source_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+        "status": "digit-threshold-failed",
+        "tolerance_digits": 200
+      },
+      "milestone_m6_ready": false,
+      "missing_family_ids": [],
+      "passing_compared_coefficient_count": 783,
+      "passing_families": [
+        {
+          "compared_coefficient_count": 54,
+          "id": "package-double-box",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 54,
+          "source_path": "tools/reference-harness/specs/case-studies/package-double-box.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 89,
+          "id": "ttbar-j",
+          "minimum_digit_agreement": 78,
+          "passed_coefficient_count": 89,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 1,
+          "id": "ttbar-h",
+          "minimum_digit_agreement": 999,
+          "passed_coefficient_count": 1,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-h.numeric-evidence.json",
+          "tolerance_digits": 100
+        },
+        {
+          "compared_coefficient_count": 14,
+          "id": "five-point-one-mass-scattering",
+          "minimum_digit_agreement": 59,
+          "passed_coefficient_count": 14,
+          "source_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 162,
+          "id": "ttbar-w",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 162,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 138,
+          "id": "h-to-bb",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 138,
+          "source_path": "tools/reference-harness/specs/case-studies/h-to-bb.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 150,
+          "id": "n4-sym-three-loop-form-factor",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 150,
+          "source_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 174,
+          "id": "single-top-planar-nonplanar",
+          "minimum_digit_agreement": 57,
+          "passed_coefficient_count": 174,
+          "source_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 1,
+          "id": "one-singular-endpoint-case",
+          "minimum_digit_agreement": 999,
+          "passed_coefficient_count": 1,
+          "source_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json",
+          "tolerance_digits": 50
+        }
+      ],
+      "passing_family_count": 9,
+      "passing_family_fraction": "9/10",
+      "passing_passed_coefficient_count": 783,
+      "runtime_blocked_family_ids": [],
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane83_case_study_qualification.json",
+      "selected_family_count": 10,
+      "source_family_catalog": "tools/reference-harness/templates/qualification-benchmarks.json"
+    },
+    "phase0_capture_state": {
+      "captured_example_count": 6,
+      "captured_example_fraction": "6/10",
+      "captured_example_ids": [
+        "automatic_loop",
+        "automatic_vs_manual",
+        "differential_equation_solver",
+        "spacetime_dimension",
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "pending_example_count": 4,
+      "pending_example_ids": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator"
+      ],
+      "source_path": "tools/reference-harness/templates/qualification-benchmarks.json",
+      "total_example_count": 10
+    },
+    "phase0_current_head_aggregate": {
+      "all_compares_passed": false,
+      "blocked_surfaces": [
+        {
+          "compared_coefficient_count": 258,
+          "passed_coefficient_count": 0,
+          "solve_exit": 2,
+          "surface": "automatic_loop.eps19"
+        },
+        {
+          "compared_coefficient_count": 270,
+          "passed_coefficient_count": 0,
+          "solve_exit": 2,
+          "surface": "automatic_loop.eps20"
+        }
+      ],
+      "case_count": 27,
+      "compared_coefficient_count": 3359,
+      "included_high_order_surfaces": [
+        "automatic_loop.eps17",
+        "automatic_loop.eps18",
+        "automatic_loop.eps19",
+        "automatic_loop.eps20"
+      ],
+      "manifest_source": "git ls-files tools/reference-harness/specs/phase0/*golden-manifest.json",
+      "passed_coefficient_count": 2831,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane83_phase0_aggregate_latest/aggregate.json",
+      "solve_digits": 40,
+      "source_status": "current-head-lane83-rerun-over-tracked-manifests",
+      "tolerance_digits": 30
+    },
+    "phase0_prior_lane32_aggregate": {
+      "compared_coefficient_count": 671,
+      "passed_coefficient_count": 669,
+      "source_path": "tools/reference-harness/specs/phase0/lane32-packet-validation-aggregate.json",
+      "source_status": "prior-committed-lane32-baseline",
+      "tolerance_digits": 30
+    },
+    "phase0_prior_lane40_rerun": {
+      "all_compares_passed": true,
+      "case_count": 13,
+      "compared_coefficient_count": 671,
+      "passed_coefficient_count": 671,
+      "source_path": "/tmp/autoibp_orch/exec/lane40_batch52/parity_runs/aggregate.json",
+      "source_status": "prior-unpromoted-tmp-rerun",
+      "tolerance_digits": 30
+    },
+    "release_review_state": {
+      "diagnostic_review_summary_path": "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+      "diagnostic_review_summary_reviewed": true,
+      "docs_completion_summary_path": "/tmp/autoibp_orch/exec/lane83_docs_completion.json",
+      "docs_completion_note_reviewed": true,
+      "performance_review_summary_path": "tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+      "performance_review_summary_reviewed": true,
+      "qualification_closure_reviewed": false,
+      "qualification_corpus_summary_path": "tools/reference-harness/specs/m7/lane76/release-qualification-corpus.json"
+    },
+    "snapshot_policy": "Record real current-HEAD parity evidence without converting eps19/eps20 phase-0 misses or the diphoton-blocked qualification corpus into M6, M7, parity sign-off, or release-readiness closure."
+  },
+  "missing_or_blocked_parity_paths": [
+    "qualification-closure-note"
+  ],
+  "multi_agent_review": [
+    {
+      "finding": "Role A measured the phase-0 aggregate with the lane32/lane12 solve-series/comparator methodology at current HEAD and approved the 2831/3359 number across 27 tracked surfaces.",
+      "role": "A",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Role B reran qualify_milestone_m5.py and approved M5 CLOSED/all-phase at 390/390 with no M6, M7, or release-readiness claim.",
+      "role": "B",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Role C reran the case-study-family qualifier and approved 9/10 current-family state, with diphoton-heavy-quark-form-factors as the sole digit-threshold blocker.",
+      "role": "C",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Role D approved only the blocked-state wording: current-HEAD phase-0 lane83 runtime aggregate 2831/3359 over tracked manifests, M5 390/390, case-study 9/10 with 783/783 passing subset and 794/1005 all-sidecar accounting, while rejecting full phase-0 parity, M6, M7, and release readiness.",
+      "role": "D",
+      "status": "APPROVE"
+    }
+  ],
+  "parity_signoff_complete": false,
+  "parity_signoff_required_inputs_preserved": true,
+  "parity_signoff_required_outputs_preserved": true,
+  "performance_review_summary_reviewed": true,
+  "prerequisite_review_sections_preserved": true,
+  "qualification_closure_reviewed": false,
+  "required_release_review_sections": [
+    "qualification-corpus",
+    "performance-review",
+    "diagnostic-review",
+    "docs-completion"
+  ],
+  "schema_version": 1,
+  "scope": "release-parity-signoff",
+  "withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "withheld_claims_reviewed": true
+}

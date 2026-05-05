@@ -193,18 +193,22 @@ boundary evaluator, fit epsilon Laurent series, apply the first unambiguous DE-d
 eta-infinity asymptotic transport coefficient, apply the retained `eta=0` branch-log
 endpoint coefficient transport through `eps^1` for `<family>[1,0,1,0]`, apply the retained
 selected box endpoint transport through `eps^1` for `<family>[1,1,1,1]`, and then apply the
-retained family-local target reduction, and suppress untransported retained output coefficients
-above `eps^1` after target reduction has consumed any raw higher fitted terms needed for the
-already-reviewed lower-order reductions. The comparator-facing JSON now includes both retained
-reduction targets and retained reduction masters for `box1` and `box2`; the current retained
-comparison exits `0` with
-`matched_integral_count=12`, `compared_coefficient_count=54`, and
-`passed_coefficient_count=54` at `--eps-order 2 --digits 40 --tolerance-digits 30`. This is full
-retained `automatic_loop` comparator parity against the current golden manifest. Shipping a broader
-physical parity claim from this result would still be dishonest: the physical comparison endpoint is
-the singular `eta -> 0` limit reached through complex continuation, and the current C++ runtime does
-not yet perform the full contour, box endpoint extraction beyond `eps^1`, or other endpoint
-extraction on the retained AMFlow-state path.
+retained family-local target reduction. The comparator-facing JSON includes both retained
+reduction targets and retained reduction masters for `box1` and `box2`, but the current
+runtime still emits no transported `eps^2` output coefficients on this retained state path.
+
+The phase0 retained golden manifest under
+`/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_loop`
+was captured only through `eps_order=1`; it has no `eps^2` AMFlow values and must not be used
+to claim `eps^2` parity. For `eps^2` audits, use
+`tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json`, which points
+at the eps4 AMFlow `sol1` and `sol2` files under
+`/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/automatic_loop`.
+Against that eps2-capable reference after reverting `9ad4773`, the current retained comparison
+fails honestly with `matched_integral_count=12`, `compared_coefficient_count=54`,
+`passed_coefficient_count=42`, `minimum_digit_agreement=0`, and 12 failure entries, all at
+`eps^2`. This is the current truth: no automatic_loop `eps^2` coefficient passes at
+`>=30` digits against a real `eps^2` AMFlow reference.
 
 The C++/AMFlow comparator can already bridge the known family-name mismatch. It strips a trailing
 `_amflow` suffix by default and accepts explicit mappings such as:
@@ -212,7 +216,7 @@ The C++/AMFlow comparator can already bridge the known family-name mismatch. It 
 ```bash
 python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
   --cpp-result /tmp/automatic_loop.cpp-result.json \
-  --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_loop/golden-manifest.json \
+  --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json \
   --family-alias box1_amflow=box1 \
   --family-alias box2_amflow=box2 \
   --tolerance-digits 30
@@ -220,7 +224,7 @@ python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py \
 
 The remaining end-to-end parity work is to add the complex continuation, singular `eta -> 0`
 extraction, higher box endpoint terms, and the remaining endpoint coefficients needed for the retained
-golden manifest. The current
+eps2-capable golden manifest. The current
 JSON-state bundle run is boundary-evaluation evidence and comparator plumbing only, not a phase-0
 parity pass.
 

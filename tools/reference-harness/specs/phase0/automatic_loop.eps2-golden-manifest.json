@@ -1,0 +1,19 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/automatic_loop",
+  "notes": [
+    "Temporary eps2-capable AMFlow reference for automatic_loop comparator audits.",
+    "The phase0 retained manifest under work/goldens/phase0/automatic_loop was captured only through eps_order=1 and must not be used to claim eps^2 parity."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

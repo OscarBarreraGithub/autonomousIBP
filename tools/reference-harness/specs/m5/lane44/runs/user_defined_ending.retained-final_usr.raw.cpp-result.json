@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "user_defined_ending",
+  "family": "box1",
+  "targets": ["box1[2,0,1,0]", "box1[-2,1,1,2]", "box1[1,2,2,1]"],
+  "solver": {
+    "precision_digits": 60,
+    "epsilon_order": 3
+  },
+  "boundary_state": {
+    "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
+    "location": "infinity",
+    "direction": "NegIm",
+    "epsilon_sample_count": 15,
+    "integral_kind": "loop",
+    "accepted_by_solve_series": true,
+    "runtime_boundary_provider": "deferred-asymptotic-subsystem-sample-provider"
+  },
+  "continuation": {
+    "variable": "eta",
+    "start_location": "infinity",
+    "target_location": "eta=0",
+    "singular_points": ["eta=0", "eta=1", "eta=100"],
+    "transport_applied": false,
+    "transport_scope": "none",
+    "full_eta_zero_contour_applied": false,
+    "eta_infinity_asymptotic_transport_applied": false,
+    "eta_infinity_asymptotic_transported_master_count": 0,
+    "eta_zero_endpoint_transport_applied": false,
+    "eta_zero_endpoint_transported_master_count": 0,
+    "eta_zero_endpoint_transported_integrals": [],
+    "runtime_application": "not-applied-boundary-only",
+    "blocked_reason": "eta-infinity start, complex contour execution, and singular eta=0 endpoint extraction remain deferred"
+  },
+  "target_reduction": {
+    "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/generated-config/phase0/user_defined_ending/primary/cache/box1_reduce/results/box1/kira_target.m",
+    "accepted_by_solve_series": true,
+    "runtime_application": "deferred-until-master-values"
+  },
+  "results": [
+    {
+      "integral": "box1[2,0,1,0]",
+      "epsilon_orders": []
+    },
+    {
+      "integral": "box1[-2,1,1,2]",
+      "epsilon_orders": []
+    },
+    {
+      "integral": "box1[1,2,2,1]",
+      "epsilon_orders": []
+    }
+  ],
+  "status": "failed",
+  "duration_seconds": 0.000856,
+  "error": "Unable to parse the string \"68129206900]*Gamma[68129206799/68129206900]^2)/Gamma[68129206799/34064603450]\" as a floating point value."
+}

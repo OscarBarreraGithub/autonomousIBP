@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "lane44_spacetime_dimension_direct",
+  "family": "lane44_dim_family",
+  "targets": ["lane44_dim_family[1]"],
+  "solver": {
+    "precision_digits": 50,
+    "epsilon_order": 1
+  },
+  "results": [
+    {
+      "integral": "lane44_dim_family[1]",
+      "epsilon_orders": [{
+        "order": 0,
+        "real_digits": "2.33333333333333333333333333333333333333333333333333",
+        "imag_digits": "0.00000000000000000000000000000000000000000000000000",
+        "exact_real": "7/3",
+        "exact_imag": "0"
+      }, {
+        "order": 1,
+        "real_digits": "0.00000000000000000000000000000000000000000000000000",
+        "imag_digits": "0.00000000000000000000000000000000000000000000000000",
+        "exact_real": "0",
+        "exact_imag": "0"
+      }]
+    }
+  ],
+  "status": "success",
+  "duration_seconds": 0.000966,
+  "summary": "Solved by exact one-hop epsilon-series regular-point continuation."
+}

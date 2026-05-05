@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "scope": "m5-runtime-feature-evidence",
+  "status": "partial-blocked-lane44",
+  "does_not_claim_m5_closure": true,
+  "features": [
+    {
+      "id": "arbitrary_D0",
+      "status": "partial",
+      "implemented_slices": [
+        "amflow-cli direct solve-series accepts a ProblemSpec dimension value and the exact one-hop solver reflects non-default dimension=7/3 in output coefficients",
+        "retained upstream spacetime_dimension D0 capture exists in the de-d0-pair reference packet"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json",
+        "tools/reference-harness/specs/m5/comparisons/lane44/spacetime_dimension.direct-nondefault-d-subset.compare.json",
+        "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-nondefault-d.cpp-result.json",
+        "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-default-d.cpp-result.json",
+        "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.retained-sol73D.raw.cpp-result.json"
+      ],
+      "blockers": [
+        "Exact non-default dimension is only a direct subset and does not close retained AMFlow D0-2eps spacetime_dimension parity.",
+        "Retained spacetime_dimension sol73D AMFlow state fails before C++ coefficient production: Unable to parse the string \"6463200]^2\" as a floating point value.",
+        "No passing C++/AMFlow comparator summary exists for the retained spacetime_dimension D0 example."
+      ]
+    },
+    {
+      "id": "fixed_eps",
+      "status": "partial",
+      "implemented_slices": [
+        "automatic_loop retained solve-series runs exercise requested epsilon orders through eps8",
+        "Lane39 automatic_loop eps8 comparison is coefficient-bearing and passes 126/126 at 30 digits"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/automatic_loop.eps8.compare.json",
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/automatic_loop.eps8.cpp-result.json"
+      ],
+      "blockers": [
+        "This is retained automatic_loop epsilon-order parity evidence, not a reviewed full fixed-eps Phase F runtime-feature acceptance row."
+      ]
+    },
+    {
+      "id": "complex_kinematics",
+      "status": "partial",
+      "implemented_slices": [
+        "retained complex_kinematics solution-sample fitting is accepted by amflow-cli solve-series",
+        "Lane39 complex_kinematics comparison is coefficient-bearing and passes 14/14 at 30 digits"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/complex_kinematics.compare.json",
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/complex_kinematics.cpp-result.json"
+      ],
+      "blockers": [
+        "The C++ output reports full complex eta-contour endpoint reconstruction remains deferred after retained loop solution-sample coefficient fitting."
+      ]
+    },
+    {
+      "id": "linear_propagators",
+      "status": "partial",
+      "implemented_slices": [
+        "retained linear_propagator finite solution-sample ingestion is accepted by amflow-cli solve-series",
+        "Lane39 linear_propagator comparison is coefficient-bearing and passes 57/57 at 30 digits"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/linear_propagator.compare.json",
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/linear_propagator.cpp-result.json"
+      ],
+      "blockers": [
+        "The C++ output reports full AMFlow loop-boundary reconstruction and endpoint contour execution remain deferred after retained finite solution-sample ingestion."
+      ]
+    },
+    {
+      "id": "phase_space_integration",
+      "status": "partial",
+      "implemented_slices": [
+        "retained automatic_phasespace solution-sample fitting is accepted by amflow-cli solve-series",
+        "Lane39 automatic_phasespace comparison is coefficient-bearing and passes 11/11 at 30 digits"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/automatic_phasespace.compare.json",
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/automatic_phasespace.cpp-result.json"
+      ],
+      "blockers": [
+        "The C++ output reports full Cutkosky phase-space boundary reconstruction from cut propagators remains deferred after retained solution-sample coefficient fitting."
+      ]
+    },
+    {
+      "id": "feynman_prescription",
+      "status": "partial",
+      "implemented_slices": [
+        "retained feynman_prescription sol1 solution-sample fitting is accepted by amflow-cli solve-series",
+        "Lane39 feynman_prescription comparison is coefficient-bearing and passes 76/76 at 30 digits"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/comparisons/lane39/feynman_prescription.compare.json",
+        "/tmp/autoibp_orch/exec/lane39_probe/full/runs/feynman_prescription.cpp-result.json"
+      ],
+      "blockers": [
+        "The accepted comparator scope is retained sol1 parity only and does not close opposite-prescription or full prescription-aware runtime behavior."
+      ]
+    },
+    {
+      "id": "singular_kinematics_guardrails",
+      "status": "blocked",
+      "implemented_slices": [
+        "singular kinematics guardrail code and tests exist for classification and typed diagnostics"
+      ],
+      "evidence": [
+        "include/amflow/runtime/physical_kinematics_guardrails.hpp",
+        "src/runtime/physical_kinematics_guardrails.cpp",
+        "tests/amflow_tests.cpp"
+      ],
+      "blockers": [
+        "No coefficient-bearing physical-region runtime subset is published for this M5 feature row."
+      ]
+    },
+    {
+      "id": "user_defined_hooks",
+      "status": "blocked",
+      "implemented_slices": [
+        "user-defined AMFMode and EndingScheme library APIs and tests exist",
+        "retained upstream user_defined_amfmode and user_defined_ending captures exist in the user-hook-pair reference packet"
+      ],
+      "evidence": [
+        "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json",
+        "tools/reference-harness/specs/m5/lane44/amflow-cli.show-defaults.txt",
+        "tools/reference-harness/specs/m5/lane44/runs/user_defined_amfmode.retained-raw.cpp-result.json",
+        "tools/reference-harness/specs/m5/lane44/runs/user_defined_ending.retained-final_usr.raw.cpp-result.json"
+      ],
+      "blockers": [
+        "amflow-cli solve-series exposes no AMFMode or EndingScheme user-hook option surface.",
+        "Retained user_defined_amfmode AMFlow state fails before coefficient production: epsilon-sample interpolation matrix is singular.",
+        "Retained user_defined_ending final_usr AMFlow state fails before coefficient production with an unparsed Gamma-ratio boundary string.",
+        "No passing C++/AMFlow comparator summaries exist for user_defined_amfmode or user_defined_ending."
+      ]
+    }
+  ]
+}

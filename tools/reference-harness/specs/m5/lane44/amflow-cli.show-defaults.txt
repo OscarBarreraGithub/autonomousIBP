@@ -1,0 +1,25 @@
+amf_options:
+  AMFMode: ["Prescription", "Mass", "Propagator"]
+  EndingScheme: ["Tradition", "Cutkosky", "SingleMass", "Trivial"]
+  D0: "4"
+  WorkingPre: 100
+  ChopPre: 20
+  XOrder: 100
+  ExtraXOrder: 20
+  LearnXOrder: -1
+  TestXOrder: 5
+  RationalizePre: 100
+  RunLength: 1000
+  UseCache: false
+  SkipReduction: false
+
+reduction_options:
+  IBPReducer: "Kira"
+  BlackBoxRank: 3
+  BlackBoxDot: 0
+  ComplexMode: true
+  DeleteBlackBoxDirectory: false
+  IntegralOrder: 5
+  ReductionMode: "Kira"
+  KiraInsertPrefactors: false
+

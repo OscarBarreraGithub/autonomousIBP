@@ -1,0 +1,35 @@
+family:
+  name: "lane44_dim_family"
+  loop_momenta: ["k"]
+  top_level_sectors: [1]
+  propagators:
+    - expression: "k^2"
+      mass: "0"
+      kind: "standard"
+      prescription: -1
+kinematics:
+  invariants: ["s"]
+  numeric_substitutions:
+    s: "1"
+targets:
+  - family: "lane44_dim_family"
+    indices: [1]
+dimension: "7/3"
+complex_mode: false
+solve_series:
+  benchmark_id: "lane44_spacetime_dimension_direct"
+  variable: "eta"
+  start_location: "eta=0"
+  target_location: "eta=2"
+  masters:
+    - family: "lane44_dim_family"
+      indices: [1]
+      label: "I"
+  coefficient_matrices:
+    eta:
+      - ["0"]
+  boundary_conditions:
+    - variable: "eta"
+      location: "eta=0"
+      values: ["dimension"]
+      strategy: "manual"

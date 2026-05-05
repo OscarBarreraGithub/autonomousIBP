@@ -1,0 +1,100 @@
+{
+  "does_not_claim_m5_closure": true,
+  "does_not_claim_m6": true,
+  "does_not_claim_m7": true,
+  "does_not_claim_release_readiness": true,
+  "features": [
+    {
+      "amflow_semantics": "AMFlow option D0 computes integrals around D = D0 - 2 eps; the retained example uses D0=7/3 and D0=1/3.",
+      "id": "spacetime_dimension",
+      "m5_row_conclusion": "blocked: exact dimension metadata works, but the retained AMFlow D0 example still does not produce a passing C++/AMFlow comparator summary.",
+      "positive_cli_subset": {
+        "command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane44/specs/spacetime_dimension.direct-nondefault-d.yaml --eps-order 1 --digits 50 --out tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-nondefault-d.cpp-result.json",
+        "default_control_command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane44/specs/spacetime_dimension.direct-default-d.yaml --eps-order 1 --digits 50 --out tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-default-d.cpp-result.json",
+        "default_exact_real": "4",
+        "default_real_digits": "4.00000000000000000000000000000000000000000000000000",
+        "default_result_path": "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-default-d.cpp-result.json",
+        "default_result_sha256": "16d8846fcbfdb0f6ac7bbfa92b5fe8b1f1a93d7f96c108f2b6c5e084e587ce32",
+        "description": "Exact non-default dimension carrier, not the full retained AMFlow D0-2eps example.",
+        "nondefault_exact_real": "7/3",
+        "nondefault_real_digits": "2.33333333333333333333333333333333333333333333333333",
+        "nondefault_result_path": "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.direct-nondefault-d.cpp-result.json",
+        "nondefault_result_sha256": "cd565f7a607b9400881b347b204e99331a85bbcafc21ae897850821ccdf9b70b",
+        "subset_comparison_sha256": "27531af2f2ec33e56a6c5ba175880058c0ba4ac5d365d439f7ed795b873eb3f0",
+        "subset_comparison_summary": "tools/reference-harness/specs/m5/comparisons/lane44/spacetime_dimension.direct-nondefault-d-subset.compare.json",
+        "subset_golden_path": "tools/reference-harness/specs/m5/lane44/spacetime_dimension.direct-nondefault-d.amflow-golden.txt",
+        "subset_golden_sha256": "9e2c7d8564375dba3a80d423d11f4a6b95b6dbdae64657098e20aee1125674de"
+      },
+      "retained_amflow_example_probe": {
+        "command": "./build/amflow-cli solve-series /tmp/autoibp_orch/exec/lane44_probe/states/spacetime_dimension.sol73D.raw-state.json --eps-order 3 --digits 60 --out /tmp/autoibp_orch/exec/lane44_probe/runs/spacetime_dimension.sol73D.raw.cpp-result.json",
+        "description": "Retained spacetime_dimension sol73D AMFlow state extracted from the reviewed 20260422 de-d0 packet and run through amflow-cli without manual state widening.",
+        "error": "Unable to parse the string \"6463200]^2\" as a floating point value.",
+        "result_path": "tools/reference-harness/specs/m5/lane44/runs/spacetime_dimension.retained-sol73D.raw.cpp-result.json",
+        "result_sha256": "0938bf15bdf97959229e5607aef87ad7f10128fb282a959c8c3686003c6049fe",
+        "state_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/generated-config/phase0/spacetime_dimension/primary/cache/bubble_amflow/1",
+        "status": "failed"
+      },
+      "status": "partial"
+    },
+    {
+      "amflow_semantics": "AMFlow AMFMode controls eta insertion preference/order; the retained example defines usr and inserts eta on propagators 1 and 3 for the top sector.",
+      "cli_support_probe": {
+        "description": "show-defaults exposes defaults, but solve-series has no accepted AMFMode/user hook flag or file parser surface."
+      },
+      "id": "user_defined_amfmode",
+      "m5_row_conclusion": "blocked: current CLI cannot accept a user-defined AMFMode and the retained user_defined_amfmode state does not produce a passing comparator result.",
+      "retained_amflow_example_probe": {
+        "command": "./build/amflow-cli solve-series /tmp/autoibp_orch/exec/lane44_probe/states/user_defined_amfmode.raw-state.json --eps-order 3 --digits 60 --out /tmp/autoibp_orch/exec/lane44_probe/runs/user_defined_amfmode.raw.cpp-result.json",
+        "error": "epsilon-sample interpolation matrix is singular",
+        "result_path": "tools/reference-harness/specs/m5/lane44/runs/user_defined_amfmode.retained-raw.cpp-result.json",
+        "result_sha256": "356fc6891fd6b0dbea55c1a371cb91822cfe44309fc42346b49d5e2f76dca0eb",
+        "state_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/generated-config/phase0/user_defined_amfmode/primary/cache/box1_amflow/1",
+        "status": "failed"
+      },
+      "status": "blocked"
+    },
+    {
+      "amflow_semantics": "AMFlow EndingScheme controls terminal boundary systems; the retained example defines usr to end at two-propagator systems and provides manual boundary values.",
+      "cli_support_probe": {
+        "description": "show-defaults exposes defaults, but solve-series has no accepted EndingScheme/user hook flag or file parser surface."
+      },
+      "id": "user_defined_ending",
+      "m5_row_conclusion": "blocked: current CLI cannot accept a user-defined EndingScheme and the retained user_defined_ending final_usr state does not produce a passing comparator result.",
+      "retained_amflow_example_probe": {
+        "command": "./build/amflow-cli solve-series /tmp/autoibp_orch/exec/lane44_probe/states/user_defined_ending.final_usr.raw-state.json --eps-order 3 --digits 60 --out /tmp/autoibp_orch/exec/lane44_probe/runs/user_defined_ending.final_usr.raw.cpp-result.json",
+        "error": "Unable to parse the string \"68129206900]*Gamma[68129206799/68129206900]^2)/Gamma[68129206799/34064603450]\" as a floating point value.",
+        "result_path": "tools/reference-harness/specs/m5/lane44/runs/user_defined_ending.retained-final_usr.raw.cpp-result.json",
+        "result_sha256": "b198e2420ccbf7213caba3f53c5ef3e8e201717288969893eb1d681e19e101f7",
+        "state_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/generated-config/phase0/user_defined_ending/primary/cache/box1_test2/1",
+        "status": "failed"
+      },
+      "status": "blocked"
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "status": "APPROVE",
+      "summary": "Qualifier schema identified: examples need accepted evidence_kind, coefficient_bearing=true, empty blockers, and a passing comparison_summary."
+    },
+    {
+      "role": "B",
+      "status": "APPROVE",
+      "summary": "AMFlow semantics identified: D0 computes around D=D0-2eps; AMFMode selects eta insertion; EndingScheme selects terminal boundary systems."
+    },
+    {
+      "role": "C",
+      "status": "APPROVE",
+      "summary": "Approved the final partial-blocked interpretation: amflow-cli solve-series runs non-interactively, but exposes only --eps-order, --digits, and --out; no CLI flags for D0, AMFMode, or EndingScheme."
+    },
+    {
+      "role": "D",
+      "status": "APPROVE",
+      "summary": "Anti-fake-parity review verified the 7/3 and 4 values, comparison summary, defaults, and retained failure errors trace to the recorded amflow-cli output files."
+    }
+  ],
+  "schema_version": 1,
+  "scope": "m5-user-defined-feature-parity-lane44-partial-evidence",
+  "source_qualifier": "tools/reference-harness/scripts/qualify_milestone_m5.py",
+  "status": "partial-blocked"
+}

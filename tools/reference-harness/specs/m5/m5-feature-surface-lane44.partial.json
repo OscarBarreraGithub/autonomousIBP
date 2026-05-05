@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "scope": "m5-feature-surface",
+  "m0b_accepted": true,
+  "examples": [
+    {
+      "id": "automatic_loop",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_loop.eps8.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "automatic_phasespace",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_phasespace.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "automatic_vs_manual",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/automatic_vs_manual.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "complex_kinematics",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/complex_kinematics.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "differential_equation_solver",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/differential_equation_solver.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "feynman_prescription",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/feynman_prescription.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "linear_propagator",
+      "promoted_golden": true,
+      "coefficient_bearing": true,
+      "evidence_kind": "approved-retained-state-exception",
+      "exception_reference": "docs/milestones/m5-m6-closure-plan.md#current-m5-criteria-and-evidence",
+      "comparison_summary": "comparisons/lane39/linear_propagator.compare.json",
+      "blockers": []
+    },
+    {
+      "id": "spacetime_dimension",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json#features.spacetime_dimension",
+      "blockers": [
+        "Lane44 exact non-default dimension subset passes a real amflow-cli comparison, but this is not the retained AMFlow D0-2eps spacetime_dimension example.",
+        "Retained spacetime_dimension sol73D AMFlow state still fails under amflow-cli before coefficient production: Unable to parse the string \"6463200]^2\" as a floating point value.",
+        "No passing C++/AMFlow comparator summary exists for the retained spacetime_dimension D0 example."
+      ]
+    },
+    {
+      "id": "user_defined_amfmode",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json#features.user_defined_amfmode",
+      "blockers": [
+        "amflow-cli solve-series exposes no AMFMode/user-hook option surface beyond --eps-order, --digits, and --out.",
+        "Retained user_defined_amfmode AMFlow state fails under amflow-cli before coefficient production: epsilon-sample interpolation matrix is singular.",
+        "No passing C++/AMFlow comparator summary exists for user_defined_amfmode."
+      ]
+    },
+    {
+      "id": "user_defined_ending",
+      "promoted_golden": true,
+      "coefficient_bearing": false,
+      "evidence_kind": "blocked-retained-capture-only",
+      "exception_reference": "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json#features.user_defined_ending",
+      "blockers": [
+        "amflow-cli solve-series exposes no EndingScheme/user-hook option surface beyond --eps-order, --digits, and --out.",
+        "Retained user_defined_ending final_usr AMFlow state still fails under amflow-cli before coefficient production: Unable to parse a Gamma-ratio boundary string as a floating point value.",
+        "No passing C++/AMFlow comparator summary exists for user_defined_ending."
+      ]
+    }
+  ],
+  "runtime_features": [
+    {
+      "id": "arbitrary_D0",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json",
+      "blockers": [
+        "Lane44 exact non-default dimension subset comparison passes via amflow-cli (tools/reference-harness/specs/m5/comparisons/lane44/spacetime_dimension.direct-nondefault-d-subset.compare.json), but full AMFlow D0 semantics require D = D0 - 2 eps on the retained spacetime_dimension example.",
+        "Retained spacetime_dimension sol73D AMFlow state still fails before C++ coefficient production.",
+        "No accepted coefficient-bearing arbitrary-D0 runtime comparator exists for M5."
+      ]
+    },
+    {
+      "id": "fixed_eps",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Only retained automatic_loop epsilon-order parity through eps8 is available; no reviewed full fixed-eps Phase F feature row is accepted."
+      ]
+    },
+    {
+      "id": "complex_kinematics",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Retained complex solution-sample parity exists, but full complex eta-contour endpoint reconstruction remains deferred."
+      ]
+    },
+    {
+      "id": "linear_propagators",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Retained finite solution-sample parity exists, but full gauge-link loop-boundary reconstruction and endpoint contour execution remain deferred."
+      ]
+    },
+    {
+      "id": "phase_space_integration",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Retained phase-space solution-sample parity exists, but full Cutkosky phase-space boundary reconstruction from cut propagators remains deferred."
+      ]
+    },
+    {
+      "id": "feynman_prescription",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Retained sol1 parity exists, but opposite-prescription and full prescription-aware runtime behavior are not closed."
+      ]
+    },
+    {
+      "id": "singular_kinematics_guardrails",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "runtime-feature-evidence-lane42.partial.json",
+      "blockers": [
+        "Guardrail code and tests exist, but no coefficient-bearing physical-region runtime subset is published for M5."
+      ]
+    },
+    {
+      "id": "user_defined_hooks",
+      "evidence_kind": "blocked-partial-runtime",
+      "evidence_path": "tools/reference-harness/specs/m5/lane44/user-defined-feature-parity-evidence.partial.json",
+      "blockers": [
+        "amflow-cli solve-series exposes no AMFMode or EndingScheme user-hook option surface.",
+        "Retained user_defined_amfmode and user_defined_ending AMFlow states still fail before C++ coefficient production.",
+        "No passing C++/AMFlow comparator summaries exist for user_defined_amfmode or user_defined_ending."
+      ]
+    }
+  ]
+}

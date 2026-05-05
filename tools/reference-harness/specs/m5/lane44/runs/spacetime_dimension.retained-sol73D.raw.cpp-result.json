@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "spacetime_dimension",
+  "family": "bubble",
+  "targets": ["bubble[1,1,0]", "bubble[1,1,1]"],
+  "solver": {
+    "precision_digits": 60,
+    "epsilon_order": 3
+  },
+  "boundary_state": {
+    "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
+    "location": "infinity",
+    "direction": "NegIm",
+    "epsilon_sample_count": 17,
+    "integral_kind": "loop",
+    "accepted_by_solve_series": true,
+    "runtime_boundary_provider": "deferred-asymptotic-subsystem-sample-provider"
+  },
+  "continuation": {
+    "variable": "eta",
+    "start_location": "infinity",
+    "target_location": "eta=0",
+    "singular_points": ["eta=-1", "eta=0"],
+    "transport_applied": false,
+    "transport_scope": "none",
+    "full_eta_zero_contour_applied": false,
+    "eta_infinity_asymptotic_transport_applied": false,
+    "eta_infinity_asymptotic_transported_master_count": 0,
+    "eta_zero_endpoint_transport_applied": false,
+    "eta_zero_endpoint_transported_master_count": 0,
+    "eta_zero_endpoint_transported_integrals": [],
+    "runtime_application": "not-applied-boundary-only",
+    "blocked_reason": "eta-infinity start, complex contour execution, and singular eta=0 endpoint extraction remain deferred"
+  },
+  "results": [
+    {
+      "integral": "bubble[1,1,0]",
+      "epsilon_orders": []
+    },
+    {
+      "integral": "bubble[1,1,1]",
+      "epsilon_orders": []
+    }
+  ],
+  "status": "failed",
+  "duration_seconds": 0.000604,
+  "error": "Unable to parse the string \"6463200]^2\" as a floating point value."
+}

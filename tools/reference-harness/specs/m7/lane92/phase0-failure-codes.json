@@ -1,0 +1,306 @@
+{
+  "all_compared_benchmarks_publish_failure_code_audits": false,
+  "all_compared_benchmarks_report_required_failure_codes": false,
+  "any_compared_benchmarks_report_unexpected_failure_codes": false,
+  "audited_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "audited_phase0_ids_match_scaffold_reference_captured": true,
+  "benchmarks": [
+    {
+      "benchmark_id": "automatic_loop",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_loop/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    },
+    {
+      "benchmark_id": "automatic_vs_manual",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_vs_manual/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    },
+    {
+      "benchmark_id": "differential_equation_solver",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/differential_equation_solver/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    },
+    {
+      "benchmark_id": "spacetime_dimension",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/spacetime_dimension/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    },
+    {
+      "benchmark_id": "user_defined_amfmode",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    },
+    {
+      "benchmark_id": "user_defined_ending",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_audit_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_ending/failure-code-audit.json",
+      "failure_code_audit_present": false,
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "missing_required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "observed_failure_codes": [],
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "status": "failure-code-audit-missing",
+      "unexpected_failure_codes": []
+    }
+  ],
+  "candidate_packet_benchmark_sets_match_packet_summaries": true,
+  "candidate_packet_count": 3,
+  "candidate_packet_labels": [
+    "de-d0-pair",
+    "required-set",
+    "user-hook-pair"
+  ],
+  "candidate_packet_labels_match_scaffold_reference_captured": true,
+  "digit_threshold_profiles_reported": true,
+  "expected_reference_captured_packet_labels": [
+    "de-d0-pair",
+    "required-set",
+    "user-hook-pair"
+  ],
+  "expected_reference_captured_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "missing_required_failure_codes_across_packet_set": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ],
+  "packet_audits": [
+    {
+      "all_selected_benchmarks_publish_failure_code_audits": false,
+      "all_selected_benchmarks_report_required_failure_codes": false,
+      "any_selected_benchmarks_report_unexpected_failure_codes": false,
+      "candidate_benchmark_ids": [
+        "differential_equation_solver",
+        "spacetime_dimension"
+      ],
+      "candidate_capture_state": "bootstrap-only",
+      "candidate_packet_benchmark_ids_match_packet_summary": true,
+      "candidate_packet_label": "de-d0-pair",
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair",
+      "missing_required_failure_codes_across_selection": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "selected_benchmark_ids": [
+        "differential_equation_solver",
+        "spacetime_dimension"
+      ]
+    },
+    {
+      "all_selected_benchmarks_publish_failure_code_audits": false,
+      "all_selected_benchmarks_report_required_failure_codes": false,
+      "any_selected_benchmarks_report_unexpected_failure_codes": false,
+      "candidate_benchmark_ids": [
+        "automatic_loop",
+        "automatic_vs_manual"
+      ],
+      "candidate_capture_state": "reference-captured",
+      "candidate_packet_benchmark_ids_match_packet_summary": true,
+      "candidate_packet_label": "required-set",
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set",
+      "missing_required_failure_codes_across_selection": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "selected_benchmark_ids": [
+        "automatic_loop",
+        "automatic_vs_manual"
+      ]
+    },
+    {
+      "all_selected_benchmarks_publish_failure_code_audits": false,
+      "all_selected_benchmarks_report_required_failure_codes": false,
+      "any_selected_benchmarks_report_unexpected_failure_codes": false,
+      "candidate_benchmark_ids": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "candidate_capture_state": "bootstrap-only",
+      "candidate_packet_benchmark_ids_match_packet_summary": true,
+      "candidate_packet_label": "user-hook-pair",
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair",
+      "missing_required_failure_codes_across_selection": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "selected_benchmark_ids": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ]
+    }
+  ],
+  "qualification_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/qualification-benchmarks.json",
+  "regression_profiles_reported": true,
+  "required_failure_code_profiles_reported": true,
+  "required_packet_present": true,
+  "schema_version": 1
+}

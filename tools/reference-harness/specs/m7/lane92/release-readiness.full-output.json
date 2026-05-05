@@ -1,0 +1,587 @@
+{
+  "blocked_case_study_families": [],
+  "blocked_phase0_examples": [
+    {
+      "id": "automatic_phasespace",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "complex_kinematics",
+      "next_runtime_lane": "b61n"
+    },
+    {
+      "id": "feynman_prescription",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "linear_propagator",
+      "next_runtime_lane": "b64ag"
+    }
+  ],
+  "blocked_runtime_lanes": [
+    "b61n",
+    "b63n",
+    "b64ag"
+  ],
+  "case_study_blocked_families_from_verdict": [],
+  "case_study_compared_ids": [
+    "package-double-box",
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar",
+    "one-singular-endpoint-case"
+  ],
+  "case_study_families_qualified": false,
+  "case_study_family_current_state": "blocked-on-case-study-comparison",
+  "case_study_literature_anchor_ids": [
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar"
+  ],
+  "case_study_missing_numeric_ids": [],
+  "case_study_qualification_blockers": [
+    "case-study:blocked-on-case-study-comparison",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "case_study_qualification_blockers_preserved": true,
+  "case_study_qualification_blocking_reasons": [
+    "case-study numeric comparison has not fully passed",
+    "case-study correct-digit thresholds have not fully passed",
+    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
+    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200"
+  ],
+  "case_study_qualification_evidence_present": true,
+  "case_study_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/case-study-qualification.json",
+  "case_study_runtime_blocked_ids": [],
+  "case_study_strong_precision_ids": [
+    "ttbar-h",
+    "diphoton-heavy-quark-form-factors"
+  ],
+  "case_study_withheld_claims": [
+    "This summary does not launch the C++ runtime or create new retained captures.",
+    "This summary does not compare phase-0 packet-set evidence.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness."
+  ],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "checklist_sources": [
+    {
+      "exists": true,
+      "id": "release_signoff_markdown",
+      "path": "docs/release-signoff-checklist.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "qualification_scaffold",
+      "path": "tools/reference-harness/templates/qualification-benchmarks.json",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "qualification_readiness_helper",
+      "path": "tools/reference-harness/scripts/qualification_readiness.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "release_readiness_helper",
+      "path": "tools/reference-harness/scripts/release_signoff_readiness.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "qualification_corpus_review_helper",
+      "path": "tools/reference-harness/scripts/review_release_qualification_corpus.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "diagnostic_review_helper",
+      "path": "tools/reference-harness/scripts/review_release_diagnostic.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "docs_completion_review_helper",
+      "path": "tools/reference-harness/scripts/review_release_docs_completion.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "parity_signoff_review_helper",
+      "path": "tools/reference-harness/scripts/review_release_parity_signoff.py",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "parity_matrix",
+      "path": "specs/parity-matrix.yaml",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "verification_strategy",
+      "path": "docs/verification-strategy.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "roadmap",
+      "path": "docs/full-amflow-completion-roadmap.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "public_contract",
+      "path": "docs/public-contract.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "id": "implementation_ledger",
+      "path": "docs/implementation-ledger.md",
+      "within_repo": true
+    }
+  ],
+  "checklist_sources_present": true,
+  "checklist_sources_within_repo": true,
+  "diagnostic_missing_or_degraded_paths": [],
+  "diagnostic_review_blockers": [],
+  "diagnostic_review_blockers_preserved": false,
+  "diagnostic_review_blocking_reasons": [],
+  "diagnostic_review_complete": true,
+  "diagnostic_review_current_state": "diagnostic-review-reviewed",
+  "diagnostic_review_evidence_present": true,
+  "diagnostic_review_summary_path": "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+  "diagnostic_review_withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run runtime diagnostics or widen runtime behavior."
+  ],
+  "diagnostic_reviewed_failure_code_profiles": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ],
+  "docs_completion_blockers": [],
+  "docs_completion_blockers_preserved": false,
+  "docs_completion_blocking_reasons": [],
+  "docs_completion_current_state": "docs-completion-reviewed",
+  "docs_completion_evidence_present": true,
+  "docs_completion_review_complete": true,
+  "docs_completion_reviewed_targets": [
+    "docs/public-contract.md",
+    "docs/implementation-ledger.md",
+    "docs/verification-strategy.md",
+    "docs/reference-harness.md",
+    "tools/reference-harness/README.md",
+    "docs/full-amflow-completion-roadmap.md"
+  ],
+  "docs_completion_summary_path": "tools/reference-harness/specs/m7/lane92/release-docs-completion.json",
+  "docs_completion_targets": [
+    {
+      "exists": true,
+      "expectation": "Matches the reviewed runtime and harness surface without widening claims.",
+      "path": "docs/public-contract.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "expectation": "Records the reviewed evidence packet, verification commands, and residual caveats.",
+      "path": "docs/implementation-ledger.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "expectation": "States the exact qualification and release gates still in force.",
+      "path": "docs/verification-strategy.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "expectation": "Keeps the retained-reference lane and later M6/M7 consumers aligned.",
+      "path": "docs/reference-harness.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "expectation": "Keeps the user-facing harness guide aligned with the retained-reference lane and later M6/M7 consumers.",
+      "path": "tools/reference-harness/README.md",
+      "within_repo": true
+    },
+    {
+      "exists": true,
+      "expectation": "Preserves milestone ordering and explicit blocker language for M6 and M7.",
+      "path": "docs/full-amflow-completion-roadmap.md",
+      "within_repo": true
+    }
+  ],
+  "docs_completion_targets_present": true,
+  "docs_completion_targets_within_repo": true,
+  "docs_completion_withheld_claims": [
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim new captured benchmark evidence.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "docs_missing_or_stale_paths": [],
+  "parity_missing_or_blocked_paths": [
+    "qualification-closure-note"
+  ],
+  "parity_required_release_review_sections": [
+    "qualification-corpus",
+    "performance-review",
+    "diagnostic-review",
+    "docs-completion"
+  ],
+  "parity_signoff_blockers": [
+    "parity-signoff-incomplete",
+    "parity-qualification-closure",
+    "parity-path:qualification-closure-note"
+  ],
+  "parity_signoff_blockers_preserved": true,
+  "parity_signoff_blocking_reasons": [
+    "qualification closure note has not been reviewed"
+  ],
+  "parity_signoff_complete": false,
+  "parity_signoff_current_state": "blocked-on-qualification-closure",
+  "parity_signoff_evidence_present": true,
+  "parity_signoff_summary_path": "tools/reference-harness/specs/m7/lane83/release-parity-signoff.json",
+  "parity_signoff_withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "performance_missing_or_unreviewed_paths": [],
+  "performance_review_blockers": [],
+  "performance_review_blockers_preserved": false,
+  "performance_review_blocking_reasons": [],
+  "performance_review_complete": true,
+  "performance_review_current_state": "performance-review-reviewed",
+  "performance_review_evidence_present": true,
+  "performance_review_summary_path": "tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+  "performance_review_withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run new reference capture or widen runtime behavior."
+  ],
+  "performance_reviewed_benchmark_families": [
+    "phase0:automatic_loop",
+    "phase0:automatic_phasespace",
+    "phase0:automatic_vs_manual",
+    "phase0:complex_kinematics",
+    "phase0:differential_equation_solver",
+    "phase0:feynman_prescription",
+    "phase0:linear_propagator",
+    "phase0:spacetime_dimension",
+    "phase0:user_defined_amfmode",
+    "phase0:user_defined_ending",
+    "case-study:package-double-box",
+    "case-study:ttbar-j",
+    "case-study:ttbar-h",
+    "case-study:five-point-one-mass-scattering",
+    "case-study:ttbar-w",
+    "case-study:diphoton-heavy-quark-form-factors",
+    "case-study:h-to-bb",
+    "case-study:n4-sym-three-loop-form-factor",
+    "case-study:single-top-planar-nonplanar",
+    "case-study:one-singular-endpoint-case"
+  ],
+  "phase0_failure_code_blockers": [
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes"
+  ],
+  "phase0_failure_code_blockers_preserved": true,
+  "phase0_missing_required_failure_codes": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ],
+  "phase0_packet_set_blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes"
+  ],
+  "phase0_packet_set_current_state": "blocked-on-correct-digit-thresholds",
+  "phase0_packet_set_qualified": false,
+  "phase0_pending_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "phase0_qualification_evidence_present": true,
+  "phase0_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/phase0-qualification.json",
+  "phase0_reference_captured_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "phase0_withheld_claims": [
+    "This summary does not compare retained case-study numerics.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness.",
+    "This summary does not launch the C++ runtime or create new retained captures."
+  ],
+  "qualification_corpus_blocked_case_study_ids": [],
+  "qualification_corpus_blockers": [
+    "qualification-corpus-review-incomplete",
+    "qualification-corpus-phase0-qualified",
+    "qualification-corpus-case-study-qualified",
+    "qualification-corpus-closed-coverage-statement",
+    "qualification-path:phase0-pending:automatic_phasespace",
+    "qualification-path:phase0-pending:complex_kinematics",
+    "qualification-path:phase0-pending:feynman_prescription",
+    "qualification-path:phase0-pending:linear_propagator",
+    "qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds",
+    "qualification-path:phase0-failure-code-audit",
+    "qualification-path:phase0-required-failure-codes",
+    "qualification-path:case-study:blocked-on-case-study-comparison",
+    "qualification-path:case-study-comparison",
+    "qualification-path:case-study-correct-digits",
+    "qualification-path:case-study-requires-phase0-verdict"
+  ],
+  "qualification_corpus_blockers_preserved": true,
+  "qualification_corpus_blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes",
+    "case-study numeric comparison has not fully passed",
+    "case-study correct-digit thresholds have not fully passed",
+    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
+    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200",
+    "closed benchmark-family coverage statement is not reviewed"
+  ],
+  "qualification_corpus_current_state": "blocked-on-qualification-corpus-closure",
+  "qualification_corpus_evidence_present": true,
+  "qualification_corpus_missing_or_blocked_paths": [
+    "phase0-pending:automatic_phasespace",
+    "phase0-pending:complex_kinematics",
+    "phase0-pending:feynman_prescription",
+    "phase0-pending:linear_propagator",
+    "phase0-packet-set:blocked-on-correct-digit-thresholds",
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes",
+    "case-study:blocked-on-case-study-comparison",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "qualification_corpus_pending_phase0_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "qualification_corpus_review_complete": false,
+  "qualification_corpus_reviewed_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "qualification_corpus_summary_path": "tools/reference-harness/specs/m7/lane92/release-qualification-corpus.json",
+  "qualification_corpus_withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "qualification_evidence_coherent": true,
+  "qualification_summary_path": "tools/reference-harness/specs/m7/lane92/qualification-readiness.json",
+  "release_prerequisites": [
+    {
+      "blockers": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator",
+        "phase0:blocked-on-correct-digit-thresholds",
+        "phase0-failure-code-audit",
+        "phase0-required-failure-codes",
+        "case-study-numerics",
+        "case-study:blocked-on-case-study-comparison",
+        "case-study-comparison",
+        "case-study-correct-digits",
+        "case-study-requires-phase0-verdict"
+      ],
+      "current_state": "blocked-on-qualification-closure",
+      "id": "milestone-m6",
+      "notes": "Milestone M7 stays blocked until the qualification corpus is truthfully closed over retained evidence.",
+      "required_state": "reviewed-and-accepted",
+      "satisfied": false
+    },
+    {
+      "blockers": [
+        "b61n",
+        "b63n",
+        "b64ag"
+      ],
+      "current_state": "blocked-on-runtime-lanes",
+      "id": "phase-f-feature-parity",
+      "notes": "Release sign-off requires the reviewed complex, singular, phase-space, linear, D0/fixed-eps, and user-hook runtime surfaces to be closed under Milestone M5 before M7 can proceed.",
+      "required_state": "reviewed-and-accepted",
+      "satisfied": false
+    },
+    {
+      "blockers": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator",
+        "phase0:blocked-on-correct-digit-thresholds",
+        "phase0-failure-code-audit",
+        "phase0-required-failure-codes",
+        "case-study-numerics",
+        "case-study:blocked-on-case-study-comparison",
+        "case-study-comparison",
+        "case-study-correct-digits",
+        "case-study-requires-phase0-verdict"
+      ],
+      "current_state": "captured-but-phase0-not-qualified",
+      "id": "retained-reference-evidence",
+      "notes": "Use already-retained goldens, promoted manifests, and comparison summaries instead of planning a new reference-capture model inside M7.",
+      "required_state": "captured-and-qualified",
+      "satisfied": false
+    }
+  ],
+  "release_signoff_ready": false,
+  "review_sections": [
+    {
+      "blockers": [
+        "qualification-corpus-review-incomplete",
+        "qualification-corpus-phase0-qualified",
+        "qualification-corpus-case-study-qualified",
+        "qualification-corpus-closed-coverage-statement",
+        "qualification-path:phase0-pending:automatic_phasespace",
+        "qualification-path:phase0-pending:complex_kinematics",
+        "qualification-path:phase0-pending:feynman_prescription",
+        "qualification-path:phase0-pending:linear_propagator",
+        "qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds",
+        "qualification-path:phase0-failure-code-audit",
+        "qualification-path:phase0-required-failure-codes",
+        "qualification-path:case-study:blocked-on-case-study-comparison",
+        "qualification-path:case-study-comparison",
+        "qualification-path:case-study-correct-digits",
+        "qualification-path:case-study-requires-phase0-verdict"
+      ],
+      "id": "qualification-corpus",
+      "notes": "Do not mark complete until Milestone M6 is already truthfully closed.",
+      "required_inputs": [
+        "qualification readiness summary",
+        "retained benchmark comparison summaries",
+        "known-regression coverage notes"
+      ],
+      "required_outputs": [
+        "closed benchmark-family coverage statement",
+        "explicit residual blockers or carve-outs"
+      ],
+      "status": "blocked"
+    },
+    {
+      "blockers": [],
+      "id": "performance-review",
+      "notes": "This is a release-readiness review, not a new benchmark-capture lane.",
+      "required_inputs": [
+        "mandatory benchmark timings",
+        "reviewed benchmark-family scope",
+        "clean rebuild gate output"
+      ],
+      "required_outputs": [
+        "performance summary",
+        "explicit unstable or unreviewed performance carve-outs"
+      ],
+      "status": "reviewed"
+    },
+    {
+      "blockers": [],
+      "id": "diagnostic-review",
+      "notes": "Keep explicit typed-failure expectations visible through release sign-off.",
+      "required_inputs": [
+        "required failure-code set from the parity matrix",
+        "retained unstable-run evidence",
+        "known-regression outcomes"
+      ],
+      "required_outputs": [
+        "diagnostic coverage summary",
+        "explicit missing or degraded diagnostic paths"
+      ],
+      "status": "reviewed"
+    },
+    {
+      "blockers": [],
+      "id": "docs-completion",
+      "notes": "Docs must match the reviewed evidence surface rather than the requested end state.",
+      "required_inputs": [
+        "public contract",
+        "implementation ledger",
+        "verification strategy",
+        "reference harness guide",
+        "completion roadmap"
+      ],
+      "required_outputs": [
+        "docs alignment note",
+        "explicit non-claim and caveat review"
+      ],
+      "status": "reviewed"
+    },
+    {
+      "blockers": [
+        "parity-signoff-incomplete",
+        "parity-qualification-closure",
+        "parity-path:qualification-closure-note",
+        "qualification-corpus",
+        "milestone-m6"
+      ],
+      "id": "parity-signoff",
+      "notes": "The sign-off statement belongs after the earlier sections have already passed.",
+      "required_inputs": [
+        "qualification closure note",
+        "performance review summary",
+        "diagnostic review summary",
+        "docs completion note"
+      ],
+      "required_outputs": [
+        "release sign-off statement",
+        "explicit withheld-claim list if sign-off is still blocked"
+      ],
+      "status": "blocked"
+    }
+  ],
+  "schema_version": 1,
+  "withheld_claims": [
+    "Editing this scaffold does not claim Milestone M6 closure.",
+    "Editing this scaffold does not claim Milestone M7 closure.",
+    "Editing this scaffold does not claim release readiness.",
+    "Editing this scaffold does not claim new captured benchmark evidence.",
+    "Editing this scaffold does not widen the reviewed runtime or public contract."
+  ]
+}

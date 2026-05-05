@@ -1,0 +1,32 @@
+{
+  "blocking_reasons": [],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "completion_roadmap_aligned": true,
+  "current_state": "docs-completion-reviewed",
+  "docs_completion_review_complete": true,
+  "docs_targets_reviewed": true,
+  "explicit_non_claims_reviewed": true,
+  "implementation_ledger_aligned": true,
+  "missing_or_stale_doc_paths": [],
+  "public_contract_aligned": true,
+  "reference_harness_guide_aligned": true,
+  "reference_harness_readme_aligned": true,
+  "reviewed_doc_targets": [
+    "docs/public-contract.md",
+    "docs/implementation-ledger.md",
+    "docs/verification-strategy.md",
+    "docs/reference-harness.md",
+    "tools/reference-harness/README.md",
+    "docs/full-amflow-completion-roadmap.md"
+  ],
+  "schema_version": 1,
+  "scope": "release-docs-completion",
+  "verification_strategy_aligned": true,
+  "withheld_claims": [
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim new captured benchmark evidence.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

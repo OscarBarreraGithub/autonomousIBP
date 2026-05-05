@@ -1,16 +1,19 @@
 APPROVE final design artifact
 
-Milestone closure verdict: REJECT M7 closure at lane86 current `HEAD`.
+Milestone closure verdict: REJECT M7 closure at lane92 current `HEAD`.
 
 # M7 Milestone Closure Plan
 
-## Lane86 End-To-End Readiness Snapshot
+## Lane92 End-To-End Readiness Snapshot
 
-Lane86 reran `tools/reference-harness/scripts/release_signoff_readiness.py` on
-the current candidate tree and captured the full JSON output at
-`/tmp/autoibp_orch/exec/lane86_release-readiness.full-output.json`.
+Lane92 reran `tools/reference-harness/scripts/release_signoff_readiness.py`
+against fresh lane92 prerequisite summaries on the current candidate tree. The
+committed full JSON output is
+`tools/reference-harness/specs/m7/lane92/release-readiness.full-output.json`;
+the lane stdout capture is also retained at
+`/tmp/autoibp_orch/exec/lane92_release-readiness.full-output.json`.
 
-Current release readiness is not closed:
+Current release readiness remains blocked:
 
 - `release_signoff_ready = false`
 - `qualification_corpus_review_complete = false`
@@ -19,28 +22,29 @@ Current release readiness is not closed:
 - `docs_completion_review_complete = true`
 - `parity_signoff_complete = false`
 
-The sidecar-completion snapshot for the four release sign-offs is therefore
-still `2/4 PASSING`: performance and diagnostic sidecars are complete;
-qualification corpus and parity sign-off sidecars are blocked. Docs completion
-is reviewed, but it is not counted as one of the four release sign-offs in the
-lane86 handoff.
+The release review-section inventory is now `3/5 reviewed` and `2/5 blocked`:
 
-Lane89 removes the unintended review-section dependency cycle that made
-`performance-review` blocked by `milestone-m6` despite the passing performance
-sidecar. Going forward, `performance-review` may be marked reviewed when its
-own retained performance evidence is reviewed. This does not claim M6, M7,
-parity sign-off, or release readiness: `milestone-m6` remains a release
-prerequisite, `qualification-corpus` remains blocked by the qualification
-evidence below, and `parity-signoff` remains blocked until it consumes the
-accepted qualification, performance, diagnostic, and docs reviews. The
-readiness helper also cross-checks `parity-signoff` against the actual
-review-section statuses and the live `milestone-m6` prerequisite so a complete
-parity sidecar cannot bypass a blocked qualification, performance, diagnostic,
-docs, or M6 gate.
+- `qualification-corpus`: `blocked`
+- `performance-review`: `reviewed`
+- `diagnostic-review`: `reviewed`
+- `docs-completion`: `reviewed`
+- `parity-signoff`: `blocked`
 
-Lane86 must not document M7 as "1 step from closure" yet. The current
-readiness output does not show `3/4` sign-offs passing, and the remaining
-blockers are not only the diphoton precision row.
+Lane89's cycle fix is effective in the lane92 recheck: `performance-review`
+now has status `reviewed`, `performance_review_current_state =
+"performance-review-reviewed"`, and an empty blocker list. It is no longer
+blocked by `milestone-m6` when its own retained performance evidence is
+reviewed. This does not claim M6, M7, final parity sign-off, or release
+readiness.
+
+Lane92 must still not document M7 as closed or one step from closure. Two
+review sections remain blocked, and all release prerequisites remain
+unsatisfied:
+
+- `milestone-m6`: `blocked-on-qualification-closure`
+- `phase-f-feature-parity`: `blocked-on-runtime-lanes` (`b61n`, `b63n`,
+  `b64ag`)
+- `retained-reference-evidence`: `captured-but-phase0-not-qualified`
 
 ## Passing Evidence
 
@@ -53,16 +57,15 @@ blockers are not only the diphoton precision row.
   reports `current_state = "diagnostic-review-reviewed"`,
   `diagnostic_review_complete = true`, and no diagnostic blocker paths.
 - Docs completion is reviewed for the current checklist marker audit. The
-  lane86 rerun of `review_release_docs_completion.py` reports
-  `docs_completion_review_complete = true` and no docs blockers.
-- Case-study numeric sidecar coverage improved since the previous M7 plan:
-  the lane86 case-study numeric comparison consumed all 10 selected
-  `*.numeric-evidence.json` sidecars, so no selected case-study family is
-  missing a numeric sidecar.
+  lane92 docs sidecar reports `docs_completion_review_complete = true` and no
+  docs blockers.
+- Case-study numeric sidecar coverage is complete but not fully passing:
+  lane92 consumed all 10 selected `*.numeric-evidence.json` sidecars, with
+  9/10 families meeting their digit threshold.
 
 ## Blocked Evidence
 
-Qualification corpus is blocked by the current generated evidence, not by a
+Qualification corpus is blocked by current generated evidence, not by a
 missing sidecar alone. The exact missing or failed evidence is:
 
 - Phase-0 packet-set closure is not accepted by the current retained summary.
@@ -75,35 +78,37 @@ missing sidecar alone. The exact missing or failed evidence is:
   `insufficient_precision`, and `master_set_instability`.
 - Case-study numeric evidence is present for all selected families, but
   `diphoton-heavy-quark-form-factors` fails comparison and threshold review:
-  the current sidecar observes 56 correct digits against the required 200-digit
-  profile.
+  it has 11/222 coefficients passing and 56 observed correct digits against
+  the required 200-digit profile, so the case-study set remains 9/10.
 - The case-study verdict remains dependent on an accepted phase-0 verdict.
 - The closed benchmark-family coverage statement is not reviewed.
 
-Parity sign-off is blocked by the current parity sidecar state. The exact
-missing review evidence is:
+Parity sign-off is blocked by qualification closure. With the retained lane83
+parity sidecar, performance, diagnostic, and docs reviews are already consumed;
+the live lane92 blockers are:
 
-- qualification closure note review,
-- performance review summary review,
-- diagnostic review summary review,
-- docs completion note review.
+- `parity-signoff-incomplete`
+- `parity-qualification-closure`
+- `parity-path:qualification-closure-note`
+- `qualification-corpus`
+- `milestone-m6`
 
-The performance, diagnostic, and docs evidence exists, but the current parity
-sidecar has not been refreshed to consume those reviews. Qualification closure
-also cannot be truthfully reviewed until the qualification-corpus blockers above
-are resolved.
+## Clean Closures In Lane92
 
-## Clean Closures In Lane86
+Lane92 confirms one behavior change from the lane89 cycle fix: performance
+review is PASSING in the release-readiness section rather than blocked by
+`milestone-m6`. Diagnostic review and docs completion are also reviewed.
 
-Lane86 did not close an additional release sign-off. Performance and diagnostic
-were already passing before lane86, docs completion remains reviewed, and the
-remaining release sign-offs are blocked by real prerequisite evidence:
+Lane92 does not close a new release prerequisite or final sign-off:
 
-- Qualification corpus cannot close while phase-0 packet-set blockers and the
-  diphoton 56/200 digit failure remain in the generated output.
-- Parity sign-off cannot close until qualification closure is reviewed; a
-  refresh may clear the performance, diagnostic, and docs note blockers, but it
-  cannot claim final parity while qualification corpus is still blocked.
+- Qualification corpus cannot close while phase-0 packet-set blockers, the
+  diphoton 56/200 digit failure, the phase-0 dependency, and the unreviewed
+  closed coverage statement remain in the generated output.
+- Milestone M6 cannot close until the phase-0 packet-set verdict and
+  case-study-family verdict are both accepted.
+- Parity sign-off cannot close until qualification closure is reviewed and the
+  live readiness helper no longer adds `qualification-corpus` and
+  `milestone-m6` as blockers.
 
 ## Shortest Actionable Chain
 
@@ -116,14 +121,15 @@ remaining release sign-offs are blocked by real prerequisite evidence:
 3. Review and record the closed benchmark-family coverage statement.
 4. Rerun case-study qualification, M6 qualification, and the qualification
    corpus sidecar until `qualification_corpus_review_complete = true`.
-5. Refresh parity sign-off against the accepted qualification, performance,
-   diagnostic, and docs-completion reviews. The sidecar must preserve exact
-   withheld claims until every prerequisite is reviewed.
+5. Refresh final parity sign-off after accepted qualification closure. The
+   sidecar must preserve exact withheld claims until every prerequisite is
+   reviewed.
 6. Rerun `release_signoff_readiness.py` and require the output to be the source
-   of truth for any M7 closure or "1 step from closure" statement.
+   of truth for any M7 closure or release-readiness statement.
 
 ## Final Consensus
 
-Role A, Role B, Role C, and Role D approve this lane86 plan only as a
-blocker-preserving M7 release-readiness review. It does not claim Milestone M6
-closure, Milestone M7 closure, final parity sign-off, or release readiness.
+Role A, Role B, Role C, and Role D approve this lane92 plan only as a
+blocker-preserving M7 release-readiness recheck. It confirms the
+performance-review cycle fix and rejects Milestone M6 closure, Milestone M7
+closure, final parity sign-off, and release readiness.

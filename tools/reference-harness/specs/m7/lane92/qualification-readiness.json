@@ -1,0 +1,372 @@
+{
+  "blocked_case_study_families": [],
+  "blocked_case_study_families_preserve_runtime_lane_hints": true,
+  "blocked_phase0_examples": [
+    {
+      "id": "automatic_phasespace",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "complex_kinematics",
+      "next_runtime_lane": "b61n"
+    },
+    {
+      "id": "feynman_prescription",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "linear_propagator",
+      "next_runtime_lane": "b64ag"
+    }
+  ],
+  "captured_examples_pass_comparison_checks": true,
+  "captured_examples_publish_reference_artifacts": true,
+  "case_study_family_ids": [
+    "package-double-box",
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar",
+    "one-singular-endpoint-case"
+  ],
+  "observed_reference_captured_matches_scaffold": true,
+  "optional_capture_packets_match_scaffold": true,
+  "optional_packet_roots": [
+    "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair",
+    "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair"
+  ],
+  "optional_packets_preserve_bootstrap_only_state": true,
+  "packet_roots": [
+    {
+      "capture_state": "reference-captured",
+      "captured_benchmarks": [
+        "automatic_loop",
+        "automatic_vs_manual"
+      ],
+      "captured_examples": [
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "automatic_vs_manual",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/comparisons/phase0/automatic_vs_manual.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_vs_manual/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        },
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "automatic_loop",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/comparisons/phase0/automatic_loop.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_loop/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_loop/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_loop/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        }
+      ],
+      "effective_optional_capture_packet": "",
+      "inferred_optional_capture_packet": "",
+      "manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/manifests/phase0-reference.json",
+      "reported_optional_capture_packet": "",
+      "role": "required-root",
+      "root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set",
+      "summary_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/state/phase0-reference.capture.json"
+    },
+    {
+      "capture_state": "bootstrap-only",
+      "captured_benchmarks": [
+        "differential_equation_solver",
+        "spacetime_dimension"
+      ],
+      "captured_examples": [
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "differential_equation_solver",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/differential_equation_solver.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/differential_equation_solver/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/differential_equation_solver/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/differential_equation_solver/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        },
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "spacetime_dimension",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/comparisons/phase0/spacetime_dimension.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/spacetime_dimension/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/spacetime_dimension/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/spacetime_dimension/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        }
+      ],
+      "effective_optional_capture_packet": "de-d0-pair",
+      "inferred_optional_capture_packet": "de-d0-pair",
+      "manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/manifests/phase0-reference.json",
+      "reported_optional_capture_packet": "",
+      "role": "optional-packet",
+      "root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair",
+      "summary_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/state/phase0-reference.capture.json"
+    },
+    {
+      "capture_state": "bootstrap-only",
+      "captured_benchmarks": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "captured_examples": [
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "user_defined_amfmode",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_amfmode.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_amfmode/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_amfmode/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        },
+        {
+          "backup_match_ok": true,
+          "benchmark_id": "user_defined_ending",
+          "comparison_status": "reference-captured",
+          "comparison_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/comparisons/phase0/user_defined_ending.summary.json",
+          "comparison_summary_benchmark_matches": true,
+          "comparison_summary_exists": true,
+          "comparison_summary_within_root": true,
+          "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_ending/golden-manifest.json",
+          "golden_manifest_benchmark_matches": true,
+          "golden_manifest_exists": true,
+          "golden_manifest_within_root": true,
+          "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_ending/captured",
+          "golden_output_dir_exists": true,
+          "golden_output_dir_within_root": true,
+          "rerun_match_ok": true,
+          "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_ending/result-manifest.json",
+          "result_manifest_benchmark_matches": true,
+          "result_manifest_exists": true,
+          "result_manifest_within_root": true
+        }
+      ],
+      "effective_optional_capture_packet": "user-hook-pair",
+      "inferred_optional_capture_packet": "user-hook-pair",
+      "manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/manifests/phase0-reference.json",
+      "reported_optional_capture_packet": "user-hook-pair",
+      "role": "optional-packet",
+      "root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair",
+      "summary_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/state/phase0-reference.capture.json"
+    }
+  ],
+  "pending_examples_preserve_runtime_lane_hints": true,
+  "phase0_examples": [
+    {
+      "id": "automatic_loop",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "",
+      "packet_capture_state": "reference-captured",
+      "reported_optional_capture_packet": "",
+      "required_capture": true,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set"
+    },
+    {
+      "id": "automatic_phasespace",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "b63n",
+      "observed_evidence_state": "cataloged-pending-capture",
+      "optional_capture_packet": "",
+      "packet_capture_state": "",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "cataloged-pending-capture",
+      "source_root": ""
+    },
+    {
+      "id": "automatic_vs_manual",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "",
+      "packet_capture_state": "reference-captured",
+      "reported_optional_capture_packet": "",
+      "required_capture": true,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set"
+    },
+    {
+      "id": "complex_kinematics",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "b61n",
+      "observed_evidence_state": "cataloged-pending-capture",
+      "optional_capture_packet": "",
+      "packet_capture_state": "",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "cataloged-pending-capture",
+      "source_root": ""
+    },
+    {
+      "id": "differential_equation_solver",
+      "inferred_optional_capture_packet": "de-d0-pair",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "de-d0-pair",
+      "packet_capture_state": "bootstrap-only",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair"
+    },
+    {
+      "id": "feynman_prescription",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "b63n",
+      "observed_evidence_state": "cataloged-pending-capture",
+      "optional_capture_packet": "",
+      "packet_capture_state": "",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "cataloged-pending-capture",
+      "source_root": ""
+    },
+    {
+      "id": "linear_propagator",
+      "inferred_optional_capture_packet": "",
+      "next_runtime_lane": "b64ag",
+      "observed_evidence_state": "cataloged-pending-capture",
+      "optional_capture_packet": "",
+      "packet_capture_state": "",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "cataloged-pending-capture",
+      "source_root": ""
+    },
+    {
+      "id": "spacetime_dimension",
+      "inferred_optional_capture_packet": "de-d0-pair",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "de-d0-pair",
+      "packet_capture_state": "bootstrap-only",
+      "reported_optional_capture_packet": "",
+      "required_capture": false,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair"
+    },
+    {
+      "id": "user_defined_amfmode",
+      "inferred_optional_capture_packet": "user-hook-pair",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "user-hook-pair",
+      "packet_capture_state": "bootstrap-only",
+      "reported_optional_capture_packet": "user-hook-pair",
+      "required_capture": false,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair"
+    },
+    {
+      "id": "user_defined_ending",
+      "inferred_optional_capture_packet": "user-hook-pair",
+      "next_runtime_lane": "",
+      "observed_evidence_state": "reference-captured",
+      "optional_capture_packet": "user-hook-pair",
+      "packet_capture_state": "bootstrap-only",
+      "reported_optional_capture_packet": "user-hook-pair",
+      "required_capture": false,
+      "scaffold_evidence_state": "reference-captured",
+      "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair"
+    }
+  ],
+  "phase0_pending_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "phase0_reference_captured_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "qualification_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/qualification-benchmarks.json",
+  "ready_optional_capture_packets": {
+    "de-d0-pair": [
+      "differential_equation_solver",
+      "spacetime_dimension"
+    ],
+    "user-hook-pair": [
+      "user_defined_amfmode",
+      "user_defined_ending"
+    ]
+  },
+  "required_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set",
+  "required_root_captures_required_set": true,
+  "required_root_only_captures_required_set": true,
+  "required_root_reference_captured": true,
+  "schema_version": 1
+}

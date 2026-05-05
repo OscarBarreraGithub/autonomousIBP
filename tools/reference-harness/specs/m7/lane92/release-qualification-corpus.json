@@ -1,0 +1,74 @@
+{
+  "blocked_case_study_ids": [],
+  "blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes",
+    "case-study numeric comparison has not fully passed",
+    "case-study correct-digit thresholds have not fully passed",
+    "case-study numeric comparison failed for diphoton-heavy-quark-form-factors",
+    "case-study numeric evidence for diphoton-heavy-quark-form-factors observed 56 correct digits below required 200",
+    "closed benchmark-family coverage statement is not reviewed"
+  ],
+  "case_study_families_qualified": false,
+  "case_study_qualification_blockers": [
+    "case-study:blocked-on-case-study-comparison",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "case_study_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/case-study-qualification.json",
+  "case_study_verdict_present": true,
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "closed_benchmark_family_coverage_statement_reviewed": false,
+  "current_state": "blocked-on-qualification-corpus-closure",
+  "missing_or_blocked_qualification_paths": [
+    "phase0-pending:automatic_phasespace",
+    "phase0-pending:complex_kinematics",
+    "phase0-pending:feynman_prescription",
+    "phase0-pending:linear_propagator",
+    "phase0-packet-set:blocked-on-correct-digit-thresholds",
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes",
+    "case-study:blocked-on-case-study-comparison",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "pending_phase0_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "phase0_failure_code_blockers": [
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes"
+  ],
+  "phase0_packet_set_qualified": false,
+  "phase0_packet_set_verdict_present": true,
+  "phase0_qualification_summary_path": "tools/reference-harness/specs/m7/lane92/phase0-qualification.json",
+  "qualification_corpus_required_inputs_preserved": true,
+  "qualification_corpus_required_outputs_preserved": true,
+  "qualification_corpus_review_complete": false,
+  "qualification_evidence_coherent": true,
+  "qualification_summary_path": "tools/reference-harness/specs/m7/lane92/qualification-readiness.json",
+  "residual_blockers_or_carveouts_preserved": true,
+  "reviewed_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "schema_version": 1,
+  "scope": "release-qualification-corpus",
+  "withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

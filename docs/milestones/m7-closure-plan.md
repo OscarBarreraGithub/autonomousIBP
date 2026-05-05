@@ -1,99 +1,122 @@
 APPROVE final design artifact
 
-Milestone closure verdict: REJECT M7 closure.
+Milestone closure verdict: REJECT M7 closure at lane86 current `HEAD`.
 
 # M7 Milestone Closure Plan
 
-## Top-Level Disagreements To Preserve
+## Lane86 End-To-End Readiness Snapshot
 
-- Role A marked docs completion as `PARTIAL` when no docs-completion sidecar was supplied. Role B, Role C, and the lane60 generated sidecar run show the current docs-completion marker audit can be `PASSING` when `review_release_docs_completion.py` is run and consumed by `release_signoff_readiness.py`.
-- Role B treats the final M7 readiness helper itself as an infrastructure blocker because `release_signoff_ready` is currently always `false`. Role C frames the main gap as evidence production with most scaffolding already present. This plan preserves both points: the sidecar scaffolding exists, but a final non-blocked release-readiness path or final release-packet consumer still has to land.
-- Role A, Role B, Role C, and Role D all reject M7 closure. Role D explicitly approves this final planning artifact only as a blocker-preserving M7 plan, not as release readiness.
-- M5 has moved since lane20 and lane60: `tools/reference-harness/specs/m5/m5-qualification-lane62.json` now reports `current_state = "CLOSED/all-phase"` with `m5_all_phase_closed=true`, `390/390` coefficients, and no missing examples or runtime features. The M7/M6 readiness path still needs a fresh run that consumes this M5 artifact while preserving separate M6 phase-0 and case-study blockers.
+Lane86 reran `tools/reference-harness/scripts/release_signoff_readiness.py` on
+the current candidate tree and captured the full JSON output at
+`/tmp/autoibp_orch/exec/lane86_release-readiness.full-output.json`.
 
-## Sources
+Current release readiness is not closed:
 
-- Role inputs: lane60 Role A primary planner, Role B independent reviewer, Role C verification-strategy auditor, and Role D synthesis over A/B/C.
-- Canonical docs: `docs/full-amflow-completion-roadmap.md`, `docs/verification-strategy.md`, `docs/implementation-ledger.md`, `docs/release-signoff-checklist.md`, `references/case-studies/selected-benchmarks.md`, `tools/reference-harness/templates/qualification-benchmarks.json`, and `tools/reference-harness/templates/release-signoff-checklist.json`.
-- Current generated lane60 summaries: `/tmp/autoibp_orch/exec/lane60_current_state/qualification-readiness.json`, `phase0-qualification.json`, `case-study-qualification.json`, `m6-qualification.json`, `release-qualification-corpus.json`, `release-performance.json`, `release-diagnostic.json`, `release-docs-completion.json`, `release-parity-signoff.json`, and `release-readiness.json`.
-- Current M5 artifact: `tools/reference-harness/specs/m5/m5-qualification-lane62.json`.
+- `release_signoff_ready = false`
+- `qualification_corpus_review_complete = false`
+- `performance_review_complete = true`
+- `diagnostic_review_complete = true`
+- `docs_completion_review_complete = true`
+- `parity_signoff_complete = false`
 
-## Exact Acceptance Criteria
+The sidecar-completion snapshot for the four release sign-offs is therefore
+still `2/4 PASSING`: performance and diagnostic sidecars are complete;
+qualification corpus and parity sign-off sidecars are blocked. Docs completion
+is reviewed, but it is not counted as one of the four release sign-offs in the
+lane86 handoff.
 
-M7 is the Phase G release gate. It depends on `Milestone M6`, and Phase G requires the qualification corpus to pass, diagnostics and performance to be reviewed on the mandatory benchmark set, and a release packet to record docs/parity sign-off against `docs/release-signoff-checklist.md` (`docs/full-amflow-completion-roadmap.md:656-661`; `docs/full-amflow-completion-roadmap.md:791-796`).
+The release-readiness review-section gate is more conservative and remains
+blocker-preserving: `qualification-corpus` is blocked, `performance-review` is
+blocked by `milestone-m6` despite the passing performance sidecar,
+`diagnostic-review` is reviewed, `docs-completion` is reviewed, and
+`parity-signoff` is blocked.
 
-The release checklist requires a passing M6 summary, a fresh rebuild gate on the exact candidate tree, pinned retained reference roots, aligned public/durable docs, diagnostics review, performance review, docs completion review, parity sign-off review, mandatory release notes, and final reviewer dispositions (`docs/release-signoff-checklist.md:24-66`).
+Lane86 must not document M7 as "1 step from closure" yet. The current
+readiness output does not show `3/4` sign-offs passing, and the remaining
+blockers are not only the diphoton precision row.
 
-The machine-readable checklist freezes three release prerequisites: `milestone-m6`, `phase-f-feature-parity`, and `retained-reference-evidence`; and five review sections: `qualification-corpus`, `performance-review`, `diagnostic-review`, `docs-completion`, and `parity-signoff` (`tools/reference-harness/templates/release-signoff-checklist.json:19-138`).
+## Passing Evidence
 
-The executable M7 path is sidecar-based. `release_signoff_readiness.py` consumes qualification readiness plus optional phase-0, case-study, qualification-corpus, performance, diagnostic, docs-completion, and parity-signoff summaries. It preserves blockers for each prerequisite and review section, and currently returns `"release_signoff_ready": false` unconditionally (`tools/reference-harness/scripts/release_signoff_readiness.py:1142-1766`).
+- Performance review is passing. The retained sidecar
+  `tools/reference-harness/specs/m7/lane70/release-performance-review.json`
+  reports `current_state = "performance-review-reviewed"`,
+  `performance_review_complete = true`, and no performance blocker paths.
+- Diagnostic review is passing. The retained sidecar
+  `tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json`
+  reports `current_state = "diagnostic-review-reviewed"`,
+  `diagnostic_review_complete = true`, and no diagnostic blocker paths.
+- Docs completion is reviewed for the current checklist marker audit. The
+  lane86 rerun of `review_release_docs_completion.py` reports
+  `docs_completion_review_complete = true` and no docs blockers.
+- Case-study numeric sidecar coverage improved since the previous M7 plan:
+  the lane86 case-study numeric comparison consumed all 10 selected
+  `*.numeric-evidence.json` sidecars, so no selected case-study family is
+  missing a numeric sidecar.
 
-## Current Criteria And Evidence
+## Blocked Evidence
 
-### PASSING Criteria
+Qualification corpus is blocked by the current generated evidence, not by a
+missing sidecar alone. The exact missing or failed evidence is:
 
-- M7 scaffold and consumers exist. The checklist, JSON template, readiness helper, and populated sidecar producer scripts are present and recorded in the roadmap and ledger as release-prep scaffolding, not closure evidence (`docs/full-amflow-completion-roadmap.md:678-741`; `docs/implementation-ledger.md:243-254`; `docs/implementation-ledger.md:262`; `docs/implementation-ledger.md:269-270`).
-- M5 is closed as an all-phase M5 artifact. `m5-qualification-lane62.json` records `current_state = "CLOSED/all-phase"`, `m5_all_phase_closed = true`, `aggregate_passed_coefficient_count = 390`, no missing example classes, no missing runtime features, and explicit non-claims for M6, M7, and release readiness.
-- Docs-completion review is passing for the current marker audit when its sidecar is generated. The lane60 `release-readiness.json` records `docs_completion_current_state = "docs-completion-reviewed"`, no docs blockers, all six checklist targets present, and `docs-completion` review-section status `reviewed` (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:225-287`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:648-664`).
+- Phase-0 packet-set closure is not accepted by the current retained summary.
+  Pending phase-0 examples remain `automatic_phasespace`,
+  `complex_kinematics`, `feynman_prescription`, and `linear_propagator`.
+- Phase-0 packet-set correct-digit scoring has not fully passed.
+- Phase-0 packet-set failure-code audits are not published.
+- Required phase-0 typed failure codes are still missing across the packet set:
+  `boundary_unsolved`, `continuation_budget_exhausted`,
+  `insufficient_precision`, and `master_set_instability`.
+- Case-study numeric evidence is present for all selected families, but
+  `diphoton-heavy-quark-form-factors` fails comparison and threshold review:
+  the current sidecar observes 56 correct digits against the required 200-digit
+  profile.
+- The case-study verdict remains dependent on an accepted phase-0 verdict.
+- The closed benchmark-family coverage statement is not reviewed.
 
-### PARTIAL Criteria
+Parity sign-off is blocked by the current parity sidecar state. The exact
+missing review evidence is:
 
-- M5 is closed, but M6/M7 readiness still needs a fresh prerequisite surface that consumes the lane62 M5 artifact while keeping separate phase-0 qualification blockers. The stale lane60 generated release-readiness snapshot predates lane62 and still reports `automatic_phasespace`, `complex_kinematics`, `feynman_prescription`, and `linear_propagator` as phase-0 pending runtime lanes `b63n`, `b61n`, `b63n`, and `b64ag` (`tools/reference-harness/templates/qualification-benchmarks.json:63-125`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:8-31`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:530-541`).
-- Retained reference evidence is present but not qualified. Required and optional retained roots are coherent enough for `qualification_readiness.py`, but phase-0 qualification remains blocked on correct-digit thresholds, missing failure-code audits, and missing required typed failure codes (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:382-421`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:543-565`).
+- qualification closure note review,
+- performance review summary review,
+- diagnostic review summary review,
+- docs completion note review.
 
-### FAILING Criteria
+The performance, diagnostic, and docs evidence exists, but the current parity
+sidecar has not been refreshed to consume those reviews. Qualification closure
+also cannot be truthfully reviewed until the qualification-corpus blockers above
+are resolved.
 
-- M6 is failing. `qualify_milestone_m6.py` requires a qualified phase-0 packet set, no pending phase-0 runtime lanes, and qualified case-study families before `milestone_m6_ready=true` (`tools/reference-harness/scripts/qualify_milestone_m6.py:637-711`). The lane60 readiness summary blocks `milestone-m6` on phase-0 pending examples, phase-0 correct-digit and failure-code blockers, missing/failed case-study numerics, and the singular endpoint runtime blocker (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:505-528`).
-- Case-study qualification is failing. Current generated evidence reports missing numeric sidecars for `ttbar-h`, `ttbar-w`, `diphoton-heavy-quark-form-factors`, `h-to-bb`, `single-top-planar-nonplanar`, and `one-singular-endpoint-case`; `ttbar-j` has only 36 correct digits against the 50-digit floor; and `one-singular-endpoint-case` remains blocked on `b62p` (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:63-102`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:445-461`). The strong precision anchors remain `ttbar-h` and diphoton (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:99-102`; `references/case-studies/selected-benchmarks.md:45-58`).
-- Qualification-corpus review is failing. The generated sidecar is present but blocked on unqualified phase-0 and case-study verdicts, pending phase-0 examples, missing failure-code evidence, missing case-study numerics, and an unreviewed closed benchmark-family coverage statement (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:422-503`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:570-602`).
-- Performance review is failing. The generated performance sidecar is blocked on missing mandatory benchmark timings, clean-rebuild performance review, and unstable-performance-run review (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:329-359`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:603-625`).
-- Diagnostic review is failing. The generated diagnostic sidecar is blocked on typed failure-path preservation review and retained unstable-run diagnostic evidence (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:192-218`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:627-646`).
-- Parity sign-off is failing. The generated parity sidecar is blocked on qualification closure, performance review, diagnostic review, and docs-completion note review (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:288-328`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:665-690`).
-- Final release readiness is failing. The generated release summary records `"release_signoff_ready": false`, and the helper currently hard-codes that field to false (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:568`; `tools/reference-harness/scripts/release_signoff_readiness.py:1762-1766`).
+## Clean Closures In Lane86
 
-## Shortest Atomic Landing Chain
+Lane86 did not close an additional release sign-off. Performance and diagnostic
+were already passing before lane86, docs completion remains reviewed, and the
+remaining release sign-offs are blocked by real prerequisite evidence:
 
-1. Refresh M6/M7 readiness to consume the M5 lane62 `CLOSED/all-phase` artifact while explicitly preserving phase-0 runtime blockers as separate M6 evidence blockers with no M7 or release-readiness overclaim.
-2. Publish packet-shaped candidate roots for the retained phase-0 packet split and produce required `failure-code-audit.json` sidecars.
-3. Run `compare_phase0_packet_set_to_reference.py`, `score_phase0_packet_set_correct_digits.py`, `audit_phase0_packet_set_failure_codes.py`, and `qualify_phase0_packet_set.py` to a passing phase-0 verdict.
-4. Produce missing case-study numeric sidecars and repair `ttbar-j` below-threshold evidence. Required missing or failing rows now include `ttbar-j`, `ttbar-h` at 100 digits, `ttbar-w`, diphoton at 200 digits, `h-to-bb`, single-top planar/nonplanar, and `one-singular-endpoint-case`.
-5. Retire `one-singular-endpoint-case -> b62p` with live branch-aware singular endpoint runtime and numeric evidence, not metadata-only sidecars.
-6. Run `compare_case_study_numeric_results.py`, `qualify_case_study_families.py`, and `qualify_milestone_m6.py` to a passing M6-only summary.
-7. Produce a complete `release-qualification-corpus` sidecar from the accepted M6 evidence and a reviewed closed benchmark-family coverage statement.
-8. Produce a complete `release-performance-review` sidecar with mandatory benchmark timings, clean rebuild performance evidence, benchmark-family scope, and unstable-run disposition.
-9. Produce a complete `release-diagnostic-review` sidecar with required failure-code profiles, typed failure paths, retained unstable-run evidence, and known-regression outcomes reviewed.
-10. Rerun `review_release_docs_completion.py` after final docs updates and keep the passing docs-completion sidecar.
-11. Produce a complete `release-parity-signoff` sidecar after qualification, performance, diagnostics, and docs are all reviewed.
-12. Land the final non-blocked release-readiness path or final release-packet consumer, then run `release_signoff_readiness.py` with all sidecars and zero blockers.
+- Qualification corpus cannot close while phase-0 packet-set blockers and the
+  diphoton 56/200 digit failure remain in the generated output.
+- Parity sign-off cannot close until qualification closure is reviewed; a
+  refresh may clear the performance, diagnostic, and docs note blockers, but it
+  cannot claim final parity while qualification corpus is still blocked.
 
-## Worker Prompt Skeletons
+## Shortest Actionable Chain
 
-Worker 1, M5/M7 readiness reconciliation: Read `tools/reference-harness/specs/m5/m5-qualification-lane62.json`, `qualification_readiness.py`, `qualification-benchmarks.json`, and `release_signoff_readiness.py`. Make the M7 prerequisite state consume accepted M5 closure evidence while explicitly separating M5 closure from M6 phase-0 qualification blockers. Preserve `does_not_claim_m6`, `does_not_claim_m7`, and `does_not_claim_release_readiness`; do not modify runtime semantics.
-
-Worker 2, phase-0 M6 packet publisher and audit: Publish candidate packet roots matching the required-set, `de-d0-pair`, and `user-hook-pair` packet split. Add required failure-code audit sidecars, run packet-set comparison, correct-digit scoring, failure-code audit, and `qualify_phase0_packet_set.py`. Fail closed on benchmark-id drift, packet-label drift, missing failure-code sidecars, threshold misses, or unexpected failure codes.
-
-Worker 3, case-study numeric completion: Produce real numeric sidecars for all selected families at the frozen thresholds, repair `ttbar-j` to at least 50 digits, hit 100 digits for `ttbar-h`, hit 200 digits for diphoton, and keep all command paths, golden manifests, C++ results, comparison summaries, and withheld claims explicit.
-
-Worker 4, singular endpoint closure: Follow the singular runtime lane after SRL-2. Retire `one-singular-endpoint-case -> b62p` only with branch-aware endpoint extraction and a coefficient-bearing numeric sidecar at the default 50-digit floor. Metadata-only local-model sidecars are not enough.
-
-Worker 5, M6 composer: After phase-0 and case-study verdicts pass, run `qualify_milestone_m6.py` and publish one M6-only summary with `milestone_m6_ready=true`, no pending runtime lanes, no missing sidecars, and no M7/release-readiness claim.
-
-Worker 6, qualification-corpus release sidecar: Consume the accepted M6 summary plus phase-0 and case-study verdicts, review closed benchmark-family coverage, preserve residual blockers or carve-outs, and emit an unblocked `release-qualification-corpus` sidecar.
-
-Worker 7, performance review sidecar: Collect mandatory benchmark timings on the pinned environment, attach clean rebuild performance evidence, compare against the reviewed baseline, disposition unstable or unreviewed runs, and emit an unblocked `release-performance-review` sidecar.
-
-Worker 8, diagnostic review sidecar: Review required failure-code profiles, typed failure paths, retained unstable-run evidence, and known-regression outcomes. Emit an unblocked `release-diagnostic-review` sidecar without suppressing missing or degraded diagnostic paths.
-
-Worker 9, docs and parity sign-off: Rerun docs-completion against final docs, then emit `release-parity-signoff` only after qualification closure, performance review, diagnostic review, docs completion, required inputs/outputs, prerequisite section preservation, and exact withheld claims all pass.
-
-Worker 10, final release readiness: Add the final non-blocked `release_signoff_ready` path or a separate final release-packet consumer. It must require all release prerequisites and review sections to be satisfied, preserve the release checklist non-claims until the final approved packet, and fail closed on any sidecar/schema/blocker drift.
-
-## Feasibility Assessment
-
-M7 closure is not feasible now. The release scaffolding is mostly present, and docs completion can already pass its marker audit, but release readiness is blocked by real M6 qualification gaps, missing performance and diagnostic evidence, a blocked parity-signoff sidecar, and the lack of a final non-blocked readiness path.
-
-This is feasible with further infrastructure and evidence investment. It is not a single docs cleanup. The shortest path still requires packet-shaped candidate outputs, phase-0 failure-code audit sidecars, high-precision case-study numerics, singular endpoint runtime evidence, performance timing review, diagnostic review, parity sign-off, and a final release-readiness mechanism that can actually return ready only when every prerequisite is satisfied.
+1. Produce or promote the accepted phase-0 packet-set evidence required by the
+   current retained summary: no pending phase-0 examples, passing correct-digit
+   scoring, published failure-code audits, and all required typed failure codes.
+2. Replace the diphoton proxy evidence with a dedicated
+   `diphoton-heavy-quark-form-factors` packet and C++ comparison that reaches
+   the required 200-digit profile.
+3. Review and record the closed benchmark-family coverage statement.
+4. Rerun case-study qualification, M6 qualification, and the qualification
+   corpus sidecar until `qualification_corpus_review_complete = true`.
+5. Refresh parity sign-off against the accepted qualification, performance,
+   diagnostic, and docs-completion reviews. The sidecar must preserve exact
+   withheld claims until every prerequisite is reviewed.
+6. Rerun `release_signoff_readiness.py` and require the output to be the source
+   of truth for any M7 closure or "1 step from closure" statement.
 
 ## Final Consensus
 
-Role D APPROVE final planning artifact. Approve this final design artifact as the truthful M7 closure plan. Reject any claim that M7 is currently closed or that the project is release-ready.
+Role A, Role B, Role C, and Role D approve this lane86 plan only as a
+blocker-preserving M7 release-readiness review. It does not claim Milestone M6
+closure, Milestone M7 closure, final parity sign-off, or release readiness.

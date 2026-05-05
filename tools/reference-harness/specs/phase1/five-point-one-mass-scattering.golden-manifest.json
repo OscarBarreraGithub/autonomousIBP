@@ -1,0 +1,216 @@
+{
+  "benchmark_id": "five-point-one-mass-scattering",
+  "capture_profile": {
+    "benchmark_class": "phase1-case-study-family-proxy-capture",
+    "black_box_dot": 0,
+    "black_box_rank": 2,
+    "epsorder": 2,
+    "family": "fivePointOneMassProxyBox",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "m3sq": "2 - I",
+      "p3sq": "7/2",
+      "p4sq": "8",
+      "s": "496",
+      "t": "-39"
+    },
+    "kinematic_region": "complex-valued physical-region proxy point",
+    "precision_goal_digits": 40,
+    "raw_scalar_targets": [
+      "j[fivePointOneMassProxyBox,1,1,1,1], retained complex_kinematics one-loop complex-mass box proxy"
+    ],
+    "source_reference": "five-point-one-mass-scattering case-study scaffold row, with current machine-readable evidence through retained complex_kinematics",
+    "topology": "one-loop complex-mass box proxy"
+  },
+  "created_at": "2026-05-05T17:42:06-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-for-current-proxy-row",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/examples/five_point_one_mass_complex_proxy",
+  "notes": [
+    "This benchmark is an eligible phase-1 row from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md.",
+    "It is not one of the seven prior/in-flight phase-1 captures listed in the lane113 prompt: diphoton-heavy-quark-form-factors, 2024-box-integrals-fermion-bubbles, single-top-planar-nonplanar, 2024-gg-to-tth-one-loop-oeps2, 2023-gg-to-gammagamma-light-quark-mi, 2024-wpair-planar-mi, or 2023-ttj-planar-topology.",
+    "The survey's current row is proxy evidence through retained complex_kinematics; lane113 mirrors that current machine-readable contract and does not freeze a dedicated five-point one-mass literature packet.",
+    "The lane95 Kira imaginary-coefficient retry wrapper is installed as a reactive retry for the exact invalid coefficient string \"I\" parser failure; this capture did not trigger that retry.",
+    "No C++ ingest state, dedicated five-point literature packet, M6 closure, M7 closure, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "b601a6f1d318eca8aab1c6e98b74778e5d38a4bfdd8643412f8993014eb3888b",
+      "name": "sol-five-point-one-mass-complex-box-proxy",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/examples/five_point_one_mass_complex_proxy/sol-five-point-one-mass-complex-box-proxy",
+      "present_at_capture": true,
+      "size_bytes": 2061
+    },
+    {
+      "canonical_sha256": "f4839c2dc3a76d5df7a150ca0fd266858496396a8afd0a21c3272e41a46e59c8",
+      "name": "sol-five-point-one-mass-complex-box-proxy.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/examples/five_point_one_mass_complex_proxy/sol-five-point-one-mass-complex-box-proxy.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 813
+    },
+    {
+      "canonical_sha256": "626034ca0f1844ea0474e3d442d252320b87c5be050c32e3e66c899b6fe76b09",
+      "name": "sol-five-point-one-mass-complex-box-proxy.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/examples/five_point_one_mass_complex_proxy/sol-five-point-one-mass-complex-box-proxy.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 2344
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected five-point-one-mass-scattering as an eligible eighth phase-1 benchmark outside the seven prior/in-flight captures; approval is scoped to the current proxy row, not a dedicated five-point literature packet."
+    },
+    {
+      "role": "B",
+      "scope": "capture-template conformance and non-claim wording",
+      "status": "APPROVE",
+      "verdict": "The packet mirrors prior phase-1 patterns, includes the lane95 Kira retry wrapper, labels the surface as the retained complex_kinematics proxy, and avoids false dedicated-literature claims."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure and build completed with empty stderr and built amflow, amflow-cli, amflow-tests, and singular-runtime-lane-tests; compare_cpp_vs_amflow.py --self-check completed with all required predicates true."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "The capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, and AMFSystemSolution execution; verifier passed on finite Mathematica numerics with 1 verified target rule, 7 solution rules, 5 checked coefficients, 3 nonzero coefficients, min precision 40, and nonzero imaginary component."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/examples/five_point_one_mass_complex_proxy",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:01:49"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane113_local_capture.log",
+        "sha256": "bdd2bef91e1741fe48008ffe6faae0e1da949f0457db1fa4252a509f5bacf359",
+        "size_bytes": 16198
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/run-manifest.10006275.txt",
+      "sha256": "6149048c5e68e28559955df867674545fe8a8ebd4d7f5df8157af5082858edd0",
+      "size_bytes": 2336
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/five-point-one-mass-scattering.lane113/capture_five_point_one_mass_complex_proxy.sbatch",
+        "sha256": "690b4775fe3693776163b4eeeeb57f0fdffc11563d0878a62897cc07d7bf04f2"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/five-point-one-mass-scattering.lane113/run.wl",
+        "sha256": "e922d92542aff1c56f9fba18a1ca78026d01495a294bb68c9f9f2462749dda15"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/five-point-one-mass-scattering.lane113/verify_output.wl",
+        "sha256": "0a0eb835c098caa6610978145efe9f45a0b3a0e50c4b05a5f5364d1a57c69861"
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane113-five-point-one-mass-scattering/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d"
+      }
+    ],
+    "source_article": {
+      "arxiv": "2306.15431",
+      "title": "All Two-Loop Feynman Integrals for Five-Point One-Mass Scattering",
+      "url": "https://arxiv.org/abs/2306.15431"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T17:42:06-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 4",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane113_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane113_cmake_build.stdout",
+        "sha256": "9f0e0bde1d0e25626b8a50c37548cd28838379c9aacdc185e33d50acc92a327a",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane113_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane113_cmake_configure.stdout",
+        "sha256": "86e4575f54d9e5ba0c568c85c5789c00c7313b4e6ac9e43bbd85b2f11b6318e0",
+        "size_bytes": 142
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane113_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Dedicated lane113 proxy AMFlow/Kira run reduced one requested complex box target to 7 masters, constructed 4 AMF systems in 55 seconds, solved them in 31 seconds, wrote solution and metadata, and the verifier passed on finite nonzero complex Mathematica coefficients.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 5,
+      "coefficient_powers": [
+        -2,
+        -1,
+        0,
+        1,
+        2
+      ],
+      "max_abs_imaginary_component": "0.0004187109773346087695456928300466781575012039894687889349",
+      "min_precision": "40.",
+      "nonzero_coefficient_count": 3,
+      "sample_nonzero_coefficients": [
+        "-0.0000491446434735913467070691573012159103985270990756012428 - 1.1986498408193011391968087146638026926470024164780791*^-6 I",
+        "0.0005779252240636638814919675522313552168373760882124884379 + 0.0001291464135236889781737288500452009818076048479323563313 I",
+        "-0.0023932404599206230006337233056978502621507523814154688139 + 0.0004187109773346087695456928300466781575012039894687889349 I"
+      ],
+      "solution_rule_count": 7,
+      "target_rule_count": 1
+    }
+  }
+}

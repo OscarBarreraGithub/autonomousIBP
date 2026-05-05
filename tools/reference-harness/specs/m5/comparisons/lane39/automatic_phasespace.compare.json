@@ -1,0 +1,180 @@
+{
+  "amflow_golden": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+  "benchmark_id": "automatic_phasespace",
+  "compared_coefficient_count": 11,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "/tmp/autoibp_orch/exec/lane39_probe/full/runs/automatic_phasespace.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.39603250798829204757562030005749904276",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-0.3960325079882920475756203000574990427568",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 39
+        }
+      ],
+      "integral": "phase[1,-1,1,0,1,0,0]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.01143665358721617060348820647454078118",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "0.0114366535872161706034882064745407811774",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 39
+        }
+      ],
+      "integral": "phase[1,0,1,0,1,0,0]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00003072064900647741498508445978252335",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "0.0000307206490064774149850844597825233487",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 39
+        }
+      ],
+      "integral": "phase[1,1,1,0,1,0,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-2.545102149084555649023204915448523405386942562144E-10",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-2.545102149084555649023204915448E-10",
+          "imag_agreement_digits": 999,
+          "order": -3,
+          "passed": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "3.68349127812735861533056169912E-9",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "3.6834912781273586153305616991225E-9",
+          "imag_agreement_digits": 999,
+          "order": -2,
+          "passed": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-1.131237981165730137088469117987E-8",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-1.13123798116573013708846911798682E-8",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-9.09128955251943629976022322143E-9",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-9.0912895525194362997602232214308E-9",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 40
+        }
+      ],
+      "integral": "phase[1,1,1,1,1,1,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "2.5708102516005612616396009246954781872595379416E-12",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "2.5708102516005612616396009246E-12",
+          "imag_agreement_digits": 999,
+          "order": -3,
+          "passed": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-3.20653621041459341972315223841705226390966534603E-11",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-3.20653621041459341972315223841E-11",
+          "imag_agreement_digits": 999,
+          "order": -2,
+          "passed": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-4.794511732939943431317694091963344787106375625701E-10",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "-4.794511732939943431317694091963E-10",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.7713707267178957229366117703955006186078701879297E-9",
+          "cpp_imag": "0E-40",
+          "cpp_present": true,
+          "cpp_real": "1.7713707267178957229366117703949E-9",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 40
+        }
+      ],
+      "integral": "phase[1,2,1,1,1,1,1]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 5,
+  "minimum_digit_agreement": 39,
+  "passed": true,
+  "passed_coefficient_count": 11,
+  "schema_version": 1,
+  "tolerance_digits": 30
+}

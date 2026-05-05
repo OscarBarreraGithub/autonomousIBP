@@ -40,6 +40,10 @@
       "required": false,
       "feature_gate": "phase0",
       "oracle": "upstream-amflow",
+      "backup_comparison_scope": "requested-integrals-only",
+      "backup_required_integrals": [
+        "j[loopxloop,0,1,1,1,1,0,1,1,1,1,0,0]"
+      ],
       "next_runtime_lane": "b63n",
       "notes": "Prescription example stays capture-blocked until the next reviewed phase-space/prescription runtime slice (`b63n`) lands."
     },

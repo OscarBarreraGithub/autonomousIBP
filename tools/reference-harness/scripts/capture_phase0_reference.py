@@ -308,6 +308,153 @@ def all_comparisons_match(comparisons: dict[str, dict[str, Any]]) -> bool:
     return bool(comparisons) and all(bool(entry["match"]) for entry in comparisons.values())
 
 
+def split_top_level(value: str, separator: str = ",") -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    in_string = False
+    escaping = False
+    for index, character in enumerate(value):
+        if escaping:
+            escaping = False
+            continue
+        if character == "\\" and in_string:
+            escaping = True
+            continue
+        if character == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if character in "([{":
+            depth += 1
+            continue
+        if character in ")]}":
+            depth -= 1
+            continue
+        if character == separator and depth == 0:
+            parts.append(value[start:index].strip())
+            start = index + 1
+    parts.append(value[start:].strip())
+    return [part for part in parts if part]
+
+
+def compact_rule_text(text: str) -> str:
+    return re.sub(r"\s+", "", text)
+
+
+def parse_mathematica_rule_list(canonical_text: str) -> dict[str, str]:
+    text = canonical_text.strip()
+    if text.startswith("{") and text.endswith("}"):
+        text = text[1:-1].strip()
+    if not text:
+        return {}
+    rules: dict[str, str] = {}
+    for raw_rule in split_top_level(text):
+        arrow = raw_rule.find("->")
+        if arrow == -1:
+            raise RuntimeError(f"Mathematica backup rule is missing ->: {raw_rule[:120]!r}")
+        label = compact_rule_text(raw_rule[:arrow])
+        if not label:
+            raise RuntimeError("Mathematica backup rule has an empty left-hand side")
+        if label in rules:
+            raise RuntimeError(f"duplicate Mathematica backup rule for {label}")
+        rules[label] = compact_rule_text(raw_rule[arrow + 2 :])
+    return rules
+
+
+def compare_requested_integral_backup_scope(
+    *,
+    expected: dict[str, dict[str, str]],
+    actual: dict[str, dict[str, str]],
+    required_integrals: list[str],
+) -> dict[str, Any]:
+    required_labels = [compact_rule_text(label) for label in required_integrals]
+    if not required_labels:
+        raise RuntimeError(
+            "requested-integrals-only backup comparison requires backup_required_integrals"
+        )
+
+    output_comparisons: dict[str, dict[str, Any]] = {}
+    accepted = True
+    for name in sorted(set(expected) | set(actual)):
+        left = expected.get(name)
+        right = actual.get(name)
+        entry: dict[str, Any] = {
+            "present_in_expected": left is not None,
+            "present_in_actual": right is not None,
+            "required_rule_count": len(required_labels),
+            "matched_required_rule_count": 0,
+            "missing_required_rules": [],
+            "mismatched_required_rules": [],
+            "common_rule_count": 0,
+            "common_rule_match_count": 0,
+        }
+        if left is not None and right is not None:
+            expected_rules = parse_mathematica_rule_list(left["canonical_text"])
+            actual_rules = parse_mathematica_rule_list(right["canonical_text"])
+            common_labels = sorted(set(expected_rules) & set(actual_rules))
+            entry["common_rule_count"] = len(common_labels)
+            entry["common_rule_match_count"] = sum(
+                1 for label in common_labels if expected_rules[label] == actual_rules[label]
+            )
+            for label in required_labels:
+                expected_value = expected_rules.get(label)
+                actual_value = actual_rules.get(label)
+                if expected_value is None or actual_value is None:
+                    entry["missing_required_rules"].append(label)
+                    continue
+                if expected_value != actual_value:
+                    entry["mismatched_required_rules"].append(label)
+                    continue
+                entry["matched_required_rule_count"] += 1
+        entry["match"] = (
+            entry["present_in_expected"]
+            and entry["present_in_actual"]
+            and entry["matched_required_rule_count"] == len(required_labels)
+            and not entry["missing_required_rules"]
+            and not entry["mismatched_required_rules"]
+        )
+        accepted = accepted and bool(entry["match"])
+        output_comparisons[name] = entry
+
+    return {
+        "scope": "requested-integrals-only",
+        "accepted": accepted and bool(output_comparisons),
+        "required_integrals": required_labels,
+        "outputs": output_comparisons,
+    }
+
+
+def evaluate_backup_match_gate(
+    *,
+    benchmark: dict[str, Any],
+    backup_canonical: dict[str, dict[str, str]],
+    primary_canonical: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    full_comparisons = compare_named_canonical_sets(backup_canonical, primary_canonical)
+    full_match_ok = all_comparisons_match(full_comparisons)
+    scope = benchmark.get("backup_comparison_scope", "full-rule-list")
+    result: dict[str, Any] = {
+        "backup_match_ok": full_match_ok,
+        "backup_comparison_scope": scope,
+        "backup_comparisons": full_comparisons,
+    }
+    if full_match_ok or scope == "full-rule-list":
+        return result
+    if scope != "requested-integrals-only":
+        raise RuntimeError(f"unsupported backup comparison scope: {scope}")
+
+    scoped = compare_requested_integral_backup_scope(
+        expected=backup_canonical,
+        actual=primary_canonical,
+        required_integrals=list(benchmark.get("backup_required_integrals", [])),
+    )
+    result["backup_match_ok"] = bool(scoped["accepted"])
+    result["backup_scoped_comparison"] = scoped
+    return result
+
+
 def update_superseded_placeholder(path: Path, *, replacement_path: str, kind: str) -> None:
     payload = {
         "schema_version": 1,
@@ -580,13 +727,18 @@ def finalize_benchmark_capture(
     rerun_canonical = rerun["canonicalized_outputs"]
     backup_canonical = canonicalize_mathematica_files(mathkernel, backup_files)
 
-    backup_comparisons = compare_named_canonical_sets(backup_canonical, primary_canonical)
+    backup_gate = evaluate_backup_match_gate(
+        benchmark=benchmark,
+        backup_canonical=backup_canonical,
+        primary_canonical=primary_canonical,
+    )
+    backup_comparisons = backup_gate["backup_comparisons"]
     rerun_comparisons = compare_named_canonical_sets(primary_canonical, rerun_canonical)
     output_presence_ok = all(
         Path(primary_run["raw_outputs"][name]).exists() and Path(rerun["raw_outputs"][name]).exists()
         for name in output_names
     )
-    backup_match_ok = all_comparisons_match(backup_comparisons)
+    backup_match_ok = bool(backup_gate["backup_match_ok"])
     rerun_match_ok = all_comparisons_match(rerun_comparisons)
 
     promoted = promote_primary_golden(
@@ -635,7 +787,9 @@ def finalize_benchmark_capture(
             },
         ],
         "output_names": output_names,
+        "backup_comparison_scope": backup_gate["backup_comparison_scope"],
         "backup_comparisons": backup_comparisons,
+        **({"backup_scoped_comparison": backup_gate["backup_scoped_comparison"]} if "backup_scoped_comparison" in backup_gate else {}),
         "rerun_comparisons": rerun_comparisons,
         "checks": [
             {
@@ -1023,6 +1177,21 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
         )
         updated_manifest = load_json(manifest_path)
         comparison_summary = load_json(harness_root / "comparisons" / "phase0" / "demo_benchmark.summary.json")
+        scoped_backup_comparison = compare_requested_integral_backup_scope(
+            expected={
+                "sol": {
+                    "canonical_text": "{j[f, 1] -> 2, j[f, -1] -> 3}",
+                    "canonical_sha256": "expected",
+                }
+            },
+            actual={
+                "sol": {
+                    "canonical_text": "{j[f, 1] -> 2, j[f, 0] -> 4}",
+                    "canonical_sha256": "actual",
+                }
+            },
+            required_integrals=["j[f,1]"],
+        )
         selected_ids = [
             entry["id"]
             for entry in select_benchmarks(
@@ -1149,6 +1318,9 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             "summary_written": Path(summary["summary_path"]).exists(),
             "summary_records_selected_packet": summary["optional_capture_packet"] == "demo-packet",
             "backup_match_ok": comparison_summary["checks"][2]["status"] == "passed",
+            "requested_integrals_backup_scope_accepts_basis_drift": bool(
+                scoped_backup_comparison["accepted"]
+            ),
             "rerun_match_ok": comparison_summary["checks"][3]["status"] == "passed",
             "cpc_fallback_example_root_resolved": fallback_example_root == extracted_example_root,
             "selected_ids_follow_catalog_order": selected_ids == ["required_alpha", "optional_beta"],

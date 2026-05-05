@@ -116,6 +116,8 @@ def normalize_benchmark_entry(raw: Any) -> dict[str, Any]:
         "oracle": raw.get("oracle", "upstream-amflow"),
         "next_runtime_lane": normalize_runtime_lane(raw.get("next_runtime_lane")),
         "optional_capture_packet": normalize_capture_packet(raw.get("optional_capture_packet")),
+        "backup_comparison_scope": raw.get("backup_comparison_scope", "full-rule-list"),
+        "backup_required_integrals": list(raw.get("backup_required_integrals", [])),
         "notes": raw.get("notes", ""),
     }
 

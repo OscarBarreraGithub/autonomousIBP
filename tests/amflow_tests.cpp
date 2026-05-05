@@ -10641,6 +10641,33 @@ void KiraParsedResultsMissingRuleFallsBackToIdentityTest() {
          "identity fallback rules should use unit coefficients");
 }
 
+void KiraParsedResultsWhitespaceEmptyRuleListFallsBackToIdentityTest() {
+  const std::filesystem::path root =
+      FreshTempDir("amflow-bootstrap-kira-empty-rule-list");
+  const std::filesystem::path results_root = root / "results" / "planar_double_box";
+  std::filesystem::create_directories(results_root);
+  OverwriteTextFile(results_root / "masters",
+                    "planar_double_box[1,1,1,1,1,1,0] 0\n");
+  OverwriteTextFile(results_root / "kira_target.m",
+                    "{\n"
+                    "}\n");
+
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult result =
+      backend.ParseReductionResult(root, "planar_double_box");
+
+  Expect(result.status == amflow::ParsedReductionStatus::IdentityFallback,
+         "whitespace-only Mathematica rule lists should fall back to identity rules");
+  Expect(result.explicit_rule_count == 0,
+         "empty rule-list fallback should not report explicit reduction rules");
+  Expect(result.rules.size() == 1 &&
+             result.rules.front().target.Label() ==
+                 "planar_double_box[1,1,1,1,1,1,0]" &&
+             result.rules.front().terms.size() == 1 &&
+             result.rules.front().terms.front().coefficient == "1",
+         "empty rule-list fallback should preserve the parsed master identity");
+}
+
 void KiraParsedResultsRejectMalformedMastersTest() {
   amflow::KiraBackend backend;
   const std::filesystem::path root = TestDataRoot() / "kira-results/malformed-masters";
@@ -48789,7 +48816,7 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
 
   const std::string command =
       ShellSingleQuote(cli_path.string()) + " solve-series " +
-      ShellSingleQuote(state_path.string()) + " --eps-order 3 --digits 40 --out " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 8 --digits 40 --out " +
       ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
       " 2>" + ShellSingleQuote(stderr_path.string());
 
@@ -48911,7 +48938,7 @@ for family, state in states.items():
         "eta-infinity-de-asymptotic-first-coefficient+"
         "eta-zero-selected-endpoint-coefficients"
     )
-    assert "endpoint coefficient transport through eps^3" in continuation["blocked_reason"]
+    assert "endpoint coefficient transport through eps^8" in continuation["blocked_reason"]
 
     target_reduction = state["target_reduction"]
     assert target_reduction["accepted_by_solve_series"] is True
@@ -48920,7 +48947,7 @@ for family, state in states.items():
     )
 
 results = {result["integral"]: result for result in payload["results"]}
-assert "through eps^3" in payload["summary"]
+assert "through eps^8" in payload["summary"]
 assert "Suppressed " not in payload["summary"]
 assert "above eps^1" not in payload["summary"]
 def coefficient(integral, order):
@@ -48950,12 +48977,15 @@ for family in ("box1", "box2"):
     bubble_eps3 = coefficient(f"{family}[1,0,1,0]", 3)
     assert bubble_eps3["real_digits"].startswith("-14.889207469091605090869757403")
     assert bubble_eps3["imag_digits"].startswith("-12.636511439621312647507773470")
+    assert coefficient(f"{family}[1,0,1,0]", 8)["real_digits"]
+    assert coefficient(f"{family}[0,1,0,1]", 8)["real_digits"]
     box_eps2 = coefficient(f"{family}[1,1,1,1]", 2)
     assert box_eps2["real_digits"].startswith("-0.16089951816601819118756768300565063456")
     assert box_eps2["imag_digits"].startswith("0.137167045228459157581710268605")
     box_eps3 = coefficient(f"{family}[1,1,1,1]", 3)
     assert box_eps3["real_digits"].startswith("-0.306401830592825788967212812")
     assert box_eps3["imag_digits"].startswith("0.124071843409125859663790767")
+    assert coefficient(f"{family}[1,1,1,1]", 8)["real_digits"]
 
 box1_reduced_eps1 = coefficient("box1[2,0,1,0]", 1)
 assert box1_reduced_eps1["real_digits"].startswith("-0.0767129231978169473707629334468408721189")
@@ -49095,6 +49125,76 @@ void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
                  "finite solution-sample ingestion should preserve the second transported value");
   ExpectContains(json, "\"status\": \"success\"",
                  "finite solution-sample ingestion should report success");
+}
+
+void SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-manifest-state-pointer");
+  const std::filesystem::path state_path = run_root / "pointed-state.json";
+  const std::filesystem::path manifest_path = run_root / "golden-manifest.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "schema_version": 1,
+  "kind": "amflow_solve_series_state",
+  "benchmark_id": "manifest_pointed_state",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "eta=0",
+  "target_location": "eta=0",
+  "masters": [
+    {"family": "toy", "indices": [1]}
+  ],
+  "coefficient_matrices": {
+    "eta": [["0"]]
+  },
+  "boundary_state": {
+    "kind": "amflow_finite_solution_samples",
+    "epsilon_samples": ["1/100"],
+    "files": {
+      "solution": {
+        "raw": "{j[toy, 1] -> {23}}"
+      }
+    }
+  },
+  "reduction": {
+    "targets": [
+      {"family": "toy", "indices": [1]}
+    ]
+  }
+})JSON");
+  OverwriteTextFile(
+      manifest_path,
+      R"JSON({
+  "schema_version": 1,
+  "benchmark_id": "manifest_pointed_state",
+  "cpp_solve_series_input": "pointed-state.json",
+  "golden_manifest": "/unused/golden-manifest.json"
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(manifest_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "solve-series should follow cpp_solve_series_input from a manifest to a real AMFlow "
+         "state; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"benchmark_id\": \"manifest_pointed_state\"",
+                 "manifest pointer ingestion should run the pointed AMFlow state");
+  ExpectContains(json, "\"exact_real\": \"23\"",
+                 "manifest pointer ingestion should preserve pointed state coefficients");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "manifest pointer ingestion should report success");
 }
 
 void SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest() {
@@ -54291,6 +54391,7 @@ int main() {
     KiraParsedResultsCompleteDirectBeatsGeneratedConfigMastersOnlyTest();
     KiraParsedResultsCompleteDirectBeatsGeneratedConfigRuleOnlyTest();
     KiraParsedResultsMissingRuleFallsBackToIdentityTest();
+    KiraParsedResultsWhitespaceEmptyRuleListFallsBackToIdentityTest();
     KiraParsedResultsRejectMalformedMastersTest();
     KiraParsedResultsRejectMalformedRulesTest();
     KiraParsedResultsRejectNonlinearRulesTest();
@@ -55211,6 +55312,7 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
+    SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest();
     SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest();
     SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest();
     SolveSeriesCliRejectsUnreconstructedFiniteSolutionOutputTest();

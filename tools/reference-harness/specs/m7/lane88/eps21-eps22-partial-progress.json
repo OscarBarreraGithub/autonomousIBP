@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "lane": 88,
+  "scope": "automatic_loop eps21 eps22 implementation",
+  "status": "informational_partial_progress",
+  "recorded_at": "2026-05-05T13:40:00-04:00",
+  "dependency_gate": {
+    "required_origin_main_subject": "Implement automatic_loop eps19 eps20",
+    "status_at_recording": "found_within_60_minutes",
+    "observed_commit": "d0efd5a Implement automatic_loop eps19 eps20 endpoint transport",
+    "poll_log": "/tmp/autoibp_orch/exec/lane88_dependency_poll.log",
+    "observed_origin_main_guard": {
+      "file": "src/cli/main.cpp",
+      "endpoint_transport": "reviewed eps orders 0..20",
+      "zero_log_bubble_guard": "reviewed eps orders 0..21"
+    },
+    "worktree_note": "The main worktree also contains unrelated dirty Lane89-style documentation/readiness edits. This sidecar does not stage or rely on those edits."
+  },
+  "manifest_gate": {
+    "automatic_loop_eps21_manifest": "missing",
+    "automatic_loop_eps22_manifest": "missing",
+    "latest_tracked_surfaces": [
+      "tools/reference-harness/specs/phase0/automatic_loop.eps19-golden-manifest.json",
+      "tools/reference-harness/specs/phase0/automatic_loop.eps20-golden-manifest.json"
+    ],
+    "lane82_capture_limit": "Lane 82 used epsorder = 22 and the eps19/eps20 manifest notes state that this leading eps^-2 benchmark printed through positive eps^20 only.",
+    "required_capture_for_eps21_eps22": "fresh automatic_loop AMFlow capture with epsorder = 24, followed by real eps21 and eps22 golden manifests pointing at nonzero sol1/sol2 coefficients"
+  },
+  "theory_preplan": {
+    "expected_code_file": "src/cli/main.cpp",
+    "expected_functions": [
+      "Zeta23Constant",
+      "Zeta24Constant",
+      "Li23Minus99Constant",
+      "Li24Minus99Constant",
+      "Li23NinetyNineOverHundredConstant",
+      "Li24NinetyNineOverHundredConstant",
+      "RetainedBubbleEndpointSeriesThroughEpsOrder",
+      "RetainedScalarBoxLiMinus99ThroughWeight",
+      "RetainedScalarBoxLiNinetyNineOverHundredThroughWeight",
+      "RetainedScalarBoxGammaRatioSeriesThroughWeight",
+      "RequireReviewedEndpointTransportEpsilonOrder"
+    ],
+    "required_guard_after_real_validation": {
+      "endpoint_transport": "0..22",
+      "zero_log_bubble_guard": "0..23"
+    },
+    "weight_requirement": "The massless-box endpoint has leading eps^-2, so public eps22 support requires scalar-box and gamma-ratio weights through 24. The zero-log bubble guard also needs public max + 1."
+  },
+  "derived_constant_prep": {
+    "generator": "python3 mpmath with mp.mp.dps = 180",
+    "note": "Future implementation should regenerate or cross-check these constants in WolframKernel before source insertion.",
+    "zeta": {
+      "21": "1.000000476932986787806463116719604373045966446694784937600207487376596839087898159833876638564497256132663812118993800897487497296742391425540941709638504541104",
+      "22": "1.000000238450502727732990003648186752994935041821779658269849603116474458935622914821316156167743985454676288987368743781327070450749019540908785758521173381245",
+      "23": "1.000000119219925965311073067788718882326387254997784519858603225797236243730427435123174313352235859837639451496003668630538314437723370833105502260471461430514",
+      "24": "1.000000059608189051259479612440207935801227503918837302795864246972321724495355468544848206832825003613889968600093960257823513222253360353453057139710425718429"
+    },
+    "li_minus_99": {
+      "21": "-98.99540568202279447434314625027849705755910571850531715389923622494190832430608748655971218971882371324760381919164948664404700924709095353704937012967327209498",
+      "22": "-98.99769053455173715309267171186107627535456987559078128718138847610634654152074538593897166471157451959505974329467186833737740871956496226539598796043287173711",
+      "23": "-98.99884096783314763695109350206429572487856297556336969771620674010946476381018276574523652560334787010881151838059666728735141900389070782233895037323788431436",
+      "24": "-98.99941899508556486287536143556761818685053476750098139645934845488686209524959276695575321012176250832832863242068766442081275430605982073328572039553372423811"
+    },
+    "li_99_over_100": {
+      "21": "0.9900004674410788866844310972844530930455459147085944826218598225493876461347116997606479849456667626990738659984402411889699431767733701374465088146514283330535",
+      "22": "0.9900002337050242801116802598285691721757454284327384064728876462321738464723412901080230907438582208706976070468355732301083941608849471827534125675472150178786",
+      "23": "0.9900001168473450515570658653206013629874092338258071277956927056054353415042874924741846650597530829673770012802176236250320857491950651831372250809174138315781",
+      "24": "0.9900000584219513168894371705002222438535234457496018705029876451192832099641975926008132755367776617627606049730075524255972387415304284537969810217391002700503"
+    }
+  },
+  "anti_fake_parity_audit": {
+    "result": "no eps21 or eps22 golden manifests, comparator outputs, hardcoded zero parity rows, or dummy eps21/eps22 implementation claims found",
+    "targeted_grep": "rg -n 'automatic_loop\\.eps2[12]|eps\\^2[12]|eps2[12]|0\\.\\.2[12]|Zeta2[34]|Li2[34]|kMaxReviewedEndpointTransportEpsilonOrder\\s*=\\s*22' src include tests tools docs",
+    "notes": [
+      "Only Lane82 provenance mentions work-eps22/epsorder = 22.",
+      "The dirty local source has Lane87-shaped Zeta21/Zeta22 and Li21/Li22 support only, not the weight 23/24 support required for eps21/eps22."
+    ]
+  },
+  "partial_gate_results": {
+    "scope_note": "These gates validate current main-worktree build health only. They are not eps21/eps22 comparator acceptance because the required manifests and implementation are absent.",
+    "build_dir": "/tmp/autoibp_orch/build-lane88",
+    "log_dir": "/tmp/autoibp_orch/exec/lane88_gates",
+    "cmake_configure": "passed",
+    "cmake_build": "passed",
+    "amflow_tests": "passed",
+    "ctest": "passed: 2/2 tests",
+    "compare_cpp_vs_amflow_self_check": "passed",
+    "git_diff_check": "passed"
+  },
+  "role_reviews": {
+    "role_a_theory": "APPROVE partial-progress disposition; BLOCKED full implementation without eps21/eps22 manifests.",
+    "role_b_constants": "APPROVE partial-progress constant prep; BLOCKED deriving eps21/eps22 comparator truth from checked-in data alone.",
+    "role_c_validation": "APPROVE informational validation plan; BLOCKED full comparator gate until eps21/eps22 manifests exist.",
+    "role_d_antifake": "APPROVE anti-fake audit; BLOCKED any N<=22 parity claim."
+  },
+  "withheld_claims": [
+    "Does not implement eps21 or eps22 endpoint transport.",
+    "Does not raise the reviewed endpoint transport guard to N<=22.",
+    "Does not claim eps21 or eps22 comparator acceptance.",
+    "Does not alter prior parity evidence."
+  ]
+}

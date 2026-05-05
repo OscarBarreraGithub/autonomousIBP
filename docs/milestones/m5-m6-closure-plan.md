@@ -43,7 +43,9 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 
 ## Current M5 Criteria And Evidence
 
-### M5 PASSING Criteria
+### M5 Retained-Regression PASSING Criteria, Not Closure
+
+These rows are PASSING only for the cited retained-regression comparator surfaces. They do not satisfy the separate Phase F requirement that every required runtime feature be exercised through the live solver path, and they must not be read as M5 closure.
 
 - `automatic_loop` retained-state C++/AMFlow parity is passing through the eps5 surface. Lane32 reports `automatic_loop.eps2` `54/54`, `automatic_loop.eps3` `66/66`, `automatic_loop.eps4` `78/78`, and `automatic_loop.eps5` `90/90` at unchanged `tolerance_digits=30`, each with `minimum_digit_agreement=41`.
 - `automatic_phasespace` retained-sample ingest comparison is passing as a narrow regression. Lane32 reports `11/11`, `minimum_digit_agreement=39`, `tolerance_digits=30`; the retained-state C++ summary still does not make this a full live Cutkosky phase-space boundary reconstruction claim.
@@ -78,7 +80,9 @@ M5 overall status: PARTIAL/FAILING, not closeable.
 
 ## Current M6 Criteria And Evidence
 
-### M6 PASSING Criteria
+### M6 Scaffold/Freeze PASSING Criteria, Not Closure
+
+These rows are PASSING only for scaffold presence and frozen benchmark metadata. They do not satisfy the M6 qualification-corpus pass, case-study numeric evidence, performance/diagnostic review, or final composer requirements.
 
 - M6 harness plumbing is substantially present. The verification strategy documents the qualification scaffold, packet correct-digit scorer, packet-set scorer, failure-code audits, phase-0 packet verdict, case-study readiness/numeric summary, case-study verdict, and M6 composer (`docs/verification-strategy.md:327-387`).
 - The qualification benchmark families and digit thresholds are frozen in durable docs (`references/case-studies/selected-benchmarks.md:39-63`; `specs/parity-matrix.yaml:68-90`).

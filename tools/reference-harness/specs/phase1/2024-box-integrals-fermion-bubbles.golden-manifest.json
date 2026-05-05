@@ -1,0 +1,131 @@
+{
+  "benchmark_id": "2024-box-integrals-fermion-bubbles",
+  "capture_profile": {
+    "benchmark_class": "phase1-adjacent-selected-candidate",
+    "black_box_dot": 1,
+    "black_box_rank": 2,
+    "epsorder": 4,
+    "family": "boxFermionBubbleH",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "s": "59/50",
+      "t": "-9/2000"
+    },
+    "precision_goal_digits": 50,
+    "raw_scalar_targets": [
+      "I^H_010022000 underlying J^H_1 = eps^2 (-t/mu^2) I^H_010022000",
+      "I^H_101012000 underlying J^H_2 = -4 eps^3 (-s/mu^2) I^H_101012000",
+      "I^H_111012000 underlying J^H_3 = eps^3 (-s/mu^2) (-t/mu^2) I^H_111012000"
+    ],
+    "source_reference": "arXiv:2312.06773 / Eur.Phys.J.C 84 (2024) 495, topology H, eqs. (6), (13), and (79)",
+    "topology": "H",
+    "topology_masses": {
+      "m2": "0",
+      "m3": "0",
+      "m4": "0"
+    }
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T14:00:11-04:00",
+  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h",
+  "notes": [
+    "This benchmark is an eligible phase-1 adjacent candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md; it is not diphoton-heavy-quark-form-factors, not a phase-0 example, and not one of the ten case-study family IDs.",
+    "This is a fail-closed partial-progress manifest because the dedicated AMFlow Mathematica job reached real Kira-backed reduction and AMF system construction but failed during boundary reduction before producing a solution file.",
+    "The targets are raw scalar integrals underlying the paper-normalized topology-H master integrals; no Table-11 normalized J^H value, C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made.",
+    "The failure is retained as setup evidence for the next rerun: Kira aborted on the boundary-reduction region with symbolic imaginary coefficients in generated propagators."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": null,
+      "name": "sol-2024-box-integrals-fermion-bubbles-topology-h",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h/sol-2024-box-integrals-fermion-bubbles-topology-h",
+      "present_at_capture": false
+    },
+    {
+      "canonical_sha256": null,
+      "name": "sol-2024-box-integrals-fermion-bubbles-topology-h.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h/sol-2024-box-integrals-fermion-bubbles-topology-h.meta.wl",
+      "present_at_capture": false
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h",
+    "failure_reproduction": {
+      "command": "FERMATPATH=/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64 /n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira -p8 jobs.yaml",
+      "log": {
+        "path": "/tmp/autoibp_orch/exec/lane93_boundaryreduce_manual_kira_with_fermat.log",
+        "sha256": "3e95eebe87c62d7f66536dea44b80eae7c265182cd7182b17acd7043c4ba47b6",
+        "size_bytes": 2550
+      },
+      "observed_error": "pyred::parser_error: invalid coefficient string \"I\""
+    },
+    "logs": {
+      "stderr": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/logs/lane93-boxfb-H.10236095.err",
+        "sha256_at_capture": "5dc97f2455d83922c771880d76b2e43b7778eac093c75d07124a6f5c8373382c",
+        "size_bytes_at_capture": 36
+      },
+      "stdout": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/logs/lane93-boxfb-H.10236095.out",
+        "sha256_at_capture": "7d3c9feb3c4c534aef04e4421f862fe31f59e45e99fc6625363d49766fe312ce",
+        "size_bytes_at_capture": 7723
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/run-manifest.10236095.txt",
+      "sha256": "92846768ce1728d1e78eb7fac47559dc4be197db81ab8b5a4db64b9d83b04a91"
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/capture_box_integrals_fermion_bubbles_topology_h.sbatch",
+        "sha256": "ed2f7d1f2e10fa9563d76079f9899345688afe063e88b20db5793f6f5b846ec7"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/run.wl",
+        "sha256": "b0e3f606047ad119c738088fa355d9b4c0ba90438b01b21f6890e2722e4f66a5"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/verify_output.wl",
+        "sha256": "dee49c853e207e6bbfce2b0d62cfd9d0b1cf265b660dd5c47efee9281f017216",
+        "note": "Repository verifier tightened after the submitted job to require metadata fields; the submitted job manifest records the earlier verifier hash efcab5e1a7461ffd2021d096f50b95af178547a66458f9f385ba134cb549035f."
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "remote": "https://gitlab.com/multiloop-pku/amflow.git"
+    },
+    "slurm": {
+      "allocated_partition": "sapphire",
+      "cpus_per_task": 8,
+      "elapsed": "00:01:20",
+      "exit_code": "2:0",
+      "job_id": "10236095",
+      "job_name": "lane93-boxfb-H",
+      "node": "holy8a24109",
+      "state": "FAILED",
+      "time_limit": "04:00:00"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "partial-progress-failed-closed",
+  "verification": {
+    "anti_fake_parity_gate": "fail-closed",
+    "build_gate": "passed",
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane93_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Dedicated topology-H reduction completed target reduction and differential-equation construction; boundary reduction reached Kira with generated propagators containing symbolic I and no solution file was produced.",
+    "real_mathematica_numerics_verified": false,
+    "withheld_reason": "The live Mathematica/Kira run did not produce sol-2024-box-integrals-fermion-bubbles-topology-h or metadata."
+  }
+}

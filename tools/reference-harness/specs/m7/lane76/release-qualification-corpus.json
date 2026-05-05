@@ -1,0 +1,287 @@
+{
+  "anti_fake_parity_checks": {
+    "case_study_numeric_sidecars_counted_from_retained_files": true,
+    "committed_phase0_source_remains_669_of_671": true,
+    "m6_m7_release_readiness_not_claimed": true,
+    "missing_ttbar_h_and_diphoton_preserved": true,
+    "singular_endpoint_runtime_blocker_removed_only_after_srl5_evidence": true,
+    "unpromoted_lane40_671_of_671_not_counted_as_committed_closure": true
+  },
+  "blocked_case_study_ids": [],
+  "blocking_reasons": [
+    "retained packet-set correct-digit scoring has not fully passed",
+    "retained packet-set is missing published failure-code audits",
+    "retained packet-set is missing required typed failure codes",
+    "case-study numeric summary is missing selected families",
+    "case-study numeric comparison has not fully passed",
+    "case-study correct-digit thresholds have not fully passed",
+    "case-study numeric evidence missing for ttbar-h",
+    "case-study numeric evidence missing for diphoton-heavy-quark-form-factors",
+    "closed benchmark-family coverage statement is not reviewed"
+  ],
+  "case_study_families_qualified": false,
+  "case_study_qualification_blockers": [
+    "case-study:blocked-on-case-study-numeric-evidence",
+    "case-study-numeric-evidence",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "case_study_qualification_summary_path": "/tmp/autoibp_orch/exec/lane76_current_state/case-study-qualification.json",
+  "case_study_verdict_present": true,
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "closed_benchmark_family_coverage_statement_reviewed": false,
+  "corpus_definition": {
+    "case_study_family_ids": [
+      "package-double-box",
+      "ttbar-j",
+      "ttbar-h",
+      "five-point-one-mass-scattering",
+      "ttbar-w",
+      "diphoton-heavy-quark-form-factors",
+      "h-to-bb",
+      "n4-sym-three-loop-form-factor",
+      "single-top-planar-nonplanar",
+      "one-singular-endpoint-case"
+    ],
+    "case_study_numeric_evidence_ids": [
+      "package-double-box",
+      "ttbar-j",
+      "five-point-one-mass-scattering",
+      "ttbar-w",
+      "h-to-bb",
+      "n4-sym-three-loop-form-factor",
+      "single-top-planar-nonplanar",
+      "one-singular-endpoint-case"
+    ],
+    "missing_case_study_numeric_ids": [
+      "ttbar-h",
+      "diphoton-heavy-quark-form-factors"
+    ],
+    "phase0_example_ids": [
+      "automatic_loop",
+      "automatic_vs_manual",
+      "differential_equation_solver",
+      "spacetime_dimension",
+      "user_defined_amfmode",
+      "user_defined_ending",
+      "automatic_phasespace",
+      "complex_kinematics",
+      "feynman_prescription",
+      "linear_propagator"
+    ],
+    "phase0_pending_ids": [
+      "automatic_phasespace",
+      "complex_kinematics",
+      "feynman_prescription",
+      "linear_propagator"
+    ],
+    "phase0_reference_captured_ids": [
+      "automatic_loop",
+      "automatic_vs_manual",
+      "differential_equation_solver",
+      "spacetime_dimension",
+      "user_defined_amfmode",
+      "user_defined_ending"
+    ],
+    "runtime_blocked_case_study_ids": [],
+    "source_path": "tools/reference-harness/templates/qualification-benchmarks.json"
+  },
+  "cumulative_parity_evidence_snapshot": {
+    "m5_all_phase": {
+      "aggregate_compared_coefficient_count": 390,
+      "aggregate_passed_coefficient_count": 390,
+      "current_state": "CLOSED/all-phase",
+      "does_not_claim_m6": true,
+      "does_not_claim_m7": true,
+      "does_not_claim_release_readiness": true,
+      "m5_all_phase_closed": true,
+      "source_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json"
+    },
+    "m6_case_study_numeric_evidence": {
+      "compared_coefficient_count": 782,
+      "missing_family_ids": [
+        "ttbar-h",
+        "diphoton-heavy-quark-form-factors"
+      ],
+      "passed_coefficient_count": 782,
+      "passing_families": [
+        {
+          "id": "package-double-box",
+          "minimum_observed_correct_digits": 58,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/package-double-box.numeric-evidence.json"
+        },
+        {
+          "id": "ttbar-j",
+          "minimum_observed_correct_digits": 78,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json"
+        },
+        {
+          "id": "five-point-one-mass-scattering",
+          "minimum_observed_correct_digits": 59,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json"
+        },
+        {
+          "id": "ttbar-w",
+          "minimum_observed_correct_digits": 58,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json"
+        },
+        {
+          "id": "h-to-bb",
+          "minimum_observed_correct_digits": 58,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/h-to-bb.numeric-evidence.json"
+        },
+        {
+          "id": "n4-sym-three-loop-form-factor",
+          "minimum_observed_correct_digits": 58,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.numeric-evidence.json"
+        },
+        {
+          "id": "single-top-planar-nonplanar",
+          "minimum_observed_correct_digits": 57,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.numeric-evidence.json"
+        },
+        {
+          "id": "one-singular-endpoint-case",
+          "minimum_observed_correct_digits": 999,
+          "required_minimum_correct_digits": 50,
+          "source_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json"
+        }
+      ],
+      "passing_family_count": 8,
+      "passing_family_fraction": "8/10",
+      "runtime_blocked_family_ids": [],
+      "selected_family_count": 10,
+      "source_path": "/tmp/autoibp_orch/exec/lane76_current_state/case-study-numeric.json"
+    },
+    "m6_milestone_verdict": {
+      "blocking_reasons": [
+        "phase0: retained packet-set correct-digit scoring has not fully passed",
+        "phase0: retained packet-set is missing published failure-code audits",
+        "phase0: retained packet-set is missing required typed failure codes",
+        "phase0: runtime-lane-blocked phase-0 examples remain pending",
+        "case-study: case-study numeric summary is missing selected families",
+        "case-study: case-study numeric comparison has not fully passed",
+        "case-study: case-study correct-digit thresholds have not fully passed",
+        "case-study: case-study numeric evidence missing for ttbar-h",
+        "case-study: case-study numeric evidence missing for diphoton-heavy-quark-form-factors"
+      ],
+      "current_state": "blocked-on-phase0-packet-set",
+      "milestone_m6_ready": false,
+      "source_path": "/tmp/autoibp_orch/exec/lane76_current_state/m6-qualification.json"
+    },
+    "phase0_committed_aggregate": {
+      "compared_coefficient_count": 671,
+      "latest_per_benchmark_compared_coefficient_count": 366,
+      "latest_per_benchmark_passed_coefficient_count": 364,
+      "passed_coefficient_count": 669,
+      "source_path": "tools/reference-harness/specs/phase0/lane32-packet-validation-aggregate.json",
+      "source_status": "committed-source-of-truth"
+    },
+    "phase0_packet_set_verdict": {
+      "blocking_reasons": [
+        "retained packet-set correct-digit scoring has not fully passed",
+        "retained packet-set is missing published failure-code audits",
+        "retained packet-set is missing required typed failure codes"
+      ],
+      "current_state": "blocked-on-correct-digit-thresholds",
+      "missing_required_failure_codes_across_packet_set": [
+        "boundary_unsolved",
+        "continuation_budget_exhausted",
+        "insufficient_precision",
+        "master_set_instability"
+      ],
+      "phase0_packet_set_qualified": false,
+      "source_path": "/tmp/autoibp_orch/exec/lane76_current_state/phase0-qualification.json"
+    },
+    "phase0_unpromoted_rerun": {
+      "all_compares_passed": true,
+      "case_count": 13,
+      "compared_coefficient_count": 671,
+      "passed_coefficient_count": 671,
+      "source_path": "/tmp/autoibp_orch/exec/lane40_batch52/parity_runs/aggregate.json",
+      "source_status": "unpromoted-tmp-rerun-not-counted-as-committed-closure"
+    }
+  },
+  "current_state": "blocked-on-qualification-corpus-closure",
+  "missing_or_blocked_qualification_paths": [
+    "phase0-pending:automatic_phasespace",
+    "phase0-pending:complex_kinematics",
+    "phase0-pending:feynman_prescription",
+    "phase0-pending:linear_propagator",
+    "phase0-packet-set:blocked-on-correct-digit-thresholds",
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes",
+    "case-study:blocked-on-case-study-numeric-evidence",
+    "case-study-numeric-evidence",
+    "case-study-comparison",
+    "case-study-correct-digits",
+    "case-study-requires-phase0-verdict"
+  ],
+  "multi_agent_review": [
+    {
+      "finding": "Corpus identity is the qualification-benchmarks union of phase-0 example classes and case-study families.",
+      "role": "A",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Generated phase-0 and case-study verdicts are consumed without converting their blockers into closure.",
+      "role": "B",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "The sidecar preserves release checklist inputs/outputs and exact qualification-corpus withheld claims.",
+      "role": "C",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Anti-fake parity gate verifies committed 669/671 phase-0, unpromoted 671/671 as supporting only, M5 390/390, and case-study 782/782 over 8/10 without M6 closure.",
+      "role": "D",
+      "status": "APPROVE"
+    }
+  ],
+  "pending_phase0_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "phase0_failure_code_blockers": [
+    "phase0-failure-code-audit",
+    "phase0-required-failure-codes"
+  ],
+  "phase0_packet_set_qualified": false,
+  "phase0_packet_set_verdict_present": true,
+  "phase0_qualification_summary_path": "/tmp/autoibp_orch/exec/lane76_current_state/phase0-qualification.json",
+  "qualification_corpus_evidence_kind": "lane76 retained M7 qualification-corpus sidecar over phase-0 packets plus case-study-family catalog; no new runtime parity execution",
+  "qualification_corpus_required_inputs_preserved": true,
+  "qualification_corpus_required_outputs_preserved": true,
+  "qualification_corpus_review_complete": false,
+  "qualification_evidence_coherent": true,
+  "qualification_summary_path": "/tmp/autoibp_orch/exec/lane76_current_state/qualification-readiness.json",
+  "residual_blockers_or_carveouts_preserved": true,
+  "reviewed_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "schema_version": 1,
+  "scope": "release-qualification-corpus",
+  "withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

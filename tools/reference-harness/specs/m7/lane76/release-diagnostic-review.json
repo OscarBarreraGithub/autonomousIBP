@@ -1,0 +1,128 @@
+{
+  "anti_fake_diagnostic_checks": {
+    "known_regression_rows_reference_committed_docs": true,
+    "missing_or_degraded_paths_empty_only_after_rows_reviewed": true,
+    "no_runtime_diagnostics_launched_by_this_sidecar": true,
+    "required_failure_code_profiles_match_scaffold": true,
+    "typed_failure_rows_reference_committed_tests": true,
+    "unstable_run_rows_reference_committed_tests": true
+  },
+  "blocking_reasons": [],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "diagnostic-review-reviewed",
+  "diagnostic_review_complete": true,
+  "diagnostic_review_evidence_kind": "retained source-backed diagnostic review; no new runtime diagnostic execution",
+  "diagnostic_review_required_inputs_preserved": true,
+  "diagnostic_review_required_outputs_preserved": true,
+  "known_regression_evidence": [
+    {
+      "evidence_lines": "94-98",
+      "evidence_path": "docs/verification-strategy.md",
+      "reviewed_outcome": "verification strategy records landed master_set_instability and continuation_budget_exhausted diagnostics with passing gates"
+    },
+    {
+      "evidence_lines": "88-93",
+      "evidence_path": "docs/orchestration-workflow.md",
+      "reviewed_outcome": "orchestration workflow records the same Batch 55 diagnostic hardening and gates"
+    }
+  ],
+  "known_regression_outcomes_reviewed": true,
+  "missing_or_degraded_diagnostic_paths": [],
+  "multi_agent_review": [
+    {
+      "finding": "Diagnostic schema fields are complete and blocker lists are empty only after typed-failure and unstable-run rows are attached.",
+      "role": "A",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Required failure-code profiles still match the qualification scaffold and parity matrix vocabulary.",
+      "role": "B",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "No runtime or public behavior is widened; evidence is retained source and gate coverage.",
+      "role": "C",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Evidence rows cite committed test/docs paths and do not synthesize diagnostic outcomes.",
+      "role": "D",
+      "status": "APPROVE"
+    }
+  ],
+  "qualification_scaffold_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/qualification-benchmarks.json",
+  "required_failure_code_profiles_reviewed": true,
+  "retained_unstable_run_evidence": [
+    {
+      "evidence_lines": "17943-17962",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "reviewed_outcome": "unstable observations request a monotone precision and x-order escalation",
+      "reviewed_path": "EvaluatePrecisionEscalatesOnUnstableObservationTest"
+    },
+    {
+      "evidence_lines": "18065-18092",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "reviewed_outcome": "the first insufficient_precision diagnostic causes exactly one reviewed retry and preserves the successful retry diagnostic",
+      "reviewed_path": "PrecisionRetryControllerEscalatesThenSucceedsTest"
+    },
+    {
+      "evidence_lines": "18095-18117",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "reviewed_outcome": "ceiling-exhausted unstable precision requests stop after one call and retain the insufficient_precision diagnostic",
+      "reviewed_path": "PrecisionRetryControllerStopsOnCeilingExhaustedInsufficientPrecisionTest"
+    },
+    {
+      "evidence_lines": "31987-32009",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "reviewed_outcome": "the wrapper stops deterministically at the precision ceiling and reports insufficient_precision with terminal solver context",
+      "reviewed_path": "retry wrapper precision-ceiling stop"
+    }
+  ],
+  "reviewed_failure_code_profiles": [
+    "boundary_unsolved",
+    "continuation_budget_exhausted",
+    "insufficient_precision",
+    "master_set_instability"
+  ],
+  "schema_version": 1,
+  "scope": "release-diagnostic-review",
+  "typed_failure_path_evidence": [
+    {
+      "evidence_lines": "17622-17650",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "failure_code": "boundary_unsolved",
+      "reviewed_outcome": "retained tests require unsuccessful diagnostics with failure_code boundary_unsolved before numeric solving proceeds",
+      "reviewed_path": "BootstrapSeriesSolver missing/incomplete boundary attachment"
+    },
+    {
+      "evidence_lines": "17907-18063",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "failure_code": "insufficient_precision",
+      "reviewed_outcome": "retained tests require deterministic insufficient_precision diagnostics when requested precision exceeds the configured ceiling",
+      "reviewed_path": "requested_digits ceiling and precision-budget exhaustion"
+    },
+    {
+      "evidence_lines": "26923-26972",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "failure_code": "master_set_instability",
+      "reviewed_outcome": "retained tests require reducer master-basis drift to return master_set_instability without calling the series solver",
+      "reviewed_path": "reviewed lightlike-linear reducer master-basis drift"
+    },
+    {
+      "evidence_lines": "32012-32063",
+      "evidence_path": "tests/amflow_tests.cpp",
+      "failure_code": "continuation_budget_exhausted",
+      "reviewed_outcome": "retained tests require no-progress retry stalls to return continuation_budget_exhausted instead of silently retrying",
+      "reviewed_path": "precision retry wrapper working-precision stall"
+    }
+  ],
+  "typed_failure_paths_preserved": true,
+  "unstable_run_evidence_reviewed": true,
+  "withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not run runtime diagnostics or widen runtime behavior."
+  ]
+}

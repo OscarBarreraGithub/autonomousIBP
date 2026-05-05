@@ -1,0 +1,27 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps23 reference pointer for automatic_loop comparator audits, captured with epsorder = 26 on 2026-05-05.",
+    "SLURM job 10256314 completed on holy7c10105.rc.fas.harvard.edu partition shared using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-eps26 tree was copied from work-eps24, then automatic_loop copied sol outputs, copied cache state, and copied logs were removed before running; run.wl was changed to epsorder = 26.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/logs/cap-autoloop-eps26.10256314.out with sha256 afeabb38106cb0a2cb420ece194938c8be347dc8cda0fbfd4be4da3b37f33a21; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T14:47:19-04:00 to 2026-05-05T14:56:33-04:00; sacct reported COMPLETED|0:0|00:09:22.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 26 printed coefficients through positive eps^24; both sol1 and sol2 contain explicit eps^23 and eps^24 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12, eps^9: 12, eps^10: 12, eps^11: 12, eps^12: 12, eps^13: 12, eps^14: 12, eps^15: 12, eps^16: 12, eps^17: 12, eps^18: 12, eps^19: 12, eps^20: 12, eps^21: 12, eps^22: 12, eps^23: 12, eps^24: 12.",
+    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 636 Decimal real/imag components; sol1 contained 260 Mathematica precision marks, sol2 contained 261, and all eps^23/eps^24 components parsed as numeric, nonzero pairs, and distinct from lower-order coefficients for the same integral.",
+    "Preserve automatic_loop.eps2/eps3/eps4/eps5/eps6/eps7/eps8/eps9/eps10/eps11/eps12/eps13/eps14/eps15/eps16/eps17/eps18/eps19/eps20/eps21/eps22 golden manifests for already-reviewed lower-order validation surfaces; this manifest names the new eps^23 validation surface.",
+    "sol1 sha256 3f5069deb3a61255f2244182d95c76b4eab8883a2019274518a5a0006d44078a; sol2 sha256 e711b922a2b39c9146538ce8887d95e9ed9ac21b731f1624fd5ed5d75efb2ff6."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

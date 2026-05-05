@@ -1,0 +1,19 @@
+{
+  "benchmark_id": "automatic_phasespace",
+  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/comparisons/phase0/automatic_phasespace.summary.json",
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_phasespace/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_phasespace/captured",
+  "notes": [
+    "Tracked pointer for the retained upstream AMFlow phase-0 automatic_phasespace capture.",
+    "The root parity matrix already catalogs automatic_phasespace as a phase-0 example class; this file records the promoted canonical golden for comparator ingestion."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "284487e64868ffa3d8b667c6fd3b42221090045f2326223fe15ce1b1b5affd8e",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_phasespace/captured/canonical/sol.canonical.txt",
+      "name": "sol",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_phasespace/captured/sol"
+    }
+  ],
+  "schema_version": 1
+}

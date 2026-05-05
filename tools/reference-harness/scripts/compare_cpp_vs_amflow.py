@@ -100,6 +100,7 @@ def decimal_from_any(raw: Any, label: str) -> Decimal:
 def normalize_mathematica_numeric_text(text: str) -> str:
   text = text.replace("\\\n", "")
   text = text.replace("\n", " ")
+  text = text.replace("*^", "E")
   return re.sub(r"`[0-9.]+", "", text)
 
 
@@ -132,6 +133,8 @@ def split_top_level_terms(expression: str) -> list[str]:
       depth -= 1
       continue
     if character not in "+-" or depth != 0 or index == 0:
+      continue
+    if expression[index - 1] in "Ee":
       continue
     terms.append(expression[start:index].strip())
     start = index
@@ -606,6 +609,52 @@ def run_self_check() -> dict[str, Any]:
         family_aliases={"cpp_box": "toy"},
     )
 
+    scientific_root = root / "mathematica-scientific-notation"
+    scientific_root.mkdir(parents=True, exist_ok=True)
+    scientific_amflow = scientific_root / "amflow-golden.txt"
+    scientific_amflow.write_text(
+        "{j[phase, 1] -> -9.09128955251943629976022322143`20.*^-9 - "
+        "2.54510214908455564902320491544`20.*^-10/eps^3}\n",
+        encoding="utf-8",
+    )
+    scientific_cpp = scientific_root / "cpp-result.json"
+    scientific_cpp.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "scientific-notation",
+                "solver": {"precision_digits": 40, "epsilon_order": 0},
+                "results": [
+                    {
+                        "integral": "phase[1]",
+                        "epsilon_orders": [
+                            {
+                                "order": -3,
+                                "real_digits": "-2.54510214908455564902320491544E-10",
+                                "imag_digits": "0",
+                            },
+                            {
+                                "order": 0,
+                                "real_digits": "-9.09128955251943629976022322143E-9",
+                                "imag_digits": "0",
+                            },
+                        ],
+                    }
+                ],
+                "status": "success",
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    scientific_notation = compare_cpp_vs_amflow(
+        cpp_result_path=scientific_cpp,
+        amflow_golden_path=scientific_amflow,
+        tolerance_digits=30,
+    )
+
   return {
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
@@ -616,6 +665,7 @@ def run_self_check() -> dict[str, Any]:
       "positive_order_above_request_ignored": bounded["passed"],
       "amflow_suffix_family_normalized": suffix_normalized["passed"],
       "explicit_family_alias_normalized": alias_normalized["passed"],
+      "mathematica_scientific_notation_parsed": scientific_notation["passed"],
       "passed_coefficient_count_reported": (
           matching["passed_coefficient_count"] == matching["compared_coefficient_count"]
           and mismatch["passed_coefficient_count"] < mismatch["compared_coefficient_count"]

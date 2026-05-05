@@ -3477,10 +3477,6 @@ BigFloat ExactRationalToBigFloat(const amflow::ExactRational& value) {
   return ParseBigFloatRational(value.ToString());
 }
 
-BigComplex ExactComplexRationalToBigComplex(const amflow::ExactComplexRational& value) {
-  return {ExactRationalToBigFloat(value.real), ExactRationalToBigFloat(value.imaginary)};
-}
-
 BigFloat ParseFiniteLocationValue(const std::string& variable,
                                   const std::string& location) {
   const std::string trimmed = TrimAsciiWhitespace(location);
@@ -3520,6 +3516,154 @@ bool AppliesFiniteSolutionSampleTransport(const DirectSolveSeriesSpec& spec) {
          !SameFiniteLocation(spec);
 }
 
+class FiniteTransportExpressionParser {
+ public:
+  FiniteTransportExpressionParser(std::string expression,
+                                  std::map<std::string, BigFloat> bindings)
+      : expression_(RemoveAsciiSpaces(std::move(expression))),
+        bindings_(std::move(bindings)) {}
+
+  BigFloat Parse() {
+    const BigFloat value = ParseExpression();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("finite solution-sample transport found trailing token in " +
+                               expression_);
+    }
+    return value;
+  }
+
+ private:
+  bool AtEnd() const { return position_ >= expression_.size(); }
+
+  char Current() const { return AtEnd() ? '\0' : expression_[position_]; }
+
+  bool Match(const char token) {
+    if (Current() != token) {
+      return false;
+    }
+    ++position_;
+    return true;
+  }
+
+  BigFloat ParseExpression() {
+    BigFloat value = ParseTerm();
+    while (true) {
+      if (Match('+')) {
+        value += ParseTerm();
+        continue;
+      }
+      if (Match('-')) {
+        value -= ParseTerm();
+        continue;
+      }
+      return value;
+    }
+  }
+
+  BigFloat ParseTerm() {
+    BigFloat value = ParsePower();
+    while (true) {
+      if (Match('*')) {
+        value *= ParsePower();
+        continue;
+      }
+      if (Match('/')) {
+        const BigFloat denominator = ParsePower();
+        if (IsTiny(denominator)) {
+          throw std::runtime_error("finite solution-sample transport expression divides by zero "
+                                   "in " +
+                                   expression_);
+        }
+        value /= denominator;
+        continue;
+      }
+      return value;
+    }
+  }
+
+  BigFloat ParsePower() {
+    BigFloat value = ParseUnary();
+    while (Match('^')) {
+      value = PowInteger(value, ParseIntegerExponent());
+    }
+    return value;
+  }
+
+  BigFloat ParseUnary() {
+    if (Match('+')) {
+      return ParseUnary();
+    }
+    if (Match('-')) {
+      return -ParseUnary();
+    }
+    return ParsePrimary();
+  }
+
+  BigFloat ParsePrimary() {
+    if (Match('(')) {
+      const BigFloat value = ParseExpression();
+      if (!Match(')')) {
+        throw std::runtime_error("finite solution-sample transport expected ')' in " +
+                                 expression_);
+      }
+      return value;
+    }
+    if (std::isdigit(static_cast<unsigned char>(Current())) != 0) {
+      const std::size_t begin = position_;
+      while (std::isdigit(static_cast<unsigned char>(Current())) != 0) {
+        ++position_;
+      }
+      return BigFloat(expression_.substr(begin, position_ - begin));
+    }
+    if (std::isalpha(static_cast<unsigned char>(Current())) != 0 ||
+        Current() == '_') {
+      const std::size_t begin = position_;
+      while (std::isalnum(static_cast<unsigned char>(Current())) != 0 ||
+             Current() == '_') {
+        ++position_;
+      }
+      const std::string symbol = expression_.substr(begin, position_ - begin);
+      const auto binding_it = bindings_.find(symbol);
+      if (binding_it == bindings_.end()) {
+        throw std::runtime_error("finite solution-sample transport expression requires binding "
+                                 "for symbol " +
+                                 symbol);
+      }
+      return binding_it->second;
+    }
+    throw std::runtime_error("finite solution-sample transport found malformed expression " +
+                             expression_);
+  }
+
+  int ParseIntegerExponent() {
+    const bool parenthesized = Match('(');
+    int sign = 1;
+    if (Match('+')) {
+      sign = 1;
+    } else if (Match('-')) {
+      sign = -1;
+    }
+    if (std::isdigit(static_cast<unsigned char>(Current())) == 0) {
+      throw std::runtime_error("finite solution-sample transport requires integer exponents in " +
+                               expression_);
+    }
+    int value = 0;
+    while (std::isdigit(static_cast<unsigned char>(Current())) != 0) {
+      value = value * 10 + (Current() - '0');
+      ++position_;
+    }
+    if (parenthesized && !Match(')')) {
+      throw std::runtime_error("finite solution-sample transport expected ')' after exponent in " +
+                               expression_);
+    }
+    return sign * value;
+  }
+
+  std::string expression_;
+  std::map<std::string, BigFloat> bindings_;
+  std::size_t position_ = 0;
+};
+
 BigComplex EvaluateFiniteTransportCoefficient(const DirectSolveSeriesSpec& spec,
                                               const std::size_t row,
                                               const std::size_t column,
@@ -3534,11 +3678,12 @@ BigComplex EvaluateFiniteTransportCoefficient(const DirectSolveSeriesSpec& spec,
     throw std::runtime_error("finite solution-sample transport coefficient matrix shape does not "
                              "match retained master count");
   }
-  return ExactComplexRationalToBigComplex(
-      amflow::EvaluateComplexCoefficientExpression(
-          matrix_it->second[row][column],
-          {{spec.variable, BigFloatToRationalString(variable_value)},
-           {"eps", epsilon_sample}}));
+  return {FiniteTransportExpressionParser(
+              matrix_it->second[row][column],
+              {{spec.variable, variable_value},
+               {"eps", ParseBigFloatRational(epsilon_sample)}})
+              .Parse(),
+          BigFloat(0)};
 }
 
 std::vector<BigComplex> AddScaledVector(const std::vector<BigComplex>& lhs,
@@ -3697,13 +3842,28 @@ std::vector<BigComplex> BulirschStoerFiniteTransportStep(
   return midpoint_values.back();
 }
 
+bool FiniteTransportMatrixIsZero(const DirectSolveSeriesSpec& spec) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    return false;
+  }
+  for (const std::vector<std::string>& row : matrix_it->second) {
+    for (const std::string& cell : row) {
+      if (RemoveAsciiSpaces(cell) != "0") {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 std::vector<BigComplex> TransportFiniteSolutionSample(
     const DirectSolveSeriesSpec& spec,
     const std::string& epsilon_sample,
     const std::vector<BigComplex>& start_state) {
   const BigFloat start = ParseFiniteLocationValue(spec.variable, spec.start_location);
   const BigFloat target = ParseFiniteLocationValue(spec.variable, spec.target_location);
-  if (NearlyEqual(start, target)) {
+  if (NearlyEqual(start, target) || FiniteTransportMatrixIsZero(spec)) {
     return start_state;
   }
   const int segment_count = 32;

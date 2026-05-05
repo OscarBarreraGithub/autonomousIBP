@@ -264,6 +264,55 @@ def normalize_finite_de_expression(raw: str, *, source_variable: str, variable: 
   return expression
 
 
+def normalize_power_of_ten_sample(raw: str) -> str:
+  value = compact_mathematica_text(raw)
+  match = re.fullmatch(r"10\^\s*-\s*(\d+)", value)
+  if match is not None:
+    return "1/" + "1" + ("0" * int(match.group(1)))
+  return value
+
+
+def parse_assignment_value(raw_assignments: str, symbol: str) -> str:
+  match = re.search(
+      rf"(?<![A-Za-z0-9_]){re.escape(symbol)}(?![A-Za-z0-9_])\s*->\s*([^,}}]+)",
+      raw_assignments,
+  )
+  expect(match is not None, f"could not find {symbol} assignment in AMFlow Numeric block")
+  return compact_mathematica_text(match.group(1))
+
+
+def parse_differential_solver_run_metadata(path: Path,
+                                           *,
+                                           source_variable: str,
+                                           variable: str) -> tuple[str, str, list[str]]:
+  raw = path.read_text(encoding="utf-8")
+  pattern = re.compile(
+      r'AMFlowInfo\["Numeric"\]\s*=\s*\{(?P<numeric>[^}]*)\};\s*'
+      r"epslist\s*=\s*\{(?P<eps>[^}]*)\};\s*"
+      r"(?P<name>sol[12])\s*=\s*BlackBoxAMFlow",
+      re.S,
+  )
+  points: dict[str, str] = {}
+  eps_samples: dict[str, list[str]] = {}
+  for match in pattern.finditer(raw):
+    name = match.group("name")
+    points[name] = parse_assignment_value(match.group("numeric"), source_variable)
+    eps_samples[name] = [
+        normalize_power_of_ten_sample(sample)
+        for sample in split_top_level(match.group("eps"))
+    ]
+  expect("sol1" in points, f"{path} did not expose sol1 finite-start metadata")
+  expect("sol2" in points, f"{path} did not expose sol2 check-point metadata")
+  expect(eps_samples["sol1"], f"{path} sol1 epslist is empty")
+  expect(eps_samples["sol1"] == eps_samples["sol2"],
+         f"{path} sol1/sol2 epslist values differ")
+  return (
+      f"{variable}={points['sol1']}",
+      f"{variable}={points['sol2']}",
+      eps_samples["sol1"],
+  )
+
+
 def parse_finite_diffeq_file(path: Path,
                              *,
                              source_variable: str,
@@ -289,14 +338,25 @@ def parse_finite_diffeq_file(path: Path,
 def extract_finite_solution_state(diffeq_file: Path,
                                   solution_file: Path,
                                   *,
+                                  run_file: Path | None,
                                   benchmark_id: str,
                                   variable: str,
                                   source_variable: str,
-                                  start_location: str,
-                                  target_location: str,
-                                  epsilon_samples: list[str]) -> dict[str, Any]:
+                                  start_location: str | None,
+                                  target_location: str | None,
+                                  epsilon_samples: list[str] | None) -> dict[str, Any]:
   expect(diffeq_file.is_file(), f"finite DE file does not exist: {diffeq_file}")
   expect(solution_file.is_file(), f"finite solution file does not exist: {solution_file}")
+  if run_file is not None:
+    expect(run_file.is_file(), f"finite run file does not exist: {run_file}")
+    start_location, target_location, epsilon_samples = parse_differential_solver_run_metadata(
+        run_file,
+        source_variable=source_variable,
+        variable=variable,
+    )
+  expect(start_location is not None, "finite solution state requires --start-location or --finite-run-file")
+  expect(target_location is not None, "finite solution state requires --target-location or --finite-run-file")
+  expect(epsilon_samples is not None, "finite solution state requires --epsilon-samples or --finite-run-file")
   expect(epsilon_samples, "finite solution state requires at least one epsilon sample")
   diffeq_masters, matrix = parse_finite_diffeq_file(
       diffeq_file,
@@ -314,6 +374,7 @@ def extract_finite_solution_state(diffeq_file: Path,
       "source": {
           "diffeq_file": str(diffeq_file),
           "solution_file": str(solution_file),
+          "run_file": str(run_file) if run_file is not None else "",
       },
       "family": family,
       "variable": variable,
@@ -324,6 +385,7 @@ def extract_finite_solution_state(diffeq_file: Path,
       "singular_points": infer_singular_points_from_matrix(matrix, variable),
       "finite_start": {
           "source_variable": source_variable,
+          "metadata_source": str(run_file) if run_file is not None else "explicit_cli",
           "diffeq_masters": diffeq_masters,
           "output_integrals": output_masters,
       },
@@ -613,10 +675,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
   parser.add_argument("--gauge-asyexp-dir", type=Path)
   parser.add_argument("--finite-diffeq-file", type=Path)
   parser.add_argument("--finite-solution-file", type=Path)
+  parser.add_argument("--finite-run-file", type=Path)
   parser.add_argument("--finite-source-variable", default="s")
-  parser.add_argument("--start-location", default="eta=1/2")
-  parser.add_argument("--target-location", default="eta=1/2")
-  parser.add_argument("--epsilon-samples", default="1/10000")
+  parser.add_argument("--start-location")
+  parser.add_argument("--target-location")
+  parser.add_argument("--epsilon-samples")
   parser.add_argument("--benchmark-id", default="automatic_loop")
   parser.add_argument("--variable", default="eta")
   parser.add_argument("--out", type=Path)
@@ -638,28 +701,37 @@ def main(argv: list[str]) -> int:
           and payload["inferred_reduction_targets"]
       ) else 1
 
-    if args.finite_diffeq_file is not None or args.finite_solution_file is not None:
+    finite_mode = args.finite_diffeq_file is not None or args.finite_solution_file is not None
+    gauge_mode = args.gauge_asyexp_dir is not None
+    system_mode = args.system_dir is not None
+    expect(sum(1 for mode in (finite_mode, gauge_mode, system_mode) if mode) == 1,
+           "choose exactly one extraction mode: --system-dir, --gauge-asyexp-dir, or --finite-diffeq-file/--finite-solution-file")
+
+    if finite_mode:
       expect(args.finite_diffeq_file is not None, "--finite-diffeq-file is required for finite solution extraction")
       expect(args.finite_solution_file is not None, "--finite-solution-file is required for finite solution extraction")
       payload = extract_finite_solution_state(
           args.finite_diffeq_file,
           args.finite_solution_file,
+          run_file=args.finite_run_file,
           benchmark_id=args.benchmark_id,
           variable=args.variable,
           source_variable=args.finite_source_variable,
           start_location=args.start_location,
           target_location=args.target_location,
-          epsilon_samples=[
-              compact_mathematica_text(sample)
-              for sample in split_top_level(args.epsilon_samples)
-          ],
+          epsilon_samples=(
+              [
+                  normalize_power_of_ten_sample(sample)
+                  for sample in split_top_level(args.epsilon_samples)
+              ]
+              if args.epsilon_samples is not None else None
+          ),
       )
-    elif args.gauge_asyexp_dir is not None:
+    elif gauge_mode:
       payload = extract_gauge_asyexp_state(args.gauge_asyexp_dir,
                                            benchmark_id=args.benchmark_id,
                                            variable=args.variable)
     else:
-      expect(args.system_dir is not None, "--system-dir is required outside --self-check")
       payload = extract_state(args.system_dir,
                               reduction_dir=args.reduction_dir,
                               benchmark_id=args.benchmark_id,

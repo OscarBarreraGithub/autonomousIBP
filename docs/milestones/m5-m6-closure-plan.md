@@ -1,0 +1,150 @@
+APPROVE final design artifact
+
+Milestone closure verdict: REJECT M5 closure and REJECT M6 closure.
+
+# M5/M6 Milestone Closure Plan
+
+## Top-Level Disagreements To Preserve
+
+- Role A says `APPROVE`, but its approval is an approval-for-synthesis of the draft plan, not an approval of M5/M6 closure. Role A explicitly says the milestones are not ready to be claimed closed and classifies M5 as partial and M6 as blocked.
+- Role B says `REJECT` and frames the decision as a direct rejection of milestone closure. It does not accept the more favorable retained-state evidence as enough for the durable M5/M6 gates.
+- This consensus resolves that apparent conflict by separating artifact approval from milestone closure: the final design artifact is approved as a truthful closure plan, while the M5/M6 closure claim is rejected.
+- Role C also says `REJECT`, and this cannot be papered over. Role C independently audited the same sources and rejected closure because the durable Phase F and Phase G gates are not met. This consensus preserves Role C's rejection as controlling audit evidence.
+- Role A's current-probe read reported a `linear_propagator` solve parse failure involving `gaugex->1`; the current lane20 probe summaries now show a coefficient-bearing C++ result, but the comparator still fails: `29/57` coefficients pass, `minimum_digit_agreement=15`, below the unchanged 30-digit comparator tolerance. The repair target changes from parser-only to numeric parity completion.
+
+## Sources
+
+- Role inputs: `/tmp/autoibp_orch/exec/lane20_role_a_draft.md`, `/tmp/autoibp_orch/exec/lane20_role_b_independent.md`, `/tmp/autoibp_orch/exec/lane20_role_c_audit.md`.
+- Canonical docs: `docs/full-amflow-completion-roadmap.md`, `docs/verification-strategy.md`, `docs/implementation-ledger.md`, `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`, `docs/parity-contract.md`.
+- Probe summaries: `/tmp/autoibp_orch/exec/lane20_probe/*.compare.json` and matching `*.cpp.json`.
+
+## Exact Acceptance Criteria
+
+### M5: Feature-Surface Parity
+
+M5 is the Phase F feature-parity gate over the frozen AMFlow example classes: `automatic_loop`, `automatic_vs_manual`, `complex_kinematics`, `spacetime_dimension`, `linear_propagator`, `feynman_prescription`, `automatic_phasespace`, and `user_defined_amfmode` / `user_defined_ending` (`docs/full-amflow-completion-roadmap.md:642-654`; `docs/parity-contract.md:60-71`). It depends on `Batch 59` through `Batch 66` plus `Milestone M0b` (`docs/full-amflow-completion-roadmap.md:646-654`).
+
+The Phase F gate requires arbitrary `D0`, fixed-`eps`, complex kinematics, linear propagators, phase-space integration, `feynman_prescription`, singular-kinematics guardrails, and user-defined hooks to be exercised through the live solver path, with explicit coverage status for the frozen example classes (`docs/full-amflow-completion-roadmap.md:784-789`). The parity matrix's phase-2 gate similarly requires eta/invariant derivative closure, solver residuals, and coverage of phase-space, linear, complex, fixed-eps, D0, cache, and custom modes (`specs/parity-matrix.yaml:20-25`).
+
+For M5 to close, every frozen example class must have a reviewed, coefficient-bearing C++ result surface or candidate packet that compares against the retained AMFlow golden without tolerance weakening; every required Phase F runtime feature must be live-path evidence rather than metadata-only scaffolding; partial-progress reference pointers cannot count as passing goldens; and a fail-closed M5 verdict must reject missing examples, failed comparisons, metadata-only features, or open runtime blockers.
+
+### M6: Qualification Corpus
+
+M6 is the Phase G qualification corpus over the parity-matrix benchmarks and upstream regression families, using already captured upstream goldens, and it depends on M5 and M0b (`docs/full-amflow-completion-roadmap.md:656-660`). The Phase G gate requires the qualification corpus to pass and diagnostics/performance to be reviewed on the mandatory benchmark set (`docs/full-amflow-completion-roadmap.md:791-795`).
+
+The executable M6 path is already scaffolded but fail-closed: `qualification_readiness.py`, phase-0 packet comparison, correct-digit scoring, failure-code audit, `qualify_phase0_packet_set.py`, case-study readiness, case-study numeric summary, `qualify_case_study_families.py`, and `qualify_milestone_m6.py` (`docs/verification-strategy.md:327-387`). The final M6 composer requires passing phase-0 packet-set and case-study-family verdicts, plus closure of pending phase-0 runtime-lane blockers (`docs/verification-strategy.md:375-381`).
+
+The mandatory qualification families are package double box, planar `ttbar j`, `ttbar H`, five-point one-mass scattering, `ttbar W`, diphoton heavy-quark form factors, `h -> bb`, `N=4` SYM three-loop form factor, single-top planar/nonplanar, and at least one singular-endpoint case (`specs/parity-matrix.yaml:68-78`; `references/case-studies/selected-benchmarks.md:39-60`). Digit thresholds are `>=50` digits by default, `>=100` for `2024-tth-light-quark-loop-mi`, and `>=200` for `2023-diphoton-heavy-quark-form-factors`; precision monotonicity and explicit unstable-run diagnostics are mandatory (`docs/verification-strategy.md:146-156`; `references/case-studies/selected-benchmarks.md:45-63`).
+
+M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with synchronized comparison/correct-digit/failure-code/regression profiles, case-study numeric sidecars pass for every family at the frozen digit thresholds, the singular endpoint runtime blocker is retired, and `qualify_milestone_m6.py` emits a passing M6-scoped summary without claiming M7 or release readiness.
+
+## Current M5 Criteria And Evidence
+
+### M5 PASSING Criteria
+
+- `automatic_loop` retained-state C++/AMFlow parity is passing on the current narrow state surface. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_loop.eps3.compare.json` reports `passed=true`, `66/66`, `minimum_digit_agreement=41`, `tolerance_digits=30`. The ledger records the same retained endpoint transport evidence and explicitly limits it to the retained `automatic_loop` state surface (`docs/implementation-ledger.md:9`).
+- `automatic_phasespace` retained-sample ingest comparison is passing as a narrow regression. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_phasespace.compare.json` reports `passed=true`, `11/11`, `minimum_digit_agreement=39`, `tolerance_digits=30`; the C++ summary says full phase-space boundary reconstruction from cut propagators remains deferred.
+
+### M5 PARTIAL Criteria
+
+- `automatic_phasespace` is partial for true M5 because the passing evidence is retained sample ingestion, not full phase-space integration through the live solver path required by Phase F.
+- `differential_equation_solver` is partial/failing. The current C++ probe has status success and retained-sample cache ingestion, but `/tmp/autoibp_orch/exec/lane20_probe/differential_equation_solver.compare.json` reports `passed=false` because one AMFlow integral is missing, despite `2/2` compared coefficients passing at 41 digits. The C++ summary says full finite-start DE transport remains deferred.
+- `linear_propagator` is partial/failing. The current C++ probe has status success and retained solution-sample ingestion, but `/tmp/autoibp_orch/exec/lane20_probe/linear_propagator.compare.json` reports `passed=false`, `29/57`, `minimum_digit_agreement=15`, with many positive-epsilon gauge-link rows below the 30-digit tolerance.
+- `complex_kinematics` is partial/TODO. The retained reference golden is reviewed, but the ledger records it as reference capture only and does not claim C++ runtime parity (`docs/implementation-ledger.md:17`).
+- `spacetime_dimension` / arbitrary `D0` is partial/TODO. Optional captured evidence exists, but the Phase F live-path arbitrary-D0 gate remains unclosed.
+- User-defined `AMFMode` and `EndingScheme` are partial/TODO. Optional retained captures and planning surfaces exist, but there is no accepted coefficient-bearing C++ parity packet for those execution paths.
+- Singular-kinematics guardrails are partial. Multiple guardrail slices exist, but Phase F requires the first physical-region subset through live runtime evidence, and later docs still preserve singular blockers.
+
+### M5 FAILING Criteria
+
+- `automatic_vs_manual` is failing. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_vs_manual.cpp.json` has `status="failed"` with `solve-series requires an embedded solve_series direct-solver block; plain ProblemSpec files do not carry a DE system or boundary conditions`. The ledger records the same blocked C++ validation as `0/86` explicit AMFlow coefficients passing (`docs/implementation-ledger.md:12`).
+- `feynman_prescription` is failing as a closure input because its reference is still partial progress, not a promoted reference-captured golden. The ledger says primary `sol1`/`sol2` were captured, but rerun timed out before `sol2`, backup comparison, rerun comparison, or promotion, and explicitly blocks completed-golden approval (`docs/implementation-ledger.md:11`).
+- The lane12 packet-wide baseline remains failing: `54/217` promoted/reference-captured coefficients pass at 30 digits, with `automatic_vs_manual`, `automatic_phasespace`, `complex_kinematics`, `differential_equation_solver`, and `linear_propagator` counted as missing or partial C++ implementation coverage at that time (`docs/phase0-packet-validation-lane12.md:26-30`). Newer lane20 probes improve some rows but do not establish full M5 closure.
+
+### M5 TODO Criteria
+
+- Add live solver-path or accepted retained-state comparator surfaces for `complex_kinematics`, `spacetime_dimension`, user hooks, and fixed-`eps`.
+- Promote `feynman_prescription` from partial-progress capture to reviewed golden and then add C++ comparison.
+- Replace `automatic_vs_manual`'s failed plain-ProblemSpec path with a real solve-series state/direct-runtime path.
+- Finish numeric parity for `linear_propagator` and the missing integral in `differential_equation_solver`.
+- Add the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, or metadata-only feature slices.
+
+M5 overall status: PARTIAL/FAILING, not closeable.
+
+## Current M6 Criteria And Evidence
+
+### M6 PASSING Criteria
+
+- M6 harness plumbing is substantially present. The verification strategy documents the qualification scaffold, packet correct-digit scorer, packet-set scorer, failure-code audits, phase-0 packet verdict, case-study readiness/numeric summary, case-study verdict, and M6 composer (`docs/verification-strategy.md:327-387`).
+- The qualification benchmark families and digit thresholds are frozen in durable docs (`references/case-studies/selected-benchmarks.md:39-63`; `specs/parity-matrix.yaml:68-90`).
+
+### M6 PARTIAL Criteria
+
+- Phase-0 retained goldens and optional captures exist for several examples, but they are not a passing candidate packet-set qualification. The verification strategy explicitly says the scaffold is planning metadata and does not by itself claim new solver parity or qualification closure (`docs/verification-strategy.md:427-442`).
+- Case-study readiness metadata exists, but it must be paired with explicit numeric evidence sidecars. The case-study numeric producer reports missing sidecars and threshold misses; it does not launch runtime or claim M6 closure (`docs/verification-strategy.md:382-387`).
+
+### M6 FAILING Criteria
+
+- M6 is structurally blocked because M5 is not closed, and M6 depends on M5 (`docs/full-amflow-completion-roadmap.md:660`).
+- The case-study-family verdict is blocked in the current retained repo state by the singular runtime-lane blocker and missing case-study numeric evidence (`docs/full-amflow-completion-roadmap.md:663-676`; `docs/verification-strategy.md:366-374`).
+- `qualify_milestone_m6.py` must require both phase-0 and case-study verdicts to pass and pending phase-0 runtime blockers to be closed; those prerequisites are not met (`docs/verification-strategy.md:375-381`).
+
+### M6 TODO Criteria
+
+- Close M5 first.
+- Publish C++ candidate outputs in the packet schema expected by the M6 tools.
+- Run passing phase-0 packet-set comparison, correct-digit scoring, and failure-code audit summaries with synchronized profile labels.
+- Produce numeric evidence sidecars for every selected case-study family, including the 100-digit `ttbar-h` and 200-digit diphoton anchors.
+- Retire the singular endpoint blocker and compose a passing `qualify_milestone_m6.py` summary.
+
+M6 overall status: TODO/FAILING, not closeable.
+
+## Shortest Atomic Landing Chain
+
+1. Promote `feynman_prescription` reference golden. Resume the existing capture with longer walltime until primary, backup, and rerun comparisons pass; replace the partial-progress pointer only after `backup_match_ok=true` and `rerun_match_ok=true`.
+2. Fix `automatic_vs_manual` C++ parity. Add a retained AMFlow-state JSON or reviewed direct `solve_series` path for the upstream `tt` benchmark and drive the comparator from `0/86` to `86/86` without hardcoding coefficients or weakening tolerance.
+3. Finish the retained-state/direct runtime surfaces for `complex_kinematics`, `spacetime_dimension`, `differential_equation_solver`, `user_defined_amfmode`, and `user_defined_ending`. Keep structural outputs separate from solve-series numeric comparison.
+4. Complete `linear_propagator` numeric parity. The current parser/runtime reaches a C++ result, but the comparator fails at `29/57` and minimum 15 digits; fix the gauge-link rows below tolerance and rerun against `linear_propagator.golden-manifest.json`.
+5. Turn `automatic_phasespace` retained-sample parity into accepted M5 phase-space support. Keep the `11/11` comparison as a regression, then land the smallest live Cutkosky/prescription runtime slice needed for Phase F.
+6. Close fixed-`eps`, arbitrary-D0, and singular physical-region runtime gaps with coefficient-bearing evidence or explicitly reviewed typed-failure acceptance where the contract allows it.
+7. Add an M5 fail-closed verdict helper that consumes per-example comparisons and feature sidecars and rejects closure on missing examples, partial references, failed comparisons, metadata-only features, or open runtime blockers.
+8. Publish candidate packet roots for successful C++ outputs in the schema expected by the M6 tools.
+9. Run and retain passing phase-0 M6 verdict evidence: packet-set comparison, correct-digit score, failure-code audit, and `qualify_phase0_packet_set.py`.
+10. Produce case-study numeric evidence sidecars for all qualification families at the frozen thresholds and run `compare_case_study_numeric_results.py` plus `qualify_case_study_families.py`.
+11. Retire the singular endpoint case-study blocker and compose the final `qualify_milestone_m6.py` verdict from passing phase-0 and case-study subverdicts.
+
+## Worker Prompt Skeletons
+
+Worker 1, `feynman_prescription` reference promotion: Resume the existing upstream AMFlow `feynman_prescription` capture from the retained work root using a longer walltime and `--resume-existing`. Read `docs/implementation-ledger.md` row `Phase-0 feynman_prescription reference golden`, the repo pointer manifest, and `capture_phase0_reference.py`. Promote the reference only after primary, backup, and rerun summaries all report reference-captured evidence with matching hashes; leave the manifest partial and block closure if rerun `sol2`, backup comparison, or rerun comparison is missing. Do not claim C++ parity in this worker.
+
+Worker 2, `automatic_vs_manual` C++ parity: Replace the current failed plain-ProblemSpec probe with a real coefficient-bearing C++ solve-series surface for the upstream `tt` benchmark (`s=30`, `t=-10/3`, `msq=1`). Either extract a retained AMFlow-state JSON or implement a reviewed direct `solve_series` runtime/spec path, preserve automatic/manual family aliasing, and compare against `automatic_vs_manual.golden-manifest.json` at unchanged 30-digit tolerance. Target `86/86`, and add tests that fail on fallback/no-DE input rather than silently producing a pass.
+
+Worker 3, complex/D0/DE coverage: Add tracked, reviewed C++ comparison surfaces for `complex_kinematics`, `spacetime_dimension`, and `differential_equation_solver`. For DE solver, preserve `redtable`/`diffeq` as structural golden outputs and compare only the intended numeric solve-series output; the current lane20 DE probe still fails because an AMFlow integral is missing. Record exact denominators, pass counts, and minimum digit agreement, and add fail-closed tests for missing state, malformed state, and profile drift.
+
+Worker 4, `linear_propagator` parity: Start from the current lane20 state where the C++ result succeeds but comparator parity fails at `29/57` with many positive-epsilon gauge-link rows under 30 digits. Audit retained solution-sample fitting, gauge-link reduction, family aliases, and positive-epsilon transport before changing tolerances. Land the smallest numeric repair that raises every compared coefficient above threshold, preserve the old `gaugex->1` parser regression if it still applies, and enumerate any remaining missing rows if full parity is not reached.
+
+Worker 5, phase-space and prescription runtime: Keep `automatic_phasespace` `11/11` retained-sample comparison as a regression, then add the smallest live Cutkosky phase-space boundary/runtime slice and opposite-prescription handling needed for Phase F. After `feynman_prescription` is promoted, compare both phase-space and prescription examples against their goldens. Unsupported provider or boundary surfaces must fail with typed `boundary_unsolved`, not metadata-only success.
+
+Worker 6, fixed-eps/D0/singular runtime: Close the non-example Phase F runtime gaps with coefficient-bearing evidence. Add one fixed-`eps` comparison, one arbitrary-D0 comparison through `spacetime_dimension`, and one singular physical-region subset that either passes against an accepted golden or has an explicitly reviewed typed-failure contract. Retire the singular endpoint blocker only with runtime evidence, not guardrail metadata alone.
+
+Worker 7, user-defined hooks: Convert `user_defined_amfmode` and `user_defined_ending` from retained capture/planning coverage into numeric execution parity. Exercise the user hook through `AmfOptions`, verify boundary generation and solver use, compare against the retained upstream outputs, and add regressions proving builtin fallback, wrong-hook diagnostics, and selection order stay deterministic.
+
+Worker 8, M5 verdict helper: Implement a fail-closed M5 feature-parity verdict consumer. It should read all required per-example comparison summaries and feature-status sidecars, require successful promoted goldens and successful C++ comparisons, reject partial references and metadata-only feature rows, surface exact blockers, and state explicitly that this is M5-only evidence, not M6/M7/release readiness.
+
+Worker 9, candidate packet publisher: Publish successful C++ outputs in the packet schema consumed by the existing M6 tools: `candidate_root/results/phase0/<benchmark>/result-manifest.json` plus primary run manifests and any failure-code audit sidecars. Preserve benchmark labels and packet splits matching retained roots, avoid loose JSON-only comparator outputs as M6 inputs, and do not change golden manifests or tolerance policy.
+
+Worker 10, phase-0 M6 qualification: After M5 packets exist, run packet-set comparison, packet-set correct-digit scoring, packet-set failure-code audit, and `qualify_phase0_packet_set.py`. Require synchronized benchmark ids, packet labels, digit-threshold profiles, required-failure-code profiles, and known-regression profile labels. Keep case-study numerics and full M6 closure withheld until the separate case-study verdict passes.
+
+Worker 11, case-study numeric qualification: Produce explicit numeric evidence sidecars for every selected case-study family: package double box, `ttbar-j`, `ttbar-h`, five-point one-mass scattering, `ttbar-w`, diphoton heavy-quark form factors, `h-to-bb`, `n4-sym-three-loop-form-factor`, single-top planar/nonplanar, and one singular-endpoint case. Enforce the default 50-digit floor plus 100 digits for `ttbar-h` and 200 digits for diphoton heavy-quark form factors, then run `compare_case_study_numeric_results.py` and `qualify_case_study_families.py`; missing sidecars remain blockers.
+
+Worker 12, final M6 composer: Run `qualify_milestone_m6.py` only after the phase-0 packet-set verdict and case-study-family verdict both pass. Verify there are no pending runtime lanes, missing sidecars, threshold failures, failure-code misses, regression-profile drift, or singular endpoint blockers. The output may claim M6 only if the composer passes; it must not claim M7 or release readiness.
+
+## Feasibility Assessment
+
+M5 closure is feasible, but not as a documentation-only or single-lane cleanup. It requires at least one more AMFlow recapture/promote step for `feynman_prescription`, plus real implementation/debugging for `automatic_vs_manual`, `linear_propagator`, DE missing-integral coverage, complex/D0/fixed-eps/user-hook surfaces, and accepted phase-space/prescription live-path evidence. Without further AMFlow recapture, M5 cannot honestly close because the prescription reference is still partial-progress.
+
+M6 closure is not feasible until M5 closes. Even after M5, M6 requires candidate packet publishing, passing phase-0 packet qualification, explicit case-study numeric sidecars at the frozen digit thresholds, and retirement of the singular endpoint blocker. The harness scaffolding exists, so this is not a blank infrastructure project, but it still needs targeted infrastructure investment in packet-shaped candidate output, failure-code sidecars, and case-study numeric evidence production. Current evidence supports planning and partial retained-state progress, not immediate M5/M6 closure.
+
+## Final Consensus
+
+Approve this final design artifact as the truthful closure plan. Reject any claim that M5 or M6 is currently closed.

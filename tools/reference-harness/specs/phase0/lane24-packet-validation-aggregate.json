@@ -1,0 +1,4231 @@
+{
+  "aggregate": {
+    "compared_coefficient_count": 479,
+    "delta_passed_vs_lane12": 346,
+    "delta_total_vs_lane12": 262,
+    "lane12_baseline": {
+      "compared_coefficient_count": 217,
+      "passed_coefficient_count": 54
+    },
+    "passed_coefficient_count": 400
+  },
+  "benchmarks": [
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 12,
+        "-2": 6,
+        "0": 12,
+        "1": 12,
+        "2": 12
+      },
+      "benchmark_id": "automatic_loop",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 58
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.compare.stderr",
+      "compared_coefficient_count": 54,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.cpp-result.json",
+      "digits": 40,
+      "eps_order": 2,
+      "failure_summary": "",
+      "manifest_label": "automatic_loop.eps2",
+      "minimum_digit_agreement": 41,
+      "passed_coefficient_count": 54,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 2 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps2.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_loop.eps3-golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 12,
+        "-2": 6,
+        "0": 12,
+        "1": 12,
+        "2": 12,
+        "3": 12
+      },
+      "benchmark_id": "automatic_loop",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 58
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.eps3-golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.compare.stderr",
+      "compared_coefficient_count": 66,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.cpp-result.json",
+      "digits": 40,
+      "eps_order": 3,
+      "failure_summary": "",
+      "manifest_label": "automatic_loop.eps3",
+      "minimum_digit_agreement": 41,
+      "passed_coefficient_count": 66,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 3 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps3.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_loop.eps4-golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 12,
+        "-2": 6,
+        "0": 12,
+        "1": 12,
+        "2": 12,
+        "3": 12,
+        "4": 12
+      },
+      "benchmark_id": "automatic_loop",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "box1[-2,1,1,2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 34
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "box1[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 58
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box1[1,2,2,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box1[2,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "box2[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,-1,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 38
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box2[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 41,
+          "integral": "box2[2,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 42
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.eps4-golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.compare.stderr",
+      "compared_coefficient_count": 78,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.cpp-result.json",
+      "digits": 40,
+      "eps_order": 4,
+      "failure_summary": "",
+      "manifest_label": "automatic_loop.eps4",
+      "minimum_digit_agreement": 34,
+      "passed_coefficient_count": 78,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 4 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_loop.eps4.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 2,
+        "-2": 2,
+        "-3": 2,
+        "0": 5
+      },
+      "benchmark_id": "automatic_phasespace",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,1,1,0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,1,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "phase[1,2,1,1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.compare.stderr",
+      "compared_coefficient_count": 11,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.cpp-result.json",
+      "digits": 40,
+      "eps_order": 0,
+      "failure_summary": "",
+      "manifest_label": "automatic_phasespace",
+      "minimum_digit_agreement": 39,
+      "passed_coefficient_count": 11,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json --eps-order 0 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_phasespace.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 25,
+        "-2": 20,
+        "-3": 9,
+        "-4": 7,
+        "0": 25
+      },
+      "benchmark_id": "automatic_vs_manual",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "tt[-1,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[-1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[-1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 40,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[-1,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,0,1,1,0,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,0,1,1,0,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,0,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,1,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[0,1,1,1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,-1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,0,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 40,
+          "integral": "tt[1,0,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,1,0,1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,1,1,1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,0,1,1,1,1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,-1,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,0,1,0,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 40,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 40,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-3,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -5,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-2,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 37
+        },
+        {
+          "epsilon_order": -5,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,-2]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 37
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -5,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-3]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 36
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -4,
+          "imag_agreement_digits": 999,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -3,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "tt[1,1,1,1,1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.compare.stderr",
+      "compared_coefficient_count": 89,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/automatic_vs_manual.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.cpp-result.json",
+      "digits": 40,
+      "eps_order": 0,
+      "failure_summary": "",
+      "manifest_label": "automatic_vs_manual",
+      "minimum_digit_agreement": 36,
+      "passed_coefficient_count": 89,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_vs_manual.amflow-state.json --eps-order 0 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/automatic_vs_manual.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.eps2-golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 6,
+        "-2": 1,
+        "0": 7,
+        "1": 7,
+        "2": 7
+      },
+      "benchmark_id": "complex_kinematics",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 42,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 42,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 42,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 42,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.eps2-golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.compare.stderr",
+      "compared_coefficient_count": 28,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.cpp-result.json",
+      "digits": 40,
+      "eps_order": 2,
+      "failure_summary": "",
+      "manifest_label": "complex_kinematics.eps2",
+      "minimum_digit_agreement": 41,
+      "passed_coefficient_count": 28,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 2 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.eps2.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 6,
+        "-2": 1,
+        "0": 7
+      },
+      "benchmark_id": "complex_kinematics",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[0,1,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,0,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,0,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 41,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 42,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 42,
+          "integral": "box[1,1,1,1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 41
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.compare.stderr",
+      "compared_coefficient_count": 14,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.cpp-result.json",
+      "digits": 40,
+      "eps_order": 0,
+      "failure_summary": "",
+      "manifest_label": "complex_kinematics",
+      "minimum_digit_agreement": 41,
+      "passed_coefficient_count": 14,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/complex_kinematics.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json",
+      "amflow_order_counts": {
+        "0": 3
+      },
+      "benchmark_id": "differential_equation_solver",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 31,
+          "integral": "sunrise[1,1,1,-1,0]",
+          "nonpass_reason": "below tolerance or missing coefficient",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": 0
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 33,
+          "integral": "sunrise[1,1,1,0,0]",
+          "nonpass_reason": "below tolerance or missing coefficient",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": 0
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 32,
+          "integral": "sunrise[2,1,1,0,0]",
+          "nonpass_reason": "below tolerance or missing coefficient",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": 1
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 1,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.compare.json",
+      "compare_passed": false,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.compare.stderr",
+      "compared_coefficient_count": 3,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/differential_equation_solver.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.cpp-result.json",
+      "digits": 40,
+      "eps_order": 0,
+      "failure_summary": "sunrise[1,1,1,-1,0] eps^0 has real/imag agreement 0/31, below tolerance 30; sunrise[1,1,1,0,0] eps^0 has real/imag agreement 0/33, below tolerance 30; sunrise[2,1,1,0,0] eps^0 has real/imag agreement 1/32, below tolerance 30",
+      "manifest_label": "differential_equation_solver",
+      "minimum_digit_agreement": 0,
+      "passed_coefficient_count": 0,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/differential_equation_solver.amflow-state.json --eps-order 0 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/differential_equation_solver.sol2-golden-manifest.json",
+      "amflow_order_counts": {
+        "0": 3
+      },
+      "benchmark_id": "differential_equation_solver",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 30,
+          "integral": "sunrise[1,1,1,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 31
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 31,
+          "integral": "sunrise[1,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 31
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 31,
+          "integral": "sunrise[2,1,1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 30
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/differential_equation_solver.sol2-golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.compare.stderr",
+      "compared_coefficient_count": 3,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/differential_equation_solver.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.cpp-result.json",
+      "digits": 40,
+      "eps_order": 0,
+      "failure_summary": "",
+      "manifest_label": "differential_equation_solver.sol2",
+      "minimum_digit_agreement": 30,
+      "passed_coefficient_count": 3,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/differential_equation_solver.amflow-state.json --eps-order 0 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/differential_equation_solver.sol2.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 16,
+        "-2": 12,
+        "0": 16,
+        "1": 16,
+        "2": 16
+      },
+      "benchmark_id": "feynman_prescription",
+      "coefficient_rows": [
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,0,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,-1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,0,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,0,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,0,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,0,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": null,
+          "integral": "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+          "nonpass_reason": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+          "passed_at_tolerance": false,
+          "real_agreement_digits": null
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 1,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.compare.json",
+      "compare_passed": false,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.compare.stderr",
+      "compared_coefficient_count": 76,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json",
+      "digits": 40,
+      "eps_order": 2,
+      "failure_summary": "[Errno 2] No such file or directory: '/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json'",
+      "manifest_label": "feynman_prescription",
+      "minimum_digit_agreement": null,
+      "passed_coefficient_count": 0,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json --eps-order 2 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.cpp-result.json",
+      "solve_exit": 3,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/feynman_prescription.solve.stdout",
+      "tolerance_digits": 30
+    },
+    {
+      "amflow_golden": "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json",
+      "amflow_order_counts": {
+        "-1": 7,
+        "-2": 5,
+        "0": 9,
+        "1": 7,
+        "2": 7,
+        "3": 7,
+        "4": 7
+      },
+      "benchmark_id": "linear_propagator",
+      "coefficient_rows": [
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[0,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 38,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 34,
+          "integral": "gauge[1,1,1,-1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 38,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 34,
+          "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 35,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 32,
+          "integral": "gauge[1,1,1,1,1,-1,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 35
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 35,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 32,
+          "integral": "gauge[1,1,1,1,1,0,-1,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 35
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 36,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 32,
+          "integral": "gauge[1,1,1,1,1,0,0,-1,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 36
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 40,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 35,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 32,
+          "integral": "gauge[1,1,1,1,1,0,0,0,-1]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 35
+        },
+        {
+          "epsilon_order": -2,
+          "imag_agreement_digits": 999,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": -1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 40
+        },
+        {
+          "epsilon_order": 0,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 1,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 2,
+          "imag_agreement_digits": 39,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 3,
+          "imag_agreement_digits": 35,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "epsilon_order": 4,
+          "imag_agreement_digits": 31,
+          "integral": "gauge[1,1,1,1,1,0,0,0,0]",
+          "nonpass_reason": "",
+          "passed_at_tolerance": true,
+          "real_agreement_digits": 35
+        }
+      ],
+      "compare_command": "/n/home09/obarrera/.conda/envs/ising_bootstrap/bin/python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json --tolerance-digits 30",
+      "compare_exit": 0,
+      "compare_json": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.compare.json",
+      "compare_passed": true,
+      "compare_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.compare.stderr",
+      "compared_coefficient_count": 57,
+      "cpp_input_probe": "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
+      "cpp_result": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.cpp-result.json",
+      "digits": 40,
+      "eps_order": 4,
+      "failure_summary": "",
+      "manifest_label": "linear_propagator",
+      "minimum_digit_agreement": 31,
+      "passed_coefficient_count": 57,
+      "solve_command": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json --eps-order 4 --digits 40 --out /tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.cpp-result.json",
+      "solve_exit": 0,
+      "solve_stderr": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.solve.stderr",
+      "solve_stdout": "/tmp/autoibp_orch/exec/lane24_aggregate_rerun/runs/linear_propagator.solve.stdout",
+      "tolerance_digits": 30
+    }
+  ],
+  "counting_policy": "All-manifest aggregate counts every current phase0 *golden-manifest.json surface once. Latest-per-benchmark view de-duplicates automatic_loop eps2/eps3/eps4 to eps4, complex_kinematics eps-through-zero/eps2 to eps2, and differential_equation_solver sol1/sol2 to sol2.",
+  "gate": {
+    "build_command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --target amflow-cli",
+    "build_exit": 0,
+    "comparator_tolerance_digits": 30,
+    "solve_digits": 40
+  },
+  "generated_at": "2026-05-05T08:28:57.611786+00:00",
+  "latest_per_benchmark_aggregate": {
+    "compared_coefficient_count": 342,
+    "delta_passed_vs_lane12": 212,
+    "delta_total_vs_lane12": 125,
+    "included_manifest_labels": [
+      "automatic_loop.eps4",
+      "automatic_phasespace",
+      "automatic_vs_manual",
+      "complex_kinematics.eps2",
+      "differential_equation_solver.sol2",
+      "feynman_prescription",
+      "linear_propagator"
+    ],
+    "passed_coefficient_count": 266
+  },
+  "manifest_inventory": [
+    "tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json",
+    "tools/reference-harness/specs/phase0/automatic_loop.eps3-golden-manifest.json",
+    "tools/reference-harness/specs/phase0/automatic_loop.eps4-golden-manifest.json",
+    "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json",
+    "tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json",
+    "tools/reference-harness/specs/phase0/complex_kinematics.eps2-golden-manifest.json",
+    "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+    "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json",
+    "tools/reference-harness/specs/phase0/differential_equation_solver.sol2-golden-manifest.json",
+    "tools/reference-harness/specs/phase0/feynman_prescription.golden-manifest.json",
+    "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json"
+  ],
+  "methodology": "Rebuilt amflow-cli, ran amflow-cli solve-series and compare_cpp_vs_amflow.py per current phase0 golden manifest at --tolerance-digits 30. Successful comparisons use comparator counts; failed/missing coefficient-bearing C++ probes count every explicit AMFlow coefficient in the scoped golden as zero passed.",
+  "schema_version": 1,
+  "summary": "lane24 phase0 packet validation aggregate post-extension wave"
+}

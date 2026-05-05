@@ -232,6 +232,11 @@ def add_complex(lhs: tuple[Decimal, Decimal],
 
 
 def parse_amflow_rhs(rhs: str) -> CoefficientMap:
+  rhs = rhs.strip()
+  if rhs.startswith("{") and rhs.endswith("}"):
+    list_items = split_top_level(rhs[1:-1], ",")
+    if len(list_items) == 1:
+      rhs = list_items[0]
   coefficients: CoefficientMap = {}
   for term in split_top_level_terms(rhs):
     order, factor = term_epsilon_order_and_factor(term)
@@ -262,21 +267,62 @@ def parse_amflow_rule_list_text(text: str) -> dict[IntegralKey, CoefficientMap]:
   return rules
 
 
-def load_amflow_golden(path: Path) -> dict[IntegralKey, CoefficientMap]:
+def selected_manifest_outputs(payload: dict[str, Any], path: Path) -> set[str] | None:
+  raw = payload.get("compare_cpp_vs_amflow_outputs")
+  if raw is None:
+    return None
+  expect(isinstance(raw, list), f"{path} compare_cpp_vs_amflow_outputs must be a list")
+  selected: set[str] = set()
+  for index, raw_name in enumerate(raw):
+    expect(
+        isinstance(raw_name, str) and raw_name.strip(),
+        f"{path} compare_cpp_vs_amflow_outputs[{index}] must be a non-empty string",
+    )
+    name = raw_name.strip()
+    expect(name not in selected, f"{path} duplicate compare_cpp_vs_amflow output: {name}")
+    selected.add(name)
+  expect(selected, f"{path} compare_cpp_vs_amflow_outputs must not be empty")
+  return selected
+
+
+def load_amflow_golden(
+    path: Path,
+    *,
+    selected_outputs: set[str] | None = None,
+) -> dict[IntegralKey, CoefficientMap]:
   if path.suffix == ".json":
     payload = load_json(path)
+    local_selected_outputs = selected_manifest_outputs(payload, path)
+    effective_selected_outputs = (
+        local_selected_outputs if local_selected_outputs is not None else selected_outputs
+    )
     if "golden_manifest" in payload:
-      return load_amflow_golden(Path(str(payload["golden_manifest"])))
+      return load_amflow_golden(
+          Path(str(payload["golden_manifest"])),
+          selected_outputs=effective_selected_outputs,
+      )
     outputs = payload.get("outputs")
     if isinstance(outputs, list):
       combined: dict[IntegralKey, CoefficientMap] = {}
+      observed_selected_outputs: set[str] = set()
       for raw_output in outputs:
         expect(isinstance(raw_output, dict), f"{path} outputs entries must be objects")
+        output_name = str(raw_output.get("name", "")).strip()
+        expect(output_name, f"{path} outputs entries must include non-empty name")
+        if effective_selected_outputs is not None and output_name not in effective_selected_outputs:
+          continue
+        observed_selected_outputs.add(output_name)
         output_path = Path(str(raw_output.get("canonical_text") or raw_output.get("path") or ""))
         expect(output_path.exists(), f"AMFlow output path does not exist: {output_path}")
         for key, coefficients in parse_amflow_rule_list_text(output_path.read_text(encoding="utf-8")).items():
           expect(key not in combined, f"duplicate AMFlow integral across outputs: {integral_label(*key)}")
           combined[key] = coefficients
+      if effective_selected_outputs is not None:
+        missing_selected_outputs = sorted(effective_selected_outputs - observed_selected_outputs)
+        expect(
+            not missing_selected_outputs,
+            f"{path} missing compare_cpp_vs_amflow outputs: {', '.join(missing_selected_outputs)}",
+        )
       expect(combined, f"{path} did not reference any AMFlow outputs")
       return combined
   return parse_amflow_rule_list_text(path.read_text(encoding="utf-8"))
@@ -655,6 +701,60 @@ def run_self_check() -> dict[str, Any]:
         tolerance_digits=30,
     )
 
+    selected_output_root = root / "selected-manifest-output"
+    selected_cpp, selected_amflow = write_synthetic_inputs(selected_output_root)
+    selected_rule = selected_amflow.read_text(encoding="utf-8").strip()[1:-1]
+    selected_lhs, selected_rhs = selected_rule.split("->", 1)
+    selected_amflow.write_text(
+        "{" + selected_lhs.strip() + " -> {" + selected_rhs.strip() + "}}\n",
+        encoding="utf-8",
+    )
+    structural_output = selected_output_root / "structural.txt"
+    structural_output.write_text("{{j[toy, 1]}, {{(1 - eps)/s}}}\n", encoding="utf-8")
+    duplicate_kinematic_output = selected_output_root / "different-point.txt"
+    duplicate_kinematic_output.write_text(
+        "{j[toy, 1] -> 9.0000000000000000000000000000000000000000`40.}\n",
+        encoding="utf-8",
+    )
+    full_manifest = selected_output_root / "full-manifest.json"
+    full_manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "selected-output",
+                "outputs": [
+                    {"name": "redtable", "canonical_text": str(structural_output)},
+                    {"name": "sol1", "canonical_text": str(selected_amflow)},
+                    {"name": "sol2", "canonical_text": str(duplicate_kinematic_output)},
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    selected_wrapper = selected_output_root / "wrapper-manifest.json"
+    selected_wrapper.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "selected-output",
+                "golden_manifest": str(full_manifest),
+                "compare_cpp_vs_amflow_outputs": ["sol1"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    selected_manifest_output = compare_cpp_vs_amflow(
+        cpp_result_path=selected_cpp,
+        amflow_golden_path=selected_wrapper,
+        tolerance_digits=30,
+    )
+
   return {
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
@@ -666,6 +766,7 @@ def run_self_check() -> dict[str, Any]:
       "amflow_suffix_family_normalized": suffix_normalized["passed"],
       "explicit_family_alias_normalized": alias_normalized["passed"],
       "mathematica_scientific_notation_parsed": scientific_notation["passed"],
+      "selected_manifest_output_loaded": selected_manifest_output["passed"],
       "passed_coefficient_count_reported": (
           matching["passed_coefficient_count"] == matching["compared_coefficient_count"]
           and mismatch["passed_coefficient_count"] < mismatch["compared_coefficient_count"]
@@ -723,6 +824,7 @@ def main(argv: list[str]) -> int:
               "positive_order_above_request_ignored",
               "amflow_suffix_family_normalized",
               "explicit_family_alias_normalized",
+              "selected_manifest_output_loaded",
           )
       ) else 1
 

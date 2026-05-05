@@ -1,0 +1,41 @@
+{
+  "benchmark_id": "differential_equation_solver",
+  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/comparisons/phase0/differential_equation_solver.summary.json",
+  "compare_cpp_vs_amflow_outputs": [
+    "sol1"
+  ],
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured",
+  "notes": [
+    "Tracked pointer for the retained upstream AMFlow phase-0 differential_equation_solver capture.",
+    "The promoted golden keeps the example's structural reduction/differential-equation outputs and the real Mathematica-evaluated AMFlow boundary-condition numerics for comparator and correct-digit consumers.",
+    "The solve-series comparator view is intentionally scoped to sol1 because redtable/diffeq are structural artifacts and sol2 is the same master set evaluated at a different kinematic point."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "473cc7c458db33cc5183cc9c7a685e3520a2605e47200b32681c283f5a3df861",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/canonical/redtable.canonical.txt",
+      "name": "redtable",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/redtable"
+    },
+    {
+      "canonical_sha256": "2d0ec189056eef9c1e70458c25e68158a33b979053a6eb40bc9eab675dd7ff3a",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/canonical/diffeq.canonical.txt",
+      "name": "diffeq",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq"
+    },
+    {
+      "canonical_sha256": "d6af3473495b4c69c162a0a9213f84dee0fddb4abd524da62e5313caa4055645",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/canonical/sol1.canonical.txt",
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1"
+    },
+    {
+      "canonical_sha256": "8ecb6cae98b0af6c2104072be880c339f3595fb7546c86a9ed1fcc946ae6c8f1",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/canonical/sol2.canonical.txt",
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol2"
+    }
+  ],
+  "schema_version": 1
+}

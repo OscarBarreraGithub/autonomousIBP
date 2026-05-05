@@ -3,6 +3,7 @@
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
 #include "amflow/runtime/endpoint_local_model.hpp"
+#include "amflow/solver/series_solver.hpp"
 
 #include <exception>
 #include <iostream>
@@ -63,6 +64,21 @@ void ExpectAnalysisFailure(const amflow::EtaEndpointBranchLedgerAnalysis& analys
   Expect(!analysis.ledger.has_value(), message + "; failed analysis should not carry a ledger");
 }
 
+void ExpectEndpointExtractionFailure(const amflow::SolverDiagnostics& diagnostics,
+                                     const std::string& failure_code,
+                                     const std::string& summary_needle,
+                                     const std::string& message) {
+  Expect(!diagnostics.success, message + "; extraction should fail closed");
+  Expect(diagnostics.failure_code == failure_code,
+         message + "; expected failure_code=" + failure_code + ", got " +
+             diagnostics.failure_code);
+  ExpectContains(diagnostics.summary, summary_needle, message);
+  Expect(!diagnostics.full_eta_zero_contour_applied,
+         message + "; failed extraction must not set the full eta=0 contour flag");
+  Expect(diagnostics.target_values.empty(),
+         message + "; failed extraction must not publish endpoint coefficients");
+}
+
 amflow::ProblemSpec MakeComplexEndpointProblemSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.complex_mode = true;
@@ -121,6 +137,47 @@ amflow::EtaContinuationPlan MakeMarkedEtaZeroEndpointPlan(
       "eta=0",
       "eta=0",
       half_plane);
+}
+
+amflow::SolveRequest MakeReviewedEtaZeroEndpointSolveRequest(
+    const amflow::DESystem& system,
+    const amflow::EtaContinuationPlan& plan,
+    const amflow::EtaEndpointLocalModel& local_model,
+    const amflow::EtaEndpointBranchLedger& branch_ledger,
+    const std::vector<std::string>& start_values) {
+  amflow::SolveRequest request;
+  request.system = system;
+  request.start_location = "eta=-1";
+  request.target_location = "eta=0";
+  request.boundary_requests = {{"eta", request.start_location, "manual"}};
+  request.boundary_conditions = {{"eta", request.start_location, start_values, "manual"}};
+  request.eta_continuation_plan = plan;
+  request.eta_endpoint_local_model = local_model;
+  request.eta_endpoint_branch_ledger = branch_ledger;
+  request.requested_digits = 50;
+  return request;
+}
+
+amflow::SolveRequest MakeReviewedEtaZeroEndpointSolveRequest(
+    const amflow::DESystem& system,
+    const amflow::ProblemSpec& spec,
+    const std::vector<std::string>& start_values,
+    const int extraction_order = 3) {
+  const amflow::EtaContinuationPlan plan =
+      MakeMarkedEtaZeroEndpointPlan(system, spec, amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaEndpointLocalModelAnalysis local_analysis =
+      amflow::AnalyzeEtaEndpointLocalModel(system, spec, plan, extraction_order);
+  Expect(local_analysis.success && local_analysis.model.has_value(),
+         "SRL-4 test fixture requires a successful SRL-2 local model");
+  const amflow::EtaEndpointBranchLedgerAnalysis ledger_analysis =
+      amflow::AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model);
+  Expect(ledger_analysis.success && ledger_analysis.ledger.has_value(),
+         "SRL-4 test fixture requires a successful SRL-3 branch ledger");
+  return MakeReviewedEtaZeroEndpointSolveRequest(system,
+                                                 plan,
+                                                 *local_analysis.model,
+                                                 *ledger_analysis.ledger,
+                                                 start_values);
 }
 
 void UnmarkedSingularTargetEndpointStillRejectsTest() {
@@ -510,6 +567,111 @@ void EndpointBranchLedgerRejectsPrescriptionHalfPlaneMismatchTest() {
       "SRL-3 branch ledger should fail closed when prescription and half-plane conflict");
 }
 
+void EndpointExtractionScalarSimplePoleProducesCoefficientTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  const amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"7"});
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  Expect(diagnostics.success,
+         "SRL-4 scalar endpoint extraction should execute the reviewed eta=0 path");
+  Expect(diagnostics.full_eta_zero_contour_applied,
+         "SRL-4 scalar endpoint extraction should set the full eta=0 contour flag");
+  Expect(diagnostics.failure_code.empty(),
+         "SRL-4 scalar endpoint extraction should not report a failure code");
+  Expect(diagnostics.target_values.size() == 1 && diagnostics.target_values.front() == "-7",
+         "SRL-4 scalar endpoint extraction should publish the Frobenius endpoint coefficient");
+  Expect(!diagnostics.eta_endpoint_extraction_fingerprint.empty(),
+         "SRL-4 scalar endpoint extraction should carry an extraction fingerprint");
+  Expect(diagnostics.eta_endpoint_contour_fingerprint ==
+             request.eta_continuation_plan->contour_fingerprint,
+         "SRL-4 scalar endpoint extraction should report the consumed contour fingerprint");
+  Expect(diagnostics.eta_endpoint_branch_ledger_fingerprint ==
+             request.eta_endpoint_branch_ledger->ledger_fingerprint,
+         "SRL-4 scalar endpoint extraction should report the consumed branch-ledger fingerprint");
+  ExpectContains(diagnostics.summary,
+                 "full_eta_zero_contour_applied=true",
+                 "SRL-4 scalar endpoint extraction should publish an explicit runtime audit");
+}
+
+void EndpointExtractionTwoMasterDiagonalPreservesMasterOrderTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system =
+      MakeMatrixEndpointDESystem({{"1/eta", "0"}, {"0", "1/eta"}});
+  const amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"3", "-4"});
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  Expect(diagnostics.success,
+         "SRL-4 two-master endpoint extraction should execute the reviewed eta=0 path");
+  Expect(diagnostics.full_eta_zero_contour_applied,
+         "SRL-4 two-master endpoint extraction should set the full eta=0 contour flag");
+  Expect(diagnostics.target_values.size() == 2 &&
+             diagnostics.target_values[0] == "-3" && diagnostics.target_values[1] == "4",
+         "SRL-4 two-master endpoint extraction should preserve master order");
+}
+
+void EndpointExtractionRejectsLocalModelResidueMismatchTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"7"});
+  request.eta_endpoint_local_model->residue_matrix.front().front() = {"2", "1"};
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  ExpectEndpointExtractionFailure(
+      diagnostics,
+      "srl4_endpoint_local_model_mismatch",
+      "residue matrix",
+      "SRL-4 endpoint extraction should consume and verify the SRL-2 local model");
+}
+
+void EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"7"});
+  request.eta_endpoint_branch_ledger->ledger_fingerprint = "stale-srl3-ledger";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  ExpectEndpointExtractionFailure(
+      diagnostics,
+      "srl4_endpoint_branch_ledger_fingerprint_mismatch",
+      "branch-ledger fingerprint",
+      "SRL-4 endpoint extraction should reject stale SRL-3 branch ledgers");
+}
+
+void EndpointExtractionRejectsStaleContourFingerprintTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"7"});
+  request.eta_continuation_plan->contour_fingerprint = "stale-srl1-contour";
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  ExpectEndpointExtractionFailure(
+      diagnostics,
+      "srl4_endpoint_contour_fingerprint_mismatch",
+      "contour fingerprint",
+      "SRL-4 endpoint extraction should reject stale SRL-1 endpoint contours");
+}
+
 }  // namespace
 
 int main() {
@@ -530,6 +692,11 @@ int main() {
     EndpointBranchLedgerRejectsMissingPrescriptionTest();
     EndpointBranchLedgerRejectsContradictoryPrescriptionTest();
     EndpointBranchLedgerRejectsPrescriptionHalfPlaneMismatchTest();
+    EndpointExtractionScalarSimplePoleProducesCoefficientTest();
+    EndpointExtractionTwoMasterDiagonalPreservesMasterOrderTest();
+    EndpointExtractionRejectsLocalModelResidueMismatchTest();
+    EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
+    EndpointExtractionRejectsStaleContourFingerprintTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

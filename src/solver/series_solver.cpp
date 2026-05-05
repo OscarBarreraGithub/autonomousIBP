@@ -4755,6 +4755,50 @@ std::string SerializeOptionalEtaContinuationPlanForFingerprint(
   return out.str();
 }
 
+std::string SerializeEtaEndpointLocalModelForSolveRequestFingerprint(
+    const EtaEndpointLocalModel& model) {
+  std::ostringstream out;
+  out << "eta_symbol=" << model.eta_symbol << "\n";
+  out << "endpoint_expression=" << model.endpoint_expression << "\n";
+  out << "endpoint_value=" << model.endpoint_value.ToString() << "\n";
+  out << "half_plane=" << ToString(model.half_plane) << "\n";
+  out << "contour_fingerprint=" << model.contour_fingerprint << "\n";
+  out << "local_model_kind=" << model.local_model_kind << "\n";
+  out << "extraction_order=" << model.extraction_order << "\n";
+  out << "branch_sensitive=" << (model.branch_sensitive ? "true" : "false") << "\n";
+  out << "live_endpoint_extraction_ready="
+      << (model.live_endpoint_extraction_ready ? "true" : "false") << "\n";
+  out << "indicial_exponents=" << model.indicial_exponents.size() << "\n";
+  for (std::size_t index = 0; index < model.indicial_exponents.size(); ++index) {
+    out << "indicial_exponent[" << index << "]=" << model.indicial_exponents[index] << "\n";
+  }
+  out << "residue_matrix_rows=" << model.residue_matrix.size() << "\n";
+  for (std::size_t row = 0; row < model.residue_matrix.size(); ++row) {
+    out << "residue_matrix_row[" << row << "].cols=" << model.residue_matrix[row].size()
+        << "\n";
+    for (std::size_t column = 0; column < model.residue_matrix[row].size(); ++column) {
+      out << "residue_matrix[" << row << "][" << column << "]="
+          << model.residue_matrix[row][column].ToString() << "\n";
+    }
+  }
+  out << "basis_functions=" << model.basis_functions.size() << "\n";
+  for (std::size_t index = 0; index < model.basis_functions.size(); ++index) {
+    out << "basis_function[" << index << "]=" << model.basis_functions[index] << "\n";
+  }
+  return out.str();
+}
+
+std::string SerializeOptionalEtaEndpointLocalModelForFingerprint(
+    const std::optional<EtaEndpointLocalModel>& eta_endpoint_local_model) {
+  std::ostringstream out;
+  out << "present=" << (eta_endpoint_local_model.has_value() ? "true" : "false") << "\n";
+  if (eta_endpoint_local_model.has_value()) {
+    out << SerializeEtaEndpointLocalModelForSolveRequestFingerprint(
+        *eta_endpoint_local_model);
+  }
+  return out.str();
+}
+
 std::string SerializeEtaEndpointBranchLedgerForSolveRequestFingerprint(
     const EtaEndpointBranchLedger& ledger) {
   std::ostringstream out;
@@ -4879,6 +4923,11 @@ std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
   if (request.eta_continuation_plan.has_value()) {
     out << "eta_continuation_plan:\n"
         << SerializeOptionalEtaContinuationPlanForFingerprint(request.eta_continuation_plan);
+  }
+  if (request.eta_endpoint_local_model.has_value()) {
+    out << "eta_endpoint_local_model:\n"
+        << SerializeOptionalEtaEndpointLocalModelForFingerprint(
+               request.eta_endpoint_local_model);
   }
   if (request.eta_endpoint_branch_ledger.has_value()) {
     out << "eta_endpoint_branch_ledger:\n"
@@ -5173,6 +5222,13 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
     manifest.request_summary +=
         "; eta_continuation_plan.contour_fingerprint=" +
         request.eta_continuation_plan->contour_fingerprint;
+  }
+  if (request.eta_endpoint_local_model.has_value()) {
+    manifest.request_summary +=
+        "; eta_endpoint_local_model.local_model_kind=" +
+        request.eta_endpoint_local_model->local_model_kind +
+        "; eta_endpoint_local_model.contour_fingerprint=" +
+        request.eta_endpoint_local_model->contour_fingerprint;
   }
   if (request.eta_endpoint_branch_ledger.has_value()) {
     manifest.request_summary +=
@@ -6024,6 +6080,130 @@ MaybeReplayOrPersistDeferredComplexEtaGeneratedContinuationWithSolvedPathCache(
 }
 
 SolverDiagnostics SolveWithPrecisionRetry(const SeriesSolver& solver, SolveRequest request);
+bool IsExactEtaZeroEndpoint(const ExactComplexRational& endpoint_value);
+SolverDiagnostics MakeEtaEndpointExtractionFailureDiagnostics(
+    const std::string& failure_code,
+    const std::string& summary);
+
+bool ReviewedComplexTargetLocationIsEtaZero(const ProblemSpec& spec,
+                                            const std::string& eta_symbol,
+                                            const std::string& target_location) {
+  if (spec.kinematics.complex_numeric_substitutions.empty()) {
+    return false;
+  }
+  try {
+    const NumericEvaluationPoint evaluation_point = BuildComplexNumericEvaluationPoint(spec);
+    const ExactComplexRational target =
+        EvaluateComplexPointExpression(eta_symbol, target_location, evaluation_point);
+    return IsExactEtaZeroEndpoint(target);
+  } catch (const std::exception&) {
+    return false;
+  }
+}
+
+std::string FingerprintPrefix(const std::string& fingerprint) {
+  constexpr std::size_t kFingerprintPrefixLength = 12;
+  return fingerprint.substr(0, std::min(kFingerprintPrefixLength, fingerprint.size()));
+}
+
+std::string BuildEtaEndpointLocalModelRunId(const EtaContinuationPlan& plan) {
+  return "eta-endpoint-local-model-" + FingerprintPrefix(plan.contour_fingerprint);
+}
+
+std::string BuildEtaEndpointBranchLedgerRunId(const EtaEndpointBranchLedger& ledger) {
+  return "eta-endpoint-branch-ledger-" + FingerprintPrefix(ledger.ledger_fingerprint);
+}
+
+SolverDiagnostics SolveWithReviewedLiveComplexEtaZeroEndpointExtraction(
+    const ProblemSpec& spec,
+    const ArtifactLayout& layout,
+    const SeriesSolver& solver,
+    const std::string& eta_symbol,
+    SolveRequest request) {
+  std::vector<std::string> failures;
+  std::optional<EtaContinuationPlan> selected_plan;
+  std::optional<EtaEndpointLocalModel> selected_local_model;
+  std::optional<EtaEndpointBranchLedger> selected_ledger;
+
+  for (const EtaContourHalfPlane half_plane :
+       {EtaContourHalfPlane::Upper, EtaContourHalfPlane::Lower}) {
+    EtaContinuationPlan plan;
+    try {
+      plan = PlanEtaContinuationContourWithTargetEndpointSingular(request.system,
+                                                                  spec,
+                                                                  eta_symbol,
+                                                                  request.start_location,
+                                                                  request.target_location,
+                                                                  eta_symbol + "=0",
+                                                                  half_plane);
+    } catch (const std::exception& error) {
+      failures.push_back(std::string("contour(") + ToString(half_plane) + "): " +
+                         error.what());
+      continue;
+    }
+
+    const EtaEndpointLocalModelAnalysis local_analysis =
+        AnalyzeEtaEndpointLocalModel(request.system,
+                                     spec,
+                                     plan,
+                                     kBootstrapContinuationOrder);
+    if (!local_analysis.success || !local_analysis.model.has_value()) {
+      failures.push_back(std::string("local-model(") + ToString(half_plane) + "): " +
+                         local_analysis.failure_code + ": " + local_analysis.summary);
+      continue;
+    }
+
+    const EtaEndpointBranchLedgerAnalysis ledger_analysis =
+        AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model);
+    if (!ledger_analysis.success || !ledger_analysis.ledger.has_value()) {
+      failures.push_back(std::string("branch-ledger(") + ToString(half_plane) + "): " +
+                         ledger_analysis.failure_code + ": " + ledger_analysis.summary);
+      continue;
+    }
+
+    selected_plan = std::move(plan);
+    selected_local_model = *local_analysis.model;
+    selected_ledger = *ledger_analysis.ledger;
+    break;
+  }
+
+  if (!selected_plan.has_value() || !selected_local_model.has_value() ||
+      !selected_ledger.has_value()) {
+    std::ostringstream summary;
+    summary << "reviewed complex eta=0 endpoint extraction could not construct a complete "
+               "SRL-1/SRL-2/SRL-3 endpoint packet";
+    for (const std::string& failure : failures) {
+      summary << "; " << failure;
+    }
+    return MakeEtaEndpointExtractionFailureDiagnostics("srl4_endpoint_packet_unavailable",
+                                                       summary.str());
+  }
+
+  try {
+    const EtaContinuationPlanManifest plan_manifest =
+        MakeEtaContinuationPlanManifest(
+            *selected_plan, BuildComplexEtaContinuationManifestRunId(*selected_plan));
+    static_cast<void>(WriteEtaContinuationPlanManifest(layout, plan_manifest));
+    const EtaEndpointLocalModelManifest local_manifest =
+        MakeEtaEndpointLocalModelManifest(
+            *selected_local_model, BuildEtaEndpointLocalModelRunId(*selected_plan));
+    static_cast<void>(WriteEtaEndpointLocalModelManifest(layout, local_manifest));
+    const EtaEndpointBranchLedgerManifest ledger_manifest =
+        MakeEtaEndpointBranchLedgerManifest(
+            *selected_ledger, BuildEtaEndpointBranchLedgerRunId(*selected_ledger));
+    static_cast<void>(WriteEtaEndpointBranchLedgerManifest(layout, ledger_manifest));
+  } catch (const std::exception& error) {
+    return MakeEtaEndpointExtractionFailureDiagnostics(
+        "srl4_endpoint_manifest_write_failed",
+        "failed to persist reviewed SRL-4 endpoint audit manifests: " +
+            std::string(error.what()));
+  }
+
+  request.eta_continuation_plan = *selected_plan;
+  request.eta_endpoint_local_model = *selected_local_model;
+  request.eta_endpoint_branch_ledger = *selected_ledger;
+  return SolveWithPrecisionRetry(solver, std::move(request));
+}
 
 SolverDiagnostics SolveWithReviewedLiveComplexEtaContinuationPlan(
     const ProblemSpec& spec,
@@ -6031,6 +6211,11 @@ SolverDiagnostics SolveWithReviewedLiveComplexEtaContinuationPlan(
     const SeriesSolver& solver,
     const std::string& eta_symbol,
     SolveRequest request) {
+  if (ReviewedComplexTargetLocationIsEtaZero(spec, eta_symbol, request.target_location)) {
+    return SolveWithReviewedLiveComplexEtaZeroEndpointExtraction(
+        spec, layout, solver, eta_symbol, std::move(request));
+  }
+
   if (const std::optional<SolverDiagnostics> diagnostics =
           MaybeMakeComplexEtaZeroBranchDeferredDiagnostics(spec, eta_symbol, request);
       diagnostics.has_value()) {
@@ -6326,6 +6511,7 @@ void PopulateSolveRequestExecutionInputs(
   request.amf_requested_d0 = amf_requested_d0;
   request.amf_requested_dimension_expression = amf_requested_dimension_expression;
   request.eta_continuation_plan.reset();
+  request.eta_endpoint_local_model.reset();
   request.eta_endpoint_branch_ledger.reset();
   request.requested_digits = requested_digits;
 }
@@ -6657,6 +6843,417 @@ SolverDiagnostics SolveExactMixedRegularToSingularPath(
   return diagnostics;
 }
 
+struct EtaEndpointExtractionRejection {
+  std::string failure_code;
+  std::string summary;
+};
+
+bool HasAnyEtaEndpointExtractionInput(const SolveRequest& request) {
+  return request.eta_endpoint_local_model.has_value() ||
+         request.eta_endpoint_branch_ledger.has_value() ||
+         (request.eta_continuation_plan.has_value() &&
+          request.eta_continuation_plan->target_endpoint_singular.has_value());
+}
+
+SolverDiagnostics MakeEtaEndpointExtractionFailureDiagnostics(
+    const std::string& failure_code,
+    const std::string& summary) {
+  SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.residual_norm = 1.0;
+  diagnostics.overlap_mismatch = 1.0;
+  diagnostics.failure_code = failure_code;
+  diagnostics.summary =
+      "SRL-4 live eta=0 endpoint extraction failed closed: " + summary;
+  return diagnostics;
+}
+
+std::string SerializeEndpointBranchLedgerForReviewedFingerprint(
+    const EtaEndpointBranchLedger& ledger) {
+  std::ostringstream out;
+  out << "eta_symbol=" << ledger.eta_symbol << "\n";
+  out << "endpoint_expression=" << ledger.endpoint_expression << "\n";
+  out << "endpoint_value=" << ledger.endpoint_value.ToString() << "\n";
+  out << "half_plane=" << ToString(ledger.half_plane) << "\n";
+  out << "prescription=" << ToString(ledger.prescription) << "\n";
+  out << "prescription_source=" << ledger.prescription_source << "\n";
+  out << "approach_direction=" << ledger.approach_direction << "\n";
+  out << "log_branch_argument=" << ledger.log_branch_argument << "\n";
+  out << "log_sheet_index=" << ledger.log_sheet_index << "\n";
+  out << "endpoint_branch_winding=" << ledger.endpoint_branch_winding << "\n";
+  out << "contour_fingerprint=" << ledger.contour_fingerprint << "\n";
+  out << "local_model_kind=" << ledger.local_model_kind << "\n";
+  out << "extraction_order=" << ledger.extraction_order << "\n";
+  out << "live_endpoint_extraction_ready="
+      << (ledger.live_endpoint_extraction_ready ? "true" : "false") << "\n";
+  return out.str();
+}
+
+bool SameCanonicalExactComplexValue(const ExactComplexRational& lhs,
+                                    const ExactComplexRational& rhs) {
+  return SameCanonicalExactRationalValue(lhs.real, rhs.real) &&
+         SameCanonicalExactRationalValue(lhs.imaginary, rhs.imaginary);
+}
+
+bool IsExactEtaZeroEndpoint(const ExactComplexRational& endpoint_value) {
+  return SameCanonicalExactRationalValue(endpoint_value.real, ZeroRational()) &&
+         SameCanonicalExactRationalValue(endpoint_value.imaginary, ZeroRational());
+}
+
+bool SameCanonicalRationalMatrix(const ExactRationalMatrix& lhs,
+                                 const ExactRationalMatrix& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (std::size_t row = 0; row < lhs.size(); ++row) {
+    if (lhs[row].size() != rhs[row].size()) {
+      return false;
+    }
+    for (std::size_t column = 0; column < lhs[row].size(); ++column) {
+      if (!SameCanonicalExactRationalValue(lhs[row][column], rhs[row][column])) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+ExactRationalMatrix MakeDiagonalMatrixFromExponents(
+    const std::vector<ExactRational>& exponents) {
+  ExactRationalMatrix matrix(
+      exponents.size(),
+      std::vector<ExactRational>(exponents.size(), ZeroRational()));
+  for (std::size_t index = 0; index < exponents.size(); ++index) {
+    matrix[index][index] = exponents[index];
+  }
+  return matrix;
+}
+
+std::optional<EtaEndpointExtractionRejection>
+ReviewedEtaEndpointLocalModelPatchRejectionReason(
+    const EtaEndpointLocalModel& local_model,
+    const UpperTriangularMatrixFrobeniusSeriesPatch& target_patch) {
+  if (local_model.extraction_order != target_patch.order ||
+      local_model.basis_functions != target_patch.basis_functions ||
+      local_model.indicial_exponents.size() != target_patch.indicial_exponents.size()) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_local_model_mismatch",
+        "SRL-2 local model does not match the generated endpoint Frobenius patch"};
+  }
+
+  std::vector<ExactRational> generated_exponents;
+  generated_exponents.reserve(target_patch.indicial_exponents.size());
+  for (std::size_t index = 0; index < target_patch.indicial_exponents.size(); ++index) {
+    const ExactRational local_exponent =
+        ExactArithmetic(local_model.indicial_exponents[index]);
+    const ExactRational generated_exponent =
+        ExactArithmetic(target_patch.indicial_exponents[index]);
+    if (!SameCanonicalExactRationalValue(local_exponent, generated_exponent)) {
+      return EtaEndpointExtractionRejection{
+          "srl4_endpoint_local_model_mismatch",
+          "SRL-2 local-model indicial exponent data does not match the generated "
+          "endpoint Frobenius patch"};
+    }
+    generated_exponents.push_back(generated_exponent);
+  }
+
+  if (!SameCanonicalRationalMatrix(local_model.residue_matrix,
+                                   MakeDiagonalMatrixFromExponents(generated_exponents))) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_local_model_mismatch",
+        "SRL-2 local-model residue matrix does not match the generated endpoint "
+        "Frobenius patch"};
+  }
+  return std::nullopt;
+}
+
+std::optional<EtaEndpointExtractionRejection>
+ReviewedEtaEndpointExtractionPacketRejectionReason(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const ExactRational& start_value,
+    const ExactRational& target_value,
+    const NumericEvaluationPoint& passive_bindings) {
+  if (!request.eta_continuation_plan.has_value() ||
+      !request.eta_endpoint_local_model.has_value() ||
+      !request.eta_endpoint_branch_ledger.has_value()) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_packet_incomplete",
+        "SRL-4 endpoint extraction requires the SRL-1 endpoint contour, SRL-2 "
+        "local model, and SRL-3 branch ledger to be present together"};
+  }
+
+  const EtaContinuationPlan& plan = *request.eta_continuation_plan;
+  const EtaEndpointLocalModel& local_model = *request.eta_endpoint_local_model;
+  const EtaEndpointBranchLedger& ledger = *request.eta_endpoint_branch_ledger;
+  if (plan.eta_symbol != variable_name || !plan.target_endpoint_singular.has_value() ||
+      plan.contour_points.size() < 2) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_contour_mismatch",
+        "SRL-1 endpoint contour must identify the selected eta variable and marked endpoint"};
+  }
+  if (plan.contour_fingerprint !=
+      ComputeArtifactFingerprint(SerializeEtaContinuationPlanForReviewedContourFingerprint(
+          plan))) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_contour_fingerprint_mismatch",
+        "SRL-1 endpoint contour fingerprint does not match the exact endpoint contour "
+        "metadata"};
+  }
+
+  if (const std::optional<std::string> reason =
+          ReviewedDirectRealBootstrapEtaContinuationPlanLocationRejectionReason(
+              plan, variable_name, passive_bindings, start_value, target_value);
+      reason.has_value()) {
+    return EtaEndpointExtractionRejection{"srl4_endpoint_contour_mismatch", *reason};
+  }
+  if (const std::optional<std::string> reason =
+          ReviewedDirectRealBootstrapEtaContinuationPlanEndpointRejectionReason(
+              plan, start_value, target_value);
+      reason.has_value()) {
+    return EtaEndpointExtractionRejection{"srl4_endpoint_contour_mismatch", *reason};
+  }
+  if (const std::optional<std::string> reason =
+          ReviewedDirectRealBootstrapEtaContinuationPlanLedgerValueRejectionReason(
+              request, variable_name, plan, passive_bindings);
+      reason.has_value()) {
+    return EtaEndpointExtractionRejection{"srl4_endpoint_contour_mismatch", *reason};
+  }
+
+  const EtaContourSingularPoint& endpoint_singular = *plan.target_endpoint_singular;
+  if (!SameCanonicalExactComplexValue(endpoint_singular.value, plan.contour_points.back()) ||
+      !IsExactEtaZeroEndpoint(endpoint_singular.value) ||
+      !SameCanonicalExactRationalValue(target_value, endpoint_singular.value.real)) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_marker_mismatch",
+        "SRL-1 endpoint marker must be the final contour point and evaluate exactly to "
+        "eta=0"};
+  }
+
+  const ExactComplexRational& approach_point =
+      plan.contour_points[plan.contour_points.size() - 2];
+  if (!SameCanonicalExactRationalValue(approach_point.imaginary, ZeroRational()) ||
+      CompareExactRationalForEtaContinuationPlan(approach_point.real,
+                                                 endpoint_singular.value.real) >= 0) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_approach_unsupported",
+        "SRL-4 endpoint extraction is limited to the reviewed approach from the "
+        "negative real side of eta=0"};
+  }
+
+  if (local_model.eta_symbol != plan.eta_symbol ||
+      local_model.endpoint_expression != endpoint_singular.expression ||
+      !SameCanonicalExactComplexValue(local_model.endpoint_value, endpoint_singular.value) ||
+      local_model.half_plane != plan.half_plane ||
+      local_model.contour_fingerprint != plan.contour_fingerprint ||
+      !local_model.branch_sensitive || local_model.extraction_order < 0) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_local_model_mismatch",
+        "SRL-2 local model does not match the marked SRL-1 endpoint contour identity"};
+  }
+
+  if (ledger.eta_symbol != plan.eta_symbol ||
+      ledger.endpoint_expression != endpoint_singular.expression ||
+      !SameCanonicalExactComplexValue(ledger.endpoint_value, endpoint_singular.value) ||
+      ledger.half_plane != plan.half_plane ||
+      ledger.contour_fingerprint != plan.contour_fingerprint ||
+      ledger.local_model_kind != local_model.local_model_kind ||
+      ledger.extraction_order != local_model.extraction_order ||
+      ledger.endpoint_branch_winding != endpoint_singular.branch_winding) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_branch_ledger_mismatch",
+        "SRL-3 branch ledger does not match the SRL-1 contour and SRL-2 local-model "
+        "identity"};
+  }
+  if (ledger.ledger_fingerprint !=
+      ComputeArtifactFingerprint(SerializeEndpointBranchLedgerForReviewedFingerprint(ledger))) {
+    return EtaEndpointExtractionRejection{
+        "srl4_endpoint_branch_ledger_fingerprint_mismatch",
+        "SRL-3 branch-ledger fingerprint does not match the reviewed branch ledger "
+        "metadata"};
+  }
+  return std::nullopt;
+}
+
+std::string SerializeEtaEndpointExtractionForFingerprint(
+    const SolveRequest& request,
+    const EtaContinuationPlan& plan,
+    const EtaEndpointLocalModel& local_model,
+    const EtaEndpointBranchLedger& ledger,
+    const std::vector<std::string>& endpoint_coefficients) {
+  std::ostringstream out;
+  out << "system:\n" << SerializeDESystemForFingerprint(request.system);
+  out << "start_location=" << request.start_location << "\n";
+  out << "target_location=" << request.target_location << "\n";
+  out << "boundary_conditions=" << request.boundary_conditions.size() << "\n";
+  for (std::size_t index = 0; index < request.boundary_conditions.size(); ++index) {
+    const BoundaryCondition& condition = request.boundary_conditions[index];
+    out << "boundary_condition[" << index << "].variable=" << condition.variable << "\n";
+    out << "boundary_condition[" << index << "].location=" << condition.location << "\n";
+    out << "boundary_condition[" << index << "].strategy=" << condition.strategy << "\n";
+    out << "boundary_condition[" << index << "].values=" << condition.values.size() << "\n";
+    for (std::size_t value_index = 0; value_index < condition.values.size(); ++value_index) {
+      out << "boundary_condition[" << index << "].value[" << value_index << "]="
+          << condition.values[value_index] << "\n";
+    }
+  }
+  out << "contour_fingerprint=" << plan.contour_fingerprint << "\n";
+  out << "local_model:\n" << SerializeEtaEndpointLocalModelForSolveRequestFingerprint(local_model);
+  out << "branch_ledger:\n" << SerializeEtaEndpointBranchLedgerForSolveRequestFingerprint(ledger);
+  out << "endpoint_coefficients=" << endpoint_coefficients.size() << "\n";
+  for (std::size_t index = 0; index < endpoint_coefficients.size(); ++index) {
+    out << "endpoint_coefficient[" << index << "]=" << endpoint_coefficients[index] << "\n";
+  }
+  return out.str();
+}
+
+SolverDiagnostics SolveReviewedEtaZeroEndpointExtraction(
+    const SolveRequest& request,
+    const std::string& variable_name,
+    const ExactRational& start_value,
+    const ExactRational& target_value,
+    const NumericEvaluationPoint& passive_bindings) {
+  if (const std::optional<EtaEndpointExtractionRejection> rejection =
+          ReviewedEtaEndpointExtractionPacketRejectionReason(
+              request, variable_name, start_value, target_value, passive_bindings);
+      rejection.has_value()) {
+    return MakeEtaEndpointExtractionFailureDiagnostics(rejection->failure_code,
+                                                       rejection->summary);
+  }
+
+  const EtaContinuationPlan& plan = *request.eta_continuation_plan;
+  const EtaEndpointLocalModel& local_model = *request.eta_endpoint_local_model;
+  const EtaEndpointBranchLedger& ledger = *request.eta_endpoint_branch_ledger;
+  const ExactRational match_value = ComputeBootstrapMatchPoint(start_value, target_value);
+  const ExactRational check_value = ComputeBootstrapCheckPoint(start_value, target_value);
+  const std::string start_expression = MakeResolvedPointExpression(variable_name, start_value);
+  const std::string target_expression = MakeResolvedPointExpression(variable_name, target_value);
+  const std::string check_expression = MakeResolvedPointExpression(variable_name, check_value);
+
+  const BoundaryCondition* start_boundary = nullptr;
+  try {
+    start_boundary = &ResolveStartBoundaryCondition(request, variable_name);
+  } catch (const BoundaryUnsolvedError& error) {
+    return MakeBoundaryUnsolvedDiagnostics(error);
+  }
+
+  const ExactRationalVector start_boundary_values =
+      ParseBoundaryValuesExactly(*start_boundary, passive_bindings);
+  const PrecisionDecision precision_budget =
+      EvaluatePrecisionBudget(request.precision_policy, request.requested_digits);
+  if (precision_budget.status == PrecisionStatus::Rejected) {
+    return MakeInsufficientPrecisionDiagnostics(precision_budget);
+  }
+
+  try {
+    const UpperTriangularMatrixSeriesPatch start_patch =
+        GenerateUpperTriangularRegularPointSeriesPatch(request.system,
+                                                      variable_name,
+                                                      start_expression,
+                                                      local_model.extraction_order,
+                                                      passive_bindings);
+    const UpperTriangularMatrixFrobeniusSeriesPatch target_patch =
+        GenerateUpperTriangularMatrixFrobeniusSeriesPatch(request.system,
+                                                         variable_name,
+                                                         target_expression,
+                                                         local_model.extraction_order,
+                                                         passive_bindings);
+    if (const std::optional<EtaEndpointExtractionRejection> rejection =
+            ReviewedEtaEndpointLocalModelPatchRejectionReason(local_model, target_patch);
+        rejection.has_value()) {
+      return MakeEtaEndpointExtractionFailureDiagnostics(rejection->failure_code,
+                                                         rejection->summary);
+    }
+
+    const NormalizedUpperTriangularMatrixFrobeniusPatchData normalized_target_patch =
+        NormalizeMatrixFrobeniusPatchCoefficients(target_patch, kBootstrapSolverPrefix);
+    const std::vector<ExactRationalMatrix> start_coefficients =
+        NormalizeMatrixPatchCoefficients(start_patch, passive_bindings, kBootstrapSolverPrefix);
+    const ExactRationalMatrix start_match =
+        EvaluateMatrixPolynomial(start_coefficients, start_value, match_value);
+    const ExactRationalMatrix start_check =
+        EvaluateMatrixPolynomial(start_coefficients, start_value, check_value);
+    const ExactRationalMatrix target_match =
+        EvaluateMatrixFrobeniusFundamentalMatrix(normalized_target_patch,
+                                                 target_value,
+                                                 match_value);
+    const ExactRationalMatrix target_check =
+        EvaluateMatrixFrobeniusFundamentalMatrix(normalized_target_patch,
+                                                 target_value,
+                                                 check_value);
+    const ExactRationalMatrix handoff_matrix =
+        MultiplyMatrices(InvertUpperTriangularMatrix(start_match), target_match);
+    const ExactRationalMatrix mismatch =
+        SubtractMatrices(target_check, MultiplyMatrices(start_check, handoff_matrix));
+    const ExactRationalMatrix start_residual =
+        EvaluateUpperTriangularMatrixSeriesPatchResidual(request.system,
+                                                        variable_name,
+                                                        start_patch,
+                                                        check_expression,
+                                                        passive_bindings);
+    const ExactRationalMatrix target_residual =
+        EvaluateUpperTriangularMatrixFrobeniusPatchResidual(request.system,
+                                                           variable_name,
+                                                           target_value,
+                                                           check_value,
+                                                           normalized_target_patch,
+                                                           passive_bindings);
+    if (!IsZeroMatrix(start_residual) || !IsZeroMatrix(target_residual) ||
+        !IsZeroMatrix(mismatch)) {
+      return MakeEtaEndpointExtractionFailureDiagnostics(
+          "srl4_endpoint_consistency_check_failed",
+          "reviewed endpoint extraction residual or overlap checks were nonzero");
+    }
+
+    const ExactRationalVector regular_match_values =
+        MultiplyMatrixVector(start_match, start_boundary_values);
+    const ExactRationalVector endpoint_coefficients =
+        MultiplyMatrixVector(InvertUpperTriangularMatrix(target_match), regular_match_values);
+    if (endpoint_coefficients.size() != request.system.masters.size() ||
+        endpoint_coefficients.empty()) {
+      return MakeEtaEndpointExtractionFailureDiagnostics(
+          "srl4_endpoint_coefficient_count_mismatch",
+          "reviewed endpoint extraction did not produce one coefficient per master");
+    }
+
+    SolverDiagnostics diagnostics;
+    diagnostics.success = true;
+    diagnostics.residual_norm = 0.0;
+    diagnostics.overlap_mismatch = 0.0;
+    diagnostics.full_eta_zero_contour_applied = true;
+    diagnostics.eta_endpoint_contour_fingerprint = plan.contour_fingerprint;
+    diagnostics.eta_endpoint_local_model_kind = local_model.local_model_kind;
+    diagnostics.eta_endpoint_branch_ledger_fingerprint = ledger.ledger_fingerprint;
+    diagnostics.target_values.reserve(endpoint_coefficients.size());
+    for (const ExactRational& coefficient : endpoint_coefficients) {
+      diagnostics.target_values.push_back(coefficient.ToString());
+    }
+    diagnostics.eta_endpoint_extraction_fingerprint = ComputeArtifactFingerprint(
+        SerializeEtaEndpointExtractionForFingerprint(request,
+                                                     plan,
+                                                     local_model,
+                                                     ledger,
+                                                     diagnostics.target_values));
+    diagnostics.summary =
+        "Solved by reviewed SRL-4 live eta=0 endpoint extraction; "
+        "full_eta_zero_contour_applied=true; contour_fingerprint=" +
+        plan.contour_fingerprint + "; local_model_kind=" + local_model.local_model_kind +
+        "; branch_ledger_fingerprint=" + ledger.ledger_fingerprint +
+        "; endpoint_extraction_fingerprint=" +
+        diagnostics.eta_endpoint_extraction_fingerprint;
+    return diagnostics;
+  } catch (const std::invalid_argument& error) {
+    return MakeEtaEndpointExtractionFailureDiagnostics("srl4_endpoint_solver_unsupported",
+                                                       error.what());
+  } catch (const std::runtime_error& error) {
+    if (IsDivisionByZeroError(error)) {
+      return MakeEtaEndpointExtractionFailureDiagnostics("srl4_endpoint_solver_unsupported",
+                                                         error.what());
+    }
+    throw;
+  }
+}
+
 }  // namespace
 
 SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) const {
@@ -6679,7 +7276,10 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
   }
 
   const std::string& variable_name = live_request.system.variables.front().name;
-  if (live_request.eta_continuation_plan.has_value()) {
+  const bool has_eta_endpoint_extraction_input =
+      HasAnyEtaEndpointExtractionInput(live_request);
+  if (!has_eta_endpoint_extraction_input &&
+      live_request.eta_continuation_plan.has_value()) {
     const std::optional<std::string> rejection_reason =
         ReviewedDirectRealBootstrapEtaContinuationPlanStructuralRejectionReason(
             live_request, variable_name, *live_request.eta_continuation_plan);
@@ -6699,6 +7299,13 @@ SolverDiagnostics BootstrapSeriesSolver::Solve(const SolveRequest& request) cons
                       live_request.target_location,
                       passive_bindings,
                       kBootstrapSolverPrefix);
+  if (has_eta_endpoint_extraction_input) {
+    return SolveReviewedEtaZeroEndpointExtraction(live_request,
+                                                  variable_name,
+                                                  start_value,
+                                                  target_value,
+                                                  passive_bindings);
+  }
   if (live_request.eta_continuation_plan.has_value()) {
     const std::optional<std::string> location_rejection_reason =
         ReviewedDirectRealBootstrapEtaContinuationPlanLocationRejectionReason(

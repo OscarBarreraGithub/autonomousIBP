@@ -91,6 +91,11 @@ struct SolverDiagnostics {
   int eta_endpoint_transport_count = 0;
   int eta_endpoint_transport_epsilon_order = -1;
   std::vector<std::string> eta_endpoint_transported_integrals;
+  bool full_eta_zero_contour_applied = false;
+  std::string eta_endpoint_extraction_fingerprint;
+  std::string eta_endpoint_contour_fingerprint;
+  std::string eta_endpoint_local_model_kind;
+  std::string eta_endpoint_branch_ledger_fingerprint;
   struct EpsilonCoefficient {
     int order = 0;
     std::string real;
@@ -128,10 +133,12 @@ struct SolveRequest {
   // singulars, the two- through fourteen-waypoint upper-half-plane complex
   // subsets when every explicit zero-winding singular ledger stays off the
   // direct real segment. Target-endpoint singular ledgers remain direct-real
-  // only. The singular-runtime SRL-3 endpoint branch ledger is a separate
-  // audit carrier for branch-sensitive eta=0 endgames; it does not make the
-  // default bootstrap solver execute live complex endpoint extraction.
+  // only. The singular-runtime SRL-4 endpoint packet is narrower than general
+  // complex contour execution: the bootstrap solver executes eta=0 endpoint
+  // extraction only when the SRL-1 marked contour, SRL-2 local model, and
+  // SRL-3 branch ledger are all present and internally consistent.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
+  std::optional<EtaEndpointLocalModel> eta_endpoint_local_model;
   std::optional<EtaEndpointBranchLedger> eta_endpoint_branch_ledger;
   int requested_digits = 50;
   std::optional<int> requested_epsilon_order;

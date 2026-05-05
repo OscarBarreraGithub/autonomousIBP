@@ -5950,7 +5950,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "],\n";
     out << "    \"transport_applied\": "
-        << (diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
+        << (diagnostics.full_eta_zero_contour_applied ||
+                    diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
                 ? "true"
                 : "false")
         << ",\n";
@@ -5959,13 +5960,16 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           ? (phase_space_state ? "phase-space-solution-samples"
                              : loop_solution_state ? "loop-solution-samples"
                                                : "finite-solution-samples")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "eta-zero-full-contour-endpoint-coefficients"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
                           : "none")
         << ",\n";
-    out << "    \"full_eta_zero_contour_applied\": false,\n";
+    out << "    \"full_eta_zero_contour_applied\": "
+        << (diagnostics.full_eta_zero_contour_applied ? "true" : "false") << ",\n";
     out << "    \"eta_infinity_asymptotic_transport_applied\": "
         << (diagnostics.eta_asymptotic_transport_count > 0 ? "true" : "false") << ",\n";
     out << "    \"eta_infinity_asymptotic_transported_master_count\": "
@@ -5990,6 +5994,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                              : loop_solution_state ? "loop-solution-sample-laurent-fit"
                              : finite_transport_applied ? "finite-de-transport"
                                                         : "finite-solution-sample-ingest")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
                             "eta-zero-selected-endpoint-coefficients"
@@ -6017,6 +6023,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                              : "full AMFlow loop-boundary reconstruction and endpoint "
                                "contour execution remain deferred after retained finite "
                                "solution-sample ingestion")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "none"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -6403,7 +6411,8 @@ std::string SerializeSolveSeriesBundleJson(
     }
     out << "]"
         << ", \"transport_applied\": "
-        << (diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
+        << (diagnostics.full_eta_zero_contour_applied ||
+                    diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
                 ? "true"
                 : "false")
         << ", \"transport_scope\": "
@@ -6411,12 +6420,15 @@ std::string SerializeSolveSeriesBundleJson(
                           ? (phase_space_state ? "phase-space-solution-samples"
                              : loop_solution_state ? "loop-solution-samples"
                                                : "finite-solution-samples")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "eta-zero-full-contour-endpoint-coefficients"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
                           : "none")
-        << ", \"full_eta_zero_contour_applied\": false"
+        << ", \"full_eta_zero_contour_applied\": "
+        << (diagnostics.full_eta_zero_contour_applied ? "true" : "false")
         << ", \"eta_infinity_asymptotic_transport_applied\": "
         << (diagnostics.eta_asymptotic_transport_count > 0 ? "true" : "false")
         << ", \"eta_infinity_asymptotic_transported_master_count\": "
@@ -6442,6 +6454,8 @@ std::string SerializeSolveSeriesBundleJson(
                              : loop_solution_state ? "loop-solution-sample-laurent-fit"
                              : finite_transport_applied ? "finite-de-transport"
                                                         : "finite-solution-sample-ingest")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
                             "eta-zero-selected-endpoint-coefficients"
@@ -6468,6 +6482,8 @@ std::string SerializeSolveSeriesBundleJson(
                              : "full AMFlow loop-boundary reconstruction and endpoint "
                                "contour execution remain deferred after retained finite "
                                "solution-sample ingestion")
+                      : diagnostics.full_eta_zero_contour_applied
+                          ? "none"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0

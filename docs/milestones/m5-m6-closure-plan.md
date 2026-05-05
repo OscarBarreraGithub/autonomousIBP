@@ -155,14 +155,17 @@ Current M6 blockers to preserve:
 - singular endpoint qualification remains outside this M5 closure claim until M6 evidence retires it
 - M7 and release-readiness review sidecars remain separate non-claims
 
-Singular runtime lane status: SRL-1 and SRL-2 are landed, and lane64 adds SRL-3
-branch/prescription ledger support. The new ledger records how the selected
-half-plane and a single nonzero Feynman prescription fix the eta-zero endpoint
-approach and log branch while binding that audit to the SRL-1 contour
-fingerprint and SRL-2 local-model identity. It deliberately leaves
-`live_endpoint_extraction_ready: false`; SRL-4 live eta-zero endpoint extraction
-and SRL-5 case-study numeric qualification are still required before the
-`one-singular-endpoint-case -> b62p` runtime blocker can be retired.
+Singular runtime lane status: SRL-1 and SRL-2 are landed, lane64 adds SRL-3
+branch/prescription ledger support, and lane68 adds the first narrow SRL-4 live
+eta-zero endpoint extraction path for the reviewed exact simple-pole Frobenius
+subset. The SRL-4 path consumes the marked endpoint contour, SRL-2 local model,
+and SRL-3 branch ledger, verifies their fingerprints and local residue data, and
+sets `full_eta_zero_contour_applied: true` only after producing endpoint
+coefficients. This is runtime progress, but it is not the SRL-5 case-study
+qualification row: comparator-readable singular family evidence, cache replay
+evidence for published case-study sidecars, and `one-singular-endpoint-case`
+numeric qualification are still required before the `b62p` runtime blocker can
+be retired.
 
 M6 overall status remains TODO/FAILING.
 

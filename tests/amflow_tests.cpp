@@ -48688,9 +48688,15 @@ void SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest() {
   ExpectContains(json, "\"eta_infinity_asymptotic_transported_master_count\": 1",
                  "AMFlow state-bundle ingestion should report each retained family's first "
                  "asymptotic transport coefficient");
-  ExpectContains(json, "\"eta_zero_endpoint_transported_master_count\": 2",
+  ExpectContains(json, "\"eta_zero_endpoint_transported_master_count\": 3",
                  "AMFlow state-bundle ingestion should count each retained family's selected "
                  "endpoint-transported masters");
+  ExpectContains(json, "\"box1[0,1,0,1]\"",
+                 "AMFlow state-bundle ingestion should identify the box1 zero-log bubble "
+                 "endpoint transport");
+  ExpectContains(json, "\"box2[0,1,0,1]\"",
+                 "AMFlow state-bundle ingestion should identify the box2 zero-log bubble "
+                 "endpoint transport");
   ExpectContains(json, "\"box1[1,0,1,0]\"",
                  "AMFlow state-bundle ingestion should identify the box1 endpoint transport");
   ExpectContains(json, "\"box2[1,0,1,0]\"",
@@ -48763,7 +48769,8 @@ for family, state in states.items():
     assert continuation["eta_infinity_asymptotic_transport_applied"] is True
     assert continuation["eta_zero_endpoint_transport_applied"] is True
     assert continuation["eta_infinity_asymptotic_transported_master_count"] == 1
-    assert continuation["eta_zero_endpoint_transported_master_count"] == 2
+    assert continuation["eta_zero_endpoint_transported_master_count"] == 3
+    assert f"{family}[0,1,0,1]" in continuation["eta_zero_endpoint_transported_integrals"]
     assert f"{family}[1,0,1,0]" in continuation["eta_zero_endpoint_transported_integrals"]
     assert f"{family}[1,1,1,1]" in continuation["eta_zero_endpoint_transported_integrals"]
     assert continuation["runtime_application"] == (

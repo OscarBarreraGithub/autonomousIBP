@@ -3106,6 +3106,16 @@ BigFloat Zeta6Constant() {
       "1.017343061984449139714517929790920527901817490032853561842408664004332182901958");
 }
 
+BigFloat Zeta7Constant() {
+  return BigFloat(
+      "1.008349277381922826839797549849796759599863560565238706417283136571601478317355735346096968913851324");
+}
+
+BigFloat Zeta8Constant() {
+  return BigFloat(
+      "1.004077356197944339378685238508652465258960790649850020329110202652582952574748814395287230372371971");
+}
+
 BigFloat Li5Minus99Constant() {
   return BigFloat(
       "-52.38666235360439053364949682271734882996050351431037699252166679541238");
@@ -3126,14 +3136,37 @@ BigFloat Li6NinetyNineOverHundredConstant() {
       "1.006976049428915859709911523584134620367971726695285933682624148493941");
 }
 
+BigFloat Li7Minus99Constant() {
+  return BigFloat(
+      "-76.36333429786385129182522223851755520262675986681030776606413446026267241596939072828688894174146285");
+}
+
+BigFloat Li7NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.9981768249632725772495606699377243045707263934911567260716842359231747367801034667706555433347680961");
+}
+
+BigFloat Li8Minus99Constant() {
+  return BigFloat(
+      "-84.4164393865504732010726787433552931867392084783081120576334481483069511405412219657534236342262212");
+}
+
+BigFloat Li8NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.99399431284776200810894556251802787093988047870645848393605720045333709858113520026079538724438407");
+}
+
 BigComplex RetainedAutomaticLoopNegImLogS() {
   return {log(BigFloat(100)), -boost::math::constants::pi<BigFloat>()};
 }
 
+constexpr int kMaxReviewedEndpointTransportEpsilonOrder = 6;
+
 void RequireReviewedEndpointTransportEpsilonOrder(const int epsilon_order) {
-  if (epsilon_order < 0 || epsilon_order > 4) {
+  if (epsilon_order < 0 ||
+      epsilon_order > kMaxReviewedEndpointTransportEpsilonOrder) {
     throw std::runtime_error(
-        "retained automatic_loop endpoint transport supports reviewed eps orders 0..4");
+        "retained automatic_loop endpoint transport supports reviewed eps orders 0..6");
   }
 }
 
@@ -3185,6 +3218,12 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   const BigFloat a5 =
       BigFloat(32) / BigFloat(5) -
       BigFloat(31) * Zeta5Constant() / BigFloat(5);
+  const BigFloat a6 =
+      BigFloat(64) / BigFloat(6) -
+      BigFloat(61) * Zeta6Constant() / BigFloat(6);
+  const BigFloat a7 =
+      BigFloat(128) / BigFloat(7) -
+      BigFloat(127) * Zeta7Constant() / BigFloat(7);
 
   const int max_weight = epsilon_order + 1;
   std::vector<BigComplex> log_coefficients(static_cast<std::size_t>(max_weight) + 1);
@@ -3202,6 +3241,12 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   }
   if (max_weight >= 5) {
     log_coefficients[5] = RealBigComplex(a5);
+  }
+  if (max_weight >= 6) {
+    log_coefficients[6] = RealBigComplex(a6);
+  }
+  if (max_weight >= 7) {
+    log_coefficients[7] = RealBigComplex(a7);
   }
   const std::vector<BigComplex> exponential =
       ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
@@ -3238,6 +3283,12 @@ std::vector<BigFloat> RetainedScalarBoxLiMinus99ThroughWeight(
   if (max_weight >= 6) {
     polylogs[6] = Li6Minus99Constant();
   }
+  if (max_weight >= 7) {
+    polylogs[7] = Li7Minus99Constant();
+  }
+  if (max_weight >= 8) {
+    polylogs[8] = Li8Minus99Constant();
+  }
   return polylogs;
 }
 
@@ -3265,6 +3316,12 @@ std::vector<BigFloat> RetainedScalarBoxLiNinetyNineOverHundredThroughWeight(
   }
   if (max_weight >= 6) {
     polylogs[6] = Li6NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 7) {
+    polylogs[7] = Li7NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 8) {
+    polylogs[8] = Li8NinetyNineOverHundredConstant();
   }
   return polylogs;
 }
@@ -3315,6 +3372,14 @@ std::vector<BigComplex> RetainedScalarBoxGammaRatioSeriesThroughWeight(
   if (max_weight >= 6) {
     log_coefficients[6] =
         RealBigComplex(-BigFloat(61) * Zeta6Constant() / BigFloat(6));
+  }
+  if (max_weight >= 7) {
+    log_coefficients[7] =
+        RealBigComplex(-BigFloat(127) * Zeta7Constant() / BigFloat(7));
+  }
+  if (max_weight >= 8) {
+    log_coefficients[8] =
+        RealBigComplex(-BigFloat(253) * Zeta8Constant() / BigFloat(8));
   }
   return ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
 }
@@ -3374,15 +3439,17 @@ void AppendEtaEndpointTransportedIntegralOnce(
 bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
     const DirectSolveSeriesSpec& spec);
 
-int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
+int ApplyRetainedAutomaticLoopEtaZeroBubbleEndpointTransportThroughEpsOrder(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics,
-    const int epsilon_order) {
+    const int epsilon_order,
+    const std::vector<int>& indices,
+    const BigComplex& branch_log) {
   if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
     return 0;
   }
   const std::string transported_master_label =
-      IntegralLabel(spec.family, {1, 0, 1, 0});
+      IntegralLabel(spec.family, indices);
 
   const std::optional<std::size_t> master_index =
       FindMasterIndexByLabel(spec, transported_master_label);
@@ -3399,8 +3466,7 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
   }
   UpsertEndpointSeries(
       coefficients,
-      RetainedBubbleEndpointSeriesThroughEpsOrder(RetainedAutomaticLoopNegImLogS(),
-                                                  epsilon_order));
+      RetainedBubbleEndpointSeriesThroughEpsOrder(branch_log, epsilon_order));
   if (*master_index < diagnostics.target_values.size()) {
     const std::optional<std::size_t> constant_index =
         FindEpsilonCoefficientOrder(coefficients, 0);
@@ -3410,6 +3476,32 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
   }
   AppendEtaEndpointTransportedIntegralOnce(diagnostics, transported_master_label);
   return 1;
+}
+
+int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
+  return ApplyRetainedAutomaticLoopEtaZeroBubbleEndpointTransportThroughEpsOrder(
+      spec,
+      diagnostics,
+      epsilon_order,
+      {1, 0, 1, 0},
+      RetainedAutomaticLoopNegImLogS());
+}
+
+int ApplyRetainedAutomaticLoopEtaZeroZeroLogBubbleTransportThroughEpsOrder(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
+  const int guard_order =
+      std::min(epsilon_order + 1, kMaxReviewedEndpointTransportEpsilonOrder);
+  return ApplyRetainedAutomaticLoopEtaZeroBubbleEndpointTransportThroughEpsOrder(
+      spec,
+      diagnostics,
+      guard_order,
+      {0, 1, 0, 1},
+      BigComplex{});
 }
 
 int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEpsOrder(
@@ -3445,6 +3537,10 @@ int TransportThroughEpsOrder(const DirectSolveSeriesSpec& spec,
   RequireReviewedEndpointTransportEpsilonOrder(epsilon_order);
   const int transported =
       ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
+          spec,
+          diagnostics,
+          epsilon_order) +
+      ApplyRetainedAutomaticLoopEtaZeroZeroLogBubbleTransportThroughEpsOrder(
           spec,
           diagnostics,
           epsilon_order) +

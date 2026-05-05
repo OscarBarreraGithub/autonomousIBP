@@ -1,0 +1,123 @@
+{
+  "benchmark_id": "diphoton-heavy-quark-form-factors",
+  "capture_profile": {
+    "amf_mode": [
+      "Prescription",
+      "Mass",
+      "Propagator",
+      "Branch",
+      "Loop"
+    ],
+    "black_box_dot": 1,
+    "black_box_rank": 3,
+    "ending_scheme": [
+      "Tradition",
+      "Cutkosky",
+      "SingleMass"
+    ],
+    "epsorder": 4,
+    "family": "diphotonNPL",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "mt2": "1",
+      "y": "1/11",
+      "z": "-199/2200"
+    },
+    "precision_goal_digits": 200,
+    "source_reference": "arXiv:2308.11412 / JHEP12(2023)105 Table 2 and ancillary DIFFEXP_run.wl",
+    "target_integrals": [
+      "J39 = INPL(1,1,1,1,1,1,1,0,0)",
+      "J40 = INPL(1,1,1,1,1,1,1,-1,0)",
+      "J41 = INPL(1,1,1,1,2,1,1,0,0)",
+      "J42 = INPL(1,1,1,1,1,1,1,-1,-1)"
+    ]
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T13:24:05-04:00",
+  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors",
+  "notes": [
+    "Phase-1 starter manifest created from the lane84 survey's shortest unfinished qualification row.",
+    "This is a fail-closed partial-progress manifest because the dedicated diphoton AMFlow Mathematica job was still running at capture time and had not produced the solution file.",
+    "No dedicated C++ diphoton state, 200-digit comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made by this manifest.",
+    "The prior automatic_loop eps16 diphoton proxy remains a failing proxy and is not promoted."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": null,
+      "name": "sol-diphoton-npl-j39-j42",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+      "present_at_capture": false
+    },
+    {
+      "canonical_sha256": null,
+      "name": "sol-diphoton-npl-j39-j42.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.meta.wl",
+      "present_at_capture": false
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors",
+    "logs": {
+      "stderr": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.err",
+        "sha256_at_capture": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes_at_capture": 0
+      },
+      "stdout": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.out",
+        "sha256_at_capture": "067d6711b22029bae27baa1260ce8f5c35851c4a571d40b21bc02e54336432ba",
+        "size_bytes_at_capture": 15332
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/run-manifest.10204166.txt",
+      "sha256": "ee0cf09a09c353dc1c936ca8f06a26b814c39d8cb8de076e3174a0c44f268a96"
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/capture_diphoton_200d.sbatch",
+        "sha256": "bba0d3e5d6e13136865ec2ccc8331f40a2237df24e2692a8f0daae278aea35b1"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/run.wl",
+        "sha256": "794df5de0add4d458e2714eba04b8ea68ab95e549cc608f3b127c3f6412810cf"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/verify_output.wl",
+        "sha256": "80f93ea53bf6d263b996e919057a4773bf42e5dcef0aae3f7915d212f4694be8"
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "remote": "https://gitlab.com/multiloop-pku/amflow.git"
+    },
+    "slurm": {
+      "allocated_partition": "sapphire",
+      "cpus_per_task": 8,
+      "elapsed_at_capture": "00:52:31",
+      "job_id": "10204166",
+      "job_name": "lane80-diphoton-200d",
+      "node_at_capture": "holy8a24108",
+      "state_at_capture": "RUNNING",
+      "time_limit": "1-00:00:00"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "partial-progress-submitted-running",
+  "verification": {
+    "anti_fake_parity_gate": "fail-closed",
+    "latest_log_stage_at_capture": "Dedicated diphotonNPL reduction completed; AMFlow constructed six systems and was solving system 1 differential equations. No solution file was present.",
+    "real_mathematica_numerics_verified": false,
+    "withheld_reason": "The live Mathematica run had not produced sol-diphoton-npl-j39-j42 or its metadata at capture time."
+  }
+}

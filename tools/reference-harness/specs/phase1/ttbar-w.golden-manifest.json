@@ -1,0 +1,288 @@
+{
+  "benchmark_id": "ttbar-w",
+  "capture_profile": {
+    "benchmark_class": "phase1-case-study-family-proxy-capture",
+    "black_box_dot": 0,
+    "black_box_rank": 3,
+    "case_study_family": "ttbar-w",
+    "digit_threshold_profile": "core-package-family-default",
+    "epsorder": 14,
+    "family": "automatic_loop",
+    "ibp_reducer": "Kira",
+    "kinematic_points": {
+      "box1": {
+        "s": "100",
+        "t": "-1"
+      },
+      "box2": {
+        "s": "100",
+        "t": "-99"
+      }
+    },
+    "kinematic_region": "retained automatic_loop one-loop physical-region proxy points",
+    "precision_goal_digits": 40,
+    "raw_scalar_targets": [
+      "j[box1,2,0,1,0], retained automatic_loop box1 target",
+      "j[box1,-2,1,1,2], retained automatic_loop box1 target",
+      "j[box1,1,2,2,1], retained automatic_loop box1 target",
+      "j[box2,2,1,1,1], retained automatic_loop box2 target",
+      "j[box2,1,1,0,1], retained automatic_loop box2 target",
+      "j[box2,1,-1,1,0], retained automatic_loop box2 target"
+    ],
+    "selected_benchmark_anchor_ref": "2025-ttw-leading-colour-integrals",
+    "source_reference": "ttbar-w case-study scaffold row, with current machine-readable evidence through retained automatic_loop eps11",
+    "topology": "one-loop box1/box2 automatic_loop high-positive-order proxy"
+  },
+  "compare_cpp_vs_amflow_outputs": [
+    "sol-ttbar-w-automatic-loop-eps11-proxy"
+  ],
+  "comparison_passed": true,
+  "created_at": "2026-05-05T18:53:36-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-for-current-proxy-row",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy",
+  "notes": [
+    "This benchmark is an eligible phase-1 qualification row from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md.",
+    "It is not one of the nine prior phase-1 captures listed in the lane122 prompt: diphoton-heavy-quark-form-factors, 2024-box-integrals-fermion-bubbles, single-top-planar-nonplanar, 2024-gg-to-tth-one-loop-oeps2, 2023-gg-to-gammagamma-light-quark-mi, 2024-wpair-planar-mi, 2023-ttj-planar-topology, five-point-one-mass-scattering, or 2024-tth-light-quark-loop-mi.",
+    "The survey's current ttbar-w row is proxy evidence through retained automatic_loop eps11; lane122 mirrors that current machine-readable contract and does not freeze a dedicated full ttbar-W two-loop literature packet.",
+    "The lane95 Kira imaginary-coefficient retry wrapper is installed as a reactive retry for the exact invalid coefficient string \"I\" parser failure; this capture did not trigger that retry.",
+    "No new C++ ingest state, dedicated full ttbar-W literature packet, M6 closure, M7 closure, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "b519376e7708bae3f2418887a2de28e1395dfceaaeded8e1998b04e1afc07a75",
+      "name": "sol-ttbar-w-automatic-loop-eps11-proxy",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy/sol-ttbar-w-automatic-loop-eps11-proxy",
+      "present_at_capture": true,
+      "size_bytes": 25522
+    },
+    {
+      "canonical_sha256": "c951eeca00c03fb3370a403e3e508743bde38882ca5b76f22d116e9f3c1484b2",
+      "name": "sol-ttbar-w-automatic-loop-eps11-proxy.box1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy/sol-ttbar-w-automatic-loop-eps11-proxy.box1",
+      "present_at_capture": true,
+      "size_bytes": 12832
+    },
+    {
+      "canonical_sha256": "6e979f311284c16e62eec0dc29f9540ef87277d5d2852fed9c7403551fbfd891",
+      "name": "sol-ttbar-w-automatic-loop-eps11-proxy.box2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy/sol-ttbar-w-automatic-loop-eps11-proxy.box2",
+      "present_at_capture": true,
+      "size_bytes": 12691
+    },
+    {
+      "canonical_sha256": "419327620c1b9462ea76bfbd16f5d6350daf32d03265f60c736f5cd3a9252655",
+      "name": "sol-ttbar-w-automatic-loop-eps11-proxy.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy/sol-ttbar-w-automatic-loop-eps11-proxy.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 1042
+    },
+    {
+      "canonical_sha256": "7c4016dd5cc2531d886aa3229384e1157d729f7e43f6d715d4c31a2445630ac9",
+      "name": "sol-ttbar-w-automatic-loop-eps11-proxy.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy/sol-ttbar-w-automatic-loop-eps11-proxy.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 3136
+    }
+  ],
+  "proxy_comparison_evidence": {
+    "amflow_golden_manifest_path": "tools/reference-harness/specs/phase1/ttbar-w.golden-manifest.json",
+    "comparison_summary": {
+      "matched_integral_count": 12,
+      "minimum_digit_agreement": 58,
+      "passed_coefficient_count": 162,
+      "total_coefficient_count": 162
+    },
+    "comparison_summary_path": "/tmp/autoibp_orch/exec/lane122_ttbar_w_compare.json",
+    "comparison_summary_sha256": "50ce940e84fb854dbf6c5e02961bbda1972f9aa3509f92b2cde51e0b74759cbc",
+    "cpp_result_path": "tools/reference-harness/specs/case-studies/ttbar-w.automatic-loop-eps11.digits80.cpp-result.json",
+    "prior_case_study_numeric_evidence": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json",
+    "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+    "status": "passed",
+    "tolerance_digits": 50
+  },
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected ttbar-w because it is an unexcluded scaffolded qualification row whose survey evidence remains proxy-only through retained automatic_loop eps11 with no dedicated full ttbar-W packet frozen."
+    },
+    {
+      "role": "B",
+      "scope": "capture-template conformance and non-claim wording",
+      "status": "APPROVE",
+      "verdict": "The packet mirrors prior phase-1 layout with a lane directory, capture script, run.wl, fail-closed verifier, hashed output files, provenance, comparator self-check, and explicit proxy-row non-claims."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure, build, CTest, and compare_cpp_vs_amflow.py --self-check completed with exit code 0."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "The capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, and AMFSystemSolution execution; verifier passed on finite nonzero Mathematica numerics with 6 requested target rules, 12 solution rules, 84 checked coefficients, 82 nonzero coefficients, min precision 40, and nonzero imaginary components."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/examples/ttbar_w_automatic_loop_proxy",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:08:23"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane122_local_capture.log",
+        "sha256": "7dec5fba519a00c6c4728bf02cfc2d05de06fad59c12b37ee4b0d5de340c65b6",
+        "size_bytes": 26686
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/run-manifest.10006275.txt",
+      "sha256": "0fdfb355b68984b2418966f9b48537e4afcc52f45eaa9b6fb3f1e9840805e607",
+      "size_bytes": 2724
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/ttbar-w.lane122/capture_ttbar_w_automatic_loop_eps11_proxy.sbatch",
+        "sha256": "abd237b6a2c21dd8a7d7cf2da235869ed45d995635a13ab599fd13ff939d5357"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/ttbar-w.lane122/run.wl",
+        "sha256": "95889faff91c8ff7063a04f67cf58d0483d822c35f18d4a7afb2906d3e4411ee"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/ttbar-w.lane122/verify_output.wl",
+        "sha256": "0454737c2236d97e69d2a02001efee05314fd3c83a6cedefc0f2110a1e9ae97b"
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane122-ttbar-w/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d"
+      }
+    ],
+    "source_article": {
+      "arxiv": "2412.13876",
+      "doi": "10.1007/JHEP03(2025)070",
+      "title": "Two-loop Feynman integrals for leading colour ttbar W",
+      "url": "https://arxiv.org/abs/2412.13876"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T18:53:36-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 1",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane122_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane122_cmake_build.stdout",
+        "sha256": "4fcdba84e42b1378fceb91a472b79fc32ba124477f6f989930954bb74d5f4912",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane122_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane122_cmake_configure.stdout",
+        "sha256": "09cc8dbdcf7c829aa8bb7f7a548b7500fa95d0ea2ee1c91efbdc98d68b3e81bc",
+        "size_bytes": 142
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane122_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "ctest": {
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane122_ctest.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane122_ctest.stdout",
+        "sha256": "3b7866e1c6f6cf2fdc60946f973413b7cc07a77be71c23011b03492eb8ba563f",
+        "size_bytes": 351
+      },
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Lane122 ttbar-w proxy AMFlow/Kira run reduced six requested automatic_loop targets, constructed and solved box1 and box2 AMF systems, wrote combined and per-family solution files plus metadata, and the verifier passed on finite nonzero Mathematica coefficients through eps^11.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 84,
+      "coefficient_powers": [
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "max_abs_imaginary_component": "721.9990567690010926760761494542939410737413720593489930995298",
+      "min_nonzero_precision": "40.",
+      "min_precision": "40.",
+      "nonzero_coefficient_count": 82,
+      "sample_nonzero_coefficients": [
+        "-0.01`40.",
+        "0.0518238585088962422864249499945113084624436231319746955087`40.0825536263877 - 0.0314159265358979323846264338327950288419716939937510582098`39.86517375413836*I",
+        "-0.0767129231978169473707629334468408721189595685494102175962`39.78016605167746 + 0.1628094531722253312459322763179462227431223319761785886605`40.10697713716882*I",
+        "-0.0383426204585732482386286059133356560653526620270960721283`39.194514746662335 - 0.3443550115546591514885740471955711183331061623892227431019`40.147839363869714*I",
+        "0.2778381403281603985776069196896906344211846888337917379147`39.89572303500642 + 0.4151647371038135635455081944911904289506291276312378682111`40.070151630270395*I",
+        "-0.4886606632142415357006519949186633850703252573482042382685`40.06973676401109 - 0.3280326930470774053758909878929763541666649645517189670255`39.89664651331793*I"
+      ],
+      "solution_rule_count": 12,
+      "target_rule_count": 6
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "benchmark_id": "linear_propagator",
+  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/comparisons/phase0/linear_propagator.summary.json",
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured",
+  "notes": [
+    "Tracked pointer for the retained upstream AMFlow phase-0 linear_propagator capture.",
+    "The captured Mathematica output comes from SolveIntegralsGaugeLink on the pinned lightlike gauge-link example and retains the real AMFlow rule list, including nonzero complex coefficients and the example's zero-valued entries."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "d8bd47500b2bcadb7b1fe5d63e606714757ac7d93976f60c0bda74dd84ac4e52",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured/canonical/sol.canonical.txt",
+      "name": "sol",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured/sol"
+    }
+  ],
+  "schema_version": 1
+}

@@ -404,6 +404,8 @@ struct DirectSolveSeriesSpec {
   std::string boundary_state_direction;
   std::vector<std::string> boundary_epsilon_samples;
   std::map<std::string, std::string> boundary_state_raw_files;
+  std::string finite_source_variable;
+  std::string finite_solution_basis_reduction_path;
   std::string target_reduction_path;
   std::vector<int> phase_space_prescription;
   std::vector<int> phase_space_cut;
@@ -1628,6 +1630,21 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
         "boundary_state.files.solution");
   }
 
+  std::vector<amflow::TargetIntegral> finite_output_targets;
+  if (const CliJsonValue* finite_start = FindJsonField(root, "finite_start")) {
+    RequireJsonObject(*finite_start, path + ".finite_start");
+    spec.finite_source_variable =
+        OptionalJsonStringField(*finite_start, "source_variable", "");
+    spec.finite_solution_basis_reduction_path =
+        OptionalJsonStringField(*finite_start, "solution_basis_reduction_path", "");
+    if (const CliJsonValue* output_integrals =
+            FindJsonField(*finite_start, "output_integrals")) {
+      finite_output_targets =
+          ParseAmflowStateTargets(*output_integrals,
+                                  path + ".finite_start.output_integrals");
+    }
+  }
+
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
     if (const CliJsonValue* masters = FindJsonField(*reduction, "masters")) {
       spec.retained_reduction_masters =
@@ -1647,8 +1664,12 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
     AppendUniqueMaster(spec.retained_reduction_masters, master);
   }
   if (spec.targets.empty()) {
-    for (const amflow::MasterIntegral& master : spec.masters) {
-      spec.targets.push_back({master.family, master.indices});
+    if (!finite_output_targets.empty()) {
+      spec.targets = std::move(finite_output_targets);
+    } else {
+      for (const amflow::MasterIntegral& master : spec.masters) {
+        spec.targets.push_back({master.family, master.indices});
+      }
     }
   }
   return spec;
@@ -3663,6 +3684,23 @@ class FiniteTransportExpressionParser {
   std::size_t position_ = 0;
 };
 
+BigFloat EvaluateFiniteScalarExpression(const DirectSolveSeriesSpec& spec,
+                                        const std::string& expression,
+                                        const BigFloat& variable_value,
+                                        const std::string& epsilon_sample) {
+  const BigFloat epsilon_value = ParseBigFloatRational(epsilon_sample);
+  std::map<std::string, BigFloat> bindings = {
+      {spec.variable, variable_value},
+      {"eps", epsilon_value},
+      {"d", BigFloat(4) - BigFloat(2) * epsilon_value},
+      {"dimension", BigFloat(4) - BigFloat(2) * epsilon_value},
+  };
+  if (!spec.finite_source_variable.empty()) {
+    bindings[spec.finite_source_variable] = variable_value;
+  }
+  return FiniteTransportExpressionParser(expression, std::move(bindings)).Parse();
+}
+
 BigComplex EvaluateFiniteTransportCoefficient(const DirectSolveSeriesSpec& spec,
                                               const std::size_t row,
                                               const std::size_t column,
@@ -3677,11 +3715,8 @@ BigComplex EvaluateFiniteTransportCoefficient(const DirectSolveSeriesSpec& spec,
     throw std::runtime_error("finite solution-sample transport coefficient matrix shape does not "
                              "match retained master count");
   }
-  return {FiniteTransportExpressionParser(
-              matrix_it->second[row][column],
-              {{spec.variable, variable_value},
-               {"eps", ParseBigFloatRational(epsilon_sample)}})
-              .Parse(),
+  return {EvaluateFiniteScalarExpression(
+              spec, matrix_it->second[row][column], variable_value, epsilon_sample),
           BigFloat(0)};
 }
 
@@ -3877,6 +3912,161 @@ std::vector<BigComplex> TransportFiniteSolutionSample(
   return state;
 }
 
+std::optional<std::filesystem::path> FiniteSolutionBasisReducerRootFromRulePath(
+    const std::filesystem::path& rule_path,
+    const std::string& family) {
+  if (rule_path.empty() || rule_path.filename() != "kira_target.m") {
+    return std::nullopt;
+  }
+  const std::filesystem::path family_dir = rule_path.parent_path();
+  if (family_dir.empty() || family_dir.filename() != family) {
+    return std::nullopt;
+  }
+  const std::filesystem::path results_dir = family_dir.parent_path();
+  if (results_dir.empty() || results_dir.filename() != "results") {
+    return std::nullopt;
+  }
+  return results_dir.parent_path();
+}
+
+int ReconstructFiniteSolutionBasisSamples(
+    const DirectSolveSeriesSpec& spec,
+    std::vector<std::string>& available_labels,
+    std::vector<std::vector<BigComplex>>& available_samples) {
+  if (spec.finite_solution_basis_reduction_path.empty()) {
+    return 0;
+  }
+  if (spec.targets.empty()) {
+    return 0;
+  }
+  if (available_labels.size() != available_samples.size()) {
+    throw std::runtime_error("finite solution-basis reconstruction label/sample mismatch");
+  }
+
+  std::map<std::string, std::size_t> available_by_label;
+  for (std::size_t index = 0; index < available_labels.size(); ++index) {
+    if (!available_by_label.emplace(available_labels[index], index).second) {
+      throw std::runtime_error("finite solution-basis reconstruction received duplicate "
+                               "available integral " +
+                               available_labels[index]);
+    }
+  }
+
+  std::vector<std::string> requested_labels;
+  requested_labels.reserve(spec.targets.size());
+  for (const amflow::TargetIntegral& target : spec.targets) {
+    requested_labels.push_back(target.Label());
+  }
+
+  const std::optional<std::filesystem::path> reducer_root =
+      FiniteSolutionBasisReducerRootFromRulePath(
+          spec.finite_solution_basis_reduction_path,
+          spec.family);
+  if (!reducer_root.has_value()) {
+    throw std::runtime_error("finite solution-basis reduction path must point to "
+                             "results/<family>/kira_target.m");
+  }
+  amflow::KiraBackend backend;
+  const amflow::ParsedReductionResult reduction_result =
+      backend.ParseReductionResult(*reducer_root, spec.family);
+  if (reduction_result.rules.empty()) {
+    throw std::runtime_error("finite solution-basis reduction has no rules");
+  }
+
+  const BigFloat target_location =
+      ParseFiniteLocationValue(spec.variable, spec.target_location);
+  int reconstructed_count = 0;
+  bool made_progress = true;
+  while (made_progress) {
+    made_progress = false;
+    for (const std::string& requested_label : requested_labels) {
+      if (available_by_label.find(requested_label) != available_by_label.end()) {
+        continue;
+      }
+
+      const amflow::ParsedReductionRule* reconstruction_rule = nullptr;
+      const amflow::ParsedReductionTerm* missing_term = nullptr;
+      for (const amflow::ParsedReductionRule& rule : reduction_result.rules) {
+        const auto source_it = available_by_label.find(rule.target.Label());
+        if (source_it == available_by_label.end()) {
+          continue;
+        }
+        const amflow::ParsedReductionTerm* candidate_missing_term = nullptr;
+        bool all_other_terms_available = true;
+        for (const amflow::ParsedReductionTerm& term : rule.terms) {
+          const std::string term_label = term.master.Label();
+          if (term_label == requested_label) {
+            if (candidate_missing_term != nullptr) {
+              all_other_terms_available = false;
+              break;
+            }
+            candidate_missing_term = &term;
+            continue;
+          }
+          if (available_by_label.find(term_label) == available_by_label.end()) {
+            all_other_terms_available = false;
+            break;
+          }
+        }
+        if (candidate_missing_term != nullptr && all_other_terms_available) {
+          reconstruction_rule = &rule;
+          missing_term = candidate_missing_term;
+          break;
+        }
+      }
+      if (reconstruction_rule == nullptr || missing_term == nullptr) {
+        continue;
+      }
+
+      const std::size_t sample_count = spec.boundary_epsilon_samples.size();
+      std::vector<BigComplex> reconstructed(sample_count);
+      const std::size_t source_index =
+          available_by_label.at(reconstruction_rule->target.Label());
+      if (available_samples[source_index].size() != sample_count) {
+        throw std::runtime_error("finite solution-basis source sample count mismatch for " +
+                                 reconstruction_rule->target.Label());
+      }
+      for (std::size_t sample_index = 0; sample_index < sample_count; ++sample_index) {
+        BigComplex value = available_samples[source_index][sample_index];
+        for (const amflow::ParsedReductionTerm& term : reconstruction_rule->terms) {
+          const std::string term_label = term.master.Label();
+          if (term_label == requested_label) {
+            continue;
+          }
+          const std::size_t known_index = available_by_label.at(term_label);
+          if (available_samples[known_index].size() != sample_count) {
+            throw std::runtime_error("finite solution-basis known sample count mismatch for " +
+                                     term_label);
+          }
+          const BigFloat coefficient =
+              EvaluateFiniteScalarExpression(spec,
+                                             term.coefficient,
+                                             target_location,
+                                             spec.boundary_epsilon_samples[sample_index]);
+          value = value - available_samples[known_index][sample_index] * coefficient;
+        }
+        const BigFloat missing_coefficient =
+            EvaluateFiniteScalarExpression(spec,
+                                           missing_term->coefficient,
+                                           target_location,
+                                           spec.boundary_epsilon_samples[sample_index]);
+        if (IsTiny(missing_coefficient)) {
+          throw std::runtime_error("finite solution-basis reconstruction divides by zero for " +
+                                   requested_label);
+        }
+        reconstructed[sample_index] = value / missing_coefficient;
+      }
+
+      available_by_label[requested_label] = available_labels.size();
+      available_labels.push_back(requested_label);
+      available_samples.push_back(std::move(reconstructed));
+      ++reconstructed_count;
+      made_progress = true;
+    }
+  }
+  return reconstructed_count;
+}
+
 amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
     const DirectSolveSeriesSpec& direct_spec,
     const int requested_epsilon_order) {
@@ -3965,6 +4155,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
     output_labels = master_labels;
   }
 
+  const int reconstructed_finite_output_count =
+      ReconstructFiniteSolutionBasisSamples(direct_spec, master_labels, master_samples);
+
   diagnostics.target_epsilon_coefficients.reserve(output_labels.size());
   diagnostics.target_values.reserve(output_labels.size());
 
@@ -4022,6 +4215,11 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
       diagnostics.summary +=
           " Applied finite-start differential-equation transport from retained solution "
           "samples to the requested target point.";
+      if (reconstructed_finite_output_count > 0) {
+        diagnostics.summary +=
+            " Reconstructed " + std::to_string(reconstructed_finite_output_count) +
+            " solution-basis output integral(s) from the retained Kira relation.";
+      }
     } else {
       diagnostics.summary +=
           " Start and target finite locations match, so retained solution-sample cache "
@@ -4701,8 +4899,12 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                "deferred after retained loop solution-sample coefficient "
                                "fitting"
                          : finite_transport_applied
-                             ? "solution-only integrals outside the transported finite DE "
-                               "master basis remain deferred"
+                             ? (direct_spec.finite_solution_basis_reduction_path.empty()
+                                    ? "solution-only integrals outside the transported finite "
+                                      "DE master basis remain deferred"
+                                    : "full live finite-start boundary solving remains "
+                                      "deferred after retained finite DE transport and "
+                                      "solution-basis reconstruction")
                              : "full AMFlow loop-boundary reconstruction and endpoint "
                                "contour execution remain deferred after retained finite "
                                "solution-sample ingestion")

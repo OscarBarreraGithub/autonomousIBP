@@ -339,6 +339,7 @@ def extract_finite_solution_state(diffeq_file: Path,
                                   solution_file: Path,
                                   *,
                                   run_file: Path | None,
+                                  solution_basis_reduction_path: Path | None,
                                   benchmark_id: str,
                                   variable: str,
                                   source_variable: str,
@@ -388,6 +389,10 @@ def extract_finite_solution_state(diffeq_file: Path,
           "metadata_source": str(run_file) if run_file is not None else "explicit_cli",
           "diffeq_masters": diffeq_masters,
           "output_integrals": output_masters,
+          "solution_basis_reduction_path": (
+              str(solution_basis_reduction_path)
+              if solution_basis_reduction_path is not None else ""
+          ),
       },
       "boundary_state": {
           "kind": "amflow_finite_solution_samples",
@@ -402,7 +407,7 @@ def extract_finite_solution_state(diffeq_file: Path,
           "source": "retained_finite_solution_boundary_samples",
       },
       "reduction": {
-          "targets": diffeq_masters,
+          "targets": output_masters,
           "masters": diffeq_masters,
           "target_reduction_path": "",
       },
@@ -411,8 +416,8 @@ def extract_finite_solution_state(diffeq_file: Path,
           "reason": (
               "The retained differential_equation_solver state has finite AMFlow solution "
               "samples at the DESolver start point. C++ solve-series transports the retained "
-              "DE-master samples to the requested finite target point; solution-only outputs "
-              "outside that DE basis remain deferred."
+              "DE-master samples to the requested finite target point and reconstructs retained "
+              "solution-basis outputs when a reviewed Kira relation is provided."
           ),
       },
   }
@@ -676,6 +681,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
   parser.add_argument("--finite-diffeq-file", type=Path)
   parser.add_argument("--finite-solution-file", type=Path)
   parser.add_argument("--finite-run-file", type=Path)
+  parser.add_argument("--finite-solution-basis-reduction-path", type=Path)
   parser.add_argument("--finite-source-variable", default="s")
   parser.add_argument("--start-location")
   parser.add_argument("--target-location")
@@ -714,6 +720,7 @@ def main(argv: list[str]) -> int:
           args.finite_diffeq_file,
           args.finite_solution_file,
           run_file=args.finite_run_file,
+          solution_basis_reduction_path=args.finite_solution_basis_reduction_path,
           benchmark_id=args.benchmark_id,
           variable=args.variable,
           source_variable=args.finite_source_variable,

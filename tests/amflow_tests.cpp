@@ -48956,6 +48956,153 @@ void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
                  "finite solution-sample ingestion should report success");
 }
 
+void SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-finite-solution-basis-reconstruction");
+  const std::filesystem::path state_path = run_root / "finite-state.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path reducer_family_dir = run_root / "reducer/results/toy";
+  std::filesystem::create_directories(reducer_family_dir);
+  OverwriteTextFile(reducer_family_dir / "masters",
+                    "toy[1] # 7\n"
+                    "toy[3] # 7\n");
+  OverwriteTextFile(reducer_family_dir / "kira_target.m",
+                    "{\n"
+                    "toy[2] -> \n"
+                    " + toy[3]*(2)\n"
+                    " + toy[1]*(3)\n"
+                    "}\n");
+
+  OverwriteTextFile(
+      state_path,
+      "{\n"
+      "  \"schema_version\": 1,\n"
+      "  \"kind\": \"amflow_solve_series_state\",\n"
+      "  \"benchmark_id\": \"finite_solution_basis_reconstruction\",\n"
+      "  \"family\": \"toy\",\n"
+      "  \"integral_kind\": \"loop\",\n"
+      "  \"variable\": \"eta\",\n"
+      "  \"start_location\": \"eta=0\",\n"
+      "  \"target_location\": \"eta=1\",\n"
+      "  \"masters\": [\n"
+      "    {\"family\": \"toy\", \"indices\": [1]},\n"
+      "    {\"family\": \"toy\", \"indices\": [2]}\n"
+      "  ],\n"
+      "  \"coefficient_matrices\": {\n"
+      "    \"eta\": [[\"0\", \"0\"], [\"0\", \"0\"]]\n"
+      "  },\n"
+      "  \"finite_start\": {\n"
+      "    \"source_variable\": \"s\",\n"
+      "    \"solution_basis_reduction_path\": \"" +
+          (reducer_family_dir / "kira_target.m").string() + "\",\n"
+      "    \"output_integrals\": [\n"
+      "      {\"family\": \"toy\", \"indices\": [1]},\n"
+      "      {\"family\": \"toy\", \"indices\": [2]},\n"
+      "      {\"family\": \"toy\", \"indices\": [3]}\n"
+      "    ]\n"
+      "  },\n"
+      "  \"boundary_state\": {\n"
+      "    \"kind\": \"amflow_finite_solution_samples\",\n"
+      "    \"epsilon_samples\": [\"1/100\"],\n"
+      "    \"files\": {\n"
+      "      \"solution\": {\n"
+      "        \"raw\": \"{j[toy, 1] -> {4}, j[toy, 2] -> {20}}\"\n"
+      "      }\n"
+      "    }\n"
+      "  },\n"
+      "  \"reduction\": {\n"
+      "    \"targets\": [\n"
+      "      {\"family\": \"toy\", \"indices\": [1]},\n"
+      "      {\"family\": \"toy\", \"indices\": [2]},\n"
+      "      {\"family\": \"toy\", \"indices\": [3]}\n"
+      "    ]\n"
+      "  }\n"
+      "}\n");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "finite solution-basis reconstruction should complete; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"toy[3]\"",
+                 "finite solution-basis reconstruction should emit the requested output");
+  ExpectContains(json, "\"exact_real\": \"4\"",
+                 "finite solution-basis reconstruction should invert the retained relation");
+  ExpectContains(json, "Reconstructed 1 solution-basis output integral",
+                 "finite solution-basis reconstruction should be visible in the summary");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "finite solution-basis reconstruction should report success");
+}
+
+void SolveSeriesCliRejectsUnreconstructedFiniteSolutionOutputTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-finite-solution-basis-rejects-missing-relation");
+  const std::filesystem::path state_path = run_root / "finite-state.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "schema_version": 1,
+  "kind": "amflow_solve_series_state",
+  "benchmark_id": "finite_solution_basis_missing_relation",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "eta=1",
+  "target_location": "eta=1",
+  "masters": [
+    {"family": "toy", "indices": [1]},
+    {"family": "toy", "indices": [2]}
+  ],
+  "coefficient_matrices": {
+    "eta": [["0", "0"], ["0", "0"]]
+  },
+  "boundary_state": {
+    "kind": "amflow_finite_solution_samples",
+    "epsilon_samples": ["1/100"],
+    "files": {
+      "solution": {
+        "raw": "{j[toy, 1] -> {4}, j[toy, 2] -> {20}}"
+      }
+    }
+  },
+  "reduction": {
+    "targets": [
+      {"family": "toy", "indices": [1]},
+      {"family": "toy", "indices": [2]},
+      {"family": "toy", "indices": [3]}
+    ]
+  }
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) != 0,
+         "finite solution-basis output without retained relation should fail closed");
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "outside the transported finite DE master basis",
+                 "finite solution-basis output without retained relation should preserve the "
+                 "explicit blocker");
+  ExpectContains(json, "\"status\": \"failed\"",
+                 "finite solution-basis output without retained relation should not fake a pass");
+}
+
 struct ReferenceHarnessSelfCheckRun {
   std::string stdout_json;
   std::string stderr_log;
@@ -54850,6 +54997,8 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
+    SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest();
+    SolveSeriesCliRejectsUnreconstructedFiniteSolutionOutputTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

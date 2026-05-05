@@ -29,7 +29,7 @@
     ]
   },
   "cpp_solve_series_ingest": {
-    "reason": "The retained differential_equation_solver state has finite AMFlow solution samples at the DESolver start point. C++ solve-series transports the retained DE-master samples to the requested finite target point; solution-only outputs outside that DE basis remain deferred.",
+    "reason": "The retained differential_equation_solver state has finite AMFlow solution samples at the DESolver start point. C++ solve-series transports the retained DE-master samples to the requested finite target point and reconstructs retained solution-basis outputs when a reviewed Kira relation is provided.",
     "supported": true
   },
   "family": "sunrise",
@@ -89,6 +89,7 @@
         ]
       }
     ],
+    "solution_basis_reduction_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/generated-config/phase0/differential_equation_solver/primary/cache/sunrise_amflow/0/results/sunrise/kira_target.m",
     "source_variable": "s"
   },
   "integral_kind": "loop",
@@ -143,6 +144,16 @@
       {
         "family": "sunrise",
         "indices": [
+          2,
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      {
+        "family": "sunrise",
+        "indices": [
           1,
           1,
           1,
@@ -153,10 +164,10 @@
       {
         "family": "sunrise",
         "indices": [
-          2,
           1,
           1,
-          0,
+          1,
+          -1,
           0
         ]
       }

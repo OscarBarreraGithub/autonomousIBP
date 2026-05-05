@@ -17,6 +17,7 @@ Milestone closure verdict: REJECT M5 closure and REJECT M6 closure.
 - Role inputs: `/tmp/autoibp_orch/exec/lane20_role_a_draft.md`, `/tmp/autoibp_orch/exec/lane20_role_b_independent.md`, `/tmp/autoibp_orch/exec/lane20_role_c_audit.md`.
 - Canonical docs: `docs/full-amflow-completion-roadmap.md`, `docs/verification-strategy.md`, `docs/implementation-ledger.md`, `references/case-studies/selected-benchmarks.md`, `specs/parity-matrix.yaml`, `docs/parity-contract.md`.
 - Probe summaries: `/tmp/autoibp_orch/exec/lane20_probe/*.compare.json` and matching `*.cpp.json`.
+- Lane21 forward-roll evidence: `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.cpp.json` and `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.compare.json`.
 
 ## Exact Acceptance Criteria
 
@@ -42,23 +43,23 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 
 ### M5 PASSING Criteria
 
-- `automatic_loop` retained-state C++/AMFlow parity is passing on the current narrow state surface. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_loop.eps3.compare.json` reports `passed=true`, `66/66`, `minimum_digit_agreement=41`, `tolerance_digits=30`. The ledger records the same retained endpoint transport evidence and explicitly limits it to the retained `automatic_loop` state surface (`docs/implementation-ledger.md:9`).
+- `automatic_loop` retained-state C++/AMFlow parity is passing on the current narrow state surface. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_loop.eps3.compare.json` reports `passed=true`, `66/66`, `minimum_digit_agreement=41`, `tolerance_digits=30`. The ledger records the same retained endpoint transport evidence and explicitly limits it to the retained `automatic_loop` state surface (`docs/implementation-ledger.md:10`).
 - `automatic_phasespace` retained-sample ingest comparison is passing as a narrow regression. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_phasespace.compare.json` reports `passed=true`, `11/11`, `minimum_digit_agreement=39`, `tolerance_digits=30`; the C++ summary says full phase-space boundary reconstruction from cut propagators remains deferred.
+- `differential_equation_solver` retained finite-start DE transport comparison is passing for the tracked `sol2` surface. Lane21 evidence: `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.compare.json` reports `passed=true`, `matched_integral_count=3`, `compared_coefficient_count=3`, `passed_coefficient_count=3`, `minimum_digit_agreement=30`, `tolerance_digits=30`, and no failures. The C++ summary in `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.cpp.json` says it applied finite-start differential-equation transport from retained solution samples to `eta=1/10` and reconstructed one solution-basis output integral from the retained Kira relation. This is a retained-state parity surface only; full live finite-start boundary solving remains deferred and does not close M5 by itself.
 
 ### M5 PARTIAL Criteria
 
 - `automatic_phasespace` is partial for true M5 because the passing evidence is retained sample ingestion, not full phase-space integration through the live solver path required by Phase F.
-- `differential_equation_solver` is partial/failing. The current C++ probe has status success and retained-sample cache ingestion, but `/tmp/autoibp_orch/exec/lane20_probe/differential_equation_solver.compare.json` reports `passed=false` because one AMFlow integral is missing, despite `2/2` compared coefficients passing at 41 digits. The C++ summary says full finite-start DE transport remains deferred.
 - `linear_propagator` is partial/failing. The current C++ probe has status success and retained solution-sample ingestion, but `/tmp/autoibp_orch/exec/lane20_probe/linear_propagator.compare.json` reports `passed=false`, `29/57`, `minimum_digit_agreement=15`, with many positive-epsilon gauge-link rows below the 30-digit tolerance.
-- `complex_kinematics` is partial/TODO. The retained reference golden is reviewed, but the ledger records it as reference capture only and does not claim C++ runtime parity (`docs/implementation-ledger.md:17`).
+- `complex_kinematics` is partial/TODO. The retained reference golden is reviewed, but the ledger records it as reference capture only and does not claim C++ runtime parity (`docs/implementation-ledger.md:18`).
 - `spacetime_dimension` / arbitrary `D0` is partial/TODO. Optional captured evidence exists, but the Phase F live-path arbitrary-D0 gate remains unclosed.
 - User-defined `AMFMode` and `EndingScheme` are partial/TODO. Optional retained captures and planning surfaces exist, but there is no accepted coefficient-bearing C++ parity packet for those execution paths.
 - Singular-kinematics guardrails are partial. Multiple guardrail slices exist, but Phase F requires the first physical-region subset through live runtime evidence, and later docs still preserve singular blockers.
 
 ### M5 FAILING Criteria
 
-- `automatic_vs_manual` is failing. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_vs_manual.cpp.json` has `status="failed"` with `solve-series requires an embedded solve_series direct-solver block; plain ProblemSpec files do not carry a DE system or boundary conditions`. The ledger records the same blocked C++ validation as `0/86` explicit AMFlow coefficients passing (`docs/implementation-ledger.md:12`).
-- `feynman_prescription` is failing as a closure input because its reference is still partial progress, not a promoted reference-captured golden. The ledger says primary `sol1`/`sol2` were captured, but rerun timed out before `sol2`, backup comparison, rerun comparison, or promotion, and explicitly blocks completed-golden approval (`docs/implementation-ledger.md:11`).
+- `automatic_vs_manual` is failing. Lane20 probe evidence: `/tmp/autoibp_orch/exec/lane20_probe/automatic_vs_manual.cpp.json` has `status="failed"` with `solve-series requires an embedded solve_series direct-solver block; plain ProblemSpec files do not carry a DE system or boundary conditions`. The ledger records the same blocked C++ validation as `0/86` explicit AMFlow coefficients passing (`docs/implementation-ledger.md:13`).
+- `feynman_prescription` is failing as a closure input because its reference is still partial progress, not a promoted reference-captured golden. The ledger says primary `sol1`/`sol2` were captured, but rerun timed out before `sol2`, backup comparison, rerun comparison, or promotion, and explicitly blocks completed-golden approval (`docs/implementation-ledger.md:12`).
 - The lane12 packet-wide baseline remains failing: `54/217` promoted/reference-captured coefficients pass at 30 digits, with `automatic_vs_manual`, `automatic_phasespace`, `complex_kinematics`, `differential_equation_solver`, and `linear_propagator` counted as missing or partial C++ implementation coverage at that time (`docs/phase0-packet-validation-lane12.md:26-30`). Newer lane20 probes improve some rows but do not establish full M5 closure.
 
 ### M5 TODO Criteria
@@ -66,7 +67,7 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 - Add live solver-path or accepted retained-state comparator surfaces for `complex_kinematics`, `spacetime_dimension`, user hooks, and fixed-`eps`.
 - Promote `feynman_prescription` from partial-progress capture to reviewed golden and then add C++ comparison.
 - Replace `automatic_vs_manual`'s failed plain-ProblemSpec path with a real solve-series state/direct-runtime path.
-- Finish numeric parity for `linear_propagator` and the missing integral in `differential_equation_solver`.
+- Finish numeric parity for `linear_propagator`; keep the Lane21 `differential_equation_solver` retained sol2 comparison as a regression while broader live finite-start solving remains outside this retained-state slice.
 - Add the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, or metadata-only feature slices.
 
 M5 overall status: PARTIAL/FAILING, not closeable.
@@ -103,7 +104,7 @@ M6 overall status: TODO/FAILING, not closeable.
 
 1. Promote `feynman_prescription` reference golden. Resume the existing capture with longer walltime until primary, backup, and rerun comparisons pass; replace the partial-progress pointer only after `backup_match_ok=true` and `rerun_match_ok=true`.
 2. Fix `automatic_vs_manual` C++ parity. Add a retained AMFlow-state JSON or reviewed direct `solve_series` path for the upstream `tt` benchmark and drive the comparator from `0/86` to `86/86` without hardcoding coefficients or weakening tolerance.
-3. Finish the retained-state/direct runtime surfaces for `complex_kinematics`, `spacetime_dimension`, `differential_equation_solver`, `user_defined_amfmode`, and `user_defined_ending`. Keep structural outputs separate from solve-series numeric comparison.
+3. Finish the retained-state/direct runtime surfaces for `complex_kinematics`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`; keep the Lane21 `differential_equation_solver` retained sol2 comparison passing as a regression. Keep structural outputs separate from solve-series numeric comparison.
 4. Complete `linear_propagator` numeric parity. The current parser/runtime reaches a C++ result, but the comparator fails at `29/57` and minimum 15 digits; fix the gauge-link rows below tolerance and rerun against `linear_propagator.golden-manifest.json`.
 5. Turn `automatic_phasespace` retained-sample parity into accepted M5 phase-space support. Keep the `11/11` comparison as a regression, then land the smallest live Cutkosky/prescription runtime slice needed for Phase F.
 6. Close fixed-`eps`, arbitrary-D0, and singular physical-region runtime gaps with coefficient-bearing evidence or explicitly reviewed typed-failure acceptance where the contract allows it.
@@ -119,7 +120,7 @@ Worker 1, `feynman_prescription` reference promotion: Resume the existing upstre
 
 Worker 2, `automatic_vs_manual` C++ parity: Replace the current failed plain-ProblemSpec probe with a real coefficient-bearing C++ solve-series surface for the upstream `tt` benchmark (`s=30`, `t=-10/3`, `msq=1`). Either extract a retained AMFlow-state JSON or implement a reviewed direct `solve_series` runtime/spec path, preserve automatic/manual family aliasing, and compare against `automatic_vs_manual.golden-manifest.json` at unchanged 30-digit tolerance. Target `86/86`, and add tests that fail on fallback/no-DE input rather than silently producing a pass.
 
-Worker 3, complex/D0/DE coverage: Add tracked, reviewed C++ comparison surfaces for `complex_kinematics`, `spacetime_dimension`, and `differential_equation_solver`. For DE solver, preserve `redtable`/`diffeq` as structural golden outputs and compare only the intended numeric solve-series output; the current lane20 DE probe still fails because an AMFlow integral is missing. Record exact denominators, pass counts, and minimum digit agreement, and add fail-closed tests for missing state, malformed state, and profile drift.
+Worker 3, complex/D0/DE coverage: Add tracked, reviewed C++ comparison surfaces for `complex_kinematics` and `spacetime_dimension`, and preserve the Lane21 `differential_equation_solver` retained sol2 regression. For DE solver, `redtable`/`diffeq` stay structural golden outputs while `tools/reference-harness/specs/phase0/differential_equation_solver.sol2-golden-manifest.json` is the numeric solve-series comparison surface; Lane21 repaired the missing AMFlow integral by reconstructing the retained solution-basis output from the reviewed Kira relation. Future workers should record exact denominators, pass counts, and minimum digit agreement, and add fail-closed tests for missing state, malformed state, and profile drift.
 
 Worker 4, `linear_propagator` parity: Start from the current lane20 state where the C++ result succeeds but comparator parity fails at `29/57` with many positive-epsilon gauge-link rows under 30 digits. Audit retained solution-sample fitting, gauge-link reduction, family aliases, and positive-epsilon transport before changing tolerances. Land the smallest numeric repair that raises every compared coefficient above threshold, preserve the old `gaugex->1` parser regression if it still applies, and enumerate any remaining missing rows if full parity is not reached.
 

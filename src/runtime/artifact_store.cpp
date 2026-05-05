@@ -206,6 +206,26 @@ void WriteStringVector(std::ostringstream& out,
   }
 }
 
+void WriteRationalMatrix(std::ostringstream& out,
+                         const std::string& key,
+                         const ExactRationalMatrix& matrix,
+                         const int indent = 0) {
+  if (matrix.empty()) {
+    return;
+  }
+  out << std::string(static_cast<std::size_t>(indent), ' ') << key << ":\n";
+  for (const auto& row : matrix) {
+    out << std::string(static_cast<std::size_t>(indent + 2), ' ') << "- [";
+    for (std::size_t column = 0; column < row.size(); ++column) {
+      if (column > 0) {
+        out << ", ";
+      }
+      out << Quote(row[column].ToString());
+    }
+    out << "]\n";
+  }
+}
+
 std::filesystem::path CacheRootFromLayout(const ArtifactLayout& layout) {
   return layout.cache_dir.empty() ? layout.root / "cache" : layout.cache_dir;
 }
@@ -634,6 +654,78 @@ std::filesystem::path WriteEtaContinuationPlanManifest(
       std::error_code cleanup_error;
       std::filesystem::remove(temp_path, cleanup_error);
       throw std::runtime_error("failed to write eta continuation plan manifest: " +
+                               temp_path.string());
+    }
+  }
+
+  try {
+    std::filesystem::rename(temp_path, path);
+  } catch (...) {
+    std::error_code cleanup_error;
+    std::filesystem::remove(temp_path, cleanup_error);
+    throw;
+  }
+  return path;
+}
+
+EtaEndpointLocalModelManifest MakeEtaEndpointLocalModelManifest(
+    const EtaEndpointLocalModel& model,
+    const std::string& run_id) {
+  EtaEndpointLocalModelManifest manifest;
+  if (!run_id.empty()) {
+    ValidateManifestRunId(run_id, "eta endpoint local-model manifest");
+    manifest.run_id = run_id;
+  }
+  manifest.model = model;
+  return manifest;
+}
+
+std::string SerializeEtaEndpointLocalModelManifestYaml(
+    const EtaEndpointLocalModelManifest& manifest) {
+  std::ostringstream out;
+  WriteQuotedLine(out, "manifest_kind", manifest.manifest_kind);
+  WriteQuotedLine(out, "run_id", manifest.run_id);
+  out << "model:\n";
+  WriteQuotedLine(out, "eta_symbol", manifest.model.eta_symbol, 2);
+  WriteQuotedLine(out, "endpoint_expression", manifest.model.endpoint_expression, 2);
+  WriteQuotedLine(out, "endpoint_value", manifest.model.endpoint_value.ToString(), 2);
+  WriteQuotedLine(out, "half_plane", ToString(manifest.model.half_plane), 2);
+  WriteQuotedLine(out, "contour_fingerprint", manifest.model.contour_fingerprint, 2);
+  WriteQuotedLine(out, "local_model_kind", manifest.model.local_model_kind, 2);
+  WriteIntegerLine(out, "extraction_order", manifest.model.extraction_order, 2);
+  WriteBoolLine(out, "branch_sensitive", manifest.model.branch_sensitive, 2);
+  WriteBoolLine(out,
+                "live_endpoint_extraction_ready",
+                manifest.model.live_endpoint_extraction_ready,
+                2);
+  WriteStringVector(out, "indicial_exponents", manifest.model.indicial_exponents, 2);
+  WriteRationalMatrix(out, "residue_matrix", manifest.model.residue_matrix, 2);
+  WriteStringVector(out, "basis_functions", manifest.model.basis_functions, 2);
+  return out.str();
+}
+
+std::filesystem::path WriteEtaEndpointLocalModelManifest(
+    const ArtifactLayout& layout,
+    const EtaEndpointLocalModelManifest& manifest) {
+  ValidateManifestRunId(manifest.run_id, "eta endpoint local-model manifest");
+  const std::filesystem::path path = layout.manifests_dir / (manifest.run_id + ".yaml");
+  std::filesystem::create_directories(path.parent_path());
+  const std::filesystem::path temp_path = AtomicTempPathFor(path);
+  const std::string serialized = SerializeEtaEndpointLocalModelManifestYaml(manifest);
+
+  {
+    std::ofstream stream(temp_path, std::ios::trunc);
+    if (!stream) {
+      throw std::runtime_error("failed to open eta endpoint local-model manifest for writing: " +
+                               temp_path.string());
+    }
+
+    stream << serialized;
+    stream.flush();
+    if (!stream) {
+      std::error_code cleanup_error;
+      std::filesystem::remove(temp_path, cleanup_error);
+      throw std::runtime_error("failed to write eta endpoint local-model manifest: " +
                                temp_path.string());
     }
   }

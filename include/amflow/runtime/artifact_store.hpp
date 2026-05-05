@@ -6,6 +6,7 @@
 #include <string>
 
 #include "amflow/runtime/continuation_path.hpp"
+#include "amflow/runtime/endpoint_local_model.hpp"
 
 namespace amflow {
 
@@ -100,6 +101,12 @@ struct EtaContinuationPlanManifest {
   EtaContinuationPlan plan;
 };
 
+struct EtaEndpointLocalModelManifest {
+  std::string manifest_kind = "eta-endpoint-local-model";
+  std::string run_id = "eta-endpoint-local-model";
+  EtaEndpointLocalModel model;
+};
+
 ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root);
 CommandLogPaths MakeCommandLogPaths(const ArtifactLayout& layout,
                                     const std::string& command_name);
@@ -125,5 +132,13 @@ std::string SerializeEtaContinuationPlanManifestYaml(
 std::filesystem::path WriteEtaContinuationPlanManifest(
     const ArtifactLayout& layout,
     const EtaContinuationPlanManifest& manifest);
+EtaEndpointLocalModelManifest MakeEtaEndpointLocalModelManifest(
+    const EtaEndpointLocalModel& model,
+    const std::string& run_id = "eta-endpoint-local-model");
+std::string SerializeEtaEndpointLocalModelManifestYaml(
+    const EtaEndpointLocalModelManifest& manifest);
+std::filesystem::path WriteEtaEndpointLocalModelManifest(
+    const ArtifactLayout& layout,
+    const EtaEndpointLocalModelManifest& manifest);
 
 }  // namespace amflow

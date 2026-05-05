@@ -1,26 +1,27 @@
 {
   "benchmark_id": "automatic_loop",
-  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-lane104-eps26p60chop40/amflow/examples/automatic_loop",
   "notes": [
-    "AMFlow eps24 reference pointer for automatic_loop comparator audits, captured with epsorder = 26 on 2026-05-05.",
-    "This manifest intentionally points at the same fresh epsorder=26 sol1/sol2 outputs as automatic_loop.eps23-golden-manifest.json, but names the eps^24 validation surface explicitly.",
-    "SLURM job 10256314 completed on holy7c10105.rc.fas.harvard.edu partition shared using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
-    "The work-eps26 tree was copied from work-eps24, then automatic_loop copied sol outputs, copied cache state, and copied logs were removed before running; run.wl was changed to epsorder = 26.",
-    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/logs/cap-autoloop-eps26.10256314.out with sha256 afeabb38106cb0a2cb420ece194938c8be347dc8cda0fbfd4be4da3b37f33a21; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
-    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T14:47:19-04:00 to 2026-05-05T14:56:33-04:00; sacct reported COMPLETED|0:0|00:09:22.",
-    "For this leading eps^-2 one-loop benchmark, epsorder = 26 printed coefficients through positive eps^24; both sol1 and sol2 contain explicit eps^24 coefficients.",
+    "AMFlow eps24 reference pointer for automatic_loop comparator audits, recaptured for lane 104 with epsorder = 26, precision = 60, and ChopPre = 40 on 2026-05-05.",
+    "This manifest intentionally names the eps^24 validation surface explicitly; automatic_loop.eps23-golden-manifest.json remains pointed at the original epsorder=26 precision=40 capture.",
+    "Direct run completed on holy7c04109.rc.fas.harvard.edu using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-lane104-eps26p60chop40 tree was copied from work-lane104-eps26p60, run.wl was changed to SetAMFOptions[\"ChopPre\" -> 40] while retaining precision = 60 and epsorder = 26, and sol1/sol2 were removed before running.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-lane104-eps26p60chop40/logs/lane104-eps26p60chop40-direct.out with sha256 ae12c26d516602c0a9c48d3ece6ca506746ff323ebe0ec392b9523b0f4c129fa.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T15:59:08-04:00 to 2026-05-05T16:07:52-04:00.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 26 printed coefficients through positive eps^24; the higher ChopPre retains the box1[2,0,1,0] eps^24 imaginary component -8.2882814254017407629361363057551110247730959449380928455*^-22 instead of chopping it to zero.",
     "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12, eps^9: 12, eps^10: 12, eps^11: 12, eps^12: 12, eps^13: 12, eps^14: 12, eps^15: 12, eps^16: 12, eps^17: 12, eps^18: 12, eps^19: 12, eps^20: 12, eps^21: 12, eps^22: 12, eps^23: 12, eps^24: 12.",
-    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 636 Decimal real/imag components; sol1 contained 260 Mathematica precision marks, sol2 contained 261, and all eps^23/eps^24 components parsed as numeric, nonzero pairs, and distinct from lower-order coefficients for the same integral.",
-    "sol1 sha256 3f5069deb3a61255f2244182d95c76b4eab8883a2019274518a5a0006d44078a; sol2 sha256 e711b922a2b39c9146538ce8887d95e9ed9ac21b731f1624fd5ed5d75efb2ff6."
+    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 636 Decimal real/imag components; sol1 contained 261 Mathematica precision marks, sol2 contained 261, and all eps^23/eps^24 components parsed as numeric, nonzero pairs, and distinct from lower-order coefficients for the same integral.",
+    "Fresh comparator with --tolerance-digits 30 passed 318/318 compared coefficients with minimum digit agreement 41.",
+    "sol1 sha256 ce4843bc7d66829e8301ac86f1df776de1f0b37977db128983298e5a98cc0c4e; sol2 sha256 e795c60f5c2b8cd39cddbfc6c8bf8bc73890ebdbf48d5a994e09dff6e7e52f21."
   ],
   "outputs": [
     {
       "name": "sol1",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop/sol1"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-lane104-eps26p60chop40/amflow/examples/automatic_loop/sol1"
     },
     {
       "name": "sol2",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps26/amflow/examples/automatic_loop/sol2"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-lane104-eps26p60chop40/amflow/examples/automatic_loop/sol2"
     }
   ],
   "schema_version": 1

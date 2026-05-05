@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "case_study_id": "single-top-planar-nonplanar",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 57,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow",
+  "benchmark_id": "automatic_loop",
+  "selected_benchmark_anchor_ref": "2023-single-top-planar-nonplanar-topologies",
+  "case_study_family_rationale": "The single-top-planar-nonplanar case-study family is a default-floor literature-anchor row whose selected benchmark uses auxiliary-mass-flow numerics and cross-checks against AMFlow and pySecDec. No dedicated single-top literature packet is frozen in this repository yet, so this evidence uses the retained automatic_loop eps^12 matrix proxy: a fresh C++ solve-series replay against the epsorder=14 AMFlow sol1/sol2 manifest. This adds a real 50-digit comparator-backed M6 family row without claiming a dedicated single-top packet.",
+  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps12-golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 12 --digits 80 --out tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps12-golden-manifest.json --tolerance-digits 50",
+  "coverage_summary": {
+    "selected_case_study_family_count": 10,
+    "passing_family_count_before_this_lane": 6,
+    "passing_family_count_after_this_lane": 7,
+    "passing_fraction_after_this_lane": "7/10",
+    "passing_fraction_after_this_lane_percent": 70
+  },
+  "comparison_summary": {
+    "matched_integral_count": 12,
+    "compared_coefficient_count": 174,
+    "passed_coefficient_count": 174,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 57,
+    "tolerance_digits": 50
+  },
+  "withheld_claims": [
+    "This sidecar qualifies only the single-top-planar-nonplanar case-study family numeric row.",
+    "This sidecar does not freeze or claim a dedicated single-top literature packet.",
+    "This sidecar does not provide numeric evidence for all remaining M6 case-study families.",
+    "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
+    "This sidecar does not claim Milestone M6 closure."
+  ]
+}

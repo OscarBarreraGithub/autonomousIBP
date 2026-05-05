@@ -468,15 +468,23 @@ def extract_state(system_dir: Path,
   phase_space_prescription = parse_integer_assignment_list(raw_config, "Prescription")
   phase_space_cut = parse_integer_assignment_list(raw_config, "Cut")
   phase_space_payload = None
+  solution_path = system_dir / "solution"
+  solution_output_masters = parse_solution_output_masters(solution_path)
   if phase_space_prescription or phase_space_cut:
     output_masters = parse_globalpreferred_output_masters(system_dir / "globalpreferred")
     if not output_masters:
-      output_masters = parse_solution_output_masters(system_dir / "solution")
+      output_masters = solution_output_masters
     phase_space_payload = {
         "prescription": phase_space_prescription,
         "cut": phase_space_cut,
         "output_masters": output_masters,
       }
+  retained_loop_solution_payload = None
+  if benchmark_id == "complex_kinematics" and solution_output_masters:
+    retained_loop_solution_payload = {
+        "enabled": True,
+        "source": "retained_complex_kinematics_solution_samples",
+    }
 
   reduction_targets: list[dict[str, Any]] = []
   reduction_masters: list[dict[str, Any]] = []
@@ -505,6 +513,16 @@ def extract_state(system_dir: Path,
         "solution samples and apply retained target reduction; full Cutkosky "
         "phase-space boundary reconstruction from cut propagators remains deferred."
     )
+  elif retained_loop_solution_payload is not None:
+    cpp_ingest_supported = True
+    cpp_ingest_reason = (
+        "The retained complex_kinematics loop state carries final complex solution "
+        "epsilon samples. C++ solve-series can fit those retained solution samples "
+        "directly; full complex eta-contour endpoint reconstruction remains deferred."
+    )
+    reduction_targets = solution_output_masters
+    reduction_masters = solution_output_masters
+    target_reduction_path = ""
 
   return {
       "schema_version": 1,
@@ -530,6 +548,7 @@ def extract_state(system_dir: Path,
           "files": {path.name: raw_file_payload(path) for path in retained_state_files},
       },
       **({"phase_space": phase_space_payload} if phase_space_payload is not None else {}),
+      **({"solution_sample_cache": retained_loop_solution_payload} if retained_loop_solution_payload is not None else {}),
       "reduction": {
           "targets": reduction_targets,
           "masters": reduction_masters,

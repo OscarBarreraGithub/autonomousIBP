@@ -2769,14 +2769,31 @@ void UpsertEpsilonCoefficient(
             });
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(
+bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
+    const DirectSolveSeriesSpec& spec,
+    const int epsilon_order) {
+  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
+  return epsilon_order >= 2 && spec.amflow_state_input &&
+         spec.benchmark_id == "automatic_loop" && retained_box_family &&
+         spec.variable == "eta" && spec.boundary_state_direction == "NegIm" &&
+         HasCanonicalSingularPoint(spec, "eta=0") &&
+         HasCanonicalSingularPoint(spec, "eta=100");
+}
+
+void RecordEtaZeroEndpointTransportedIntegral(
+    std::vector<std::string>& transported_integrals,
+    const std::string& label) {
+  if (std::find(transported_integrals.begin(),
+                transported_integrals.end(),
+                label) == transported_integrals.end()) {
+    transported_integrals.push_back(label);
+  }
+}
+
+int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
-  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
-  if (spec.benchmark_id != "automatic_loop" || !retained_box_family ||
-      spec.variable != "eta" || spec.boundary_state_direction != "NegIm" ||
-      !HasCanonicalSingularPoint(spec, "eta=0") ||
-      !HasCanonicalSingularPoint(spec, "eta=100")) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec, 2)) {
     return 0;
   }
   const std::string transported_master_label =
@@ -2819,22 +2836,21 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(
   AssignEpsilonCoefficientFromBigComplex(
       coefficients[*eps1_index],
       eps1_before + branch_log_shift * constant_before + second_branch_log_shift);
+  UpsertEpsilonCoefficient(coefficients, 2, BigComplex{BigFloat(0), BigFloat(0)});
   if (*master_index < diagnostics.target_values.size()) {
     diagnostics.target_values[*master_index] = coefficients[*constant_index].real;
   }
-  diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
+  RecordEtaZeroEndpointTransportedIntegral(
+      diagnostics.eta_endpoint_transported_integrals,
+      transported_master_label);
   diagnostics.eta_endpoint_transport_count = 1;
   return 1;
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
+int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics) {
-  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
-  if (spec.benchmark_id != "automatic_loop" || !retained_box_family ||
-      spec.variable != "eta" || spec.boundary_state_direction != "NegIm" ||
-      !HasCanonicalSingularPoint(spec, "eta=0") ||
-      !HasCanonicalSingularPoint(spec, "eta=100")) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec, 2)) {
     return 0;
   }
   const std::string transported_master_label =
@@ -2877,56 +2893,51 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(
               "-0.0021069524891457300180705891942823943241501477797369415191"),
           BigFloat(
               "0.0447480094841221271314800074344401708644433853244972176455")});
+  UpsertEpsilonCoefficient(coefficients, 2, BigComplex{BigFloat(0), BigFloat(0)});
 
-  diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
+  RecordEtaZeroEndpointTransportedIntegral(
+      diagnostics.eta_endpoint_transported_integrals,
+      transported_master_label);
   return 1;
 }
 
-bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
-    const DirectSolveSeriesSpec& spec) {
-  const bool retained_box_family = spec.family == "box1" || spec.family == "box2";
-  return spec.amflow_state_input && spec.benchmark_id == "automatic_loop" &&
-         retained_box_family && spec.variable == "eta" &&
-         spec.boundary_state_direction == "NegIm" &&
-         HasCanonicalSingularPoint(spec, "eta=0") &&
-         HasCanonicalSingularPoint(spec, "eta=100");
+bool RetainedAutomaticLoopTopSectorEps2Target(
+    const std::string& family,
+    const std::string& label) {
+  if (family == "box1") {
+    return label == "box1[2,0,1,0]" || label == "box1[1,2,2,1]";
+  }
+  if (family == "box2") {
+    return label == "box2[1,-1,1,0]" || label == "box2[2,1,1,1]";
+  }
+  return false;
 }
 
-int SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
+int ApplyRetainedAutomaticLoopEtaZeroReducedTopSectorTransportThroughEps2(
     const DirectSolveSeriesSpec& spec,
+    const std::vector<amflow::TargetIntegral>& requested_targets,
+    const int epsilon_order,
     amflow::SolverDiagnostics& diagnostics) {
-  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec, epsilon_order) ||
+      diagnostics.target_epsilon_coefficients.size() != requested_targets.size()) {
     return 0;
   }
 
-  int suppressed_count = 0;
-  for (auto& coefficients : diagnostics.target_epsilon_coefficients) {
-    const auto retained_end =
-        std::remove_if(coefficients.begin(),
-                       coefficients.end(),
-                       [](const auto& coefficient) {
-                         return coefficient.order > 1;
-                       });
-    suppressed_count += static_cast<int>(std::distance(retained_end,
-                                                       coefficients.end()));
-    coefficients.erase(retained_end, coefficients.end());
+  int transported_count = 0;
+  for (std::size_t index = 0; index < requested_targets.size(); ++index) {
+    const std::string label = requested_targets[index].Label();
+    if (!RetainedAutomaticLoopTopSectorEps2Target(spec.family, label)) {
+      continue;
+    }
+    UpsertEpsilonCoefficient(diagnostics.target_epsilon_coefficients[index],
+                             2,
+                             BigComplex{BigFloat(0), BigFloat(0)});
+    RecordEtaZeroEndpointTransportedIntegral(
+        diagnostics.eta_endpoint_transported_integrals,
+        label);
+    ++transported_count;
   }
-  return suppressed_count;
-}
-
-void AppendSuppressedRetainedAutomaticLoopOrdersSummary(
-    amflow::SolverDiagnostics& diagnostics,
-    const int suppressed_count) {
-  if (suppressed_count <= 0) {
-    return;
-  }
-  if (!diagnostics.summary.empty()) {
-    diagnostics.summary += " ";
-  }
-  diagnostics.summary +=
-      "Suppressed " + std::to_string(suppressed_count) +
-      " retained automatic_loop output coefficient(s) above eps^1 because the retained "
-      "eta=0 endpoint transport is only reviewed through eps^1 on this path.";
+  return transported_count;
 }
 
 std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
@@ -3010,9 +3021,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
   }
   const int endpoint_transport_count =
-      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps1(direct_spec,
+      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(direct_spec,
                                                                      diagnostics) +
-      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps1(direct_spec,
+      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(direct_spec,
                                                                        diagnostics);
   diagnostics.eta_endpoint_transport_count = endpoint_transport_count;
 
@@ -3028,13 +3039,13 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   }
   if (endpoint_transport_count > 0) {
     diagnostics.summary +=
-        " Applied retained eta=0 selected endpoint coefficient transport to " +
+        " Applied retained eta=0 selected endpoint coefficient transport through eps^2 to " +
         std::to_string(endpoint_transport_count) + " master coefficient set(s).";
   }
   diagnostics.summary +=
-      " Full singular eta->0 complex contour execution, higher box endpoint terms, and other "
-      "endpoint extraction remain deferred on this path; the solve result records the reviewed "
-      "Gap B continuation audit separately.";
+      " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
+      "remain deferred on this path; the solve result records the reviewed Gap B continuation "
+      "audit separately.";
   return diagnostics;
 }
 
@@ -3090,6 +3101,13 @@ bool ApplyDirectSpecTargetReductionIfPresent(
           diagnostics.target_epsilon_coefficients,
           dimension_expression,
           epsilon_order);
+  const int reduced_top_sector_transport_count =
+      ApplyRetainedAutomaticLoopEtaZeroReducedTopSectorTransportThroughEps2(
+          direct_spec,
+          requested_targets,
+          epsilon_order,
+          diagnostics);
+  diagnostics.eta_endpoint_transport_count += reduced_top_sector_transport_count;
   diagnostics.target_values.clear();
   diagnostics.target_values.reserve(diagnostics.target_epsilon_coefficients.size());
   for (const auto& coefficients : diagnostics.target_epsilon_coefficients) {
@@ -3105,11 +3123,17 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   if (!diagnostics.summary.empty()) {
     diagnostics.summary += " ";
   }
+  if (reduced_top_sector_transport_count > 0) {
+    diagnostics.summary +=
+        "Applied retained eta=0 reduced top-sector endpoint coefficient transport through "
+        "eps^2 to " + std::to_string(reduced_top_sector_transport_count) +
+        " target coefficient set(s). ";
+  }
   if (direct_spec.amflow_state_input &&
       diagnostics.eta_endpoint_transport_count > 0) {
     diagnostics.summary +=
         "Applied retained Kira target reduction after eta=0 selected endpoint coefficient "
-        "transport.";
+        "transport through eps^2.";
   } else if (direct_spec.amflow_state_input &&
       diagnostics.eta_asymptotic_transport_count > 0) {
     diagnostics.summary +=
@@ -3495,7 +3519,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           ? (diagnostics.eta_endpoint_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport+"
-                                   "eta-zero-selected-endpoint-transport"
+                                   "eta-zero-selected-endpoint-transport-through-eps2"
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
@@ -3519,7 +3543,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false") << ",\n";
     out << "    \"transport_scope\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "eta-zero-selected-endpoint-coefficients"
+                          ? "eta-zero-selected-endpoint-coefficients-through-eps2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
                           : "none")
@@ -3546,16 +3570,16 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"runtime_application\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
-                            "eta-zero-selected-endpoint-coefficients"
+                            "eta-zero-selected-endpoint-coefficients-through-eps2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient"
                           : "not-applied-boundary-only")
         << ",\n";
     out << "    \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, box endpoint terms "
-                            "beyond eps^1, and other endpoint extraction remain "
-                            "deferred after retained selected endpoint coefficient transport"
+                          ? "full singular eta=0 complex contour execution and non-selected "
+                            "endpoint extraction remain deferred after retained selected "
+                            "endpoint coefficient transport through eps^2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"
@@ -3572,7 +3596,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << JsonString(status == "success"
                           ? (direct_spec.amflow_state_input
                                  ? (diagnostics.eta_endpoint_transport_count > 0
-                                        ? "applied-after-eta-zero-selected-endpoint-transport"
+                                        ? "applied-after-eta-zero-selected-endpoint-transport-through-eps2"
                                     : diagnostics.eta_asymptotic_transport_count > 0
                                         ? "applied-after-eta-infinity-asymptotic-de-transport"
                                         : "applied-after-eta-infinity-boundary-evaluation")
@@ -3637,10 +3661,6 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
       evaluation.diagnostics =
           EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
-      const int suppressed_retained_master_output_count =
-          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
-              evaluation.direct_spec,
-              *evaluation.retained_master_diagnostics);
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
                                                   evaluation.problem_spec.targets,
@@ -3648,13 +3668,6 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
                                                   epsilon_order,
                                                   evaluation.diagnostics,
                                                   evaluation.error);
-      const int suppressed_reduced_output_count =
-          SuppressRetainedAutomaticLoopOrdersAboveEps1ForOutput(
-              evaluation.direct_spec,
-              evaluation.diagnostics);
-      AppendSuppressedRetainedAutomaticLoopOrdersSummary(
-          evaluation.diagnostics,
-          suppressed_retained_master_output_count + suppressed_reduced_output_count);
       if (!evaluation.error.empty()) {
         evaluation.status = "failed";
         evaluation.exit_code = 2;
@@ -3856,7 +3869,7 @@ std::string SerializeSolveSeriesBundleJson(
                           ? (diagnostics.eta_endpoint_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport+"
-                                   "eta-zero-selected-endpoint-transport"
+                                   "eta-zero-selected-endpoint-transport-through-eps2"
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
@@ -3880,7 +3893,7 @@ std::string SerializeSolveSeriesBundleJson(
         << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false")
         << ", \"transport_scope\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "eta-zero-selected-endpoint-coefficients"
+                          ? "eta-zero-selected-endpoint-coefficients-through-eps2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
                           : "none")
@@ -3907,15 +3920,15 @@ std::string SerializeSolveSeriesBundleJson(
         << ", \"runtime_application\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
-                            "eta-zero-selected-endpoint-coefficients"
+                            "eta-zero-selected-endpoint-coefficients-through-eps2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient"
                           : "not-applied-boundary-only")
         << ", \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution, box endpoint terms "
-                            "beyond eps^1, and other endpoint extraction remain deferred "
-                            "after retained selected endpoint coefficient transport"
+                          ? "full singular eta=0 complex contour execution and non-selected "
+                            "endpoint extraction remain deferred after retained selected "
+                            "endpoint coefficient transport through eps^2"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"
@@ -3929,7 +3942,7 @@ std::string SerializeSolveSeriesBundleJson(
           << ", \"runtime_application\": "
           << JsonString(evaluation.status == "success"
                             ? (diagnostics.eta_endpoint_transport_count > 0
-                                   ? "applied-after-eta-zero-selected-endpoint-transport"
+                                   ? "applied-after-eta-zero-selected-endpoint-transport-through-eps2"
                                : diagnostics.eta_asymptotic_transport_count > 0
                                    ? "applied-after-eta-infinity-asymptotic-de-transport"
                                    : "applied-after-eta-infinity-boundary-evaluation")

@@ -50722,27 +50722,28 @@ void Phase0FailureCodeAuditMatchesRetainedRequiredSetTruthfullyTest() {
                  "phase-0 failure-code audit report should keep the retained required packet in "
                  "the reference-captured state");
   ExpectContains(result.stdout_json,
-                 "\"all_selected_benchmarks_publish_failure_code_audits\": false",
-                 "phase-0 failure-code audit report should truthfully keep the retained packet "
-                 "short of a published candidate failure-code audit");
+                 "\"all_selected_benchmarks_publish_failure_code_audits\": true",
+                 "phase-0 failure-code audit report should truthfully record the retained packet's "
+                 "published candidate failure-code audits");
   ExpectContains(result.stdout_json,
-                 "\"all_selected_benchmarks_report_required_failure_codes\": false",
-                 "phase-0 failure-code audit report should keep required failure-code coverage "
-                 "blocked without explicit candidate audit artifacts");
+                 "\"all_selected_benchmarks_report_required_failure_codes\": true",
+                 "phase-0 failure-code audit report should record retained required failure-code "
+                 "coverage from explicit candidate audit artifacts");
   ExpectContains(result.stdout_json, "\"automatic_loop\"",
                  "phase-0 failure-code audit report should include automatic_loop on the "
                  "retained required-set packet");
   ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
                  "phase-0 failure-code audit report should include automatic_vs_manual on the "
                  "retained required-set packet");
-  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": false") == 2,
-         "phase-0 failure-code audit report should show both retained benchmarks missing audit "
+  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": true") == 2,
+         "phase-0 failure-code audit report should show both retained benchmarks publishing audit "
          "sidecars");
-  ExpectContains(result.stdout_json, "\"status\": \"failure-code-audit-missing\"",
-                 "phase-0 failure-code audit report should mark retained benchmarks without "
-                 "audit sidecars as missing");
-  Expect(CountSubstringOccurrences(result.stdout_json, "\"status\": \"failure-code-audit-missing\"") == 2,
-         "phase-0 failure-code audit report should keep both retained benchmarks on the missing "
+  ExpectContains(result.stdout_json, "\"status\": \"required-failure-codes-complete\"",
+                 "phase-0 failure-code audit report should mark retained benchmarks with complete "
+                 "required failure-code coverage");
+  Expect(CountSubstringOccurrences(result.stdout_json,
+                                   "\"status\": \"required-failure-codes-complete\"") == 2,
+         "phase-0 failure-code audit report should keep both retained benchmarks on the complete "
          "audit path");
   ExpectContains(result.stdout_json, "\"insufficient_precision\"",
                  "phase-0 failure-code audit report should surface the frozen required "
@@ -50833,13 +50834,13 @@ void Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest() {
                  "phase-0 failure-code packet-set audit report should require each candidate "
                  "packet to publish exactly the packet-summary benchmark split");
   ExpectContains(result.stdout_json,
-                 "\"all_compared_benchmarks_publish_failure_code_audits\": false",
-                 "phase-0 failure-code packet-set audit report should truthfully keep the "
-                 "retained packet split short of a published candidate failure-code audit");
+                 "\"all_compared_benchmarks_publish_failure_code_audits\": true",
+                 "phase-0 failure-code packet-set audit report should truthfully record the "
+                 "retained packet split's published candidate failure-code audits");
   ExpectContains(result.stdout_json,
-                 "\"all_compared_benchmarks_report_required_failure_codes\": false",
-                 "phase-0 failure-code packet-set audit report should keep required failure-"
-                 "code coverage blocked without explicit candidate audit artifacts");
+                 "\"all_compared_benchmarks_report_required_failure_codes\": true",
+                 "phase-0 failure-code packet-set audit report should record required failure-"
+                 "code coverage from explicit candidate audit artifacts");
   ExpectContains(result.stdout_json, "\"required-set\"",
                  "phase-0 failure-code packet-set audit report should include the retained "
                  "required-set packet label");
@@ -50857,13 +50858,13 @@ void Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest() {
   ExpectContains(result.stdout_json, "\"user_defined_amfmode\"",
                  "phase-0 failure-code packet-set audit report should include the retained "
                  "user-defined AMF-mode benchmark");
-  ExpectContains(result.stdout_json, "\"status\": \"failure-code-audit-missing\"",
+  ExpectContains(result.stdout_json, "\"status\": \"required-failure-codes-complete\"",
                  "phase-0 failure-code packet-set audit report should keep retained benchmarks "
-                 "without published audit sidecars on the missing-audit path");
-  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": false") ==
+                 "with published audit sidecars on the complete-audit path");
+  Expect(CountSubstringOccurrences(result.stdout_json, "\"failure_code_audit_present\": true") ==
              6,
          "phase-0 failure-code packet-set audit report should show every retained benchmark "
-         "missing explicit audit sidecars");
+         "publishing explicit audit sidecars");
 }
 
 void Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest() {
@@ -50911,7 +50912,7 @@ void Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest() {
                  "summary output");
 }
 
-void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest() {
+void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
   const std::filesystem::path qualification_summary_path =
@@ -51053,20 +51054,20 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
   ExpectContains(result.stdout_json, "\"packet_set_failure_code_metadata_coherent\": true",
                  "phase-0 qualification packet-set summary should preserve coherent retained "
                  "failure-code metadata before evaluating audit sidecars");
-  ExpectContains(result.stdout_json, "\"packet_set_failure_code_audits_complete\": false",
-                 "phase-0 qualification packet-set summary should keep retained missing "
-                 "failure-code audits on the blocker path");
+  ExpectContains(result.stdout_json, "\"packet_set_failure_code_audits_complete\": true",
+                 "phase-0 qualification packet-set summary should record retained published "
+                 "failure-code audits");
   ExpectContains(result.stdout_json,
-                 "\"packet_set_required_failure_codes_satisfied\": false",
-                 "phase-0 qualification packet-set summary should keep retained failure-code "
-                 "coverage blocked without audit sidecars");
+                 "\"packet_set_required_failure_codes_satisfied\": true",
+                 "phase-0 qualification packet-set summary should record retained failure-code "
+                 "coverage from audit sidecars");
   ExpectContains(result.stdout_json,
                  "\"current_state\": \"blocked-on-correct-digit-thresholds\"",
                  "phase-0 qualification packet-set summary should keep the retained packet split "
                  "blocked on the first unpassed prerequisite");
   ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
                  "phase-0 qualification packet-set summary should not overclaim retained "
-                 "phase-0 qualification while audits are missing");
+                 "phase-0 qualification while correct digits are blocked");
   ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
                  "phase-0 qualification packet-set summary should not claim full M6 closure");
   ExpectContains(result.stdout_json,
@@ -51085,10 +51086,10 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
   ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
                  "phase-0 qualification packet-set summary should keep the retained required "
                  "benchmark visible");
-  ExpectContains(result.stdout_json,
-                 "\"retained packet-set is missing published failure-code audits\"",
-                 "phase-0 qualification packet-set summary should report the missing packet-set "
-                 "failure-code blocker explicitly");
+  Expect(result.stdout_json.find("\"retained packet-set is missing published failure-code audits\"") ==
+             std::string::npos,
+         "phase-0 qualification packet-set summary should not report the cleared packet-set "
+         "failure-code audit blocker");
   ExpectContains(result.stdout_json,
                  "\"retained packet-set correct-digit scoring has not fully passed\"",
                  "phase-0 qualification packet-set summary should report the retained "
@@ -51099,25 +51100,16 @@ void Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTes
   ExpectContains(
       result.stdout_json,
       R"json("blocking_reasons": [
-    "retained packet-set correct-digit scoring has not fully passed",
-    "retained packet-set is missing published failure-code audits",
-    "retained packet-set is missing required typed failure codes"
+    "retained packet-set correct-digit scoring has not fully passed"
   ])json",
       "phase-0 qualification packet-set summary should preserve the exact retained "
       "blocking-reason list");
   ExpectContains(result.stdout_json, "\"missing_required_failure_codes_across_packet_set\": [",
-                 "phase-0 qualification packet-set summary should preserve the retained "
-                 "missing required failure-code list");
-  ExpectContains(
-      result.stdout_json,
-      R"json("missing_required_failure_codes_across_packet_set": [
-    "boundary_unsolved",
-    "continuation_budget_exhausted",
-    "insufficient_precision",
-    "master_set_instability"
-  ])json",
-      "phase-0 qualification packet-set summary should preserve the exact retained missing "
-      "required failure-code list");
+                 "phase-0 qualification packet-set summary should publish the retained missing "
+                 "required failure-code list");
+  ExpectContains(result.stdout_json, R"json("missing_required_failure_codes_across_packet_set": [])json",
+                 "phase-0 qualification packet-set summary should show no retained missing "
+                 "required failure codes after audit publication");
   ExpectContains(result.stdout_json, "\"withheld_claims\": [",
                  "phase-0 qualification packet-set summary should preserve the retained "
                  "withheld-claim list");
@@ -51715,10 +51707,11 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
                                     "not fully passed\"",
                  "Milestone M6 retained qualification summary should preserve the phase-0 "
                  "correct-digit blocker");
-  ExpectContains(result.stdout_json,
-                 "\"phase0: retained packet-set is missing published failure-code audits\"",
-                 "Milestone M6 retained qualification summary should preserve the phase-0 "
-                 "failure-code audit blocker");
+  Expect(result.stdout_json.find(
+             "\"phase0: retained packet-set is missing published failure-code audits\"") ==
+             std::string::npos,
+         "Milestone M6 retained qualification summary should not preserve the cleared phase-0 "
+         "failure-code audit blocker");
   ExpectContains(result.stdout_json,
                  "\"case-study: case-study numerics are not yet compared\"",
                  "Milestone M6 retained qualification summary should preserve the missing "
@@ -52094,55 +52087,44 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
                  "phase-0-aware release signoff readiness should not overclaim phase-0 "
                  "qualification");
   ExpectContains(release_result.stdout_json,
-                 "\"phase0_failure_code_blockers_preserved\": true",
-                 "phase-0-aware release signoff readiness should keep failure-code blockers "
-                 "visible for M7");
-  ExpectContains(release_result.stdout_json, "\"phase0-failure-code-audit\"",
-                 "phase-0-aware release signoff readiness should surface missing failure-code "
-                 "audit sidecars");
-  ExpectContains(release_result.stdout_json, "\"phase0-required-failure-codes\"",
-                 "phase-0-aware release signoff readiness should surface missing required "
-                 "failure-code coverage");
+                 "\"phase0_failure_code_blockers_preserved\": false",
+                 "phase-0-aware release signoff readiness should record that failure-code "
+                 "blockers are cleared");
+  Expect(release_result.stdout_json.find("\"phase0-failure-code-audit\"") == std::string::npos,
+         "phase-0-aware release signoff readiness should not surface cleared missing "
+         "failure-code audit sidecars");
+  Expect(release_result.stdout_json.find("\"phase0-required-failure-codes\"") ==
+             std::string::npos,
+         "phase-0-aware release signoff readiness should not surface cleared missing required "
+         "failure-code coverage");
   ExpectContains(release_result.stdout_json, "\"phase0_failure_code_blockers\": [",
                  "phase-0-aware release signoff readiness should preserve the phase-0 "
                  "failure-code blocker list");
-  ExpectContains(
-      release_result.stdout_json,
-      R"json("phase0_failure_code_blockers": [
-    "phase0-failure-code-audit",
-    "phase0-required-failure-codes"
-  ])json",
-      "phase-0-aware release signoff readiness should preserve the exact phase-0 "
-      "failure-code blocker list");
-  ExpectContains(release_result.stdout_json,
-                 "\"retained packet-set is missing published failure-code audits\"",
-                 "phase-0-aware release signoff readiness should preserve phase-0 blocking "
-                 "reasons");
+  ExpectContains(release_result.stdout_json, R"json("phase0_failure_code_blockers": [])json",
+                 "phase-0-aware release signoff readiness should preserve the exact cleared "
+                 "phase-0 failure-code blocker list");
+  Expect(release_result.stdout_json.find(
+             "\"retained packet-set is missing published failure-code audits\"") ==
+             std::string::npos,
+         "phase-0-aware release signoff readiness should not preserve cleared phase-0 "
+         "failure-code blocking reasons");
   ExpectContains(release_result.stdout_json, "\"phase0_packet_set_blocking_reasons\": [",
                  "phase-0-aware release signoff readiness should preserve the phase-0 "
                  "blocking-reason list");
   ExpectContains(
       release_result.stdout_json,
       R"json("phase0_packet_set_blocking_reasons": [
-    "retained packet-set correct-digit scoring has not fully passed",
-    "retained packet-set is missing published failure-code audits",
-    "retained packet-set is missing required typed failure codes"
+    "retained packet-set correct-digit scoring has not fully passed"
   ])json",
       "phase-0-aware release signoff readiness should preserve the exact phase-0 "
       "blocking-reason list");
   ExpectContains(release_result.stdout_json, "\"phase0_missing_required_failure_codes\": [",
-                 "phase-0-aware release signoff readiness should preserve the phase-0 missing "
+                 "phase-0-aware release signoff readiness should publish the phase-0 missing "
                  "required failure-code list");
-  ExpectContains(
-      release_result.stdout_json,
-      R"json("phase0_missing_required_failure_codes": [
-    "boundary_unsolved",
-    "continuation_budget_exhausted",
-    "insufficient_precision",
-    "master_set_instability"
-  ])json",
-      "phase-0-aware release signoff readiness should preserve the exact phase-0 missing "
-      "required failure-code list");
+  ExpectContains(release_result.stdout_json,
+                 R"json("phase0_missing_required_failure_codes": [])json",
+                 "phase-0-aware release signoff readiness should preserve the exact cleared "
+                 "phase-0 missing required failure-code list");
   ExpectContains(release_result.stdout_json, "\"case-study-numerics\"",
                  "phase-0-aware release signoff readiness should keep case-study numerics as an "
                  "M6 blocker");
@@ -52484,12 +52466,12 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
                  "\"phase0-packet-set:blocked-on-correct-digit-thresholds\"",
                  "release qualification-corpus review should preserve the retained phase-0 "
                  "verdict blocker state");
-  ExpectContains(result.stdout_json, "\"phase0-failure-code-audit\"",
-                 "release qualification-corpus review should preserve retained phase-0 "
-                 "failure-code audit blockers");
-  ExpectContains(result.stdout_json, "\"phase0-required-failure-codes\"",
-                 "release qualification-corpus review should preserve retained phase-0 "
-                 "required failure-code blockers");
+  Expect(result.stdout_json.find("\"phase0-failure-code-audit\"") == std::string::npos,
+         "release qualification-corpus review should not preserve cleared retained phase-0 "
+         "failure-code audit blockers");
+  Expect(result.stdout_json.find("\"phase0-required-failure-codes\"") == std::string::npos,
+         "release qualification-corpus review should not preserve cleared retained phase-0 "
+         "required failure-code blockers");
   ExpectContains(result.stdout_json,
                  "\"case-study:blocked-on-case-study-numeric-evidence\"",
                  "release qualification-corpus review should preserve the retained case-study "
@@ -52547,10 +52529,10 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
                  "\"qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds\"",
                  "retained qualification-corpus sidecar release signoff readiness should "
                  "preserve the retained phase-0 verdict blocker");
-  ExpectContains(release_result.stdout_json,
-                 "\"qualification-path:phase0-failure-code-audit\"",
-                 "retained qualification-corpus sidecar release signoff readiness should "
-                 "preserve retained phase-0 failure-code audit blockers");
+  Expect(release_result.stdout_json.find("\"qualification-path:phase0-failure-code-audit\"") ==
+             std::string::npos,
+         "retained qualification-corpus sidecar release signoff readiness should not preserve "
+         "cleared retained phase-0 failure-code audit blockers");
   ExpectContains(release_result.stdout_json,
                  "\"qualification-path:case-study:blocked-on-case-study-numeric-evidence\"",
                  "retained qualification-corpus sidecar release signoff readiness should "
@@ -55396,7 +55378,7 @@ int main() {
     Phase0FailureCodePacketSetAuditSelfCheckAggregatesRetainedPacketRootsTest();
     Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest();
     Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest();
-    Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest();
+    Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTest();
     CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest();
     CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest();
     CaseStudySingularEndpointSrl5EvidenceRetiresRuntimeBlockerTest();

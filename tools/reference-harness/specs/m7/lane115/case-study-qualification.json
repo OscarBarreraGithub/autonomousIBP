@@ -1,0 +1,530 @@
+{
+  "all_case_studies_meet_digit_thresholds": true,
+  "blocked_case_study_families": [],
+  "blocking_reasons": [],
+  "case_study_families": [
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "matrix-only-anchor",
+      "id": "package-double-box",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "package double box",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "",
+      "selected_benchmark_refs": []
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "ttbar-j",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "ttbar j",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2023-ttj-planar-topology",
+      "selected_benchmark_refs": [
+        "2023-ttj-planar-topology"
+      ]
+    },
+    {
+      "digit_threshold_profile": "2024-tth-light-quark-loop-mi",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "ttbar-h",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 100,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "ttbar H",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2024-tth-light-quark-loop-mi",
+      "selected_benchmark_refs": [
+        "2024-tth-light-quark-loop-mi"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "five-point-one-mass-scattering",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "five-point one-mass scattering",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2024-five-point-one-mass-scattering",
+      "selected_benchmark_refs": [
+        "2024-five-point-one-mass-scattering"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "ttbar-w",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "ttbar W",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2025-ttw-leading-colour-integrals",
+      "selected_benchmark_refs": [
+        "2025-ttw-leading-colour-integrals"
+      ]
+    },
+    {
+      "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "diphoton-heavy-quark-form-factors",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 200,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "diphoton heavy-quark form factors",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2023-diphoton-heavy-quark-form-factors",
+      "selected_benchmark_refs": [
+        "2023-diphoton-heavy-quark-form-factors"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "h-to-bb",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "h -> bb",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2024-h-to-bb-nnlo",
+      "selected_benchmark_refs": [
+        "2024-h-to-bb-nnlo"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "n4-sym-three-loop-form-factor",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "N=4 SYM three-loop form factor",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2024-n4-sym-three-loop-form-factor",
+      "selected_benchmark_refs": [
+        "2024-n4-sym-three-loop-form-factor"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "literature-anchor-selected",
+      "id": "single-top-planar-nonplanar",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "single-top planar/nonplanar",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "2023-single-top-planar-nonplanar-topologies",
+      "selected_benchmark_refs": [
+        "2023-single-top-planar-nonplanar-topologies"
+      ]
+    },
+    {
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "family_state": "matrix-only-anchor",
+      "id": "one-singular-endpoint-case",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "landed_runtime_predecessor": "",
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "parity_matrix_label": "one singular-endpoint case",
+      "regression_profile": "current-reviewed-regressions",
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "selected_benchmark_anchor_ref": "",
+      "selected_benchmark_refs": []
+    }
+  ],
+  "case_study_families_qualified": true,
+  "case_study_ids": [
+    "package-double-box",
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar",
+    "one-singular-endpoint-case"
+  ],
+  "case_study_numeric_comparison_passed": true,
+  "case_study_numeric_digit_threshold_profiles_by_family": {
+    "diphoton-heavy-quark-form-factors": "2023-diphoton-heavy-quark-form-factors",
+    "five-point-one-mass-scattering": "core-package-family-default",
+    "h-to-bb": "core-package-family-default",
+    "n4-sym-three-loop-form-factor": "core-package-family-default",
+    "one-singular-endpoint-case": "core-package-family-default",
+    "package-double-box": "core-package-family-default",
+    "single-top-planar-nonplanar": "core-package-family-default",
+    "ttbar-h": "2024-tth-light-quark-loop-mi",
+    "ttbar-j": "core-package-family-default",
+    "ttbar-w": "core-package-family-default"
+  },
+  "case_study_numeric_evidence_present": true,
+  "case_study_numeric_failure_code_profiles_by_family": {
+    "diphoton-heavy-quark-form-factors": "default-required-failure-codes",
+    "five-point-one-mass-scattering": "default-required-failure-codes",
+    "h-to-bb": "default-required-failure-codes",
+    "n4-sym-three-loop-form-factor": "default-required-failure-codes",
+    "one-singular-endpoint-case": "default-required-failure-codes",
+    "package-double-box": "default-required-failure-codes",
+    "single-top-planar-nonplanar": "default-required-failure-codes",
+    "ttbar-h": "default-required-failure-codes",
+    "ttbar-j": "default-required-failure-codes",
+    "ttbar-w": "default-required-failure-codes"
+  },
+  "case_study_numeric_family_summaries": [
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/package-double-box.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "package-double-box",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 58,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-j",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 78,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "2024-tth-light-quark-loop-mi",
+      "evidence_path": "tools/reference-harness/specs/case-studies/ttbar-h.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-h",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 999,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 100,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "five-point-one-mass-scattering",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 59,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-w",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 58,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+      "evidence_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "diphoton-heavy-quark-form-factors",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 200,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 200,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/h-to-bb.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "h-to-bb",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 58,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "n4-sym-three-loop-form-factor",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 58,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "single-top-planar-nonplanar",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 57,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    },
+    {
+      "comparison_passed": true,
+      "digit_threshold_met": true,
+      "digit_threshold_profile": "core-package-family-default",
+      "evidence_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "one-singular-endpoint-case",
+      "metadata_matches_readiness": true,
+      "minimum_observed_correct_digits": 999,
+      "regression_profile": "current-reviewed-regressions",
+      "required_minimum_correct_digits": 50,
+      "status": "digit-threshold-met"
+    }
+  ],
+  "case_study_numeric_regression_profiles_by_family": {
+    "diphoton-heavy-quark-form-factors": "current-reviewed-regressions",
+    "five-point-one-mass-scattering": "current-reviewed-regressions",
+    "h-to-bb": "current-reviewed-regressions",
+    "n4-sym-three-loop-form-factor": "current-reviewed-regressions",
+    "one-singular-endpoint-case": "current-reviewed-regressions",
+    "package-double-box": "current-reviewed-regressions",
+    "single-top-planar-nonplanar": "current-reviewed-regressions",
+    "ttbar-h": "current-reviewed-regressions",
+    "ttbar-j": "current-reviewed-regressions",
+    "ttbar-w": "current-reviewed-regressions"
+  },
+  "case_study_numeric_summary_path": "tools/reference-harness/specs/m7/lane115/case-study-numeric-comparison.json",
+  "case_study_readiness_summary_path": "tools/reference-harness/specs/m7/lane115/case-study-readiness.json",
+  "compared_case_study_ids": [
+    "package-double-box",
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar",
+    "one-singular-endpoint-case"
+  ],
+  "current_state": "case-study-families-qualified",
+  "digit_threshold_profiles_reported": true,
+  "literature_anchor_case_study_ids": [
+    "ttbar-j",
+    "ttbar-h",
+    "five-point-one-mass-scattering",
+    "ttbar-w",
+    "diphoton-heavy-quark-form-factors",
+    "h-to-bb",
+    "n4-sym-three-loop-form-factor",
+    "single-top-planar-nonplanar"
+  ],
+  "matrix_only_case_study_ids": [
+    "package-double-box",
+    "one-singular-endpoint-case"
+  ],
+  "milestone_m6_ready": false,
+  "milestone_m6_requires_phase0_verdict": true,
+  "minimum_observed_correct_digits_by_case_study": {
+    "diphoton-heavy-quark-form-factors": 200,
+    "five-point-one-mass-scattering": 59,
+    "h-to-bb": 58,
+    "n4-sym-three-loop-form-factor": 58,
+    "one-singular-endpoint-case": 999,
+    "package-double-box": 58,
+    "single-top-planar-nonplanar": 57,
+    "ttbar-h": 999,
+    "ttbar-j": 78,
+    "ttbar-w": 58
+  },
+  "missing_case_study_numeric_ids": [],
+  "numeric_family_metadata_matches_readiness": true,
+  "numeric_metadata_coherent": true,
+  "numeric_profile_label_maps_match_readiness": true,
+  "readiness_contract_coherent": true,
+  "regression_profiles_reported": true,
+  "required_failure_code_profiles_reported": true,
+  "runtime_blocked_case_study_ids": [],
+  "schema_version": 1,
+  "scope": "case-study-families-only",
+  "strong_precision_case_study_ids": [
+    "ttbar-h",
+    "diphoton-heavy-quark-form-factors"
+  ],
+  "withheld_claims": [
+    "This summary does not launch the C++ runtime or create new retained captures.",
+    "This summary does not compare phase-0 packet-set evidence.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness."
+  ]
+}

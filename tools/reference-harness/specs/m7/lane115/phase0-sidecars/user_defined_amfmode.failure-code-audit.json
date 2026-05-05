@@ -1,0 +1,48 @@
+{
+  "audit_kind": "m6-required-failure-code-profile-coverage",
+  "benchmark_id": "user_defined_amfmode",
+  "failure_code_profile": "default-required-failure-codes",
+  "observed_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/failure-code-audit.json",
+  "qualifier_observed_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "real_output_audit": {
+    "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json --amflow-golden tools/reference-harness/specs/m5/lane50/goldens/user_defined_amfmode.box1_m2_1_1_2.scoped-golden.txt --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/user_defined_amfmode.scoped.compare.json",
+    "compared_coefficient_count": 6,
+    "comparison_failure_entry_count": 0,
+    "comparison_passed": true,
+    "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/user_defined_amfmode.scoped.compare.json",
+    "comparison_summary_sha256": "99e85f22f61459388294b72380f3f31c1ab978163e523a799e340a473b71ab81",
+    "cpp_result_path": "tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json",
+    "cpp_result_sha256": "33867aa5639d248fca8009284eb740bcf76e0d56a0dae18c7cf595d933835170",
+    "minimum_digit_agreement": 42,
+    "observed_runtime_failure_codes": [],
+    "passed_coefficient_count": 6,
+    "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/states/user_defined_amfmode.scoped.raw-state.json --eps-order 3 --digits 60 --amfmode usr --out tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json",
+    "solve_command_source": "tools/reference-harness/specs/m5/lane50/user-defined-feature-parity-evidence.json#feature_rows.user_defined_amfmode.command",
+    "solve_series_failure_code": "",
+    "solve_series_status": "success",
+    "tolerance_digits": 30
+  },
+  "required_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "schema_version": 1,
+  "withheld_claims": [
+    "observed_failure_codes is the qualifier-required typed profile coverage field consumed by audit_phase0_packet_set_failure_codes.py.",
+    "real_output_audit.observed_runtime_failure_codes records actual failure_code values found in the retained solve-series JSON; passing retained runs may be empty.",
+    "This sidecar does not claim phase-0 correct-digit qualification or M6 closure."
+  ]
+}

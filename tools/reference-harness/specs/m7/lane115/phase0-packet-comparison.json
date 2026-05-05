@@ -1,0 +1,427 @@
+{
+  "benchmarks": [
+    {
+      "benchmark_id": "automatic_loop",
+      "candidate_output_names": [
+        "sol1",
+        "sol2"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_loop/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_loop/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "12a186ff4e0cd5eefc83d2ee75d011f5b660f6d71952e251a3731ef9b9301f53",
+          "name": "sol1",
+          "reference_canonical_sha256": "12a186ff4e0cd5eefc83d2ee75d011f5b660f6d71952e251a3731ef9b9301f53",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "2a2a0117b3d15452ffff2cad94497147c0b696b994e84372b7efe44eaa694516",
+          "name": "sol2",
+          "reference_canonical_sha256": "2a2a0117b3d15452ffff2cad94497147c0b696b994e84372b7efe44eaa694516",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "reference-captured",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_loop/golden-manifest.json",
+      "reference_output_names": [
+        "sol1",
+        "sol2"
+      ],
+      "reference_packet_label": "required-set",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": true,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    },
+    {
+      "benchmark_id": "automatic_vs_manual",
+      "candidate_output_names": [
+        "auto",
+        "man"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_vs_manual/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_vs_manual/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "77c17c56e247156c394aeca098b795caf6b4dbde3e9921e1886ac1465c3384de",
+          "name": "auto",
+          "reference_canonical_sha256": "77c17c56e247156c394aeca098b795caf6b4dbde3e9921e1886ac1465c3384de",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "eb84e216a5f18799997df038af6f96f40969cd536aa428812ee80d9c01540c71",
+          "name": "man",
+          "reference_canonical_sha256": "eb84e216a5f18799997df038af6f96f40969cd536aa428812ee80d9c01540c71",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "reference-captured",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/golden-manifest.json",
+      "reference_output_names": [
+        "auto",
+        "man"
+      ],
+      "reference_packet_label": "required-set",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": true,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    },
+    {
+      "benchmark_id": "differential_equation_solver",
+      "candidate_output_names": [
+        "diffeq",
+        "redtable",
+        "sol1",
+        "sol2"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/differential_equation_solver/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/differential_equation_solver/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "de-d0-pair",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "2d0ec189056eef9c1e70458c25e68158a33b979053a6eb40bc9eab675dd7ff3a",
+          "name": "diffeq",
+          "reference_canonical_sha256": "2d0ec189056eef9c1e70458c25e68158a33b979053a6eb40bc9eab675dd7ff3a",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "473cc7c458db33cc5183cc9c7a685e3520a2605e47200b32681c283f5a3df861",
+          "name": "redtable",
+          "reference_canonical_sha256": "473cc7c458db33cc5183cc9c7a685e3520a2605e47200b32681c283f5a3df861",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "d6af3473495b4c69c162a0a9213f84dee0fddb4abd524da62e5313caa4055645",
+          "name": "sol1",
+          "reference_canonical_sha256": "d6af3473495b4c69c162a0a9213f84dee0fddb4abd524da62e5313caa4055645",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "8ecb6cae98b0af6c2104072be880c339f3595fb7546c86a9ed1fcc946ae6c8f1",
+          "name": "sol2",
+          "reference_canonical_sha256": "8ecb6cae98b0af6c2104072be880c339f3595fb7546c86a9ed1fcc946ae6c8f1",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "bootstrap-only",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/differential_equation_solver/golden-manifest.json",
+      "reference_output_names": [
+        "diffeq",
+        "redtable",
+        "sol1",
+        "sol2"
+      ],
+      "reference_packet_label": "de-d0-pair",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": false,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    },
+    {
+      "benchmark_id": "spacetime_dimension",
+      "candidate_output_names": [
+        "sol13D",
+        "sol73D"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/spacetime_dimension/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/spacetime_dimension/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "de-d0-pair",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "8a3beaf0438d91f2222b321189c5104fe2754574e90e9b20a1a7daa8e77335ff",
+          "name": "sol13D",
+          "reference_canonical_sha256": "8a3beaf0438d91f2222b321189c5104fe2754574e90e9b20a1a7daa8e77335ff",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "aaa00d5104b720fe3ae83c29df9650fc3720c168294f957cb47c78cfc57a2b80",
+          "name": "sol73D",
+          "reference_canonical_sha256": "aaa00d5104b720fe3ae83c29df9650fc3720c168294f957cb47c78cfc57a2b80",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "bootstrap-only",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/goldens/phase0/spacetime_dimension/golden-manifest.json",
+      "reference_output_names": [
+        "sol13D",
+        "sol73D"
+      ],
+      "reference_packet_label": "de-d0-pair",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": false,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    },
+    {
+      "benchmark_id": "user_defined_amfmode",
+      "candidate_output_names": [
+        "sol"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "user-hook-pair",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "a9174ac533add02df2a63f4c956fd0c51d5f09b84bba40573485c258141ed60e",
+          "name": "sol",
+          "reference_canonical_sha256": "a9174ac533add02df2a63f4c956fd0c51d5f09b84bba40573485c258141ed60e",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "bootstrap-only",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_amfmode/golden-manifest.json",
+      "reference_output_names": [
+        "sol"
+      ],
+      "reference_packet_label": "user-hook-pair",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": false,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    },
+    {
+      "benchmark_id": "user_defined_ending",
+      "candidate_output_names": [
+        "final_Tradition",
+        "final_usr"
+      ],
+      "candidate_primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_ending/primary/run-manifest.json",
+      "candidate_result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_ending/result-manifest.json",
+      "current_evidence_state": "reference-captured",
+      "digit_threshold_profile": "core-package-family-default",
+      "failure_code_profile": "default-required-failure-codes",
+      "known_regression_families": [
+        "asymptotic-series overflow",
+        "incorrect Mass-mode insertion",
+        "boundary-generation errors for unnormalized loop momenta",
+        "AnalyzeBlock on non-block-triangular systems",
+        "unexpected master sets in Kira interface"
+      ],
+      "minimum_correct_digits": 50,
+      "next_runtime_lane": "",
+      "optional_capture_packet": "user-hook-pair",
+      "output_comparisons": [
+        {
+          "candidate_canonical_sha256": "a5f1a1f1a1b27ce4c935693c9651c0b023e6c4e84982ea9229cf7ab26ce65fe8",
+          "name": "final_Tradition",
+          "reference_canonical_sha256": "a5f1a1f1a1b27ce4c935693c9651c0b023e6c4e84982ea9229cf7ab26ce65fe8",
+          "status": "reference-match"
+        },
+        {
+          "candidate_canonical_sha256": "807ccbcb61a7d5f6b69396d4558a74dfe382e4409c472ca94626ce38d9708e00",
+          "name": "final_usr",
+          "reference_canonical_sha256": "807ccbcb61a7d5f6b69396d4558a74dfe382e4409c472ca94626ce38d9708e00",
+          "status": "reference-match"
+        }
+      ],
+      "reference_capture_state": "bootstrap-only",
+      "reference_golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_ending/golden-manifest.json",
+      "reference_output_names": [
+        "final_Tradition",
+        "final_usr"
+      ],
+      "reference_packet_label": "user-hook-pair",
+      "regression_profile": "current-reviewed-regressions",
+      "required_capture": false,
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "status": "reference-match"
+    }
+  ],
+  "candidate_output_hashes_match_reference": true,
+  "candidate_output_names_match_reference": true,
+  "candidate_packet_benchmark_sets_match_reference": true,
+  "candidate_primary_run_manifests_exist": true,
+  "candidate_result_manifests_exist": true,
+  "compared_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "compared_phase0_ids_match_scaffold_reference_captured": true,
+  "digit_threshold_profiles_reported": true,
+  "expected_reference_captured_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "expected_reference_packet_labels": [
+    "de-d0-pair",
+    "required-set",
+    "user-hook-pair"
+  ],
+  "packet_comparisons": [
+    {
+      "candidate_benchmark_ids": [
+        "differential_equation_solver",
+        "spacetime_dimension"
+      ],
+      "candidate_benchmark_ids_match_reference": true,
+      "candidate_output_hashes_match_reference": true,
+      "candidate_output_names_match_reference": true,
+      "candidate_primary_run_manifests_exist": true,
+      "candidate_result_manifests_exist": true,
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair",
+      "reference_benchmarks_pass_retained_capture_checks": true,
+      "reference_capture_state": "bootstrap-only",
+      "reference_packet_label": "de-d0-pair",
+      "reference_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair",
+      "selected_benchmark_ids": [
+        "differential_equation_solver",
+        "spacetime_dimension"
+      ]
+    },
+    {
+      "candidate_benchmark_ids": [
+        "automatic_loop",
+        "automatic_vs_manual"
+      ],
+      "candidate_benchmark_ids_match_reference": true,
+      "candidate_output_hashes_match_reference": true,
+      "candidate_output_names_match_reference": true,
+      "candidate_primary_run_manifests_exist": true,
+      "candidate_result_manifests_exist": true,
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set",
+      "reference_benchmarks_pass_retained_capture_checks": true,
+      "reference_capture_state": "reference-captured",
+      "reference_packet_label": "required-set",
+      "reference_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set",
+      "selected_benchmark_ids": [
+        "automatic_loop",
+        "automatic_vs_manual"
+      ]
+    },
+    {
+      "candidate_benchmark_ids": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "candidate_benchmark_ids_match_reference": true,
+      "candidate_output_hashes_match_reference": true,
+      "candidate_output_names_match_reference": true,
+      "candidate_primary_run_manifests_exist": true,
+      "candidate_result_manifests_exist": true,
+      "candidate_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair",
+      "reference_benchmarks_pass_retained_capture_checks": true,
+      "reference_capture_state": "bootstrap-only",
+      "reference_packet_label": "user-hook-pair",
+      "reference_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair",
+      "selected_benchmark_ids": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ]
+    }
+  ],
+  "packet_pair_count": 3,
+  "qualification_path": "tools/reference-harness/templates/qualification-benchmarks.json",
+  "reference_benchmarks_pass_retained_capture_checks": true,
+  "reference_packet_labels": [
+    "de-d0-pair",
+    "required-set",
+    "user-hook-pair"
+  ],
+  "reference_packet_labels_match_scaffold_reference_captured": true,
+  "regression_profiles_reported": true,
+  "required_failure_code_profiles_reported": true,
+  "required_packet_present": true,
+  "schema_version": 1
+}

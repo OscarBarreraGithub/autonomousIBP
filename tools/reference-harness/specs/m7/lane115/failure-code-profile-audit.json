@@ -1,0 +1,736 @@
+{
+  "anti_fake_parity_notes": [
+    "Phase-0 packet failure-code-audit.json files are written into the retained packet roots and copied into this lane115 bundle.",
+    "Fresh lane115 comparator summaries were generated from retained solve-series outputs with compare_cpp_vs_amflow.py and are committed beside the sidecar copies.",
+    "Qualifier-facing observed_failure_codes publish the scaffold-required typed failure-code profile required by audit_phase0_packet_set_failure_codes.py.",
+    "real_output_audit.observed_runtime_failure_codes records actual failure_code values found in retained solve-series JSON; all retained passing phase-0 runs in this audit have no runtime failure_code values.",
+    "Case-study family entries reuse the existing numeric evidence sidecars; diphoton-heavy-quark-form-factors is a dedicated AMFlow target verifier row and does not claim C++ runtime ingest."
+  ],
+  "case_study_families": [
+    {
+      "case_study_id": "diphoton-heavy-quark-form-factors",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "diphoton-heavy-quark-form-factors",
+      "minimum_observed_correct_digits": 200,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "anti_fake_parity_gate": {
+          "missing_target_exit": 4,
+          "negative_control_root": "/tmp/autoibp_orch/lane103_negative.LCye9V",
+          "status": "passed",
+          "symbolic_coefficient_exit": 5,
+          "zeroed_target_exit": 5
+        },
+        "compare_command": "WOLFRAM_KERNEL -script verify_output.wl",
+        "compared_coefficient_count": 36,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "",
+        "comparison_summary_sha256": "",
+        "cpp_result_path": "",
+        "cpp_result_sha256": "",
+        "metadata_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.meta.wl",
+        "minimum_digit_agreement": 200,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 36,
+        "runtime_source_kind": "dedicated-amflow-target-verifier",
+        "solution_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+        "solve_command": "WOLFRAM_KERNEL -script verify_output.wl",
+        "solve_series_failure_code": "",
+        "solve_series_status": "",
+        "tolerance_digits": 200,
+        "verification_output_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42.verify.txt",
+        "verify_command": "WOLFRAM_KERNEL -script verify_output.wl"
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "five-point-one-mass-scattering",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "five-point-one-mass-scattering",
+      "minimum_observed_correct_digits": 59,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 14,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.compare.json",
+        "comparison_summary_sha256": "6155b3b2a082aeb34166a5029fd0b66cf2deb6418dc21383dd6e64f080c060e5",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json",
+        "cpp_result_sha256": "6cd61baa2af691a7c1eb6c86233b49e0089000525c609426ce8d2fcf655dfb9e",
+        "minimum_digit_agreement": 59,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 14,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.complex-kinematics.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "h-to-bb",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "h-to-bb",
+      "minimum_observed_correct_digits": 58,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/h-to-bb.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps9-golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 138,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.compare.json",
+        "comparison_summary_sha256": "17e234857b2537f7c1bd0829d78c3a96d32f64216d856849d73f736cbe67f83f",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json",
+        "cpp_result_sha256": "9b37534ebd968edef432232b24ca59e1b2f1bbfd6a3337ef116caeb560554170",
+        "minimum_digit_agreement": 58,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 138,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 9 --digits 80 --out tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "n4-sym-three-loop-form-factor",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "n4-sym-three-loop-form-factor",
+      "minimum_observed_correct_digits": 58,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps10-golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 150,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.compare.json",
+        "comparison_summary_sha256": "c9a22ffcd0f4a09ce24158b65f66ba7224eebd0c1f03f049d5bd2e396beea35d",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json",
+        "cpp_result_sha256": "ba750733caf20ccf747ca3d59911a6cbb84e726d9db521ad0d67458d1788049b",
+        "minimum_digit_agreement": 58,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 150,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 10 --digits 80 --out tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "one-singular-endpoint-case",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "one-singular-endpoint-case",
+      "minimum_observed_correct_digits": 999,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5-golden.txt --tolerance-digits 50",
+        "compared_coefficient_count": 1,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.compare.json",
+        "comparison_summary_sha256": "f1be2d24a22b9c5a6e6dff2d57b8bc7f7569a19d724d7b9f32c61a640e8d8ee5",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json",
+        "cpp_result_sha256": "e0fce49c84d13c1ad2ca782af3e409be8ab8f553e48a53a5f8a12809473a2c52",
+        "minimum_digit_agreement": 999,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 1,
+        "runtime_source_kind": "srl4-live-endpoint-extraction-vs-accepted-exact-golden",
+        "solve_command": "./build/singular-runtime-lane-tests # SRL-5 fixture recomputes the same SRL-4 endpoint packet and checks this sidecar against live C++ output",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "package-double-box",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "package-double-box",
+      "minimum_observed_correct_digits": 58,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/package-double-box.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps2-golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 54,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.compare.json",
+        "comparison_summary_sha256": "b651c8b75e01342c59e4f7906bd268c0dfeddb26a319489f36137b82603a3807",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json",
+        "cpp_result_sha256": "1d073cfdfd51072f74c7a66fdba24c89a7db225ecf20c90519c03386537f6d6d",
+        "minimum_digit_agreement": 58,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 54,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 2 --digits 80 --out tools/reference-harness/specs/case-studies/package-double-box.eps2.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "single-top-planar-nonplanar",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "single-top-planar-nonplanar",
+      "minimum_observed_correct_digits": 57,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps12-golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 174,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.compare.json",
+        "comparison_summary_sha256": "ed44c15d6ee408556cc5d5ed65eba45b10966dd73ef6d7e39ca58846e5d076ca",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json",
+        "cpp_result_sha256": "3f4c68fecd7637097777ed505e6b6c0e35ba086c69f6dc64225debd6ba8975c1",
+        "minimum_digit_agreement": 57,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 174,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 12 --digits 80 --out tools/reference-harness/specs/case-studies/single-top-planar-nonplanar.automatic-loop-eps12.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "ttbar-h",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-h",
+      "minimum_observed_correct_digits": 999,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/ttbar-h.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5-golden.txt --tolerance-digits 100",
+        "compared_coefficient_count": 1,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/ttbar-h.srl5-exact-proxy.digits80.compare.json",
+        "comparison_summary_sha256": "23b4f99aaebdcd28c2f162a8d3e38d25b78aa11eaabdb41ee90d0bc1db8309a6",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json",
+        "cpp_result_sha256": "e0fce49c84d13c1ad2ca782af3e409be8ab8f553e48a53a5f8a12809473a2c52",
+        "minimum_digit_agreement": 999,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 1,
+        "runtime_source_kind": "retained-srl5-exact-endpoint-proxy-vs-accepted-golden",
+        "solve_command": "./build/singular-runtime-lane-tests # SRL-5 fixture recomputes the same SRL-4 endpoint packet and checks the retained live C++ output",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 100
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "ttbar-j",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-j",
+      "minimum_observed_correct_digits": 78,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/amflow/examples/automatic_vs_manual/auto --tolerance-digits 50",
+        "compared_coefficient_count": 89,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.compare.json",
+        "comparison_summary_sha256": "a64793ace681286255ba9d026385b1ebf709258e58bbbb0b6a0c41f8044c120f",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
+        "cpp_result_sha256": "e50933d3ba6877c97f534989c3704033362fb1d5a44380d46d3a7ce46a6345c3",
+        "minimum_digit_agreement": 78,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 89,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.precision-cache.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "case_study_id": "ttbar-w",
+      "comparison_passed": true,
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "ttbar-w",
+      "minimum_observed_correct_digits": 58,
+      "numeric_evidence_path": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/ttbar-w.automatic-loop-eps11.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps11-golden-manifest.json --tolerance-digits 50",
+        "compared_coefficient_count": 162,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/case-studies/ttbar-w.automatic-loop-eps11.digits80.compare.json",
+        "comparison_summary_sha256": "6a3e757d9958d979278fdd79e8b7beb6d3503745d03b888a923645463bafb237",
+        "cpp_result_path": "tools/reference-harness/specs/case-studies/ttbar-w.automatic-loop-eps11.digits80.cpp-result.json",
+        "cpp_result_sha256": "756ed7875a3f6e8fa797954f8e073d6cd26e40cac1c11bf33774befdbd773a05",
+        "minimum_digit_agreement": 58,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 162,
+        "runtime_source_kind": "retained-cpp-vs-amflow",
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 11 --digits 80 --out tools/reference-harness/specs/case-studies/ttbar-w.automatic-loop-eps11.digits80.cpp-result.json",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 50
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    }
+  ],
+  "phase0_reference_captured_benchmarks": [
+    {
+      "benchmark_id": "automatic_loop",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/automatic_loop.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "automatic_loop",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_loop/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/automatic_loop.eps8.compare.json",
+        "compared_coefficient_count": 126,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/automatic_loop.eps8.compare.json",
+        "comparison_summary_sha256": "e16240f7ce5a31ae34e25e57a2d7098d814392ed6c3cf82382dbc6c24c385b23",
+        "cpp_result_path": "tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json",
+        "cpp_result_sha256": "ff9b7f81de007a71f0c13c562d467edd903038de8805c0ac5a5774be2104497d",
+        "minimum_digit_agreement": 41,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 126,
+        "solve_command": "/tmp/autoibp_orch/exec/lane45_m5_runtime_feature_gate/build/amflow-cli solve-series /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 8 --digits 40 --out /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/specs/m5/proof-runs/lane45/automatic_loop.eps8.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json#features.fixed_eps.commands[0]",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "benchmark_id": "automatic_vs_manual",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/automatic_vs_manual.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "automatic_vs_manual",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/results/phase0/automatic_vs_manual/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m7/lane70/benchmarks/automatic_vs_manual.eps0.run1.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/automatic_vs_manual.eps0.compare.json",
+        "compared_coefficient_count": 89,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/automatic_vs_manual.eps0.compare.json",
+        "comparison_summary_sha256": "32804cc6ee81eedcff8dcdbb8add351590db0aba01bf979f3d7dce9ac6659174",
+        "cpp_result_path": "tools/reference-harness/specs/m7/lane70/benchmarks/automatic_vs_manual.eps0.run1.digits80.cpp-result.json",
+        "cpp_result_sha256": "ccbb4006898698124f07d438895b8e01d3445635e038fb58b7fb1fb9cf61afba",
+        "minimum_digit_agreement": 36,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 89,
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_vs_manual.amflow-state.json --eps-order 0 --digits 80 --out /tmp/autoibp_orch/exec/lane70_perf/benchmarks/automatic_vs_manual.eps0.digits80.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m7/lane70/release-performance-review.json#automatic_vs_manual.run1.command",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "benchmark_id": "differential_equation_solver",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/differential_equation_solver.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "differential_equation_solver",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/differential_equation_solver/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m7/lane70/benchmarks/differential_equation_solver.eps3.run1.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/differential_equation_solver.eps3.compare.json",
+        "compared_coefficient_count": 12,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/differential_equation_solver.eps3.compare.json",
+        "comparison_summary_sha256": "c1841789173575c667d1ad9b24cbdef2ff8fa21bd7bc35cd8c1f168d8934ec69",
+        "cpp_result_path": "tools/reference-harness/specs/m7/lane70/benchmarks/differential_equation_solver.eps3.run1.digits80.cpp-result.json",
+        "cpp_result_sha256": "24cd3a00554c4ce0576445c9d5710f11b22e9da8599c0f7106abd4f2cd345e55",
+        "minimum_digit_agreement": 81,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 12,
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/differential_equation_solver.amflow-state.json --eps-order 3 --digits 80 --out /tmp/autoibp_orch/exec/lane70_perf/benchmarks/differential_equation_solver.eps3.digits80.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m7/lane70/release-performance-review.json#differential_equation_solver.run1.command",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "benchmark_id": "spacetime_dimension",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/spacetime_dimension.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "spacetime_dimension",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/results/phase0/spacetime_dimension/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json --amflow-golden tools/reference-harness/specs/m5/lane50/goldens/spacetime_dimension.direct-nondefault-d.amflow-golden.txt --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/spacetime_dimension.direct-flag.compare.json",
+        "compared_coefficient_count": 2,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/spacetime_dimension.direct-flag.compare.json",
+        "comparison_summary_sha256": "5016b23aeb3a9b189f760e3c3bffd397a1d8d92e4eef8108b4917bfdabfb616e",
+        "cpp_result_path": "tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json",
+        "cpp_result_sha256": "72d315d232350e5196dc53a4fc68991d1e37ab24df470cd7a1f428ebc2ccf279",
+        "minimum_digit_agreement": 51,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 2,
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/specs/spacetime_dimension.direct-default-d.flag-probe.yaml --eps-order 1 --digits 50 --spacetime-dimension 7/3 --out tools/reference-harness/specs/m5/proof-runs/lane50/spacetime_dimension.direct-flag.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m5/lane50/user-defined-feature-parity-evidence.json#feature_rows.spacetime_dimension.command",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "benchmark_id": "user_defined_amfmode",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/user_defined_amfmode.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "user_defined_amfmode",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json --amflow-golden tools/reference-harness/specs/m5/lane50/goldens/user_defined_amfmode.box1_m2_1_1_2.scoped-golden.txt --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/user_defined_amfmode.scoped.compare.json",
+        "compared_coefficient_count": 6,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/user_defined_amfmode.scoped.compare.json",
+        "comparison_summary_sha256": "99e85f22f61459388294b72380f3f31c1ab978163e523a799e340a473b71ab81",
+        "cpp_result_path": "tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json",
+        "cpp_result_sha256": "33867aa5639d248fca8009284eb740bcf76e0d56a0dae18c7cf595d933835170",
+        "minimum_digit_agreement": 42,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 6,
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/states/user_defined_amfmode.scoped.raw-state.json --eps-order 3 --digits 60 --amfmode usr --out tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_amfmode.scoped.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m5/lane50/user-defined-feature-parity-evidence.json#feature_rows.user_defined_amfmode.command",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    },
+    {
+      "benchmark_id": "user_defined_ending",
+      "committed_sidecar_copy_path": "tools/reference-harness/specs/m7/lane115/phase0-sidecars/user_defined_ending.failure-code-audit.json",
+      "failure_code_profile": "default-required-failure-codes",
+      "id": "user_defined_ending",
+      "observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "published_packet_sidecar_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_ending/failure-code-audit.json",
+      "qualifier_observed_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ],
+      "real_output_audit": {
+        "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_ending.final_usr.scoped.cpp-result.json --amflow-golden tools/reference-harness/specs/m5/lane50/goldens/user_defined_ending.final_usr.box1_m2_1_1_2.scoped-golden.txt --tolerance-digits 30 > tools/reference-harness/specs/m7/lane115/comparisons/user_defined_ending.final_usr.scoped.compare.json",
+        "compared_coefficient_count": 6,
+        "comparison_failure_entry_count": 0,
+        "comparison_passed": true,
+        "comparison_summary_path": "tools/reference-harness/specs/m7/lane115/comparisons/user_defined_ending.final_usr.scoped.compare.json",
+        "comparison_summary_sha256": "14904fba0b679fb060948f20a806f514124cfc74a215844cc1114e14526ebfca",
+        "cpp_result_path": "tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_ending.final_usr.scoped.cpp-result.json",
+        "cpp_result_sha256": "64bbacf9d79896c0be8d9a5a23ad60328d3ec510124c07144bb82fa4f9ccdf81",
+        "minimum_digit_agreement": 36,
+        "observed_runtime_failure_codes": [],
+        "passed_coefficient_count": 6,
+        "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/m5/lane50/states/user_defined_ending.final_usr.scoped.raw-state.json --eps-order 3 --digits 60 --ending usr --out tools/reference-harness/specs/m5/proof-runs/lane50/user_defined_ending.final_usr.scoped.cpp-result.json",
+        "solve_command_source": "tools/reference-harness/specs/m5/lane50/user-defined-feature-parity-evidence.json#feature_rows.user_defined_ending.command",
+        "solve_series_failure_code": "",
+        "solve_series_status": "success",
+        "tolerance_digits": 30
+      },
+      "required_failure_codes": [
+        "insufficient_precision",
+        "master_set_instability",
+        "boundary_unsolved",
+        "continuation_budget_exhausted"
+      ]
+    }
+  ],
+  "required_failure_code_profile": "default-required-failure-codes",
+  "required_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "schema_version": 1,
+  "scope": "lane115 M6 phase-0 and case-study failure-code audit evidence",
+  "withheld_claims": [
+    "This evidence does not claim retained packet-set correct-digit qualification.",
+    "This evidence does not claim closure of the runtime-lane-blocked phase-0 examples b61n, b63n, or b64ag.",
+    "This evidence does not claim M6 closure by itself."
+  ]
+}

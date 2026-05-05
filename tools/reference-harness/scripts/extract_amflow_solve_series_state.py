@@ -561,7 +561,9 @@ def extract_state(system_dir: Path,
     family_name = masters[0]["family"]
     target_reduction = reduction_dir / "results" / family_name / "kira_target.m"
     if target_reduction.exists():
-      target_reduction_path = str(target_reduction)
+      compact_target_reduction = compact_mathematica_text(target_reduction.read_text())
+      if compact_target_reduction.replace(" ", "") not in {"", "{}"}:
+        target_reduction_path = str(target_reduction)
     reduction_masters = parse_plain_integral_file(reduction_dir / "results" / family_name / "masters")
 
   cpp_ingest_reason = (

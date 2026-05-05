@@ -4,6 +4,7 @@
   "compare_cpp_vs_amflow_outputs": [
     "sol1"
   ],
+  "cpp_solve_series_input": "feynman_prescription.amflow-state.json",
   "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/golden-manifest.json",
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured",
   "capture_status": "reference-captured",

@@ -1707,6 +1707,62 @@ std::vector<DirectSolveSeriesSpec> ParseAmflowSolveSeriesStateBundleJsonRoot(
   return specs;
 }
 
+
+struct ParsedSolveSeriesJsonInput {
+  std::vector<DirectSolveSeriesSpec> specs;
+  bool bundle = false;
+};
+
+std::filesystem::path ResolveSolveSeriesJsonReferencePath(
+    const std::filesystem::path& source_path,
+    const std::string& raw_reference) {
+  if (raw_reference.empty()) {
+    throw std::runtime_error("$.cpp_solve_series_input must not be empty");
+  }
+  const std::filesystem::path reference_path(raw_reference);
+  if (reference_path.is_absolute()) {
+    return reference_path;
+  }
+  return source_path.parent_path() / reference_path;
+}
+
+ParsedSolveSeriesJsonInput ParseSolveSeriesJsonInputRoot(
+    const CliJsonValue& root,
+    const std::string& path,
+    const std::filesystem::path& source_path) {
+  RequireJsonObject(root, path);
+  const CliJsonValue* kind_field = FindJsonField(root, "kind");
+  if (kind_field == nullptr) {
+    const CliJsonValue* referenced_input = FindJsonField(root, "cpp_solve_series_input");
+    if (referenced_input == nullptr) {
+      throw std::runtime_error(path + ".kind is required");
+    }
+    const std::filesystem::path referenced_path =
+        ResolveSolveSeriesJsonReferencePath(
+            source_path,
+            RequireJsonString(*referenced_input, path + ".cpp_solve_series_input"));
+    const std::string referenced_raw = ReadTextFile(referenced_path);
+    if (!LooksLikeJsonObject(referenced_raw)) {
+      throw std::runtime_error(
+          "solve-series cpp_solve_series_input must point to a JSON object: " +
+          referenced_path.string());
+    }
+    const CliJsonValue referenced_root = CliJsonParser(referenced_raw).Parse();
+    return ParseSolveSeriesJsonInputRoot(referenced_root, "$", referenced_path);
+  }
+
+  const std::string kind = RequireJsonString(*kind_field, path + ".kind");
+  if (kind == "amflow_solve_series_state_bundle") {
+    return {ParseAmflowSolveSeriesStateBundleJsonRoot(root, path), true};
+  }
+  if (kind == "amflow_solve_series_state") {
+    return {{ParseAmflowSolveSeriesStateJsonRoot(root, path)}, false};
+  }
+  throw std::invalid_argument(
+      "solve-series JSON input must have kind \"amflow_solve_series_state\" or "
+      "\"amflow_solve_series_state_bundle\"");
+}
+
 bool IsAutomaticVsManualSmokeProblemSpec(const amflow::ProblemSpec& problem_spec) {
   return problem_spec.family.name == "automatic_vs_manual_k0_smoke";
 }
@@ -5398,15 +5454,13 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
   DirectSolveSeriesSpec direct_spec;
   if (LooksLikeJsonObject(raw_spec)) {
     const CliJsonValue root = CliJsonParser(raw_spec).Parse();
-    const std::string kind =
-        RequireJsonString(RequireJsonField(root, "kind", "$"), "$.kind");
-    if (kind == "amflow_solve_series_state_bundle") {
-      const std::vector<DirectSolveSeriesSpec> direct_specs =
-          ParseAmflowSolveSeriesStateBundleJsonRoot(root, "$");
+    const ParsedSolveSeriesJsonInput parsed_json =
+        ParseSolveSeriesJsonInputRoot(root, "$", args.spec_path);
+    if (parsed_json.bundle) {
       std::vector<SolveSeriesEvaluation> evaluations;
-      evaluations.reserve(direct_specs.size());
+      evaluations.reserve(parsed_json.specs.size());
       int exit_code = 0;
-      for (const DirectSolveSeriesSpec& state_spec : direct_specs) {
+      for (const DirectSolveSeriesSpec& state_spec : parsed_json.specs) {
         evaluations.push_back(EvaluateSolveSeriesInput(
             MakeProblemSpecForAmflowState(state_spec),
             state_spec,
@@ -5434,7 +5488,7 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
       }
       return exit_code;
     }
-    direct_spec = ParseAmflowSolveSeriesStateJsonRoot(root, "$");
+    direct_spec = parsed_json.specs.front();
     problem_spec = MakeProblemSpecForAmflowState(direct_spec);
   } else {
     problem_spec = amflow::LoadProblemSpecFile(args.spec_path);

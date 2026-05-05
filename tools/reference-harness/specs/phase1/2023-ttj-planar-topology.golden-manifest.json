@@ -1,0 +1,260 @@
+{
+  "benchmark_id": "2023-ttj-planar-topology",
+  "capture_profile": {
+    "benchmark_class": "phase1-selected-qualification-anchor-proxy-capture",
+    "black_box_dot": 0,
+    "black_box_rank": 3,
+    "case_study_family": "ttbar-j",
+    "epsorder": 4,
+    "family": "tt",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "msq": "1",
+      "s": "30",
+      "t": "-10/3"
+    },
+    "kinematic_region": "physical AMFlow automatic_vs_manual example point",
+    "precision_goal_digits": 60,
+    "raw_scalar_targets": [
+      "j[tt,1,1,1,1,1,1,1,-3,0], first automatic_vs_manual top-sector numerator target",
+      "j[tt,1,1,1,1,1,1,1,-2,-1], second automatic_vs_manual top-sector numerator target",
+      "j[tt,1,1,1,1,1,1,1,-1,-2], third automatic_vs_manual top-sector numerator target",
+      "j[tt,1,1,1,1,1,1,1,0,-3], fourth automatic_vs_manual top-sector numerator target"
+    ],
+    "source_reference": "arXiv:2208.01006 / JHEP01(2023)156, selected ttbar-j planar topology anchor; retained proxy uses the AMFlow automatic_vs_manual tt-family packet qualified by ttbar-j numeric evidence",
+    "topology": "AMFlow automatic_vs_manual two-loop tt double-box proxy"
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T17:19:39-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-proxy-anchor",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/examples/ttj_planar_topology_tt_family",
+  "notes": [
+    "This benchmark is an eligible phase-1 selected benchmark from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md.",
+    "It is not one of the six previous phase-1 captures: diphoton-heavy-quark-form-factors, 2024-box-integrals-fermion-bubbles, single-top-planar-nonplanar, 2024-gg-to-tth-one-loop-oeps2, 2023-gg-to-gammagamma-light-quark-mi, or 2024-wpair-planar-mi.",
+    "The lane intentionally captures the retained AMFlow automatic_vs_manual tt-family proxy for the 2023-ttj-planar-topology / ttbar-j anchor because the in-repo qualification row already uses this proxy and has a passing C++ comparison sidecar.",
+    "This is not a dedicated solve of the paper's eight-propagator pentagon-box topology; no dedicated pentagon-box C++ ingest state, dedicated literature-topology comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made.",
+    "The lane95 Kira imaginary-coefficient wrapper is installed as a reactive retry for the exact pyred parser error invalid coefficient string \"I\". This capture did not observe that retry signature."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "6d453524ad2dab712cfdd3d97fc18162ca10426963796e201b32ac6ee42ba298",
+      "name": "sol-2023-ttj-planar-topology-tt-family",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/examples/ttj_planar_topology_tt_family/sol-2023-ttj-planar-topology-tt-family",
+      "present_at_capture": true,
+      "size_bytes": 14733
+    },
+    {
+      "canonical_sha256": "d7c5cfb7230f1820d47debe1f0aab0238306f8304e7c5ba995957aad813d8f27",
+      "name": "sol-2023-ttj-planar-topology-tt-family.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/examples/ttj_planar_topology_tt_family/sol-2023-ttj-planar-topology-tt-family.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 725
+    },
+    {
+      "canonical_sha256": "af68d0b8640d02438f691c14e2a199c2bd70bac3c06d70657752eb65b172f23d",
+      "name": "sol-2023-ttj-planar-topology-tt-family.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/examples/ttj_planar_topology_tt_family/sol-2023-ttj-planar-topology-tt-family.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 2128
+    }
+  ],
+  "proxy_comparison_evidence": {
+    "amflow_golden_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/amflow/examples/automatic_vs_manual/auto",
+    "amflow_golden_sha256": "6d453524ad2dab712cfdd3d97fc18162ca10426963796e201b32ac6ee42ba298",
+    "case_study_sidecar": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json",
+    "comparison_passed": true,
+    "compared_coefficient_count": 89,
+    "matched_integral_count": 25,
+    "minimum_observed_correct_digits": 78,
+    "passed_coefficient_count": 89
+  },
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2023-ttj-planar-topology from the phase-1 selected benchmarks; exclusions against the six existing phase-1 captures passed."
+    },
+    {
+      "role": "B",
+      "scope": "manifest and capture-template conformance",
+      "status": "APPROVE",
+      "verdict": "The lane111 packet follows the prior phase-1 root-manifest plus adjacent capture-script pattern with hashed outputs, provenance, explicit non-claims, and fail-closed verifier behavior."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure, CMake build, CTest, and compare_cpp_vs_amflow.py --self-check completed with exit code 0."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "The fresh lane111 capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, and AMFSystemSolution execution; verifier passed on 4 target rules, 25 solution rules, and 24 finite nonzero-capable Mathematica Laurent coefficients with minimum precision 60. The claim is limited to the retained automatic_vs_manual tt-family proxy for the 2023-ttj-planar-topology anchor."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/examples/ttj_planar_topology_tt_family",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:32:43"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane111_local_capture.log",
+        "sha256": "6a2561b07de4b7933770b790915d4702ee52406c8f253ddde72503369beb6162",
+        "size_bytes": 47807
+      },
+      "prior_proxy_capture_stdout": {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/logs/capture-avm60-10126973.out",
+        "sha256": "c0db9b120184c40f51d8f5f9a86a2b2bed309c7f330cf87e643c2b3804756851",
+        "size_bytes": 68275
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/run-manifest.10006275.txt",
+      "sha256": "a185ffd5ca4ea75ecaac28da00dae475f30debc5c867470ff787f8d6f281b7ca",
+      "size_bytes": 1804
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-ttj-planar-topology.lane111/capture_2023_ttj_planar_topology.sbatch",
+        "sha256": "b889dc3feb9e7b48f7857c3736c66c571cea846d819b2012bea49dc8ec90a5ee",
+        "size_bytes": 2864
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-ttj-planar-topology.lane111/run.wl",
+        "sha256": "2a160f16711b89345afa5acd7e324f11bfac942a2720bb4704d649821d54c661",
+        "size_bytes": 6353
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-ttj-planar-topology.lane111/verify_output.wl",
+        "sha256": "9b7133af5492eae1e9f082e91600bb4e350cb019179afcdd0f872b974c0aae04",
+        "size_bytes": 3276
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/capture_ttbar_j_avm_precision60.sbatch",
+        "sha256": "1579f4dc3fee7bdd2bc0b0e2e805de2dc26390c31cc3becd82e39ab2f61354f1",
+        "size_bytes": 1342
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/amflow",
+      "remote": "https://gitlab.com/multiloop-pku/amflow.git"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+        "size_bytes": 63699
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84",
+        "size_bytes": 16727
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane111-2023-ttj-planar-topology/amflow/ibp_interface/Kira/install.m",
+        "sha256": "2c7ccd5aa46c76955d2451e47ff282261e5480588043f648a7dd1c017e480bdb",
+        "size_bytes": 252
+      }
+    ],
+    "source_article": {
+      "arxiv": "2208.01006",
+      "doi": "10.1007/JHEP01(2023)156",
+      "title": "Two-loop master integrals for a planar topology contributing to top-quark pair production in association with a jet",
+      "url": "https://arxiv.org/abs/2208.01006"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T17:19:39-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 1",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane111_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane111_cmake_build.stdout",
+        "sha256": "4fcdba84e42b1378fceb91a472b79fc32ba124477f6f989930954bb74d5f4912",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane111_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane111_cmake_configure.stdout",
+        "sha256": "1bdd10cf0f000d132c240cec530e87583087b5c95ccd3f723ed56c8f90c2f9bd",
+        "size_bytes": 142
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane111_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "ctest": {
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane111_ctest.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane111_ctest.stdout",
+        "sha256": "2e646a4402b7ea95072cc335669a7d83486be1697c76f5a61ea664c2db7a46f5",
+        "size_bytes": 351
+      },
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Lane111 fresh AMFlow/Kira run reduced four requested tt-family targets to 21 masters, constructed 21 AMF systems in 896 seconds, solved them in 734 seconds, wrote solution and metadata, and the verifier passed on finite Mathematica numeric Laurent coefficients.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 24,
+      "coefficient_powers": [
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0
+      ],
+      "max_abs_imaginary_component": "429.44465052522542756062059461225056789045249262322502705047712402257541912446826`59.90473559112497",
+      "min_precision": "59.99999999999999",
+      "sample_coefficients": [
+        "0",
+        "0.00551836024058246280468502690724912947135169357391579613801836024058246280469`60.",
+        "-0.03534509548112919604321511781743731287283389095515779224653139614643201006672`60.11491932580374 + 0.01491734403413956903353581853409070695250317853454466201792471316385477875729`59.740281672447765*I",
+        "0.06925530892123225519320369020416671503426840944603909038570478022120808835337`59.892164661485936 - 0.10471646741127489869853559551673952902711944912384710619011441069748976277`60.07172657360837*I"
+      ],
+      "solution_rule_count": 25,
+      "target_rule_count": 4
+    }
+  }
+}

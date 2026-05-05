@@ -48956,6 +48956,72 @@ void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
                  "finite solution-sample ingestion should report success");
 }
 
+void SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-finite-boundary-output-samples");
+  const std::filesystem::path state_path = run_root / "finite-state.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "schema_version": 1,
+  "kind": "amflow_solve_series_state",
+  "benchmark_id": "finite_boundary_output_samples",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "eta=1/2",
+  "target_location": "eta=1/2",
+  "masters": [
+    {"family": "toy", "indices": [1]},
+    {"family": "toy", "indices": [2]}
+  ],
+  "coefficient_matrices": {
+    "eta": [["0", "0"], ["0", "0"]]
+  },
+  "boundary_state": {
+    "kind": "amflow_finite_solution_samples",
+    "epsilon_samples": ["1/100"],
+    "files": {
+      "solution": {
+        "raw": "{j[toy, 1] -> {4}, j[toy, 2] -> {20}, j[toy, 3] -> {99}}"
+      }
+    }
+  },
+  "reduction": {
+    "targets": [
+      {"family": "toy", "indices": [1]},
+      {"family": "toy", "indices": [2]},
+      {"family": "toy", "indices": [3]}
+    ]
+  }
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "finite boundary output sample ingestion should complete; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"toy[3]\"",
+                 "finite boundary output sample ingestion should emit the retained output");
+  ExpectContains(json, "\"exact_real\": \"99\"",
+                 "finite boundary output sample ingestion should preserve the retained output "
+                 "sample directly");
+  ExpectContains(json, "Ingested 1 retained finite output integral",
+                 "finite boundary output sample ingestion should be visible in the summary");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "finite boundary output sample ingestion should report success");
+}
+
 void SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -49982,6 +50048,10 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
                  "family suffixes");
   ExpectContains(result.stdout_json, "\"explicit_family_alias_normalized\": true",
                  "C++ vs AMFlow comparator self-check should honor explicit family aliases");
+  ExpectContains(result.stdout_json,
+                 "\"selected_cpp_output_rejects_bad_unselected\": true",
+                 "C++ vs AMFlow comparator self-check should reject bad unselected named C++ "
+                 "outputs instead of hiding them");
   ExpectContains(result.stdout_json, "\"passed_coefficient_count_reported\": true",
                  "C++ vs AMFlow comparator self-check should report passing coefficient counts");
 }
@@ -54997,6 +55067,7 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
+    SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest();
     SolveSeriesCliReconstructsFiniteSolutionBasisOutputTest();
     SolveSeriesCliRejectsUnreconstructedFiniteSolutionOutputTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();

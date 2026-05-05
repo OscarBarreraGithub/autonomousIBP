@@ -9,7 +9,7 @@
   "notes": [
     "Tracked pointer for the retained upstream AMFlow phase-0 differential_equation_solver capture.",
     "The promoted golden keeps the example's structural reduction/differential-equation outputs and the real Mathematica-evaluated AMFlow boundary-condition numerics for comparator and correct-digit consumers.",
-    "The solve-series comparator view is intentionally scoped to sol1 because redtable/diffeq are structural artifacts and sol2 is the same master set evaluated at a different kinematic point."
+    "The solve-series comparator view is intentionally scoped to sol1 because redtable/diffeq are structural artifacts and sol2 is the same master set evaluated at a different kinematic point. The retained C++ state bundle emits named sol1/sol2 branches so the comparator can select the matching kinematic output."
   ],
   "outputs": [
     {

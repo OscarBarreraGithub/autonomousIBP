@@ -389,6 +389,7 @@ struct DirectSolveSeriesSpec {
   bool amflow_state_input = false;
   bool retained_solution_samples_input = false;
   std::string benchmark_id;
+  std::string amflow_output_name;
   std::string family;
   std::string integral_kind;
   std::string variable;
@@ -1496,6 +1497,7 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   spec.present = true;
   spec.amflow_state_input = true;
   spec.benchmark_id = OptionalJsonStringField(root, "benchmark_id", "");
+  spec.amflow_output_name = OptionalJsonStringField(root, "amflow_output_name", "");
   spec.integral_kind = OptionalJsonStringField(root, "integral_kind", "");
   spec.family = RequireJsonString(RequireJsonField(root, "family", path), path + ".family");
   spec.variable =
@@ -1706,7 +1708,6 @@ std::vector<DirectSolveSeriesSpec> ParseAmflowSolveSeriesStateBundleJsonRoot(
   }
   return specs;
 }
-
 
 struct ParsedSolveSeriesJsonInput {
   std::vector<DirectSolveSeriesSpec> specs;
@@ -4123,6 +4124,35 @@ int ReconstructFiniteSolutionBasisSamples(
   return reconstructed_count;
 }
 
+int IngestRetainedFiniteOutputSamplesAtBoundary(
+    const DirectSolveSeriesSpec& spec,
+    const std::map<std::string, std::vector<BigComplex>>& solution_samples,
+    const std::vector<std::string>& output_labels,
+    std::vector<std::string>& available_labels,
+    std::vector<std::vector<BigComplex>>& available_samples) {
+  if (!IsFiniteSolutionSampleState(spec) ||
+      AppliesFiniteSolutionSampleTransport(spec)) {
+    return 0;
+  }
+
+  std::set<std::string> available(available_labels.begin(), available_labels.end());
+  int ingested_count = 0;
+  for (const std::string& label : output_labels) {
+    if (available.find(label) != available.end()) {
+      continue;
+    }
+    const auto sample_it = solution_samples.find(label);
+    if (sample_it == solution_samples.end()) {
+      continue;
+    }
+    available.insert(label);
+    available_labels.push_back(label);
+    available_samples.push_back(sample_it->second);
+    ++ingested_count;
+  }
+  return ingested_count;
+}
+
 amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
     const DirectSolveSeriesSpec& direct_spec,
     const int requested_epsilon_order) {
@@ -4211,6 +4241,12 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
     output_labels = master_labels;
   }
 
+  const int direct_retained_output_count =
+      IngestRetainedFiniteOutputSamplesAtBoundary(direct_spec,
+                                                  solution_samples,
+                                                  output_labels,
+                                                  master_labels,
+                                                  master_samples);
   const int reconstructed_finite_output_count =
       ReconstructFiniteSolutionBasisSamples(direct_spec, master_labels, master_samples);
 
@@ -4280,6 +4316,11 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
       diagnostics.summary +=
           " Start and target finite locations match, so retained solution-sample cache "
           "values were used directly.";
+      if (direct_retained_output_count > 0) {
+        diagnostics.summary +=
+            " Ingested " + std::to_string(direct_retained_output_count) +
+            " retained finite output integral(s) directly from the boundary sample file.";
+      }
     }
   }
   return diagnostics;
@@ -4655,6 +4696,10 @@ void AppendSolveSeriesResultEntries(
     wrote_result = true;
     out << "    {\n";
     out << "      \"integral\": " << JsonString(label) << ",\n";
+    if (!direct_spec.amflow_output_name.empty()) {
+      out << "      \"amflow_output_name\": "
+          << JsonString(direct_spec.amflow_output_name) << ",\n";
+    }
     out << "      \"epsilon_orders\": [";
     const auto master_it = master_index_by_label.find(label);
     const bool target_reduction_applied =
@@ -5265,6 +5310,7 @@ std::string SerializeSolveSeriesBundleJson(
         AppliesFiniteSolutionSampleTransport(direct_spec);
     out << "{"
         << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
+        << ", \"amflow_output_name\": " << JsonString(direct_spec.amflow_output_name)
         << ", \"status\": " << JsonString(evaluation.status)
         << ", \"boundary_state\": {"
         << "\"kind\": " << JsonString(direct_spec.boundary_state_kind)
@@ -5371,8 +5417,12 @@ std::string SerializeSolveSeriesBundleJson(
                                "deferred after retained loop solution-sample coefficient "
                                "fitting"
                          : finite_transport_applied
-                             ? "solution-only integrals outside the transported finite DE "
-                               "master basis remain deferred"
+                             ? (direct_spec.finite_solution_basis_reduction_path.empty()
+                                    ? "solution-only integrals outside the transported finite "
+                                      "DE master basis remain deferred"
+                                    : "full live finite-start boundary solving remains "
+                                      "deferred after retained finite DE transport and "
+                                      "solution-basis reconstruction")
                              : "full AMFlow loop-boundary reconstruction and endpoint "
                                "contour execution remain deferred after retained finite "
                                "solution-sample ingestion")

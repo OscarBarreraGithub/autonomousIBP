@@ -8,7 +8,7 @@
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured",
   "notes": [
     "Transport-check comparator pointer for the retained upstream AMFlow phase-0 differential_equation_solver capture.",
-    "The finite-start C++ state uses sol1 as boundary data and transports the DE masters to the example's sol2 check point at s=1/10.",
+    "The finite-start C++ state bundle uses sol1 as boundary data, emits a named sol1 boundary branch, and transports the DE masters to the example's named sol2 check point at s=1/10.",
     "This manifest is intentionally scoped to sol2; the default differential_equation_solver.golden-manifest.json remains scoped to sol1 for the retained boundary-value comparator view."
   ],
   "outputs": [

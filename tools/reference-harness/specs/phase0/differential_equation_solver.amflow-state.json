@@ -1,193 +1,394 @@
 {
-  "benchmark_id": "differential_equation_solver",
-  "boundary_state": {
-    "epsilon_samples": [
-      "1/10000"
-    ],
-    "files": {
-      "diffeq": {
-        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
-        "raw": "{{j[sunrise, 1, 1, 1, 0, 0], j[sunrise, 2, 1, 1, 0, 0]}, {{(1 - 2*eps)/s, -s^(-1)}, {(-2 + 7*eps - 6*eps^2)/((-1 + s)*s), (2 - 3*eps - eps*s)/((-1 + s)*s)}}}"
-      },
-      "solution": {
-        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1",
-        "raw": "{j[sunrise, 2, 1, 1, 0, 0] -> {4.99992308419355095797182107002687417345429645700039465638156665593948300581890975217946566958506896576980000000000000000001`99.09685979100242*^7 - 8.78740705297867759970485869108291334632874292304923174062772165659797784440430901127496843963589728060775`99.09704576693161*^-31* I}, j[sunrise, 1, 1, 1, 0, 0] -> {5.000798234684155579032143586340088203037363384252304913401092011337610534327955584720172425565570768`100.*^7 - 8.784644815439949075619998380730383802489824406233378601880859127464368232145003816112513802799360245`100.*^-31*I}, j[sunrise, 1, 1, 1, -1, 0] -> {7.501405735857883408756698603420085965548092375029444280277487259332406318760744442898410218755452818`100.*^7 - 1.317876661342673713105094176880426279210346196993203381685516767471885421931426496552866949107018643`100.*^-30*I}}"
-      }
-    },
-    "kind": "amflow_finite_solution_samples"
-  },
-  "coefficient_matrices": {
-    "eta": [
-      [
-        "(1 - 2*eps)/eta",
-        "-1/eta"
-      ],
-      [
-        "(-2 + 7*eps - 6*eps*eps)/((-1 + eta)*eta)",
-        "(2 - 3*eps - eps*eta)/((-1 + eta)*eta)"
-      ]
-    ]
-  },
-  "cpp_solve_series_ingest": {
-    "reason": "The retained differential_equation_solver state has finite AMFlow solution samples at the DESolver start point. C++ solve-series transports the retained DE-master samples to the requested finite target point and reconstructs retained solution-basis outputs when a reviewed Kira relation is provided.",
-    "supported": true
-  },
-  "family": "sunrise",
-  "finite_start": {
-    "diffeq_masters": [
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          2,
-          1,
-          1,
-          0,
-          0
-        ]
-      }
-    ],
-    "metadata_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
-    "output_integrals": [
-      {
-        "family": "sunrise",
-        "indices": [
-          2,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          -1,
-          0
-        ]
-      }
-    ],
-    "solution_basis_reduction_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/generated-config/phase0/differential_equation_solver/primary/cache/sunrise_amflow/0/results/sunrise/kira_target.m",
-    "source_variable": "s"
-  },
-  "integral_kind": "loop",
-  "kind": "amflow_solve_series_state",
-  "masters": [
-    {
-      "family": "sunrise",
-      "indices": [
-        1,
-        1,
-        1,
-        0,
-        0
-      ]
-    },
-    {
-      "family": "sunrise",
-      "indices": [
-        2,
-        1,
-        1,
-        0,
-        0
-      ]
-    }
-  ],
-  "reduction": {
-    "masters": [
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          2,
-          1,
-          1,
-          0,
-          0
-        ]
-      }
-    ],
-    "target_reduction_path": "",
-    "targets": [
-      {
-        "family": "sunrise",
-        "indices": [
-          2,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          0,
-          0
-        ]
-      },
-      {
-        "family": "sunrise",
-        "indices": [
-          1,
-          1,
-          1,
-          -1,
-          0
-        ]
-      }
-    ]
-  },
   "schema_version": 1,
-  "singular_points": [
-    "eta=0",
-    "eta=1"
-  ],
-  "solution_sample_cache": {
-    "enabled": true,
-    "source": "retained_finite_solution_boundary_samples"
-  },
-  "source": {
-    "diffeq_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
-    "run_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
-    "solution_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1"
-  },
-  "start_location": "eta=1/2",
-  "target_location": "eta=1/10",
-  "variable": "eta"
+  "kind": "amflow_solve_series_state_bundle",
+  "states": [
+    {
+      "benchmark_id": "differential_equation_solver",
+      "boundary_state": {
+        "epsilon_samples": [
+          "1/10000"
+        ],
+        "files": {
+          "diffeq": {
+            "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
+            "raw": "{{j[sunrise, 1, 1, 1, 0, 0], j[sunrise, 2, 1, 1, 0, 0]}, {{(1 - 2*eps)/s, -s^(-1)}, {(-2 + 7*eps - 6*eps^2)/((-1 + s)*s), (2 - 3*eps - eps*s)/((-1 + s)*s)}}}"
+          },
+          "solution": {
+            "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1",
+            "raw": "{j[sunrise, 2, 1, 1, 0, 0] -> {4.99992308419355095797182107002687417345429645700039465638156665593948300581890975217946566958506896576980000000000000000001`99.09685979100242*^7 - 8.78740705297867759970485869108291334632874292304923174062772165659797784440430901127496843963589728060775`99.09704576693161*^-31* I}, j[sunrise, 1, 1, 1, 0, 0] -> {5.000798234684155579032143586340088203037363384252304913401092011337610534327955584720172425565570768`100.*^7 - 8.784644815439949075619998380730383802489824406233378601880859127464368232145003816112513802799360245`100.*^-31*I}, j[sunrise, 1, 1, 1, -1, 0] -> {7.501405735857883408756698603420085965548092375029444280277487259332406318760744442898410218755452818`100.*^7 - 1.317876661342673713105094176880426279210346196993203381685516767471885421931426496552866949107018643`100.*^-30*I}}"
+          }
+        },
+        "kind": "amflow_finite_solution_samples"
+      },
+      "coefficient_matrices": {
+        "eta": [
+          [
+            "(1 - 2*eps)/eta",
+            "-1/eta"
+          ],
+          [
+            "(-2 + 7*eps - 6*eps*eps)/((-1 + eta)*eta)",
+            "(2 - 3*eps - eps*eta)/((-1 + eta)*eta)"
+          ]
+        ]
+      },
+      "cpp_solve_series_ingest": {
+        "reason": "The retained differential_equation_solver sol1 state has finite AMFlow solution samples at the DESolver start point. C++ solve-series keeps the finite start and target aligned at eta=1/2 and ingests retained boundary output samples directly, while preserving the reviewed solution-basis reconstruction path for outputs not present in the boundary file.",
+        "supported": true
+      },
+      "family": "sunrise",
+      "finite_start": {
+        "diffeq_masters": [
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "metadata_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
+        "output_integrals": [
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              -1,
+              0
+            ]
+          }
+        ],
+        "solution_basis_reduction_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/generated-config/phase0/differential_equation_solver/primary/cache/sunrise_amflow/0/results/sunrise/kira_target.m",
+        "source_variable": "s"
+      },
+      "integral_kind": "loop",
+      "kind": "amflow_solve_series_state",
+      "masters": [
+        {
+          "family": "sunrise",
+          "indices": [
+            1,
+            1,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "family": "sunrise",
+          "indices": [
+            2,
+            1,
+            1,
+            0,
+            0
+          ]
+        }
+      ],
+      "reduction": {
+        "masters": [
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "target_reduction_path": "",
+        "targets": [
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              -1,
+              0
+            ]
+          }
+        ]
+      },
+      "schema_version": 1,
+      "singular_points": [
+        "eta=0",
+        "eta=1"
+      ],
+      "solution_sample_cache": {
+        "enabled": true,
+        "source": "retained_finite_solution_boundary_samples"
+      },
+      "source": {
+        "diffeq_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
+        "run_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
+        "solution_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1"
+      },
+      "start_location": "eta=1/2",
+      "target_location": "eta=1/2",
+      "variable": "eta",
+      "amflow_output_name": "sol1"
+    },
+    {
+      "benchmark_id": "differential_equation_solver",
+      "boundary_state": {
+        "epsilon_samples": [
+          "1/10000"
+        ],
+        "files": {
+          "diffeq": {
+            "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
+            "raw": "{{j[sunrise, 1, 1, 1, 0, 0], j[sunrise, 2, 1, 1, 0, 0]}, {{(1 - 2*eps)/s, -s^(-1)}, {(-2 + 7*eps - 6*eps^2)/((-1 + s)*s), (2 - 3*eps - eps*s)/((-1 + s)*s)}}}"
+          },
+          "solution": {
+            "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1",
+            "raw": "{j[sunrise, 2, 1, 1, 0, 0] -> {4.99992308419355095797182107002687417345429645700039465638156665593948300581890975217946566958506896576980000000000000000001`99.09685979100242*^7 - 8.78740705297867759970485869108291334632874292304923174062772165659797784440430901127496843963589728060775`99.09704576693161*^-31* I}, j[sunrise, 1, 1, 1, 0, 0] -> {5.000798234684155579032143586340088203037363384252304913401092011337610534327955584720172425565570768`100.*^7 - 8.784644815439949075619998380730383802489824406233378601880859127464368232145003816112513802799360245`100.*^-31*I}, j[sunrise, 1, 1, 1, -1, 0] -> {7.501405735857883408756698603420085965548092375029444280277487259332406318760744442898410218755452818`100.*^7 - 1.317876661342673713105094176880426279210346196993203381685516767471885421931426496552866949107018643`100.*^-30*I}}"
+          }
+        },
+        "kind": "amflow_finite_solution_samples"
+      },
+      "coefficient_matrices": {
+        "eta": [
+          [
+            "(1 - 2*eps)/eta",
+            "-1/eta"
+          ],
+          [
+            "(-2 + 7*eps - 6*eps*eps)/((-1 + eta)*eta)",
+            "(2 - 3*eps - eps*eta)/((-1 + eta)*eta)"
+          ]
+        ]
+      },
+      "cpp_solve_series_ingest": {
+        "reason": "The retained differential_equation_solver sol2 state has finite AMFlow solution samples at the DESolver start point. C++ solve-series transports the retained DE-master samples to eta=1/10 and reconstructs retained solution-basis outputs from the reviewed Kira relation.",
+        "supported": true
+      },
+      "family": "sunrise",
+      "finite_start": {
+        "diffeq_masters": [
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "metadata_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
+        "output_integrals": [
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              -1,
+              0
+            ]
+          }
+        ],
+        "solution_basis_reduction_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-de-d0-pair/generated-config/phase0/differential_equation_solver/primary/cache/sunrise_amflow/0/results/sunrise/kira_target.m",
+        "source_variable": "s"
+      },
+      "integral_kind": "loop",
+      "kind": "amflow_solve_series_state",
+      "masters": [
+        {
+          "family": "sunrise",
+          "indices": [
+            1,
+            1,
+            1,
+            0,
+            0
+          ]
+        },
+        {
+          "family": "sunrise",
+          "indices": [
+            2,
+            1,
+            1,
+            0,
+            0
+          ]
+        }
+      ],
+      "reduction": {
+        "masters": [
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          }
+        ],
+        "target_reduction_path": "",
+        "targets": [
+          {
+            "family": "sunrise",
+            "indices": [
+              2,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              0,
+              0
+            ]
+          },
+          {
+            "family": "sunrise",
+            "indices": [
+              1,
+              1,
+              1,
+              -1,
+              0
+            ]
+          }
+        ]
+      },
+      "schema_version": 1,
+      "singular_points": [
+        "eta=0",
+        "eta=1"
+      ],
+      "solution_sample_cache": {
+        "enabled": true,
+        "source": "retained_finite_solution_boundary_samples"
+      },
+      "source": {
+        "diffeq_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/diffeq",
+        "run_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps4/amflow/examples/differential_equation_solver/run.wl",
+        "solution_file": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/differential_equation_solver/captured/sol1"
+      },
+      "start_location": "eta=1/2",
+      "target_location": "eta=1/10",
+      "variable": "eta",
+      "amflow_output_name": "sol2"
+    }
+  ]
 }

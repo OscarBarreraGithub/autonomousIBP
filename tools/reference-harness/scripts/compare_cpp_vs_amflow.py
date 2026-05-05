@@ -285,6 +285,24 @@ def selected_manifest_outputs(payload: dict[str, Any], path: Path) -> set[str] |
   return selected
 
 
+def selected_outputs_for_manifest(path: Path,
+                                  *,
+                                  inherited: set[str] | None = None) -> set[str] | None:
+  if path.suffix != ".json":
+    return inherited
+  payload = load_json(path)
+  local_selected_outputs = selected_manifest_outputs(payload, path)
+  effective_selected_outputs = (
+      local_selected_outputs if local_selected_outputs is not None else inherited
+  )
+  if "golden_manifest" in payload:
+    return selected_outputs_for_manifest(
+        Path(str(payload["golden_manifest"])),
+        inherited=effective_selected_outputs,
+    )
+  return effective_selected_outputs
+
+
 def load_amflow_golden(
     path: Path,
     *,
@@ -342,15 +360,42 @@ def coefficient_imag(raw_order: dict[str, Any], label: str) -> Decimal:
   return Decimal(0)
 
 
-def load_cpp_result(path: Path) -> tuple[dict[str, Any], dict[IntegralKey, CoefficientMap]]:
+def load_cpp_result(
+    path: Path,
+    *,
+    selected_outputs: set[str] | None = None,
+) -> tuple[dict[str, Any], dict[IntegralKey, CoefficientMap]]:
   payload = load_json(path)
   expect(payload.get("schema_version") == 1, f"{path} schema_version must be 1")
   expect(payload.get("status") == "success", f"{path} status must be success")
   raw_results = payload.get("results")
   expect(isinstance(raw_results, list), f"{path} results must be a list")
+  has_named_outputs = any(
+      isinstance(raw_result, dict)
+      and isinstance(raw_result.get("amflow_output_name"), str)
+      and raw_result.get("amflow_output_name", "").strip()
+      for raw_result in raw_results
+  )
+  observed_output_names = {
+      raw_result.get("amflow_output_name", "").strip()
+      for raw_result in raw_results
+      if isinstance(raw_result, dict)
+      and isinstance(raw_result.get("amflow_output_name"), str)
+      and raw_result.get("amflow_output_name", "").strip()
+  }
+  if selected_outputs is not None and has_named_outputs:
+    missing_outputs = sorted(selected_outputs - observed_output_names)
+    expect(
+        not missing_outputs,
+        f"{path} missing selected C++ AMFlow output(s): {', '.join(missing_outputs)}",
+    )
   parsed: dict[IntegralKey, CoefficientMap] = {}
   for result_index, raw_result in enumerate(raw_results):
     expect(isinstance(raw_result, dict), f"{path} results entries must be objects")
+    if selected_outputs is not None and has_named_outputs:
+      output_name = str(raw_result.get("amflow_output_name", "")).strip()
+      if output_name not in selected_outputs:
+        continue
     integral = str(raw_result.get("integral", "")).strip()
     expect(integral, f"{path} results[{result_index}].integral must not be empty")
     key = parse_integral_label(integral)
@@ -380,6 +425,30 @@ def cpp_requested_epsilon_order(payload: dict[str, Any]) -> int | None:
   return raw_order if isinstance(raw_order, int) and raw_order >= 0 else None
 
 
+def named_cpp_outputs(path: Path) -> set[str]:
+  payload = load_json(path)
+  raw_results = payload.get("results")
+  if not isinstance(raw_results, list):
+    return set()
+  return {
+      raw_result.get("amflow_output_name", "").strip()
+      for raw_result in raw_results
+      if isinstance(raw_result, dict)
+      and isinstance(raw_result.get("amflow_output_name"), str)
+      and raw_result.get("amflow_output_name", "").strip()
+  }
+
+
+def underlying_golden_manifest_path(path: Path) -> Path:
+  current = path
+  while current.suffix == ".json":
+    payload = load_json(current)
+    if "golden_manifest" not in payload:
+      return current
+    current = Path(str(payload["golden_manifest"]))
+  return current
+
+
 def digit_agreement(lhs: Decimal, rhs: Decimal) -> int:
   difference = abs(lhs - rhs)
   if difference == 0:
@@ -387,21 +456,13 @@ def digit_agreement(lhs: Decimal, rhs: Decimal) -> int:
   return max(0, -difference.adjusted())
 
 
-def compare_cpp_vs_amflow(
+def compare_coefficient_maps(
     *,
-    cpp_result_path: Path,
-    amflow_golden_path: Path,
+    cpp: dict[IntegralKey, CoefficientMap],
+    amflow: dict[IntegralKey, CoefficientMap],
+    requested_epsilon_order: int | None,
     tolerance_digits: int,
-    family_aliases: FamilyAliasMap | None = None,
 ) -> dict[str, Any]:
-  getcontext().prec = max(120, tolerance_digits + 40)
-  cpp_payload, cpp = load_cpp_result(cpp_result_path)
-  amflow = load_amflow_golden(amflow_golden_path)
-  aliases = family_aliases or {}
-  cpp = normalize_key_map(cpp, aliases, "C++")
-  amflow = normalize_key_map(amflow, aliases, "AMFlow")
-  requested_epsilon_order = cpp_requested_epsilon_order(cpp_payload)
-
   all_keys = sorted(set(cpp) | set(amflow), key=lambda item: (item[0], item[1]))
   integral_summaries: list[dict[str, Any]] = []
   failures: list[str] = []
@@ -483,6 +544,65 @@ def compare_cpp_vs_amflow(
 
   passed = not failures and compared_coefficients > 0
   return {
+      "passed": passed,
+      "matched_integral_count": len(set(cpp) & set(amflow)),
+      "compared_coefficient_count": compared_coefficients,
+      "passed_coefficient_count": passed_coefficients,
+      "minimum_digit_agreement": minimum_digit_agreement if minimum_digit_agreement is not None else 0,
+      "integrals": integral_summaries,
+      "failures": failures,
+  }
+
+
+def prefixed_failures(prefix: str, failures: list[str]) -> list[str]:
+  return [prefix + failure for failure in failures]
+
+
+def compare_cpp_vs_amflow(
+    *,
+    cpp_result_path: Path,
+    amflow_golden_path: Path,
+    tolerance_digits: int,
+    family_aliases: FamilyAliasMap | None = None,
+) -> dict[str, Any]:
+  getcontext().prec = max(120, tolerance_digits + 40)
+  selected_cpp_outputs = selected_outputs_for_manifest(amflow_golden_path)
+  cpp_payload, cpp = load_cpp_result(
+      cpp_result_path,
+      selected_outputs=selected_cpp_outputs,
+  )
+  amflow = load_amflow_golden(amflow_golden_path)
+  aliases = family_aliases or {}
+  requested_epsilon_order = cpp_requested_epsilon_order(cpp_payload)
+  comparison = compare_coefficient_maps(
+      cpp=normalize_key_map(cpp, aliases, "C++"),
+      amflow=normalize_key_map(amflow, aliases, "AMFlow"),
+      requested_epsilon_order=requested_epsilon_order,
+      tolerance_digits=tolerance_digits,
+  )
+
+  named_output_failures: list[str] = []
+  named_outputs = named_cpp_outputs(cpp_result_path)
+  if selected_cpp_outputs is not None and named_outputs:
+    base_golden = underlying_golden_manifest_path(amflow_golden_path)
+    for output_name in sorted(named_outputs):
+      _, named_cpp = load_cpp_result(cpp_result_path, selected_outputs={output_name})
+      named_amflow = load_amflow_golden(base_golden, selected_outputs={output_name})
+      named_comparison = compare_coefficient_maps(
+          cpp=normalize_key_map(named_cpp, aliases, f"C++ {output_name}"),
+          amflow=normalize_key_map(named_amflow, aliases, f"AMFlow {output_name}"),
+          requested_epsilon_order=requested_epsilon_order,
+          tolerance_digits=tolerance_digits,
+      )
+      if not named_comparison["passed"]:
+        named_output_failures.extend(
+            prefixed_failures(f"named output {output_name}: ",
+                              named_comparison["failures"])
+        )
+
+  failures = comparison["failures"] + named_output_failures
+  passed = not failures and comparison["compared_coefficient_count"] > 0
+  return {
       "schema_version": 1,
       "comparison": "cpp-vs-amflow",
       "cpp_result": str(cpp_result_path),
@@ -492,11 +612,11 @@ def compare_cpp_vs_amflow(
       "family_aliases": aliases,
       "default_family_suffix_normalization": "_amflow -> stripped",
       "passed": passed,
-      "matched_integral_count": len(set(cpp) & set(amflow)),
-      "compared_coefficient_count": compared_coefficients,
-      "passed_coefficient_count": passed_coefficients,
-      "minimum_digit_agreement": minimum_digit_agreement if minimum_digit_agreement is not None else 0,
-      "integrals": integral_summaries,
+      "matched_integral_count": comparison["matched_integral_count"],
+      "compared_coefficient_count": comparison["compared_coefficient_count"],
+      "passed_coefficient_count": comparison["passed_coefficient_count"],
+      "minimum_digit_agreement": comparison["minimum_digit_agreement"],
+      "integrals": comparison["integrals"],
       "failures": failures,
   }
 
@@ -754,6 +874,33 @@ def run_self_check() -> dict[str, Any]:
         amflow_golden_path=selected_wrapper,
         tolerance_digits=30,
     )
+    selected_named_cpp = selected_output_root / "selected-named-cpp-result.json"
+    selected_named_payload = load_json(selected_cpp)
+    selected_named_payload["results"] = [
+        {
+            **selected_named_payload["results"][0],
+            "amflow_output_name": "sol1",
+        },
+        {
+            **selected_named_payload["results"][0],
+            "amflow_output_name": "sol2",
+            "epsilon_orders": [
+                {
+                    **selected_named_payload["results"][0]["epsilon_orders"][0],
+                    "real_digits": "9.0000000000000000000000000000000000000000",
+                }
+            ],
+        },
+    ]
+    selected_named_cpp.write_text(
+        json.dumps(selected_named_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    selected_bad_cpp_output = compare_cpp_vs_amflow(
+        cpp_result_path=selected_named_cpp,
+        amflow_golden_path=selected_wrapper,
+        tolerance_digits=30,
+    )
 
   return {
       "schema_version": 1,
@@ -767,6 +914,9 @@ def run_self_check() -> dict[str, Any]:
       "explicit_family_alias_normalized": alias_normalized["passed"],
       "mathematica_scientific_notation_parsed": scientific_notation["passed"],
       "selected_manifest_output_loaded": selected_manifest_output["passed"],
+      "selected_cpp_output_rejects_bad_unselected": (
+          not selected_bad_cpp_output["passed"] and bool(selected_bad_cpp_output["failures"])
+      ),
       "passed_coefficient_count_reported": (
           matching["passed_coefficient_count"] == matching["compared_coefficient_count"]
           and mismatch["passed_coefficient_count"] < mismatch["compared_coefficient_count"]
@@ -825,6 +975,7 @@ def main(argv: list[str]) -> int:
               "amflow_suffix_family_normalized",
               "explicit_family_alias_normalized",
               "selected_manifest_output_loaded",
+              "selected_cpp_output_rejects_bad_unselected",
           )
       ) else 1
 

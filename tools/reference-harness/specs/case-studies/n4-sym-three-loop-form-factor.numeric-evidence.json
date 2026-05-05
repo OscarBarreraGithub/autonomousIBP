@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "case_study_id": "n4-sym-three-loop-form-factor",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 58,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow",
+  "benchmark_id": "automatic_loop",
+  "selected_benchmark_anchor_ref": "2024-n4-sym-three-loop-form-factor",
+  "case_study_family_rationale": "The n4-sym-three-loop-form-factor case-study family is a default-floor literature-anchor row whose selected benchmark is a very-high-precision special-point form-factor target. No dedicated N=4 SYM literature packet is frozen in this repository yet, so this evidence uses the retained automatic_loop eps^10 high-positive-order matrix proxy: a fresh C++ solve-series replay against the epsorder=12 AMFlow sol1/sol2 manifest. This keeps the row on a real AMFlow-proved 50-digit-feasible surface without claiming a dedicated N=4 packet.",
+  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps10-golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 10 --digits 80 --out tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.automatic-loop-eps10.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps10-golden-manifest.json --tolerance-digits 50",
+  "comparison_summary": {
+    "matched_integral_count": 12,
+    "compared_coefficient_count": 150,
+    "passed_coefficient_count": 150,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 58,
+    "tolerance_digits": 50
+  },
+  "withheld_claims": [
+    "This sidecar qualifies only the n4-sym-three-loop-form-factor case-study family numeric row.",
+    "This sidecar does not freeze or claim a dedicated N=4 SYM three-loop form-factor literature packet.",
+    "This sidecar does not provide numeric evidence for the remaining M6 case-study families.",
+    "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
+    "This sidecar does not claim Milestone M6 closure."
+  ]
+}

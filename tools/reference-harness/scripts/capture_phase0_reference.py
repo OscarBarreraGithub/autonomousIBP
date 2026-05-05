@@ -437,6 +437,7 @@ def evaluate_backup_match_gate(
     scope = benchmark.get("backup_comparison_scope", "full-rule-list")
     result: dict[str, Any] = {
         "backup_match_ok": full_match_ok,
+        "backup_acceptance_ok": full_match_ok,
         "backup_comparison_scope": scope,
         "backup_comparisons": full_comparisons,
     }
@@ -450,7 +451,8 @@ def evaluate_backup_match_gate(
         actual=primary_canonical,
         required_integrals=list(benchmark.get("backup_required_integrals", [])),
     )
-    result["backup_match_ok"] = bool(scoped["accepted"])
+    result["backup_acceptance_ok"] = bool(scoped["accepted"])
+    result["backup_scoped_match_ok"] = bool(scoped["accepted"])
     result["backup_scoped_comparison"] = scoped
     return result
 
@@ -739,7 +741,14 @@ def finalize_benchmark_capture(
         for name in output_names
     )
     backup_match_ok = bool(backup_gate["backup_match_ok"])
+    backup_acceptance_ok = bool(backup_gate.get("backup_acceptance_ok", backup_match_ok))
     rerun_match_ok = all_comparisons_match(rerun_comparisons)
+    if output_presence_ok and backup_match_ok and rerun_match_ok:
+        capture_status = "reference-captured"
+    elif output_presence_ok and backup_acceptance_ok and rerun_match_ok:
+        capture_status = "reference-captured-scoped-backup"
+    else:
+        capture_status = "capture-failed"
 
     promoted = promote_primary_golden(
         root=root,
@@ -766,7 +775,7 @@ def finalize_benchmark_capture(
     comparison_summary = {
         "schema_version": 1,
         "benchmark_id": benchmark_id,
-        "status": "reference-captured" if output_presence_ok and backup_match_ok and rerun_match_ok else "capture-failed",
+        "status": capture_status,
         "reference_golden": promoted["golden_manifest"],
         "latest_run_result": str(result_manifest_path),
         "bundled_kira_backup": str(source_example_root / "backup"),
@@ -788,6 +797,8 @@ def finalize_benchmark_capture(
         ],
         "output_names": output_names,
         "backup_comparison_scope": backup_gate["backup_comparison_scope"],
+        "backup_acceptance_ok": backup_acceptance_ok,
+        **({"backup_scoped_match_ok": backup_gate["backup_scoped_match_ok"]} if "backup_scoped_match_ok" in backup_gate else {}),
         "backup_comparisons": backup_comparisons,
         **({"backup_scoped_comparison": backup_gate["backup_scoped_comparison"]} if "backup_scoped_comparison" in backup_gate else {}),
         "rerun_comparisons": rerun_comparisons,
@@ -804,6 +815,18 @@ def finalize_benchmark_capture(
                 "name": "bundled_kira_backup_match",
                 "status": "passed" if backup_match_ok else "failed",
             },
+            *(
+                [
+                    {
+                        "name": "scoped_requested_integrals_backup_match",
+                        "status": "passed"
+                        if bool(backup_gate.get("backup_scoped_match_ok", False))
+                        else "failed",
+                    }
+                ]
+                if "backup_scoped_match_ok" in backup_gate
+                else []
+            ),
             {
                 "name": "rerun_reproducible",
                 "status": "passed" if rerun_match_ok else "failed",
@@ -1192,6 +1215,24 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             },
             required_integrals=["j[f,1]"],
         )
+        scoped_backup_gate = evaluate_backup_match_gate(
+            benchmark={
+                "backup_comparison_scope": "requested-integrals-only",
+                "backup_required_integrals": ["j[f,1]"],
+            },
+            backup_canonical={
+                "sol": {
+                    "canonical_text": "{j[f, 1] -> 2, j[f, -1] -> 3}",
+                    "canonical_sha256": "expected",
+                }
+            },
+            primary_canonical={
+                "sol": {
+                    "canonical_text": "{j[f, 1] -> 2, j[f, 0] -> 4}",
+                    "canonical_sha256": "actual",
+                }
+            },
+        )
         selected_ids = [
             entry["id"]
             for entry in select_benchmarks(
@@ -1320,6 +1361,11 @@ def run_self_check(mathkernel: Path) -> dict[str, Any]:
             "backup_match_ok": comparison_summary["checks"][2]["status"] == "passed",
             "requested_integrals_backup_scope_accepts_basis_drift": bool(
                 scoped_backup_comparison["accepted"]
+            ),
+            "requested_integrals_backup_scope_does_not_claim_full_backup_match": (
+                scoped_backup_gate["backup_acceptance_ok"]
+                and not scoped_backup_gate["backup_match_ok"]
+                and scoped_backup_gate["backup_scoped_match_ok"]
             ),
             "rerun_match_ok": comparison_summary["checks"][3]["status"] == "passed",
             "cpc_fallback_example_root_resolved": fallback_example_root == extracted_example_root,

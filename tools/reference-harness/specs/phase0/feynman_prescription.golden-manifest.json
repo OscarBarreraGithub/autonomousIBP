@@ -7,12 +7,14 @@
   "cpp_solve_series_input": "feynman_prescription.amflow-state.json",
   "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/golden-manifest.json",
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/feynman_prescription/captured",
-  "capture_status": "reference-captured",
-  "backup_match_ok": true,
+  "capture_status": "reference-captured-scoped-backup",
+  "backup_match_ok": false,
+  "backup_acceptance_ok": true,
   "backup_comparison_scope": "requested-integrals-only",
+  "backup_scoped_match_ok": true,
   "rerun_match_ok": true,
   "notes": [
-    "Tracked pointer for the retained upstream AMFlow phase-0 feynman_prescription primary/rerun golden outputs; the backup gate is accepted on the requested SolveIntegrals target integral because the bundled Kira backups are reducer-basis snapshots.",
+    "Tracked pointer for the retained upstream AMFlow phase-0 feynman_prescription primary/rerun golden outputs; this is not a full reference-captured backup match because the bundled Kira backups are reducer-basis snapshots.",
     "Primary and rerun Mathematica/Kira outputs are reproducible for sol1 and sol2 with canonical SHAs 2a1046763aeb250158b56f723f5767caa6719ef2eb47c9b4ed002b10d51d8a50 and 7c439527d8dcd431f9318cb8f9353e93275adda4b8ebac1082f9d84d0be49459.",
     "The frozen upstream backup/kira_sol1 and backup/kira_sol2 files do not match the current real Wolfram/Kira auxiliary basis, but their requested target rule j[loopxloop,0,1,1,1,1,0,1,1,1,1,0,0] matches the retained primary output exactly for sol1 and sol2.",
     "The solve-series comparator view is scoped to sol1 because sol1 and sol2 contain the same loopxloop integral keys for opposite Feynman prescriptions; a full comparator view needs prescription-aware output selection or namespacing."
@@ -32,5 +34,5 @@
     }
   ],
   "schema_version": 1,
-  "status": "reference-captured-retained-golden"
+  "status": "reference-captured-scoped-backup-retained-golden"
 }

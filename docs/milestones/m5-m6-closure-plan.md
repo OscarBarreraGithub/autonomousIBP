@@ -22,6 +22,7 @@ Milestone closure verdict: REJECT M5 closure and REJECT M6 closure.
 - Lane32 aggregate-v3 evidence: `docs/phase0-packet-validation-lane32.md`, `tools/reference-harness/specs/phase0/lane32-packet-validation-aggregate.json`, and `/tmp/autoibp_orch/exec/lane32_aggregate_v3.md`.
 - Lane39 forward-roll evidence: `/tmp/autoibp_orch/exec/lane39_probe/full/runs/*.compare.json` and `/tmp/autoibp_orch/exec/lane39_probe/m5-feature-surface-lane39.summary.json`.
 - Lane37 eps7/eps8 forward-roll evidence: `/tmp/autoibp_orch/exec/lane37_runs/automatic_loop.eps7.compare.json` and `/tmp/autoibp_orch/exec/lane37_runs/automatic_loop.eps8.compare.json`.
+- Lane47 singular runtime-lane design: `docs/theory/singular-runtime-lane.md`.
 
 ## Exact Acceptance Criteria
 
@@ -106,7 +107,7 @@ These rows are PASSING only for scaffold presence and frozen benchmark metadata.
 - Publish C++ candidate outputs in the packet schema expected by the M6 tools.
 - Run passing phase-0 packet-set comparison, correct-digit scoring, and failure-code audit summaries with synchronized profile labels.
 - Produce numeric evidence sidecars for every selected case-study family, including the 100-digit `ttbar-h` and 200-digit diphoton anchors.
-- Retire the singular endpoint blocker and compose a passing `qualify_milestone_m6.py` summary.
+- Retire the singular endpoint blocker only after the complex `eta -> 0` endpoint runtime milestones in `docs/theory/singular-runtime-lane.md` produce live runtime and numeric evidence, then compose a passing `qualify_milestone_m6.py` summary.
 
 M6 overall status: TODO/FAILING, not closeable.
 
@@ -123,7 +124,8 @@ M6 overall status: TODO/FAILING, not closeable.
 9. Publish candidate packet roots for successful C++ outputs in the schema expected by the M6 tools.
 10. Run and retain passing phase-0 M6 verdict evidence: packet-set comparison, correct-digit score, failure-code audit, and `qualify_phase0_packet_set.py`.
 11. Produce case-study numeric evidence sidecars for all qualification families at the frozen thresholds and run `compare_case_study_numeric_results.py` plus `qualify_case_study_families.py`.
-12. Retire the singular endpoint case-study blocker and compose the final `qualify_milestone_m6.py` verdict from passing phase-0 and case-study subverdicts.
+12. Implement the singular runtime-lane milestones in `docs/theory/singular-runtime-lane.md`, including complex branch-aware `eta -> 0` endpoint extraction and a passing `one-singular-endpoint-case` numeric sidecar.
+13. Retire the singular endpoint case-study blocker and compose the final `qualify_milestone_m6.py` verdict from passing phase-0 and case-study subverdicts.
 
 ## Worker Prompt Skeletons
 
@@ -151,11 +153,13 @@ Worker 11, case-study numeric qualification: Produce explicit numeric evidence s
 
 Worker 12, final M6 composer: Run `qualify_milestone_m6.py` only after the phase-0 packet-set verdict and case-study-family verdict both pass. Verify there are no pending runtime lanes, missing sidecars, threshold failures, failure-code misses, regression-profile drift, or singular endpoint blockers. The output may claim M6 only if the composer passes; it must not claim M7 or release readiness.
 
+Worker 13, singular runtime lane: Follow `docs/theory/singular-runtime-lane.md`. Do not retire `one-singular-endpoint-case -> b62p` with metadata-only edits. The accepted runtime path must replace the current complex `eta=0` `unsupported_solver_path` deferral with branch-aware endpoint extraction, publish an endpoint audit, and provide a real `one-singular-endpoint-case` numeric evidence sidecar at the default 50-digit floor.
+
 ## Feasibility Assessment
 
 M5 closure is feasible, but not as a documentation-only or single-lane cleanup. Lane39 removes the retained `automatic_loop` eps6 numeric blocker and extends retained automatic-loop parity through eps8, but the M5 verifier still blocks closure unless every frozen example class and every required Phase F runtime feature has accepted evidence. The remaining work is still real implementation and qualification work: accepted live-path or retained-state exception criteria for the feature surfaces, D0/fixed-eps/user-hook coverage, feynman requested-integral backup scope versus full auxiliary-basis equivalence, live opposite-prescription handling, and phase-space/prescription live-path evidence.
 
-M6 closure is not feasible until M5 closes. Even after M5, M6 requires candidate packet publishing, passing phase-0 packet qualification, explicit case-study numeric sidecars at the frozen digit thresholds, and retirement of the singular endpoint blocker. The harness scaffolding exists, so this is not a blank infrastructure project, but it still needs targeted infrastructure investment in packet-shaped candidate output, failure-code sidecars, and case-study numeric evidence production. Current evidence supports planning and partial retained-state progress, not immediate M5/M6 closure.
+M6 closure is not feasible until M5 closes. Even after M5, M6 requires candidate packet publishing, passing phase-0 packet qualification, explicit case-study numeric sidecars at the frozen digit thresholds, and retirement of the singular endpoint blocker. Lane47 determined that the singular endpoint blocker is not safely fixable by a small metadata or guardrail patch: the remaining work is complex branch-aware `eta -> 0` endpoint execution and numeric evidence as designed in `docs/theory/singular-runtime-lane.md`. The harness scaffolding exists, so this is not a blank infrastructure project, but it still needs targeted infrastructure investment in packet-shaped candidate output, failure-code sidecars, complex endpoint runtime work, and case-study numeric evidence production. Current evidence supports planning and partial retained-state progress, not immediate M5/M6 closure.
 
 ## Final Consensus
 

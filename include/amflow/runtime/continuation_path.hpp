@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,7 @@ struct EtaContinuationPlan {
   EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper;
   std::vector<ExactComplexRational> contour_points;
   std::vector<EtaContourSingularPoint> singular_points;
+  std::optional<EtaContourSingularPoint> target_endpoint_singular;
   std::string contour_fingerprint;
 };
 
@@ -39,12 +41,29 @@ EtaContinuationPlan FinalizeEtaContinuationContour(
     const std::vector<std::string>& contour_point_expressions,
     EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper);
 
+EtaContinuationPlan FinalizeEtaContinuationContourWithTargetEndpointSingular(
+    const DESystem& system,
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::vector<std::string>& contour_point_expressions,
+    const std::string& target_endpoint_singular_expression,
+    EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper);
+
 EtaContinuationPlan PlanEtaContinuationContour(
     const DESystem& system,
     const ProblemSpec& spec,
     const std::string& eta_symbol,
     const std::string& start_location,
     const std::string& target_location,
+    EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper);
+
+EtaContinuationPlan PlanEtaContinuationContourWithTargetEndpointSingular(
+    const DESystem& system,
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::string& start_location,
+    const std::string& target_location,
+    const std::string& target_endpoint_singular_expression,
     EtaContourHalfPlane half_plane = EtaContourHalfPlane::Upper);
 
 }  // namespace amflow

@@ -600,6 +600,14 @@ std::string SerializeEtaContinuationPlanManifestYaml(
       WriteIntegerLine(out, "branch_winding", singular_point.branch_winding, 6);
     }
   }
+  if (manifest.plan.target_endpoint_singular.has_value()) {
+    const EtaContourSingularPoint& endpoint_singular =
+        *manifest.plan.target_endpoint_singular;
+    out << "  target_endpoint_singular:\n";
+    out << "    expression: " << Quote(endpoint_singular.expression) << "\n";
+    out << "    value: " << Quote(endpoint_singular.value.ToString()) << "\n";
+    WriteIntegerLine(out, "branch_winding", endpoint_singular.branch_winding, 4);
+  }
 
   return out.str();
 }

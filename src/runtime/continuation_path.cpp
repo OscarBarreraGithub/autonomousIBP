@@ -175,6 +175,45 @@ std::vector<ExactComplexRational> EvaluateContourPoints(
   return contour_points;
 }
 
+EtaContourSingularPoint ResolveTargetEndpointSingular(
+    const std::vector<EtaContourSingularPoint>& singular_points,
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::string& target_endpoint_singular_expression,
+    const ExactComplexRational& target) {
+  if (target_endpoint_singular_expression.empty()) {
+    throw std::invalid_argument(
+        "eta continuation target endpoint singular expression must not be empty");
+  }
+
+  const NumericEvaluationPoint evaluation_point = BuildComplexNumericEvaluationPoint(spec);
+  const ExactComplexRational marker_value = EvaluateComplexPointExpression(
+      eta_symbol, target_endpoint_singular_expression, evaluation_point);
+  if (marker_value != target) {
+    throw std::invalid_argument(
+        "eta continuation target endpoint singular expression " +
+        target_endpoint_singular_expression + " evaluates to " + marker_value.ToString() +
+        " instead of target endpoint " + target.ToString());
+  }
+
+  const auto declared_singular = std::find_if(
+      singular_points.begin(),
+      singular_points.end(),
+      [&marker_value](const EtaContourSingularPoint& singular_point) {
+        return singular_point.value == marker_value;
+      });
+  if (declared_singular == singular_points.end()) {
+    throw std::invalid_argument(
+        "eta continuation target endpoint singular expression " +
+        target_endpoint_singular_expression +
+        " must match a declared evaluated singular point by exact value");
+  }
+
+  EtaContourSingularPoint endpoint_singular = *declared_singular;
+  endpoint_singular.branch_winding = 0;
+  return endpoint_singular;
+}
+
 void ValidateEtaContinuationSymbol(const DESystem& system,
                                    const std::string& eta_symbol) {
   if (eta_symbol.empty()) {
@@ -259,6 +298,17 @@ long long ComputeBranchWinding(const std::vector<ExactComplexRational>& contour_
       std::llround((total_argument_change - principal_delta) / kTwoPi));
 }
 
+bool SameSingularEndpointIdentity(const EtaContourSingularPoint& lhs,
+                                  const EtaContourSingularPoint& rhs) {
+  return lhs.expression == rhs.expression && lhs.value == rhs.value;
+}
+
+bool IsMarkedTargetEndpointSingular(const EtaContinuationPlan& plan,
+                                    const EtaContourSingularPoint& singular_point) {
+  return plan.target_endpoint_singular.has_value() &&
+         SameSingularEndpointIdentity(*plan.target_endpoint_singular, singular_point);
+}
+
 std::string SerializeEtaContinuationPlanForFingerprint(const EtaContinuationPlan& plan) {
   std::ostringstream out;
   out << "eta_symbol=" << plan.eta_symbol << "\n";
@@ -277,6 +327,13 @@ std::string SerializeEtaContinuationPlanForFingerprint(const EtaContinuationPlan
     out << "singular_point[" << index << "].branch_winding="
         << singular_point.branch_winding << "\n";
   }
+  if (plan.target_endpoint_singular.has_value()) {
+    const EtaContourSingularPoint& endpoint_singular = *plan.target_endpoint_singular;
+    out << "target_endpoint_singular.expression=" << endpoint_singular.expression << "\n";
+    out << "target_endpoint_singular.value=" << endpoint_singular.value.ToString() << "\n";
+    out << "target_endpoint_singular.branch_winding="
+        << endpoint_singular.branch_winding << "\n";
+  }
   return out.str();
 }
 
@@ -287,6 +344,7 @@ EtaContinuationPlan FinalizeEtaContinuationContourImpl(
     const std::string& start_location,
     const std::string& target_location,
     const EtaContourHalfPlane half_plane,
+    const std::optional<std::string>& target_endpoint_singular_expression,
     const std::vector<ExactComplexRational>& contour_points) {
   ValidateEtaContinuationSymbol(system, eta_symbol);
   if (contour_points.size() < 2) {
@@ -307,10 +365,26 @@ EtaContinuationPlan FinalizeEtaContinuationContourImpl(
   plan.half_plane = half_plane;
   plan.contour_points = contour_points;
   plan.singular_points = EvaluateEtaSingularPoints(system, spec, eta_symbol);
+  if (target_endpoint_singular_expression.has_value()) {
+    plan.target_endpoint_singular =
+        ResolveTargetEndpointSingular(plan.singular_points,
+                                      spec,
+                                      eta_symbol,
+                                      *target_endpoint_singular_expression,
+                                      plan.contour_points.back());
+  }
 
   for (EtaContourSingularPoint& singular_point : plan.singular_points) {
-    for (const ExactComplexRational& contour_point : plan.contour_points) {
-      if (contour_point == singular_point.value) {
+    const bool marked_target_endpoint =
+        IsMarkedTargetEndpointSingular(plan, singular_point);
+    for (std::size_t point_index = 0; point_index < plan.contour_points.size();
+         ++point_index) {
+      if (plan.contour_points[point_index] == singular_point.value) {
+        const bool is_marked_target_point =
+            marked_target_endpoint && point_index + 1 == plan.contour_points.size();
+        if (is_marked_target_point) {
+          continue;
+        }
         throw std::invalid_argument("eta continuation contour point lands on evaluated singular "
                                     "point " +
                                     singular_point.expression + " = " +
@@ -322,6 +396,12 @@ EtaContinuationPlan FinalizeEtaContinuationContourImpl(
       if (SegmentContainsSingularPoint(plan.contour_points[index - 1],
                                       plan.contour_points[index],
                                       singular_point.value)) {
+        const bool segment_terminates_at_marked_target =
+            marked_target_endpoint && index + 1 == plan.contour_points.size() &&
+            plan.contour_points[index] == singular_point.value;
+        if (segment_terminates_at_marked_target) {
+          continue;
+        }
         throw std::invalid_argument("eta continuation contour crosses evaluated singular point " +
                                     singular_point.expression + " = " +
                                     singular_point.value.ToString());
@@ -329,7 +409,13 @@ EtaContinuationPlan FinalizeEtaContinuationContourImpl(
     }
 
     singular_point.branch_winding =
-        static_cast<int>(ComputeBranchWinding(plan.contour_points, singular_point.value));
+        marked_target_endpoint
+            ? 0
+            : static_cast<int>(ComputeBranchWinding(plan.contour_points,
+                                                    singular_point.value));
+    if (marked_target_endpoint) {
+      plan.target_endpoint_singular->branch_winding = singular_point.branch_winding;
+    }
   }
 
   plan.contour_fingerprint =
@@ -376,6 +462,35 @@ EtaContinuationPlan FinalizeEtaContinuationContour(
                                             contour_point_expressions.front(),
                                             contour_point_expressions.back(),
                                             half_plane,
+                                            std::nullopt,
+                                            EvaluateContourPoints(
+                                                spec, eta_symbol, contour_point_expressions));
+}
+
+EtaContinuationPlan FinalizeEtaContinuationContourWithTargetEndpointSingular(
+    const DESystem& system,
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::vector<std::string>& contour_point_expressions,
+    const std::string& target_endpoint_singular_expression,
+    const EtaContourHalfPlane half_plane) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+  if (contour_point_expressions.size() < 2) {
+    throw std::invalid_argument(
+        "eta continuation contour requires at least two contour-point expressions");
+  }
+  ValidateEtaContinuationSymbol(system, eta_symbol);
+
+  return FinalizeEtaContinuationContourImpl(system,
+                                            spec,
+                                            eta_symbol,
+                                            contour_point_expressions.front(),
+                                            contour_point_expressions.back(),
+                                            half_plane,
+                                            target_endpoint_singular_expression,
                                             EvaluateContourPoints(
                                                 spec, eta_symbol, contour_point_expressions));
 }
@@ -386,6 +501,23 @@ EtaContinuationPlan PlanEtaContinuationContour(
     const std::string& eta_symbol,
     const std::string& start_location,
     const std::string& target_location,
+    const EtaContourHalfPlane half_plane) {
+  return PlanEtaContinuationContourWithTargetEndpointSingular(system,
+                                                             spec,
+                                                             eta_symbol,
+                                                             start_location,
+                                                             target_location,
+                                                             "",
+                                                             half_plane);
+}
+
+EtaContinuationPlan PlanEtaContinuationContourWithTargetEndpointSingular(
+    const DESystem& system,
+    const ProblemSpec& spec,
+    const std::string& eta_symbol,
+    const std::string& start_location,
+    const std::string& target_location,
+    const std::string& target_endpoint_singular_expression,
     const EtaContourHalfPlane half_plane) {
   const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
   if (!validation_messages.empty()) {
@@ -475,12 +607,18 @@ EtaContinuationPlan PlanEtaContinuationContour(
   }
   contour_point_expressions.push_back(target_location);
 
+  const std::optional<std::string> endpoint_singular_expression =
+      target_endpoint_singular_expression.empty()
+          ? std::nullopt
+          : std::optional<std::string>{target_endpoint_singular_expression};
+
   return FinalizeEtaContinuationContourImpl(system,
                                             spec,
                                             eta_symbol,
                                             start_location,
                                             target_location,
                                             half_plane,
+                                            endpoint_singular_expression,
                                             EvaluateContourPoints(
                                                 spec, eta_symbol, contour_point_expressions));
 }

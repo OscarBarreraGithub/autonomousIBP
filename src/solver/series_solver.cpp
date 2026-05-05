@@ -4705,6 +4705,13 @@ std::string SerializeEtaContinuationPlanForSolveRequestFingerprint(
     out << "singular_point[" << index << "].branch_winding=" << singular_point.branch_winding
         << "\n";
   }
+  if (plan.target_endpoint_singular.has_value()) {
+    const EtaContourSingularPoint& endpoint_singular = *plan.target_endpoint_singular;
+    out << "target_endpoint_singular.expression=" << endpoint_singular.expression << "\n";
+    out << "target_endpoint_singular.value=" << endpoint_singular.value.ToString() << "\n";
+    out << "target_endpoint_singular.branch_winding="
+        << endpoint_singular.branch_winding << "\n";
+  }
   out << "contour_fingerprint=" << plan.contour_fingerprint << "\n";
   return out.str();
 }
@@ -4727,6 +4734,13 @@ std::string SerializeEtaContinuationPlanForReviewedContourFingerprint(
     out << "singular_point[" << index << "].value=" << singular_point.value.ToString() << "\n";
     out << "singular_point[" << index << "].branch_winding="
         << singular_point.branch_winding << "\n";
+  }
+  if (plan.target_endpoint_singular.has_value()) {
+    const EtaContourSingularPoint& endpoint_singular = *plan.target_endpoint_singular;
+    out << "target_endpoint_singular.expression=" << endpoint_singular.expression << "\n";
+    out << "target_endpoint_singular.value=" << endpoint_singular.value.ToString() << "\n";
+    out << "target_endpoint_singular.branch_winding="
+        << endpoint_singular.branch_winding << "\n";
   }
   return out.str();
 }

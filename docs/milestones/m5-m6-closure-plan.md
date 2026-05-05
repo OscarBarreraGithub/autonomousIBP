@@ -94,6 +94,7 @@ These rows are PASSING only for scaffold presence and frozen benchmark metadata.
 
 - Phase-0 retained goldens and optional captures exist for several examples, but they are not a passing candidate packet-set qualification. The verification strategy explicitly says the scaffold is planning metadata and does not by itself claim new solver parity or qualification closure (`docs/verification-strategy.md:427-442`).
 - Case-study readiness metadata exists, but it must be paired with explicit numeric evidence sidecars. The case-study numeric producer reports missing sidecars and threshold misses; it does not launch runtime or claim M6 closure (`docs/verification-strategy.md:382-387`).
+- Singular runtime is now partial only at the SRL-1 contour-contract layer: the runtime data model can explicitly represent a reviewed target-endpoint singular in the eta-continuation plan, persists that endpoint marker in the continuation manifest, and keeps unmarked singular endpoints and interior singular crossings fail-closed. This is code progress toward the singular lane, not branch-aware complex `eta -> 0` endpoint extraction, not a `full_eta_zero_contour_applied: true` claim, and not numeric qualification evidence.
 
 ### M6 FAILING Criteria
 

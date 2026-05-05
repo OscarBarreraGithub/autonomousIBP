@@ -77,4 +77,12 @@ if(BUILD_TESTING)
   amflow_apply_default_warnings(amflow-tests)
   add_test(NAME amflow-tests COMMAND amflow-tests)
   set_tests_properties(amflow-tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
+  target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
+  target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)
+  amflow_apply_default_warnings(singular-runtime-lane-tests)
+  add_test(NAME singular-runtime-lane-tests COMMAND singular-runtime-lane-tests)
+  set_tests_properties(singular-runtime-lane-tests PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()

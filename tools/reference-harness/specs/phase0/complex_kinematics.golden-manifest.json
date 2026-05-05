@@ -1,0 +1,19 @@
+{
+  "benchmark_id": "complex_kinematics",
+  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/comparisons/phase0/complex_kinematics.summary.json",
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/complex_kinematics/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/complex_kinematics/captured",
+  "notes": [
+    "Tracked pointer for the retained upstream AMFlow phase-0 complex_kinematics capture.",
+    "The captured Mathematica output intentionally preserves complex coefficients and nonzero imaginary parts from the pinned complex-mass one-loop box example."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "1d2b0d6a9eca9fc747d355e9e80f68af243e32ea5f782d1a90b70fb9b3032e57",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/complex_kinematics/captured/canonical/sol.canonical.txt",
+      "name": "sol",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/complex_kinematics/captured/sol"
+    }
+  ],
+  "schema_version": 1
+}

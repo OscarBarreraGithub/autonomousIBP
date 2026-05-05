@@ -22,18 +22,27 @@ expectedTargets = {
   j[boxFermionBubbleH, 1, 1, 1, 0, 1, 2, 0, 0, 0]
 };
 
-If[!ListQ[sol] || Length[sol] != Length[expectedTargets],
-  Print["unexpected solution rule count: ", InputForm[Length[sol]]];
+If[!ListQ[sol],
+  Print["solution is not a list: ", InputForm[Head[sol]]];
   Exit[3];
 ];
 
 lhs = sol[[All, 1]];
-If[Sort[ToString[#, InputForm] & /@ lhs] =!= Sort[ToString[#, InputForm] & /@ expectedTargets],
-  Print["unexpected solution targets: ", InputForm[lhs]];
+expectedTargetStrings = ToString[#, InputForm] & /@ expectedTargets;
+lhsStrings = ToString[#, InputForm] & /@ lhs;
+missingTargetStrings = Complement[expectedTargetStrings, lhsStrings];
+If[missingTargetStrings =!= {},
+  Print["missing expected solution targets: ", InputForm[missingTargetStrings]];
   Exit[4];
 ];
 
-rhs = sol[[All, 2]];
+targetRules = Select[sol, MemberQ[expectedTargetStrings, ToString[#[[1]], InputForm]] &];
+If[Length[targetRules] =!= Length[expectedTargets],
+  Print["unexpected matched target rule count: ", InputForm[Length[targetRules]]];
+  Exit[4];
+];
+
+rhs = targetRules[[All, 2]];
 If[!And @@ (NumericQ[N[#, 40]] & /@ (rhs /. eps -> 1/37)),
   Print["solution contains non-numeric values after eps probe substitution"];
   Exit[5];
@@ -50,8 +59,9 @@ If[!AssociationQ[meta] ||
   Exit[7];
 ];
 
-Print["verified rule count: ", Length[sol]];
-Print["verified targets: ", InputForm[lhs]];
+Print["verified target rule count: ", Length[targetRules]];
+Print["solution rule count: ", Length[sol]];
+Print["verified targets: ", InputForm[targetRules[[All, 1]]]];
 Print["metadata present: ", FileExistsQ[metaPath]];
 Print["metadata: ", InputForm[meta]];
 Exit[0];

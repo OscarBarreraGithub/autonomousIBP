@@ -27,26 +27,32 @@
   },
   "comparison_passed": false,
   "created_at": "2026-05-05T14:00:11-04:00",
-  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success",
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h",
   "notes": [
     "This benchmark is an eligible phase-1 adjacent candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md; it is not diphoton-heavy-quark-form-factors, not a phase-0 example, and not one of the ten case-study family IDs.",
-    "This is a fail-closed partial-progress manifest because the dedicated AMFlow Mathematica job reached real Kira-backed reduction and AMF system construction but failed during boundary reduction before producing a solution file.",
-    "The targets are raw scalar integrals underlying the paper-normalized topology-H master integrals; no Table-11 normalized J^H value, C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made.",
-    "The failure is retained as setup evidence for the next rerun: Kira aborted on the boundary-reduction region with symbolic imaginary coefficients in generated propagators."
+    "Lane 95 resolves the lane 93 Kira boundary-reduction blocker with a repo-owned Mathematica wrapper because the Kira pyred parser source is an external toolchain checkout rather than part of autoIBP.",
+    "The wrapper only retries Kira after the real pyred parser error invalid coefficient string \"I\"; it rewrites generated boundary-reduction sector-mapping coefficient text from standalone Mathematica I to Kira/Fermat-compatible lowercase im, registers im as an invariant, reruns Kira, and restores text outputs back to Mathematica I.",
+    "The targets are raw scalar integrals underlying the paper-normalized topology-H master integrals; no Table-11 normalized J^H value, C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made."
   ],
   "outputs": [
     {
-      "canonical_sha256": null,
+      "canonical_sha256": "52aeb51d0323a9b8734061fcc41802fb171bb6f0da7b76b54e2a6f9940a74df8",
       "name": "sol-2024-box-integrals-fermion-bubbles-topology-h",
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h/sol-2024-box-integrals-fermion-bubbles-topology-h",
-      "present_at_capture": false
+      "present_at_capture": true
     },
     {
-      "canonical_sha256": null,
+      "canonical_sha256": "e4598bbedc6170c37e9ec52582c6bd6968719ec285fd16abe9915882b7af47f0",
       "name": "sol-2024-box-integrals-fermion-bubbles-topology-h.meta.wl",
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h/sol-2024-box-integrals-fermion-bubbles-topology-h.meta.wl",
-      "present_at_capture": false
+      "present_at_capture": true
+    },
+    {
+      "canonical_sha256": "64af6bf50c4164fa342ceb08094877f2525cdba828fda1dbb45f9afeca4a6d99",
+      "name": "sol-2024-box-integrals-fermion-bubbles-topology-h.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow/examples/box_integrals_fermion_bubbles_topology_h/sol-2024-box-integrals-fermion-bubbles-topology-h.verify.txt",
+      "present_at_capture": true
     }
   ],
   "run": {
@@ -60,52 +66,52 @@
       },
       "observed_error": "pyred::parser_error: invalid coefficient string \"I\""
     },
-    "logs": {
-      "stderr": {
-        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/logs/lane93-boxfb-H.10236095.err",
-        "sha256_at_capture": "5dc97f2455d83922c771880d76b2e43b7778eac093c75d07124a6f5c8373382c",
-        "size_bytes_at_capture": 36
+    "lane95_parser_probe": {
+      "capital_i_as_invariant": {
+        "observed_error": "Kira::ExceptionFermat: Fermat does not like capital letters in variable names, please rename 'I'",
+        "stdout": {
+          "path": "/tmp/autoibp_orch/exec/lane95_boundaryreduce_I_invariant.stdout",
+          "sha256": "59e243b31cfe2fce473a278b9c929b030110dad7f7539ba24f6be6341bcb5406",
+          "size_bytes": 2633
+        }
       },
-      "stdout": {
-        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/logs/lane93-boxfb-H.10236095.out",
-        "sha256_at_capture": "7d3c9feb3c4c534aef04e4421f862fe31f59e45e99fc6625363d49766fe312ce",
-        "size_bytes_at_capture": 7723
+      "lowercase_im_retry": {
+        "initial_error": {
+          "path": "/tmp/autoibp_orch/exec/lane95_boundaryreduce_split_im.first.stderr",
+          "sha256": "dcad474e5b9acf7fcda37ce5236cea4cbe7b9d0ed068a5c18a71d318c4a84b50",
+          "size_bytes": 154,
+          "observed_error": "invalid coefficient string \"I\""
+        },
+        "retry_stdout": {
+          "path": "/tmp/autoibp_orch/exec/lane95_boundaryreduce_split_im.second.stdout",
+          "sha256": "254164648e79f1f669a2c47d88b2618ab9b3e9fbd29a6f8b5147c958393c3fe9",
+          "size_bytes": 2936,
+          "observed_stage": "Generate equations for topology boxFermionBubbleH, sector 13; Number of master integrals: 0"
+        }
       }
     },
     "manifest": {
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/run-manifest.10236095.txt",
-      "sha256": "92846768ce1728d1e78eb7fac47559dc4be197db81ab8b5a4db64b9d83b04a91"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/run-manifest.lane95full.txt",
+      "sha256": "cc713af158907b8bb059c81747bb7a3d6d9d804005d9ddd398dfc1afeb669cfd"
     },
     "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles",
     "scripts": [
       {
         "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/capture_box_integrals_fermion_bubbles_topology_h.sbatch",
-        "sha256": "ed2f7d1f2e10fa9563d76079f9899345688afe063e88b20db5793f6f5b846ec7"
+        "sha256": "71c2f44191f490caafeaf8c9b027bb9b38013a530ca59765b35c58523734932a"
       },
       {
         "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/run.wl",
-        "sha256": "b0e3f606047ad119c738088fa355d9b4c0ba90438b01b21f6890e2722e4f66a5"
+        "sha256": "e0844327ae7e6a1add69651e9071473289ae0bf0d33c19a0507acbe6dfcda940"
       },
       {
         "path": "tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93/verify_output.wl",
-        "sha256": "dee49c853e207e6bbfce2b0d62cfd9d0b1cf265b660dd5c47efee9281f017216",
-        "note": "Repository verifier tightened after the submitted job to require metadata fields; the submitted job manifest records the earlier verifier hash efcab5e1a7461ffd2021d096f50b95af178547a66458f9f385ba134cb549035f."
+        "sha256": "24093b4a34d0fa67493a99c162db984cb8ed9ec2a1e1efd34c9b7f71cbe36658"
       }
     ],
     "source_amflow": {
       "commit": "775162498ab18493c45254b861669b4151b841ee",
       "remote": "https://gitlab.com/multiloop-pku/amflow.git"
-    },
-    "slurm": {
-      "allocated_partition": "sapphire",
-      "cpus_per_task": 8,
-      "elapsed": "00:01:20",
-      "exit_code": "2:0",
-      "job_id": "10236095",
-      "job_name": "lane93-boxfb-H",
-      "node": "holy8a24109",
-      "state": "FAILED",
-      "time_limit": "04:00:00"
     },
     "toolchain": {
       "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
@@ -115,17 +121,35 @@
     }
   },
   "schema_version": 1,
-  "status": "partial-progress-failed-closed",
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T14:35:12-04:00",
   "verification": {
-    "anti_fake_parity_gate": "fail-closed",
+    "anti_fake_parity_gate": "passed-role-d-approved",
     "build_gate": "passed",
+    "cmake_build": {
+      "log": "/tmp/autoibp_orch/exec/lane95_cmake_build.log",
+      "sha256": "4fcdba84e42b1378fceb91a472b79fc32ba124477f6f989930954bb74d5f4912"
+    },
+    "cmake_configure": {
+      "log": "/tmp/autoibp_orch/exec/lane95_cmake_configure.log",
+      "sha256": "8000c16b166ac243531cd750e1d79eba1fccf4362314f122db7c879644558a13"
+    },
+    "amflow_tests": {
+      "log": "/tmp/autoibp_orch/exec/lane95_amflow_tests.log",
+      "sha256": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+      "status": "passed"
+    },
+    "ctest": {
+      "log": "/tmp/autoibp_orch/exec/lane95_ctest.log",
+      "sha256": "63f26be10a0fe201aad167d48d573b0bec721d6179475de9db2bc7424f1e63f4",
+      "status": "passed"
+    },
     "compare_cpp_vs_amflow_self_check": {
-      "path": "/tmp/autoibp_orch/exec/lane93_compare_selfcheck.json",
+      "path": "/tmp/autoibp_orch/exec/lane95_compare_selfcheck.json",
       "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
       "status": "passed"
     },
-    "latest_log_stage_at_capture": "Dedicated topology-H reduction completed target reduction and differential-equation construction; boundary reduction reached Kira with generated propagators containing symbolic I and no solution file was produced.",
-    "real_mathematica_numerics_verified": false,
-    "withheld_reason": "The live Mathematica/Kira run did not produce sol-2024-box-integrals-fermion-bubbles-topology-h or metadata."
+    "latest_log_stage_at_capture": "Dedicated topology-H AMFlow/Kira rerun completed SolveIntegrals with kernel-exit 0 and verifier confirmed all three requested target integrals; the solution file contains three expected target rules plus three auxiliary rules.",
+    "real_mathematica_numerics_verified": true
   }
 }

@@ -11,6 +11,8 @@ set -eo pipefail
 
 RUN_DIR=/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles
 EXAMPLE_DIR="${RUN_DIR}/amflow/examples/box_integrals_fermion_bubbles_topology_h"
+REPO_DIR=/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP
+PACKET_DIR="${REPO_DIR}/tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.lane93"
 SOL_FILE="${EXAMPLE_DIR}/sol-2024-box-integrals-fermion-bubbles-topology-h"
 MANIFEST_FILE="${RUN_DIR}/run-manifest.${SLURM_JOB_ID:-nojob}.txt"
 
@@ -33,6 +35,8 @@ echo "WOLFRAM_KERNEL=${WOLFRAM_KERNEL}"
 echo "KIRA_EXECUTABLE=${KIRA_EXECUTABLE}"
 echo "FERMAT_EXECUTABLE=${FERMAT_EXECUTABLE}"
 echo "FERMATPATH=${FERMATPATH}"
+
+cp "${PACKET_DIR}/run.wl" "${PACKET_DIR}/verify_output.wl" "${EXAMPLE_DIR}/"
 
 {
   echo "jobid=${SLURM_JOB_ID}"

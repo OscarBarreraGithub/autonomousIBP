@@ -1,0 +1,196 @@
+{
+  "blocking_reasons": [
+    "qualification closure note has not been reviewed",
+    "performance review summary has not been reviewed",
+    "diagnostic review summary has not been reviewed",
+    "docs completion note has not been reviewed"
+  ],
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "blocked-on-prerequisite-release-reviews",
+  "diagnostic_review_summary_reviewed": false,
+  "docs_completion_note_reviewed": false,
+  "evidence_snapshot": {
+    "anti_fake_parity_gate": {
+      "accepted_real_claims": [
+        "Committed phase-0 aggregate is 669/671, not promoted to 671/671.",
+        "Unpromoted lane40 rerun produced 671/671 and is recorded only as supporting runtime evidence.",
+        "Committed M5 all-phase closure is 390/390 with explicit non-claims for M6, M7, and release readiness.",
+        "Committed M6 case-study numeric evidence covers 6/10 families with 607/607 compared coefficients passing."
+      ],
+      "rejected_unqualified_claims": [
+        "This sidecar does not treat the unpromoted lane40 671/671 rerun as committed phase-0 closure.",
+        "This sidecar does not claim Milestone M6 closure.",
+        "This sidecar does not claim final M7 parity sign-off.",
+        "This sidecar does not claim release readiness."
+      ],
+      "role_d_verdict": "APPROVE committed 669/671 phase-0, M5 390/390, and M6 case-study 607/607 over 6/10 only; reject committed 671/671 and any M6-ready claim."
+    },
+    "m5_all_phase": {
+      "aggregate_compared_coefficient_count": 390,
+      "aggregate_passed_coefficient_count": 390,
+      "blocking_reasons": [],
+      "current_state": "CLOSED/all-phase",
+      "does_not_claim_m6": true,
+      "does_not_claim_m7": true,
+      "does_not_claim_release_readiness": true,
+      "m5_all_phase_closed": true,
+      "source_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json"
+    },
+    "m6_case_study_numeric_evidence": {
+      "compared_coefficient_count": 607,
+      "missing_family_ids": [
+        "ttbar-h",
+        "diphoton-heavy-quark-form-factors",
+        "single-top-planar-nonplanar",
+        "one-singular-endpoint-case"
+      ],
+      "passed_coefficient_count": 607,
+      "passing_families": [
+        {
+          "compared_coefficient_count": 54,
+          "id": "package-double-box",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 54,
+          "source_path": "tools/reference-harness/specs/case-studies/package-double-box.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 89,
+          "id": "ttbar-j",
+          "minimum_digit_agreement": 78,
+          "passed_coefficient_count": 89,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-j.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 14,
+          "id": "five-point-one-mass-scattering",
+          "minimum_digit_agreement": 59,
+          "passed_coefficient_count": 14,
+          "source_path": "tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 162,
+          "id": "ttbar-w",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 162,
+          "source_path": "tools/reference-harness/specs/case-studies/ttbar-w.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 138,
+          "id": "h-to-bb",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 138,
+          "source_path": "tools/reference-harness/specs/case-studies/h-to-bb.numeric-evidence.json",
+          "tolerance_digits": 50
+        },
+        {
+          "compared_coefficient_count": 150,
+          "id": "n4-sym-three-loop-form-factor",
+          "minimum_digit_agreement": 58,
+          "passed_coefficient_count": 150,
+          "source_path": "tools/reference-harness/specs/case-studies/n4-sym-three-loop-form-factor.numeric-evidence.json",
+          "tolerance_digits": 50
+        }
+      ],
+      "passing_family_count": 6,
+      "passing_family_fraction": "6/10",
+      "runtime_blocked_family_ids": [
+        "one-singular-endpoint-case"
+      ],
+      "selected_family_count": 10,
+      "source_family_catalog": "tools/reference-harness/templates/qualification-benchmarks.json"
+    },
+    "phase0_capture_state": {
+      "captured_example_count": 6,
+      "captured_example_fraction": "6/10",
+      "captured_example_ids": [
+        "automatic_loop",
+        "automatic_vs_manual",
+        "differential_equation_solver",
+        "spacetime_dimension",
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "pending_example_count": 4,
+      "pending_example_ids": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator"
+      ],
+      "source_path": "tools/reference-harness/templates/qualification-benchmarks.json",
+      "total_example_count": 10
+    },
+    "phase0_committed_aggregate": {
+      "compared_coefficient_count": 671,
+      "latest_per_benchmark_compared_coefficient_count": 366,
+      "latest_per_benchmark_passed_coefficient_count": 364,
+      "passed_coefficient_count": 669,
+      "source_path": "tools/reference-harness/specs/phase0/lane32-packet-validation-aggregate.json",
+      "tolerance_digits": 30
+    },
+    "phase0_unpromoted_rerun": {
+      "all_compares_passed": true,
+      "case_count": 13,
+      "compared_coefficient_count": 671,
+      "passed_coefficient_count": 671,
+      "source_path": "/tmp/autoibp_orch/exec/lane40_batch52/parity_runs/aggregate.json",
+      "source_status": "unpromoted-tmp-rerun",
+      "tolerance_digits": 30
+    },
+    "snapshot_policy": "Record real retained parity evidence without converting prerequisite blockers into M6, M7, or release-readiness closure."
+  },
+  "missing_or_blocked_parity_paths": [
+    "diagnostic-review-summary",
+    "docs-completion-note",
+    "performance-review-summary",
+    "qualification-closure-note"
+  ],
+  "multi_agent_review": [
+    {
+      "finding": "Readiness schema and lane63 sidecar pattern require a lane-local release-parity-signoff JSON sidecar with exact prerequisite review sections and withheld claims.",
+      "role": "A",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Evidence inputs are usable only with blockers preserved: lane40 671/671 is supporting rerun evidence, M6 case-study evidence is 607/607 over 6/10 families, and parity sign-off remains blocked.",
+      "role": "B",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Existing review_release_parity_signoff.py and readiness wiring are sufficient for a blocked scaffold sidecar; no new producer is required for this lane.",
+      "role": "C",
+      "status": "APPROVE"
+    },
+    {
+      "finding": "Anti-fake gate approves only strict wording: committed phase-0 source of truth is 669/671, lane40 671/671 is unpromoted supporting evidence, M5 is 390/390, and M6 case-study numerics are 607/607 over six passing families without M6 closure.",
+      "role": "D",
+      "status": "APPROVE"
+    }
+  ],
+  "parity_signoff_complete": false,
+  "parity_signoff_required_inputs_preserved": true,
+  "parity_signoff_required_outputs_preserved": true,
+  "performance_review_summary_reviewed": false,
+  "prerequisite_review_sections_preserved": true,
+  "qualification_closure_reviewed": false,
+  "required_release_review_sections": [
+    "qualification-corpus",
+    "performance-review",
+    "diagnostic-review",
+    "docs-completion"
+  ],
+  "schema_version": 1,
+  "scope": "release-parity-signoff",
+  "withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "withheld_claims_reviewed": true
+}

@@ -4755,6 +4755,40 @@ std::string SerializeOptionalEtaContinuationPlanForFingerprint(
   return out.str();
 }
 
+std::string SerializeEtaEndpointBranchLedgerForSolveRequestFingerprint(
+    const EtaEndpointBranchLedger& ledger) {
+  std::ostringstream out;
+  out << "eta_symbol=" << ledger.eta_symbol << "\n";
+  out << "endpoint_expression=" << ledger.endpoint_expression << "\n";
+  out << "endpoint_value=" << ledger.endpoint_value.ToString() << "\n";
+  out << "half_plane=" << ToString(ledger.half_plane) << "\n";
+  out << "prescription=" << ToString(ledger.prescription) << "\n";
+  out << "prescription_source=" << ledger.prescription_source << "\n";
+  out << "approach_direction=" << ledger.approach_direction << "\n";
+  out << "log_branch_argument=" << ledger.log_branch_argument << "\n";
+  out << "log_sheet_index=" << ledger.log_sheet_index << "\n";
+  out << "endpoint_branch_winding=" << ledger.endpoint_branch_winding << "\n";
+  out << "contour_fingerprint=" << ledger.contour_fingerprint << "\n";
+  out << "local_model_kind=" << ledger.local_model_kind << "\n";
+  out << "extraction_order=" << ledger.extraction_order << "\n";
+  out << "live_endpoint_extraction_ready="
+      << (ledger.live_endpoint_extraction_ready ? "true" : "false") << "\n";
+  out << "ledger_fingerprint=" << ledger.ledger_fingerprint << "\n";
+  return out.str();
+}
+
+std::string SerializeOptionalEtaEndpointBranchLedgerForFingerprint(
+    const std::optional<EtaEndpointBranchLedger>& eta_endpoint_branch_ledger) {
+  std::ostringstream out;
+  out << "present=" << (eta_endpoint_branch_ledger.has_value() ? "true" : "false")
+      << "\n";
+  if (eta_endpoint_branch_ledger.has_value()) {
+    out << SerializeEtaEndpointBranchLedgerForSolveRequestFingerprint(
+        *eta_endpoint_branch_ledger);
+  }
+  return out.str();
+}
+
 std::string SerializeOptionalAmfFixedEpsForFingerprint(
     const std::optional<std::string>& fixed_eps) {
   std::ostringstream out;
@@ -4845,6 +4879,11 @@ std::string SerializeSolveRequestForFingerprint(const SolveRequest& request) {
   if (request.eta_continuation_plan.has_value()) {
     out << "eta_continuation_plan:\n"
         << SerializeOptionalEtaContinuationPlanForFingerprint(request.eta_continuation_plan);
+  }
+  if (request.eta_endpoint_branch_ledger.has_value()) {
+    out << "eta_endpoint_branch_ledger:\n"
+        << SerializeOptionalEtaEndpointBranchLedgerForFingerprint(
+               request.eta_endpoint_branch_ledger);
   }
   return out.str();
 }
@@ -5134,6 +5173,11 @@ void PersistSolvedPathCacheManifest(const ArtifactLayout& layout,
     manifest.request_summary +=
         "; eta_continuation_plan.contour_fingerprint=" +
         request.eta_continuation_plan->contour_fingerprint;
+  }
+  if (request.eta_endpoint_branch_ledger.has_value()) {
+    manifest.request_summary +=
+        "; eta_endpoint_branch_ledger.ledger_fingerprint=" +
+        request.eta_endpoint_branch_ledger->ledger_fingerprint;
   }
   manifest.cache_root = AbsoluteOrEmpty(manifest_path.parent_path());
   manifest.manifest_path = AbsoluteOrEmpty(manifest_path);
@@ -6282,6 +6326,7 @@ void PopulateSolveRequestExecutionInputs(
   request.amf_requested_d0 = amf_requested_d0;
   request.amf_requested_dimension_expression = amf_requested_dimension_expression;
   request.eta_continuation_plan.reset();
+  request.eta_endpoint_branch_ledger.reset();
   request.requested_digits = requested_digits;
 }
 

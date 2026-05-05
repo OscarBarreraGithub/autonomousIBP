@@ -740,4 +740,82 @@ std::filesystem::path WriteEtaEndpointLocalModelManifest(
   return path;
 }
 
+EtaEndpointBranchLedgerManifest MakeEtaEndpointBranchLedgerManifest(
+    const EtaEndpointBranchLedger& ledger,
+    const std::string& run_id) {
+  EtaEndpointBranchLedgerManifest manifest;
+  if (!run_id.empty()) {
+    ValidateManifestRunId(run_id, "eta endpoint branch-ledger manifest");
+    manifest.run_id = run_id;
+  }
+  manifest.ledger = ledger;
+  return manifest;
+}
+
+std::string SerializeEtaEndpointBranchLedgerManifestYaml(
+    const EtaEndpointBranchLedgerManifest& manifest) {
+  std::ostringstream out;
+  WriteQuotedLine(out, "manifest_kind", manifest.manifest_kind);
+  WriteQuotedLine(out, "run_id", manifest.run_id);
+  out << "ledger:\n";
+  WriteQuotedLine(out, "eta_symbol", manifest.ledger.eta_symbol, 2);
+  WriteQuotedLine(out, "endpoint_expression", manifest.ledger.endpoint_expression, 2);
+  WriteQuotedLine(out, "endpoint_value", manifest.ledger.endpoint_value.ToString(), 2);
+  WriteQuotedLine(out, "half_plane", ToString(manifest.ledger.half_plane), 2);
+  WriteQuotedLine(out, "prescription", ToString(manifest.ledger.prescription), 2);
+  WriteQuotedLine(out, "prescription_source", manifest.ledger.prescription_source, 2);
+  WriteQuotedLine(out, "approach_direction", manifest.ledger.approach_direction, 2);
+  WriteQuotedLine(out, "log_branch_argument", manifest.ledger.log_branch_argument, 2);
+  WriteIntegerLine(out, "log_sheet_index", manifest.ledger.log_sheet_index, 2);
+  WriteIntegerLine(out,
+                   "endpoint_branch_winding",
+                   manifest.ledger.endpoint_branch_winding,
+                   2);
+  WriteQuotedLine(out, "contour_fingerprint", manifest.ledger.contour_fingerprint, 2);
+  WriteQuotedLine(out, "local_model_kind", manifest.ledger.local_model_kind, 2);
+  WriteIntegerLine(out, "extraction_order", manifest.ledger.extraction_order, 2);
+  WriteBoolLine(out,
+                "live_endpoint_extraction_ready",
+                manifest.ledger.live_endpoint_extraction_ready,
+                2);
+  WriteQuotedLine(out, "ledger_fingerprint", manifest.ledger.ledger_fingerprint, 2);
+  return out.str();
+}
+
+std::filesystem::path WriteEtaEndpointBranchLedgerManifest(
+    const ArtifactLayout& layout,
+    const EtaEndpointBranchLedgerManifest& manifest) {
+  ValidateManifestRunId(manifest.run_id, "eta endpoint branch-ledger manifest");
+  const std::filesystem::path path = layout.manifests_dir / (manifest.run_id + ".yaml");
+  std::filesystem::create_directories(path.parent_path());
+  const std::filesystem::path temp_path = AtomicTempPathFor(path);
+  const std::string serialized = SerializeEtaEndpointBranchLedgerManifestYaml(manifest);
+
+  {
+    std::ofstream stream(temp_path, std::ios::trunc);
+    if (!stream) {
+      throw std::runtime_error("failed to open eta endpoint branch-ledger manifest for writing: " +
+                               temp_path.string());
+    }
+
+    stream << serialized;
+    stream.flush();
+    if (!stream) {
+      std::error_code cleanup_error;
+      std::filesystem::remove(temp_path, cleanup_error);
+      throw std::runtime_error("failed to write eta endpoint branch-ledger manifest: " +
+                               temp_path.string());
+    }
+  }
+
+  try {
+    std::filesystem::rename(temp_path, path);
+  } catch (...) {
+    std::error_code cleanup_error;
+    std::filesystem::remove(temp_path, cleanup_error);
+    throw;
+  }
+  return path;
+}
+
 }  // namespace amflow

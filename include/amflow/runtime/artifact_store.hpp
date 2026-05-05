@@ -6,6 +6,7 @@
 #include <string>
 
 #include "amflow/runtime/continuation_path.hpp"
+#include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/endpoint_local_model.hpp"
 
 namespace amflow {
@@ -107,6 +108,12 @@ struct EtaEndpointLocalModelManifest {
   EtaEndpointLocalModel model;
 };
 
+struct EtaEndpointBranchLedgerManifest {
+  std::string manifest_kind = "eta-endpoint-branch-ledger";
+  std::string run_id = "eta-endpoint-branch-ledger";
+  EtaEndpointBranchLedger ledger;
+};
+
 ArtifactLayout EnsureArtifactLayout(const std::filesystem::path& root);
 CommandLogPaths MakeCommandLogPaths(const ArtifactLayout& layout,
                                     const std::string& command_name);
@@ -140,5 +147,13 @@ std::string SerializeEtaEndpointLocalModelManifestYaml(
 std::filesystem::path WriteEtaEndpointLocalModelManifest(
     const ArtifactLayout& layout,
     const EtaEndpointLocalModelManifest& manifest);
+EtaEndpointBranchLedgerManifest MakeEtaEndpointBranchLedgerManifest(
+    const EtaEndpointBranchLedger& ledger,
+    const std::string& run_id = "eta-endpoint-branch-ledger");
+std::string SerializeEtaEndpointBranchLedgerManifestYaml(
+    const EtaEndpointBranchLedgerManifest& manifest);
+std::filesystem::path WriteEtaEndpointBranchLedgerManifest(
+    const ArtifactLayout& layout,
+    const EtaEndpointBranchLedgerManifest& manifest);
 
 }  // namespace amflow

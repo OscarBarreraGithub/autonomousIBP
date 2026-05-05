@@ -10,6 +10,7 @@
 
 #include "amflow/core/de_system.hpp"
 #include "amflow/runtime/continuation_path.hpp"
+#include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/solver/boundary_request.hpp"
 #include "amflow/solver/coefficient_evaluator.hpp"
 #include "amflow/solver/precision_policy.hpp"
@@ -127,8 +128,11 @@ struct SolveRequest {
   // singulars, the two- through fourteen-waypoint upper-half-plane complex
   // subsets when every explicit zero-winding singular ledger stays off the
   // direct real segment. Target-endpoint singular ledgers remain direct-real
-  // only.
+  // only. The singular-runtime SRL-3 endpoint branch ledger is a separate
+  // audit carrier for branch-sensitive eta=0 endgames; it does not make the
+  // default bootstrap solver execute live complex endpoint extraction.
   std::optional<EtaContinuationPlan> eta_continuation_plan;
+  std::optional<EtaEndpointBranchLedger> eta_endpoint_branch_ledger;
   int requested_digits = 50;
   std::optional<int> requested_epsilon_order;
 };

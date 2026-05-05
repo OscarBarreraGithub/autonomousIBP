@@ -1,5 +1,6 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
 #include "amflow/runtime/endpoint_local_model.hpp"
 
@@ -50,10 +51,31 @@ void ExpectAnalysisFailure(const amflow::EtaEndpointLocalModelAnalysis& analysis
   Expect(!analysis.model.has_value(), message + "; failed analysis should not carry a model");
 }
 
+void ExpectAnalysisFailure(const amflow::EtaEndpointBranchLedgerAnalysis& analysis,
+                           const std::string& failure_code,
+                           const std::string& summary_needle,
+                           const std::string& message) {
+  Expect(!analysis.success, message + "; analysis should fail closed");
+  Expect(analysis.failure_code == failure_code,
+         message + "; expected failure_code=" + failure_code + ", got " +
+             analysis.failure_code);
+  ExpectContains(analysis.summary, summary_needle, message);
+  Expect(!analysis.ledger.has_value(), message + "; failed analysis should not carry a ledger");
+}
+
 amflow::ProblemSpec MakeComplexEndpointProblemSpec() {
   amflow::ProblemSpec spec = amflow::MakeSampleProblemSpec();
   spec.complex_mode = true;
   spec.kinematics.complex_numeric_substitutions["unused_complex_anchor"] = "1+I";
+  return spec;
+}
+
+amflow::ProblemSpec MakeComplexEndpointProblemSpecWithRawPrescription(
+    const amflow::FeynmanPrescription prescription) {
+  amflow::ProblemSpec spec = MakeComplexEndpointProblemSpec();
+  for (amflow::Propagator& propagator : spec.family.propagators) {
+    propagator.prescription = static_cast<int>(prescription);
+  }
   return spec;
 }
 
@@ -89,7 +111,8 @@ amflow::DESystem MakeMatrixEndpointDESystem(
 
 amflow::EtaContinuationPlan MakeMarkedEtaZeroEndpointPlan(
     const amflow::DESystem& system,
-    const amflow::ProblemSpec& spec) {
+    const amflow::ProblemSpec& spec,
+    const amflow::EtaContourHalfPlane half_plane = amflow::EtaContourHalfPlane::Upper) {
   return amflow::PlanEtaContinuationContourWithTargetEndpointSingular(
       system,
       spec,
@@ -97,7 +120,7 @@ amflow::EtaContinuationPlan MakeMarkedEtaZeroEndpointPlan(
       "eta=-1",
       "eta=0",
       "eta=0",
-      amflow::EtaContourHalfPlane::Upper);
+      half_plane);
 }
 
 void UnmarkedSingularTargetEndpointStillRejectsTest() {
@@ -323,6 +346,170 @@ void EndpointLocalModelRejectsLogarithmicResonanceTest() {
       "SRL-2 local model should fail closed on logarithmic Frobenius cases");
 }
 
+void EndpointBranchLedgerRecordsLowerPrescriptionSidecarTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::MinusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  const amflow::EtaContinuationPlan plan =
+      MakeMarkedEtaZeroEndpointPlan(system, spec, amflow::EtaContourHalfPlane::Lower);
+  const amflow::EtaEndpointLocalModelAnalysis local_analysis =
+      amflow::AnalyzeEtaEndpointLocalModel(system, spec, plan, 3);
+  Expect(local_analysis.success,
+         "SRL-3 branch ledger test requires a successful SRL-2 local model");
+
+  const amflow::EtaEndpointBranchLedgerAnalysis analysis =
+      amflow::AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model);
+  Expect(analysis.success, "SRL-3 endpoint branch ledger should accept reviewed -i0 lower path");
+  Expect(analysis.ledger.has_value(), "successful SRL-3 analysis should carry a branch ledger");
+
+  const amflow::EtaEndpointBranchLedger& ledger = *analysis.ledger;
+  Expect(ledger.eta_symbol == "eta", "branch ledger should preserve eta symbol");
+  Expect(ledger.endpoint_expression == "eta=0",
+         "branch ledger should preserve endpoint singular identity");
+  Expect(ledger.endpoint_value.ToString() == "0", "branch ledger should bind eta=0 endpoint");
+  Expect(ledger.half_plane == amflow::EtaContourHalfPlane::Lower,
+         "branch ledger should preserve lower half-plane selection");
+  Expect(ledger.prescription == amflow::FeynmanPrescription::MinusI0,
+         "branch ledger should preserve resolved -i0 prescription");
+  Expect(ledger.prescription_source == "family.propagators[].prescription",
+         "branch ledger should record the prescription metadata source");
+  Expect(ledger.approach_direction == "NegIm",
+         "lower half-plane ledger should fix the negative-imaginary endpoint approach");
+  Expect(ledger.log_branch_argument == "-pi",
+         "lower half-plane ledger should fix the negative log branch");
+  Expect(ledger.log_sheet_index == -1,
+         "lower half-plane ledger should record the reviewed log sheet index");
+  Expect(ledger.contour_fingerprint == plan.contour_fingerprint,
+         "branch ledger should inherit contour fingerprint identity");
+  Expect(ledger.local_model_kind == local_analysis.model->local_model_kind,
+         "branch ledger should inherit SRL-2 local-model identity");
+  Expect(ledger.extraction_order == 3,
+         "branch ledger should inherit SRL-2 extraction order");
+  Expect(!ledger.live_endpoint_extraction_ready,
+         "SRL-3 must not claim live eta=0 endpoint extraction");
+  Expect(!ledger.ledger_fingerprint.empty(),
+         "branch ledger should carry a deterministic fingerprint");
+
+  const amflow::EtaEndpointBranchLedgerManifest manifest =
+      amflow::MakeEtaEndpointBranchLedgerManifest(ledger, "lane64-srl3-branch-ledger");
+  const std::string yaml = amflow::SerializeEtaEndpointBranchLedgerManifestYaml(manifest);
+  ExpectContains(yaml,
+                 "manifest_kind: \"eta-endpoint-branch-ledger\"",
+                 "branch-ledger sidecar should declare its manifest kind");
+  ExpectContains(yaml,
+                 "half_plane: \"lower\"",
+                 "branch-ledger sidecar should persist half-plane selection");
+  ExpectContains(yaml,
+                 "prescription: \"-i0\"",
+                 "branch-ledger sidecar should persist prescription polarity");
+  ExpectContains(yaml,
+                 "approach_direction: \"NegIm\"",
+                 "branch-ledger sidecar should persist endpoint approach direction");
+  ExpectContains(yaml,
+                 "log_branch_argument: \"-pi\"",
+                 "branch-ledger sidecar should persist log branch argument");
+  ExpectContains(yaml,
+                 "live_endpoint_extraction_ready: false",
+                 "branch-ledger sidecar should keep live extraction deferred");
+  ExpectContains(yaml,
+                 "ledger_fingerprint: \"" + ledger.ledger_fingerprint + "\"",
+                 "branch-ledger sidecar should persist the ledger fingerprint");
+}
+
+void EndpointBranchLedgerDistinguishesPlusAndMinusPrescriptionTest() {
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+
+  const amflow::ProblemSpec plus_spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::EtaContinuationPlan plus_plan =
+      MakeMarkedEtaZeroEndpointPlan(system, plus_spec, amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaEndpointLocalModelAnalysis plus_local =
+      amflow::AnalyzeEtaEndpointLocalModel(system, plus_spec, plus_plan, 3);
+  Expect(plus_local.success, "plus-prescription branch ledger needs SRL-2 local model");
+  const amflow::EtaEndpointBranchLedgerAnalysis plus_analysis =
+      amflow::AnalyzeEtaEndpointBranchLedger(plus_spec, plus_plan, *plus_local.model);
+  Expect(plus_analysis.success, "SRL-3 should accept +i0 upper-half-plane metadata");
+
+  const amflow::ProblemSpec minus_spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::MinusI0);
+  const amflow::EtaContinuationPlan minus_plan =
+      MakeMarkedEtaZeroEndpointPlan(system, minus_spec, amflow::EtaContourHalfPlane::Lower);
+  const amflow::EtaEndpointLocalModelAnalysis minus_local =
+      amflow::AnalyzeEtaEndpointLocalModel(system, minus_spec, minus_plan, 3);
+  Expect(minus_local.success, "minus-prescription branch ledger needs SRL-2 local model");
+  const amflow::EtaEndpointBranchLedgerAnalysis minus_analysis =
+      amflow::AnalyzeEtaEndpointBranchLedger(minus_spec, minus_plan, *minus_local.model);
+  Expect(minus_analysis.success, "SRL-3 should accept -i0 lower-half-plane metadata");
+
+  Expect(plus_analysis.ledger->approach_direction == "PosIm",
+         "+i0 ledger should select positive-imaginary endpoint approach");
+  Expect(plus_analysis.ledger->log_branch_argument == "+pi",
+         "+i0 ledger should select positive log branch");
+  Expect(plus_analysis.ledger->log_sheet_index == 0,
+         "+i0 ledger should select the principal upper sheet");
+  Expect(minus_analysis.ledger->approach_direction == "NegIm",
+         "-i0 ledger should select negative-imaginary endpoint approach");
+  Expect(minus_analysis.ledger->log_branch_argument == "-pi",
+         "-i0 ledger should select negative log branch");
+  Expect(minus_analysis.ledger->log_sheet_index == -1,
+         "-i0 ledger should select the lower sheet");
+  Expect(plus_analysis.ledger->ledger_fingerprint != minus_analysis.ledger->ledger_fingerprint,
+         "opposite endpoint branch ledgers should not share a fingerprint");
+}
+
+void EndpointBranchLedgerRejectsMissingPrescriptionTest() {
+  amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::None);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  const amflow::EtaContinuationPlan plan =
+      MakeMarkedEtaZeroEndpointPlan(system, spec, amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaEndpointLocalModelAnalysis local_analysis =
+      amflow::AnalyzeEtaEndpointLocalModel(system, spec, plan, 3);
+  Expect(local_analysis.success, "missing-prescription failure needs SRL-2 local model");
+
+  ExpectAnalysisFailure(
+      amflow::AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model),
+      "srl3_endpoint_prescription_missing",
+      "requires a nonzero Feynman prescription",
+      "SRL-3 branch ledger should fail closed when prescription metadata is missing");
+}
+
+void EndpointBranchLedgerRejectsContradictoryPrescriptionTest() {
+  amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::MinusI0);
+  spec.family.propagators.front().prescription =
+      static_cast<int>(amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  const amflow::EtaContinuationPlan plan =
+      MakeMarkedEtaZeroEndpointPlan(system, spec, amflow::EtaContourHalfPlane::Lower);
+  const amflow::EtaEndpointLocalModelAnalysis local_analysis =
+      amflow::AnalyzeEtaEndpointLocalModel(system, spec, plan, 3);
+  Expect(local_analysis.success, "contradictory-prescription failure needs SRL-2 local model");
+
+  ExpectAnalysisFailure(
+      amflow::AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model),
+      "srl3_endpoint_prescription_contradiction",
+      "contradictory",
+      "SRL-3 branch ledger should fail closed on contradictory prescription metadata");
+}
+
+void EndpointBranchLedgerRejectsPrescriptionHalfPlaneMismatchTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::MinusI0);
+  const amflow::DESystem system = MakeScalarEndpointDESystem("1/eta");
+  const amflow::EtaContinuationPlan plan =
+      MakeMarkedEtaZeroEndpointPlan(system, spec, amflow::EtaContourHalfPlane::Upper);
+  const amflow::EtaEndpointLocalModelAnalysis local_analysis =
+      amflow::AnalyzeEtaEndpointLocalModel(system, spec, plan, 3);
+  Expect(local_analysis.success, "half-plane mismatch failure needs SRL-2 local model");
+
+  ExpectAnalysisFailure(
+      amflow::AnalyzeEtaEndpointBranchLedger(spec, plan, *local_analysis.model),
+      "srl3_endpoint_prescription_half_plane_mismatch",
+      "requires -i0 prescription metadata to use the lower half-plane",
+      "SRL-3 branch ledger should fail closed when prescription and half-plane conflict");
+}
+
 }  // namespace
 
 int main() {
@@ -338,6 +525,11 @@ int main() {
     EndpointLocalModelRejectsFractionalExponentTest();
     EndpointLocalModelRejectsResonantIntegerExponentsTest();
     EndpointLocalModelRejectsLogarithmicResonanceTest();
+    EndpointBranchLedgerRecordsLowerPrescriptionSidecarTest();
+    EndpointBranchLedgerDistinguishesPlusAndMinusPrescriptionTest();
+    EndpointBranchLedgerRejectsMissingPrescriptionTest();
+    EndpointBranchLedgerRejectsContradictoryPrescriptionTest();
+    EndpointBranchLedgerRejectsPrescriptionHalfPlaneMismatchTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

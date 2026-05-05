@@ -1,8 +1,9 @@
 # Singular Runtime Lane Design
 
-Status: lane47 failure-safe design artifact. This is not a runtime
-implementation and does not retire the current `one-singular-endpoint-case`
-`b62p` blocker.
+Status: lane64 has implemented the SRL-3 branch/prescription ledger slice on
+top of the lane51 SRL-1 endpoint-aware contour contract and lane56 SRL-2
+endpoint local model. This is still not live endpoint extraction and does not
+retire the current `one-singular-endpoint-case` `b62p` blocker.
 
 ## Review Consensus
 
@@ -135,6 +136,17 @@ Exit evidence:
 - tests distinguishing upper/lower or plus/minus prescription when they produce
   different branch data;
 - fail-closed behavior for missing or contradictory prescription metadata.
+
+Lane64 status: implemented as a non-executing `EtaEndpointBranchLedger` audit
+sidecar. The ledger consumes the marked SRL-1 endpoint contour plus the SRL-2
+local model, resolves a single nonzero Feynman prescription, checks it against
+the selected half-plane, records the endpoint approach direction, log branch
+argument, log sheet index, endpoint winding, contour fingerprint, local-model
+identity, extraction order, and its own deterministic fingerprint, and carries
+that audit identity on `SolveRequest`. Focused tests cover `+i0`/upper and
+`-i0`/lower branch data, missing prescriptions, contradictory prescriptions,
+and prescription/half-plane mismatches. `live_endpoint_extraction_ready` remains
+`false`.
 
 ### SRL-4: Live Endpoint Extraction
 

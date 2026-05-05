@@ -1,0 +1,26 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps10/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps8 reference pointer for automatic_loop comparator audits, captured with epsorder = 10 on 2026-05-05.",
+    "This manifest intentionally points at the same fresh epsorder=10 sol1/sol2 outputs as automatic_loop.eps7-golden-manifest.json, but names the eps^8 validation surface explicitly.",
+    "SLURM job 10111707 completed on holy8a24106.rc.fas.harvard.edu partition sapphire using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "The work-eps10 tree was copied from work-eps8, then automatic_loop copied sol outputs and cache state were removed before running; run.wl was changed to epsorder = 10.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps10/logs/cap-autoloop-eps10.10111707.out with sha256 ccb11a5d4500ae6d241553221ff795c04ce7192a6147bad91d60f5f6f109136a; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T05:47:35-04:00 to 2026-05-05T05:52:13-04:00.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 10 printed coefficients through positive eps^8; both sol1 and sol2 contain explicit eps^8 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12.",
+    "sol1 sha256 196770a7d0d0fe83c4cfc35a09661dbe3243f5ff7c7c158ac886e740b947da8e; sol2 sha256 7cb471259dae1e2480418f893c56d0325da277e146a1b9340cb0117fcf393119."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps10/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps10/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

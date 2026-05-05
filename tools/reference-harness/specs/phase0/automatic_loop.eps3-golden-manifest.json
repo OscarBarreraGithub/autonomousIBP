@@ -1,0 +1,23 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps6/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps3+ reference for automatic_loop comparator audits, captured with epsorder = 6 on 2026-05-05.",
+    "Local run completed on holy7c04109.rc.fas.harvard.edu inside parent SLURM allocation 10006275 using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps6/logs/local-cap-autoloop-eps6.20260505T015330.out with sha256 afab769070056b56736828c783de97781ce1d48ec2e3c1a7ef5906700fed8d2c.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 6 printed coefficients through positive eps^4; both sol1 and sol2 contain explicit eps^3 and eps^4 coefficients. AMFlow did not print positive eps^5 or eps^6 coefficients in this run.",
+    "Preserve automatic_loop.eps2-golden-manifest.json for the already-reviewed eps^2 parity lane; this manifest is a new pointer for eps^3 and eps^4 validation.",
+    "sol1 sha256 f5b654b67331c49a59c1820725a10bceb9d9fe536f078e16f02747cd017bbf16; sol2 sha256 2b3fdedaef43909b42ca391e90d66332fa459da26af3a20d9f694c4d46cd03d9."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps6/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps6/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

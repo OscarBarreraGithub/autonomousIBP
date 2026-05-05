@@ -2799,125 +2799,227 @@ BigFloat Zeta4Constant() {
       "1.082323233711138191516003696541167902774750951918726907682976215444121");
 }
 
+BigFloat Zeta5Constant() {
+  return BigFloat(
+      "1.036927755143369926331365486457034168057080919501912811974192677903804");
+}
+
+BigFloat Li5Minus99Constant() {
+  return BigFloat(
+      "-52.38666235360439053364949682271734882996050351431037699252166679541238");
+}
+
+BigFloat Li5NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "1.026110477101306182550422778135012186829770445620236490312452902605756");
+}
+
 BigComplex RetainedAutomaticLoopNegImLogS() {
   return {log(BigFloat(100)), -boost::math::constants::pi<BigFloat>()};
 }
 
-BigComplex PowComplexInteger(const BigComplex& base, const int exponent) {
-  BigComplex result = RealBigComplex(BigFloat(1));
-  for (int index = 0; index < exponent; ++index) {
-    result = result * base;
+void RequireReviewedEndpointTransportEpsilonOrder(const int epsilon_order) {
+  if (epsilon_order < 0 || epsilon_order > 3) {
+    throw std::runtime_error(
+        "retained automatic_loop endpoint transport supports reviewed eps orders 0..3");
   }
-  return result;
 }
 
-std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEps2(
-    const BigComplex& branch_log) {
-  const BigComplex a1 =
-      RealBigComplex(BigFloat(2) - EulerGammaConstant()) - branch_log;
-  const BigFloat a2 = BigFloat(2) - Zeta2Constant() / BigFloat(2);
-  const BigFloat a3 =
-      BigFloat(8) / BigFloat(3) - BigFloat(7) * Zeta3Constant() / BigFloat(3);
-
-  std::map<int, BigComplex> series;
-  series.emplace(-1, RealBigComplex(BigFloat(1)));
-  series.emplace(0, a1);
-  series.emplace(1, RealBigComplex(a2) + PowComplexInteger(a1, 2) / BigFloat(2));
-  series.emplace(2,
-                 RealBigComplex(a3) + a1 * a2 +
-                     PowComplexInteger(a1, 3) / BigFloat(6));
-  return series;
-}
-
-std::array<BigComplex, 5> MultiplySeriesThroughWeight4(
-    const std::array<BigComplex, 5>& lhs,
-    const std::array<BigComplex, 5>& rhs) {
-  std::array<BigComplex, 5> product{};
-  for (std::size_t order = 0; order < product.size(); ++order) {
+std::vector<BigComplex> MultiplySeriesThroughWeight(
+    const std::vector<BigComplex>& lhs,
+    const std::vector<BigComplex>& rhs,
+    const int max_weight) {
+  std::vector<BigComplex> product(static_cast<std::size_t>(max_weight) + 1);
+  for (int order = 0; order <= max_weight; ++order) {
     BigComplex coefficient;
-    for (std::size_t lhs_order = 0; lhs_order <= order; ++lhs_order) {
-      coefficient = coefficient + lhs[lhs_order] * rhs[order - lhs_order];
+    for (int lhs_order = 0; lhs_order <= order; ++lhs_order) {
+      coefficient =
+          coefficient + lhs[lhs_order] * rhs[order - lhs_order];
     }
     product[order] = coefficient;
   }
   return product;
 }
 
-std::array<BigComplex, 5> RetainedScalarBoxTSeriesThroughWeight4(
+std::vector<BigComplex> ExpOfPowerSeriesThroughWeight(
+    const std::vector<BigComplex>& log_coefficients,
+    const int max_weight) {
+  std::vector<BigComplex> series(static_cast<std::size_t>(max_weight) + 1);
+  series[0] = RealBigComplex(BigFloat(1));
+  for (int order = 1; order <= max_weight; ++order) {
+    BigComplex coefficient;
+    for (int term_order = 1; term_order <= order; ++term_order) {
+      coefficient =
+          coefficient + log_coefficients[term_order] *
+                            series[order - term_order] *
+                            BigFloat(term_order);
+    }
+    series[order] = coefficient / BigFloat(order);
+  }
+  return series;
+}
+
+std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
     const BigComplex& branch_log,
-    const BigFloat& li1,
-    const BigFloat& li2,
-    const BigFloat& li3,
-    const BigFloat& li4) {
-  const std::array<BigComplex, 5> exponential = {
-      RealBigComplex(BigFloat(1)),
-      branch_log * BigFloat(-1),
-      PowComplexInteger(branch_log, 2) / BigFloat(2),
-      PowComplexInteger(branch_log, 3) / BigFloat(-6),
-      PowComplexInteger(branch_log, 4) / BigFloat(24),
-  };
-  const std::array<BigComplex, 5> hypergeometric = {
-      RealBigComplex(BigFloat(1)),
-      RealBigComplex(-li1),
-      RealBigComplex(-li2),
-      RealBigComplex(-li3),
-      RealBigComplex(-li4),
-  };
-  return MultiplySeriesThroughWeight4(exponential, hypergeometric);
+    const int epsilon_order) {
+  RequireReviewedEndpointTransportEpsilonOrder(epsilon_order);
+  const BigComplex a1 =
+      RealBigComplex(BigFloat(2) - EulerGammaConstant()) - branch_log;
+  const BigFloat a2 = BigFloat(2) - Zeta2Constant() / BigFloat(2);
+  const BigFloat a3 =
+      BigFloat(8) / BigFloat(3) - BigFloat(7) * Zeta3Constant() / BigFloat(3);
+  const BigFloat a4 =
+      BigFloat(4) - BigFloat(13) * Zeta4Constant() / BigFloat(4);
+
+  const int max_weight = epsilon_order + 1;
+  std::vector<BigComplex> log_coefficients(static_cast<std::size_t>(max_weight) + 1);
+  if (max_weight >= 1) {
+    log_coefficients[1] = a1;
+  }
+  if (max_weight >= 2) {
+    log_coefficients[2] = RealBigComplex(a2);
+  }
+  if (max_weight >= 3) {
+    log_coefficients[3] = RealBigComplex(a3);
+  }
+  if (max_weight >= 4) {
+    log_coefficients[4] = RealBigComplex(a4);
+  }
+  const std::vector<BigComplex> exponential =
+      ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
+
+  std::map<int, BigComplex> series;
+  for (int weight = 0; weight <= max_weight; ++weight) {
+    series.emplace(weight - 1, exponential[weight]);
+  }
+  return series;
 }
 
-std::array<BigComplex, 5> RetainedScalarBoxGammaRatioSeriesThroughWeight4() {
-  const BigFloat gamma = EulerGammaConstant();
-  const BigFloat r1 = -gamma;
-  const BigFloat r2 = -Zeta2Constant() / BigFloat(2);
-  const BigFloat r3 = -BigFloat(7) * Zeta3Constant() / BigFloat(3);
-  const BigFloat r4 = -BigFloat(13) * Zeta4Constant() / BigFloat(4);
-  return {
-      RealBigComplex(BigFloat(1)),
-      RealBigComplex(r1),
-      RealBigComplex(r2 + r1 * r1 / BigFloat(2)),
-      RealBigComplex(r3 + r1 * r2 + r1 * r1 * r1 / BigFloat(6)),
-      RealBigComplex(r4 + r1 * r3 + r2 * r2 / BigFloat(2) +
-                     r1 * r1 * r2 / BigFloat(2) +
-                     r1 * r1 * r1 * r1 / BigFloat(24)),
-  };
-}
-
-std::map<int, BigComplex> RetainedMasslessBoxEndpointSeriesThroughEps2() {
+std::vector<BigFloat> RetainedScalarBoxLiMinus99ThroughWeight(
+    const int max_weight) {
+  std::vector<BigFloat> polylogs(static_cast<std::size_t>(max_weight) + 1);
   const BigFloat log100 = log(BigFloat(100));
+  if (max_weight >= 1) {
+    polylogs[1] = -log100;
+  }
+  if (max_weight >= 2) {
+    polylogs[2] = BigFloat(
+        "-12.1924216690331713481545622511685878511398598894077433729929727577187");
+  }
+  if (max_weight >= 3) {
+    polylogs[3] = BigFloat(
+        "-23.73984691525023320027138380461145071816813102113563379173614436988083");
+  }
+  if (max_weight >= 4) {
+    polylogs[4] = BigFloat(
+        "-37.82748993315647215577219195660396537384734170803750232204987259645817");
+  }
+  if (max_weight >= 5) {
+    polylogs[5] = Li5Minus99Constant();
+  }
+  return polylogs;
+}
+
+std::vector<BigFloat> RetainedScalarBoxLiNinetyNineOverHundredThroughWeight(
+    const int max_weight) {
+  std::vector<BigFloat> polylogs(static_cast<std::size_t>(max_weight) + 1);
+  const BigFloat log100 = log(BigFloat(100));
+  if (max_weight >= 1) {
+    polylogs[1] = log100;
+  }
+  if (max_weight >= 2) {
+    polylogs[2] = BigFloat(
+        "1.588625448076375327031229473980552467944959731142123890278173449470347");
+  }
+  if (max_weight >= 3) {
+    polylogs[3] = BigFloat(
+        "1.185832933645036934334943631307684427770200339548001769407386971861236");
+  }
+  if (max_weight >= 4) {
+    polylogs[4] = BigFloat(
+        "1.070324146165229151869669275527449622472652092285159704680565216346799");
+  }
+  if (max_weight >= 5) {
+    polylogs[5] = Li5NinetyNineOverHundredConstant();
+  }
+  return polylogs;
+}
+
+std::vector<BigComplex> RetainedScalarBoxTSeriesThroughWeight(
+    const BigComplex& branch_log,
+    const std::vector<BigFloat>& polylogs,
+    const int max_weight) {
+  std::vector<BigComplex> exponential_log(
+      static_cast<std::size_t>(max_weight) + 1);
+  if (max_weight >= 1) {
+    exponential_log[1] = branch_log * BigFloat(-1);
+  }
+  const std::vector<BigComplex> exponential =
+      ExpOfPowerSeriesThroughWeight(exponential_log, max_weight);
+
+  std::vector<BigComplex> hypergeometric(
+      static_cast<std::size_t>(max_weight) + 1);
+  hypergeometric[0] = RealBigComplex(BigFloat(1));
+  for (int order = 1; order <= max_weight; ++order) {
+    hypergeometric[order] = RealBigComplex(-polylogs[order]);
+  }
+  return MultiplySeriesThroughWeight(exponential, hypergeometric, max_weight);
+}
+
+std::vector<BigComplex> RetainedScalarBoxGammaRatioSeriesThroughWeight(
+    const int max_weight) {
+  std::vector<BigComplex> log_coefficients(
+      static_cast<std::size_t>(max_weight) + 1);
+  if (max_weight >= 1) {
+    log_coefficients[1] = RealBigComplex(-EulerGammaConstant());
+  }
+  if (max_weight >= 2) {
+    log_coefficients[2] = RealBigComplex(-Zeta2Constant() / BigFloat(2));
+  }
+  if (max_weight >= 3) {
+    log_coefficients[3] =
+        RealBigComplex(-BigFloat(7) * Zeta3Constant() / BigFloat(3));
+  }
+  if (max_weight >= 4) {
+    log_coefficients[4] =
+        RealBigComplex(-BigFloat(13) * Zeta4Constant() / BigFloat(4));
+  }
+  if (max_weight >= 5) {
+    log_coefficients[5] =
+        RealBigComplex(-BigFloat(31) * Zeta5Constant() / BigFloat(5));
+  }
+  return ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
+}
+
+std::map<int, BigComplex> RetainedMasslessBoxEndpointSeriesThroughEpsOrder(
+    const int epsilon_order) {
+  RequireReviewedEndpointTransportEpsilonOrder(epsilon_order);
+  const int max_weight = epsilon_order + 2;
   const BigComplex log_s = RetainedAutomaticLoopNegImLogS();
   const BigComplex log_zero;
-  const auto t_s = RetainedScalarBoxTSeriesThroughWeight4(
+  const auto t_s = RetainedScalarBoxTSeriesThroughWeight(
       log_s,
-      -log100,
-      BigFloat(
-          "-12.1924216690331713481545622511685878511398598894077433729929727577187"),
-      BigFloat(
-          "-23.73984691525023320027138380461145071816813102113563379173614436988083"),
-      BigFloat(
-          "-37.82748993315647215577219195660396537384734170803750232204987259645817"));
-  const auto t_t = RetainedScalarBoxTSeriesThroughWeight4(
+      RetainedScalarBoxLiMinus99ThroughWeight(max_weight),
+      max_weight);
+  const auto t_t = RetainedScalarBoxTSeriesThroughWeight(
       log_zero,
-      log100,
-      BigFloat(
-          "1.588625448076375327031229473980552467944959731142123890278173449470347"),
-      BigFloat(
-          "1.185832933645036934334943631307684427770200339548001769407386971861236"),
-      BigFloat(
-          "1.070324146165229151869669275527449622472652092285159704680565216346799"));
+      RetainedScalarBoxLiNinetyNineOverHundredThroughWeight(max_weight),
+      max_weight);
 
-  std::array<BigComplex, 5> bracket{};
-  for (std::size_t order = 0; order < bracket.size(); ++order) {
+  std::vector<BigComplex> bracket(static_cast<std::size_t>(max_weight) + 1);
+  for (int order = 0; order <= max_weight; ++order) {
     bracket[order] = t_s[order] + t_t[order];
   }
 
-  const std::array<BigComplex, 5> product =
-      MultiplySeriesThroughWeight4(RetainedScalarBoxGammaRatioSeriesThroughWeight4(),
-                                   bracket);
+  const std::vector<BigComplex> product =
+      MultiplySeriesThroughWeight(
+          RetainedScalarBoxGammaRatioSeriesThroughWeight(max_weight),
+          bracket,
+          max_weight);
   const BigFloat prefactor = -BigFloat(1) / BigFloat(50);
   std::map<int, BigComplex> series;
-  for (std::size_t order = 0; order < product.size(); ++order) {
-    series.emplace(static_cast<int>(order) - 2, product[order] * prefactor);
+  for (int order = 0; order <= max_weight; ++order) {
+    series.emplace(order - 2, product[order] * prefactor);
   }
   return series;
 }
@@ -2944,9 +3046,10 @@ void AppendEtaEndpointTransportedIntegralOnce(
 bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
     const DirectSolveSeriesSpec& spec);
 
-int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(
+int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
     const DirectSolveSeriesSpec& spec,
-    amflow::SolverDiagnostics& diagnostics) {
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
   if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
     return 0;
   }
@@ -2968,7 +3071,8 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(
   }
   UpsertEndpointSeries(
       coefficients,
-      RetainedBubbleEndpointSeriesThroughEps2(RetainedAutomaticLoopNegImLogS()));
+      RetainedBubbleEndpointSeriesThroughEpsOrder(RetainedAutomaticLoopNegImLogS(),
+                                                  epsilon_order));
   if (*master_index < diagnostics.target_values.size()) {
     const std::optional<std::size_t> constant_index =
         FindEpsilonCoefficientOrder(coefficients, 0);
@@ -2980,9 +3084,10 @@ int ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(
   return 1;
 }
 
-int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(
+int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEpsOrder(
     const DirectSolveSeriesSpec& spec,
-    amflow::SolverDiagnostics& diagnostics) {
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
   if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
     return 0;
   }
@@ -2997,9 +3102,48 @@ int ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(
   }
 
   auto& coefficients = diagnostics.target_epsilon_coefficients[*master_index];
-  UpsertEndpointSeries(coefficients, RetainedMasslessBoxEndpointSeriesThroughEps2());
+  UpsertEndpointSeries(coefficients,
+                       RetainedMasslessBoxEndpointSeriesThroughEpsOrder(epsilon_order));
   AppendEtaEndpointTransportedIntegralOnce(diagnostics, transported_master_label);
   return 1;
+}
+
+int TransportThroughEpsOrder(const DirectSolveSeriesSpec& spec,
+                             amflow::SolverDiagnostics& diagnostics,
+                             const int epsilon_order) {
+  if (!IsRetainedAutomaticLoopEtaZeroEndpointTransportState(spec)) {
+    return 0;
+  }
+  RequireReviewedEndpointTransportEpsilonOrder(epsilon_order);
+  const int transported =
+      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEpsOrder(
+          spec,
+          diagnostics,
+          epsilon_order) +
+      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEpsOrder(
+          spec,
+          diagnostics,
+          epsilon_order);
+  if (transported > 0) {
+    diagnostics.eta_endpoint_transport_epsilon_order = epsilon_order;
+  }
+  return transported;
+}
+
+std::string EndpointTransportEpsilonOrderLabel(
+    const amflow::SolverDiagnostics& diagnostics) {
+  if (diagnostics.eta_endpoint_transport_epsilon_order >= 0) {
+    return "eps^" + std::to_string(diagnostics.eta_endpoint_transport_epsilon_order);
+  }
+  return "reviewed epsilon order";
+}
+
+std::string EndpointTransportDeferredReason(
+    const amflow::SolverDiagnostics& diagnostics) {
+  return "full singular eta=0 complex contour execution and non-selected endpoint "
+         "extraction remain deferred after retained primitive endpoint coefficient "
+         "transport through " +
+         EndpointTransportEpsilonOrderLabel(diagnostics);
 }
 
 bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
@@ -3039,7 +3183,8 @@ FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
 }
 
 amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
-    const DirectSolveSeriesSpec& direct_spec) {
+    const DirectSolveSeriesSpec& direct_spec,
+    const int endpoint_transport_order) {
   if (direct_spec.boundary_epsilon_samples.empty()) {
     throw std::runtime_error(
         "AMFlow eta-infinity boundary evaluation requires epsilon samples");
@@ -3093,10 +3238,7 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
   }
   const int endpoint_transport_count =
-      ApplyRetainedAutomaticLoopEtaZeroBranchLogTransportThroughEps2(direct_spec,
-                                                                     diagnostics) +
-      ApplyRetainedAutomaticLoopEtaZeroBoxEndpointTransportThroughEps2(direct_spec,
-                                                                       diagnostics);
+      TransportThroughEpsOrder(direct_spec, diagnostics, endpoint_transport_order);
   diagnostics.eta_endpoint_transport_count = endpoint_transport_count;
 
   diagnostics.summary =
@@ -3111,7 +3253,8 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   }
   if (endpoint_transport_count > 0) {
     diagnostics.summary +=
-        " Applied retained eta=0 primitive endpoint coefficient transport through eps^2 to " +
+        " Applied retained eta=0 primitive endpoint coefficient transport through " +
+        EndpointTransportEpsilonOrderLabel(diagnostics) + " to " +
         std::to_string(endpoint_transport_count) + " master coefficient set(s).";
   }
   diagnostics.summary +=
@@ -3636,9 +3779,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << ",\n";
     out << "    \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution and non-selected "
-                            "endpoint extraction remain deferred after retained primitive "
-                            "endpoint coefficient transport through eps^2"
+                          ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"
@@ -3718,7 +3859,7 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
     if (evaluation.direct_spec.amflow_state_input) {
       evaluation.diagnostics =
-          EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec);
+          EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec, epsilon_order);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
@@ -3985,9 +4126,7 @@ std::string SerializeSolveSeriesBundleJson(
                           : "not-applied-boundary-only")
         << ", \"blocked_reason\": "
         << JsonString(diagnostics.eta_endpoint_transport_count > 0
-                          ? "full singular eta=0 complex contour execution and non-selected "
-                            "endpoint extraction remain deferred after retained primitive "
-                            "endpoint coefficient transport through eps^2"
+                          ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
                             "remain deferred after first eta-infinity asymptotic DE transport"

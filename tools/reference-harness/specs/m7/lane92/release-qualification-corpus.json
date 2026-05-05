@@ -15,6 +15,244 @@
   "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
   "closed_benchmark_family_coverage_statement_reviewed": false,
   "current_state": "blocked-on-qualification-corpus-closure",
+  "evidence_snapshot": {
+    "anti_fake_parity_gate": {
+      "accepted_real_claims": [
+        "M5 remains CLOSED/all-phase at 390/390 coefficients.",
+        "Case-study qualification is case-study-families-qualified with 10/10 families passing.",
+        "Current-HEAD phase-0 aggregate through eps24 plus non-loop goldens is 4559/4559 at >=30 digits.",
+        "Current-HEAD all-tracked phase-0 aggregate is 5219/5231 at >=30 digits; eps25/eps26 solve but retain below-threshold coefficients.",
+        "M6 remains blocked-on-phase0-packet-set because phase0_packet_set_qualified is False.",
+        "Qualification corpus and final parity sign-off remain blocked; no M6, M7, or release-readiness claim is made."
+      ],
+      "rejected_unqualified_claims": [
+        "This sidecar does not claim full phase-0 parity: current HEAD is clean through eps24 plus non-loop goldens, but all-tracked eps25/eps26 retain 12 below-threshold coefficient comparisons and the retained phase-0 packet-set qualifier is still blocked.",
+        "This sidecar does not claim qualification-corpus closure.",
+        "This sidecar does not claim final parity sign-off.",
+        "This sidecar does not claim Milestone M6 closure.",
+        "This sidecar does not claim Milestone M7 closure.",
+        "This sidecar does not claim release readiness."
+      ],
+      "role_d_verdict": "APPROVE: sign-off statuses remain blocked exactly where the current qualifiers and aggregate still block; no aspirational PASSING status was recorded."
+    },
+    "case_study_families": {
+      "case_study_families_qualified": true,
+      "compared_family_count": 10,
+      "current_state": "case-study-families-qualified",
+      "minimum_observed_correct_digits_by_case_study": {
+        "diphoton-heavy-quark-form-factors": 200,
+        "five-point-one-mass-scattering": 59,
+        "h-to-bb": 58,
+        "n4-sym-three-loop-form-factor": 58,
+        "one-singular-endpoint-case": 999,
+        "package-double-box": 58,
+        "single-top-planar-nonplanar": 57,
+        "ttbar-h": 999,
+        "ttbar-j": 78,
+        "ttbar-w": 58
+      },
+      "missing_case_study_numeric_ids": [],
+      "passing_family_fraction": "10/10",
+      "runtime_blocked_case_study_ids": [],
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane107_release_recheck/case-study-qualification.out",
+      "selected_family_count": 10
+    },
+    "generated_at": "2026-05-05T20:51:48.817516+00:00",
+    "head": "cc38e40fb4cdc1508fc8a7e772ce702bdd57e03e",
+    "lane": 107,
+    "m5_all_phase": {
+      "aggregate_compared_coefficient_count": 390,
+      "aggregate_passed_coefficient_count": 390,
+      "current_state": "CLOSED/all-phase",
+      "does_not_claim_m6": true,
+      "does_not_claim_m7": true,
+      "does_not_claim_release_readiness": true,
+      "m5_all_phase_closed": true,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane107_release_recheck/m5-qualification.out.json"
+    },
+    "m6_qualification": {
+      "blocking_reasons": [
+        "phase0: retained packet-set correct-digit scoring has not fully passed",
+        "phase0: retained packet-set is missing published failure-code audits",
+        "phase0: retained packet-set is missing required typed failure codes",
+        "phase0: runtime-lane-blocked phase-0 examples remain pending"
+      ],
+      "case_study_ready_for_m6": true,
+      "current_state": "blocked-on-phase0-packet-set",
+      "milestone_m6_ready": false,
+      "phase0_ready_for_m6": false,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane107_release_recheck/m6-qualification.out"
+    },
+    "phase0_current_head_aggregate": {
+      "all_tracked_compared_coefficient_count": 5231,
+      "all_tracked_manifest_case_count": 33,
+      "all_tracked_passed": false,
+      "all_tracked_passed_coefficient_count": 5219,
+      "automatic_loop_eps2_through_eps24_case_count": 23,
+      "automatic_loop_eps2_through_eps24_compared_coefficient_count": 4278,
+      "automatic_loop_eps2_through_eps24_passed": true,
+      "automatic_loop_eps2_through_eps24_passed_coefficient_count": 4278,
+      "blocked_surfaces": [
+        {
+          "compare_exit": 1,
+          "compared_coefficient_count": 330,
+          "failures": [
+            "box1[1,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30",
+            "box1[2,0,1,0] eps^24 has real/imag agreement 41/22, below tolerance 30",
+            "box1[2,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30",
+            "box2[1,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30"
+          ],
+          "in_eps24_scope": false,
+          "minimum_digit_agreement": 22,
+          "passed_coefficient_count": 326,
+          "solve_exit": 0,
+          "surface": "automatic_loop.eps25"
+        },
+        {
+          "compare_exit": 1,
+          "compared_coefficient_count": 342,
+          "failures": [
+            "box1[1,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30",
+            "box1[1,0,1,0] eps^26 has real/imag agreement 41/23, below tolerance 30",
+            "box1[2,0,1,0] eps^24 has real/imag agreement 41/22, below tolerance 30",
+            "box1[2,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30",
+            "box1[2,0,1,0] eps^26 has real/imag agreement 41/23, below tolerance 30",
+            "box2[1,-1,1,0] eps^26 has real/imag agreement 42/21, below tolerance 30",
+            "box2[1,0,1,0] eps^25 has real/imag agreement 41/22, below tolerance 30",
+            "box2[1,0,1,0] eps^26 has real/imag agreement 41/23, below tolerance 30"
+          ],
+          "in_eps24_scope": false,
+          "minimum_digit_agreement": 21,
+          "passed_coefficient_count": 334,
+          "solve_exit": 0,
+          "surface": "automatic_loop.eps26"
+        }
+      ],
+      "blocked_surfaces_in_eps24_scope": [],
+      "failing_coefficient_count": 12,
+      "failing_coefficients": [
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[1,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps25"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[2,0,1,0]",
+          "order": 24,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps25"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[2,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps25"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box2[1,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps25"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[1,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 23,
+          "integral": "box1[1,0,1,0]",
+          "order": 26,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[2,0,1,0]",
+          "order": 24,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box1[2,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 23,
+          "integral": "box1[2,0,1,0]",
+          "order": 26,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 21,
+          "integral": "box2[1,-1,1,0]",
+          "order": 26,
+          "real_agreement_digits": 42,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 22,
+          "integral": "box2[1,0,1,0]",
+          "order": 25,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        },
+        {
+          "imag_agreement_digits": 23,
+          "integral": "box2[1,0,1,0]",
+          "order": 26,
+          "real_agreement_digits": 41,
+          "surface": "automatic_loop.eps26"
+        }
+      ],
+      "head": "cc38e40fb4cdc1508fc8a7e772ce702bdd57e03e",
+      "phase0_through_eps24_plus_non_loop_case_count": 31,
+      "phase0_through_eps24_plus_non_loop_compared_coefficient_count": 4559,
+      "phase0_through_eps24_plus_non_loop_passed": true,
+      "phase0_through_eps24_plus_non_loop_passed_coefficient_count": 4559,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane107_phase0_current_head_aggregate/aggregate.json",
+      "solve_digits": 40,
+      "source_status": "main-worktree-current-head-release-build",
+      "tolerance_digits": 30
+    },
+    "phase0_packet_set_qualifier": {
+      "blocking_reasons": [
+        "retained packet-set correct-digit scoring has not fully passed",
+        "retained packet-set is missing published failure-code audits",
+        "retained packet-set is missing required typed failure codes"
+      ],
+      "current_state": "blocked-on-correct-digit-thresholds",
+      "minimum_observed_correct_digits_across_packet_set": 18,
+      "pending_phase0_ids": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator"
+      ],
+      "phase0_packet_set_qualified": false,
+      "runtime_summary_path": "/tmp/autoibp_orch/exec/lane107_release_recheck/phase0-qualification.out"
+    },
+    "release_review_state": {
+      "diagnostic_review_complete": true,
+      "diagnostic_review_summary_path": "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+      "docs_completion_review_complete": true,
+      "docs_completion_summary_path": "tools/reference-harness/specs/m7/lane92/release-docs-completion.json",
+      "performance_review_complete": true,
+      "performance_review_summary_path": "tools/reference-harness/specs/m7/lane70/release-performance-review.json"
+    },
+    "report_path": "/tmp/autoibp_orch/exec/lane107_release_recheck.md"
+  },
   "missing_or_blocked_qualification_paths": [
     "phase0-pending:automatic_phasespace",
     "phase0-pending:complex_kinematics",

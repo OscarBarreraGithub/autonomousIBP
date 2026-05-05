@@ -3445,7 +3445,10 @@ FitSolutionSamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
   }
 
   const int leading_order = EstimateLaurentLeadingOrder(samples, epsilon_values);
-  const int max_fit_order = requested_epsilon_order + 8;
+  const int retained_sample_order =
+      leading_order + static_cast<int>(samples.size()) - 1;
+  const int max_fit_order =
+      std::max(requested_epsilon_order + 8, retained_sample_order);
   const int coefficient_count =
       std::max(1, max_fit_order - leading_order + 1);
   const std::size_t fit_sample_count =
@@ -3791,7 +3794,8 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
   }
 
   std::vector<std::string> output_labels;
-  if (IsPhaseSpaceAmflowState(direct_spec)) {
+  if (IsPhaseSpaceAmflowState(direct_spec) ||
+      IsRetainedLoopSolutionSampleState(direct_spec)) {
     output_labels = master_labels;
   } else if (!direct_spec.targets.empty()) {
     output_labels.reserve(direct_spec.targets.size());

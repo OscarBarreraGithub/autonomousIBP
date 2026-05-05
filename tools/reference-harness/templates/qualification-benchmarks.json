@@ -260,11 +260,10 @@
       "id": "one-singular-endpoint-case",
       "parity_matrix_label": "one singular-endpoint case",
       "selected_benchmark_refs": [],
-      "next_runtime_lane": "b62p",
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",
-      "notes": "Matrix-only guardrail anchor for the singular-surface family; qualification stays blocked on the next reviewed singular-kinematics slice (`b62p`)."
+      "notes": "Matrix-only guardrail anchor for the singular-surface family; SRL-5 publishes the reviewed singular endpoint numeric evidence row."
     }
   ]
 }

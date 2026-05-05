@@ -1813,12 +1813,7 @@ def write_synthetic_qualification_summary(path: Path) -> None:
                     "next_runtime_lane": "b64ag",
                 },
             ],
-            "blocked_case_study_families": [
-                {
-                    "id": "one-singular-endpoint-case",
-                    "next_runtime_lane": "b62p",
-                }
-            ],
+            "blocked_case_study_families": [],
         },
     )
 
@@ -1880,7 +1875,7 @@ def write_synthetic_case_study_qualification_summary(path: Path) -> None:
         {
             "schema_version": 1,
             "scope": "case-study-families-only",
-            "current_state": "blocked-on-runtime-lanes",
+            "current_state": "blocked-on-case-study-numeric-evidence",
             "case_study_readiness_summary_path": "synthetic-case-study-readiness.json",
             "case_study_numeric_summary_path": "",
             "case_study_ids": [
@@ -1889,8 +1884,8 @@ def write_synthetic_case_study_qualification_summary(path: Path) -> None:
                 "one-singular-endpoint-case",
             ],
             "literature_anchor_case_study_ids": ["ttbar-h"],
-            "matrix_only_case_study_ids": ["package-double-box"],
-            "runtime_blocked_case_study_ids": ["one-singular-endpoint-case"],
+            "matrix_only_case_study_ids": ["package-double-box", "one-singular-endpoint-case"],
+            "runtime_blocked_case_study_ids": [],
             "strong_precision_case_study_ids": ["ttbar-h"],
             "readiness_contract_coherent": True,
             "case_study_numeric_evidence_present": False,
@@ -1910,16 +1905,9 @@ def write_synthetic_case_study_qualification_summary(path: Path) -> None:
             "case_study_families_qualified": False,
             "milestone_m6_ready": False,
             "milestone_m6_requires_phase0_verdict": True,
-            "blocked_case_study_families": [
-                {
-                    "id": "one-singular-endpoint-case",
-                    "next_runtime_lane": "b62p",
-                    "landed_runtime_predecessor": "b62o",
-                }
-            ],
+            "blocked_case_study_families": [],
             "case_study_families": [],
             "blocking_reasons": [
-                "case-study family one-singular-endpoint-case is still blocked on a runtime lane",
                 "case-study numerics are not yet compared",
             ],
             "withheld_claims": [
@@ -1963,14 +1951,13 @@ def write_synthetic_qualification_corpus_review_summary(path: Path) -> None:
                 "feynman_prescription",
                 "linear_propagator",
             ],
-            "blocked_case_study_ids": ["one-singular-endpoint-case"],
+            "blocked_case_study_ids": [],
             "phase0_failure_code_blockers": [
                 "phase0-failure-code-audit",
                 "phase0-required-failure-codes",
             ],
             "case_study_qualification_blockers": [
-                "case-study:blocked-on-runtime-lanes",
-                "case-study-runtime:one-singular-endpoint-case",
+                "case-study:blocked-on-case-study-numeric-evidence",
                 "case-study-numeric-evidence",
                 "case-study-requires-phase0-verdict",
             ],
@@ -1980,8 +1967,7 @@ def write_synthetic_qualification_corpus_review_summary(path: Path) -> None:
                 "phase0-pending:feynman_prescription",
                 "phase0-pending:linear_propagator",
                 "phase0-packet-set:blocked-on-failure-code-audit",
-                "case-study:blocked-on-runtime-lanes",
-                "case-study-runtime:one-singular-endpoint-case",
+                "case-study:blocked-on-case-study-numeric-evidence",
                 "case-study-numeric-evidence",
             ],
             "blocking_reasons": [
@@ -2232,7 +2218,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 for prerequisite in summary["release_prerequisites"]
             ),
             "phase_f_runtime_blockers_preserved": (
-                summary["blocked_runtime_lanes"] == ["b61n", "b62p", "b63n", "b64ag"]
+                summary["blocked_runtime_lanes"] == ["b61n", "b63n", "b64ag"]
             ),
             "retained_reference_evidence_not_overclaimed": any(
                 prerequisite["id"] == "retained-reference-evidence"
@@ -2258,15 +2244,14 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                     "qualification-path:phase0-pending:feynman_prescription",
                     "qualification-path:phase0-pending:linear_propagator",
                     "qualification-path:phase0-packet-set:blocked-on-failure-code-audit",
-                    "qualification-path:case-study:blocked-on-runtime-lanes",
-                    "qualification-path:case-study-runtime:one-singular-endpoint-case",
+                    "qualification-path:case-study:blocked-on-case-study-numeric-evidence",
                     "qualification-path:case-study-numeric-evidence",
                 ]
             ),
             "qualification_corpus_section_blocked": any(
                 section["id"] == "qualification-corpus"
                 and section["status"] == "blocked"
-                and "qualification-path:case-study-runtime:one-singular-endpoint-case"
+                and "qualification-path:case-study-numeric-evidence"
                 in section["blockers"]
                 for section in summary["review_sections"]
             ),
@@ -2286,8 +2271,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             "case_study_qualification_blockers_preserved": (
                 summary["case_study_qualification_blockers"]
                 == [
-                    "case-study:blocked-on-runtime-lanes",
-                    "case-study-runtime:one-singular-endpoint-case",
+                    "case-study:blocked-on-case-study-numeric-evidence",
                     "case-study-numeric-evidence",
                     "case-study-requires-phase0-verdict",
                 ]
@@ -2297,12 +2281,12 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             ),
             "case_study_qualification_section_blocked": any(
                 section["id"] == "qualification-corpus"
-                and "case-study-runtime:one-singular-endpoint-case" in section["blockers"]
+                and "case-study-numeric-evidence" in section["blockers"]
                 for section in summary["review_sections"]
             )
             or any(
                 section["id"] == "qualification-corpus"
-                and "qualification-path:case-study-runtime:one-singular-endpoint-case"
+                and "qualification-path:case-study-numeric-evidence"
                 in section["blockers"]
                 for section in summary["review_sections"]
             ),

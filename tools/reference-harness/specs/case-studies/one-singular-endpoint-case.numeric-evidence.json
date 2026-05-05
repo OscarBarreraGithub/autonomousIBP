@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "case_study_id": "one-singular-endpoint-case",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 999,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "srl4-live-endpoint-extraction-vs-accepted-exact-golden",
+  "benchmark_id": "one-singular-endpoint-case",
+  "case_study_family_rationale": "The one-singular-endpoint-case family is the SRL-5 qualification row for the reviewed singular eta=0 endpoint. The evidence uses the SRL-4 live one-master simple-pole Frobenius packet with branch-ledgered +i0 upper-half-plane extraction, producing the endpoint coefficient -7 and comparing it against the accepted exact endpoint golden.",
+  "accepted_golden_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5-golden.txt",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.compare.json",
+  "solve_command": "./build/singular-runtime-lane-tests # SRL-5 fixture recomputes the same SRL-4 endpoint packet and checks this sidecar against live C++ output",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5-golden.txt --tolerance-digits 50",
+  "comparison_summary": {
+    "matched_integral_count": 1,
+    "compared_coefficient_count": 1,
+    "passed_coefficient_count": 1,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 999,
+    "tolerance_digits": 50
+  },
+  "runtime_audit": {
+    "runtime_application": "full-eta-zero-contour-endpoint-extraction",
+    "full_eta_zero_contour_applied": true,
+    "endpoint_coefficient_count": 1,
+    "endpoint_coefficients": [
+      "-7"
+    ],
+    "srl_packet": [
+      "SRL-1 marked eta=0 endpoint contour",
+      "SRL-2 integer nonresonant simple-pole local model",
+      "SRL-3 +i0 upper-half-plane branch ledger",
+      "SRL-4 live endpoint extraction"
+    ]
+  },
+  "blockers": [],
+  "withheld_claims": [
+    "This sidecar qualifies only the one-singular-endpoint-case numeric row.",
+    "This sidecar does not provide numeric evidence for the remaining M6 case-study families.",
+    "This sidecar does not claim Milestone M6 closure.",
+    "This sidecar does not mark Milestone M7 or release readiness."
+  ]
+}

@@ -49578,16 +49578,20 @@ void QualificationCaseStudyReadinessSelfCheckLocksAnchorMetadataTest() {
                  "visible");
   ExpectContains(result.stdout_json,
                  "\"runtime_blocked_case_study_ids_match_expected_set\": true",
-                 "qualification case-study readiness self-check should keep runtime-blocked "
-                 "families visible");
+                 "qualification case-study readiness self-check should keep retired runtime "
+                 "families out of the blocked set");
+  ExpectContains(result.stdout_json, "\"singular_case_study_retired_to_matrix_only\": true",
+                 "qualification case-study readiness self-check should keep the SRL-5 singular "
+                 "case-study row retired to matrix-only readiness");
   ExpectContains(result.stdout_json, "\"unknown_selected_benchmark_ref_rejected\": true",
                  "qualification case-study readiness self-check should reject unknown selected "
                  "benchmark anchors");
   ExpectContains(result.stdout_json, "\"stronger_threshold_mismatch_rejected\": true",
                  "qualification case-study readiness self-check should reject stronger-threshold "
                  "drift");
-  ExpectContains(result.stdout_json, "\"blocked_lane_mismatch_rejected\": true",
-                 "qualification case-study readiness self-check should reject blocked-lane drift");
+  ExpectContains(result.stdout_json, "\"stale_blocked_lane_rejected\": true",
+                 "qualification case-study readiness self-check should reject stale blocked-lane "
+                 "metadata");
   ExpectContains(result.stdout_json, "\"missing_predecessor_rejected\": true",
                  "qualification case-study readiness self-check should reject missing blocked-lane "
                  "predecessor anchors");
@@ -49633,11 +49637,11 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
                  "propagator blocker hint");
   ExpectContains(result.stdout_json,
                  "\"singular_case_study_runtime_lane_locked\": true",
-                 "bootstrap reference-harness self-check should keep the singular guardrail "
-                 "runtime-lane hint synchronized with the reviewed next-slice plan");
-  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62p\"",
-                 "bootstrap reference-harness self-check should publish the current singular "
-                 "guardrail blocker hint");
+                 "bootstrap reference-harness self-check should keep the retired singular "
+                 "guardrail runtime-lane map synchronized with the reviewed frontier");
+  ExpectContains(result.stdout_json, "\"singular_case_study_runtime_lanes\": {}",
+                 "bootstrap reference-harness self-check should publish the retired singular "
+                 "guardrail blocker map");
   ExpectContains(result.stdout_json,
                  "\"runtime_lane_predecessors_recorded\": true",
                  "bootstrap reference-harness self-check should anchor forward runtime-lane "
@@ -49654,9 +49658,9 @@ void BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest() {
   ExpectContains(result.stdout_json, "\"linear_propagator\": \"b64af\"",
                  "bootstrap reference-harness self-check should publish the recorded linear "
                  "propagator predecessor anchor");
-  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\": \"b62o\"",
-                 "bootstrap reference-harness self-check should publish the recorded singular "
-                 "guardrail predecessor anchor");
+  ExpectContains(result.stdout_json, "\"recorded_case_study_runtime_predecessors\": {}",
+                 "bootstrap reference-harness self-check should publish no forward singular "
+                 "predecessor after SRL-5 retirement");
   ExpectContains(result.stdout_json,
                  "\"placeholder_metadata_preserves_runtime_lane_hints\": true",
                  "bootstrap reference-harness self-check should preserve theory-backed runtime "
@@ -49944,8 +49948,8 @@ void QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest() {
                  "retained packet summaries");
   ExpectContains(result.stdout_json,
                  "\"blocked_case_study_families_preserve_runtime_lane_hints\": true",
-                 "qualification readiness summary should keep blocked case-study lane hints "
-                 "visible");
+                 "qualification readiness summary should keep the blocked case-study lane hint "
+                 "audit coherent after SRL-5 retirement");
   ExpectContains(result.stdout_json, "\"id\": \"complex_kinematics\"",
                  "qualification readiness summary should keep blocked complex-kinematics evidence "
                  "visible");
@@ -49966,12 +49970,11 @@ void QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest() {
   ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b64ag\"",
                  "qualification readiness summary should keep the blocked linear-propagator "
                  "next-slice hint visible");
-  ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
-                 "qualification readiness summary should keep the blocked singular case-study "
-                 "anchor visible");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
-                 "qualification readiness summary should keep the blocked singular case-study "
-                 "next-slice hint visible");
+  ExpectContains(result.stdout_json, "\"case_study_family_ids\": [",
+                 "qualification readiness summary should publish case-study family ids");
+  ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\"",
+                 "qualification readiness summary should keep the SRL-5-retired singular "
+                 "case-study anchor visible");
 }
 
 void QualificationCaseStudyReadinessMatchesRepoSourcesTest() {
@@ -50022,12 +50025,12 @@ void QualificationCaseStudyReadinessMatchesRepoSourcesTest() {
   ExpectContains(result.stdout_json, "\"id\": \"one-singular-endpoint-case\"",
                  "qualification case-study readiness report should summarize the singular "
                  "endpoint family");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
-                 "qualification case-study readiness report should keep the blocked singular "
-                 "runtime lane visible");
-  ExpectContains(result.stdout_json, "\"landed_runtime_predecessor\": \"b62o\"",
-                 "qualification case-study readiness report should keep the blocked singular "
-                 "predecessor anchor visible");
+  ExpectContains(result.stdout_json, "\"family_state\": \"matrix-only-anchor\"",
+                 "qualification case-study readiness report should retire the singular endpoint "
+                 "family from runtime-blocked readiness after SRL-5");
+  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"\"",
+                 "qualification case-study readiness report should not retain a singular "
+                 "runtime-lane blocker after SRL-5");
 }
 
 void FetchReferenceHarnessSelfCheckCoversRemoteVerificationAndTarPolicyTest() {
@@ -51253,9 +51256,9 @@ void CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest() {
                  "case-study qualification verdict should consume the numeric summary as "
                  "explicit evidence");
   ExpectContains(qualification_result.stdout_json,
-                 "\"current_state\": \"blocked-on-runtime-lanes\"",
-                 "case-study qualification verdict should still prioritize the retained "
-                 "runtime-lane blocker");
+                 "\"current_state\": \"blocked-on-case-study-numeric-evidence\"",
+                 "case-study qualification verdict should block on missing case-study numerics "
+                 "after SRL-5 retires the singular runtime lane");
   ExpectContains(qualification_result.stdout_json,
                  "\"case-study numeric summary is missing selected families\"",
                  "case-study qualification verdict should preserve the numeric evidence blocker "
@@ -51272,6 +51275,85 @@ void CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest() {
                  "consuming the blocked numeric summary");
   ExpectContains(qualification_result.stdout_json, "\"milestone_m6_ready\": false",
                  "case-study qualification verdict should not claim M6 closure");
+}
+
+void CaseStudySingularEndpointSrl5EvidenceRetiresRuntimeBlockerTest() {
+  const std::filesystem::path readiness_summary_path =
+      FreshTempDir("amflow-case-study-srl5-readiness") / "case-study-readiness.json";
+  const std::filesystem::path numeric_summary_path =
+      FreshTempDir("amflow-case-study-srl5-numerics") / "case-study-numerics.json";
+  const std::filesystem::path qualification_summary_path =
+      FreshTempDir("amflow-case-study-srl5-qualification") / "summary.json";
+  const std::string singular_evidence_path =
+      "tools/reference-harness/specs/case-studies/"
+      "one-singular-endpoint-case.numeric-evidence.json";
+
+  const ReferenceHarnessSelfCheckRun readiness_result = RunReferenceHarnessScript(
+      "amflow-case-study-srl5-readiness",
+      "tools/reference-harness/scripts/qualification_case_study_readiness.py",
+      {"--summary-path", readiness_summary_path.string()},
+      "SRL-5 case-study readiness summary");
+  Expect(readiness_result.stderr_log.empty(),
+         "SRL-5 case-study readiness summary should not emit stderr noise on success");
+  ExpectContains(readiness_result.stdout_json, "\"runtime_blocked_case_study_ids\": []",
+                 "SRL-5 readiness should retire one-singular-endpoint-case from runtime "
+                 "blockers");
+
+  const ReferenceHarnessSelfCheckRun numeric_result = RunReferenceHarnessScript(
+      "amflow-case-study-srl5-numeric-summary",
+      "tools/reference-harness/scripts/compare_case_study_numeric_results.py",
+      {"--case-study-readiness-summary",
+       readiness_summary_path.string(),
+       "--numeric-evidence",
+       singular_evidence_path,
+       "--summary-path",
+       numeric_summary_path.string()},
+      "SRL-5 singular case-study numeric comparison summary");
+  Expect(numeric_result.stderr_log.empty(),
+         "SRL-5 numeric comparison summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(numeric_summary_path),
+         "SRL-5 numeric comparison summary should write the requested summary file");
+  ExpectContains(numeric_result.stdout_json, "\"case_study_numeric_evidence_count\": 1",
+                 "SRL-5 numeric comparison should consume exactly the singular sidecar in this "
+                 "focused check");
+  ExpectContains(numeric_result.stdout_json,
+                 "\"one-singular-endpoint-case\": 999",
+                 "SRL-5 numeric comparison should preserve exact singular endpoint digits");
+  Expect(numeric_result.stdout_json.find(
+             "case-study numeric evidence missing for one-singular-endpoint-case") ==
+             std::string::npos,
+         "SRL-5 numeric comparison should not report the singular endpoint row as missing");
+  ExpectContains(numeric_result.stdout_json,
+                 "\"case-study numeric evidence missing for package-double-box\"",
+                 "SRL-5 numeric comparison should still report missing non-singular case-study "
+                 "numeric rows");
+
+  const ReferenceHarnessSelfCheckRun qualification_result = RunReferenceHarnessScript(
+      "amflow-case-study-srl5-qualification-summary",
+      "tools/reference-harness/scripts/qualify_case_study_families.py",
+      {"--case-study-readiness-summary",
+       readiness_summary_path.string(),
+       "--case-study-numeric-summary",
+       numeric_summary_path.string(),
+       "--summary-path",
+       qualification_summary_path.string()},
+      "SRL-5 case-study qualification verdict");
+  Expect(qualification_result.stderr_log.empty(),
+         "SRL-5 case-study qualification verdict should not emit stderr noise on success");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"current_state\": \"blocked-on-case-study-numeric-evidence\"",
+                 "SRL-5 case-study qualification should move past runtime lanes and stop on "
+                 "remaining missing numerics");
+  ExpectContains(qualification_result.stdout_json, "\"runtime_blocked_case_study_ids\": []",
+                 "SRL-5 case-study qualification should publish no singular runtime blocker");
+  Expect(qualification_result.stdout_json.find(
+             "case-study family one-singular-endpoint-case is still blocked on a runtime lane") ==
+             std::string::npos,
+         "SRL-5 case-study qualification should not retain the retired singular runtime blocker");
+  ExpectContains(qualification_result.stdout_json,
+                 "\"case-study numeric summary is missing selected families\"",
+                 "SRL-5 case-study qualification should remain blocked by missing non-singular "
+                 "numeric evidence");
 }
 
 void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest() {
@@ -51320,7 +51402,7 @@ void CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceT
                  "output");
 }
 
-void CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersVisibleTest() {
+void CaseStudyQualificationFamiliesRetainedReportKeepsNumericBlockersVisibleTest() {
   const std::filesystem::path readiness_summary_path =
       FreshTempDir("amflow-case-study-qualification-prereq-readiness") /
       "case-study-readiness.json";
@@ -51356,9 +51438,10 @@ void CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersV
   ExpectContains(result.stdout_json, "\"scope\": \"case-study-families-only\"",
                  "case-study-family qualification summary should stay scoped to case-study "
                  "families only");
-  ExpectContains(result.stdout_json, "\"current_state\": \"blocked-on-runtime-lanes\"",
-                 "case-study-family qualification summary should keep the retained singular "
-                 "case-study blocked on its runtime lane");
+  ExpectContains(result.stdout_json,
+                 "\"current_state\": \"blocked-on-case-study-numeric-evidence\"",
+                 "case-study-family qualification summary should block on missing numerics after "
+                 "SRL-5 retires the singular runtime lane");
   ExpectContains(result.stdout_json, "\"readiness_contract_coherent\": true",
                  "case-study-family qualification summary should require coherent readiness "
                  "metadata");
@@ -51375,16 +51458,12 @@ void CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersV
   ExpectContains(result.stdout_json, "\"one-singular-endpoint-case\"",
                  "case-study-family qualification summary should keep the singular case-study "
                  "anchor visible");
-  ExpectContains(result.stdout_json, "\"next_runtime_lane\": \"b62p\"",
-                 "case-study-family qualification summary should keep the singular runtime "
-                 "blocker visible");
+  ExpectContains(result.stdout_json, "\"runtime_blocked_case_study_ids\": []",
+                 "case-study-family qualification summary should not retain the singular "
+                 "runtime blocker after SRL-5");
   ExpectContains(result.stdout_json, "\"case-study numerics are not yet compared\"",
                  "case-study-family qualification summary should report the missing numeric "
                  "comparison blocker");
-  ExpectContains(result.stdout_json,
-                 "\"case-study family one-singular-endpoint-case is still blocked on a runtime "
-                 "lane\"",
-                 "case-study-family qualification summary should report the runtime-lane blocker");
   ExpectContains(result.stdout_json, "\"ttbar-h\"",
                  "case-study-family qualification summary should keep literature-anchor families "
                  "visible");
@@ -51641,11 +51720,6 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
                  "Milestone M6 retained qualification summary should preserve the phase-0 "
                  "failure-code audit blocker");
   ExpectContains(result.stdout_json,
-                 "\"case-study: case-study family one-singular-endpoint-case is still blocked "
-                 "on a runtime lane\"",
-                 "Milestone M6 retained qualification summary should preserve the case-study "
-                 "runtime blocker");
-  ExpectContains(result.stdout_json,
                  "\"case-study: case-study numerics are not yet compared\"",
                  "Milestone M6 retained qualification summary should preserve the missing "
                  "case-study numeric evidence blocker");
@@ -51655,9 +51729,9 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"b61n\"",
                  "Milestone M6 retained qualification summary should preserve the complex "
                  "kinematics lane blocker");
-  ExpectContains(result.stdout_json, "\"b62p\"",
-                 "Milestone M6 retained qualification summary should preserve the singular "
-                 "case-study lane blocker");
+  Expect(result.stdout_json.find("\"b62p\"") == std::string::npos,
+         "Milestone M6 retained qualification summary should not retain the SRL-5-retired "
+         "singular case-study lane blocker");
   ExpectContains(result.stdout_json, "\"b63n\"",
                  "Milestone M6 retained qualification summary should preserve the phase-space "
                  "lane blocker");
@@ -51888,9 +51962,9 @@ void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
                  "release signoff readiness summary should preserve the blocked complex "
                  "kinematics lane hint");
   ExpectContains(result.stdout_json,
-                 "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b62p\",\n    \"b63n\",\n    \"b64ag\"\n  ]",
-                 "release signoff readiness summary should keep the current blocked runtime-lane "
-                 "frontier visible");
+                 "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b63n\",\n    \"b64ag\"\n  ]",
+                 "release signoff readiness summary should keep the current phase-0 blocked "
+                 "runtime-lane frontier visible after SRL-5");
 }
 
 void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
@@ -52173,8 +52247,9 @@ void ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest() {
                  "case-study-aware release signoff readiness should record the consumed "
                  "case-study verdict");
   ExpectContains(release_result.stdout_json,
-                 "\"case_study_family_current_state\": \"blocked-on-runtime-lanes\"",
-                 "case-study-aware release signoff readiness should preserve the retained "
+                 "\"case_study_family_current_state\": "
+                 "\"blocked-on-case-study-numeric-evidence\"",
+                 "case-study-aware release signoff readiness should preserve the SRL-5-retired "
                  "case-study verdict state");
   ExpectContains(release_result.stdout_json, "\"case_study_families_qualified\": false",
                  "case-study-aware release signoff readiness should not overclaim case-study "
@@ -52183,18 +52258,9 @@ void ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest() {
                  "\"case_study_qualification_blockers_preserved\": true",
                  "case-study-aware release signoff readiness should preserve case-study "
                  "qualification blockers");
-  ExpectContains(release_result.stdout_json,
-                 "\"case-study-runtime:one-singular-endpoint-case\"",
-                 "case-study-aware release signoff readiness should surface the retained "
-                 "singular case-study runtime blocker");
   ExpectContains(release_result.stdout_json, "\"case-study-numeric-evidence\"",
                  "case-study-aware release signoff readiness should surface missing case-study "
                  "numeric evidence");
-  ExpectContains(release_result.stdout_json,
-                 "\"case-study family one-singular-endpoint-case is still blocked on a runtime "
-                 "lane\"",
-                 "case-study-aware release signoff readiness should preserve case-study "
-                 "blocking reasons");
   ExpectContains(release_result.stdout_json, "\"case_study_missing_numeric_ids\": [",
                  "case-study-aware release signoff readiness should keep missing numeric ids "
                  "visible");
@@ -52424,12 +52490,10 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"phase0-required-failure-codes\"",
                  "release qualification-corpus review should preserve retained phase-0 "
                  "required failure-code blockers");
-  ExpectContains(result.stdout_json, "\"case-study:blocked-on-runtime-lanes\"",
+  ExpectContains(result.stdout_json,
+                 "\"case-study:blocked-on-case-study-numeric-evidence\"",
                  "release qualification-corpus review should preserve the retained case-study "
-                 "runtime-lane blocker state");
-  ExpectContains(result.stdout_json, "\"case-study-runtime:one-singular-endpoint-case\"",
-                 "release qualification-corpus review should preserve the singular case-study "
-                 "runtime blocker");
+                 "numeric-evidence blocker state");
   ExpectContains(result.stdout_json, "\"case-study-numeric-evidence\"",
                  "release qualification-corpus review should preserve missing case-study "
                  "numeric evidence");
@@ -52488,13 +52552,9 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
                  "retained qualification-corpus sidecar release signoff readiness should "
                  "preserve retained phase-0 failure-code audit blockers");
   ExpectContains(release_result.stdout_json,
-                 "\"qualification-path:case-study:blocked-on-runtime-lanes\"",
+                 "\"qualification-path:case-study:blocked-on-case-study-numeric-evidence\"",
                  "retained qualification-corpus sidecar release signoff readiness should "
-                 "preserve the retained case-study verdict blocker");
-  ExpectContains(release_result.stdout_json,
-                 "\"qualification-path:case-study-runtime:one-singular-endpoint-case\"",
-                 "retained qualification-corpus sidecar release signoff readiness should "
-                 "preserve the singular case-study runtime blocker");
+                 "preserve the retained case-study numeric-evidence verdict blocker");
   ExpectContains(release_result.stdout_json,
                  "\"qualification-path:case-study-numeric-evidence\"",
                  "retained qualification-corpus sidecar release signoff readiness should "
@@ -52578,7 +52638,6 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
     "phase0-pending:complex_kinematics",
     "phase0-pending:feynman_prescription",
     "phase0-pending:linear_propagator",
-    "case-study-runtime:one-singular-endpoint-case",
     "phase0-packet-set-verdict",
     "case-study-family-verdict"
   ])json",
@@ -52694,7 +52753,6 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
     "qualification-path:phase0-pending:complex_kinematics",
     "qualification-path:phase0-pending:feynman_prescription",
     "qualification-path:phase0-pending:linear_propagator",
-    "qualification-path:case-study-runtime:one-singular-endpoint-case",
     "qualification-path:phase0-packet-set-verdict",
     "qualification-path:case-study-family-verdict"
   ])json",
@@ -52711,7 +52769,6 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
     "phase0-pending:complex_kinematics",
     "phase0-pending:feynman_prescription",
     "phase0-pending:linear_propagator",
-    "case-study-runtime:one-singular-endpoint-case",
     "phase0-packet-set-verdict",
     "case-study-family-verdict"
   ])json",
@@ -52725,10 +52782,6 @@ void ReleaseSignoffReadinessConsumesGeneratedQualificationCorpusReviewTest() {
                  "\"qualification-path:phase0-pending:automatic_phasespace\"",
                  "generated-qualification-corpus-aware release signoff readiness should "
                  "preserve generated pending phase-0 blockers");
-  ExpectContains(release_result.stdout_json,
-                 "\"qualification-path:case-study-runtime:one-singular-endpoint-case\"",
-                 "generated-qualification-corpus-aware release signoff readiness should "
-                 "preserve generated case-study runtime blockers");
   ExpectContains(release_result.stdout_json,
                  "\"qualification-path:case-study-family-verdict\"",
                  "generated-qualification-corpus-aware release signoff readiness should "
@@ -55346,8 +55399,9 @@ int main() {
     Phase0QualificationPacketSetRetainedReportKeepsFailureCodeBlockerVisibleTest();
     CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest();
     CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest();
+    CaseStudySingularEndpointSrl5EvidenceRetiresRuntimeBlockerTest();
     CaseStudyQualificationFamiliesSelfCheckComposesReadinessAndNumericEvidenceTest();
-    CaseStudyQualificationFamiliesRetainedReportKeepsRuntimeAndNumericBlockersVisibleTest();
+    CaseStudyQualificationFamiliesRetainedReportKeepsNumericBlockersVisibleTest();
     MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest();
     MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();

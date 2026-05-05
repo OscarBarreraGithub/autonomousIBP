@@ -1,0 +1,36 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5-golden.txt",
+  "benchmark_id": "one-singular-endpoint-case",
+  "compared_coefficient_count": 1,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "tools/reference-harness/specs/case-studies/one-singular-endpoint-case.srl5.digits80.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-7",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-7.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "srl5_singular_endpoint[1]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 1,
+  "minimum_digit_agreement": 999,
+  "passed": true,
+  "passed_coefficient_count": 1,
+  "schema_version": 1,
+  "tolerance_digits": 50
+}

@@ -6,6 +6,7 @@
 #include "amflow/solver/series_solver.hpp"
 
 #include <exception>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -25,6 +26,23 @@ void ExpectContains(const std::string& value,
   if (value.find(needle) == std::string::npos) {
     throw std::runtime_error(message + "; missing substring: " + needle + "; value: " + value);
   }
+}
+
+void ExpectNotContains(const std::string& value,
+                       const std::string& needle,
+                       const std::string& message) {
+  if (value.find(needle) != std::string::npos) {
+    throw std::runtime_error(message + "; unexpected substring: " + needle);
+  }
+}
+
+std::string ReadRepoFile(const std::string& path) {
+  std::ifstream stream(path);
+  if (!stream) {
+    throw std::runtime_error("failed to open fixture file: " + path);
+  }
+  return std::string((std::istreambuf_iterator<char>(stream)),
+                     std::istreambuf_iterator<char>());
 }
 
 template <typename Callable>
@@ -105,6 +123,21 @@ amflow::DESystem MakeScalarEndpointDESystem(const std::string& coefficient) {
   };
   system.coefficient_matrices["eta"] = {
       {coefficient},
+  };
+  system.singular_points = {"eta=0"};
+  return system;
+}
+
+amflow::DESystem MakeSrl5SingularEndpointDESystem() {
+  amflow::DESystem system;
+  system.masters = {
+      {"srl5_singular_endpoint", {1}, "I1"},
+  };
+  system.variables = {
+      {"eta", amflow::DifferentiationVariableKind::Eta},
+  };
+  system.coefficient_matrices["eta"] = {
+      {"1/eta"},
   };
   system.singular_points = {"eta=0"};
   return system;
@@ -672,6 +705,83 @@ void EndpointExtractionRejectsStaleContourFingerprintTest() {
       "SRL-4 endpoint extraction should reject stale SRL-1 endpoint contours");
 }
 
+void Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest() {
+  const amflow::ProblemSpec spec = MakeComplexEndpointProblemSpecWithRawPrescription(
+      amflow::FeynmanPrescription::PlusI0);
+  const amflow::DESystem system = MakeSrl5SingularEndpointDESystem();
+  const amflow::SolveRequest request =
+      MakeReviewedEtaZeroEndpointSolveRequest(system, spec, {"7"});
+
+  const amflow::SolverDiagnostics diagnostics =
+      amflow::BootstrapSeriesSolver().Solve(request);
+
+  Expect(diagnostics.success,
+         "SRL-5 evidence fixture should be reproducible by the live SRL-4 endpoint path");
+  Expect(diagnostics.full_eta_zero_contour_applied,
+         "SRL-5 evidence fixture must exercise full eta=0 endpoint extraction");
+  Expect(diagnostics.target_values.size() == 1 && diagnostics.target_values.front() == "-7",
+         "SRL-5 evidence fixture should reproduce the retained endpoint coefficient");
+
+  const std::string evidence = ReadRepoFile(
+      "tools/reference-harness/specs/case-studies/"
+      "one-singular-endpoint-case.numeric-evidence.json");
+  const std::string cpp_result = ReadRepoFile(
+      "tools/reference-harness/specs/case-studies/"
+      "one-singular-endpoint-case.srl5.digits80.cpp-result.json");
+  const std::string comparison = ReadRepoFile(
+      "tools/reference-harness/specs/case-studies/"
+      "one-singular-endpoint-case.srl5.digits80.compare.json");
+  const std::string golden = ReadRepoFile(
+      "tools/reference-harness/specs/case-studies/"
+      "one-singular-endpoint-case.srl5-golden.txt");
+
+  ExpectContains(evidence,
+                 "\"case_study_id\": \"one-singular-endpoint-case\"",
+                 "SRL-5 sidecar should target the singular case-study family");
+  ExpectContains(evidence,
+                 "\"evidence_kind\": "
+                 "\"srl4-live-endpoint-extraction-vs-accepted-exact-golden\"",
+                 "SRL-5 sidecar should name the live SRL-4 runtime evidence kind");
+  ExpectContains(evidence,
+                 "\"minimum_observed_correct_digits\": 999",
+                 "SRL-5 sidecar should preserve the exact comparison digit floor");
+  ExpectContains(evidence,
+                 "\"full_eta_zero_contour_applied\": true",
+                 "SRL-5 sidecar should preserve the endpoint extraction audit flag");
+  ExpectContains(evidence,
+                 "\"endpoint_coefficients\": [\n      \"-7\"",
+                 "SRL-5 sidecar should publish the live endpoint coefficient");
+  ExpectNotContains(evidence,
+                    "b62p",
+                    "SRL-5 sidecar should not keep the retired singular runtime blocker");
+
+  ExpectContains(cpp_result,
+                 "\"full_eta_zero_contour_applied\": true",
+                 "SRL-5 C++ result should set the full eta=0 contour flag");
+  ExpectContains(cpp_result,
+                 "\"runtime_application\": \"full-eta-zero-contour-endpoint-extraction\"",
+                 "SRL-5 C++ result should identify the endpoint runtime");
+  ExpectContains(cpp_result,
+                 "\"integral\": \"srl5_singular_endpoint[1]\"",
+                 "SRL-5 C++ result should expose the reviewed fixture integral");
+  ExpectContains(cpp_result,
+                 "\"exact_real\": \"-7\"",
+                 "SRL-5 C++ result should retain the live endpoint coefficient exactly");
+
+  ExpectContains(comparison,
+                 "\"passed\": true",
+                 "SRL-5 comparison summary should pass");
+  ExpectContains(comparison,
+                 "\"compared_coefficient_count\": 1",
+                 "SRL-5 comparison summary should be coefficient-bearing");
+  ExpectContains(comparison,
+                 "\"minimum_digit_agreement\": 999",
+                 "SRL-5 comparison summary should record exact agreement");
+  ExpectContains(golden,
+                 "j[srl5_singular_endpoint,1] -> -7",
+                 "SRL-5 accepted golden should match the reviewed endpoint coefficient");
+}
+
 }  // namespace
 
 int main() {
@@ -697,6 +807,7 @@ int main() {
     EndpointExtractionRejectsLocalModelResidueMismatchTest();
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
+    Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

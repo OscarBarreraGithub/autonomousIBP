@@ -325,12 +325,11 @@ def run_self_check() -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-case-study-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         singular_case_study_id = "one-singular-endpoint-case"
-        singular_runtime_lane = THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES[singular_case_study_id]
-        singular_landed_predecessor = LANDED_CASE_STUDY_RUNTIME_PREDECESSORS[singular_case_study_id]
-        singular_landed_predecessor_row = (
-            singular_landed_predecessor[1:]
-            if singular_landed_predecessor.startswith("b")
-            else singular_landed_predecessor
+        singular_runtime_lane = THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES.get(
+            singular_case_study_id, ""
+        )
+        singular_landed_predecessor = LANDED_CASE_STUDY_RUNTIME_PREDECESSORS.get(
+            singular_case_study_id, ""
         )
         qualification_path = temp_root / "qualification-benchmarks.json"
         selected_benchmarks_path = temp_root / "selected-benchmarks.md"
@@ -391,7 +390,11 @@ def run_self_check() -> dict[str, Any]:
                         "digit_threshold_profile": "core-package-family-default",
                         "failure_code_profile": "default-required-failure-codes",
                         "regression_profile": "current-reviewed-regressions",
-                        "next_runtime_lane": singular_runtime_lane,
+                        **(
+                            {"next_runtime_lane": singular_runtime_lane}
+                            if singular_runtime_lane
+                            else {}
+                        ),
                     },
                 ],
             },
@@ -438,14 +441,25 @@ known_regressions:
 - `>= 100` digits on `2024-tth-light-quark-loop-mi`
 """,
         )
+        implementation_rows = """| `Batch 61i` | implemented | synthetic | unrelated |
+"""
+        if singular_landed_predecessor:
+            singular_landed_predecessor_row = (
+                singular_landed_predecessor[1:]
+                if singular_landed_predecessor.startswith("b")
+                else singular_landed_predecessor
+            )
+            implementation_rows += (
+                f"| `Batch {singular_landed_predecessor_row}` | implemented | synthetic | "
+                "predecessor anchor |\n"
+            )
         write_text(
             implementation_ledger_path,
             f"""# Implementation And Review Ledger
 
 | Item | Status | Evidence | Notes |
 | --- | --- | --- | --- |
-| `Batch {singular_landed_predecessor_row}` | implemented | synthetic | predecessor anchor |
-""",
+{implementation_rows}""",
         )
 
         summary = summarize_case_study_readiness(
@@ -497,7 +511,7 @@ known_regressions:
                 "should inherit stronger digit_threshold_profile" in str(error)
             )
 
-        blocked_lane_mismatch_rejected = False
+        stale_blocked_lane_rejected = False
         try:
             bad_qualification = load_json(qualification_path)
             bad_qualification["case_study_families"][2]["next_runtime_lane"] = "b62x"
@@ -511,35 +525,39 @@ known_regressions:
                 implementation_ledger_path=implementation_ledger_path,
             )
         except RuntimeError as error:
-            blocked_lane_mismatch_rejected = (
+            stale_blocked_lane_rejected = (
                 "next_runtime_lane must match the current theory frontier" in str(error)
             )
 
-        missing_predecessor_rejected = False
-        try:
-            missing_predecessor_ledger = temp_root / "implementation-ledger-missing-predecessor.md"
-            write_text(
-                missing_predecessor_ledger,
-                """# Implementation And Review Ledger
+        missing_predecessor_rejected = True
+        if singular_landed_predecessor:
+            missing_predecessor_rejected = False
+            try:
+                missing_predecessor_ledger = (
+                    temp_root / "implementation-ledger-missing-predecessor.md"
+                )
+                write_text(
+                    missing_predecessor_ledger,
+                    """# Implementation And Review Ledger
 
 | Item | Status | Evidence | Notes |
 | --- | --- | --- | --- |
 | `Batch 61i` | implemented | synthetic | unrelated |
 """,
-            )
-            summarize_case_study_readiness(
-                qualification_path=qualification_path,
-                selected_benchmarks_path=selected_benchmarks_path,
-                parity_matrix_path=parity_matrix_path,
-                verification_strategy_path=verification_strategy_path,
-                implementation_ledger_path=missing_predecessor_ledger,
-            )
-        except RuntimeError as error:
-            missing_predecessor_rejected = (
-                f"landed predecessor {singular_landed_predecessor} must be recorded in the "
-                "implementation ledger"
-                in str(error)
-            )
+                )
+                summarize_case_study_readiness(
+                    qualification_path=qualification_path,
+                    selected_benchmarks_path=selected_benchmarks_path,
+                    parity_matrix_path=parity_matrix_path,
+                    verification_strategy_path=verification_strategy_path,
+                    implementation_ledger_path=missing_predecessor_ledger,
+                )
+            except RuntimeError as error:
+                missing_predecessor_rejected = (
+                    f"landed predecessor {singular_landed_predecessor} must be recorded in the "
+                    "implementation ledger"
+                    in str(error)
+                )
 
         return {
             "case_study_ids_match_selected_benchmarks": summary[
@@ -569,14 +587,20 @@ known_regressions:
                 summary["literature_anchor_case_study_ids"] == ["ttbar-h"]
             ),
             "matrix_only_case_study_ids_match_expected_set": (
-                summary["matrix_only_case_study_ids"] == ["package-double-box"]
+                summary["matrix_only_case_study_ids"]
+                == ["package-double-box", "one-singular-endpoint-case"]
             ),
             "runtime_blocked_case_study_ids_match_expected_set": (
-                summary["runtime_blocked_case_study_ids"] == ["one-singular-endpoint-case"]
+                summary["runtime_blocked_case_study_ids"] == []
+            ),
+            "singular_case_study_retired_to_matrix_only": (
+                summary["case_study_families"][2]["family_state"] == "matrix-only-anchor"
+                and summary["case_study_families"][2]["next_runtime_lane"] == ""
+                and summary["case_study_families"][2]["landed_runtime_predecessor"] == ""
             ),
             "unknown_selected_benchmark_ref_rejected": unknown_selected_benchmark_ref_rejected,
             "stronger_threshold_mismatch_rejected": stronger_threshold_mismatch_rejected,
-            "blocked_lane_mismatch_rejected": blocked_lane_mismatch_rejected,
+            "stale_blocked_lane_rejected": stale_blocked_lane_rejected,
             "missing_predecessor_rejected": missing_predecessor_rejected,
             "summary_written": summary_path.exists(),
         }

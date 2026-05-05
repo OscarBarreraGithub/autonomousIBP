@@ -150,9 +150,7 @@ THEORY_BLOCKED_PHASE0_RUNTIME_LANES = {
     "linear_propagator": "b64ag",
 }
 
-THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES = {
-    "one-singular-endpoint-case": "b62p",
-}
+THEORY_BLOCKED_CASE_STUDY_RUNTIME_LANES: dict[str, str] = {}
 
 LANDED_PHASE0_RUNTIME_PREDECESSORS = {
     "automatic_phasespace": "b63m",
@@ -161,9 +159,7 @@ LANDED_PHASE0_RUNTIME_PREDECESSORS = {
     "linear_propagator": "b64af",
 }
 
-LANDED_CASE_STUDY_RUNTIME_PREDECESSORS = {
-    "one-singular-endpoint-case": "b62o",
-}
+LANDED_CASE_STUDY_RUNTIME_PREDECESSORS: dict[str, str] = {}
 
 READY_OPTIONAL_CAPTURED_PHASE0_EXAMPLES = {
     "differential_equation_solver",

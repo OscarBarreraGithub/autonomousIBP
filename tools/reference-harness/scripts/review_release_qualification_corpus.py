@@ -477,7 +477,7 @@ def run_self_check() -> dict[str, Any]:
         ),
         "case_study_verdict_blocked": (
             not summary["case_study_families_qualified"]
-            and "case-study:blocked-on-runtime-lanes"
+            and "case-study:blocked-on-case-study-numeric-evidence"
             in summary["missing_or_blocked_qualification_paths"]
         ),
         "closed_coverage_statement_blocked": (

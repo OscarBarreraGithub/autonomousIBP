@@ -40,13 +40,151 @@ def normalize_nonempty_string(raw: Any, label: str) -> str:
     return value
 
 
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def resolve_repo_path(raw: Any, label: str) -> Path:
+    value = normalize_nonempty_string(raw, label)
+    path = Path(value)
+    if not path.is_absolute():
+        path = repo_root() / path
+    expect(path.exists(), f"{label} does not exist: {value}")
+    return path
+
+
+def validate_srl5_singular_endpoint_evidence(
+    *,
+    evidence: dict[str, Any],
+    evidence_path: Path,
+    normalized: dict[str, Any],
+) -> None:
+    if normalized["case_study_id"] != "one-singular-endpoint-case":
+        return
+
+    expect(
+        evidence.get("evidence_kind")
+        == "srl4-live-endpoint-extraction-vs-accepted-exact-golden",
+        f"{evidence_path} one-singular-endpoint-case evidence_kind must name the SRL-4 live "
+        "endpoint extraction golden comparison",
+    )
+    cpp_result_path = resolve_repo_path(
+        evidence.get("cpp_result_path"), f"{evidence_path} cpp_result_path"
+    )
+    comparison_summary_path = resolve_repo_path(
+        evidence.get("comparison_summary_path"), f"{evidence_path} comparison_summary_path"
+    )
+    accepted_golden_path = resolve_repo_path(
+        evidence.get("accepted_golden_path"), f"{evidence_path} accepted_golden_path"
+    )
+
+    cpp_result = load_json(cpp_result_path)
+    expect(
+        cpp_result.get("status") == "success",
+        f"{evidence_path} SRL-5 C++ result status must be success",
+    )
+    continuation = cpp_result.get("continuation", {})
+    expect(isinstance(continuation, dict), f"{cpp_result_path} continuation must be an object")
+    expect(
+        continuation.get("full_eta_zero_contour_applied") is True,
+        f"{evidence_path} SRL-5 C++ result must set full_eta_zero_contour_applied",
+    )
+    expect(
+        continuation.get("runtime_application") == "full-eta-zero-contour-endpoint-extraction",
+        f"{evidence_path} SRL-5 C++ result must identify the full endpoint extraction runtime",
+    )
+    raw_results = cpp_result.get("results", [])
+    expect(isinstance(raw_results, list) and raw_results, f"{cpp_result_path} results are empty")
+    coefficient_bearing = False
+    reviewed_fixture_coefficient_found = False
+    for raw_result in raw_results:
+        if not isinstance(raw_result, dict):
+            continue
+        for raw_order in raw_result.get("epsilon_orders", []):
+            if not isinstance(raw_order, dict):
+                continue
+            coefficient_bearing = True
+            if (
+                raw_result.get("integral") == "srl5_singular_endpoint[1]"
+                and raw_order.get("order") == 0
+            ):
+                expect(
+                    str(raw_order.get("exact_real", "")).strip() == "-7"
+                    and str(raw_order.get("exact_imag", "0")).strip() == "0",
+                    f"{evidence_path} SRL-5 fixture coefficient must remain the reviewed -7",
+                )
+                reviewed_fixture_coefficient_found = True
+    expect(
+        coefficient_bearing,
+        f"{evidence_path} SRL-5 C++ result must be coefficient-bearing",
+    )
+    expect(
+        reviewed_fixture_coefficient_found,
+        f"{evidence_path} SRL-5 C++ result must include srl5_singular_endpoint[1] order 0",
+    )
+
+    comparison_summary = load_json(comparison_summary_path)
+    expect(
+        comparison_summary.get("passed") is True,
+        f"{evidence_path} SRL-5 comparison summary must pass",
+    )
+    expect(
+        Path(str(comparison_summary.get("cpp_result", ""))) == Path(
+            str(evidence.get("cpp_result_path", ""))
+        ),
+        f"{evidence_path} SRL-5 comparison summary cpp_result must match the sidecar",
+    )
+    expect(
+        Path(str(comparison_summary.get("amflow_golden", ""))) == Path(
+            str(evidence.get("accepted_golden_path", ""))
+        ),
+        f"{evidence_path} SRL-5 comparison summary golden must match the sidecar",
+    )
+    expect(
+        accepted_golden_path.read_text(encoding="utf-8").strip(),
+        f"{evidence_path} accepted SRL-5 golden must not be empty",
+    )
+
+    evidence_comparison = evidence.get("comparison_summary", {})
+    expect(
+        isinstance(evidence_comparison, dict),
+        f"{evidence_path} comparison_summary must be an object",
+    )
+    for field in [
+        "matched_integral_count",
+        "compared_coefficient_count",
+        "passed_coefficient_count",
+        "minimum_digit_agreement",
+        "tolerance_digits",
+    ]:
+        expect(
+            evidence_comparison.get(field) == comparison_summary.get(field),
+            f"{evidence_path} comparison_summary.{field} must match the retained comparison",
+        )
+    failures = comparison_summary.get("failures", [])
+    expect(isinstance(failures, list), f"{comparison_summary_path} failures must be a list")
+    expect(
+        evidence_comparison.get("failure_entry_count") == len(failures),
+        f"{evidence_path} comparison_summary.failure_entry_count must match retained failures",
+    )
+    expect(
+        comparison_summary.get("minimum_digit_agreement", 0)
+        == normalized["minimum_observed_correct_digits"],
+        f"{evidence_path} minimum_observed_correct_digits must match retained comparison",
+    )
+    expect(
+        normalized["minimum_observed_correct_digits"] >= 50,
+        f"{evidence_path} SRL-5 evidence must meet the default 50-digit floor",
+    )
+
+
 def load_case_study_numeric_evidence(evidence_path: Path) -> dict[str, Any]:
     evidence = load_json(evidence_path)
     expect(
         evidence.get("schema_version") == 1,
         f"case-study numeric evidence {evidence_path} schema_version must be 1",
     )
-    return {
+    normalized = {
         "path": str(evidence_path),
         "case_study_id": normalize_nonempty_string(
             evidence.get("case_study_id"), f"{evidence_path} case_study_id"
@@ -68,6 +206,12 @@ def load_case_study_numeric_evidence(evidence_path: Path) -> dict[str, Any]:
             evidence.get("regression_profile"), f"{evidence_path} regression_profile"
         ),
     }
+    validate_srl5_singular_endpoint_evidence(
+        evidence=evidence,
+        evidence_path=evidence_path,
+        normalized=normalized,
+    )
+    return normalized
 
 
 def summarize_case_study_numeric_comparison(

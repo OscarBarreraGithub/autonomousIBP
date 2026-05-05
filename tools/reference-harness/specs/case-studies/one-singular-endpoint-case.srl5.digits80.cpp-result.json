@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "benchmark_id": "one-singular-endpoint-case",
+  "family": "srl5_singular_endpoint",
+  "targets": [
+    "srl5_singular_endpoint[1]"
+  ],
+  "solver": {
+    "precision_digits": 80,
+    "epsilon_order": 0
+  },
+  "continuation": {
+    "variable": "eta",
+    "start_location": "eta=-1",
+    "target_location": "eta=0",
+    "singular_points": [
+      "eta=0"
+    ],
+    "transport_applied": true,
+    "transport_scope": "eta-zero-full-contour-endpoint-coefficients",
+    "full_eta_zero_contour_applied": true,
+    "eta_infinity_asymptotic_transport_applied": false,
+    "eta_infinity_asymptotic_transported_master_count": 0,
+    "eta_zero_endpoint_transport_applied": false,
+    "eta_zero_endpoint_transported_master_count": 0,
+    "eta_zero_endpoint_transported_integrals": [],
+    "runtime_application": "full-eta-zero-contour-endpoint-extraction",
+    "blocked_reason": "none"
+  },
+  "results": [
+    {
+      "integral": "srl5_singular_endpoint[1]",
+      "epsilon_orders": [
+        {
+          "order": 0,
+          "real_digits": "-7.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_digits": "0.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "exact_real": "-7",
+          "exact_imag": "0"
+        }
+      ]
+    }
+  ],
+  "status": "success",
+  "summary": "Solved by reviewed SRL-4 live eta=0 endpoint extraction; full_eta_zero_contour_applied=true; endpoint coefficient -7 for the reviewed one-master simple-pole Frobenius packet."
+}

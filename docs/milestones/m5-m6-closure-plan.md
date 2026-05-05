@@ -156,16 +156,18 @@ Current M6 blockers to preserve:
 - M7 and release-readiness review sidecars remain separate non-claims
 
 Singular runtime lane status: SRL-1 and SRL-2 are landed, lane64 adds SRL-3
-branch/prescription ledger support, and lane68 adds the first narrow SRL-4 live
+branch/prescription ledger support, lane68 adds the first narrow SRL-4 live
 eta-zero endpoint extraction path for the reviewed exact simple-pole Frobenius
-subset. The SRL-4 path consumes the marked endpoint contour, SRL-2 local model,
-and SRL-3 branch ledger, verifies their fingerprints and local residue data, and
-sets `full_eta_zero_contour_applied: true` only after producing endpoint
-coefficients. This is runtime progress, but it is not the SRL-5 case-study
-qualification row: comparator-readable singular family evidence, cache replay
-evidence for published case-study sidecars, and `one-singular-endpoint-case`
-numeric qualification are still required before the `b62p` runtime blocker can
-be retired.
+subset, and lane74 adds the SRL-5 `one-singular-endpoint-case` numeric row. The
+SRL-5 sidecar is comparator-readable, is validated by the case-study numeric
+consumer against the retained C++ result, accepted exact endpoint golden, and
+comparison summary, and records `999` observed correct digits for the live
+SRL-4 endpoint coefficient. The case-study readiness frontier no longer reports
+`one-singular-endpoint-case -> b62p`; the singular family now remains in the M6
+surface as a matrix-only anchor with numeric evidence rather than as a runtime
+blocker. This does not close M6: non-singular case-study numeric rows are still
+missing or partial, phase-0 qualification remains separate, and the M6 composer
+must still pass before any milestone closure claim.
 
 M6 overall status remains TODO/FAILING.
 

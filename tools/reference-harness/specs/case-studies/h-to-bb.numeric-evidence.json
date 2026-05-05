@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "case_study_id": "h-to-bb",
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 58,
+  "digit_threshold_profile": "core-package-family-default",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "evidence_kind": "retained-cpp-vs-amflow",
+  "benchmark_id": "automatic_loop",
+  "selected_benchmark_anchor_ref": "2024-h-to-bb-nnlo",
+  "case_study_family_rationale": "The h-to-bb case-study family is a default-floor literature-anchor row whose selected benchmark uses high-precision reconstruction and validation. No dedicated h-to-bb literature packet is frozen in this repository yet, so this evidence uses the retained automatic_loop eps^9 matrix proxy: a fresh C++ solve-series replay against the epsorder=12 AMFlow sol1/sol2 manifest. This adds a real 50-digit comparator-backed M6 family row without claiming a dedicated h-to-bb packet.",
+  "source_state_path": "tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json",
+  "amflow_golden_manifest_path": "tools/reference-harness/specs/phase0/automatic_loop.eps9-golden-manifest.json",
+  "cpp_result_path": "tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json",
+  "comparison_summary_path": "tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.compare.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json --eps-order 9 --digits 80 --out tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json",
+  "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/h-to-bb.automatic-loop-eps9.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/automatic_loop.eps9-golden-manifest.json --tolerance-digits 50",
+  "coverage_summary": {
+    "selected_case_study_family_count": 10,
+    "passing_family_count_before_this_lane": 3,
+    "passing_family_count_after_this_lane": 4,
+    "passing_fraction_after_this_lane": "4/10",
+    "passing_fraction_after_this_lane_percent": 40
+  },
+  "comparison_summary": {
+    "matched_integral_count": 12,
+    "compared_coefficient_count": 138,
+    "passed_coefficient_count": 138,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 58,
+    "tolerance_digits": 50
+  },
+  "withheld_claims": [
+    "This sidecar qualifies only the h-to-bb case-study family numeric row.",
+    "This sidecar does not freeze or claim a dedicated h-to-bb literature packet.",
+    "This sidecar does not provide numeric evidence for all remaining M6 case-study families.",
+    "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
+    "This sidecar does not claim Milestone M6 closure."
+  ]
+}

@@ -2,22 +2,25 @@
 
 ## Closure Verdicts
 
-M5 qualifier status: PASSING for the Phase F feature-surface parity sidecar.
+M5 qualifier status: `CLOSED/all-phase` for Milestone M5.
 
-M5 full-closure status: BLOCKED/PENDING, not marked closed in this lane.
+M5 full-closure status: CLOSED by lane62.
 
-The current fail-closed M5 qualifier output is committed at
-`tools/reference-harness/specs/m5/m5-qualification-lane58.json`. Running
+The fail-closed all-phase M5 qualifier output is committed at
+`tools/reference-harness/specs/m5/m5-qualification-lane62.json`. Running
 
 ```sh
 python3 tools/reference-harness/scripts/qualify_milestone_m5.py \
   --evidence-summary tools/reference-harness/specs/m5/m5-feature-surface-lane50.json \
-  --out tools/reference-harness/specs/m5/m5-qualification-lane58.json
+  --all-phase-closure-decision tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json \
+  --out tools/reference-harness/specs/m5/m5-qualification-lane62.json
 ```
 
 reports:
 
-- `current_state: m5-feature-parity-passed`
+- `scope: m5-all-phase`
+- `current_state: CLOSED/all-phase`
+- `m5_all_phase_closed: true`
 - `m5_feature_parity_passed: true`
 - `aggregate_compared_coefficient_count: 390`
 - `aggregate_passed_coefficient_count: 390`
@@ -25,29 +28,30 @@ reports:
 - no missing or unknown frozen example classes
 - no missing or unknown Phase F runtime features
 
-The qualifier does not emit a literal `CLOSED` string. Role D's lane58 audit
-therefore rejects treating this output as a full all-phase M5 closure verdict:
-the script scope is `m5-feature-parity-only`, and it reports
-`m5-feature-parity-passed`, not a closed milestone state. The same output also
-preserves `does_not_claim_m6`, `does_not_claim_m7`, and
+Lane62 adds the higher-level fail-closed M5 all-phase composer. The legacy
+feature-parity path remains available and still emits
+`scope: m5-feature-parity-only` with `current_state: m5-feature-parity-passed`;
+the all-phase output is emitted only when the closure-decision sidecar
+`tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json`
+approves treating that passing feature-parity verdict as the M5 milestone
+closure state, and when the committed lane58 feature-parity summary matches a
+fresh recomputation from the lane50 sidecar. The lane62 output preserves
+`does_not_claim_m6`, `does_not_claim_m7`, and
 `does_not_claim_release_readiness`.
-
-This lane records the passing M5 feature-parity evidence, but it does not mark
-M5 closed until the project accepts `m5-feature-parity-passed` as the milestone
-closure state or adds a higher-level M5 closure field/composer that reports
-closed without blockers.
 
 M6 overall status: TODO/FAILING, not closeable in this lane.
 
-M5 full closure therefore remains an M6 prerequisite blocker. M6 also requires
+M5 full closure is no longer an M6 prerequisite blocker. M6 remains blocked on
 passing phase-0 packet-set qualification, case-study-family numeric
-qualification, retirement of pending runtime-lane blockers, and a passing
-`qualify_milestone_m6.py` summary. None of those M6 closure claims are made
-here.
+qualification, retirement of pending runtime-lane blockers where required, and a
+passing `qualify_milestone_m6.py` summary. None of those M6 closure claims are
+made here.
 
 ## Sources
 
-- M5 qualifier output: `tools/reference-harness/specs/m5/m5-qualification-lane58.json`.
+- M5 all-phase qualifier output: `tools/reference-harness/specs/m5/m5-qualification-lane62.json`.
+- M5 closure-decision sidecar: `tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json`.
+- M5 feature-parity qualifier input: `tools/reference-harness/specs/m5/m5-qualification-lane58.json`.
 - M5 evidence sidecar: `tools/reference-harness/specs/m5/m5-feature-surface-lane50.json`.
 - Fail-closed M5 verdict helper: commit `8809981` (`Add fail-closed M5 verdict helper`).
 - Frozen-example and runtime-feature evidence: commit `4842629` (`Add M5 frozen-example and runtime-feature evidence`).
@@ -77,7 +81,10 @@ sidecar can pass:
 - every runtime-feature row using an accepted evidence kind and carrying an evidence path or reviewed exception reference
 - no sidecar blockers, missing rows, unknown rows, tolerance drift, or failed comparisons
 
-The lane58 output satisfies those criteria across the full M5 sidecar.
+The lane58 output satisfies those feature-parity criteria across the full M5
+sidecar. The lane62 all-phase output consumes that result plus the explicit
+closure-decision sidecar and marks Milestone M5 closed without widening M6, M7,
+or release readiness.
 
 ## Current M5 Criteria And Evidence
 
@@ -111,26 +118,21 @@ The required runtime-feature rows are also accepted:
 | `user_defined_hooks` | `approved-retained-state-exception` | `runtime-feature-evidence-lane45.json#features/user_defined_hooks` |
 
 The prior numeric feature-parity blockers are retired by the lane50 sidecar plus
-the lane58 qualifier output. The milestone closure label itself is not retired:
-the qualifier is scoped to `m5-feature-parity-only`, and some accepted evidence
-rows remain reviewed retained-state exceptions rather than all-live runtime
-evidence. This is not a claim of full M5 closure, M6 qualification-corpus
-passage, M7 passage, release readiness, broader case-study numeric parity, or
-any loosened tolerance policy.
+the lane58 qualifier output. The prior milestone-closure-label blocker is retired
+by the lane62 all-phase composer and closure-decision sidecar. This is not a
+claim of M6 qualification-corpus passage, M7 passage, release readiness, broader
+case-study numeric parity, or any loosened tolerance policy.
 
 ## Remaining M5 Blockers
 
-- The qualifier output has no `CLOSED` state or all-phase M5 closure field; it
-  reports `scope: m5-feature-parity-only` and
-  `current_state: m5-feature-parity-passed`.
-- The lane45 runtime-feature sidecar still carries
-  `does_not_claim_m5_closure: true`.
-- The lane50 user-defined evidence still uses reviewed non-claim text for full
-  retained endpoint-sensitive parity.
-- A full M5 closure claim needs either an explicit project decision that the
-  current `m5-feature-parity-passed` output is the M5 closure state, or a
-  higher-level fail-closed M5 closure composer that consumes the feature-parity
-  result and reports a closed milestone verdict.
+None for M5 all-phase closure at lane62. The retired blockers were:
+
+- the lack of a literal `CLOSED` state or all-phase M5 closure field in the
+  lane58 feature-parity-only output
+- the lane45 and lane50 sidecar non-claim wording, which remained correct for
+  their local evidence but was not itself a milestone closure verdict
+- the absence of a higher-level fail-closed M5 closure composer consuming the
+  passing feature-parity result
 
 ## Current M6 Criteria And Evidence
 
@@ -147,7 +149,6 @@ by itself claim M6 closure.
 
 Current M6 blockers to preserve:
 
-- M5 full closure is not marked closed by this lane
 - no committed passing `qualify_milestone_m6.py` summary
 - phase-0 candidate packet-set qualification is not closed by this lane
 - mandatory case-study numeric sidecars are not all passing at the frozen thresholds
@@ -167,26 +168,22 @@ M6 overall status remains TODO/FAILING.
 
 ## Shortest Remaining Chain
 
-1. Decide whether `m5-feature-parity-passed` is the project-approved M5 closure
-   state, or add a higher-level M5 closure composer that emits an explicit
-   closed milestone verdict.
-2. Once M5 full closure is explicit, publish or refresh the phase-0 candidate
+1. Publish or refresh the phase-0 candidate
    packet roots expected by the M6 packet-set tools.
-3. Run packet-set comparison, packet-set correct-digit scoring, failure-code
+2. Run packet-set comparison, packet-set correct-digit scoring, failure-code
    audit, and `qualify_phase0_packet_set.py` with synchronized labels.
-4. Produce numeric evidence sidecars for every selected case-study family at the
+3. Produce numeric evidence sidecars for every selected case-study family at the
    frozen thresholds.
-5. Run `compare_case_study_numeric_results.py` and
+4. Run `compare_case_study_numeric_results.py` and
    `qualify_case_study_families.py`.
-6. Retire any pending runtime-lane blockers only with reviewed runtime/numeric
+5. Retire any pending runtime-lane blockers only with reviewed runtime/numeric
    evidence accepted by the M6 tools.
-7. Run `qualify_milestone_m6.py` and claim M6 only if that composer passes
+6. Run `qualify_milestone_m6.py` and claim M6 only if that composer passes
    without blockers.
 
 ## Final Consensus
 
-M5 feature parity is passing per the fail-closed lane58 qualifier output over
-the cumulative phase-0 evidence, but M5 is not marked CLOSED because the
-qualifier is scoped to `m5-feature-parity-only` and does not emit a closed
-milestone state. M6 remains open and fail-closed until M5 full closure is
-explicit and the M6 composer reports a passing M6-scoped verdict.
+M5 is CLOSED/all-phase per the fail-closed lane62 qualifier output over the
+cumulative phase-0 evidence, the committed lane58 feature-parity result, and the
+lane62 closure-decision sidecar. M6 remains open and fail-closed until the M6
+composer reports a passing M6-scoped verdict.

@@ -41,6 +41,37 @@ ACCEPTED_EVIDENCE_KINDS = {
     "approved-retained-state-exception",
 }
 
+M5_FEATURE_PARITY_SCOPE = "m5-feature-parity-only"
+M5_FEATURE_PARITY_PASSED_STATE = "m5-feature-parity-passed"
+M5_FEATURE_PARITY_BLOCKED_STATE = "blocked-on-m5-feature-parity"
+M5_ALL_PHASE_DECISION_SCOPE = "m5-all-phase-closure-decision"
+M5_ALL_PHASE_SCOPE = "m5-all-phase"
+M5_ALL_PHASE_CLOSED_STATE = "CLOSED/all-phase"
+M5_ALL_PHASE_BLOCKED_STATE = "blocked-on-m5-all-phase-closure"
+M5_ALL_PHASE_DECISION = "accept-m5-feature-parity-as-all-phase-closure"
+
+FEATURE_PARITY_INTEGRITY_FIELDS = [
+    "scope",
+    "current_state",
+    "m5_feature_parity_passed",
+    "does_not_claim_m6",
+    "does_not_claim_m7",
+    "does_not_claim_release_readiness",
+    "required_tolerance_digits",
+    "m0b_accepted",
+    "required_example_classes",
+    "required_runtime_features",
+    "missing_example_classes",
+    "unknown_example_classes",
+    "missing_runtime_features",
+    "unknown_runtime_features",
+    "aggregate_compared_coefficient_count",
+    "aggregate_passed_coefficient_count",
+    "blocking_reasons",
+    "example_summaries",
+    "runtime_feature_summaries",
+]
+
 
 def expect(condition: bool, message: str) -> None:
     if not condition:
@@ -341,10 +372,10 @@ def qualify_milestone_m5(
     m5_passed = not blockers
     return {
         "schema_version": 1,
-        "scope": "m5-feature-parity-only",
-        "current_state": "m5-feature-parity-passed"
+        "scope": M5_FEATURE_PARITY_SCOPE,
+        "current_state": M5_FEATURE_PARITY_PASSED_STATE
         if m5_passed
-        else "blocked-on-m5-feature-parity",
+        else M5_FEATURE_PARITY_BLOCKED_STATE,
         "m5_feature_parity_passed": m5_passed,
         "does_not_claim_m6": True,
         "does_not_claim_m7": True,
@@ -362,6 +393,234 @@ def qualify_milestone_m5(
         "blocking_reasons": blockers,
         "example_summaries": example_summaries,
         "runtime_feature_summaries": runtime_feature_summaries,
+    }
+
+
+def load_committed_feature_parity_summary(path_text: str) -> dict[str, Any] | None:
+    summary_path = Path(path_text)
+    if not summary_path.is_absolute():
+        summary_path = Path.cwd() / summary_path
+    if not summary_path.exists():
+        return None
+    return load_json(summary_path)
+
+
+def qualify_milestone_m5_all_phase(
+    *,
+    feature_summary: dict[str, Any],
+    evidence_summary_path: Path,
+    closure_decision_path: Path,
+    required_tolerance_digits: int,
+) -> dict[str, Any]:
+    decision = load_json(closure_decision_path)
+    blockers: list[str] = []
+
+    schema_version = decision.get("schema_version")
+    if not isinstance(schema_version, int):
+        raise TypeError("M5 all-phase closure decision schema_version must be an int")
+    if schema_version != 1:
+        blockers.append(f"closure decision schema_version {schema_version} != 1")
+
+    decision_scope = normalize_string(decision.get("scope"), "M5 closure decision scope")
+    if decision_scope != M5_ALL_PHASE_DECISION_SCOPE:
+        blockers.append(
+            f"closure decision scope {decision_scope!r} != {M5_ALL_PHASE_DECISION_SCOPE!r}"
+        )
+
+    milestone = normalize_string(decision.get("milestone"), "M5 closure decision milestone")
+    if milestone != "M5":
+        blockers.append(f"closure decision milestone {milestone!r} != 'M5'")
+
+    decision_id = normalize_string(decision.get("decision"), "M5 closure decision")
+    if decision_id != M5_ALL_PHASE_DECISION:
+        blockers.append(f"closure decision {decision_id!r} != {M5_ALL_PHASE_DECISION!r}")
+
+    approved_state = normalize_string(
+        decision.get("approved_current_state"),
+        "M5 closure decision approved_current_state",
+    )
+    if approved_state != M5_ALL_PHASE_CLOSED_STATE:
+        blockers.append(
+            f"closure decision approved_current_state {approved_state!r} "
+            f"!= {M5_ALL_PHASE_CLOSED_STATE!r}"
+        )
+
+    closure_approved = normalize_bool(
+        decision.get("m5_all_phase_closure_approved", False),
+        "M5 closure decision m5_all_phase_closure_approved",
+    )
+    if not closure_approved:
+        blockers.append("closure decision does not approve M5 all-phase closure")
+
+    decision_blockers = normalize_string_list(
+        decision.get("blockers", []),
+        "M5 closure decision blockers",
+    )
+    blockers.extend(f"closure-decision: {blocker}" for blocker in decision_blockers)
+
+    evidence_paths = normalize_string_list(
+        decision.get("evidence_paths", []),
+        "M5 closure decision evidence_paths",
+    )
+    feature_parity_summary_path = normalize_string(
+        decision.get("m5_feature_parity_summary_path"),
+        "M5 closure decision m5_feature_parity_summary_path",
+    )
+    feature_surface_evidence_path = normalize_string(
+        decision.get("m5_feature_surface_evidence_path"),
+        "M5 closure decision m5_feature_surface_evidence_path",
+    )
+    expected_evidence_path = str(evidence_summary_path)
+    if feature_surface_evidence_path != expected_evidence_path:
+        blockers.append(
+            "closure decision m5_feature_surface_evidence_path does not match "
+            f"the evaluated evidence summary: {feature_surface_evidence_path!r} "
+            f"!= {expected_evidence_path!r}"
+        )
+    if expected_evidence_path not in evidence_paths:
+        blockers.append("closure decision evidence_paths does not cite the evaluated evidence")
+    if feature_parity_summary_path not in evidence_paths:
+        blockers.append("closure decision evidence_paths does not cite the feature-parity summary")
+
+    decision_does_not_claim_m6 = normalize_bool(
+        decision.get("does_not_claim_m6", False),
+        "M5 closure decision does_not_claim_m6",
+    )
+    decision_does_not_claim_m7 = normalize_bool(
+        decision.get("does_not_claim_m7", False),
+        "M5 closure decision does_not_claim_m7",
+    )
+    decision_does_not_claim_release = normalize_bool(
+        decision.get("does_not_claim_release_readiness", False),
+        "M5 closure decision does_not_claim_release_readiness",
+    )
+    if not decision_does_not_claim_m6:
+        blockers.append("closure decision must not claim Milestone M6")
+    if not decision_does_not_claim_m7:
+        blockers.append("closure decision must not claim Milestone M7")
+    if not decision_does_not_claim_release:
+        blockers.append("closure decision must not claim release readiness")
+
+    committed_feature_summary = load_committed_feature_parity_summary(feature_parity_summary_path)
+    if committed_feature_summary is None:
+        blockers.append(f"committed feature-parity summary is missing: {feature_parity_summary_path}")
+    else:
+        for field in FEATURE_PARITY_INTEGRITY_FIELDS:
+            if committed_feature_summary.get(field) != feature_summary.get(field):
+                blockers.append(f"committed feature-parity summary field differs: {field}")
+
+    feature_scope = normalize_string(feature_summary.get("scope"), "M5 feature summary scope")
+    feature_current_state = normalize_string(
+        feature_summary.get("current_state"),
+        "M5 feature summary current_state",
+    )
+    feature_passed = normalize_bool(
+        feature_summary.get("m5_feature_parity_passed"),
+        "M5 feature summary m5_feature_parity_passed",
+    )
+    feature_blockers = normalize_string_list(
+        feature_summary.get("blocking_reasons", []),
+        "M5 feature summary blocking_reasons",
+    )
+    does_not_claim_m6 = normalize_bool(
+        feature_summary.get("does_not_claim_m6"),
+        "M5 feature summary does_not_claim_m6",
+    )
+    does_not_claim_m7 = normalize_bool(
+        feature_summary.get("does_not_claim_m7"),
+        "M5 feature summary does_not_claim_m7",
+    )
+    does_not_claim_release = normalize_bool(
+        feature_summary.get("does_not_claim_release_readiness"),
+        "M5 feature summary does_not_claim_release_readiness",
+    )
+
+    aggregate_compared = normalize_nonnegative_int(
+        feature_summary.get("aggregate_compared_coefficient_count"),
+        "M5 feature summary aggregate_compared_coefficient_count",
+    )
+    aggregate_passed = normalize_nonnegative_int(
+        feature_summary.get("aggregate_passed_coefficient_count"),
+        "M5 feature summary aggregate_passed_coefficient_count",
+    )
+
+    if feature_scope != M5_FEATURE_PARITY_SCOPE:
+        blockers.append(f"feature-parity scope {feature_scope!r} != {M5_FEATURE_PARITY_SCOPE!r}")
+    if feature_current_state != M5_FEATURE_PARITY_PASSED_STATE:
+        blockers.append(
+            f"feature-parity current_state {feature_current_state!r} "
+            f"!= {M5_FEATURE_PARITY_PASSED_STATE!r}"
+        )
+    if not feature_passed:
+        blockers.append("feature-parity result is not passing")
+    if feature_blockers:
+        blockers.extend(f"feature-parity: {blocker}" for blocker in feature_blockers)
+    if not does_not_claim_m6:
+        blockers.append("feature-parity summary must not claim Milestone M6")
+    if not does_not_claim_m7:
+        blockers.append("feature-parity summary must not claim Milestone M7")
+    if not does_not_claim_release:
+        blockers.append("feature-parity summary must not claim release readiness")
+    if aggregate_compared <= 0:
+        blockers.append("feature-parity summary is not coefficient-bearing")
+    if aggregate_passed != aggregate_compared:
+        blockers.append("feature-parity summary has unpassed compared coefficients")
+    if required_tolerance_digits != feature_summary.get("required_tolerance_digits"):
+        blockers.append("feature-parity summary required tolerance does not match this run")
+    for field in (
+        "missing_example_classes",
+        "unknown_example_classes",
+        "missing_runtime_features",
+        "unknown_runtime_features",
+    ):
+        if feature_summary.get(field):
+            blockers.append(f"feature-parity summary has nonempty {field}")
+
+    m5_closed = not blockers
+    withheld_claims = [
+        "This summary does not launch the C++ runtime or create new retained captures.",
+        "This summary does not claim Milestone M6, Milestone M7, or release readiness.",
+    ]
+    if not m5_closed:
+        withheld_claims.insert(0, "This summary does not claim Milestone M5 closure.")
+
+    return {
+        "schema_version": 1,
+        "scope": M5_ALL_PHASE_SCOPE,
+        "current_state": M5_ALL_PHASE_CLOSED_STATE
+        if m5_closed
+        else M5_ALL_PHASE_BLOCKED_STATE,
+        "m5_all_phase_closed": m5_closed,
+        "m5_feature_parity_passed": feature_passed,
+        "m5_feature_parity_scope": feature_scope,
+        "m5_feature_parity_current_state": feature_current_state,
+        "m5_feature_parity_summary_path": feature_parity_summary_path,
+        "m5_feature_surface_evidence_path": feature_surface_evidence_path,
+        "m5_all_phase_closure_decision_path": str(closure_decision_path),
+        "m5_all_phase_closure_decision": decision_id,
+        "m5_all_phase_closure_approved": closure_approved,
+        "approved_current_state": approved_state,
+        "does_not_claim_m6": does_not_claim_m6 and decision_does_not_claim_m6,
+        "does_not_claim_m7": does_not_claim_m7 and decision_does_not_claim_m7,
+        "does_not_claim_release_readiness": does_not_claim_release
+        and decision_does_not_claim_release,
+        "required_tolerance_digits": required_tolerance_digits,
+        "m0b_accepted": feature_summary.get("m0b_accepted"),
+        "required_example_classes": feature_summary.get("required_example_classes", []),
+        "required_runtime_features": feature_summary.get("required_runtime_features", []),
+        "missing_example_classes": feature_summary.get("missing_example_classes", []),
+        "unknown_example_classes": feature_summary.get("unknown_example_classes", []),
+        "missing_runtime_features": feature_summary.get("missing_runtime_features", []),
+        "unknown_runtime_features": feature_summary.get("unknown_runtime_features", []),
+        "aggregate_compared_coefficient_count": aggregate_compared,
+        "aggregate_passed_coefficient_count": aggregate_passed,
+        "feature_parity_blocking_reasons": feature_blockers,
+        "closure_decision_blockers": decision_blockers,
+        "blocking_reasons": blockers,
+        "withheld_claims": withheld_claims,
+        "evidence_paths": evidence_paths,
+        "example_summaries": feature_summary.get("example_summaries", []),
+        "runtime_feature_summaries": feature_summary.get("runtime_feature_summaries", []),
     }
 
 
@@ -431,6 +690,34 @@ def self_check_evidence(
     )
 
 
+def self_check_closure_decision(
+    path: Path,
+    *,
+    evidence_path: Path,
+    feature_summary_path: Path,
+    approved: bool = True,
+    blockers: list[str] | None = None,
+) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": M5_ALL_PHASE_DECISION_SCOPE,
+            "milestone": "M5",
+            "decision": M5_ALL_PHASE_DECISION,
+            "approved_current_state": M5_ALL_PHASE_CLOSED_STATE,
+            "m5_all_phase_closure_approved": approved,
+            "m5_feature_parity_summary_path": str(feature_summary_path),
+            "m5_feature_surface_evidence_path": str(evidence_path),
+            "evidence_paths": [str(feature_summary_path), str(evidence_path)],
+            "blockers": blockers or [],
+            "does_not_claim_m6": True,
+            "does_not_claim_m7": True,
+            "does_not_claim_release_readiness": True,
+        },
+    )
+
+
 def run_self_check() -> None:
     with tempfile.TemporaryDirectory(prefix="amflow-m5-qualification-self-check-") as tmp:
         root = Path(tmp)
@@ -439,6 +726,11 @@ def run_self_check() -> None:
         passing_evidence = root / "passing-evidence.json"
         exception_evidence = root / "exception-evidence.json"
         blocked_evidence = root / "blocked-evidence.json"
+        passing_summary_path = root / "passing-feature-summary.json"
+        blocked_summary_path = root / "blocked-feature-summary.json"
+        passing_closure_decision = root / "passing-closure-decision.json"
+        withheld_closure_decision = root / "withheld-closure-decision.json"
+        blocked_feature_closure_decision = root / "blocked-feature-closure-decision.json"
 
         self_check_comparison(passing_compare, passed=True)
         self_check_comparison(failing_compare, passed=False)
@@ -448,12 +740,53 @@ def run_self_check() -> None:
             evidence_summary_path=passing_evidence,
             required_tolerance_digits=30,
         )
+        write_json(passing_summary_path, passing_summary)
         expect(passing_summary["m5_feature_parity_passed"], "passing M5 self-check should pass")
+        expect(
+            passing_summary["scope"] == M5_FEATURE_PARITY_SCOPE
+            and passing_summary["current_state"] == M5_FEATURE_PARITY_PASSED_STATE,
+            "legacy M5 self-check should remain feature-parity-only",
+        )
         expect(
             passing_summary["does_not_claim_m6"]
             and passing_summary["does_not_claim_m7"]
             and passing_summary["does_not_claim_release_readiness"],
             "M5 self-check must preserve M6/M7/release non-claims",
+        )
+        self_check_closure_decision(
+            passing_closure_decision,
+            evidence_path=passing_evidence,
+            feature_summary_path=passing_summary_path,
+        )
+        closed_summary = qualify_milestone_m5_all_phase(
+            feature_summary=passing_summary,
+            evidence_summary_path=passing_evidence,
+            closure_decision_path=passing_closure_decision,
+            required_tolerance_digits=30,
+        )
+        expect(
+            closed_summary["current_state"] == M5_ALL_PHASE_CLOSED_STATE
+            and closed_summary["m5_all_phase_closed"],
+            "all-phase M5 self-check should close only with passing parity plus decision evidence",
+        )
+
+        self_check_closure_decision(
+            withheld_closure_decision,
+            evidence_path=passing_evidence,
+            feature_summary_path=passing_summary_path,
+            approved=False,
+            blockers=["synthetic closure approval withheld"],
+        )
+        withheld_summary = qualify_milestone_m5_all_phase(
+            feature_summary=passing_summary,
+            evidence_summary_path=passing_evidence,
+            closure_decision_path=withheld_closure_decision,
+            required_tolerance_digits=30,
+        )
+        expect(
+            withheld_summary["current_state"] == M5_ALL_PHASE_BLOCKED_STATE
+            and not withheld_summary["m5_all_phase_closed"],
+            "withheld closure decision must block all-phase M5 closure",
         )
 
         self_check_evidence(
@@ -480,6 +813,7 @@ def run_self_check() -> None:
             evidence_summary_path=blocked_evidence,
             required_tolerance_digits=30,
         )
+        write_json(blocked_summary_path, blocked_summary)
         expect(
             not blocked_summary["m5_feature_parity_passed"],
             "blocked M5 self-check should fail",
@@ -488,6 +822,22 @@ def run_self_check() -> None:
         expect("missing required Phase F runtime feature: fixed_eps" in blockers, blockers)
         expect("automatic_loop: evidence kind 'metadata-only'" in blockers, blockers)
         expect("automatic_loop: comparison did not pass" in blockers, blockers)
+        self_check_closure_decision(
+            blocked_feature_closure_decision,
+            evidence_path=blocked_evidence,
+            feature_summary_path=blocked_summary_path,
+        )
+        blocked_feature_summary = qualify_milestone_m5_all_phase(
+            feature_summary=blocked_summary,
+            evidence_summary_path=blocked_evidence,
+            closure_decision_path=blocked_feature_closure_decision,
+            required_tolerance_digits=30,
+        )
+        expect(
+            blocked_feature_summary["current_state"] == M5_ALL_PHASE_BLOCKED_STATE
+            and not blocked_feature_summary["m5_all_phase_closed"],
+            "approved closure decision must not override blocked feature parity",
+        )
 
 
 def main() -> int:
@@ -495,6 +845,11 @@ def main() -> int:
     parser.add_argument("--evidence-summary", type=Path, help="M5 feature evidence sidecar")
     parser.add_argument("--out", type=Path, help="Optional output summary path")
     parser.add_argument("--required-tolerance-digits", type=int, default=30)
+    parser.add_argument(
+        "--all-phase-closure-decision",
+        type=Path,
+        help="Optional M5 all-phase closure-decision sidecar",
+    )
     parser.add_argument("--self-check", action="store_true", help="Run synthetic self-checks")
     args = parser.parse_args()
 
@@ -510,6 +865,13 @@ def main() -> int:
         evidence_summary_path=args.evidence_summary,
         required_tolerance_digits=args.required_tolerance_digits,
     )
+    if args.all_phase_closure_decision is not None:
+        summary = qualify_milestone_m5_all_phase(
+            feature_summary=summary,
+            evidence_summary_path=args.evidence_summary,
+            closure_decision_path=args.all_phase_closure_decision,
+            required_tolerance_digits=args.required_tolerance_digits,
+        )
     if args.out is not None:
         write_json(args.out, summary)
     else:

@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "scope": "m5-all-phase-closure-decision",
+  "milestone": "M5",
+  "decision": "accept-m5-feature-parity-as-all-phase-closure",
+  "approved_current_state": "CLOSED/all-phase",
+  "m5_all_phase_closure_approved": true,
+  "m5_feature_parity_summary_path": "tools/reference-harness/specs/m5/m5-qualification-lane58.json",
+  "m5_feature_surface_evidence_path": "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json",
+  "evidence_paths": [
+    "tools/reference-harness/specs/m5/m5-qualification-lane58.json",
+    "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json",
+    "docs/milestones/m5-m6-closure-plan.md"
+  ],
+  "blockers": [],
+  "does_not_claim_m6": true,
+  "does_not_claim_m7": true,
+  "does_not_claim_release_readiness": true,
+  "review_notes": [
+    "Lane58 fail-closed feature-parity qualification is passing with current_state m5-feature-parity-passed, aggregate 390/390 compared coefficients, and blocking_reasons empty.",
+    "M5 is defined here as the Phase F feature-parity gate over the frozen example classes and Phase F runtime-feature evidence; broader M6 qualification-corpus, M7, and release-readiness claims remain explicitly separate.",
+    "This decision sidecar authorizes the all-phase M5 closure composer to treat the passing feature-parity verdict as the M5 milestone closure prerequisite, without changing tolerance policy or accepting any M6/M7/release claim."
+  ]
+}

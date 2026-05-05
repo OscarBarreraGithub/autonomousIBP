@@ -9,14 +9,14 @@ Milestone closure verdict: REJECT M7 closure.
 - Role A marked docs completion as `PARTIAL` when no docs-completion sidecar was supplied. Role B, Role C, and the lane60 generated sidecar run show the current docs-completion marker audit can be `PASSING` when `review_release_docs_completion.py` is run and consumed by `release_signoff_readiness.py`.
 - Role B treats the final M7 readiness helper itself as an infrastructure blocker because `release_signoff_ready` is currently always `false`. Role C frames the main gap as evidence production with most scaffolding already present. This plan preserves both points: the sidecar scaffolding exists, but a final non-blocked release-readiness path or final release-packet consumer still has to land.
 - Role A, Role B, Role C, and Role D all reject M7 closure. Role D explicitly approves this final planning artifact only as a blocker-preserving M7 plan, not as release readiness.
-- M5 has moved since lane20: `tools/reference-harness/specs/m5/m5-qualification-lane58.json` reports `m5_feature_parity_passed=true` with `390/390` coefficients and no missing examples or runtime features. The M7/M6 readiness path still publishes phase-0 runtime blockers from `qualification-benchmarks.json`, so M5 evidence must be reconciled into the qualification/release-readiness truth surface before it is used as a release prerequisite.
+- M5 has moved since lane20 and lane60: `tools/reference-harness/specs/m5/m5-qualification-lane62.json` now reports `current_state = "CLOSED/all-phase"` with `m5_all_phase_closed=true`, `390/390` coefficients, and no missing examples or runtime features. The M7/M6 readiness path still needs a fresh run that consumes this M5 artifact while preserving separate M6 phase-0 and case-study blockers.
 
 ## Sources
 
 - Role inputs: lane60 Role A primary planner, Role B independent reviewer, Role C verification-strategy auditor, and Role D synthesis over A/B/C.
 - Canonical docs: `docs/full-amflow-completion-roadmap.md`, `docs/verification-strategy.md`, `docs/implementation-ledger.md`, `docs/release-signoff-checklist.md`, `references/case-studies/selected-benchmarks.md`, `tools/reference-harness/templates/qualification-benchmarks.json`, and `tools/reference-harness/templates/release-signoff-checklist.json`.
 - Current generated lane60 summaries: `/tmp/autoibp_orch/exec/lane60_current_state/qualification-readiness.json`, `phase0-qualification.json`, `case-study-qualification.json`, `m6-qualification.json`, `release-qualification-corpus.json`, `release-performance.json`, `release-diagnostic.json`, `release-docs-completion.json`, `release-parity-signoff.json`, and `release-readiness.json`.
-- Current M5 artifact: `tools/reference-harness/specs/m5/m5-qualification-lane58.json`.
+- Current M5 artifact: `tools/reference-harness/specs/m5/m5-qualification-lane62.json`.
 
 ## Exact Acceptance Criteria
 
@@ -33,12 +33,12 @@ The executable M7 path is sidecar-based. `release_signoff_readiness.py` consumes
 ### PASSING Criteria
 
 - M7 scaffold and consumers exist. The checklist, JSON template, readiness helper, and populated sidecar producer scripts are present and recorded in the roadmap and ledger as release-prep scaffolding, not closure evidence (`docs/full-amflow-completion-roadmap.md:678-741`; `docs/implementation-ledger.md:243-254`; `docs/implementation-ledger.md:262`; `docs/implementation-ledger.md:269-270`).
-- M5 feature-parity evidence is passing as an M5-only artifact. `m5-qualification-lane58.json` records `current_state = "m5-feature-parity-passed"`, `aggregate_passed_coefficient_count = 390`, no missing example classes, no missing runtime features, and explicit non-claims for M6, M7, and release readiness (`tools/reference-harness/specs/m5/m5-qualification-lane58.json:1-8`; `tools/reference-harness/specs/m5/m5-qualification-lane58.json:171-197`; `tools/reference-harness/specs/m5/m5-qualification-lane58.json:198-268`).
+- M5 is closed as an all-phase M5 artifact. `m5-qualification-lane62.json` records `current_state = "CLOSED/all-phase"`, `m5_all_phase_closed = true`, `aggregate_passed_coefficient_count = 390`, no missing example classes, no missing runtime features, and explicit non-claims for M6, M7, and release readiness.
 - Docs-completion review is passing for the current marker audit when its sidecar is generated. The lane60 `release-readiness.json` records `docs_completion_current_state = "docs-completion-reviewed"`, no docs blockers, all six checklist targets present, and `docs-completion` review-section status `reviewed` (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:225-287`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:648-664`).
 
 ### PARTIAL Criteria
 
-- Phase-F/M5 as a release prerequisite is only partially reconciled. M5 has a passing M5-only artifact, but the qualification/release-readiness scaffold still reports `automatic_phasespace`, `complex_kinematics`, `feynman_prescription`, and `linear_propagator` as phase-0 pending runtime lanes `b63n`, `b61n`, `b63n`, and `b64ag` (`tools/reference-harness/templates/qualification-benchmarks.json:63-125`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:8-31`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:530-541`).
+- M5 is closed, but M6/M7 readiness still needs a fresh prerequisite surface that consumes the lane62 M5 artifact while keeping separate phase-0 qualification blockers. The stale lane60 generated release-readiness snapshot predates lane62 and still reports `automatic_phasespace`, `complex_kinematics`, `feynman_prescription`, and `linear_propagator` as phase-0 pending runtime lanes `b63n`, `b61n`, `b63n`, and `b64ag` (`tools/reference-harness/templates/qualification-benchmarks.json:63-125`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:8-31`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:530-541`).
 - Retained reference evidence is present but not qualified. Required and optional retained roots are coherent enough for `qualification_readiness.py`, but phase-0 qualification remains blocked on correct-digit thresholds, missing failure-code audits, and missing required typed failure codes (`/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:382-421`; `/tmp/autoibp_orch/exec/lane60_current_state/release-readiness.json:543-565`).
 
 ### FAILING Criteria
@@ -53,7 +53,7 @@ The executable M7 path is sidecar-based. `release_signoff_readiness.py` consumes
 
 ## Shortest Atomic Landing Chain
 
-1. Reconcile the M5 lane58 verdict into M6/M7 readiness. Either make the qualification/release-readiness path consume the accepted M5 artifact, or explicitly preserve the phase-0 runtime blockers as separate M6 evidence blockers with no M5 overclaim.
+1. Refresh M6/M7 readiness to consume the M5 lane62 `CLOSED/all-phase` artifact while explicitly preserving phase-0 runtime blockers as separate M6 evidence blockers with no M7 or release-readiness overclaim.
 2. Publish packet-shaped candidate roots for the retained phase-0 packet split and produce required `failure-code-audit.json` sidecars.
 3. Run `compare_phase0_packet_set_to_reference.py`, `score_phase0_packet_set_correct_digits.py`, `audit_phase0_packet_set_failure_codes.py`, and `qualify_phase0_packet_set.py` to a passing phase-0 verdict.
 4. Produce missing case-study numeric sidecars and repair `ttbar-j` below-threshold evidence. Required missing or failing rows now include `ttbar-j`, `ttbar-h` at 100 digits, `ttbar-w`, diphoton at 200 digits, `h-to-bb`, single-top planar/nonplanar, and `one-singular-endpoint-case`.
@@ -68,7 +68,7 @@ The executable M7 path is sidecar-based. `release_signoff_readiness.py` consumes
 
 ## Worker Prompt Skeletons
 
-Worker 1, M5/M7 readiness reconciliation: Read `tools/reference-harness/specs/m5/m5-qualification-lane58.json`, `qualification_readiness.py`, `qualification-benchmarks.json`, and `release_signoff_readiness.py`. Make the M7 prerequisite state consume accepted M5 evidence or explicitly separate M5 closure from M6 phase-0 qualification blockers. Preserve `does_not_claim_m6`, `does_not_claim_m7`, and `does_not_claim_release_readiness`; do not modify runtime semantics.
+Worker 1, M5/M7 readiness reconciliation: Read `tools/reference-harness/specs/m5/m5-qualification-lane62.json`, `qualification_readiness.py`, `qualification-benchmarks.json`, and `release_signoff_readiness.py`. Make the M7 prerequisite state consume accepted M5 closure evidence while explicitly separating M5 closure from M6 phase-0 qualification blockers. Preserve `does_not_claim_m6`, `does_not_claim_m7`, and `does_not_claim_release_readiness`; do not modify runtime semantics.
 
 Worker 2, phase-0 M6 packet publisher and audit: Publish candidate packet roots matching the required-set, `de-d0-pair`, and `user-hook-pair` packet split. Add required failure-code audit sidecars, run packet-set comparison, correct-digit scoring, failure-code audit, and `qualify_phase0_packet_set.py`. Fail closed on benchmark-id drift, packet-label drift, missing failure-code sidecars, threshold misses, or unexpected failure codes.
 

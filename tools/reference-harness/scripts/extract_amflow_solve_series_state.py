@@ -108,19 +108,23 @@ def parse_plain_integral_file(path: Path) -> list[dict[str, Any]]:
   return integrals
 
 
-def parse_matrix(path: Path) -> list[list[str]]:
-  rows = split_top_level(strip_outer_braces(path.read_text()))
+def parse_matrix_text(raw: str, path_label: str) -> list[list[str]]:
+  rows = split_top_level(strip_outer_braces(raw))
   matrix: list[list[str]] = []
   for row in rows:
     cells = split_top_level(strip_outer_braces(row))
     matrix.append([compact_mathematica_text(cell) for cell in cells])
-  expect(matrix, f"{path} did not contain a matrix")
+  expect(matrix, f"{path_label} did not contain a matrix")
   width = len(matrix[0])
-  expect(width > 0, f"{path} matrix rows must not be empty")
+  expect(width > 0, f"{path_label} matrix rows must not be empty")
   for index, row in enumerate(matrix):
-    expect(len(row) == width, f"{path} row {index + 1} has inconsistent width")
-  expect(len(matrix) == width, f"{path} matrix must be square")
+    expect(len(row) == width, f"{path_label} row {index + 1} has inconsistent width")
+  expect(len(matrix) == width, f"{path_label} matrix must be square")
   return matrix
+
+
+def parse_matrix(path: Path) -> list[list[str]]:
+  return parse_matrix_text(path.read_text(), str(path))
 
 
 def singular_label(variable: str, value: int) -> str:
@@ -224,6 +228,134 @@ def parse_globalpreferred_output_masters(path: Path) -> list[dict[str, Any]]:
   return [parse_j_integral(item) for item in split_top_level(strip_outer_braces(fields[0]))]
 
 
+def parse_gauge_asyexp_diffeq(path: Path) -> tuple[list[dict[str, Any]], list[str], list[list[str]]]:
+  fields = split_top_level(strip_outer_braces(path.read_text()))
+  expect(len(fields) == 3, f"{path} must have {{masters, variables, diffeq}}")
+  masters = [parse_j_integral(item) for item in split_top_level(strip_outer_braces(fields[0]))]
+  variables = [compact_mathematica_text(item) for item in split_top_level(strip_outer_braces(fields[1]))]
+  matrices = split_top_level(strip_outer_braces(fields[2]))
+  expect(len(matrices) == 1, f"{path} must contain exactly one gauge-link DE matrix")
+  return masters, variables, parse_matrix_text(matrices[0], f"{path}.diffeq[0]")
+
+
+def parse_gauge_asyexp_boundary(path: Path) -> tuple[str, list[str]]:
+  fields = split_top_level(strip_outer_braces(path.read_text()))
+  expect(len(fields) == 2, f"{path} must have {{point, boundary_samples}}")
+  point = compact_mathematica_text(fields[0])
+  sample_rules = split_top_level(strip_outer_braces(fields[1]))
+  epsilon_samples: list[str] = []
+  for index, rule in enumerate(sample_rules):
+    arrow = rule.find("->")
+    expect(arrow != -1, f"{path} boundary sample {index + 1} is missing ->")
+    epsilon_samples.append(compact_mathematica_text(rule[:arrow]))
+  expect(epsilon_samples, f"{path} did not contain epsilon samples")
+  return point, epsilon_samples
+
+
+def normalize_finite_de_expression(raw: str, *, source_variable: str, variable: str) -> str:
+  expression = compact_mathematica_text(raw)
+  expression = re.sub(
+      rf"(?<![A-Za-z0-9_]){re.escape(source_variable)}(?![A-Za-z0-9_])",
+      variable,
+      expression,
+  )
+  expression = re.sub(rf"{re.escape(variable)}\s*\^\s*\(\s*-1\s*\)", f"1/{variable}", expression)
+  expression = re.sub(r"eps\s*\^\s*2", "eps*eps", expression)
+  return expression
+
+
+def parse_finite_diffeq_file(path: Path,
+                             *,
+                             source_variable: str,
+                             variable: str) -> tuple[list[dict[str, Any]], list[list[str]]]:
+  fields = split_top_level(strip_outer_braces(path.read_text()))
+  expect(len(fields) in (2, 3), f"{path} must have {{masters, diffeq}} or {{masters, variables, diffeq}}")
+  masters = [parse_j_integral(item) for item in split_top_level(strip_outer_braces(fields[0]))]
+  matrix_field = fields[2] if len(fields) == 3 else fields[1]
+  if len(fields) == 3:
+    matrices = split_top_level(strip_outer_braces(matrix_field))
+    expect(len(matrices) == 1, f"{path} must contain exactly one DE matrix")
+    matrix_field = matrices[0]
+  matrix = parse_matrix_text(matrix_field, f"{path}.diffeq")
+  return masters, [
+      [
+          normalize_finite_de_expression(cell, source_variable=source_variable, variable=variable)
+          for cell in row
+      ]
+      for row in matrix
+  ]
+
+
+def extract_finite_solution_state(diffeq_file: Path,
+                                  solution_file: Path,
+                                  *,
+                                  benchmark_id: str,
+                                  variable: str,
+                                  source_variable: str,
+                                  start_location: str,
+                                  target_location: str,
+                                  epsilon_samples: list[str]) -> dict[str, Any]:
+  expect(diffeq_file.is_file(), f"finite DE file does not exist: {diffeq_file}")
+  expect(solution_file.is_file(), f"finite solution file does not exist: {solution_file}")
+  expect(epsilon_samples, "finite solution state requires at least one epsilon sample")
+  diffeq_masters, matrix = parse_finite_diffeq_file(
+      diffeq_file,
+      source_variable=source_variable,
+      variable=variable,
+  )
+  output_masters = parse_solution_output_masters(solution_file)
+  expect(output_masters, f"{solution_file} did not contain solution-sample rules")
+  family = output_masters[0]["family"]
+  return {
+      "schema_version": 1,
+      "kind": "amflow_solve_series_state",
+      "benchmark_id": benchmark_id,
+      "integral_kind": "loop",
+      "source": {
+          "diffeq_file": str(diffeq_file),
+          "solution_file": str(solution_file),
+      },
+      "family": family,
+      "variable": variable,
+      "start_location": start_location,
+      "target_location": target_location,
+      "masters": diffeq_masters,
+      "coefficient_matrices": {variable: matrix},
+      "singular_points": infer_singular_points_from_matrix(matrix, variable),
+      "finite_start": {
+          "source_variable": source_variable,
+          "diffeq_masters": diffeq_masters,
+          "output_integrals": output_masters,
+      },
+      "boundary_state": {
+          "kind": "amflow_finite_solution_samples",
+          "epsilon_samples": epsilon_samples,
+          "files": {
+              "solution": raw_file_payload(solution_file),
+              "diffeq": raw_file_payload(diffeq_file),
+          },
+      },
+      "solution_sample_cache": {
+          "enabled": True,
+          "source": "retained_finite_solution_boundary_samples",
+      },
+      "reduction": {
+          "targets": diffeq_masters,
+          "masters": diffeq_masters,
+          "target_reduction_path": "",
+      },
+      "cpp_solve_series_ingest": {
+          "supported": True,
+          "reason": (
+              "The retained differential_equation_solver state has finite AMFlow solution "
+              "samples at the DESolver start point. C++ solve-series transports the retained "
+              "DE-master samples to the requested finite target point; solution-only outputs "
+              "outside that DE basis remain deferred."
+          ),
+      },
+  }
+
+
 def infer_reduction_dir(system_dir: Path) -> Path | None:
   try:
     system_id = int(system_dir.name)
@@ -231,6 +363,77 @@ def infer_reduction_dir(system_dir: Path) -> Path | None:
     return None
   candidate = system_dir.parent / str(system_id - 1)
   return candidate if candidate.exists() else None
+
+
+def extract_gauge_asyexp_state(gauge_asyexp_dir: Path,
+                               *,
+                               benchmark_id: str,
+                               variable: str) -> dict[str, Any]:
+  expect(gauge_asyexp_dir.is_dir(),
+         f"gauge-link asymptotic expansion directory does not exist: {gauge_asyexp_dir}")
+  diffeq_path = gauge_asyexp_dir / "diffeq"
+  boundary_path = gauge_asyexp_dir / "boundary"
+  reduction_path = gauge_asyexp_dir / "reduction"
+  solution_path = gauge_asyexp_dir / "solution"
+  required_files = [diffeq_path, boundary_path, reduction_path, solution_path]
+  missing = [str(path) for path in required_files if not path.exists()]
+  expect(not missing, "missing gauge-link asymptotic state files: " + ", ".join(missing))
+
+  diffeq_masters, variables, diffeq_matrix = parse_gauge_asyexp_diffeq(diffeq_path)
+  expect(variable in variables,
+         f"{diffeq_path} variables {variables!r} do not include requested variable {variable!r}")
+  boundary_point, epsilon_samples = parse_gauge_asyexp_boundary(boundary_path)
+  output_masters = parse_solution_output_masters(solution_path)
+  expect(output_masters, f"{solution_path} did not contain solution-sample rules")
+
+  retained_files = [boundary_path, diffeq_path, reduction_path, solution_path]
+  solve_wl = gauge_asyexp_dir / "solve.wl"
+  if solve_wl.exists():
+    retained_files.append(solve_wl)
+
+  family = output_masters[0]["family"]
+  return {
+      "schema_version": 1,
+      "kind": "amflow_solve_series_state",
+      "benchmark_id": benchmark_id,
+      "integral_kind": "loop",
+      "source": {
+          "gauge_asyexp_dir": str(gauge_asyexp_dir),
+      },
+      "family": family,
+      "variable": variable,
+      "start_location": boundary_point,
+      "target_location": f"{variable}=0",
+      "masters": output_masters,
+      "singular_points": infer_singular_points_from_matrix(diffeq_matrix, variable),
+      "gauge_link": {
+          "boundary_point": boundary_point,
+          "diffeq_masters": diffeq_masters,
+          "diffeq_variables": variables,
+      },
+      "boundary_state": {
+          "kind": "amflow_finite_solution_samples",
+          "epsilon_samples": epsilon_samples,
+          "files": {path.name: raw_file_payload(path) for path in retained_files},
+      },
+      "solution_sample_cache": {
+          "enabled": True,
+          "source": "retained_gauge_link_asyexp_solution",
+      },
+      "reduction": {
+          "targets": output_masters,
+          "masters": diffeq_masters,
+          "target_reduction_path": "",
+      },
+      "cpp_solve_series_ingest": {
+          "supported": True,
+          "reason": (
+              "The retained linear_propagator gauge-link asymptotic state carries final "
+              "solution epsilon samples. C++ solve-series can fit those retained solution "
+              "samples directly; general gauge-link DE transport remains deferred."
+          ),
+      },
+  }
 
 
 def extract_state(system_dir: Path,
@@ -388,6 +591,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("--system-dir", type=Path)
   parser.add_argument("--reduction-dir", type=Path)
+  parser.add_argument("--gauge-asyexp-dir", type=Path)
+  parser.add_argument("--finite-diffeq-file", type=Path)
+  parser.add_argument("--finite-solution-file", type=Path)
+  parser.add_argument("--finite-source-variable", default="s")
+  parser.add_argument("--start-location", default="eta=1/2")
+  parser.add_argument("--target-location", default="eta=1/2")
+  parser.add_argument("--epsilon-samples", default="1/10000")
   parser.add_argument("--benchmark-id", default="automatic_loop")
   parser.add_argument("--variable", default="eta")
   parser.add_argument("--out", type=Path)
@@ -409,11 +619,32 @@ def main(argv: list[str]) -> int:
           and payload["inferred_reduction_targets"]
       ) else 1
 
-    expect(args.system_dir is not None, "--system-dir is required outside --self-check")
-    payload = extract_state(args.system_dir,
-                            reduction_dir=args.reduction_dir,
-                            benchmark_id=args.benchmark_id,
-                            variable=args.variable)
+    if args.finite_diffeq_file is not None or args.finite_solution_file is not None:
+      expect(args.finite_diffeq_file is not None, "--finite-diffeq-file is required for finite solution extraction")
+      expect(args.finite_solution_file is not None, "--finite-solution-file is required for finite solution extraction")
+      payload = extract_finite_solution_state(
+          args.finite_diffeq_file,
+          args.finite_solution_file,
+          benchmark_id=args.benchmark_id,
+          variable=args.variable,
+          source_variable=args.finite_source_variable,
+          start_location=args.start_location,
+          target_location=args.target_location,
+          epsilon_samples=[
+              compact_mathematica_text(sample)
+              for sample in split_top_level(args.epsilon_samples)
+          ],
+      )
+    elif args.gauge_asyexp_dir is not None:
+      payload = extract_gauge_asyexp_state(args.gauge_asyexp_dir,
+                                           benchmark_id=args.benchmark_id,
+                                           variable=args.variable)
+    else:
+      expect(args.system_dir is not None, "--system-dir is required outside --self-check")
+      payload = extract_state(args.system_dir,
+                              reduction_dir=args.reduction_dir,
+                              benchmark_id=args.benchmark_id,
+                              variable=args.variable)
     write_json(payload, args.out)
     return 0
   except Exception as error:

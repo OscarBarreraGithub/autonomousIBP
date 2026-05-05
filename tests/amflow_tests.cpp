@@ -48885,6 +48885,77 @@ assert box2_box_target_eps3["imag_digits"].startswith("0.00398405933866044174827
                                                          : std::string{}));
 }
 
+void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-finite-solution-samples");
+  const std::filesystem::path state_path = run_root / "finite-state.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "schema_version": 1,
+  "kind": "amflow_solve_series_state",
+  "benchmark_id": "finite_solution_samples",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "eta=0",
+  "target_location": "eta=1",
+  "masters": [
+    {"family": "toy", "indices": [1]},
+    {"family": "toy", "indices": [2]}
+  ],
+  "coefficient_matrices": {
+    "eta": [["0", "0"], ["0", "0"]]
+  },
+  "boundary_state": {
+    "kind": "amflow_finite_solution_samples",
+    "epsilon_samples": ["1/100"],
+    "files": {
+      "solution": {
+        "raw": "{j[toy, 1] -> {12}, j[toy, 2] -> {7}}"
+      }
+    }
+  },
+  "reduction": {
+    "targets": [
+      {"family": "toy", "indices": [1]},
+      {"family": "toy", "indices": [2]}
+    ]
+  }
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 --out " +
+      ShellSingleQuote(output_path.string()) + " >" + ShellSingleQuote(stdout_path.string()) +
+      " 2>" + ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "finite AMFlow solution-sample state ingestion should complete; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json, "\"benchmark_id\": \"finite_solution_samples\"",
+                 "finite solution-sample ingestion should preserve benchmark id");
+  ExpectContains(json, "\"kind\": \"amflow_finite_solution_samples\"",
+                 "finite solution-sample ingestion should publish its boundary kind");
+  ExpectContains(json, "\"runtime_boundary_provider\": "
+                       "\"retained-finite-solution-sample-cache\"",
+                 "finite solution-sample ingestion should report the retained sample provider");
+  ExpectContains(json, "\"runtime_application\": \"finite-solution-sample-ingest\"",
+                 "finite solution-sample ingestion should report finite transport");
+  ExpectContains(json, "\"exact_real\": \"12\"",
+                 "finite solution-sample ingestion should preserve the first retained value");
+  ExpectContains(json, "\"exact_real\": \"7\"",
+                 "finite solution-sample ingestion should preserve the second transported value");
+  ExpectContains(json, "\"status\": \"success\"",
+                 "finite solution-sample ingestion should report success");
+}
+
 struct ReferenceHarnessSelfCheckRun {
   std::string stdout_json;
   std::string stderr_log;
@@ -54778,6 +54849,7 @@ int main() {
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
+    SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();

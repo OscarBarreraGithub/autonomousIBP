@@ -5,7 +5,8 @@
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/complex_kinematics/captured",
   "notes": [
     "Tracked pointer for the retained upstream AMFlow phase-0 complex_kinematics capture.",
-    "The captured Mathematica output intentionally preserves complex coefficients and nonzero imaginary parts from the pinned complex-mass one-loop box example."
+    "The captured Mathematica output intentionally preserves complex coefficients and nonzero imaginary parts from the pinned complex-mass one-loop box example.",
+    "Use complex_kinematics.eps2-golden-manifest.json for positive-order eps^1/eps^2 comparator audits; this retained phase-0 pointer intentionally preserves the reviewed eps-through-zero surface."
   ],
   "outputs": [
     {

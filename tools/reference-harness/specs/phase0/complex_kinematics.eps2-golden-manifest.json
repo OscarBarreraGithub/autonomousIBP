@@ -1,0 +1,20 @@
+{
+  "benchmark_id": "complex_kinematics",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-complex-eps6-lane25/amflow/examples/complex_kinematics",
+  "notes": [
+    "AMFlow positive-order reference for complex_kinematics comparator audits, captured with epsorder = 6 on 2026-05-05.",
+    "Local run completed on holy7c04109.rc.fas.harvard.edu using WolframKernel 13.3.0, Kira 3.1, and Fermat.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-complex-eps6-lane25/logs/local-cap-complex-eps6.20260505T042129.out with sha256 a7a5cb1c290578af5afa315792ee3c96b1d12c65816fcdeb27f51d2676da7a2f.",
+    "Stderr log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-complex-eps6-lane25/logs/local-cap-complex-eps6.20260505T042129.err with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The captured sol output contains explicit eps^1 and eps^2 coefficients for all seven retained box integrals, and also prints eps^3 and eps^4.",
+    "Preserve complex_kinematics.golden-manifest.json for the already-reviewed retained phase-0 eps-through-zero surface; this manifest is the positive-order validation surface.",
+    "sol sha256 5da3800b0acf5cdc17c46d126e8b513e885a5b242b9560565b3ab19d2ddcd745."
+  ],
+  "outputs": [
+    {
+      "name": "sol",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-complex-eps6-lane25/amflow/examples/complex_kinematics/sol"
+    }
+  ],
+  "schema_version": 1
+}

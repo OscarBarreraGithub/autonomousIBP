@@ -48944,9 +48944,9 @@ void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
   ExpectContains(json, "\"kind\": \"amflow_finite_solution_samples\"",
                  "finite solution-sample ingestion should publish its boundary kind");
   ExpectContains(json, "\"runtime_boundary_provider\": "
-                       "\"retained-finite-solution-sample-cache\"",
-                 "finite solution-sample ingestion should report the retained sample provider");
-  ExpectContains(json, "\"runtime_application\": \"finite-solution-sample-ingest\"",
+                       "\"retained-finite-solution-sample-boundary+finite-de-transport\"",
+                 "finite solution-sample ingestion should report the finite transport provider");
+  ExpectContains(json, "\"runtime_application\": \"finite-de-transport\"",
                  "finite solution-sample ingestion should report finite transport");
   ExpectContains(json, "\"exact_real\": \"12\"",
                  "finite solution-sample ingestion should preserve the first retained value");

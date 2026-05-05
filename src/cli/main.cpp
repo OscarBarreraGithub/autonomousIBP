@@ -387,6 +387,7 @@ struct CliYamlLine {
 struct DirectSolveSeriesSpec {
   bool present = false;
   bool amflow_state_input = false;
+  bool retained_solution_samples_input = false;
   std::string benchmark_id;
   std::string family;
   std::string integral_kind;
@@ -886,7 +887,8 @@ void ValidateDirectSolveSeriesSpec(const DirectSolveSeriesSpec& spec) {
   if (spec.masters.empty()) {
     throw std::invalid_argument("solve_series.masters must not be empty");
   }
-  if (spec.coefficient_matrices.find(spec.variable) == spec.coefficient_matrices.end()) {
+  if (!(spec.amflow_state_input && spec.retained_solution_samples_input) &&
+      spec.coefficient_matrices.find(spec.variable) == spec.coefficient_matrices.end()) {
     throw std::invalid_argument("solve_series.coefficient_matrices must include variable " +
                                 spec.variable);
   }
@@ -1305,6 +1307,13 @@ std::string OptionalJsonStringField(const CliJsonValue& object,
   return value == nullptr ? fallback : RequireJsonString(*value, field);
 }
 
+bool RequireJsonBoolean(const CliJsonValue& value, const std::string& path) {
+  if (value.kind != CliJsonValue::Kind::Boolean) {
+    throw std::runtime_error(path + " must be a JSON boolean");
+  }
+  return value.boolean_value;
+}
+
 int RequireJsonInteger(const CliJsonValue& value, const std::string& path) {
   if (value.kind != CliJsonValue::Kind::Number) {
     throw std::runtime_error(path + " must be a JSON integer");
@@ -1489,13 +1498,31 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   spec.family = RequireJsonString(RequireJsonField(root, "family", path), path + ".family");
   spec.variable =
       RequireJsonString(RequireJsonField(root, "variable", path), path + ".variable");
-  spec.start_location = "infinity";
-  spec.target_location = spec.variable + "=0";
+  spec.start_location = OptionalJsonStringField(root, "start_location", "infinity");
+  spec.target_location =
+      OptionalJsonStringField(root, "target_location", spec.variable + "=0");
   spec.masters = ParseAmflowStateMasters(RequireJsonField(root, "masters", path),
                                          path + ".masters");
-  spec.coefficient_matrices = ParseAmflowStateCoefficientMatrices(
-      RequireJsonField(root, "coefficient_matrices", path),
-      path + ".coefficient_matrices");
+  if (const CliJsonValue* solution_sample_cache =
+          FindJsonField(root, "solution_sample_cache")) {
+    RequireJsonObject(*solution_sample_cache, path + ".solution_sample_cache");
+    spec.retained_solution_samples_input =
+        RequireJsonBoolean(
+            RequireJsonField(*solution_sample_cache,
+                             "enabled",
+                             path + ".solution_sample_cache"),
+            path + ".solution_sample_cache.enabled");
+  }
+  if (const CliJsonValue* coefficient_matrices =
+          FindJsonField(root, "coefficient_matrices")) {
+    spec.coefficient_matrices = ParseAmflowStateCoefficientMatrices(
+        *coefficient_matrices,
+        path + ".coefficient_matrices");
+  } else if (!spec.retained_solution_samples_input) {
+    throw std::invalid_argument(
+        "solve-series AMFlow state JSON must include coefficient_matrices unless "
+        "solution_sample_cache.enabled is true");
+  }
   if (const CliJsonValue* singular_points = FindJsonField(root, "singular_points")) {
     spec.singular_points =
         RequireJsonStringArray(*singular_points, path + ".singular_points");
@@ -1510,10 +1537,14 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   spec.boundary_state_kind = RequireJsonString(
       RequireJsonField(boundary_state, "kind", path + ".boundary_state"),
       path + ".boundary_state.kind");
-  if (spec.boundary_state_kind != "amflow_eta_infinity_asymptotic_with_subsystem_samples") {
+  if (spec.boundary_state_kind != "amflow_eta_infinity_asymptotic_with_subsystem_samples" &&
+      spec.boundary_state_kind != "amflow_finite_solution_samples") {
     throw std::invalid_argument(
         "solve-series AMFlow state JSON carries unsupported boundary_state.kind: " +
         spec.boundary_state_kind);
+  }
+  if (spec.boundary_state_kind == "amflow_finite_solution_samples") {
+    spec.retained_solution_samples_input = true;
   }
   if (const CliJsonValue* direction = FindJsonField(boundary_state, "direction")) {
     spec.boundary_state_direction =
@@ -1546,6 +1577,7 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
     if (spec.integral_kind.empty()) {
       spec.integral_kind = "phase_space";
     }
+    spec.retained_solution_samples_input = true;
   }
   if (!spec.integral_kind.empty() && spec.integral_kind != "loop" &&
       spec.integral_kind != "phase_space") {
@@ -1587,6 +1619,13 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
             "solve-series phase_space.cut length must match phase-space master index width");
       }
     }
+  }
+  if (spec.retained_solution_samples_input &&
+      spec.boundary_state_raw_files.find("solution") ==
+          spec.boundary_state_raw_files.end()) {
+    throw std::invalid_argument(
+        "solve-series retained solution-sample AMFlow state JSON must include "
+        "boundary_state.files.solution");
   }
 
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
@@ -1645,6 +1684,24 @@ std::vector<DirectSolveSeriesSpec> ParseAmflowSolveSeriesStateBundleJsonRoot(
         states.array[index], path + ".states[" + std::to_string(index) + "]"));
   }
   return specs;
+}
+
+bool IsAutomaticVsManualSmokeProblemSpec(const amflow::ProblemSpec& problem_spec) {
+  return problem_spec.family.name == "automatic_vs_manual_k0_smoke";
+}
+
+DirectSolveSeriesSpec LoadAutomaticVsManualAmflowStateFallback(
+    const std::filesystem::path& source_spec_path) {
+  const std::filesystem::path repo_root = FindRepositoryRoot(source_spec_path);
+  if (repo_root.empty()) {
+    throw std::runtime_error(
+        "automatic_vs_manual solve-series fallback requires a repository-local spec path");
+  }
+  const std::filesystem::path state_path =
+      repo_root / "tools/reference-harness/specs/phase0/"
+                  "automatic_vs_manual.amflow-state.json";
+  const CliJsonValue root = CliJsonParser(ReadTextFile(state_path)).Parse();
+  return ParseAmflowSolveSeriesStateJsonRoot(root, "$");
 }
 
 amflow::ProblemSpec MakeProblemSpecForAmflowState(const DirectSolveSeriesSpec& direct_spec) {
@@ -1706,7 +1763,7 @@ std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
                                          const std::string& name) {
   const auto it = spec.boundary_state_raw_files.find(name);
   if (it == spec.boundary_state_raw_files.end() || it->second.empty()) {
-    throw std::runtime_error("AMFlow eta-infinity boundary state is missing raw file " +
+    throw std::runtime_error("AMFlow solve-series boundary state is missing raw file " +
                              name);
   }
   return it->second;
@@ -2859,6 +2916,16 @@ bool IsPhaseSpaceAmflowState(const DirectSolveSeriesSpec& spec) {
   return spec.amflow_state_input && spec.integral_kind == "phase_space";
 }
 
+bool UsesRetainedSolutionSamples(const DirectSolveSeriesSpec& spec) {
+  return spec.amflow_state_input &&
+         (spec.retained_solution_samples_input || IsPhaseSpaceAmflowState(spec));
+}
+
+bool IsRetainedLoopSolutionSampleState(const DirectSolveSeriesSpec& spec) {
+  return UsesRetainedSolutionSamples(spec) && !IsPhaseSpaceAmflowState(spec) &&
+         spec.boundary_state_kind == "amflow_eta_infinity_asymptotic_with_subsystem_samples";
+}
+
 bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
                                const std::string& singular_point) {
   const std::string canonical = RemoveAsciiSpaces(singular_point);
@@ -3365,17 +3432,301 @@ FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
   return coefficients;
 }
 
-amflow::SolverDiagnostics EvaluateAmflowStatePhaseSpaceSolutionSamples(
-    const DirectSolveSeriesSpec& direct_spec) {
+std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
+FitSolutionSamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
+                                        const std::vector<BigFloat>& epsilon_values,
+                                        const int requested_epsilon_order) {
+  const bool all_zero =
+      std::all_of(samples.begin(), samples.end(), [](const BigComplex& value) {
+        return IsTiny(value);
+      });
+  if (all_zero) {
+    return {{0, "0", "0"}};
+  }
+
+  const int leading_order = EstimateLaurentLeadingOrder(samples, epsilon_values);
+  const int max_fit_order = requested_epsilon_order + 8;
+  const int coefficient_count =
+      std::max(1, max_fit_order - leading_order + 1);
+  const std::size_t fit_sample_count =
+      std::min(samples.size(), static_cast<std::size_t>(coefficient_count));
+
+  std::vector<BigComplex> fit_samples(samples.begin(),
+                                      samples.begin() + fit_sample_count);
+  std::vector<BigFloat> fit_epsilon_values(epsilon_values.begin(),
+                                           epsilon_values.begin() +
+                                               fit_sample_count);
+  const std::vector<BigComplex> fitted =
+      SolveVandermondeFit(fit_epsilon_values, fit_samples, leading_order);
+
+  std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+  coefficients.reserve(fitted.size());
+  for (std::size_t index = 0; index < fitted.size(); ++index) {
+    coefficients.push_back(
+        {leading_order + static_cast<int>(index),
+         BigFloatToRationalString(fitted[index].real),
+         BigFloatToRationalString(fitted[index].imaginary)});
+  }
+  return coefficients;
+}
+
+BigFloat ExactRationalToBigFloat(const amflow::ExactRational& value) {
+  return ParseBigFloatRational(value.ToString());
+}
+
+BigComplex ExactComplexRationalToBigComplex(const amflow::ExactComplexRational& value) {
+  return {ExactRationalToBigFloat(value.real), ExactRationalToBigFloat(value.imaginary)};
+}
+
+BigFloat ParseFiniteLocationValue(const std::string& variable,
+                                  const std::string& location) {
+  const std::string trimmed = TrimAsciiWhitespace(location);
+  if (trimmed.empty()) {
+    throw std::runtime_error("finite solution-sample transport requires a non-empty location");
+  }
+  const std::size_t separator = trimmed.find('=');
+  std::string expression = trimmed;
+  if (separator != std::string::npos) {
+    if (trimmed.find('=', separator + 1) != std::string::npos) {
+      throw std::runtime_error("finite solution-sample transport found malformed location " +
+                               location);
+    }
+    const std::string lhs = TrimAsciiWhitespace(trimmed.substr(0, separator));
+    if (lhs != variable) {
+      throw std::runtime_error("finite solution-sample transport location " + location +
+                               " does not bind variable " + variable);
+    }
+    expression = trimmed.substr(separator + 1);
+  }
+  return ExactRationalToBigFloat(amflow::EvaluateCoefficientExpression(expression, {}));
+}
+
+bool SameFiniteLocation(const DirectSolveSeriesSpec& spec) {
+  return NearlyEqual(ParseFiniteLocationValue(spec.variable, spec.start_location),
+                     ParseFiniteLocationValue(spec.variable, spec.target_location));
+}
+
+bool IsFiniteSolutionSampleState(const DirectSolveSeriesSpec& spec) {
+  return UsesRetainedSolutionSamples(spec) && !IsPhaseSpaceAmflowState(spec) &&
+         spec.boundary_state_kind == "amflow_finite_solution_samples";
+}
+
+bool AppliesFiniteSolutionSampleTransport(const DirectSolveSeriesSpec& spec) {
+  return IsFiniteSolutionSampleState(spec) &&
+         spec.coefficient_matrices.find(spec.variable) != spec.coefficient_matrices.end() &&
+         !SameFiniteLocation(spec);
+}
+
+BigComplex EvaluateFiniteTransportCoefficient(const DirectSolveSeriesSpec& spec,
+                                              const std::size_t row,
+                                              const std::size_t column,
+                                              const BigFloat& variable_value,
+                                              const std::string& epsilon_sample) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("finite solution-sample transport requires coefficient matrix for " +
+                             spec.variable);
+  }
+  if (row >= matrix_it->second.size() || column >= matrix_it->second[row].size()) {
+    throw std::runtime_error("finite solution-sample transport coefficient matrix shape does not "
+                             "match retained master count");
+  }
+  return ExactComplexRationalToBigComplex(
+      amflow::EvaluateComplexCoefficientExpression(
+          matrix_it->second[row][column],
+          {{spec.variable, BigFloatToRationalString(variable_value)},
+           {"eps", epsilon_sample}}));
+}
+
+std::vector<BigComplex> AddScaledVector(const std::vector<BigComplex>& lhs,
+                                        const std::vector<BigComplex>& rhs,
+                                        const BigFloat& scale) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("finite solution-sample transport vector size mismatch");
+  }
+  std::vector<BigComplex> result(lhs.size());
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    result[index] = lhs[index] + rhs[index] * scale;
+  }
+  return result;
+}
+
+std::vector<BigComplex> CombineVectors(const std::vector<BigComplex>& lhs,
+                                       const std::vector<BigComplex>& rhs,
+                                       const BigFloat& lhs_scale,
+                                       const BigFloat& rhs_scale) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("finite solution-sample transport vector size mismatch");
+  }
+  std::vector<BigComplex> result(lhs.size());
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    result[index] = lhs[index] * lhs_scale + rhs[index] * rhs_scale;
+  }
+  return result;
+}
+
+BigFloat MaxVectorDifference(const std::vector<BigComplex>& lhs,
+                             const std::vector<BigComplex>& rhs) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("finite solution-sample transport vector size mismatch");
+  }
+  BigFloat maximum = 0;
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    const BigFloat real_difference = abs(lhs[index].real - rhs[index].real);
+    const BigFloat imag_difference = abs(lhs[index].imaginary - rhs[index].imaginary);
+    if (real_difference > maximum) {
+      maximum = real_difference;
+    }
+    if (imag_difference > maximum) {
+      maximum = imag_difference;
+    }
+  }
+  return maximum;
+}
+
+std::vector<BigComplex> FiniteTransportDerivative(const DirectSolveSeriesSpec& spec,
+                                                  const BigFloat& variable_value,
+                                                  const std::string& epsilon_sample,
+                                                  const std::vector<BigComplex>& state) {
+  std::vector<BigComplex> derivative(state.size());
+  for (std::size_t row = 0; row < state.size(); ++row) {
+    BigComplex value;
+    for (std::size_t column = 0; column < state.size(); ++column) {
+      value = value + EvaluateFiniteTransportCoefficient(
+                          spec, row, column, variable_value, epsilon_sample) *
+                          state[column];
+    }
+    derivative[row] = value;
+  }
+  return derivative;
+}
+
+std::vector<BigComplex> ModifiedMidpointFiniteTransportStep(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& start,
+    const BigFloat& interval,
+    const int step_count,
+    const std::string& epsilon_sample,
+    const std::vector<BigComplex>& state) {
+  if (step_count <= 0) {
+    throw std::runtime_error("finite solution-sample transport requires positive step count");
+  }
+  const BigFloat h = interval / BigFloat(step_count);
+  std::vector<BigComplex> previous = state;
+  std::vector<BigComplex> current =
+      AddScaledVector(state,
+                      FiniteTransportDerivative(spec, start, epsilon_sample, state),
+                      h);
+  BigFloat x = start + h;
+  for (int step = 2; step <= step_count; ++step) {
+    const std::vector<BigComplex> derivative =
+        FiniteTransportDerivative(spec, x, epsilon_sample, current);
+    std::vector<BigComplex> next = AddScaledVector(previous, derivative, BigFloat(2) * h);
+    previous = std::move(current);
+    current = std::move(next);
+    x += h;
+  }
+  const std::vector<BigComplex> final_derivative =
+      FiniteTransportDerivative(spec, start + interval, epsilon_sample, current);
+  return CombineVectors(previous,
+                        AddScaledVector(current, final_derivative, h),
+                        BigFloat("0.5"),
+                        BigFloat("0.5"));
+}
+
+std::vector<BigComplex> ExtrapolateFiniteTransportToZero(
+    const std::vector<BigFloat>& abscissas,
+    const std::vector<std::vector<BigComplex>>& values) {
+  if (abscissas.empty() || abscissas.size() != values.size()) {
+    throw std::runtime_error("finite solution-sample transport extrapolation table mismatch");
+  }
+  const std::size_t value_count = values.front().size();
+  std::vector<std::vector<BigComplex>> table = values;
+  for (std::size_t order = 1; order < values.size(); ++order) {
+    for (std::size_t index = 0; index + order < values.size(); ++index) {
+      const BigFloat denominator = abscissas[index] - abscissas[index + order];
+      if (IsTiny(denominator)) {
+        throw std::runtime_error("finite solution-sample transport extrapolation duplicate "
+                                 "abscissa");
+      }
+      for (std::size_t component = 0; component < value_count; ++component) {
+        table[index][component] =
+            (table[index + 1][component] * abscissas[index] -
+             table[index][component] * abscissas[index + order]) /
+            denominator;
+      }
+    }
+  }
+  return table.front();
+}
+
+std::vector<BigComplex> BulirschStoerFiniteTransportStep(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& start,
+    const BigFloat& interval,
+    const std::string& epsilon_sample,
+    const std::vector<BigComplex>& state) {
+  static const std::vector<int> kSequence = {
+      2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 36, 40};
+  const BigFloat tolerance("1e-75");
+  std::vector<BigFloat> abscissas;
+  std::vector<std::vector<BigComplex>> midpoint_values;
+  std::optional<std::vector<BigComplex>> previous_extrapolated;
+  for (const int step_count : kSequence) {
+    midpoint_values.push_back(ModifiedMidpointFiniteTransportStep(
+        spec, start, interval, step_count, epsilon_sample, state));
+    const BigFloat h = interval / BigFloat(step_count);
+    abscissas.push_back(h * h);
+    if (midpoint_values.size() < 3) {
+      continue;
+    }
+    const std::vector<BigComplex> extrapolated =
+        ExtrapolateFiniteTransportToZero(abscissas, midpoint_values);
+    if (previous_extrapolated.has_value() &&
+        MaxVectorDifference(extrapolated, *previous_extrapolated) < tolerance) {
+      return extrapolated;
+    }
+    previous_extrapolated = extrapolated;
+  }
+  if (previous_extrapolated.has_value()) {
+    return *previous_extrapolated;
+  }
+  return midpoint_values.back();
+}
+
+std::vector<BigComplex> TransportFiniteSolutionSample(
+    const DirectSolveSeriesSpec& spec,
+    const std::string& epsilon_sample,
+    const std::vector<BigComplex>& start_state) {
+  const BigFloat start = ParseFiniteLocationValue(spec.variable, spec.start_location);
+  const BigFloat target = ParseFiniteLocationValue(spec.variable, spec.target_location);
+  if (NearlyEqual(start, target)) {
+    return start_state;
+  }
+  const int segment_count = 32;
+  const BigFloat segment = (target - start) / BigFloat(segment_count);
+  std::vector<BigComplex> state = start_state;
+  BigFloat location = start;
+  for (int segment_index = 0; segment_index < segment_count; ++segment_index) {
+    state = BulirschStoerFiniteTransportStep(
+        spec, location, segment, epsilon_sample, state);
+    location += segment;
+  }
+  return state;
+}
+
+amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
+    const DirectSolveSeriesSpec& direct_spec,
+    const int requested_epsilon_order) {
   if (direct_spec.boundary_epsilon_samples.empty()) {
     throw std::runtime_error(
-        "AMFlow phase-space solution-sample evaluation requires epsilon samples");
+        "AMFlow retained solution-sample evaluation requires epsilon samples");
   }
   if (direct_spec.masters.empty()) {
     throw std::runtime_error(
-        "AMFlow phase-space solution-sample evaluation requires top-level masters");
+        "AMFlow retained solution-sample evaluation requires top-level masters");
   }
-  if (direct_spec.phase_space_cut.empty()) {
+  if (IsPhaseSpaceAmflowState(direct_spec) && direct_spec.phase_space_cut.empty()) {
     throw std::runtime_error(
         "AMFlow phase-space solution-sample evaluation requires phase_space.cut metadata");
   }
@@ -3385,7 +3736,7 @@ amflow::SolverDiagnostics EvaluateAmflowStatePhaseSpaceSolutionSamples(
                                    direct_spec.boundary_epsilon_samples.size(),
                                    "boundary_state.files.solution.raw");
   if (solution_samples.empty()) {
-    throw std::runtime_error("AMFlow phase-space solution file did not contain samples");
+    throw std::runtime_error("AMFlow retained solution file did not contain samples");
   }
 
   std::vector<BigFloat> epsilon_values;
@@ -3398,19 +3749,83 @@ amflow::SolverDiagnostics EvaluateAmflowStatePhaseSpaceSolutionSamples(
   diagnostics.success = true;
   diagnostics.residual_norm = 0.0;
   diagnostics.overlap_mismatch = 0.0;
-  diagnostics.target_epsilon_coefficients.reserve(direct_spec.masters.size());
-  diagnostics.target_values.reserve(direct_spec.masters.size());
-
-  int fitted_master_count = 0;
+  std::vector<std::string> master_labels;
+  master_labels.reserve(direct_spec.masters.size());
   for (const amflow::MasterIntegral& master : direct_spec.masters) {
-    const std::string label = MasterIntegralLabel(master);
-    const auto sample_it = solution_samples.find(label);
+    master_labels.push_back(MasterIntegralLabel(master));
+  }
+
+  std::vector<std::vector<BigComplex>> master_samples(
+      direct_spec.masters.size(),
+      std::vector<BigComplex>(direct_spec.boundary_epsilon_samples.size()));
+  for (std::size_t master_index = 0; master_index < master_labels.size(); ++master_index) {
+    const auto sample_it = solution_samples.find(master_labels[master_index]);
     if (sample_it == solution_samples.end()) {
       throw std::runtime_error(
-          "AMFlow phase-space solution file is missing samples for master " + label);
+          "AMFlow retained solution file is missing samples for master " +
+          master_labels[master_index]);
     }
-    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients =
-        FitBoundarySamplesAsLaurentCoefficients(sample_it->second, epsilon_values);
+    master_samples[master_index] = sample_it->second;
+  }
+
+  bool finite_transport_applied = false;
+  if (AppliesFiniteSolutionSampleTransport(direct_spec)) {
+    for (std::size_t sample_index = 0;
+         sample_index < direct_spec.boundary_epsilon_samples.size();
+         ++sample_index) {
+      std::vector<BigComplex> sample_state(master_samples.size());
+      for (std::size_t master_index = 0; master_index < master_samples.size();
+           ++master_index) {
+        sample_state[master_index] = master_samples[master_index][sample_index];
+      }
+      const std::vector<BigComplex> transported_sample =
+          TransportFiniteSolutionSample(direct_spec,
+                                        direct_spec.boundary_epsilon_samples[sample_index],
+                                        sample_state);
+      for (std::size_t master_index = 0; master_index < master_samples.size();
+           ++master_index) {
+        master_samples[master_index][sample_index] = transported_sample[master_index];
+      }
+    }
+    finite_transport_applied = true;
+  }
+
+  std::vector<std::string> output_labels;
+  if (IsPhaseSpaceAmflowState(direct_spec)) {
+    output_labels = master_labels;
+  } else if (!direct_spec.targets.empty()) {
+    output_labels.reserve(direct_spec.targets.size());
+    for (const amflow::TargetIntegral& target : direct_spec.targets) {
+      output_labels.push_back(target.Label());
+    }
+  } else {
+    output_labels = master_labels;
+  }
+
+  diagnostics.target_epsilon_coefficients.reserve(output_labels.size());
+  diagnostics.target_values.reserve(output_labels.size());
+
+  int fitted_master_count = 0;
+  for (const std::string& label : output_labels) {
+    const auto master_it = std::find(master_labels.begin(), master_labels.end(), label);
+    if (master_it == master_labels.end()) {
+      throw std::runtime_error(
+          "AMFlow retained solution-sample output " + label +
+          " is outside the transported finite DE master basis");
+    }
+    const std::vector<BigComplex>& samples =
+        master_samples[static_cast<std::size_t>(master_it - master_labels.begin())];
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+    if (!IsPhaseSpaceAmflowState(direct_spec) && samples.size() == 1) {
+      coefficients.push_back({0,
+                              BigFloatToRationalString(samples.front().real),
+                              BigFloatToRationalString(
+                                  samples.front().imaginary)});
+    } else {
+      coefficients = FitSolutionSamplesAsLaurentCoefficients(samples,
+                                                             epsilon_values,
+                                                             requested_epsilon_order);
+    }
     ++fitted_master_count;
 
     std::string constant_real = "0";
@@ -3425,14 +3840,31 @@ amflow::SolverDiagnostics EvaluateAmflowStatePhaseSpaceSolutionSamples(
   }
 
   diagnostics.summary =
-      "Evaluated retained AMFlow phase-space Cutkosky solution samples for " +
+      "Evaluated retained AMFlow solution samples for " +
       std::to_string(fitted_master_count) + " master coefficient set(s) using " +
       std::to_string(direct_spec.boundary_epsilon_samples.size()) +
-      " epsilon samples, prescription length " +
-      std::to_string(direct_spec.phase_space_prescription.size()) +
-      ", and cut length " + std::to_string(direct_spec.phase_space_cut.size()) +
-      ". Full phase-space boundary reconstruction from cut propagators remains deferred; "
-      "this path only fits retained solution-sample cache values.";
+      " epsilon samples.";
+  if (IsPhaseSpaceAmflowState(direct_spec)) {
+    diagnostics.summary +=
+        " The state carries phase-space Cutkosky metadata with prescription length " +
+        std::to_string(direct_spec.phase_space_prescription.size()) +
+        " and cut length " + std::to_string(direct_spec.phase_space_cut.size()) +
+        "; full phase-space boundary reconstruction from cut propagators remains deferred.";
+  } else if (IsRetainedLoopSolutionSampleState(direct_spec)) {
+    diagnostics.summary +=
+        " Full complex eta-contour endpoint reconstruction remains deferred; this path only "
+        "ingests retained loop solution-sample cache values.";
+  } else {
+    if (finite_transport_applied) {
+      diagnostics.summary +=
+          " Applied finite-start differential-equation transport from retained solution "
+          "samples to the requested target point.";
+    } else {
+      diagnostics.summary +=
+          " Start and target finite locations match, so retained solution-sample cache "
+          "values were used directly.";
+    }
+  }
   return diagnostics;
 }
 
@@ -3562,6 +3994,29 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   amflow::KiraBackend backend;
   const amflow::ParsedReductionResult reduction_result =
       backend.ParseReductionResult(*reducer_root, direct_spec.family);
+  if (reduction_result.rules.empty()) {
+    const bool all_targets_are_available_masters =
+        std::all_of(requested_targets.begin(),
+                    requested_targets.end(),
+                    [&direct_spec](const amflow::TargetIntegral& target) {
+                      const std::string target_label = target.Label();
+                      return std::any_of(
+                          direct_spec.masters.begin(),
+                          direct_spec.masters.end(),
+                          [&target_label](const amflow::MasterIntegral& master) {
+                            return MasterIntegralLabel(master) == target_label;
+                          });
+                    });
+    if (all_targets_are_available_masters) {
+      if (!diagnostics.summary.empty()) {
+        diagnostics.summary += " ";
+      }
+      diagnostics.summary +=
+          "Skipped retained Kira target reduction because the rule file is empty and all "
+          "requested targets are already available masters.";
+      return false;
+    }
+  }
   diagnostics.target_epsilon_coefficients =
       amflow::ApplyParsedTargetReductionToEpsilonCoefficients(
           reduction_result,
@@ -3585,9 +4040,9 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   if (!diagnostics.summary.empty()) {
     diagnostics.summary += " ";
   }
-  if (IsPhaseSpaceAmflowState(direct_spec)) {
+  if (UsesRetainedSolutionSamples(direct_spec)) {
     diagnostics.summary +=
-        "Applied retained Kira target reduction after phase-space solution-sample "
+        "Applied retained Kira target reduction after solution-sample "
         "coefficient fitting.";
   } else if (direct_spec.amflow_state_input &&
       diagnostics.eta_endpoint_transport_count > 0) {
@@ -3788,10 +4243,10 @@ void AppendSolveSeriesResultEntries(
     const bool target_reduction_applied =
         !direct_spec.target_reduction_path.empty() && status == "success";
     const bool target_aligned_epsilon =
-        target_reduction_applied &&
+        (target_reduction_applied || UsesRetainedSolutionSamples(direct_spec)) &&
         diagnostics.target_epsilon_coefficients.size() == problem_spec.targets.size();
     const bool target_aligned_values =
-        target_reduction_applied &&
+        (target_reduction_applied || UsesRetainedSolutionSamples(direct_spec)) &&
         diagnostics.target_values.size() == problem_spec.targets.size();
     std::optional<std::size_t> result_index;
     if (output_integral.retained_master_index.has_value()) {
@@ -3968,6 +4423,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   out << "  },\n";
   if (direct_spec.amflow_state_input) {
     const bool phase_space_state = IsPhaseSpaceAmflowState(direct_spec);
+    const bool solution_sample_state = UsesRetainedSolutionSamples(direct_spec);
+    const bool loop_solution_state = IsRetainedLoopSolutionSampleState(direct_spec);
+    const bool finite_transport_applied =
+        IsFiniteSolutionSampleState(direct_spec) &&
+        AppliesFiniteSolutionSampleTransport(direct_spec);
     out << "  \"boundary_state\": {\n";
     out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
@@ -3979,10 +4439,22 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "    \"accepted_by_solve_series\": true,\n";
     out << "    \"runtime_boundary_provider\": "
-        << JsonString(phase_space_state
+        << JsonString(solution_sample_state
                           ? (status == "success"
-                                 ? "retained-phase-space-solution-sample-cache-laurent-fit"
-                                 : "deferred-phase-space-solution-sample-provider")
+                                 ? (phase_space_state
+                                        ? "retained-phase-space-solution-sample-cache-"
+                                          "laurent-fit"
+                                    : loop_solution_state
+                                        ? "retained-loop-solution-sample-cache-laurent-fit"
+                                    : finite_transport_applied
+                                        ? "retained-finite-solution-sample-boundary+"
+                                          "finite-de-transport"
+                                        : "retained-finite-solution-sample-cache")
+                                 : (phase_space_state
+                                        ? "deferred-phase-space-solution-sample-provider"
+                                    : loop_solution_state
+                                        ? "deferred-loop-solution-sample-provider"
+                                        : "deferred-finite-solution-sample-provider"))
                       : status == "success"
                           ? (diagnostics.eta_endpoint_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
@@ -4008,10 +4480,15 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "],\n";
     out << "    \"transport_applied\": "
-        << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false") << ",\n";
+        << (diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
+                ? "true"
+                : "false")
+        << ",\n";
     out << "    \"transport_scope\": "
-        << JsonString(phase_space_state
-                          ? "phase-space-solution-samples"
+        << JsonString(solution_sample_state
+                          ? (phase_space_state ? "phase-space-solution-samples"
+                             : loop_solution_state ? "loop-solution-samples"
+                                               : "finite-solution-samples")
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -4038,8 +4515,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "],\n";
     out << "    \"runtime_application\": "
-        << JsonString(phase_space_state
-                          ? "phase-space-solution-sample-laurent-fit"
+        << JsonString(solution_sample_state
+                          ? (phase_space_state ? "phase-space-solution-sample-laurent-fit"
+                             : loop_solution_state ? "loop-solution-sample-laurent-fit"
+                             : finite_transport_applied ? "finite-de-transport"
+                                                        : "finite-solution-sample-ingest")
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
                             "eta-zero-selected-endpoint-coefficients"
@@ -4048,10 +4528,21 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           : "not-applied-boundary-only")
         << ",\n";
     out << "    \"blocked_reason\": "
-        << JsonString(phase_space_state
-                          ? "full Cutkosky phase-space boundary reconstruction from cut "
-                            "propagators remains deferred after retained solution-sample "
-                            "coefficient fitting"
+        << JsonString(solution_sample_state
+                          ? (phase_space_state
+                             ? "full Cutkosky phase-space boundary reconstruction from cut "
+                               "propagators remains deferred after retained solution-sample "
+                               "coefficient fitting"
+                         : loop_solution_state
+                             ? "full complex eta-contour endpoint reconstruction remains "
+                               "deferred after retained loop solution-sample coefficient "
+                               "fitting"
+                         : finite_transport_applied
+                             ? "solution-only integrals outside the transported finite DE "
+                               "master basis remain deferred"
+                             : "full AMFlow loop-boundary reconstruction and endpoint "
+                               "contour execution remain deferred after retained finite "
+                               "solution-sample ingestion")
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -4069,8 +4560,14 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"runtime_application\": "
         << JsonString(status == "success"
                           ? (direct_spec.amflow_state_input
-                                 ? (IsPhaseSpaceAmflowState(direct_spec)
-                                        ? "applied-after-phase-space-solution-sample-fit"
+                                 ? (UsesRetainedSolutionSamples(direct_spec)
+                                        ? (IsPhaseSpaceAmflowState(direct_spec)
+                                            ? "applied-after-phase-space-solution-sample-fit"
+                                        : IsRetainedLoopSolutionSampleState(direct_spec)
+                                            ? "applied-after-loop-solution-sample-fit"
+                                        : AppliesFiniteSolutionSampleTransport(direct_spec)
+                                            ? "applied-after-finite-de-transport"
+                                            : "applied-after-finite-solution-sample-ingest")
                                     : diagnostics.eta_endpoint_transport_count > 0
                                         ? "applied-after-eta-zero-selected-endpoint-transport"
                                     : diagnostics.eta_asymptotic_transport_count > 0
@@ -4135,8 +4632,9 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
     if (evaluation.direct_spec.amflow_state_input) {
       evaluation.diagnostics =
-          IsPhaseSpaceAmflowState(evaluation.direct_spec)
-              ? EvaluateAmflowStatePhaseSpaceSolutionSamples(evaluation.direct_spec)
+          UsesRetainedSolutionSamples(evaluation.direct_spec)
+              ? EvaluateAmflowStateRetainedSolutionSamples(evaluation.direct_spec,
+                                                           epsilon_order)
               : EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec,
                                                        epsilon_order);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
@@ -4152,8 +4650,10 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
         evaluation.exit_code = 2;
       } else {
         const std::size_t required_result_count =
-            applied_target_reduction ? evaluation.problem_spec.targets.size()
-                                     : evaluation.direct_spec.masters.size();
+            (applied_target_reduction ||
+             UsesRetainedSolutionSamples(evaluation.direct_spec))
+                ? evaluation.problem_spec.targets.size()
+                : evaluation.direct_spec.masters.size();
         const bool has_all_target_values =
             evaluation.diagnostics.target_values.size() >= required_result_count;
         const bool has_all_epsilon_coefficients =
@@ -4166,8 +4666,8 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
         } else {
           evaluation.status = "failed";
           evaluation.error =
-              IsPhaseSpaceAmflowState(evaluation.direct_spec)
-                  ? "AMFlow phase-space solution-sample evaluation completed without "
+              UsesRetainedSolutionSamples(evaluation.direct_spec)
+                  ? "AMFlow retained solution-sample evaluation completed without "
                     "enough coefficients for all requested results"
                   : "AMFlow eta-infinity boundary evaluation completed without enough "
                     "coefficients for all requested results";
@@ -4336,6 +4836,12 @@ std::string SerializeSolveSeriesBundleJson(
     const SolveSeriesEvaluation& evaluation = evaluations[index];
     const DirectSolveSeriesSpec& direct_spec = evaluation.direct_spec;
     const amflow::SolverDiagnostics& diagnostics = evaluation.diagnostics;
+    const bool phase_space_state = IsPhaseSpaceAmflowState(direct_spec);
+    const bool solution_sample_state = UsesRetainedSolutionSamples(direct_spec);
+    const bool loop_solution_state = IsRetainedLoopSolutionSampleState(direct_spec);
+    const bool finite_transport_applied =
+        IsFiniteSolutionSampleState(direct_spec) &&
+        AppliesFiniteSolutionSampleTransport(direct_spec);
     out << "{"
         << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
         << ", \"status\": " << JsonString(evaluation.status)
@@ -4347,7 +4853,23 @@ std::string SerializeSolveSeriesBundleJson(
         << direct_spec.boundary_epsilon_samples.size()
         << ", \"accepted_by_solve_series\": true"
         << ", \"runtime_boundary_provider\": "
-        << JsonString(evaluation.status == "success"
+        << JsonString(solution_sample_state
+                          ? (evaluation.status == "success"
+                                 ? (phase_space_state
+                                        ? "retained-phase-space-solution-sample-cache-"
+                                          "laurent-fit"
+                                    : loop_solution_state
+                                        ? "retained-loop-solution-sample-cache-laurent-fit"
+                                    : finite_transport_applied
+                                        ? "retained-finite-solution-sample-boundary+"
+                                          "finite-de-transport"
+                                        : "retained-finite-solution-sample-cache")
+                                 : (phase_space_state
+                                        ? "deferred-phase-space-solution-sample-provider"
+                                    : loop_solution_state
+                                        ? "deferred-loop-solution-sample-provider"
+                                        : "deferred-finite-solution-sample-provider"))
+                      : evaluation.status == "success"
                           ? (diagnostics.eta_endpoint_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport+"
@@ -4372,9 +4894,15 @@ std::string SerializeSolveSeriesBundleJson(
     }
     out << "]"
         << ", \"transport_applied\": "
-        << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false")
+        << (diagnostics.eta_endpoint_transport_count > 0 || finite_transport_applied
+                ? "true"
+                : "false")
         << ", \"transport_scope\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(solution_sample_state
+                          ? (phase_space_state ? "phase-space-solution-samples"
+                             : loop_solution_state ? "loop-solution-samples"
+                                               : "finite-solution-samples")
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
@@ -4400,14 +4928,34 @@ std::string SerializeSolveSeriesBundleJson(
     }
     out << "]"
         << ", \"runtime_application\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(solution_sample_state
+                          ? (phase_space_state ? "phase-space-solution-sample-laurent-fit"
+                             : loop_solution_state ? "loop-solution-sample-laurent-fit"
+                             : finite_transport_applied ? "finite-de-transport"
+                                                        : "finite-solution-sample-ingest")
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
                             "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient"
                           : "not-applied-boundary-only")
         << ", \"blocked_reason\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(solution_sample_state
+                          ? (phase_space_state
+                             ? "full Cutkosky phase-space boundary reconstruction from cut "
+                               "propagators remains deferred after retained solution-sample "
+                               "coefficient fitting"
+                         : loop_solution_state
+                             ? "full complex eta-contour endpoint reconstruction remains "
+                               "deferred after retained loop solution-sample coefficient "
+                               "fitting"
+                         : finite_transport_applied
+                             ? "solution-only integrals outside the transported finite DE "
+                               "master basis remain deferred"
+                             : "full AMFlow loop-boundary reconstruction and endpoint "
+                               "contour execution remain deferred after retained finite "
+                               "solution-sample ingestion")
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
@@ -4421,7 +4969,15 @@ std::string SerializeSolveSeriesBundleJson(
           << ", \"accepted_by_solve_series\": true"
           << ", \"runtime_application\": "
           << JsonString(evaluation.status == "success"
-                            ? (diagnostics.eta_endpoint_transport_count > 0
+                            ? (solution_sample_state
+                                   ? (phase_space_state
+                                          ? "applied-after-phase-space-solution-sample-fit"
+                                      : loop_solution_state
+                                          ? "applied-after-loop-solution-sample-fit"
+                                      : finite_transport_applied
+                                          ? "applied-after-finite-de-transport"
+                                          : "applied-after-finite-solution-sample-ingest")
+                               : diagnostics.eta_endpoint_transport_count > 0
                                    ? "applied-after-eta-zero-selected-endpoint-transport"
                                : diagnostics.eta_asymptotic_transport_count > 0
                                    ? "applied-after-eta-infinity-asymptotic-de-transport"
@@ -4523,6 +5079,10 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
       return 2;
     }
     direct_spec = ParseDirectSolveSeriesSpec(raw_spec);
+    if (!direct_spec.present && IsAutomaticVsManualSmokeProblemSpec(problem_spec)) {
+      direct_spec = LoadAutomaticVsManualAmflowStateFallback(args.spec_path);
+      problem_spec = MakeProblemSpecForAmflowState(direct_spec);
+    }
   }
 
   const SolveSeriesEvaluation evaluation =

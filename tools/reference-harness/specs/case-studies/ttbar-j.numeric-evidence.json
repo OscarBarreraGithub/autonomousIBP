@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "case_study_id": "ttbar-j",
-  "comparison_passed": false,
-  "minimum_observed_correct_digits": 36,
+  "comparison_passed": true,
+  "minimum_observed_correct_digits": 78,
   "digit_threshold_profile": "core-package-family-default",
   "failure_code_profile": "default-required-failure-codes",
   "regression_profile": "current-reviewed-regressions",
-  "evidence_kind": "retained-cpp-vs-amflow-insufficient-digits",
+  "evidence_kind": "retained-cpp-vs-amflow",
   "benchmark_id": "automatic_vs_manual",
   "selected_benchmark_anchor_ref": "2023-ttj-planar-topology",
-  "case_study_family_rationale": "The ttbar-j case-study family is the next non-runtime-blocked literature-anchor family in the M6 scaffold. This evidence uses the retained automatic_vs_manual tt-family C++ solve-series path against a fresh precision-60 AMFlow automatic_vs_manual auto output.",
-  "source_state_path": "tools/reference-harness/specs/phase0/automatic_vs_manual.amflow-state.json",
+  "case_study_family_rationale": "The ttbar-j case-study family is the next non-runtime-blocked literature-anchor family in the M6 scaffold. This evidence uses the retained automatic_vs_manual tt-family precision-cache C++ solve-series path against a fresh precision-60 AMFlow automatic_vs_manual auto output.",
+  "source_state_path": "tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.precision-cache.amflow-state.json",
   "amflow_golden_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/amflow/examples/automatic_vs_manual/auto",
   "amflow_capture_job": {
     "job_id": "10126973",
@@ -21,23 +21,19 @@
   },
   "cpp_result_path": "tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
   "comparison_summary_path": "tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.compare.json",
-  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/automatic_vs_manual.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
+  "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.precision-cache.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json",
   "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/case-studies/ttbar-j.automatic-vs-manual.digits80.cpp-result.json --amflow-golden /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane46-ttbar-j/amflow/examples/automatic_vs_manual/auto --tolerance-digits 50",
   "comparison_summary": {
     "matched_integral_count": 25,
     "compared_coefficient_count": 89,
-    "passed_coefficient_count": 70,
-    "failure_entry_count": 19,
-    "minimum_digit_agreement": 36,
+    "passed_coefficient_count": 89,
+    "failure_entry_count": 0,
+    "minimum_digit_agreement": 78,
     "tolerance_digits": 50
   },
-  "blockers": [
-    "The real 50-digit comparator run fails: only 70 of 89 compared coefficients pass and the minimum observed agreement is 36 digits.",
-    "A precision-60 AMFlow cache extraction replay was attempted, but the current C++ solve-series runtime rejected that state with: epsilon-sample interpolation matrix is singular."
-  ],
+  "blockers": [],
   "withheld_claims": [
-    "This sidecar records real numeric evidence for the ttbar-j case-study family, but it does not qualify that family because the 50-digit floor is not met.",
-    "This sidecar does not provide passing numeric evidence for ttbar-j.",
+    "This sidecar qualifies only the ttbar-j case-study family numeric row.",
     "This sidecar does not provide numeric evidence for the remaining M6 case-study families.",
     "This sidecar does not retire the one-singular-endpoint-case runtime blocker.",
     "This sidecar does not claim Milestone M6 closure."

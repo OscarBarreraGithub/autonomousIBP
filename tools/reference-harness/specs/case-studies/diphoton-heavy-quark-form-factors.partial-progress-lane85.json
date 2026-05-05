@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "case_study_id": "diphoton-heavy-quark-form-factors",
+  "lane": "lane85",
+  "evidence_kind": "dedicated-amflow-packet-slurm-watch-partial",
+  "status": "still-running-at-lane85-watch-cap",
+  "comparison_passed": false,
+  "minimum_observed_correct_digits": null,
+  "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "dedicated_packet": {
+    "family": "diphotonNPL",
+    "source_reference": "arXiv:2308.11412 / JHEP12(2023)105 Table 2 and ancillary DIFFEXP_run.wl",
+    "kinematic_point": {
+      "y": "1/11",
+      "z": "-199/2200",
+      "mt2": "1",
+      "sqrt_s_note": "paper reports sqrt(s)=52.1615 GeV and cos(theta)=-0.99"
+    },
+    "target_integrals": [
+      "J39 = INPL(1,1,1,1,1,1,1,0,0)",
+      "J40 = INPL(1,1,1,1,1,1,1,-1,0)",
+      "J41 = INPL(1,1,1,1,2,1,1,0,0)",
+      "J42 = INPL(1,1,1,1,1,1,1,-1,-1)"
+    ],
+    "requested_precision_goal_digits": 200,
+    "epsorder": 4,
+    "mathematica_max_precision": 6000,
+    "mathematica_max_extra_precision": 6000,
+    "amf_mode": [
+      "Prescription",
+      "Mass",
+      "Propagator",
+      "Branch",
+      "Loop"
+    ],
+    "ending_scheme": [
+      "Tradition",
+      "Cutkosky",
+      "SingleMass"
+    ],
+    "ibp_reducer": "Kira",
+    "black_box_rank": 3,
+    "black_box_dot": 1
+  },
+  "slurm": {
+    "job_id": "10204166",
+    "job_name": "lane80-diphoton-200d",
+    "partition": "sapphire,shared",
+    "allocated_partition": "sapphire",
+    "state_at_capture": "RUNNING",
+    "node_at_capture": "holy8a24108",
+    "submitted_or_started_at": "2026-05-05T12:31:34-04:00",
+    "time_limit": "1-00:00:00",
+    "memory": "64G",
+    "cpus_per_task": 8,
+    "stdout_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.out",
+    "stderr_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.err"
+  },
+  "run_scaffold": {
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d",
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors",
+    "manifest_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/run-manifest.10204166.txt",
+    "repo_scaffold_files": [
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/capture_diphoton_200d.sbatch",
+        "sha256": "bba0d3e5d6e13136865ec2ccc8331f40a2237df24e2692a8f0daae278aea35b1"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/run.wl",
+        "sha256": "794df5de0add4d458e2714eba04b8ea68ab95e549cc608f3b127c3f6412810cf"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/verify_output.wl",
+        "sha256": "80f93ea53bf6d263b996e919057a4773bf42e5dcef0aae3f7915d212f4694be8"
+      }
+    ]
+  },
+  "lane85_watch": {
+    "claimed_at": "2026-05-05T12:50:34-04:00",
+    "watch_started_at": "2026-05-05T12:51:22-04:00",
+    "watch_final_check_at": "2026-05-05T14:11:22-04:00",
+    "watch_duration_minutes": 80,
+    "poll_interval_minutes": 10,
+    "initial_sacct": "10204166 RUNNING 00:19:17 0:0",
+    "final_sacct": "10204166|lane80-diphoton-200d|sapphire|RUNNING|0:0|01:40:29|1-00:00:00|holy8a24108",
+    "final_squeue": "10204166 sapphire lane80-diphoton-200d RUNNING 1:40:29 1-00:00:00 holy8a24108",
+    "poll_samples": [
+      {
+        "captured_at": "2026-05-05T12:51:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "00:19:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:01:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "00:29:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:11:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "00:39:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:21:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "00:49:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:31:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "00:59:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:41:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "01:09:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T13:51:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "01:19:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T14:01:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "01:29:58",
+        "exit_code": "0:0"
+      },
+      {
+        "captured_at": "2026-05-05T14:11:22-04:00",
+        "state": "RUNNING",
+        "elapsed": "01:39:58",
+        "exit_code": "0:0"
+      }
+    ]
+  },
+  "latest_observation": {
+    "captured_at": "2026-05-05T14:11:53-04:00",
+    "squeue": "10204166 sapphire lane80-diphoton-200d RUNNING 1:40:29 1-00:00:00 holy8a24108",
+    "sacct": "10204166|lane80-diphoton-200d|sapphire|RUNNING|0:0|01:40:29|1-00:00:00|holy8a24108",
+    "log_stage": "Dedicated diphotonNPL target reduction completed; AMFlow constructed six systems and solved subsystems 2-6. The stdout tail remains at system 1 differential-equation solving after all subsystems completed. No solution file has been produced yet.",
+    "stdout_size_bytes": 15332,
+    "stdout_mtime": "2026-05-05 12:58:12.803821974 -0400",
+    "stderr_size_bytes": 0,
+    "stderr_mtime": "2026-05-05 12:31:24.289623470 -0400",
+    "run_manifest_size_bytes": 929,
+    "solution_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+    "solution_file_present": false,
+    "metadata_file_present": false,
+    "verification_file_present": false
+  },
+  "current_repository_proxy": {
+    "numeric_evidence_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+    "proxy_comparison_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.compare.json",
+    "proxy_status": "retained failing automatic_loop proxy remains unpromoted while dedicated lane80 AMFlow job runs",
+    "proxy_minimum_observed_correct_digits": 56,
+    "proxy_tolerance_digits": 200
+  },
+  "withheld_claims": [
+    "No dedicated diphoton AMFlow output is committed in this partial record.",
+    "No dedicated diphoton C++ state or comparator summary was produced in this lane.",
+    "No 150-digit or 200-digit dedicated comparator pass is claimed.",
+    "No M6, M7, or release qualification row is closed by this partial record.",
+    "The existing automatic_loop proxy remains a failing proxy and is not promoted."
+  ],
+  "role_verdicts": {
+    "role_a": "APPROVE partial-progress path; BLOCK promotion because job 10204166 is still RUNNING and no solution/meta/verify outputs exist.",
+    "role_b": "APPROVE partial-progress path; BLOCK promotion until the dedicated packet can replace the stale proxy provenance and pass comparator evidence.",
+    "role_c": "APPROVE partial-progress path; build and comparator self-check pass, while the current proxy comparator remains failed at 56 digits.",
+    "role_d": "APPROVE anti-fake fail-closed path; BLOCK promotion because real dedicated diphoton packet numerics are absent and the retained proxy is automatic_loop, not diphotonNPL."
+  },
+  "anti_fake_parity_gate": {
+    "status": "APPROVE_FAIL_CLOSED",
+    "dedicated_packet_promoted": false,
+    "reason": "The lane85 watch did not observe the real Mathematica solution, metadata, or verifier output files. The numeric-evidence sidecar is intentionally left as a failing proxy rather than synthesizing parity."
+  }
+}

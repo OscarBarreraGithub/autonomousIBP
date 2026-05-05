@@ -331,6 +331,13 @@ parity pass.
   machine-readable release sign-off scaffold: the prerequisite M6 gate plus the later
   qualification-closure, performance, diagnostic, docs-completion, and parity-signoff review
   sections.
+- `tools/reference-harness/scripts/qualify_milestone_m5.py` is the first fail-closed M5
+  feature-parity verdict composer: it consumes one explicit `m5-feature-surface` evidence sidecar
+  plus referenced C++/AMFlow comparison summaries, requires every frozen example class and every
+  Phase F runtime feature to have accepted evidence, rejects missing examples, failed comparisons,
+  metadata-only rows, partial references, tolerance drift, and open runtime blockers, and writes one
+  M5-only blocked/pass summary without claiming `Milestone M6`, `Milestone M7`, or release
+  readiness.
 - `tools/reference-harness/scripts/score_phase0_correct_digits.py` is the first packet-level M6
   correct-digit scorer: it consumes one retained reference packet root plus one candidate packet
   root on the existing manifest/run schema, keeps the retained output-name set and nonnumeric

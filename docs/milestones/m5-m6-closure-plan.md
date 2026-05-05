@@ -74,7 +74,7 @@ These rows are PASSING only for the cited retained-regression comparator surface
 - Preserve the Lane32 retained regressions for `automatic_loop.eps2` through `automatic_loop.eps5`, `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `differential_equation_solver.sol1`, `differential_equation_solver.sol2`, `feynman_prescription`, and `linear_propagator`.
 - Repair the two `automatic_loop.eps6` eps^6 coefficient misses without weakening the 30-digit tolerance.
 - Add live solver-path evidence or accepted retained-state exception criteria for `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `spacetime_dimension`, user hooks, fixed-`eps`, and singular physical-region coverage.
-- Add the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, or metadata-only feature slices.
+- Populate and run the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, metadata-only feature slices, tolerance drift, or open runtime blockers.
 
 M5 overall status: PARTIAL/FAILING, not closeable.
 
@@ -117,7 +117,7 @@ M6 overall status: TODO/FAILING, not closeable.
 5. Turn `automatic_phasespace` retained-sample parity into accepted M5 phase-space support. Keep the `11/11` comparison as a regression, then land the smallest live Cutkosky/prescription runtime slice needed for Phase F.
 6. Publish candidate packet roots for the retained surfaces that already pass at 30 digits, including `automatic_loop.eps5`, `automatic_vs_manual`, `complex_kinematics.eps2`, both `differential_equation_solver` surfaces, `feynman_prescription`, and `linear_propagator`.
 7. Close fixed-`eps`, arbitrary-D0, and singular physical-region runtime gaps with coefficient-bearing evidence or explicitly reviewed typed-failure acceptance where the contract allows it.
-8. Add an M5 fail-closed verdict helper that consumes per-example comparisons and feature sidecars and rejects closure on missing examples, partial references, failed comparisons, metadata-only features, or open runtime blockers.
+8. Use the M5 fail-closed verdict helper now implemented at `tools/reference-harness/scripts/qualify_milestone_m5.py`; feed it an explicit feature sidecar and per-example comparisons, and keep it rejecting closure on missing examples, partial references, failed comparisons, metadata-only features, tolerance drift, or open runtime blockers.
 9. Publish candidate packet roots for successful C++ outputs in the schema expected by the M6 tools.
 10. Run and retain passing phase-0 M6 verdict evidence: packet-set comparison, correct-digit score, failure-code audit, and `qualify_phase0_packet_set.py`.
 11. Produce case-study numeric evidence sidecars for all qualification families at the frozen thresholds and run `compare_case_study_numeric_results.py` plus `qualify_case_study_families.py`.
@@ -139,7 +139,7 @@ Worker 6, fixed-eps/D0/singular runtime: Close the non-example Phase F runtime g
 
 Worker 7, user-defined hooks: Convert `user_defined_amfmode` and `user_defined_ending` from retained capture/planning coverage into numeric execution parity. Exercise the user hook through `AmfOptions`, verify boundary generation and solver use, compare against the retained upstream outputs, and add regressions proving builtin fallback, wrong-hook diagnostics, and selection order stay deterministic.
 
-Worker 8, M5 verdict helper: Implement a fail-closed M5 feature-parity verdict consumer. It should read all required per-example comparison summaries and feature-status sidecars, require successful promoted goldens and successful C++ comparisons, reject partial references and metadata-only feature rows, surface exact blockers, and state explicitly that this is M5-only evidence, not M6/M7/release readiness.
+Worker 8, M5 verdict helper evidence population: Use `tools/reference-harness/scripts/qualify_milestone_m5.py` to produce the M5-only blocked/pass summary. Build the explicit `m5-feature-surface` sidecar with every required per-example comparison summary and feature-status row, require successful promoted goldens and successful C++ comparisons, reject partial references and metadata-only feature rows, surface exact blockers, and state explicitly that this is M5-only evidence, not M6/M7/release readiness.
 
 Worker 9, candidate packet publisher: Publish successful C++ outputs in the packet schema consumed by the existing M6 tools: `candidate_root/results/phase0/<benchmark>/result-manifest.json` plus primary run manifests and any failure-code audit sidecars. Preserve benchmark labels and packet splits matching retained roots, avoid loose JSON-only comparator outputs as M6 inputs, and do not change golden manifests or tolerance policy.
 

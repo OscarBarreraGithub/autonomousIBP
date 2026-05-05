@@ -1,0 +1,9 @@
+Test project /n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/build
+    Start 1: amflow-tests
+1/2 Test #1: amflow-tests .....................   Passed   21.87 sec
+    Start 2: singular-runtime-lane-tests
+2/2 Test #2: singular-runtime-lane-tests ......   Passed    0.02 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  21.94 sec

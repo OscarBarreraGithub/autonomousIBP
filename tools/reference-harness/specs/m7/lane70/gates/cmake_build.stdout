@@ -1,0 +1,4 @@
+[ 86%] Built target amflow
+[ 90%] Built target amflow-cli
+[ 95%] Built target amflow-tests
+[100%] Built target singular-runtime-lane-tests

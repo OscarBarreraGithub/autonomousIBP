@@ -1,0 +1,45 @@
+[  2%] Building CXX object CMakeFiles/amflow.dir/src/core/problem_spec.cpp.o
+[  4%] Building CXX object CMakeFiles/amflow.dir/src/core/options.cpp.o
+[  6%] Building CXX object CMakeFiles/amflow.dir/src/core/de_system.cpp.o
+[  9%] Building CXX object CMakeFiles/amflow.dir/src/core/boundary_data.cpp.o
+[ 11%] Building CXX object CMakeFiles/amflow.dir/src/de/eta_derivative_generation.cpp.o
+[ 13%] Building CXX object CMakeFiles/amflow.dir/src/de/invariant_derivative_generation.cpp.o
+[ 16%] Building CXX object CMakeFiles/amflow.dir/src/de/lightlike_linear_derivative_generation.cpp.o
+[ 18%] Building CXX object CMakeFiles/amflow.dir/src/de/lightlike_linear_derivative_reduction_execution.cpp.o
+[ 20%] Building CXX object CMakeFiles/amflow.dir/src/de/lightlike_linear_derivative_reduction_preparation.cpp.o
+[ 23%] Building CXX object CMakeFiles/amflow.dir/src/de/eta_reduction_execution.cpp.o
+[ 25%] Building CXX object CMakeFiles/amflow.dir/src/de/eta_reduction_preparation.cpp.o
+[ 27%] Building CXX object CMakeFiles/amflow.dir/src/de/invariant_reduction_execution.cpp.o
+[ 30%] Building CXX object CMakeFiles/amflow.dir/src/de/invariant_reduction_preparation.cpp.o
+[ 32%] Building CXX object CMakeFiles/amflow.dir/src/de/lightlike_linear_reduction_execution.cpp.o
+[ 34%] Building CXX object CMakeFiles/amflow.dir/src/de/lightlike_linear_reduction_preparation.cpp.o
+[ 37%] Building CXX object CMakeFiles/amflow.dir/src/de/reduction_assembly.cpp.o
+[ 39%] Building CXX object CMakeFiles/amflow.dir/src/io/problem_spec_io.cpp.o
+[ 41%] Building CXX object CMakeFiles/amflow.dir/src/io/sample_data.cpp.o
+[ 44%] Building CXX object CMakeFiles/amflow.dir/src/kira/kira_backend.cpp.o
+[ 46%] Building CXX object CMakeFiles/amflow.dir/src/kira/kira_insert_prefactors.cpp.o
+[ 48%] Building CXX object CMakeFiles/amflow.dir/src/kira/target_reduction.cpp.o
+[ 51%] Building CXX object CMakeFiles/amflow.dir/src/runtime/artifact_store.cpp.o
+[ 53%] Building CXX object CMakeFiles/amflow.dir/src/runtime/auxiliary_family.cpp.o
+[ 55%] Building CXX object CMakeFiles/amflow.dir/src/runtime/boundary_generation.cpp.o
+[ 58%] Building CXX object CMakeFiles/amflow.dir/src/runtime/continuation_path.cpp.o
+[ 60%] Building CXX object CMakeFiles/amflow.dir/src/runtime/endpoint_branch_ledger.cpp.o
+[ 62%] Building CXX object CMakeFiles/amflow.dir/src/runtime/endpoint_local_model.cpp.o
+[ 65%] Building CXX object CMakeFiles/amflow.dir/src/runtime/eta_mode.cpp.o
+[ 67%] Building CXX object CMakeFiles/amflow.dir/src/runtime/ending_scheme.cpp.o
+[ 69%] Building CXX object CMakeFiles/amflow.dir/src/runtime/physical_kinematics_guardrails.cpp.o
+[ 72%] Building CXX object CMakeFiles/amflow.dir/src/solver/boundary_provider.cpp.o
+[ 74%] Building CXX object CMakeFiles/amflow.dir/src/solver/boundary_request.cpp.o
+[ 76%] Building CXX object CMakeFiles/amflow.dir/src/solver/coefficient_evaluator.cpp.o
+[ 79%] Building CXX object CMakeFiles/amflow.dir/src/solver/precision_policy.cpp.o
+[ 81%] Building CXX object CMakeFiles/amflow.dir/src/solver/series_solver.cpp.o
+[ 83%] Building CXX object CMakeFiles/amflow.dir/src/solver/singular_point_analysis.cpp.o
+[ 86%] Linking CXX static library libamflow.a
+[ 86%] Built target amflow
+[ 88%] Building CXX object CMakeFiles/amflow-cli.dir/src/cli/main.cpp.o
+[ 90%] Linking CXX executable amflow-cli
+[ 90%] Built target amflow-cli
+[ 93%] Building CXX object CMakeFiles/amflow-tests.dir/tests/amflow_tests.cpp.o
+[100%] Linking CXX executable amflow-tests
+[100%] Built target amflow-tests
+[100%] Built target singular-runtime-lane-tests

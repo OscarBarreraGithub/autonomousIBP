@@ -1,0 +1,6 @@
+/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/src/runtime/boundary_generation.cpp:143:13: warning: ‘std::__cxx11::string amflow::{anonymous}::DescribeCutComponents(const std::vector<amflow::CutkoskyPhaseSpaceCutComponent>&)’ defined but not used [-Wunused-function]
+ std::string DescribeCutComponents(
+             ^~~~~~~~~~~~~~~~~~~~~
+/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/src/runtime/ending_scheme.cpp:131:13: warning: ‘std::__cxx11::string amflow::{anonymous}::DescribeCutComponents(const std::vector<amflow::CutkoskyPhaseSpaceCutComponent>&)’ defined but not used [-Wunused-function]
+ std::string DescribeCutComponents(
+             ^~~~~~~~~~~~~~~~~~~~~

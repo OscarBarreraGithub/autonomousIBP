@@ -42,10 +42,11 @@ fresh recomputation from the lane50 sidecar. The lane62 output preserves
 M6 overall status: TODO/FAILING, not closeable in this lane.
 
 M5 full closure is no longer an M6 prerequisite blocker. M6 remains blocked on
-passing phase-0 packet-set qualification, case-study-family numeric
-qualification, retirement of pending runtime-lane blockers where required, and a
-passing `qualify_milestone_m6.py` summary. None of those M6 closure claims are
-made here.
+passing phase-0 packet-set qualification over the refreshed lane108 evidence,
+retirement of any pending runtime-lane blockers where required, and a passing
+`qualify_milestone_m6.py` summary. Case-study-family numeric qualification is
+passing in the current retained lane92 evidence, but that is not sufficient to
+close M6 without the phase-0 packet-set verdict and final composer.
 
 ## Sources
 
@@ -53,6 +54,7 @@ made here.
 - M5 closure-decision sidecar: `tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json`.
 - M5 feature-parity qualifier input: `tools/reference-harness/specs/m5/m5-qualification-lane58.json`.
 - M5 evidence sidecar: `tools/reference-harness/specs/m5/m5-feature-surface-lane50.json`.
+- Phase-0 packet validation refresh: `docs/phase0-packet-validation-lane108.md`.
 - Fail-closed M5 verdict helper: commit `8809981` (`Add fail-closed M5 verdict helper`).
 - Frozen-example and runtime-feature evidence: commit `4842629` (`Add M5 frozen-example and runtime-feature evidence`).
 - Runtime-feature proof runs and lane45 evidence: commit `3aee7a1` (`Add M5 runtime-feature evidence`).
@@ -147,44 +149,40 @@ failure-code audit, case-study numeric summary, case-study-family qualification,
 and the M6 verdict composer. That scaffolding remains fail-closed: it does not
 by itself claim M6 closure.
 
+Lane108 refreshes the raw phase-0 C++ vs AMFlow packet validation across the
+phase0_v4 scope: all phase-0 golden manifests through `automatic_loop.eps24`,
+plus the non-loop phase-0 goldens. The measured aggregate is `4559/4559`
+coefficients passing at the unchanged `>=30` digit tolerance across `31`
+manifest surfaces, with every `solve-series` and comparator invocation exiting
+`0`. The raw evidence is retained under
+`/tmp/autoibp_orch/exec/lane108_phase0_v4/`, and the committed summary is
+`docs/phase0-packet-validation-lane108.md`. This retires the known phase-0
+numeric parity misses through eps24, but it is still not an M6 closure claim:
+the M6 composer and any required packet-set qualification sidecars must consume
+the refreshed evidence before the milestone can close.
+
 Current M6 blockers to preserve:
 
-- no committed passing `qualify_milestone_m6.py` summary
-- phase-0 candidate packet-set qualification is not closed by this lane
-- mandatory case-study numeric sidecars are not all passing at the frozen thresholds
-- singular endpoint qualification remains outside this M5 closure claim until M6 evidence retires it
+- no committed passing `qualify_milestone_m6.py` summary over the refreshed
+  lane108 phase-0 packet evidence
+- phase-0 numeric parity through eps24 now has lane108 passing evidence, but
+  the M6 packet-set qualification and final composer still need to consume it
+- case-study-family numeric qualification is passing in the current retained
+  lane92 evidence, but that does not close M6 while the phase-0 verdict remains
+  stale
 - M7 and release-readiness review sidecars remain separate non-claims
 
-Lane78 adds a fail-closed diphoton-heavy-quark-form-factors scaffold rather
-than a passing case-study row. The selected anchor
-`2023-diphoton-heavy-quark-form-factors` carries the 200-digit profile, but the
-repository has no committed dedicated diphoton golden packet or C++ state for
-the non-planar double-box master-integral family. A fresh automatic_loop eps16
-proxy replay at 240 requested digits against the real epsorder=18 AMFlow
-sol1/sol2 manifest failed the 200-digit comparator with only 56 minimum observed
-correct digits.
-
-Lane102 checked the dedicated diphoton SLURM job `10204166` after the lane85
-watch and committed the final-status sidecar at
-`tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane102-final-status.json`.
-The scheduler reports `FAILED` with exit code `4:0`, but the failure is
-post-processing, not Kira parsing: the Wolfram kernel exited `0`,
-`SolveIntegrals` finished in 9190s, stdout/stderr show no `invalid coefficient
-string "I"` failure, and the run manifest records SHA256 hashes for the
-external solution and metadata files. The verifier then failed because it
-requires exactly four output rules even though AMFlow returned a 74-rule
-solution containing auxiliary masters, and its coefficient extraction calls
-`CoefficientList` on Laurent terms with negative powers of `eps`.
-
-Concrete next step: do not resubmit this packet only to add the lane95 Kira
-wrapper. Preserve the external `10204166` solution and metadata, fix the lane80
-verifier/postprocessor to require the requested J39-J42 targets as a subset and
-to extract Laurent coefficients safely, then promote a retained dedicated
-golden manifest plus C++ diphoton ingest/comparator support at the 200-digit
-profile. The existing `ttbar-h` SRL-5 exact-endpoint proxy is the known
-100-digit alternative path (`999` observed digits at a `100`-digit tolerance),
-but it cannot retire the current diphoton 200-digit blocker without an explicit
-reviewed change to the selected case-study surface.
+Lane103 and lane92 retire the stale diphoton case-study numeric blocker. The
+dedicated `diphoton-heavy-quark-form-factors` evidence now points at
+`tools/reference-harness/specs/phase1/diphoton-heavy-quark-form-factors.golden-manifest.json`,
+records `comparison_passed: true`, and observes `200` correct digits for the
+`2023-diphoton-heavy-quark-form-factors` profile. The lane92 case-study
+qualification summary records `case_study_families_qualified: true`,
+`all_case_studies_meet_digit_thresholds: true`, and
+`blocked_case_study_families: []`. This qualifies the case-study-family numeric
+surface only; it does not claim dedicated C++ runtime ingest for the diphoton
+J39-J42 packet and does not close M6 while the phase-0 packet-set verdict and
+M6 composer still need a synchronized refresh.
 
 Singular runtime lane status: SRL-1 and SRL-2 are landed, lane64 adds SRL-3
 branch/prescription ledger support, lane68 adds the first narrow SRL-4 live
@@ -196,31 +194,28 @@ comparison summary, and records `999` observed correct digits for the live
 SRL-4 endpoint coefficient. The case-study readiness frontier no longer reports
 `one-singular-endpoint-case -> b62p`; the singular family now remains in the M6
 surface as a matrix-only anchor with numeric evidence rather than as a runtime
-blocker. This does not close M6: the diphoton case-study row still fails the
-frozen 200-digit threshold, phase-0 qualification remains separate, and the M6
-composer must still pass before any milestone closure claim.
+blocker. This does not close M6: phase-0 qualification remains separate, and
+the M6 composer must still pass before any milestone closure claim.
 
 M6 overall status remains TODO/FAILING.
 
 ## Shortest Remaining Chain
 
-1. Publish or refresh the phase-0 candidate
-   packet roots expected by the M6 packet-set tools.
+1. Consume the lane108 phase-0 packet evidence in the M6 packet-set tools with
+   synchronized labels.
 2. Run packet-set comparison, packet-set correct-digit scoring, failure-code
-   audit, and `qualify_phase0_packet_set.py` with synchronized labels.
-3. Finish the diphoton dedicated packet post-processing first: validate the
-   saved `10204166` J39-J42 subset, promote a retained golden manifest, and add
-   the matching C++ ingest/comparator path at the frozen 200-digit threshold.
-4. Run `compare_case_study_numeric_results.py` and
-   `qualify_case_study_families.py`.
-5. Retire any pending runtime-lane blockers only with reviewed runtime/numeric
+   audit, and `qualify_phase0_packet_set.py` against that refreshed evidence.
+3. Reuse or refresh the passing lane92 case-study-family summaries only if the
+   M6 tool inputs need synchronized labels.
+4. Retire any pending runtime-lane blockers only with reviewed runtime/numeric
    evidence accepted by the M6 tools.
-6. Run `qualify_milestone_m6.py` and claim M6 only if that composer passes
+5. Run `qualify_milestone_m6.py` and claim M6 only if that composer passes
    without blockers.
 
 ## Final Consensus
 
 M5 is CLOSED/all-phase per the fail-closed lane62 qualifier output over the
 cumulative phase-0 evidence, the committed lane58 feature-parity result, and the
-lane62 closure-decision sidecar. M6 remains open and fail-closed until the M6
-composer reports a passing M6-scoped verdict.
+lane62 closure-decision sidecar. Lane108 records passing raw phase-0 numeric
+packet validation through eps24 at `4559/4559`, but M6 remains open and
+fail-closed until the M6 composer reports a passing M6-scoped verdict.

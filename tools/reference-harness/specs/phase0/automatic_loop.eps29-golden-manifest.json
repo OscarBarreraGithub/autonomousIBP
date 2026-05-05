@@ -1,0 +1,30 @@
+{
+  "benchmark_id": "automatic_loop",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps32/amflow/examples/automatic_loop",
+  "notes": [
+    "AMFlow eps29 reference pointer for automatic_loop comparator audits, captured for lane 118 with epsorder = 32, precision = 80, and ChopPre = 40 on 2026-05-05.",
+    "The work-eps32 tree was copied from work-eps30, run.wl was changed to SetAMFOptions[\"ChopPre\" -> 40], precision = 80, and epsorder = 32, copied sol outputs/logs/cache were removed before the clean run, and the sbatch now removes automatic_loop/cache before execution.",
+    "The first submitted eps32 job 10333451 was cancelled after Role A found copied generated cache artifacts from older work trees; final capture uses fresh clean-cache SLURM job 10334753.",
+    "SLURM job 10334753 completed on holy7c04205.rc.fas.harvard.edu partition shared using WolframKernel 13.3.0, Kira 3.1, and Fermat; sacct reported COMPLETED|0:0|00:12:26.",
+    "Run log: /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps32/logs/cap-autoloop-eps32.10334753.out with sha256 6863f374d54ab273910ccad77e09e1cd29308c0e1668f96188f2807c89610a0f; stderr was empty with sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.",
+    "The guarded Mathematica run completed with kernel-exit 0 from 2026-05-05T18:08:26-04:00 to 2026-05-05T18:20:51-04:00.",
+    "For this leading eps^-2 one-loop benchmark, epsorder = 32 printed coefficients through positive eps^30; both sol1 and sol2 contain explicit eps^29 and eps^30 coefficients.",
+    "Direct parser ingest found 12 combined integrals with per-order counts eps^-2: 6, eps^-1: 12, eps^0: 12, eps^1: 12, eps^2: 12, eps^3: 12, eps^4: 12, eps^5: 12, eps^6: 12, eps^7: 12, eps^8: 12, eps^9: 12, eps^10: 12, eps^11: 12, eps^12: 12, eps^13: 12, eps^14: 12, eps^15: 12, eps^16: 12, eps^17: 12, eps^18: 12, eps^19: 12, eps^20: 12, eps^21: 12, eps^22: 12, eps^23: 12, eps^24: 12, eps^25: 12, eps^26: 12, eps^27: 12, eps^28: 12, eps^29: 12, eps^30: 12.",
+    "Anti-fake numeric audit parsed raw Mathematica precision-marked rule lists from sol1 and sol2 into 780 Decimal real/imag components; sol1 contained 317 Mathematica precision marks with range 50.0..80.15051499783202, sol2 contained 318 with range 50.0..80.15051499783202, and all eps^29/eps^30 components parsed as numeric coefficients.",
+    "The high-precision ChopPre=40 capture retains nonzero high-order imaginary coefficients including box1[2,0,1,0] eps^29 imag -1.734406291100338822029076472*^-27, box2[1,-1,1,0] eps^29 imag -3.965416296932786334285836148*^-25, and box2[1,-1,1,0] eps^30 imag -4.665808970593732581827787035*^-27; eps^29 and eps^30 each have 12/12 nonzero complex coefficients and 8/12 nonzero imaginary coefficients.",
+    "Fresh C++ eps-order 29 probe is intentionally rejected before coefficient comparison because solve-series returned status failed with the reviewed-order guard 0..28 for both box1 and box2; this confirms the C++ port does not claim fake eps^29 parity.",
+    "This manifest names the eps^29 validation surface and intentionally points at the same lane 118 epsorder=32 precision=80 ChopPre=40 sol1/sol2 outputs as the paired eps29/eps30 manifest.",
+    "sol1 sha256 fdae6d3792bb15c57a5e2db158effe4bf2fc2d0e24f096d54a99cf51bdeb0f07; sol2 sha256 791ef84aa15b73dcc4a1d0228adf3d81d3a1549036d1547b93e7d5083aba5415."
+  ],
+  "outputs": [
+    {
+      "name": "sol1",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps32/amflow/examples/automatic_loop/sol1"
+    },
+    {
+      "name": "sol2",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-eps32/amflow/examples/automatic_loop/sol2"
+    }
+  ],
+  "schema_version": 1
+}

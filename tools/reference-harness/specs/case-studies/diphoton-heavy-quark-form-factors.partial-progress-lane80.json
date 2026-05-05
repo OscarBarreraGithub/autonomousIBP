@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "case_study_id": "diphoton-heavy-quark-form-factors",
+  "lane": "lane80",
+  "evidence_kind": "dedicated-amflow-packet-slurm-partial",
+  "status": "submitted-running",
+  "comparison_passed": false,
+  "minimum_observed_correct_digits": null,
+  "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",
+  "failure_code_profile": "default-required-failure-codes",
+  "regression_profile": "current-reviewed-regressions",
+  "dedicated_packet": {
+    "family": "diphotonNPL",
+    "source_reference": "arXiv:2308.11412 / JHEP12(2023)105 Table 2 and ancillary DIFFEXP_run.wl",
+    "kinematic_point": {
+      "y": "1/11",
+      "z": "-199/2200",
+      "mt2": "1",
+      "sqrt_s_note": "paper reports sqrt(s)=52.1615 GeV and cos(theta)=-0.99"
+    },
+    "target_integrals": [
+      "J39 = INPL(1,1,1,1,1,1,1,0,0)",
+      "J40 = INPL(1,1,1,1,1,1,1,-1,0)",
+      "J41 = INPL(1,1,1,1,2,1,1,0,0)",
+      "J42 = INPL(1,1,1,1,1,1,1,-1,-1)"
+    ],
+    "requested_precision_goal_digits": 200,
+    "epsorder": 4,
+    "mathematica_max_precision": 6000,
+    "mathematica_max_extra_precision": 6000,
+    "amf_mode": ["Prescription", "Mass", "Propagator", "Branch", "Loop"],
+    "ending_scheme": ["Tradition", "Cutkosky", "SingleMass"],
+    "ibp_reducer": "Kira",
+    "black_box_rank": 3,
+    "black_box_dot": 1
+  },
+  "slurm": {
+    "job_id": "10204166",
+    "job_name": "lane80-diphoton-200d",
+    "partition": "sapphire,shared",
+    "allocated_partition": "sapphire",
+    "state_at_capture": "RUNNING",
+    "node_at_capture": "holy8a24108",
+    "submitted_or_started_at": "2026-05-05T12:31:34-04:00",
+    "time_limit": "24:00:00",
+    "memory": "64G",
+    "cpus_per_task": 8,
+    "stdout_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.out",
+    "stderr_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/logs/lane80-diphoton-200d.10204166.err"
+  },
+  "run_scaffold": {
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d",
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors",
+    "manifest_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/run-manifest.10204166.txt",
+    "repo_scaffold_files": [
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/capture_diphoton_200d.sbatch",
+        "sha256": "bba0d3e5d6e13136865ec2ccc8331f40a2237df24e2692a8f0daae278aea35b1"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/run.wl",
+        "sha256": "794df5de0add4d458e2714eba04b8ea68ab95e549cc608f3b127c3f6412810cf"
+      },
+      {
+        "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.lane80/verify_output.wl",
+        "sha256": "80f93ea53bf6d263b996e919057a4773bf42e5dcef0aae3f7915d212f4694be8"
+      }
+    ]
+  },
+  "latest_observation": {
+    "captured_at": "2026-05-05T12:43:04-04:00",
+    "squeue": "10204166 sapphire lane80-diphoton-200d RUNNING 11:40 23:48:20 holy8a24108",
+    "sacct": "10204166|lane80-diphoton-200d|sapphire|RUNNING|0:0|00:11:40|1-00:00:00|holy8a24108",
+    "log_stage": "Dedicated diphotonNPL target reduction completed: four J39-J42 targets reduced to 73 master integrals in 438s; AMFlow is constructing system 1 differential equations and reducing 233 target integrals. No solution file has been produced yet.",
+    "solution_path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane80-diphoton-200d/amflow/examples/diphoton_heavy_quark_form_factors/sol-diphoton-npl-j39-j42",
+    "solution_file_present": false
+  },
+  "current_repository_proxy": {
+    "numeric_evidence_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+    "proxy_comparison_path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.automatic-loop-eps16.digits240.compare.json",
+    "proxy_status": "retained failing automatic_loop proxy remains unpromoted while dedicated lane80 AMFlow job runs",
+    "proxy_minimum_observed_correct_digits": 56,
+    "proxy_tolerance_digits": 200
+  },
+  "withheld_claims": [
+    "No dedicated diphoton AMFlow output is committed in this partial record.",
+    "No C++ diphoton state was extracted from the lane80 run.",
+    "No 200-digit comparator pass is claimed.",
+    "No M6, M7, or release qualification row is closed by this partial record.",
+    "The existing automatic_loop proxy remains a failing proxy and is not promoted."
+  ],
+  "role_verdicts_at_scaffold_time": {
+    "role_a": "APPROVE fail-closed scaffold commit; BLOCK promotion until dedicated Mathematica output, paper-value agreement, and comparator evidence exist.",
+    "role_b": "APPROVE fail-closed scaffold commit; BLOCK promotion because the proxy remains unpromoted and failing.",
+    "role_c": "APPROVE fail-closed scheduler/progress metadata commit; BLOCK promotion while the SLURM job is still running.",
+    "role_d": "APPROVE fail-closed partial-progress commit; BLOCK promotion because no dedicated solution, metadata, or verification output exists yet."
+  }
+}

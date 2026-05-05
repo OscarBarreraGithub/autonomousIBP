@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "scope": "m6-b61n-runtime-lane-evidence",
+  "lane": "lane124",
+  "runtime_lane": "b61n",
+  "benchmark_id": "complex_kinematics",
+  "status": "partial-runtime-evidence-not-m6-closure",
+  "generated_at": "2026-05-05T19:06:22-04:00",
+  "git_head_at_generation": "af228309b82fe9f9ec6978fcbd8302be577a3316",
+  "commands": [
+    "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json",
+    "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 50 > tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.compare50.json"
+  ],
+  "evidence": [
+    "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json",
+    "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.compare50.json",
+    "tools/reference-harness/specs/m6/lane124/complex_kinematics.failure-code-audit.json",
+    "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+    "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json"
+  ],
+  "artifact_sha256": {
+    "build/amflow-cli": "300d88a550029cc26602ec4e229f86525b4704a7beb44a59fd0e6f604e2d0f13",
+    "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json": "d693f974d07748aa36ac99889e70ea53908ca8027189933eaca3cd809cb65889",
+    "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.compare50.json": "fb6339b807615b944d730b9091bdc3684474b8a6a4b2ae0e5c8c0d4c0d447c74",
+    "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json": "cd236ecd8a1bf99e7d919f27a90ecc3125dc9b9401da11dc664a5f8d06af23c5",
+    "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json": "cd25bdc520e4e76daa2288522f24d2b10e9cf891a5dd651a955aaaab7bbcb0f2"
+  },
+  "run_summary": {
+    "status": "success",
+    "benchmark_id": "complex_kinematics",
+    "epsilon_order": 0,
+    "precision_digits": 80,
+    "target_count": 7,
+    "duration_seconds": 0.010762,
+    "runtime_boundary_provider": "retained-loop-solution-sample-cache-laurent-fit",
+    "runtime_application": "loop-solution-sample-laurent-fit",
+    "transport_applied": false,
+    "full_eta_zero_contour_applied": false,
+    "blocked_reason": "full complex eta-contour endpoint reconstruction remains deferred after retained loop solution-sample coefficient fitting"
+  },
+  "comparison_summary": {
+    "passed": true,
+    "compared_coefficient_count": 14,
+    "passed_coefficient_count": 14,
+    "minimum_digit_agreement": 59,
+    "tolerance_digits": 50,
+    "failure_count": 0
+  },
+  "qualifier_effect": {
+    "phase0_template_updated_to_reference_captured": false,
+    "b61n_removed_from_blocked_runtime_lanes": false,
+    "qualify_milestone_m6_probe": {
+      "summary_path": "/tmp/autoibp_orch/exec/lane124_b61n/m6-qualification.json",
+      "current_state": "blocked-on-phase0-packet-set",
+      "phase0_packet_set_qualified": false,
+      "phase0_pending_runtime_lanes_closed": false,
+      "blocked_runtime_lanes": [
+        "b61n",
+        "b63n",
+        "b64ag"
+      ],
+      "phase0_pending_ids": [
+        "automatic_phasespace",
+        "complex_kinematics",
+        "feynman_prescription",
+        "linear_propagator"
+      ]
+    },
+    "reason": "The runtime evidence is real and exceeds the 50-digit floor, but it is retained loop solution-sample ingest. The b61n requirement still needs live reviewed complex eta-contour endpoint reconstruction accepted as an optional phase-0 packet."
+  },
+  "anti_fake_parity_gate": {
+    "role_d_status": "APPROVE_REAL_OUTPUT_BLOCK_CLOSURE",
+    "verdict": "The committed JSON is fresh C++ solve-series runtime output and a fresh 50-digit comparator pass. It must not be promoted to M6 b61n closure because the output itself reports transport_applied=false and full_eta_zero_contour_applied=false."
+  },
+  "withheld_claims": [
+    "No optional_capture_packet is added for complex_kinematics in qualification-benchmarks.json.",
+    "No next_runtime_lane value is removed for complex_kinematics.",
+    "No phase-0 packet-set qualification or M6 closure is claimed.",
+    "No live full complex eta-contour endpoint reconstruction is claimed."
+  ],
+  "next_steps": [
+    "Implement or expose a reviewed live complex eta-contour endpoint reconstruction path for complex_kinematics.",
+    "Require the runtime output to report transport_applied=true or full_eta_zero_contour_applied=true for the reviewed complex eta path.",
+    "Package that output as an optional phase-0 packet with result manifests, primary run manifests, 50-digit scoring, and failure-code audit.",
+    "Only then set complex_kinematics current_evidence_state to reference-captured, add its optional_capture_packet, and remove next_runtime_lane b61n."
+  ],
+  "role_verdicts": {
+    "role_a": "APPROVE requirement identified: b61n needs a live complex_kinematics eta-continuation runtime capture accepted as an optional phase-0 packet at >=50 digits.",
+    "role_b": "APPROVE implementation path identified: the current solve-series route ingests retained loop solution samples and reports full complex eta-contour endpoint reconstruction deferred.",
+    "role_c": "APPROVE qualifier contract identified: b61n can clear only when complex_kinematics leaves phase0_pending_ids/blocked_phase0_examples through packet-set qualification.",
+    "role_d": "APPROVE real runtime evidence; BLOCK closure because the committed output is not live full complex eta-contour endpoint reconstruction."
+  }
+}

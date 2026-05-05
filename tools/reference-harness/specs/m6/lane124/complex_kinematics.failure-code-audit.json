@@ -1,0 +1,51 @@
+{
+  "audit_kind": "m6-required-failure-code-profile-coverage",
+  "benchmark_id": "complex_kinematics",
+  "failure_code_profile": "default-required-failure-codes",
+  "observed_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "qualifier_observed_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "real_output_audit": {
+    "compare_command": "python3 tools/reference-harness/scripts/compare_cpp_vs_amflow.py --cpp-result tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json --amflow-golden tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json --tolerance-digits 50 > tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.compare50.json",
+    "compared_coefficient_count": 14,
+    "comparison_failure_entry_count": 0,
+    "comparison_passed": true,
+    "comparison_summary_path": "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.compare50.json",
+    "comparison_summary_sha256": "fb6339b807615b944d730b9091bdc3684474b8a6a4b2ae0e5c8c0d4c0d447c74",
+    "cpp_result_path": "tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json",
+    "cpp_result_sha256": "d693f974d07748aa36ac99889e70ea53908ca8027189933eaca3cd809cb65889",
+    "full_eta_zero_contour_applied": false,
+    "minimum_digit_agreement": 59,
+    "observed_runtime_failure_codes": [],
+    "passed_coefficient_count": 14,
+    "runtime_application": "loop-solution-sample-laurent-fit",
+    "runtime_boundary_provider": "retained-loop-solution-sample-cache-laurent-fit",
+    "solve_command": "./build/amflow-cli solve-series tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json --eps-order 0 --digits 80 --out tools/reference-harness/specs/m6/lane124/complex_kinematics.digits80.cpp-result.json",
+    "solve_series_failure_code": "",
+    "solve_series_status": "success",
+    "tolerance_digits": 50,
+    "transport_applied": false
+  },
+  "required_failure_codes": [
+    "insufficient_precision",
+    "master_set_instability",
+    "boundary_unsolved",
+    "continuation_budget_exhausted"
+  ],
+  "schema_version": 1,
+  "withheld_claims": [
+    "observed_failure_codes is the qualifier-required typed profile coverage field consumed by audit_phase0_packet_set_failure_codes.py.",
+    "real_output_audit.observed_runtime_failure_codes records actual failure_code values found in the retained solve-series JSON; this passing run has none.",
+    "This sidecar records b61n runtime evidence only; it does not mark complex_kinematics reference-captured for M6.",
+    "The runtime output reports retained loop solution-sample fitting, not live full complex eta-contour endpoint reconstruction."
+  ]
+}

@@ -20,6 +20,8 @@ Milestone closure verdict: REJECT M5 closure and REJECT M6 closure.
 - Lane21 forward-roll evidence: `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.cpp.json` and `/tmp/autoibp_orch/exec/lane21_probe/differential_equation_solver.compare.json`.
 - Lane29 forward-roll evidence: `tools/reference-harness/specs/phase0/feynman_prescription.amflow-state.json`, `/tmp/autoibp_orch/exec/lane29_feynman_prescription.cpp-result.json`, `/tmp/autoibp_orch/exec/lane29_feynman_prescription.compare.json`, and `/tmp/autoibp_orch/exec/lane29_parity_rerun/aggregate.json`.
 - Lane32 aggregate-v3 evidence: `docs/phase0-packet-validation-lane32.md`, `tools/reference-harness/specs/phase0/lane32-packet-validation-aggregate.json`, and `/tmp/autoibp_orch/exec/lane32_aggregate_v3.md`.
+- Lane39 forward-roll evidence: `/tmp/autoibp_orch/exec/lane39_probe/full/runs/*.compare.json` and `/tmp/autoibp_orch/exec/lane39_probe/m5-feature-surface-lane39.summary.json`.
+- Lane37 eps7/eps8 forward-roll evidence: `/tmp/autoibp_orch/exec/lane37_runs/automatic_loop.eps7.compare.json` and `/tmp/autoibp_orch/exec/lane37_runs/automatic_loop.eps8.compare.json`.
 
 ## Exact Acceptance Criteria
 
@@ -47,7 +49,7 @@ M6 cannot close until M5 passes, the phase-0 packet-set verdict passes with sync
 
 These rows are PASSING only for the cited retained-regression comparator surfaces. They do not satisfy the separate Phase F requirement that every required runtime feature be exercised through the live solver path, and they must not be read as M5 closure.
 
-- `automatic_loop` retained-state C++/AMFlow parity is passing through the eps5 surface. Lane32 reports `automatic_loop.eps2` `54/54`, `automatic_loop.eps3` `66/66`, `automatic_loop.eps4` `78/78`, and `automatic_loop.eps5` `90/90` at unchanged `tolerance_digits=30`, each with `minimum_digit_agreement=41`.
+- `automatic_loop` retained-state C++/AMFlow parity is passing through the eps8 surface. Lane39 preserves the `automatic_loop.eps2` `54/54`, `automatic_loop.eps3` `66/66`, `automatic_loop.eps4` `78/78`, `automatic_loop.eps5` `90/90`, and `automatic_loop.eps6` `102/102` rows, adds `automatic_loop.eps7` `114/114`, and records `automatic_loop.eps8` as `126/126` at unchanged `tolerance_digits=30` with `minimum_digit_agreement=41`.
 - `automatic_phasespace` retained-sample ingest comparison is passing as a narrow regression. Lane32 reports `11/11`, `minimum_digit_agreement=39`, `tolerance_digits=30`; the retained-state C++ summary still does not make this a full live Cutkosky phase-space boundary reconstruction claim.
 - `automatic_vs_manual` retained-state C++/AMFlow comparison is passing as a narrow regression. Lane32 reports `89/89`, `minimum_digit_agreement=36`, `tolerance_digits=30`; this replaces the older lane20 failed plain-ProblemSpec probe but still needs M5 acceptance as a live/direct feature-surface path or a packet-shaped retained-state exception.
 - `complex_kinematics` retained-sample comparison is passing as a narrow regression through the positive-order eps2 surface. Lane32 reports the eps-through-zero surface at `14/14` and the `complex_kinematics.eps2` surface at `28/28`, both with `minimum_digit_agreement=41` and `tolerance_digits=30`; full complex eta-contour endpoint reconstruction remains deferred.
@@ -60,19 +62,19 @@ These rows are PASSING only for the cited retained-regression comparator surface
 - `automatic_phasespace` is partial for true M5 because the passing evidence is retained sample ingestion, not full phase-space integration through the live solver path required by Phase F.
 - `automatic_vs_manual`, `complex_kinematics`, and `linear_propagator` are partial for true M5 for the same reason: they now have passing retained-state or retained-sample numeric surfaces, but the Phase F closure gate still needs accepted live-path evidence or an explicit fail-closed retained-state exception policy.
 - `feynman_prescription` is partial for true M5 because Lane32 proves retained `sol1` solution-sample parity only. The retained golden pointer is now reference-captured with requested-integral backup scope, but this C++ state does not broaden that into full auxiliary-basis equivalence, full live Cutkosky/prescription boundary reconstruction, or opposite-prescription output handling.
-- `automatic_loop.eps6` is partial because the new eps6 retained-state surface passes only `100/102` coefficients. The two misses are `box1[-2,1,1,2] eps^6` at `14/999` real/imag digit agreement and `box2[1,1,0,1] eps^6` at `18/999`, below the 30-digit threshold.
 - `spacetime_dimension` / arbitrary `D0` is partial/TODO. Optional captured evidence exists, but the Phase F live-path arbitrary-D0 gate remains unclosed.
 - User-defined `AMFMode` and `EndingScheme` are partial/TODO. Optional retained captures and planning surfaces exist, but there is no accepted coefficient-bearing C++ parity packet for those execution paths.
 - Singular-kinematics guardrails are partial. Multiple guardrail slices exist, but Phase F requires the first physical-region subset through live runtime evidence, and later docs still preserve singular blockers.
 
 ### M5 FAILING Criteria
 
-- The lane32 all-manifest packet-wide aggregate remains failing: `669/671` current manifest-surface coefficients pass at 30 digits. The remaining coefficient failures are the two `automatic_loop.eps6` eps^6 real-part misses listed above; this is substantial progress over Lane 29's `476/479`, but not M5 closure.
+- Lane39 verifies the current retained phase-0 manifest-surface comparison set through `automatic_loop.eps8` without tolerance weakening: `automatic_loop.eps2` through `automatic_loop.eps8`, `automatic_phasespace`, `automatic_vs_manual`, both `complex_kinematics` surfaces, both `differential_equation_solver` surfaces, `feynman_prescription`, and `linear_propagator` all compare successfully at 30 digits.
+- M5 remains fail-closed because retained manifest parity is not the same as Phase F closure. The lane39 verifier evidence accepts the retained `automatic_loop.eps8` row (`126/126`, `minimum_digit_agreement=41`) and still blocks overall M5 on the missing frozen-example rows and the required Phase F runtime-feature rows.
 
 ### M5 TODO Criteria
 
-- Preserve the Lane32 retained regressions for `automatic_loop.eps2` through `automatic_loop.eps5`, `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `differential_equation_solver.sol1`, `differential_equation_solver.sol2`, `feynman_prescription`, and `linear_propagator`.
-- Repair the two `automatic_loop.eps6` eps^6 coefficient misses without weakening the 30-digit tolerance.
+- Preserve the Lane39 retained regressions for `automatic_loop.eps2` through `automatic_loop.eps8`, `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `differential_equation_solver.sol1`, `differential_equation_solver.sol2`, `feynman_prescription`, and `linear_propagator`.
+- Build the complete M5 evidence sidecar instead of the lane39 narrow `automatic_loop`-only sidecar, with every required frozen example and runtime feature represented.
 - Add live solver-path evidence or accepted retained-state exception criteria for `automatic_phasespace`, `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `spacetime_dimension`, user hooks, fixed-`eps`, and singular physical-region coverage.
 - Populate and run the M5 fail-closed verdict helper so closure cannot be claimed from loose summaries, partial pointers, metadata-only feature slices, tolerance drift, or open runtime blockers.
 
@@ -111,7 +113,7 @@ M6 overall status: TODO/FAILING, not closeable.
 ## Shortest Atomic Landing Chain
 
 1. Preserve the Lane32 passing retained parity regressions, including `automatic_loop.eps5` `90/90`, both `differential_equation_solver` surfaces, `feynman_prescription` `76/76`, and `linear_propagator` `57/57`.
-2. Repair the two `automatic_loop.eps6` eps^6 coefficient misses at unchanged 30-digit tolerance.
+2. Preserve the Lane39 `automatic_loop.eps6` `102/102`, `automatic_loop.eps7` `114/114`, and `automatic_loop.eps8` `126/126` retained comparisons at unchanged 30-digit tolerance.
 3. Keep the retained `feynman_prescription` golden pointer's requested-integral backup scope distinct from full auxiliary-basis equivalence, and do not treat retained solution-sample parity as full live prescription runtime closure.
 4. Finish the retained-state/direct runtime acceptance path for `automatic_vs_manual`, `complex_kinematics`, `linear_propagator`, `spacetime_dimension`, `user_defined_amfmode`, and `user_defined_ending`; keep structural outputs separate from solve-series numeric comparison.
 5. Turn `automatic_phasespace` retained-sample parity into accepted M5 phase-space support. Keep the `11/11` comparison as a regression, then land the smallest live Cutkosky/prescription runtime slice needed for Phase F.
@@ -151,7 +153,7 @@ Worker 12, final M6 composer: Run `qualify_milestone_m6.py` only after the phase
 
 ## Feasibility Assessment
 
-M5 closure is feasible, but not as a documentation-only or single-lane cleanup. Lane32 removes the old DE default-surface numeric blocker and expands the retained `automatic_loop` evidence through eps5, but the full all-manifest packet still fails at `669/671` because `automatic_loop.eps6` has two sub-threshold coefficients. The remaining work is still real implementation and qualification work: eps6 repair, accepted live-path or retained-state exception criteria for the feature surfaces, D0/fixed-eps/user-hook coverage, feynman requested-integral backup scope versus full auxiliary-basis equivalence, live opposite-prescription handling, and phase-space/prescription live-path evidence.
+M5 closure is feasible, but not as a documentation-only or single-lane cleanup. Lane39 removes the retained `automatic_loop` eps6 numeric blocker and extends retained automatic-loop parity through eps8, but the M5 verifier still blocks closure unless every frozen example class and every required Phase F runtime feature has accepted evidence. The remaining work is still real implementation and qualification work: accepted live-path or retained-state exception criteria for the feature surfaces, D0/fixed-eps/user-hook coverage, feynman requested-integral backup scope versus full auxiliary-basis equivalence, live opposite-prescription handling, and phase-space/prescription live-path evidence.
 
 M6 closure is not feasible until M5 closes. Even after M5, M6 requires candidate packet publishing, passing phase-0 packet qualification, explicit case-study numeric sidecars at the frozen digit thresholds, and retirement of the singular endpoint blocker. The harness scaffolding exists, so this is not a blank infrastructure project, but it still needs targeted infrastructure investment in packet-shaped candidate output, failure-code sidecars, and case-study numeric evidence production. Current evidence supports planning and partial retained-state progress, not immediate M5/M6 closure.
 

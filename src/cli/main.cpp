@@ -3116,6 +3116,16 @@ BigFloat Zeta8Constant() {
       "1.004077356197944339378685238508652465258960790649850020329110202652582952574748814395287230372371971");
 }
 
+BigFloat Zeta9Constant() {
+  return BigFloat(
+      "1.0020083928260822144178527692324120604856058513948887565485966159097850533902583989503930691271695861574086048");
+}
+
+BigFloat Zeta10Constant() {
+  return BigFloat(
+      "1.0009945751278180853371459589003190170060195315644775172577889946362914651519129543970419686103856527540068921");
+}
+
 BigFloat Li5Minus99Constant() {
   return BigFloat(
       "-52.38666235360439053364949682271734882996050351431037699252166679541238");
@@ -3156,17 +3166,47 @@ BigFloat Li8NinetyNineOverHundredConstant() {
       "0.99399431284776200810894556251802787093988047870645848393605720045333709858113520026079538724438407");
 }
 
+BigFloat Li9Minus99Constant() {
+  return BigFloat(
+      "-90.01334626598412122183413020872203995077639539263811792359557514272827180510049838017259427939224006904263194");
+}
+
+BigFloat Li9NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.99196783278527426988606044896416320638301909676387094714979351824945273267603234212449475104910623313774109982");
+}
+
+BigFloat Li10Minus99Constant() {
+  return BigFloat(
+      "-93.672395925506051696154332217114989142972022332167689685615213339191874808779004554189474525924022254919892212");
+}
+
+BigFloat Li10NinetyNineOverHundredConstant() {
+  return BigFloat(
+      "0.99097459462541338648408680831906184880225001435904367128811040757158129927554801689896561834173159655122441142");
+}
+
 BigComplex RetainedAutomaticLoopNegImLogS() {
   return {log(BigFloat(100)), -boost::math::constants::pi<BigFloat>()};
 }
 
-constexpr int kMaxReviewedEndpointTransportEpsilonOrder = 6;
+constexpr int kMaxReviewedEndpointTransportEpsilonOrder = 8;
+constexpr int kMaxReviewedZeroLogBubbleGuardEpsilonOrder =
+    kMaxReviewedEndpointTransportEpsilonOrder + 1;
 
 void RequireReviewedEndpointTransportEpsilonOrder(const int epsilon_order) {
   if (epsilon_order < 0 ||
       epsilon_order > kMaxReviewedEndpointTransportEpsilonOrder) {
     throw std::runtime_error(
-        "retained automatic_loop endpoint transport supports reviewed eps orders 0..6");
+        "retained automatic_loop endpoint transport supports reviewed eps orders 0..8");
+  }
+}
+
+void RequireReviewedZeroLogBubbleGuardEpsilonOrder(const int epsilon_order) {
+  if (epsilon_order < 0 ||
+      epsilon_order > kMaxReviewedZeroLogBubbleGuardEpsilonOrder) {
+    throw std::runtime_error(
+        "retained automatic_loop zero-log bubble guard supports reviewed eps orders 0..9");
   }
 }
 
@@ -3207,7 +3247,7 @@ std::vector<BigComplex> ExpOfPowerSeriesThroughWeight(
 std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
     const BigComplex& branch_log,
     const int epsilon_order) {
-  RequireReviewedEndpointTransportEpsilonOrder(epsilon_order);
+  RequireReviewedZeroLogBubbleGuardEpsilonOrder(epsilon_order);
   const BigComplex a1 =
       RealBigComplex(BigFloat(2) - EulerGammaConstant()) - branch_log;
   const BigFloat a2 = BigFloat(2) - Zeta2Constant() / BigFloat(2);
@@ -3224,7 +3264,15 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   const BigFloat a7 =
       BigFloat(128) / BigFloat(7) -
       BigFloat(127) * Zeta7Constant() / BigFloat(7);
-
+  const BigFloat a8 =
+      BigFloat(256) / BigFloat(8) -
+      BigFloat(253) * Zeta8Constant() / BigFloat(8);
+  const BigFloat a9 =
+      BigFloat(512) / BigFloat(9) -
+      BigFloat(511) * Zeta9Constant() / BigFloat(9);
+  const BigFloat a10 =
+      BigFloat(1024) / BigFloat(10) -
+      BigFloat(1021) * Zeta10Constant() / BigFloat(10);
   const int max_weight = epsilon_order + 1;
   std::vector<BigComplex> log_coefficients(static_cast<std::size_t>(max_weight) + 1);
   if (max_weight >= 1) {
@@ -3247,6 +3295,15 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   }
   if (max_weight >= 7) {
     log_coefficients[7] = RealBigComplex(a7);
+  }
+  if (max_weight >= 8) {
+    log_coefficients[8] = RealBigComplex(a8);
+  }
+  if (max_weight >= 9) {
+    log_coefficients[9] = RealBigComplex(a9);
+  }
+  if (max_weight >= 10) {
+    log_coefficients[10] = RealBigComplex(a10);
   }
   const std::vector<BigComplex> exponential =
       ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
@@ -3289,6 +3346,12 @@ std::vector<BigFloat> RetainedScalarBoxLiMinus99ThroughWeight(
   if (max_weight >= 8) {
     polylogs[8] = Li8Minus99Constant();
   }
+  if (max_weight >= 9) {
+    polylogs[9] = Li9Minus99Constant();
+  }
+  if (max_weight >= 10) {
+    polylogs[10] = Li10Minus99Constant();
+  }
   return polylogs;
 }
 
@@ -3322,6 +3385,12 @@ std::vector<BigFloat> RetainedScalarBoxLiNinetyNineOverHundredThroughWeight(
   }
   if (max_weight >= 8) {
     polylogs[8] = Li8NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 9) {
+    polylogs[9] = Li9NinetyNineOverHundredConstant();
+  }
+  if (max_weight >= 10) {
+    polylogs[10] = Li10NinetyNineOverHundredConstant();
   }
   return polylogs;
 }
@@ -3380,6 +3449,14 @@ std::vector<BigComplex> RetainedScalarBoxGammaRatioSeriesThroughWeight(
   if (max_weight >= 8) {
     log_coefficients[8] =
         RealBigComplex(-BigFloat(253) * Zeta8Constant() / BigFloat(8));
+  }
+  if (max_weight >= 9) {
+    log_coefficients[9] =
+        RealBigComplex(-BigFloat(511) * Zeta9Constant() / BigFloat(9));
+  }
+  if (max_weight >= 10) {
+    log_coefficients[10] =
+        RealBigComplex(-BigFloat(1021) * Zeta10Constant() / BigFloat(10));
   }
   return ExpOfPowerSeriesThroughWeight(log_coefficients, max_weight);
 }
@@ -3495,7 +3572,8 @@ int ApplyRetainedAutomaticLoopEtaZeroZeroLogBubbleTransportThroughEpsOrder(
     amflow::SolverDiagnostics& diagnostics,
     const int epsilon_order) {
   const int guard_order =
-      std::min(epsilon_order + 1, kMaxReviewedEndpointTransportEpsilonOrder);
+      std::min(epsilon_order + 1,
+               kMaxReviewedZeroLogBubbleGuardEpsilonOrder);
   return ApplyRetainedAutomaticLoopEtaZeroBubbleEndpointTransportThroughEpsOrder(
       spec,
       diagnostics,

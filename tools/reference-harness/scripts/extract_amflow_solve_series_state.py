@@ -189,6 +189,41 @@ def raw_file_payload(path: Path) -> dict[str, str]:
   return {"path": str(path), "raw": compact_mathematica_text(path.read_text())}
 
 
+def parse_integer_assignment_list(raw: str, key: str) -> list[int]:
+  match = re.search(rf'"{re.escape(key)}"\s*->\s*\{{([^}}]*)\}}', raw)
+  if match is None:
+    return []
+  values: list[int] = []
+  for raw_value in split_top_level(match.group(1)):
+    values.append(int(raw_value.strip()))
+  return values
+
+
+def parse_solution_output_masters(path: Path) -> list[dict[str, Any]]:
+  if not path.exists():
+    return []
+  masters: list[dict[str, Any]] = []
+  seen: set[tuple[str, tuple[int, ...]]] = set()
+  for raw_rule in split_top_level(strip_outer_braces(path.read_text())):
+    arrow = raw_rule.find("->")
+    expect(arrow != -1, f"{path} solution rule is missing ->")
+    master = parse_j_integral(raw_rule[:arrow].strip())
+    key = (master["family"], tuple(master["indices"]))
+    if key not in seen:
+      seen.add(key)
+      masters.append(master)
+  return masters
+
+
+def parse_globalpreferred_output_masters(path: Path) -> list[dict[str, Any]]:
+  if not path.exists():
+    return []
+  fields = split_top_level(strip_outer_braces(path.read_text()))
+  if not fields:
+    return []
+  return [parse_j_integral(item) for item in split_top_level(strip_outer_braces(fields[0]))]
+
+
 def infer_reduction_dir(system_dir: Path) -> Path | None:
   try:
     system_id = int(system_dir.name)
@@ -220,6 +255,25 @@ def extract_state(system_dir: Path,
   ]
   missing_boundary = [str(path) for path in boundary_files if not path.exists()]
   expect(not missing_boundary, "missing AMFlow boundary-state files: " + ", ".join(missing_boundary))
+  optional_state_files = [
+      system_dir / "globalpreferred",
+      system_dir / "solution",
+      system_dir / "subsystem",
+  ]
+  retained_state_files = boundary_files + [path for path in optional_state_files if path.exists()]
+  raw_config = compact_mathematica_text((system_dir / "config").read_text())
+  phase_space_prescription = parse_integer_assignment_list(raw_config, "Prescription")
+  phase_space_cut = parse_integer_assignment_list(raw_config, "Cut")
+  phase_space_payload = None
+  if phase_space_prescription or phase_space_cut:
+    output_masters = parse_globalpreferred_output_masters(system_dir / "globalpreferred")
+    if not output_masters:
+      output_masters = parse_solution_output_masters(system_dir / "solution")
+    phase_space_payload = {
+        "prescription": phase_space_prescription,
+        "cut": phase_space_cut,
+        "output_masters": output_masters,
+      }
 
   reduction_targets: list[dict[str, Any]] = []
   reduction_masters: list[dict[str, Any]] = []
@@ -232,10 +286,28 @@ def extract_state(system_dir: Path,
       target_reduction_path = str(target_reduction)
     reduction_masters = parse_plain_integral_file(reduction_dir / "results" / family_name / "masters")
 
+  cpp_ingest_reason = (
+      "The retained AMFlow state uses eta-infinity asymptotic boundary data, "
+      "subsystem numerical epsilon samples, complex continuation, and a singular "
+      "eta -> 0 physical endpoint.  C++ solve-series can load this JSON state "
+      "shape, but the physical asymptotic/subsystem-sample boundary evaluator "
+      "and complex singular endpoint extraction remain deferred."
+  )
+  cpp_ingest_supported = False
+  if phase_space_payload is not None and (system_dir / "solution").exists():
+    cpp_ingest_supported = True
+    cpp_ingest_reason = (
+        "The retained AMFlow phase-space state carries Prescription/Cut metadata "
+        "and solution epsilon samples.  C++ solve-series can fit those retained "
+        "solution samples and apply retained target reduction; full Cutkosky "
+        "phase-space boundary reconstruction from cut propagators remains deferred."
+    )
+
   return {
       "schema_version": 1,
       "kind": "amflow_solve_series_state",
       "benchmark_id": benchmark_id,
+      "integral_kind": "phase_space" if phase_space_payload is not None else "loop",
       "source": {
           "system_dir": str(system_dir),
           "reduction_dir": str(reduction_dir) if reduction_dir is not None else "",
@@ -246,28 +318,23 @@ def extract_state(system_dir: Path,
       "coefficient_matrices": {variable: matrix},
       "singular_points": infer_singular_points_from_matrix(matrix, variable),
       "amflow_config": {
-          "raw": raw_file_payload(system_dir / "config"),
+          "raw": {"path": str(system_dir / "config"), "raw": raw_config},
       },
       "boundary_state": {
           "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
           "direction": compact_mathematica_text((system_dir / "direction").read_text()),
           "epsilon_samples": parse_eps_samples(system_dir / "epslist"),
-          "files": {path.name: raw_file_payload(path) for path in boundary_files},
+          "files": {path.name: raw_file_payload(path) for path in retained_state_files},
       },
+      **({"phase_space": phase_space_payload} if phase_space_payload is not None else {}),
       "reduction": {
           "targets": reduction_targets,
           "masters": reduction_masters,
           "target_reduction_path": target_reduction_path or "",
       },
       "cpp_solve_series_ingest": {
-          "supported": False,
-          "reason": (
-              "The retained AMFlow state uses eta-infinity asymptotic boundary data, "
-              "subsystem numerical epsilon samples, complex continuation, and a singular "
-              "eta -> 0 physical endpoint.  C++ solve-series can load this JSON state "
-              "shape, but the physical asymptotic/subsystem-sample boundary evaluator "
-              "and complex singular endpoint extraction remain deferred."
-          ),
+          "supported": cpp_ingest_supported,
+          "reason": cpp_ingest_reason,
       },
   }
 

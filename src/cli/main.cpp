@@ -389,6 +389,7 @@ struct DirectSolveSeriesSpec {
   bool amflow_state_input = false;
   std::string benchmark_id;
   std::string family;
+  std::string integral_kind;
   std::string variable;
   std::string start_location;
   std::string target_location;
@@ -403,6 +404,8 @@ struct DirectSolveSeriesSpec {
   std::vector<std::string> boundary_epsilon_samples;
   std::map<std::string, std::string> boundary_state_raw_files;
   std::string target_reduction_path;
+  std::vector<int> phase_space_prescription;
+  std::vector<int> phase_space_cut;
 };
 
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
@@ -1412,6 +1415,20 @@ std::vector<amflow::TargetIntegral> ParseAmflowStateTargets(const CliJsonValue& 
   return targets;
 }
 
+void AppendUniqueMaster(std::vector<amflow::MasterIntegral>& masters,
+                        const amflow::MasterIntegral& master) {
+  const std::string label = IntegralLabel(master.family, master.indices);
+  const bool exists =
+      std::any_of(masters.begin(),
+                  masters.end(),
+                  [&label](const amflow::MasterIntegral& candidate) {
+                    return IntegralLabel(candidate.family, candidate.indices) == label;
+                  });
+  if (!exists) {
+    masters.push_back(master);
+  }
+}
+
 std::vector<std::vector<std::string>> ParseAmflowStateStringMatrix(
     const CliJsonValue& value,
     const std::string& path) {
@@ -1468,6 +1485,7 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   spec.present = true;
   spec.amflow_state_input = true;
   spec.benchmark_id = OptionalJsonStringField(root, "benchmark_id", "");
+  spec.integral_kind = OptionalJsonStringField(root, "integral_kind", "");
   spec.family = RequireJsonString(RequireJsonField(root, "family", path), path + ".family");
   spec.variable =
       RequireJsonString(RequireJsonField(root, "variable", path), path + ".variable");
@@ -1511,6 +1529,66 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
         ParseAmflowStateBoundaryRawFiles(*files, path + ".boundary_state.files");
   }
 
+  std::vector<amflow::MasterIntegral> phase_space_output_masters;
+  if (const CliJsonValue* phase_space = FindJsonField(root, "phase_space")) {
+    RequireJsonObject(*phase_space, path + ".phase_space");
+    if (const CliJsonValue* prescription = FindJsonField(*phase_space, "prescription")) {
+      spec.phase_space_prescription =
+          RequireJsonIntegerArray(*prescription, path + ".phase_space.prescription");
+    }
+    if (const CliJsonValue* cut = FindJsonField(*phase_space, "cut")) {
+      spec.phase_space_cut = RequireJsonIntegerArray(*cut, path + ".phase_space.cut");
+    }
+    if (const CliJsonValue* output_masters = FindJsonField(*phase_space, "output_masters")) {
+      phase_space_output_masters =
+          ParseAmflowStateMasters(*output_masters, path + ".phase_space.output_masters");
+    }
+    if (spec.integral_kind.empty()) {
+      spec.integral_kind = "phase_space";
+    }
+  }
+  if (!spec.integral_kind.empty() && spec.integral_kind != "loop" &&
+      spec.integral_kind != "phase_space") {
+    throw std::invalid_argument("solve-series AMFlow state JSON carries unsupported "
+                                "integral_kind: " +
+                                spec.integral_kind);
+  }
+  if (spec.integral_kind == "loop" &&
+      (!spec.phase_space_cut.empty() || !spec.phase_space_prescription.empty() ||
+       !phase_space_output_masters.empty())) {
+    throw std::invalid_argument(
+        "solve-series AMFlow state JSON integral_kind loop cannot include phase_space "
+        "metadata");
+  }
+  if (spec.integral_kind == "phase_space" && spec.phase_space_cut.empty()) {
+    throw std::invalid_argument(
+        "solve-series phase_space AMFlow state JSON must include phase_space.cut");
+  }
+  if (spec.integral_kind == "phase_space" &&
+      spec.phase_space_prescription.empty()) {
+    throw std::invalid_argument(
+        "solve-series phase_space AMFlow state JSON must include phase_space.prescription");
+  }
+  for (const int prescription : spec.phase_space_prescription) {
+    if (prescription != -1 && prescription != 0 && prescription != 1) {
+      throw std::invalid_argument(
+          "solve-series phase_space.prescription entries must be -1, 0, or 1");
+    }
+  }
+  for (const int cut : spec.phase_space_cut) {
+    if (cut != 0 && cut != 1) {
+      throw std::invalid_argument("solve-series phase_space.cut entries must be 0 or 1");
+    }
+  }
+  if (spec.integral_kind == "phase_space") {
+    for (const amflow::MasterIntegral& master : spec.masters) {
+      if (master.indices.size() != spec.phase_space_cut.size()) {
+        throw std::invalid_argument(
+            "solve-series phase_space.cut length must match phase-space master index width");
+      }
+    }
+  }
+
   if (const CliJsonValue* reduction = FindJsonField(root, "reduction")) {
     if (const CliJsonValue* masters = FindJsonField(*reduction, "masters")) {
       spec.retained_reduction_masters =
@@ -1525,6 +1603,9 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
     if (const CliJsonValue* targets = FindJsonField(*reduction, "targets")) {
       spec.targets = ParseAmflowStateTargets(*targets, path + ".reduction.targets");
     }
+  }
+  for (const amflow::MasterIntegral& master : phase_space_output_masters) {
+    AppendUniqueMaster(spec.retained_reduction_masters, master);
   }
   if (spec.targets.empty()) {
     for (const amflow::MasterIntegral& master : spec.masters) {
@@ -2010,6 +2091,39 @@ std::vector<std::vector<std::vector<BigComplex>>> ParseBoundaryMiSamples(
     samples.push_back(std::move(region_samples));
   }
   return samples;
+}
+
+std::map<std::string, std::vector<BigComplex>> ParseMathIntegralSampleRules(
+    const std::string& raw,
+    const std::size_t sample_count,
+    const std::string& path) {
+  const std::vector<std::string> rules = SplitMathList(raw, path);
+  std::map<std::string, std::vector<BigComplex>> samples_by_label;
+  for (std::size_t rule_index = 0; rule_index < rules.size(); ++rule_index) {
+    const std::string rule_path = path + "[" + std::to_string(rule_index) + "]";
+    const std::size_t arrow = FindTopLevelArrow(rules[rule_index]);
+    if (arrow == std::string::npos) {
+      throw std::runtime_error(rule_path + " rule is missing ->");
+    }
+    const amflow::MasterIntegral lhs =
+        ParseMathJIntegral(rules[rule_index].substr(0, arrow), rule_path + ".lhs");
+    const std::string label = IntegralLabel(lhs.family, lhs.indices);
+    const std::vector<std::string> raw_values =
+        SplitMathList(rules[rule_index].substr(arrow + 2), rule_path + ".rhs");
+    if (raw_values.size() != sample_count) {
+      throw std::runtime_error(rule_path + " sample count does not match epslist");
+    }
+    std::vector<BigComplex> parsed_values;
+    parsed_values.reserve(raw_values.size());
+    for (const std::string& raw_value : raw_values) {
+      parsed_values.push_back(ParseBoundaryComplexValue(raw_value));
+    }
+    if (!samples_by_label.emplace(label, std::move(parsed_values)).second) {
+      throw std::runtime_error(path + " contains duplicate integral sample rule for " +
+                               label);
+    }
+  }
+  return samples_by_label;
 }
 
 BigFloat EvaluateBoundaryTableCoefficient(const std::string& expression,
@@ -2570,6 +2684,40 @@ int EstimateLaurentLeadingOrder(const std::vector<BigComplex>& samples,
     return 0;
   }
 
+  long double sum_x = 0.0L;
+  long double sum_y = 0.0L;
+  long double sum_xx = 0.0L;
+  long double sum_xy = 0.0L;
+  std::size_t log_sample_count = 0;
+  for (std::size_t index = 0; index < samples.size(); ++index) {
+    if (IsTiny(samples[index]) || epsilon_values[index] <= 0) {
+      continue;
+    }
+    const long double x =
+        log(abs(epsilon_values[index]).convert_to<long double>());
+    const long double y = log(BigAbs(samples[index]).convert_to<long double>());
+    if (!std::isfinite(static_cast<double>(x)) ||
+        !std::isfinite(static_cast<double>(y))) {
+      continue;
+    }
+    sum_x += x;
+    sum_y += y;
+    sum_xx += x * x;
+    sum_xy += x * y;
+    ++log_sample_count;
+  }
+  if (log_sample_count >= 2) {
+    const long double count = static_cast<long double>(log_sample_count);
+    const long double denominator = count * sum_xx - sum_x * sum_x;
+    if (std::abs(denominator) > 0.0L) {
+      const long double slope = (count * sum_xy - sum_x * sum_y) / denominator;
+      if (std::isfinite(static_cast<double>(slope))) {
+        const int rounded = static_cast<int>(std::llround(slope));
+        return std::clamp(rounded, -4, 4);
+      }
+    }
+  }
+
   int best_order = 0;
   long double best_score = std::numeric_limits<long double>::infinity();
   const BigFloat magnitude = BigAbs(samples[pivot]);
@@ -2705,6 +2853,10 @@ std::optional<std::size_t> FindMasterIndexByLabel(
     }
   }
   return std::nullopt;
+}
+
+bool IsPhaseSpaceAmflowState(const DirectSolveSeriesSpec& spec) {
+  return spec.amflow_state_input && spec.integral_kind == "phase_space";
 }
 
 bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
@@ -3182,6 +3334,77 @@ FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
   return coefficients;
 }
 
+amflow::SolverDiagnostics EvaluateAmflowStatePhaseSpaceSolutionSamples(
+    const DirectSolveSeriesSpec& direct_spec) {
+  if (direct_spec.boundary_epsilon_samples.empty()) {
+    throw std::runtime_error(
+        "AMFlow phase-space solution-sample evaluation requires epsilon samples");
+  }
+  if (direct_spec.masters.empty()) {
+    throw std::runtime_error(
+        "AMFlow phase-space solution-sample evaluation requires top-level masters");
+  }
+  if (direct_spec.phase_space_cut.empty()) {
+    throw std::runtime_error(
+        "AMFlow phase-space solution-sample evaluation requires phase_space.cut metadata");
+  }
+
+  const std::map<std::string, std::vector<BigComplex>> solution_samples =
+      ParseMathIntegralSampleRules(RequireAmflowBoundaryRawFile(direct_spec, "solution"),
+                                   direct_spec.boundary_epsilon_samples.size(),
+                                   "boundary_state.files.solution.raw");
+  if (solution_samples.empty()) {
+    throw std::runtime_error("AMFlow phase-space solution file did not contain samples");
+  }
+
+  std::vector<BigFloat> epsilon_values;
+  epsilon_values.reserve(direct_spec.boundary_epsilon_samples.size());
+  for (const std::string& sample : direct_spec.boundary_epsilon_samples) {
+    epsilon_values.push_back(ParseBigFloatRational(sample));
+  }
+
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = true;
+  diagnostics.residual_norm = 0.0;
+  diagnostics.overlap_mismatch = 0.0;
+  diagnostics.target_epsilon_coefficients.reserve(direct_spec.masters.size());
+  diagnostics.target_values.reserve(direct_spec.masters.size());
+
+  int fitted_master_count = 0;
+  for (const amflow::MasterIntegral& master : direct_spec.masters) {
+    const std::string label = MasterIntegralLabel(master);
+    const auto sample_it = solution_samples.find(label);
+    if (sample_it == solution_samples.end()) {
+      throw std::runtime_error(
+          "AMFlow phase-space solution file is missing samples for master " + label);
+    }
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients =
+        FitBoundarySamplesAsLaurentCoefficients(sample_it->second, epsilon_values);
+    ++fitted_master_count;
+
+    std::string constant_real = "0";
+    for (const auto& coefficient : coefficients) {
+      if (coefficient.order == 0) {
+        constant_real = coefficient.real.empty() ? "0" : coefficient.real;
+        break;
+      }
+    }
+    diagnostics.target_values.push_back(constant_real);
+    diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
+  }
+
+  diagnostics.summary =
+      "Evaluated retained AMFlow phase-space Cutkosky solution samples for " +
+      std::to_string(fitted_master_count) + " master coefficient set(s) using " +
+      std::to_string(direct_spec.boundary_epsilon_samples.size()) +
+      " epsilon samples, prescription length " +
+      std::to_string(direct_spec.phase_space_prescription.size()) +
+      ", and cut length " + std::to_string(direct_spec.phase_space_cut.size()) +
+      ". Full phase-space boundary reconstruction from cut propagators remains deferred; "
+      "this path only fits retained solution-sample cache values.";
+  return diagnostics;
+}
+
 amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     const DirectSolveSeriesSpec& direct_spec,
     const int endpoint_transport_order) {
@@ -3331,7 +3554,11 @@ bool ApplyDirectSpecTargetReductionIfPresent(
   if (!diagnostics.summary.empty()) {
     diagnostics.summary += " ";
   }
-  if (direct_spec.amflow_state_input &&
+  if (IsPhaseSpaceAmflowState(direct_spec)) {
+    diagnostics.summary +=
+        "Applied retained Kira target reduction after phase-space solution-sample "
+        "coefficient fitting.";
+  } else if (direct_spec.amflow_state_input &&
       diagnostics.eta_endpoint_transport_count > 0) {
     diagnostics.summary +=
         "Applied retained Kira target reduction after eta=0 selected endpoint coefficient "
@@ -3709,15 +3936,23 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
   out << "    \"epsilon_order\": " << epsilon_order << "\n";
   out << "  },\n";
   if (direct_spec.amflow_state_input) {
+    const bool phase_space_state = IsPhaseSpaceAmflowState(direct_spec);
     out << "  \"boundary_state\": {\n";
     out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
     out << "    \"direction\": " << JsonString(direct_spec.boundary_state_direction) << ",\n";
     out << "    \"epsilon_sample_count\": "
         << direct_spec.boundary_epsilon_samples.size() << ",\n";
+    if (!direct_spec.integral_kind.empty()) {
+      out << "    \"integral_kind\": " << JsonString(direct_spec.integral_kind) << ",\n";
+    }
     out << "    \"accepted_by_solve_series\": true,\n";
     out << "    \"runtime_boundary_provider\": "
-        << JsonString(status == "success"
+        << JsonString(phase_space_state
+                          ? (status == "success"
+                                 ? "retained-phase-space-solution-sample-cache-laurent-fit"
+                                 : "deferred-phase-space-solution-sample-provider")
+                      : status == "success"
                           ? (diagnostics.eta_endpoint_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport+"
@@ -3744,7 +3979,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"transport_applied\": "
         << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false") << ",\n";
     out << "    \"transport_scope\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(phase_space_state
+                          ? "phase-space-solution-samples"
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-asymptotic-only"
@@ -3770,7 +4007,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     }
     out << "],\n";
     out << "    \"runtime_application\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(phase_space_state
+                          ? "phase-space-solution-sample-laurent-fit"
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient+"
                             "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -3778,7 +4017,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           : "not-applied-boundary-only")
         << ",\n";
     out << "    \"blocked_reason\": "
-        << JsonString(diagnostics.eta_endpoint_transport_count > 0
+        << JsonString(phase_space_state
+                          ? "full Cutkosky phase-space boundary reconstruction from cut "
+                            "propagators remains deferred after retained solution-sample "
+                            "coefficient fitting"
+                      : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "singular eta=0 complex contour execution and endpoint extraction "
@@ -3795,7 +4038,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << "    \"runtime_application\": "
         << JsonString(status == "success"
                           ? (direct_spec.amflow_state_input
-                                 ? (diagnostics.eta_endpoint_transport_count > 0
+                                 ? (IsPhaseSpaceAmflowState(direct_spec)
+                                        ? "applied-after-phase-space-solution-sample-fit"
+                                    : diagnostics.eta_endpoint_transport_count > 0
                                         ? "applied-after-eta-zero-selected-endpoint-transport"
                                     : diagnostics.eta_asymptotic_transport_count > 0
                                         ? "applied-after-eta-infinity-asymptotic-de-transport"
@@ -3859,7 +4104,10 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
     if (evaluation.direct_spec.amflow_state_input) {
       evaluation.diagnostics =
-          EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec, epsilon_order);
+          IsPhaseSpaceAmflowState(evaluation.direct_spec)
+              ? EvaluateAmflowStatePhaseSpaceSolutionSamples(evaluation.direct_spec)
+              : EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec,
+                                                       epsilon_order);
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
       const bool applied_target_reduction =
           ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
@@ -3887,8 +4135,11 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
         } else {
           evaluation.status = "failed";
           evaluation.error =
-              "AMFlow eta-infinity boundary evaluation completed without enough coefficients "
-              "for all requested results";
+              IsPhaseSpaceAmflowState(evaluation.direct_spec)
+                  ? "AMFlow phase-space solution-sample evaluation completed without "
+                    "enough coefficients for all requested results"
+                  : "AMFlow eta-infinity boundary evaluation completed without enough "
+                    "coefficients for all requested results";
           evaluation.exit_code = 4;
         }
       }

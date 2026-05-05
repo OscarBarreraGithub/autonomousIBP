@@ -1373,8 +1373,6 @@ def summarize_release_readiness(
                 )
         elif section_id == "performance-review":
             blockers = list(performance_blockers)
-            if milestone_m6_blocked or phase0_packet_set_blockers or case_study_blockers:
-                blockers.insert(0, "milestone-m6")
             status = (
                 "reviewed"
                 if performance_review_summary is not None
@@ -1416,6 +1414,19 @@ def summarize_release_readiness(
                 ]
             else:
                 blockers = list(parity_blockers)
+                blockers.extend(
+                    prior_section["id"]
+                    for prior_section in review_sections
+                    if prior_section["id"]
+                    in PARITY_SIGNOFF_REQUIRED_RELEASE_REVIEW_SECTIONS
+                    and prior_section["status"] != "reviewed"
+                )
+                if any(
+                    prerequisite["id"] == "milestone-m6"
+                    and prerequisite["current_state"] == "blocked-on-qualification-closure"
+                    for prerequisite in release_prerequisites
+                ):
+                    blockers.append("milestone-m6")
             status = (
                 "reviewed"
                 if parity_signoff_summary is not None
@@ -2126,24 +2137,168 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
         qualification_corpus_summary_path = temp_root / "qualification-corpus-summary.json"
+        qualification_corpus_complete_summary_path = (
+            temp_root / "qualification-corpus-summary-complete.json"
+        )
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         case_study_qualification_summary_path = (
             temp_root / "case-study-qualification-summary.json"
         )
         performance_review_summary_path = temp_root / "performance-review-summary.json"
+        performance_reviewed_summary_path = (
+            temp_root / "performance-review-summary-reviewed.json"
+        )
         diagnostic_review_summary_path = temp_root / "diagnostic-review-summary.json"
+        diagnostic_reviewed_summary_path = (
+            temp_root / "diagnostic-review-summary-reviewed.json"
+        )
         docs_completion_summary_path = temp_root / "docs-completion-summary.json"
+        docs_completion_reviewed_summary_path = (
+            temp_root / "docs-completion-summary-reviewed.json"
+        )
         parity_signoff_summary_path = temp_root / "parity-signoff-summary.json"
+        parity_signoff_complete_summary_path = (
+            temp_root / "parity-signoff-summary-complete.json"
+        )
         summary_path = temp_root / "release-readiness-summary.json"
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_qualification_corpus_review_summary(qualification_corpus_summary_path)
+        write_json(
+            qualification_corpus_complete_summary_path,
+            {
+                "schema_version": 1,
+                "scope": "release-qualification-corpus",
+                "current_state": "qualification-corpus-reviewed",
+                "qualification_corpus_review_complete": True,
+                "qualification_corpus_required_inputs_preserved": True,
+                "qualification_corpus_required_outputs_preserved": True,
+                "qualification_evidence_coherent": True,
+                "phase0_packet_set_verdict_present": True,
+                "phase0_packet_set_qualified": True,
+                "case_study_verdict_present": True,
+                "case_study_families_qualified": True,
+                "closed_benchmark_family_coverage_statement_reviewed": True,
+                "residual_blockers_or_carveouts_preserved": True,
+                "reviewed_phase0_ids": ["automatic_loop"],
+                "pending_phase0_ids": [],
+                "blocked_case_study_ids": [],
+                "phase0_failure_code_blockers": [],
+                "case_study_qualification_blockers": [],
+                "missing_or_blocked_qualification_paths": [],
+                "blocking_reasons": [],
+                "withheld_claims": list(QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS),
+            },
+        )
         write_synthetic_phase0_qualification_summary(phase0_qualification_summary_path)
         write_synthetic_case_study_qualification_summary(case_study_qualification_summary_path)
         write_synthetic_performance_review_summary(performance_review_summary_path)
+        write_json(
+            performance_reviewed_summary_path,
+            {
+                "schema_version": 1,
+                "scope": "release-performance-review",
+                "current_state": "performance-review-reviewed",
+                "performance_review_complete": True,
+                "mandatory_benchmark_timings_reviewed": True,
+                "benchmark_family_scope_reviewed": True,
+                "clean_rebuild_gate_reviewed": True,
+                "unstable_performance_runs_reviewed": True,
+                "reviewed_benchmark_families": [
+                    "phase0-required-set",
+                    "phase0-d0-user-hook-pairs",
+                ],
+                "missing_or_unreviewed_performance_paths": [],
+                "blocking_reasons": [],
+                "withheld_claims": [
+                    "This summary does not claim final parity sign-off.",
+                    "This summary does not claim Milestone M6 closure.",
+                    "This summary does not claim Milestone M7 closure.",
+                    "This summary does not claim release readiness.",
+                    "This summary does not widen runtime or public behavior.",
+                ],
+            },
+        )
         write_synthetic_diagnostic_review_summary(diagnostic_review_summary_path)
+        write_json(
+            diagnostic_reviewed_summary_path,
+            {
+                "schema_version": 1,
+                "scope": "release-diagnostic-review",
+                "current_state": "diagnostic-review-reviewed",
+                "diagnostic_review_complete": True,
+                "required_failure_code_profiles_reviewed": True,
+                "typed_failure_paths_preserved": True,
+                "unstable_run_evidence_reviewed": True,
+                "known_regression_outcomes_reviewed": True,
+                "reviewed_failure_code_profiles": [
+                    "boundary_unsolved",
+                    "continuation_budget_exhausted",
+                ],
+                "missing_or_degraded_diagnostic_paths": [],
+                "blocking_reasons": [],
+                "withheld_claims": [
+                    "This summary does not claim Milestone M6 closure.",
+                    "This summary does not claim release readiness.",
+                ],
+            },
+        )
         write_synthetic_docs_completion_summary(docs_completion_summary_path)
+        write_json(
+            docs_completion_reviewed_summary_path,
+            {
+                "schema_version": 1,
+                "scope": "release-docs-completion",
+                "current_state": "docs-completion-reviewed",
+                "docs_completion_review_complete": True,
+                "docs_targets_reviewed": True,
+                "public_contract_aligned": True,
+                "implementation_ledger_aligned": True,
+                "verification_strategy_aligned": True,
+                "reference_harness_guide_aligned": True,
+                "reference_harness_readme_aligned": True,
+                "completion_roadmap_aligned": True,
+                "explicit_non_claims_reviewed": True,
+                "reviewed_doc_targets": [
+                    "docs/public-contract.md",
+                    "docs/implementation-ledger.md",
+                    "docs/verification-strategy.md",
+                    "docs/reference-harness.md",
+                    "tools/reference-harness/README.md",
+                    "docs/full-amflow-completion-roadmap.md",
+                ],
+                "missing_or_stale_doc_paths": [],
+                "blocking_reasons": [],
+                "withheld_claims": [
+                    "This summary does not claim Milestone M6 closure.",
+                    "This summary does not claim release readiness.",
+                ],
+            },
+        )
         write_synthetic_parity_signoff_summary(parity_signoff_summary_path)
+        write_json(
+            parity_signoff_complete_summary_path,
+            {
+                "schema_version": 1,
+                "scope": "release-parity-signoff",
+                "current_state": "parity-signoff-reviewed",
+                "parity_signoff_complete": True,
+                "qualification_closure_reviewed": True,
+                "performance_review_summary_reviewed": True,
+                "diagnostic_review_summary_reviewed": True,
+                "docs_completion_note_reviewed": True,
+                "withheld_claims_reviewed": True,
+                "parity_signoff_required_inputs_preserved": True,
+                "parity_signoff_required_outputs_preserved": True,
+                "prerequisite_review_sections_preserved": True,
+                "required_release_review_sections": list(
+                    PARITY_SIGNOFF_REQUIRED_RELEASE_REVIEW_SECTIONS
+                ),
+                "missing_or_blocked_parity_paths": [],
+                "blocking_reasons": [],
+                "withheld_claims": list(PARITY_SIGNOFF_REQUIRED_WITHHELD_CLAIMS),
+            },
+        )
 
         malformed_sections_path = temp_root / "parity-signoff-malformed-sections.json"
         malformed_withheld_claims_path = (
@@ -2208,6 +2363,89 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             parity_signoff_summary_path=parity_signoff_summary_path,
         )
         write_json(summary_path, summary)
+        anti_fake_parity_summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
+            performance_review_summary_path=performance_reviewed_summary_path,
+        )
+        anti_fake_complete_parity_summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
+            performance_review_summary_path=performance_reviewed_summary_path,
+            parity_signoff_summary_path=parity_signoff_complete_summary_path,
+        )
+        anti_fake_m6_parity_summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+            qualification_corpus_summary_path=qualification_corpus_complete_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
+            performance_review_summary_path=performance_reviewed_summary_path,
+            diagnostic_review_summary_path=diagnostic_reviewed_summary_path,
+            docs_completion_summary_path=docs_completion_reviewed_summary_path,
+            parity_signoff_summary_path=parity_signoff_complete_summary_path,
+        )
+        reviewed_performance_section_decoupled_from_m6 = any(
+            section["id"] == "performance-review"
+            and section["status"] == "reviewed"
+            and not section["blockers"]
+            for section in anti_fake_parity_summary["review_sections"]
+        )
+        reviewed_performance_does_not_satisfy_m6 = any(
+            prerequisite["id"] == "milestone-m6"
+            and prerequisite["current_state"] == "blocked-on-qualification-closure"
+            and not prerequisite["satisfied"]
+            for prerequisite in anti_fake_parity_summary["release_prerequisites"]
+        )
+        reviewed_performance_does_not_fake_parity = any(
+            section["id"] == "parity-signoff" and section["status"] == "blocked"
+            for section in anti_fake_parity_summary["review_sections"]
+        )
+        complete_parity_sidecar_does_not_bypass_prerequisite_sections = any(
+            section["id"] == "parity-signoff"
+            and section["status"] == "blocked"
+            and "qualification-corpus" in section["blockers"]
+            for section in anti_fake_complete_parity_summary["review_sections"]
+        )
+        complete_sidecars_do_not_bypass_m6_prerequisite = any(
+            section["id"] == "parity-signoff"
+            and section["status"] == "blocked"
+            and section["blockers"] == ["milestone-m6"]
+            for section in anti_fake_m6_parity_summary["review_sections"]
+        )
+        reviewed_performance_does_not_fake_release_readiness = (
+            not anti_fake_parity_summary["release_signoff_ready"]
+            and not anti_fake_complete_parity_summary["release_signoff_ready"]
+            and not anti_fake_m6_parity_summary["release_signoff_ready"]
+        )
+        expect(
+            reviewed_performance_section_decoupled_from_m6,
+            "complete performance review evidence must not be blocked by milestone-m6",
+        )
+        expect(
+            reviewed_performance_does_not_satisfy_m6,
+            "complete performance review evidence must not satisfy milestone-m6",
+        )
+        expect(
+            reviewed_performance_does_not_fake_parity,
+            "complete performance review evidence must not complete parity signoff",
+        )
+        expect(
+            complete_parity_sidecar_does_not_bypass_prerequisite_sections,
+            "complete parity signoff evidence must not bypass blocked review sections",
+        )
+        expect(
+            complete_sidecars_do_not_bypass_m6_prerequisite,
+            "complete review evidence must not bypass blocked milestone-m6",
+        )
+        expect(
+            reviewed_performance_does_not_fake_release_readiness,
+            "complete performance review evidence must not complete release readiness",
+        )
 
         return {
             "checklist_sources_present": summary["checklist_sources_present"],
@@ -2307,6 +2545,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 and section["status"] == "blocked"
                 and "performance-path:mandatory-case-study-timings" in section["blockers"]
                 for section in summary["review_sections"]
+            ),
+            "reviewed_performance_section_decoupled_from_m6": (
+                reviewed_performance_section_decoupled_from_m6
+            ),
+            "reviewed_performance_does_not_satisfy_m6": (
+                reviewed_performance_does_not_satisfy_m6
+            ),
+            "reviewed_performance_does_not_fake_parity": (
+                reviewed_performance_does_not_fake_parity
+            ),
+            "complete_parity_sidecar_does_not_bypass_prerequisite_sections": (
+                complete_parity_sidecar_does_not_bypass_prerequisite_sections
+            ),
+            "complete_sidecars_do_not_bypass_m6_prerequisite": (
+                complete_sidecars_do_not_bypass_m6_prerequisite
+            ),
+            "reviewed_performance_does_not_fake_release_readiness": (
+                reviewed_performance_does_not_fake_release_readiness
             ),
             "diagnostic_review_evidence_consumed": summary["diagnostic_review_evidence_present"],
             "diagnostic_review_blockers_preserved": summary["diagnostic_review_blockers"]

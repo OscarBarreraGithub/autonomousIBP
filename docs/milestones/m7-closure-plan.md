@@ -25,11 +25,18 @@ qualification corpus and parity sign-off sidecars are blocked. Docs completion
 is reviewed, but it is not counted as one of the four release sign-offs in the
 lane86 handoff.
 
-The release-readiness review-section gate is more conservative and remains
-blocker-preserving: `qualification-corpus` is blocked, `performance-review` is
-blocked by `milestone-m6` despite the passing performance sidecar,
-`diagnostic-review` is reviewed, `docs-completion` is reviewed, and
-`parity-signoff` is blocked.
+Lane89 removes the unintended review-section dependency cycle that made
+`performance-review` blocked by `milestone-m6` despite the passing performance
+sidecar. Going forward, `performance-review` may be marked reviewed when its
+own retained performance evidence is reviewed. This does not claim M6, M7,
+parity sign-off, or release readiness: `milestone-m6` remains a release
+prerequisite, `qualification-corpus` remains blocked by the qualification
+evidence below, and `parity-signoff` remains blocked until it consumes the
+accepted qualification, performance, diagnostic, and docs reviews. The
+readiness helper also cross-checks `parity-signoff` against the actual
+review-section statuses and the live `milestone-m6` prerequisite so a complete
+parity sidecar cannot bypass a blocked qualification, performance, diagnostic,
+docs, or M6 gate.
 
 Lane86 must not document M7 as "1 step from closure" yet. The current
 readiness output does not show `3/4` sign-offs passing, and the remaining

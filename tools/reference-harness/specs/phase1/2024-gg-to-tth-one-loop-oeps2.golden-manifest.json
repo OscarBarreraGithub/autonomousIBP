@@ -1,0 +1,189 @@
+{
+  "benchmark_id": "2024-gg-to-tth-one-loop-oeps2",
+  "capture_profile": {
+    "benchmark_class": "phase1-selected-additional-candidate-dedicated-capture",
+    "epsorder": 2,
+    "family": "PentaboxGGtoTTHTopologyC",
+    "ibp_reducer": "one-loop AMF direct DE construction; no Kira reduction required for this capture",
+    "kinematic_point": {
+      "mt2": "1",
+      "s12": "-3",
+      "s13": "-5",
+      "s14": "-7",
+      "s23": "-11",
+      "s24": "-13",
+      "s34": "-17"
+    },
+    "kinematic_region": "Euclidean rational invariant point",
+    "precision_goal_digits": 50,
+    "raw_scalar_targets": [
+      "I^C_01111(D), topology-C four-propagator scalar master from the paper's one-loop family list",
+      "I^C_11111(D), topology-C five-propagator scalar master from the paper's one-loop family list"
+    ],
+    "source_reference": "arXiv:2312.10015 / JHEP03(2024)093, Table 1 topology C and Sec. 7 one-loop AMF implementation",
+    "topology": "C"
+  },
+  "comparison_passed": false,
+  "created_at": "2026-05-05T14:54:34-04:00",
+  "evidence_kind": "dedicated-one-loop-amf-packet-local-script-success",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow",
+  "notes": [
+    "This benchmark is an eligible phase-1 additional selected candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md.",
+    "It is not one of the six prompt phase-0 feature rows, not one of the ten case-study scaffold IDs, and not one of the three prior phase-1 captures diphoton-heavy-quark-form-factors, 2024-box-integrals-fermion-bubbles, or single-top-planar-nonplanar.",
+    "The lane intentionally selects a one-loop topology-C Euclidean rational invariant point to avoid complex-kinematics and heavy multi-loop setup while still using the paper's AMF-backed TTH integral family.",
+    "The output is a dedicated Mathematica/TTH one-loop AMF packet for two raw scalar masters expanded through eps^2 at the 50-digit goal. No C++ ingest state, comparator pass, M6, M7, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "8a6adb1605dd47f05d23ca935d20b084f4d29cf3215de9e6ce44ac72d58ffbe4",
+      "name": "sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow/sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean",
+      "present_at_capture": true,
+      "size_bytes": 805
+    },
+    {
+      "canonical_sha256": "de1551ada24951a044597a417f44c86837d3c389e4ce4f2db65a52a884e9a9db",
+      "name": "sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow/sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 609
+    },
+    {
+      "canonical_sha256": "1191f0b87e76f8349f664011bacd2bbc9a862e91d2f593fb82c85575cfb0bb4e",
+      "name": "sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow/sol-2024-gg-to-tth-one-loop-oeps2-topology-c-euclidean.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 1484
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2024-gg-to-tth-one-loop-oeps2 from the phase-1 additional selected candidates; exclusions against phase-0 rows, ten case-study IDs, and prior phase-1 captures passed."
+    },
+    {
+      "role": "B",
+      "scope": "source and packet provenance",
+      "status": "APPROVE",
+      "verdict": "The packet uses the primary TTH one-loop AMF implementation at commit 13118efec74c5bfc81fba7c3df6194fea185f748 with committed lane99 run and verifier scripts."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake build, compare_cpp_vs_amflow.py --self-check, JSON manifest validation, manifest assertions, and git diff check completed with exit code 0."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "Verifier read the real Mathematica solution file, checked 10 finite numeric eps coefficients, observed min precision 50 digits, max imaginary tail zero at 52-digit precision, and rejected all-zero or nonnumeric output."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow",
+    "execution": {
+      "job_id": "lane99local",
+      "mode": "local execution of the sbatch-compatible capture script",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:01:39"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane99_local_capture.log",
+        "sha256": "bd185e34605b8d7c47c9e5f406f097ffa9a12bb86b222ee3267f5e2f8983b856",
+        "size_bytes": 6851
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/run-manifest.lane99local.txt",
+      "sha256": "dd54cef04f63d44533646504b587bb42a97d5303853c99672720ec58d4bd1583"
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-gg-to-tth-one-loop-oeps2.lane99/capture_gg_to_tth_one_loop_oeps2_topology_c.sbatch",
+        "sha256": "65717134c6b5b6723e0cbbca931343c8a4c28f2abfa6c6b27dbc5dfa0ab06a22"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-gg-to-tth-one-loop-oeps2.lane99/run.wl",
+        "sha256": "fad749c11f3e15b3bd5dabd1712f4cb7353e77ac51362c74904419d4d72bd14a"
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-gg-to-tth-one-loop-oeps2.lane99/verify_output.wl",
+        "sha256": "1cfd9e87eb81d02411da8d60e9f8d0cd9db098df9ea9e8a5be351804f26e9b34"
+      }
+    ],
+    "source_tth": {
+      "commit": "13118efec74c5bfc81fba7c3df6194fea185f748",
+      "remote": "https://github.com/p-a-kreer/TTH.git"
+    },
+    "source_tth_package_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow/package/DESolver.m",
+        "sha256": "63d1dc13ce1772ef612bacf8386caaf161ceb7cb88e2ed021f25596df6b4df88"
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane99-gg-to-tth-one-loop-oeps2/TTH/one_loop_amflow/package/OneLoopAMFlow.m",
+        "sha256": "3e1ff993720665ddd63edd75101f71f2f34ed6ed78794c410b3f01d8aba68467"
+      }
+    ],
+    "toolchain": {
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-05T14:54:34-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 4",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane99_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane99_cmake_build.stdout",
+        "sha256": "2abf4682ec415f7249d97fc78ad80c551cf7d1093aa2151f95e1354c02960154",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane99_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "status": "passed"
+    },
+    "git_diff_check": {
+      "path": "/tmp/autoibp_orch/exec/lane99_git_diff_check.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0,
+      "status": "passed"
+    },
+    "manifest_assertions": {
+      "path": "/tmp/autoibp_orch/exec/lane99_manifest_assertions.txt",
+      "sha256": "e4d7f15b045b26c442f1f5556a33fab145e7a04bdf651de5e1bb824628ee574c",
+      "size_bytes": 32,
+      "status": "passed"
+    },
+    "manifest_jsonlint": {
+      "path": "/tmp/autoibp_orch/exec/lane99_manifest_jsonlint.txt",
+      "note": "Hash intentionally omitted because the pretty-printed JSON includes this manifest field and would be self-referential.",
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Dedicated TTH topology-C one-loop AMF run evaluated five small-eps samples at 210-digit working precision, constructed a 30-integral DE system per sample, fit two scalar masters through eps^2, and the verifier passed on 10 finite Mathematica numeric coefficients.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 10,
+      "max_abs_imaginary_tail": "0``52.10438506291797",
+      "min_precision": "50."
+    }
+  }
+}

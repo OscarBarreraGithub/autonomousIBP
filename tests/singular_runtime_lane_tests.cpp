@@ -7,6 +7,7 @@
 #include "amflow/runtime/lightlike_propagator.hpp"
 #include "amflow/solver/series_solver.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -61,6 +62,21 @@ const amflow::CutkoskyPrefactorSeriesTerm& CutkoskyLaurentTermAt(
   }
   throw std::runtime_error("missing Cutkosky Laurent eps order " +
                            std::to_string(eps_order));
+}
+
+const amflow::CutkoskyResidueSeriesTerm& CutkoskyResidueTermAt(
+    const amflow::CutkoskyResidueSeries& series,
+    const int eps_order,
+    const int eta_power,
+    const int log_power,
+    const std::string& region_key) {
+  for (const amflow::CutkoskyResidueSeriesTerm& term : series.terms) {
+    if (term.eps_order == eps_order && term.eta_power == eta_power &&
+        term.log_power == log_power && term.region_key == region_key) {
+      return term;
+    }
+  }
+  throw std::runtime_error("missing synthetic Cutkosky residue term");
 }
 
 std::string ReadRepoFile(const std::string& path) {
@@ -887,6 +903,58 @@ amflow::ProblemSpec MakeB63nFeynmanPrescriptionSpec(
   return spec;
 }
 
+amflow::CutkoskyResidueSeriesTerm MakeSyntheticB63nResidueTerm(
+    const int eps_order,
+    const int eta_power,
+    const int log_power,
+    const std::string& region_key,
+    const std::string& real,
+    const std::string& imaginary,
+    const std::string& coefficient_label,
+    const std::string& fixture_id) {
+  amflow::CutkoskyResidueSeriesTerm term;
+  term.eps_order = eps_order;
+  term.eta_power = eta_power;
+  term.log_power = log_power;
+  term.region_key = region_key;
+  term.coefficient_label = coefficient_label;
+  // Synthetic-only fixture coefficient; this is not AMFlow parity data.
+  term.coefficient = {real, imaginary};
+  term.precision.requested_precision_digits = 70;
+  term.precision.working_precision_digits = 100;
+  term.precision.arithmetic_backend = "cpp_dec_float_100";
+  term.precision.summary =
+      "lane163 synthetic residue fixture precision metadata; no coefficient "
+      "publication";
+  term.provenance.source = "lane163 synthetic fixture; not AMFlow final samples";
+  term.provenance.derivation = "synthetic hand-authored transport fixture";
+  term.provenance.fixture_id = fixture_id;
+  term.provenance.synthetic_fixture = true;
+  term.provenance.retained_solution_samples_used = false;
+  term.provenance.coefficient_published = false;
+  return term;
+}
+
+amflow::CutkoskyResidueSeries MakeSyntheticB63nResidueSeries(
+    std::vector<amflow::CutkoskyResidueSeriesTerm> terms) {
+  amflow::CutkoskyResidueSeries series;
+  series.series_label = "lane163-synthetic-b63n-residue-series";
+  series.requested_precision_digits = 70;
+  series.working_precision_digits = 100;
+  series.precision_diagnostics =
+      "lane163 synthetic residue fixture series; no real residue coefficients";
+  if (!terms.empty()) {
+    series.min_eps_order = terms.front().eps_order;
+    series.max_eps_order = terms.front().eps_order;
+    for (const amflow::CutkoskyResidueSeriesTerm& term : terms) {
+      series.min_eps_order = std::min(series.min_eps_order, term.eps_order);
+      series.max_eps_order = std::max(series.max_eps_order, term.eps_order);
+    }
+  }
+  series.terms = std::move(terms);
+  return series;
+}
+
 void B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest() {
   const amflow::CutkoskyPrefactorSeries k1 =
       amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 3, 70);
@@ -988,6 +1056,154 @@ void B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest() {
          "b63n prefactor primitive must not promote the full eta=0 contour flag");
   Expect(!audit.retained_solution_samples_used,
          "b63n prefactor primitive must not introduce final-solution sample input");
+}
+
+void B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest() {
+  const amflow::CutkoskyPrefactorSeries k1 =
+      amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 2, 70);
+
+  const amflow::CutkoskyResidueSeries selected_fixture =
+      amflow::MultiplyCutkoskyPrefactorIntoResidueSeries(
+          k1,
+          MakeSyntheticB63nResidueSeries({
+              MakeSyntheticB63nResidueTerm(
+                  -1,
+                  0,
+                  0,
+                  "integer",
+                  "1.5",
+                  "0",
+                  "synthetic_test_prefactor_eta0",
+                  "lane163-synthetic-prefactor-interop"),
+          }),
+          -1,
+          0);
+  const amflow::CutkoskyResidueSeriesTerm& selected_term =
+      CutkoskyResidueTermAt(selected_fixture, 0, 0, 0, "integer");
+  Expect(selected_term.precision.requested_precision_digits == 70,
+         "b63n synthetic residue carrier should retain prefactor precision metadata");
+  Expect(selected_term.provenance.synthetic_fixture,
+         "b63n synthetic residue carrier should retain synthetic provenance");
+  Expect(!selected_term.provenance.retained_solution_samples_used,
+         "b63n synthetic residue carrier must not read retained final solution samples");
+  Expect(!selected_term.provenance.coefficient_published,
+         "b63n synthetic residue carrier must remain non-publishing");
+  const amflow::CutkoskyEtaZeroSelectionResult selected =
+      amflow::PickCutkoskyEtaZeroTerm(
+          amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms(selected_fixture, 0));
+  Expect(selected.success,
+         "b63n synthetic residue carrier should interoperate with PickCutkoskyEtaZeroTerm");
+  Expect(selected.selected_coefficient_label == "synthetic_test_prefactor_eta0",
+         "b63n synthetic residue carrier should preserve selector labels");
+
+  const amflow::CutkoskyResidueSeries missing_order_fixture =
+      amflow::MultiplyCutkoskyPrefactorIntoResidueSeries(
+          k1,
+          MakeSyntheticB63nResidueSeries({
+              MakeSyntheticB63nResidueTerm(2,
+                                           0,
+                                           0,
+                                           "integer",
+                                           "1.5",
+                                           "0",
+                                           "synthetic_test_missing_order",
+                                           "lane163-synthetic-missing-order"),
+          }),
+          0,
+          0);
+  Expect(missing_order_fixture.terms.empty(),
+         "b63n synthetic prefactor multiplication must not invent missing eps orders");
+  const amflow::CutkoskyEtaZeroSelectionResult missing_order =
+      amflow::PickCutkoskyEtaZeroTerm(
+          amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms(missing_order_fixture, 0));
+  Expect(!missing_order.success &&
+             missing_order.failure_code == "continuation_budget_exhausted",
+         "b63n synthetic missing-order fixture should fail closed");
+  ExpectContains(missing_order.summary,
+                 "received no propagated endpoint terms",
+                 "b63n synthetic missing-order fixture must not publish an implicit term");
+
+  const amflow::CutkoskyResidueSeries zero_fixture =
+      amflow::MultiplyCutkoskyPrefactorIntoResidueSeries(
+          k1,
+          MakeSyntheticB63nResidueSeries({
+              MakeSyntheticB63nResidueTerm(0,
+                                           0,
+                                           0,
+                                           "integer",
+                                           "0",
+                                           "0",
+                                           "synthetic_test_zero_eta0",
+                                           "lane163-synthetic-zero-term"),
+          }),
+          0,
+          0);
+  Expect(zero_fixture.terms.empty(),
+         "b63n synthetic prefactor multiplication must drop exact zero terms");
+  const amflow::CutkoskyEtaZeroSelectionResult zero =
+      amflow::PickCutkoskyEtaZeroTerm(
+          amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms(zero_fixture, 0));
+  Expect(!zero.success && zero.failure_code == "continuation_budget_exhausted",
+         "b63n synthetic zero-term fixture should fail closed");
+  ExpectContains(zero.summary,
+                 "received no propagated endpoint terms",
+                 "b63n synthetic zero-term fixture must not publish an implicit zero");
+
+  const amflow::CutkoskyResidueSeries log_fixture =
+      amflow::MultiplyCutkoskyPrefactorIntoResidueSeries(
+          k1,
+          MakeSyntheticB63nResidueSeries({
+              MakeSyntheticB63nResidueTerm(0,
+                                           0,
+                                           1,
+                                           "integer",
+                                           "1.25",
+                                           "0",
+                                           "synthetic_test_log_eta0",
+                                           "lane163-synthetic-log-term"),
+          }),
+          0,
+          0);
+  const amflow::CutkoskyEtaZeroSelectionResult log =
+      amflow::PickCutkoskyEtaZeroTerm(
+          amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms(log_fixture, 0));
+  Expect(!log.success && log.failure_code == "continuation_budget_exhausted",
+         "b63n synthetic log fixture should fail closed");
+  ExpectContains(log.summary,
+                 "rejects unresolved logarithmic eta=0 terms",
+                 "b63n synthetic log fixture must preserve log rejection");
+
+  const amflow::CutkoskyResidueSeries region_fixture =
+      amflow::MultiplyCutkoskyPrefactorIntoResidueSeries(
+          k1,
+          MakeSyntheticB63nResidueSeries({
+              MakeSyntheticB63nResidueTerm(0,
+                                           0,
+                                           0,
+                                           "integer",
+                                           "1.25",
+                                           "0",
+                                           "synthetic_test_region_integer",
+                                           "lane163-synthetic-region-integer"),
+              MakeSyntheticB63nResidueTerm(0,
+                                           0,
+                                           0,
+                                           "fractional",
+                                           "2.25",
+                                           "0",
+                                           "synthetic_test_region_fractional",
+                                           "lane163-synthetic-region-fractional"),
+          }),
+          0,
+          0);
+  const amflow::CutkoskyEtaZeroSelectionResult region =
+      amflow::PickCutkoskyEtaZeroTerm(
+          amflow::ProjectCutkoskyResidueSeriesToEtaZeroTerms(region_fixture, 0));
+  Expect(!region.success && region.failure_code == "continuation_budget_exhausted",
+         "b63n synthetic region fixture should fail closed");
+  ExpectContains(region.summary,
+                 "rejects multiple endpoint regions",
+                 "b63n synthetic region fixture must preserve region-choice rejection");
 }
 
 void B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest() {
@@ -1992,6 +2208,7 @@ int main() {
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
     B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest();
+    B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();

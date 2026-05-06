@@ -337,6 +337,69 @@ CutkoskyComplexCoefficient ParseCutkoskySeriesTerm(
                                       label + ".imaginary")};
 }
 
+CutkoskyComplexCoefficient ParseCutkoskyResidueSeriesTermCoefficient(
+    const CutkoskyResidueSeriesTerm& term,
+    const std::string& label) {
+  return {
+      ParseCutkoskyPrefactorFloat(term.coefficient.real, label + ".coefficient.real"),
+      ParseCutkoskyPrefactorFloat(
+          term.coefficient.imaginary.empty() ? "0" : term.coefficient.imaginary,
+          label + ".coefficient.imaginary")};
+}
+
+bool IsZeroCutkoskyCoefficient(const CutkoskyComplexCoefficient& coefficient) {
+  return coefficient.real == 0 && coefficient.imaginary == 0;
+}
+
+struct CutkoskyResidueSeriesTermKey {
+  int eps_order = 0;
+  int eta_power = 0;
+  int log_power = 0;
+  std::string region_key;
+
+  bool operator<(const CutkoskyResidueSeriesTermKey& other) const {
+    if (eps_order != other.eps_order) {
+      return eps_order < other.eps_order;
+    }
+    if (eta_power != other.eta_power) {
+      return eta_power < other.eta_power;
+    }
+    if (log_power != other.log_power) {
+      return log_power < other.log_power;
+    }
+    return region_key < other.region_key;
+  }
+};
+
+std::string MergeCutkoskyResidueCoefficientLabels(const std::string& lhs,
+                                                  const std::string& rhs) {
+  if (rhs.empty() || lhs == rhs) {
+    return lhs;
+  }
+  if (lhs.empty()) {
+    return rhs;
+  }
+  return lhs + "+" + rhs;
+}
+
+void ValidateCutkoskyPrefactorForMultiplication(
+    const CutkoskyPrefactorSeries& prefactor) {
+  if (prefactor.loop_count == 0 || prefactor.terms.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires a non-empty prefactor series");
+  }
+  if (prefactor.requested_precision_digits < 16 ||
+      prefactor.requested_precision_digits > 90) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires a prefactor precision in "
+        "[16, 90] decimal digits");
+  }
+  if (prefactor.min_eps_order != 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires prefactor terms from eps^0");
+  }
+}
+
 std::string ContourHalfPlaneForDirection(const std::string& direction) {
   return direction == "Im" ? "upper" : "lower";
 }
@@ -952,6 +1015,145 @@ MultiplyCutkoskyPrefactorIntoLaurentSeries(
                                             prefactor.requested_precision_digits)});
   }
   return multiplied;
+}
+
+CutkoskyResidueSeries MultiplyCutkoskyPrefactorIntoResidueSeries(
+    const CutkoskyPrefactorSeries& prefactor,
+    const CutkoskyResidueSeries& residue_series,
+    const int min_eps_order,
+    const int max_eps_order) {
+  ValidateCutkoskyPrefactorForMultiplication(prefactor);
+  if (residue_series.terms.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue-series prefactor multiplication requires explicit "
+        "residue terms");
+  }
+  if (max_eps_order < min_eps_order) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue-series prefactor multiplication requires "
+        "max_eps_order >= min_eps_order");
+  }
+
+  int residue_min_order = residue_series.terms.front().eps_order;
+  for (const CutkoskyResidueSeriesTerm& term : residue_series.terms) {
+    residue_min_order = std::min(residue_min_order, term.eps_order);
+  }
+  const int needed_prefactor_order = max_eps_order - residue_min_order;
+  if (prefactor.max_eps_order < needed_prefactor_order) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue-series prefactor multiplication needs prefactor terms "
+        "through eps^" +
+        std::to_string(needed_prefactor_order) + " for the requested output range");
+  }
+
+  struct AccumulatedResidueTerm {
+    CutkoskyResidueSeriesTerm term;
+    CutkoskyComplexCoefficient coefficient;
+  };
+  std::map<CutkoskyResidueSeriesTermKey, AccumulatedResidueTerm> output_terms;
+  for (const CutkoskyPrefactorSeriesTerm& prefactor_term : prefactor.terms) {
+    const CutkoskyComplexCoefficient k =
+        ParseCutkoskySeriesTerm(prefactor_term, "prefactor");
+    for (const CutkoskyResidueSeriesTerm& residue_term : residue_series.terms) {
+      const int order = prefactor_term.eps_order + residue_term.eps_order;
+      if (order < min_eps_order || order > max_eps_order) {
+        continue;
+      }
+      const CutkoskyComplexCoefficient residue =
+          ParseCutkoskyResidueSeriesTermCoefficient(residue_term, "residue");
+      const CutkoskyResidueSeriesTermKey key{
+          order,
+          residue_term.eta_power,
+          residue_term.log_power,
+          residue_term.region_key.empty() ? "integer" : residue_term.region_key};
+      AccumulatedResidueTerm& target = output_terms[key];
+      if (target.term.coefficient_label.empty() && target.term.provenance.source.empty()) {
+        target.term = residue_term;
+        target.term.eps_order = order;
+        target.term.region_key = key.region_key;
+        target.term.precision.requested_precision_digits =
+            prefactor.requested_precision_digits;
+        target.term.precision.working_precision_digits =
+            prefactor.working_precision_digits;
+        target.term.precision.arithmetic_backend = "cpp_dec_float_100";
+        target.term.precision.summary =
+            "b63n explicit residue-series term multiplied by reviewed K_r(eps) "
+            "prefactor; coefficient publication remains deferred";
+        target.term.provenance.coefficient_published = false;
+      } else {
+        target.term.coefficient_label = MergeCutkoskyResidueCoefficientLabels(
+            target.term.coefficient_label, residue_term.coefficient_label);
+        target.term.provenance.fixture_id = MergeCutkoskyResidueCoefficientLabels(
+            target.term.provenance.fixture_id, residue_term.provenance.fixture_id);
+        target.term.provenance.synthetic_fixture =
+            target.term.provenance.synthetic_fixture ||
+            residue_term.provenance.synthetic_fixture;
+        target.term.provenance.retained_solution_samples_used =
+            target.term.provenance.retained_solution_samples_used ||
+            residue_term.provenance.retained_solution_samples_used;
+        target.term.provenance.coefficient_published = false;
+      }
+      target.coefficient.real += k.real * residue.real - k.imaginary * residue.imaginary;
+      target.coefficient.imaginary +=
+          k.real * residue.imaginary + k.imaginary * residue.real;
+    }
+  }
+
+  CutkoskyResidueSeries multiplied;
+  multiplied.series_label = residue_series.series_label.empty()
+                                ? "prefactor-multiplied-residue-series"
+                                : residue_series.series_label + "::prefactor";
+  multiplied.expansion_variable = residue_series.expansion_variable;
+  multiplied.eta_variable = residue_series.eta_variable;
+  multiplied.min_eps_order = min_eps_order;
+  multiplied.max_eps_order = max_eps_order;
+  multiplied.requested_precision_digits = prefactor.requested_precision_digits;
+  multiplied.working_precision_digits = prefactor.working_precision_digits;
+  multiplied.precision_diagnostics =
+      "b63n residue-series carrier multiplied by reviewed K_r(eps) prefactor; "
+      "requested_digits=" +
+      std::to_string(prefactor.requested_precision_digits) +
+      ", working_digits=" + std::to_string(prefactor.working_precision_digits) +
+      ", retained_solution_samples_used=false for synthetic fixtures, coefficient "
+      "publication remains deferred";
+
+  for (auto& entry : output_terms) {
+    AccumulatedResidueTerm& accumulated = entry.second;
+    if (IsZeroCutkoskyCoefficient(accumulated.coefficient)) {
+      continue;
+    }
+    accumulated.term.coefficient.real = FormatCutkoskyPrefactorFloat(
+        accumulated.coefficient.real, prefactor.requested_precision_digits);
+    accumulated.term.coefficient.imaginary =
+        accumulated.coefficient.imaginary == 0
+            ? "0"
+            : FormatCutkoskyPrefactorFloat(accumulated.coefficient.imaginary,
+                                           prefactor.requested_precision_digits);
+    multiplied.terms.push_back(accumulated.term);
+  }
+  return multiplied;
+}
+
+std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
+    const CutkoskyResidueSeries& series,
+    const int eps_order) {
+  std::vector<CutkoskyEtaZeroTerm> projected;
+  for (const CutkoskyResidueSeriesTerm& residue_term : series.terms) {
+    if (residue_term.eps_order != eps_order) {
+      continue;
+    }
+    const CutkoskyComplexCoefficient coefficient =
+        ParseCutkoskyResidueSeriesTermCoefficient(residue_term, "residue");
+    if (IsZeroCutkoskyCoefficient(coefficient)) {
+      continue;
+    }
+    projected.push_back({residue_term.region_key.empty() ? "integer"
+                                                         : residue_term.region_key,
+                         residue_term.eta_power,
+                         residue_term.log_power,
+                         residue_term.coefficient_label});
+  }
+  return projected;
 }
 
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(

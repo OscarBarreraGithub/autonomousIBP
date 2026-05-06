@@ -56,6 +56,50 @@ struct CutkoskyEtaZeroSelectionResult {
   std::string summary;
 };
 
+struct CutkoskyResidueComplexCoefficient {
+  std::string real = "0";
+  std::string imaginary = "0";
+};
+
+struct CutkoskyResiduePrecisionDiagnostics {
+  int requested_precision_digits = 0;
+  int working_precision_digits = 0;
+  std::string arithmetic_backend;
+  std::string summary;
+};
+
+struct CutkoskyResidueProvenance {
+  std::string source;
+  std::string derivation;
+  std::string fixture_id;
+  bool synthetic_fixture = false;
+  bool retained_solution_samples_used = false;
+  bool coefficient_published = false;
+};
+
+struct CutkoskyResidueSeriesTerm {
+  int eps_order = 0;
+  int eta_power = 0;
+  int log_power = 0;
+  std::string region_key = "integer";
+  std::string coefficient_label;
+  CutkoskyResidueComplexCoefficient coefficient;
+  CutkoskyResiduePrecisionDiagnostics precision;
+  CutkoskyResidueProvenance provenance;
+};
+
+struct CutkoskyResidueSeries {
+  std::string series_label;
+  std::string expansion_variable = "eps";
+  std::string eta_variable = "eta";
+  int min_eps_order = 0;
+  int max_eps_order = 0;
+  int requested_precision_digits = 0;
+  int working_precision_digits = 0;
+  std::string precision_diagnostics;
+  std::vector<CutkoskyResidueSeriesTerm> terms;
+};
+
 struct CutkoskyPrefactorSeriesTerm {
   int eps_order = 0;
   std::string real;
@@ -149,6 +193,14 @@ MultiplyCutkoskyPrefactorIntoLaurentSeries(
     const std::vector<CutkoskyPrefactorSeriesTerm>& residue_series,
     int min_eps_order,
     int max_eps_order);
+CutkoskyResidueSeries MultiplyCutkoskyPrefactorIntoResidueSeries(
+    const CutkoskyPrefactorSeries& prefactor,
+    const CutkoskyResidueSeries& residue_series,
+    int min_eps_order,
+    int max_eps_order);
+std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
+    const CutkoskyResidueSeries& series,
+    int eps_order);
 CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
     const ProblemSpec& spec);
 CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(

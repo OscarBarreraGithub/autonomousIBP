@@ -1,27 +1,28 @@
 {
   "benchmark_id": "automatic_vs_manual",
-  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/comparisons/phase0/automatic_vs_manual.summary.json",
+  "capture_summary": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/state/phase0-reference.capture.json",
   "compare_cpp_vs_amflow_outputs": [
     "auto"
   ],
-  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/golden-manifest.json",
-  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/captured",
+  "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/golden-manifest.json",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured",
   "notes": [
     "Tracked pointer for the retained upstream AMFlow phase-0 automatic_vs_manual capture.",
-    "The promoted golden retains both automatic and manual Mathematica outputs from the upstream example; solve-series comparator ingestion is scoped to auto because auto and man carry the same tt integral surface and would otherwise duplicate integral keys."
+    "Lane 120 recaptured automatic_vs_manual at precision = 60 with ChopPre = 40 and promoted the real AMFlow auto/man outputs to close the 18-digit precision-tag floor without changing comparator tolerances.",
+    "Comparator ingestion remains scoped to auto because auto and man carry the same tt integral surface and would otherwise duplicate integral keys."
   ],
   "outputs": [
     {
-      "canonical_sha256": "77c17c56e247156c394aeca098b795caf6b4dbde3e9921e1886ac1465c3384de",
-      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/captured/canonical/auto.canonical.txt",
+      "canonical_sha256": "66fa4856fe328356c89ad6dc12da714d3609ef2420ab321f19109ca5d9126ef9",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured/canonical/auto.canonical.txt",
       "name": "auto",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/captured/auto"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured/auto"
     },
     {
-      "canonical_sha256": "eb84e216a5f18799997df038af6f96f40969cd536aa428812ee80d9c01540c71",
-      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/captured/canonical/man.canonical.txt",
+      "canonical_sha256": "c8ac3cb4a669ab5d75b23de38570208315c84992a7e42c4a274efd3a099ea2be",
+      "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured/canonical/man.canonical.txt",
       "name": "man",
-      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/automatic_vs_manual/captured/man"
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260419-required-set/goldens/phase0/automatic_vs_manual/captured/man"
     }
   ],
   "schema_version": 1

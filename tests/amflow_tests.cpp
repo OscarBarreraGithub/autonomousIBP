@@ -50735,7 +50735,7 @@ void Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest() {
                  "phase-0 correct-digit packet-set report should truthfully keep the retained "
                  "packet split short of an M6-passing score verdict");
   ExpectContains(result.stdout_json,
-                 "\"minimum_observed_correct_digits_across_packet_set\": 18",
+                 "\"minimum_observed_correct_digits_across_packet_set\": 38",
                  "phase-0 correct-digit packet-set report should surface the lowest retained "
                  "packet-set score");
   ExpectContains(result.stdout_json, "\"required-set\"",
@@ -51138,7 +51138,7 @@ void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTe
                  "phase-0 qualification packet-set summary should preserve the retained "
                  "correct-digit blocker");
   ExpectContains(result.stdout_json,
-                 "\"minimum_observed_correct_digits_across_packet_set\": 18",
+                 "\"minimum_observed_correct_digits_across_packet_set\": 38",
                  "phase-0 qualification packet-set summary should keep the retained "
                  "minimum correct-digit score visible");
   ExpectContains(result.stdout_json, "\"phase0_digit_threshold_profiles_by_benchmark\": {",

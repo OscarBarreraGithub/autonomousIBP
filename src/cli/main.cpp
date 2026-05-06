@@ -416,6 +416,10 @@ struct DirectSolveSeriesSpec {
   std::vector<int> phase_space_cut;
 };
 
+std::string RemoveAsciiSpaces(std::string value);
+bool HasBoundaryRawFile(const DirectSolveSeriesSpec& spec, const std::string& name);
+bool IsComplexKinematicsFullEtaZeroContourState(const DirectSolveSeriesSpec& spec);
+
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
                                    const std::string& message) {
   throw std::runtime_error("solve_series parse error at line " +
@@ -1641,9 +1645,20 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
   if (spec.retained_solution_samples_input &&
       spec.boundary_state_raw_files.find("solution") ==
           spec.boundary_state_raw_files.end()) {
-    throw std::invalid_argument(
-        "solve-series retained solution-sample AMFlow state JSON must include "
-        "boundary_state.files.solution");
+    const bool b61n_contour_scaffold_can_run_without_solution =
+        IsComplexKinematicsFullEtaZeroContourState(spec) &&
+        spec.coefficient_matrices.find(spec.variable) !=
+            spec.coefficient_matrices.end() &&
+        HasBoundaryRawFile(spec, "boundary") && HasBoundaryRawFile(spec, "boundarymi") &&
+        HasBoundaryRawFile(spec, "bpattern") && HasBoundaryRawFile(spec, "direction") &&
+        HasBoundaryRawFile(spec, "epslist");
+    if (b61n_contour_scaffold_can_run_without_solution) {
+      spec.retained_solution_samples_input = false;
+    } else {
+      throw std::invalid_argument(
+          "solve-series retained solution-sample AMFlow state JSON must include "
+          "boundary_state.files.solution");
+    }
   }
 
   std::vector<amflow::TargetIntegral> finite_output_targets;
@@ -2036,6 +2051,15 @@ BigComplex operator/(const BigComplex& lhs, const BigFloat& rhs) {
   return {lhs.real / rhs, lhs.imaginary / rhs};
 }
 
+BigComplex operator/(const BigComplex& lhs, const BigComplex& rhs) {
+  const BigFloat denominator = rhs.real * rhs.real + rhs.imaginary * rhs.imaginary;
+  if (denominator == BigFloat(0)) {
+    throw std::runtime_error("complex expression evaluation encountered division by zero");
+  }
+  return {(lhs.real * rhs.real + lhs.imaginary * rhs.imaginary) / denominator,
+          (lhs.imaginary * rhs.real - lhs.real * rhs.imaginary) / denominator};
+}
+
 BigFloat BigAbs(const BigComplex& value) {
   return sqrt(value.real * value.real + value.imaginary * value.imaginary);
 }
@@ -2315,6 +2339,286 @@ std::string NormalizeMathematicaNumericAtom(std::string value) {
     value.push_back('0');
   }
   return value;
+}
+
+BigComplex PowIntegerComplex(BigComplex base, int exponent) {
+  if (exponent == 0) {
+    BigComplex result;
+    result.real = 1;
+    return result;
+  }
+  bool invert = false;
+  if (exponent < 0) {
+    invert = true;
+    exponent = -exponent;
+  }
+  BigComplex result;
+  result.real = 1;
+  while (exponent > 0) {
+    if ((exponent & 1) != 0) {
+      result = result * base;
+    }
+    base = base * base;
+    exponent >>= 1;
+  }
+  if (!invert) {
+    return result;
+  }
+  BigComplex one;
+  one.real = 1;
+  return one / result;
+}
+
+class AmflowComplexExpressionParser {
+ public:
+  AmflowComplexExpressionParser(
+      std::string expression,
+      std::map<std::string, BigComplex> bindings)
+      : expression_(NormalizeMathematicaNumericAtom(std::move(expression))),
+        bindings_(std::move(bindings)) {}
+
+  BigComplex Parse() {
+    if (expression_.empty()) {
+      throw std::runtime_error("complex AMFlow expression parser received an empty input");
+    }
+    const BigComplex value = ParseExpression();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("complex AMFlow expression parser found trailing input in \"" +
+                               expression_ + "\"");
+    }
+    return value;
+  }
+
+ private:
+  bool Consume(const char expected) {
+    if (position_ < expression_.size() && expression_[position_] == expected) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  bool StartsPrimary() const {
+    if (position_ >= expression_.size()) {
+      return false;
+    }
+    const char character = expression_[position_];
+    return character == '(' ||
+           std::isdigit(static_cast<unsigned char>(character)) != 0 ||
+           character == '.' ||
+           std::isalpha(static_cast<unsigned char>(character)) != 0 ||
+           character == '_';
+  }
+
+  BigComplex ParseExpression() {
+    BigComplex value = ParseTerm();
+    while (position_ < expression_.size()) {
+      if (Consume('+')) {
+        value = value + ParseTerm();
+      } else if (Consume('-')) {
+        value = value - ParseTerm();
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  BigComplex ParseTerm() {
+    BigComplex value = ParsePower();
+    while (position_ < expression_.size()) {
+      if (Consume('*')) {
+        value = value * ParsePower();
+      } else if (Consume('/')) {
+        value = value / ParsePower();
+      } else if (StartsPrimary()) {
+        value = value * ParsePower();
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  BigComplex ParsePower() {
+    BigComplex value = ParseUnary();
+    if (Consume('^')) {
+      value = PowIntegerComplex(value, ParseSignedIntegerExponent());
+    }
+    return value;
+  }
+
+  BigComplex ParseUnary() {
+    if (Consume('+')) {
+      return ParseUnary();
+    }
+    if (Consume('-')) {
+      return BigComplex{} - ParseUnary();
+    }
+    return ParsePrimary();
+  }
+
+  int ParseSignedIntegerExponent() {
+    bool parenthesized = false;
+    if (Consume('(')) {
+      parenthesized = true;
+    }
+    bool negative = false;
+    if (Consume('+')) {
+      negative = false;
+    } else if (Consume('-')) {
+      negative = true;
+    }
+    if (position_ >= expression_.size() ||
+        std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+      throw std::runtime_error(
+          "complex AMFlow expression parser requires integer exponents in \"" +
+          expression_ + "\"");
+    }
+    int exponent = 0;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      exponent = exponent * 10 + (expression_[position_] - '0');
+      ++position_;
+    }
+    if (parenthesized && !Consume(')')) {
+      throw std::runtime_error(
+          "complex AMFlow expression parser expected ')' after exponent in \"" +
+          expression_ + "\"");
+    }
+    return negative ? -exponent : exponent;
+  }
+
+  BigComplex ParsePrimary() {
+    if (Consume('(')) {
+      const BigComplex value = ParseExpression();
+      if (!Consume(')')) {
+        throw std::runtime_error("complex AMFlow expression parser expected ')' in \"" +
+                                 expression_ + "\"");
+      }
+      return value;
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '.')) {
+      const std::size_t begin = position_;
+      bool saw_digit = false;
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        saw_digit = true;
+        ++position_;
+      }
+      if (Consume('.')) {
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          saw_digit = true;
+          ++position_;
+        }
+      }
+      if (!saw_digit) {
+        throw std::runtime_error("complex AMFlow expression parser found malformed number in \"" +
+                                 expression_ + "\"");
+      }
+      if (position_ < expression_.size() &&
+          (expression_[position_] == 'e' || expression_[position_] == 'E')) {
+        ++position_;
+        if (position_ < expression_.size() &&
+            (expression_[position_] == '+' || expression_[position_] == '-')) {
+          ++position_;
+        }
+        if (position_ >= expression_.size() ||
+            std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+          throw std::runtime_error(
+              "complex AMFlow expression parser found malformed exponent in \"" +
+              expression_ + "\"");
+        }
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          ++position_;
+        }
+      }
+      BigComplex result;
+      result.real = BigFloat(expression_.substr(begin, position_ - begin));
+      return result;
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isalpha(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '_')) {
+      const std::size_t begin = position_;
+      ++position_;
+      while (position_ < expression_.size() &&
+             (std::isalnum(static_cast<unsigned char>(expression_[position_])) != 0 ||
+              expression_[position_] == '_')) {
+        ++position_;
+      }
+      const std::string identifier = expression_.substr(begin, position_ - begin);
+      if (identifier == "I") {
+        BigComplex result;
+        result.imaginary = 1;
+        return result;
+      }
+      const auto binding_it = bindings_.find(identifier);
+      if (binding_it == bindings_.end()) {
+        throw std::runtime_error("complex AMFlow expression parser requires a binding for " +
+                                 identifier + " in \"" + expression_ + "\"");
+      }
+      return binding_it->second;
+    }
+
+    throw std::runtime_error("complex AMFlow expression parser found malformed expression \"" +
+                             expression_ + "\"");
+  }
+
+  std::string expression_;
+  std::map<std::string, BigComplex> bindings_;
+  std::size_t position_ = 0;
+};
+
+BigComplex ParseAmflowComplexExpression(
+    const std::string& expression,
+    const std::map<std::string, BigComplex>& bindings = {}) {
+  return AmflowComplexExpressionParser(expression, bindings).Parse();
+}
+
+std::map<std::string, BigComplex> ParseAmflowNumericSubstitutionsAsComplex(
+    const std::string& amflow_config_raw) {
+  const std::vector<std::string> config_rules =
+      SplitMathList(amflow_config_raw, "amflow_config.raw.raw");
+  for (const std::string& rule : config_rules) {
+    const std::size_t arrow = FindTopLevelArrow(rule);
+    if (arrow == std::string::npos) {
+      continue;
+    }
+    const std::string lhs =
+        StripWrappedQuoteLiteral(TrimAsciiWhitespace(rule.substr(0, arrow)));
+    if (lhs != "Numeric") {
+      continue;
+    }
+    std::map<std::string, BigComplex> substitutions;
+    const std::vector<std::string> numeric_rules =
+        SplitMathList(rule.substr(arrow + 2), "amflow_config.raw.raw.Numeric");
+    for (const std::string& numeric_rule : numeric_rules) {
+      const std::size_t numeric_arrow = FindTopLevelArrow(numeric_rule);
+      if (numeric_arrow == std::string::npos) {
+        throw std::runtime_error("AMFlow Numeric substitution is missing ->");
+      }
+      const std::string symbol =
+          TrimAsciiWhitespace(numeric_rule.substr(0, numeric_arrow));
+      if (symbol.empty()) {
+        throw std::runtime_error("AMFlow Numeric substitution has an empty symbol");
+      }
+      if (!substitutions.emplace(
+               symbol,
+               ParseAmflowComplexExpression(numeric_rule.substr(numeric_arrow + 2)))
+               .second) {
+        throw std::runtime_error("AMFlow Numeric substitution repeats symbol " + symbol);
+      }
+    }
+    return substitutions;
+  }
+  throw std::runtime_error("AMFlow config does not carry a Numeric substitution list");
 }
 
 class RealBoundaryExpressionParser {
@@ -3412,6 +3716,144 @@ bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
                      [&canonical](const std::string& candidate) {
                        return RemoveAsciiSpaces(candidate) == canonical;
                      });
+}
+
+bool HasBoundaryRawFile(const DirectSolveSeriesSpec& spec, const std::string& name) {
+  const auto it = spec.boundary_state_raw_files.find(name);
+  return it != spec.boundary_state_raw_files.end() && !it->second.empty();
+}
+
+bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
+                               const std::vector<std::string>& expected_labels) {
+  if (spec.masters.size() != expected_labels.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < expected_labels.size(); ++index) {
+    if (MasterIntegralLabel(spec.masters[index]) != expected_labels[index]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+const std::vector<std::string>& ComplexKinematicsB61nMasterLabels() {
+  static const std::vector<std::string> labels = {
+      "box[0,0,0,1]",
+      "box[1,0,1,0]",
+      "box[1,0,0,1]",
+      "box[0,1,0,1]",
+      "box[0,0,1,1]",
+      "box[1,0,1,1]",
+      "box[1,1,1,1]",
+  };
+  return labels;
+}
+
+bool IsComplexKinematicsFullEtaZeroContourState(const DirectSolveSeriesSpec& spec) {
+  return spec.amflow_state_input && spec.benchmark_id == "complex_kinematics" &&
+         spec.family == "box" && spec.integral_kind == "loop" &&
+         spec.variable == "eta" && RemoveAsciiSpaces(spec.target_location) == "eta=0" &&
+         spec.boundary_state_kind == "amflow_eta_infinity_asymptotic_with_subsystem_samples" &&
+         spec.boundary_state_direction == "NegIm" &&
+         HasCanonicalSingularPoint(spec, "eta=0") &&
+         MastersExactlyMatchLabels(spec, ComplexKinematicsB61nMasterLabels());
+}
+
+struct ComplexKinematicsContourScaffoldAudit {
+  std::size_t numeric_substitution_count = 0;
+  std::size_t matrix_row_count = 0;
+  std::size_t matrix_column_count = 0;
+  std::size_t matrix_nonzero_cell_count = 0;
+  bool final_solution_samples_used_as_input = false;
+  std::string complex_mass_symbol;
+  std::string summary;
+};
+
+ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit(
+    const DirectSolveSeriesSpec& spec) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    throw std::runtime_error(
+        "b61n complex-kinematics contour scaffold was invoked for a non-b61n state");
+  }
+  if (spec.amflow_config_raw.empty()) {
+    throw std::runtime_error("b61n complex-kinematics state is missing amflow_config.raw");
+  }
+  for (const std::string& required_file :
+       {"boundary", "boundarymi", "bpattern", "direction", "epslist"}) {
+    if (!HasBoundaryRawFile(spec, required_file)) {
+      throw std::runtime_error("b61n complex-kinematics state is missing " +
+                               required_file + " raw boundary data");
+    }
+  }
+  if (StripWrappedQuoteLiteral(TrimAsciiWhitespace(
+          RequireAmflowBoundaryRawFile(spec, "direction"))) != "NegIm") {
+    throw std::runtime_error("b61n complex-kinematics direction file is not NegIm");
+  }
+
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  for (const std::string& symbol : {"s", "t", "p3sq", "p4sq", "m3sq"}) {
+    if (numeric_substitutions.find(symbol) == numeric_substitutions.end()) {
+      throw std::runtime_error("b61n complex-kinematics Numeric list is missing " +
+                               symbol);
+    }
+  }
+  const auto mass_it = numeric_substitutions.find("m3sq");
+  if (mass_it == numeric_substitutions.end() || IsTiny(mass_it->second.imaginary)) {
+    throw std::runtime_error(
+        "b61n complex-kinematics Numeric list must preserve complex m3sq");
+  }
+
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("b61n complex-kinematics state is missing eta matrix");
+  }
+  const std::vector<std::vector<std::string>>& matrix = matrix_it->second;
+  if (matrix.size() != spec.masters.size()) {
+    throw std::runtime_error("b61n complex-kinematics eta matrix row count mismatch");
+  }
+
+  std::map<std::string, BigComplex> bindings = numeric_substitutions;
+  bindings["eta"] = BigComplex{};
+  BigComplex epsilon_binding;
+  if (!spec.boundary_epsilon_samples.empty()) {
+    epsilon_binding.real = ParseBigFloatRational(spec.boundary_epsilon_samples.front());
+  }
+  bindings["eps"] = epsilon_binding;
+
+  std::size_t nonzero_cell_count = 0;
+  for (std::size_t row_index = 0; row_index < matrix.size(); ++row_index) {
+    if (matrix[row_index].size() != spec.masters.size()) {
+      throw std::runtime_error("b61n complex-kinematics eta matrix column count mismatch");
+    }
+    for (const std::string& cell : matrix[row_index]) {
+      const BigComplex evaluated = ParseAmflowComplexExpression(cell, bindings);
+      if (!IsTiny(evaluated)) {
+        ++nonzero_cell_count;
+      }
+    }
+  }
+
+  ComplexKinematicsContourScaffoldAudit audit;
+  audit.numeric_substitution_count = numeric_substitutions.size();
+  audit.matrix_row_count = matrix.size();
+  audit.matrix_column_count = spec.masters.size();
+  audit.matrix_nonzero_cell_count = nonzero_cell_count;
+  audit.final_solution_samples_used_as_input = false;
+  audit.complex_mass_symbol = "m3sq";
+  audit.summary =
+      " b61n complex-kinematics eta=0 contour scaffold parsed " +
+      std::to_string(audit.numeric_substitution_count) +
+      " complex Numeric substitution(s), validated the " +
+      std::to_string(audit.matrix_row_count) + "x" +
+      std::to_string(audit.matrix_column_count) +
+      " complex eta matrix at the endpoint with " +
+      std::to_string(audit.matrix_nonzero_cell_count) +
+      " nonzero cell(s), preserved complex mass m3sq, and confirmed "
+      "final_solution_samples_used_as_input=false. Live complex contour propagation, "
+      "eta=0 local-model construction, and PickZero-equivalent extraction remain "
+      "deferred; full_eta_zero_contour_applied stays false.";
+  return audit;
 }
 
 std::optional<std::size_t> FindEpsilonCoefficientOrder(
@@ -5656,6 +6098,12 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         "AMFlow eta-infinity boundary evaluation requires top-level masters");
   }
 
+  std::optional<ComplexKinematicsContourScaffoldAudit> complex_contour_scaffold_audit;
+  if (IsComplexKinematicsFullEtaZeroContourState(direct_spec)) {
+    complex_contour_scaffold_audit =
+        BuildComplexKinematicsContourScaffoldAudit(direct_spec);
+  }
+
   const std::vector<ParsedAmflowBoundaryRegion> regions =
       ParseAmflowBoundaryRegions(RequireAmflowBoundaryRawFile(direct_spec, "boundary"),
                                  direct_spec.masters.size());
@@ -5723,6 +6171,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
       " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
       "remain deferred on this path; the solve result records the reviewed Gap B continuation "
       "audit separately.";
+  if (complex_contour_scaffold_audit.has_value()) {
+    diagnostics.summary += complex_contour_scaffold_audit->summary;
+  }
   return diagnostics;
 }
 

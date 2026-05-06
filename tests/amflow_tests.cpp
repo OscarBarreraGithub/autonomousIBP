@@ -49056,6 +49056,114 @@ assert box2_box_target_eps3["imag_digits"].startswith("0.00398405933866044174827
                                                          : std::string{}));
 }
 
+void SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-complex-kinematics-stripped");
+  const std::filesystem::path source_state_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json";
+  const std::filesystem::path stripped_state_path = run_root / "complex-stripped.json";
+  const std::filesystem::path retained_output_path = run_root / "retained-result.json";
+  const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path strip_script_path = run_root / "strip_solution.py";
+
+  OverwriteTextFile(
+      strip_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["boundary_state"]["files"].pop("solution", None)
+# Keep the retained cache marker enabled to prove the parser has a b61n
+# non-solution override instead of requiring boundary_state.files.solution.
+payload.setdefault("solution_sample_cache", {})["enabled"] = True
+json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
+)PY");
+
+  const std::string strip_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(strip_script_path.string()) + " " +
+      ShellSingleQuote(source_state_path.string()) + " " +
+      ShellSingleQuote(stripped_state_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(strip_command) == 0,
+         "complex_kinematics solution-strip fixture should be created; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string retained_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(source_state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(retained_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(retained_command) == 0,
+         "unstripped complex_kinematics state should keep the retained solution-sample path; "
+         "stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string retained_json = ReadFile(retained_output_path);
+  ExpectContains(retained_json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-loop-solution-sample-cache-laurent-fit\"",
+                 "unstripped complex_kinematics should still identify retained samples");
+  ExpectContains(retained_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "unstripped retained complex_kinematics must not claim full contour");
+  Expect(retained_json.find("b61n complex-kinematics eta=0 contour scaffold") ==
+             std::string::npos,
+         "retained solution-sample path should not masquerade as the scaffold");
+
+  const std::string stripped_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(stripped_command) == 0,
+         "stripped complex_kinematics state should run without reading solution samples; "
+         "stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string stripped_json = ReadFile(stripped_output_path);
+  ExpectContains(stripped_json,
+                 "\"benchmark_id\": \"complex_kinematics\"",
+                 "stripped complex_kinematics should preserve benchmark identity");
+  ExpectContains(stripped_json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-asymptotic-subsystem-sample-boundary-evaluator\"",
+                 "stripped complex_kinematics should use the non-solution boundary provider");
+  Expect(stripped_json.find("retained-loop-solution-sample-cache-laurent-fit") ==
+             std::string::npos,
+         "stripped complex_kinematics must not fall back to retained samples");
+  ExpectContains(stripped_json,
+                 "\"transport_applied\": false",
+                 "partial b61n scaffold must not report contour transport");
+  ExpectContains(stripped_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "partial b61n scaffold must keep the full-contour flag false");
+  ExpectContains(stripped_json,
+                 "b61n complex-kinematics eta=0 contour scaffold parsed 5 complex Numeric "
+                 "substitution",
+                 "partial b61n scaffold should validate complex Numeric substitutions");
+  ExpectContains(stripped_json,
+                 "validated the 7x7 complex eta matrix",
+                 "partial b61n scaffold should exercise the complex eta matrix parser");
+  ExpectContains(stripped_json,
+                 "final_solution_samples_used_as_input=false",
+                 "partial b61n scaffold should audit that final solution samples were not used");
+  ExpectContains(stripped_json,
+                 "Live complex contour propagation, eta=0 local-model construction, and "
+                 "PickZero-equivalent extraction remain deferred",
+                 "partial b61n scaffold should document the exact remaining runtime gap");
+  ExpectContains(stripped_json,
+                 "full_eta_zero_contour_applied stays false",
+                 "partial b61n scaffold should explicitly avoid overclaiming");
+}
+
 void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -55346,6 +55454,7 @@ int main() {
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
+    SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
     SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest();
     SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest();

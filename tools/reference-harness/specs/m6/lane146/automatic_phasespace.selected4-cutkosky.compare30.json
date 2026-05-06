@@ -1,0 +1,270 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.amflow-golden.txt",
+  "benchmark_id": "automatic_phasespace",
+  "compared_coefficient_count": 19,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.39603250798829204757562030005749904275688626427306286594057584704824449959517478",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-0.39603250798829204757562030005749904275688626427306286594057584704824449959517478",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.49802408109579135287326688240785439362419948311931186389595746428615080422647168",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-0.49802408109579135287326688240785439362419948311931186389595746428615080422647168",
+          "imag_agreement_digits": 999,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.07579331580370778140680400695997796459537074705547321663412993956663599714080563",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-0.07579331580370778140680400695997796459537074705547321663412993956663599714080563",
+          "imag_agreement_digits": 999,
+          "order": 2,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.17914286661522254080444707367391905348565216559115234217326859229628069162137818",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.17914286661522254080444707367391905348565216559115234217326859229628069162137818",
+          "imag_agreement_digits": 999,
+          "order": 3,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "phase[1,-1,1,0,1,0,0]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.01143665358721617060348820647454078117749865760925263376629798737960703523917879",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.01143665358721617060348820647454078117749865760925263376629798737960703523917879",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.01394670878647373627218363142009299608963880049889713185865140990031553740229203",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.01394670878647373627218363142009299608963880049889713185865140990031553740229203",
+          "imag_agreement_digits": 999,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00117189372212881887029617072720508668876919272490118079657136366304154641393714",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.00117189372212881887029617072720508668876919272490118079657136366304154641393714",
+          "imag_agreement_digits": 999,
+          "order": 2,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.00630125528442687299957682487284206651484492450116949021121758415045468493136699",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-0.00630125528442687299957682487284206651484492450116949021121758415045468493136699",
+          "imag_agreement_digits": 999,
+          "order": 3,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "phase[1,0,1,0,1,0,0]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00003072064900647741498508445978252334878466335562820067085174299025999796461637",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.00003072064900647741498508445978252334878466335562820067085174299025999796461637",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00007356405785821532462745545720829135530511062062212243009423661485592605246128",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.00007356405785821532462745545720829135530511062062212243009423661485592605246128",
+          "imag_agreement_digits": 999,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00010902267810384027262638236274794011613970048228043491016598105796255085749705",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.00010902267810384027262638236274794011613970048228043491016598105796255085749705",
+          "imag_agreement_digits": 999,
+          "order": 2,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "0.00017393072897408629525072539412763110889756198164760910258641709652334044744982",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0.00017393072897408629525072539412763110889756198164760910258641709652334044744982",
+          "imag_agreement_digits": 999,
+          "order": 3,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "phase[1,1,1,0,1,0,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-2.5451021490845556490232049154485234053869425621431563079688859071618845E-10",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-2.5451021490845556490232049154485234053869425621431563079688859071618845E-10",
+          "imag_agreement_digits": 999,
+          "order": -3,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "3.68349127812735861533056169912258642234795720499412863811825865895425043E-9",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "3.68349127812735861533056169912258642234795720499412863811825865895425043E-9",
+          "imag_agreement_digits": 999,
+          "order": -2,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-1.131237981165730137088469117986823224115903547083146043808353745660371701E-8",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-1.131237981165730137088469117986823224115903547083146043808353745660371701E-8",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-9.09128955251943629976022322143083755513392610578067550400554013053291873E-9",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "-9.09128955251943629976022322143083755513392610578067550400554013053291873E-9",
+          "imag_agreement_digits": 999,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.000774758925164356062467440918147922852275468881481729030294230235584218E-8",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.000774758925164356062467440918147922852275468881481729030294230235584218E-8",
+          "imag_agreement_digits": 999,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.232957682713863101484809089577823387160178862446968297499992346050972182E-8",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.232957682713863101484809089577823387160178862446968297499992346050972182E-8",
+          "imag_agreement_digits": 999,
+          "order": 2,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.05305484805203714683473305673531841332878947851659558393286497593356855E-9",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.05305484805203714683473305673531841332878947851659558393286497593356855E-9",
+          "imag_agreement_digits": 999,
+          "order": 3,
+          "passed": true,
+          "real_agreement_digits": 999
+        }
+      ],
+      "integral": "phase[1,1,1,1,1,1,1]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 4,
+  "minimum_digit_agreement": 999,
+  "passed": true,
+  "passed_coefficient_count": 19,
+  "schema_version": 1,
+  "tolerance_digits": 30
+}

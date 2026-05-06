@@ -49384,6 +49384,99 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b63n first residue eps^3 coefficient should match the reviewed value");
 }
 
+void SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsSelected4CutkoskyResiduesTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-automatic-phasespace-b63n-selected4");
+  const std::filesystem::path source_state_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json";
+  const std::filesystem::path stripped_state_path = run_root / "automatic-selected4.json";
+  const std::filesystem::path stripped_output_path = run_root / "selected4-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path strip_script_path = run_root / "strip_selected4.py";
+
+  OverwriteTextFile(
+      strip_script_path,
+      R"PY(
+import json
+import sys
+
+selected4 = [
+    {"family": "phase", "indices": [1, 0, 1, 0, 1, 0, 0]},
+    {"family": "phase", "indices": [1, -1, 1, 0, 1, 0, 0]},
+    {"family": "phase", "indices": [1, 1, 1, 0, 1, 0, 1]},
+    {"family": "phase", "indices": [1, 1, 1, 1, 1, 1, 1]},
+]
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["boundary_state"]["files"].pop("solution", None)
+payload["phase_space"]["output_masters"] = selected4
+payload["reduction"] = {"targets": selected4, "target_reduction_path": ""}
+payload.setdefault("solution_sample_cache", {})["enabled"] = True
+json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
+)PY");
+
+  const std::string strip_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(strip_script_path.string()) + " " +
+      ShellSingleQuote(source_state_path.string()) + " " +
+      ShellSingleQuote(stripped_state_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(strip_command) == 0,
+         "automatic_phasespace selected4 solution-strip fixture should be created; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string stripped_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 3 --digits 40 --out " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(stripped_command) == 0,
+         "stripped automatic_phasespace selected4 state should run without reading solution "
+         "samples; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string stripped_json = ReadFile(stripped_output_path);
+  ExpectContains(
+      stripped_json,
+      "\"targets\": [\"phase[1,0,1,0,1,0,0]\", \"phase[1,-1,1,0,1,0,0]\", "
+      "\"phase[1,1,1,0,1,0,1]\", \"phase[1,1,1,1,1,1,1]\"]",
+      "stripped automatic_phasespace selected4 should expose only reviewed selected masters");
+  ExpectContains(stripped_json,
+                 "\"transport_scope\": \"eta-zero-selected-endpoint-coefficients\"",
+                 "b63n selected4 residues should stay selected-master scoped");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_master_count\": 4",
+                 "b63n selected4 residues should count four transported masters");
+  ExpectContains(
+      stripped_json,
+      "\"eta_zero_endpoint_transported_integrals\": [\"phase[1,0,1,0,1,0,0]\", "
+      "\"phase[1,-1,1,0,1,0,0]\", \"phase[1,1,1,0,1,0,1]\", "
+      "\"phase[1,1,1,1,1,1,1]\"]",
+      "b63n selected4 residues should name exactly the reviewed selected masters");
+  Expect(stripped_json.find("retained-phase-space-solution-sample-cache-laurent-fit") ==
+             std::string::npos,
+         "stripped automatic_phasespace selected4 must not fall back to retained samples");
+  ExpectContains(stripped_json,
+                 "final_solution_samples_used_as_input=false",
+                 "b63n selected4 residues should publish anti-fake provenance");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"-0.3960325079882920475756203000574990427568",
+                 "b63n selected4 numerator eps^0 coefficient should match reviewed value");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"0.0001739307289740862952507253941276311088",
+                 "b63n selected4 D7-weighted eps^3 coefficient should match reviewed value");
+  ExpectContains(stripped_json,
+                 "\"order\": -3",
+                 "b63n selected4 top selected master should expose its leading pole");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"-0.0000000002545102149084555649023204915448",
+                 "b63n selected4 top selected master eps^-3 coefficient should match");
+}
+
 void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -55932,6 +56025,7 @@ int main() {
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
     SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsFirstCutkoskyResidueTest();
+    SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsSelected4CutkoskyResiduesTest();
     SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
     SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest();

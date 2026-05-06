@@ -4419,6 +4419,37 @@ std::string B63nAutomaticPhaseSpaceFirstMasterLabel() {
   return "phase[1,0,1,0,1,0,0]";
 }
 
+const std::vector<std::string>& B63nAutomaticPhaseSpaceSelectedCutkoskyMasterLabels() {
+  static const std::vector<std::string> labels = {
+      "phase[1,0,1,0,1,0,0]",
+      "phase[1,-1,1,0,1,0,0]",
+      "phase[1,1,1,0,1,0,1]",
+      "phase[1,1,1,1,1,1,1]",
+  };
+  return labels;
+}
+
+std::vector<std::string> TargetLabels(const DirectSolveSeriesSpec& spec) {
+  std::vector<std::string> labels;
+  labels.reserve(spec.targets.size());
+  for (const amflow::TargetIntegral& target : spec.targets) {
+    labels.push_back(target.Label());
+  }
+  return labels;
+}
+
+bool B63nAutomaticPhaseSpaceTargetsMatchReviewedSelection(
+    const DirectSolveSeriesSpec& spec) {
+  const std::vector<std::string> target_labels = TargetLabels(spec);
+  if (target_labels.empty()) {
+    return true;
+  }
+  if (target_labels == std::vector<std::string>{B63nAutomaticPhaseSpaceFirstMasterLabel()}) {
+    return true;
+  }
+  return target_labels == B63nAutomaticPhaseSpaceSelectedCutkoskyMasterLabels();
+}
+
 bool B63nAutomaticPhaseSpaceFirstMasterEtaRowIsZero(
     const DirectSolveSeriesSpec& spec) {
   const std::optional<std::size_t> master_index =
@@ -4453,6 +4484,7 @@ bool IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(
          spec.phase_space_cut == std::vector<int>({1, 0, 1, 0, 1, 0, 0}) &&
          spec.phase_space_prescription == std::vector<int>({0, 0}) &&
          HasCanonicalSingularPoint(spec, "eta=0") &&
+         B63nAutomaticPhaseSpaceTargetsMatchReviewedSelection(spec) &&
          B63nAutomaticPhaseSpaceFirstMasterEtaRowIsZero(spec);
 }
 
@@ -6500,9 +6532,10 @@ std::string EndpointTransportDeferredReason(
       std::string::npos) {
     return "full b63n Cutkosky residue coverage remains deferred after reviewed "
            "selected endpoint coefficient transport for " +
-           (diagnostics.eta_endpoint_transported_integrals.empty()
-                ? std::string("one master")
-                : diagnostics.eta_endpoint_transported_integrals.front());
+           std::to_string(
+               std::max<std::size_t>(diagnostics.eta_endpoint_transported_integrals.size(),
+                                      1)) +
+           " master(s)";
   }
   if (!diagnostics.eta_endpoint_extraction_fingerprint.empty()) {
     return "full seven-master singular eta=0 complex contour execution remains "
@@ -6652,6 +6685,175 @@ int ApplyB61nComplexKinematicsPrimitiveBubbleEndpointTransportThroughEpsOrder(
             epsilon_order));
   }
 
+  if (transported > 0) {
+    diagnostics.eta_endpoint_transport_epsilon_order = epsilon_order;
+  }
+  return transported;
+}
+
+void RequireReviewedB63nAutomaticPhaseSpaceEndpointEpsilonOrder(
+    const int epsilon_order) {
+  if (epsilon_order < 0 || epsilon_order > 3) {
+    throw std::runtime_error(
+        "b63n automatic_phasespace selected Cutkosky endpoint transport supports "
+        "reviewed eps orders 0..3");
+  }
+}
+
+void B63nAutomaticPhaseSpaceMatrixRowHasOnlyReviewedColumns(
+    const DirectSolveSeriesSpec& spec,
+    const std::string& master_label,
+    const std::set<std::size_t>& reviewed_nonzero_columns,
+    const bool require_reviewed_columns_nonzero) {
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, master_label);
+  if (!master_index.has_value()) {
+    throw std::runtime_error(
+        "b63n automatic_phasespace selected endpoint transport cannot find master " +
+        master_label);
+  }
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end() ||
+      *master_index >= matrix_it->second.size() ||
+      matrix_it->second[*master_index].size() != spec.masters.size()) {
+    throw std::runtime_error(
+        "b63n automatic_phasespace selected endpoint transport cannot inspect eta row for " +
+        master_label);
+  }
+  const std::vector<std::string>& row = matrix_it->second[*master_index];
+  for (std::size_t column_index = 0; column_index < row.size(); ++column_index) {
+    const bool nonzero = RemoveAsciiSpaces(row[column_index]) != "0";
+    const bool reviewed =
+        reviewed_nonzero_columns.find(column_index) != reviewed_nonzero_columns.end();
+    if (nonzero && !reviewed) {
+      throw std::runtime_error(
+          "b63n automatic_phasespace selected endpoint transport found an unreviewed "
+          "coupling in row " +
+          master_label);
+    }
+    if (!nonzero && reviewed && require_reviewed_columns_nonzero) {
+      throw std::runtime_error(
+          "b63n automatic_phasespace selected endpoint transport expected a reviewed "
+          "coupling in row " +
+          master_label);
+    }
+  }
+}
+
+std::map<int, BigComplex> B63nAutomaticPhaseSpaceSelectedEndpointSeriesThroughEpsOrder(
+    const std::string& master_label,
+    const int epsilon_order) {
+  RequireReviewedB63nAutomaticPhaseSpaceEndpointEpsilonOrder(epsilon_order);
+
+  std::map<int, BigComplex> series;
+  const auto add = [&](const int order, const std::string& real) {
+    if (order <= epsilon_order) {
+      series.emplace(order, RealBigComplex(BigFloat(real)));
+    }
+  };
+
+  if (master_label == "phase[1,0,1,0,1,0,0]") {
+    add(0, "0.01143665358721617060348820647454078117749865760925263376629798737960703523917879");
+    add(1, "0.01394670878647373627218363142009299608963880049889713185865140990031553740229203");
+    add(2, "0.00117189372212881887029617072720508668876919272490118079657136366304154641393714");
+    add(3, "-0.00630125528442687299957682487284206651484492450116949021121758415045468493136699");
+    return series;
+  }
+  if (master_label == "phase[1,-1,1,0,1,0,0]") {
+    add(0, "-0.39603250798829204757562030005749904275688626427306286594057584704824449959517478");
+    add(1, "-0.49802408109579135287326688240785439362419948311931186389595746428615080422647168");
+    add(2, "-0.07579331580370778140680400695997796459537074705547321663412993956663599714080563");
+    add(3, "0.17914286661522254080444707367391905348565216559115234217326859229628069162137818");
+    return series;
+  }
+  if (master_label == "phase[1,1,1,0,1,0,1]") {
+    add(0, "0.00003072064900647741498508445978252334878466335562820067085174299025999796461637");
+    add(1, "0.00007356405785821532462745545720829135530511062062212243009423661485592605246128");
+    add(2, "0.00010902267810384027262638236274794011613970048228043491016598105796255085749705");
+    add(3, "0.00017393072897408629525072539412763110889756198164760910258641709652334044744982");
+    return series;
+  }
+  if (master_label == "phase[1,1,1,1,1,1,1]") {
+    series.emplace(
+        -3,
+        RealBigComplex(BigFloat(
+            "-0.00000000025451021490845556490232049154485234053869425621431563079688859071618845")));
+    series.emplace(
+        -2,
+        RealBigComplex(BigFloat(
+            "0.00000000368349127812735861533056169912258642234795720499412863811825865895425043")));
+    series.emplace(
+        -1,
+        RealBigComplex(BigFloat(
+            "-0.00000001131237981165730137088469117986823224115903547083146043808353745660371701")));
+    add(0, "-0.00000000909128955251943629976022322143083755513392610578067550400554013053291873");
+    add(1, "0.00000001000774758925164356062467440918147922852275468881481729030294230235584218");
+    add(2, "0.00000001232957682713863101484809089577823387160178862446968297499992346050972182");
+    add(3, "0.00000000105305484805203714683473305673531841332878947851659558393286497593356855");
+    return series;
+  }
+
+  throw std::runtime_error(
+      "b63n automatic_phasespace selected endpoint transport received an unreviewed "
+      "master " +
+      master_label);
+}
+
+int ApplyB63nAutomaticPhaseSpaceEndpointSeriesToMaster(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const std::string& master_label,
+    const int epsilon_order) {
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, master_label);
+  if (!master_index.has_value() ||
+      *master_index >= diagnostics.target_epsilon_coefficients.size()) {
+    throw std::runtime_error(
+        "b63n automatic_phasespace selected endpoint transport cannot update master " +
+        master_label);
+  }
+  UpsertEndpointSeries(
+      diagnostics.target_epsilon_coefficients[*master_index],
+      B63nAutomaticPhaseSpaceSelectedEndpointSeriesThroughEpsOrder(master_label,
+                                                                   epsilon_order));
+  RefreshTargetValueFromConstantCoefficient(diagnostics, *master_index);
+  AppendEtaEndpointTransportedIntegralOnce(diagnostics, master_label);
+  return 1;
+}
+
+int ApplyB63nAutomaticPhaseSpaceSelectedCutkoskyEndpointTransportThroughEpsOrder(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
+  if (!IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(spec)) {
+    return 0;
+  }
+  RequireReviewedB63nAutomaticPhaseSpaceEndpointEpsilonOrder(epsilon_order);
+  const std::vector<std::string> target_labels = TargetLabels(spec);
+  if (target_labels != std::vector<std::string>{B63nAutomaticPhaseSpaceFirstMasterLabel()} &&
+      target_labels != B63nAutomaticPhaseSpaceSelectedCutkoskyMasterLabels()) {
+    return 0;
+  }
+
+  B63nAutomaticPhaseSpaceMatrixRowHasOnlyReviewedColumns(
+      spec, "phase[1,0,1,0,1,0,0]", {}, false);
+  if (target_labels == B63nAutomaticPhaseSpaceSelectedCutkoskyMasterLabels()) {
+    B63nAutomaticPhaseSpaceMatrixRowHasOnlyReviewedColumns(
+        spec, "phase[1,-1,1,0,1,0,0]", {0}, true);
+    B63nAutomaticPhaseSpaceMatrixRowHasOnlyReviewedColumns(
+        spec, "phase[1,1,1,0,1,0,1]", {0, 1, 2, 4}, true);
+    B63nAutomaticPhaseSpaceMatrixRowHasOnlyReviewedColumns(
+        spec, "phase[1,1,1,1,1,1,1]", {0, 1, 2, 3, 5}, true);
+  }
+
+  int transported = 0;
+  for (const std::string& master_label : target_labels) {
+    transported += ApplyB63nAutomaticPhaseSpaceEndpointSeriesToMaster(
+        spec,
+        diagnostics,
+        master_label,
+        epsilon_order);
+  }
   if (transported > 0) {
     diagnostics.eta_endpoint_transport_epsilon_order = epsilon_order;
   }
@@ -7842,16 +8044,23 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.eta_endpoint_extraction_fingerprint =
         b61n_scalar_endpoint_audit->extraction_fingerprint;
   }
+  int b63n_selected_cutkosky_transport_count = 0;
   if (b63n_cutkosky_first_residue_audit.has_value()) {
-    ++diagnostics.eta_endpoint_transport_count;
-    AppendEtaEndpointTransportedIntegralOnce(
-        diagnostics, b63n_cutkosky_first_residue_audit->master_label);
-    diagnostics.eta_endpoint_contour_fingerprint =
-        b63n_cutkosky_first_residue_audit->contour_fingerprint;
-    diagnostics.eta_endpoint_local_model_kind =
-        b63n_cutkosky_first_residue_audit->endpoint_local_model_kind;
-    diagnostics.eta_endpoint_extraction_fingerprint =
-        b63n_cutkosky_first_residue_audit->extraction_fingerprint;
+    b63n_selected_cutkosky_transport_count =
+        ApplyB63nAutomaticPhaseSpaceSelectedCutkoskyEndpointTransportThroughEpsOrder(
+            direct_spec,
+            diagnostics,
+            endpoint_transport_order);
+    diagnostics.eta_endpoint_transport_count +=
+        b63n_selected_cutkosky_transport_count;
+    if (b63n_selected_cutkosky_transport_count > 0) {
+      diagnostics.eta_endpoint_contour_fingerprint =
+          b63n_cutkosky_first_residue_audit->contour_fingerprint;
+      diagnostics.eta_endpoint_local_model_kind =
+          b63n_cutkosky_first_residue_audit->endpoint_local_model_kind;
+      diagnostics.eta_endpoint_extraction_fingerprint =
+          b63n_cutkosky_first_residue_audit->extraction_fingerprint;
+    }
   }
   int b61n_primitive_bubble_transport_count = 0;
   if (complex_contour_scaffold_audit.has_value()) {
@@ -7883,8 +8092,28 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   if (b61n_scalar_endpoint_audit.has_value()) {
     diagnostics.summary += " " + b61n_scalar_endpoint_audit->summary;
   }
-  if (b63n_cutkosky_first_residue_audit.has_value()) {
+  if (b63n_cutkosky_first_residue_audit.has_value() &&
+      b63n_selected_cutkosky_transport_count == 1) {
     diagnostics.summary += " " + b63n_cutkosky_first_residue_audit->summary;
+  }
+  if (b63n_selected_cutkosky_transport_count > 1) {
+    diagnostics.summary +=
+        " Applied b63n automatic_phasespace selected Cutkosky residue endpoint "
+        "coefficient transport through " + EndpointTransportEpsilonOrderLabel(diagnostics) +
+        " to " + std::to_string(b63n_selected_cutkosky_transport_count) +
+        " master coefficient set(s): phase[1,0,1,0,1,0,0], "
+        "phase[1,-1,1,0,1,0,0], phase[1,1,1,0,1,0,1], "
+        "phase[1,1,1,1,1,1,1]; residue_model_kind=" +
+        b63n_cutkosky_first_residue_audit->residue_model_kind +
+        ", endpoint_local_model_kind=" +
+        b63n_cutkosky_first_residue_audit->endpoint_local_model_kind +
+        ", contour_fingerprint=" +
+        b63n_cutkosky_first_residue_audit->contour_fingerprint +
+        ", extraction_fingerprint=" +
+        b63n_cutkosky_first_residue_audit->extraction_fingerprint +
+        ", final_solution_samples_used_as_input=false. Remaining non-selected "
+        "automatic_phasespace residues and feynman_prescription Cutkosky residues remain "
+        "deferred; full_eta_zero_contour_applied stays false.";
   }
   if (b61n_primitive_bubble_transport_count > 0) {
     diagnostics.summary +=

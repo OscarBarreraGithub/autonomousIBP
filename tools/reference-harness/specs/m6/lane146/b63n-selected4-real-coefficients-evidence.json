@@ -1,0 +1,42 @@
+{
+  "amflow_golden_slice": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.amflow-golden.txt",
+  "anti_fake_parity_gate": "scoped comparator output against retained AMFlow selected4 golden slice; final solution samples stripped from C++ runtime input",
+  "benchmark_id": "automatic_phasespace",
+  "comparator": {
+    "compared_coefficient_count": 19,
+    "matched_integral_count": 4,
+    "minimum_digit_agreement": 999,
+    "passed": true,
+    "passed_coefficient_count": 19,
+    "path": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.compare30.json",
+    "per_integral_minimum_digit_agreement": {
+      "phase[1,-1,1,0,1,0,0]": 999,
+      "phase[1,0,1,0,1,0,0]": 999,
+      "phase[1,1,1,0,1,0,1]": 999,
+      "phase[1,1,1,1,1,1,1]": 999
+    },
+    "tolerance_digits": 30
+  },
+  "cpp_result": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.cpp-result.json",
+  "eta_zero_endpoint_transport_applied": true,
+  "eta_zero_endpoint_transported_integrals": [
+    "phase[1,0,1,0,1,0,0]",
+    "phase[1,-1,1,0,1,0,0]",
+    "phase[1,1,1,0,1,0,1]",
+    "phase[1,1,1,1,1,1,1]"
+  ],
+  "final_solution_samples_used_as_input": false,
+  "full_eta_zero_contour_applied": false,
+  "full_stripped_result": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.stripped-result.json",
+  "lane": "lane146",
+  "new_lane146_masters": [
+    "phase[1,-1,1,0,1,0,0]",
+    "phase[1,1,1,0,1,0,1]",
+    "phase[1,1,1,1,1,1,1]"
+  ],
+  "runtime_boundary_provider": "retained-asymptotic-subsystem-sample-boundary-evaluator+eta-infinity-de-asymptotic-transport+eta-zero-selected-endpoint-transport",
+  "runtime_lane": "b63n",
+  "schema_version": 1,
+  "transport_applied": true,
+  "transport_scope": "eta-zero-selected-endpoint-coefficients"
+}

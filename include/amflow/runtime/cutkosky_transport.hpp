@@ -121,6 +121,20 @@ struct CutkoskyPrefactorSeries {
   std::vector<CutkoskyPrefactorSeriesTerm> terms;
 };
 
+struct CutkoskyBranchLedgerPrescription {
+  std::string target;
+  FeynmanPrescription prescription = FeynmanPrescription::None;
+  std::string source;
+};
+
+struct CutkoskyBranchLedgerEntry {
+  std::string summary;
+  std::vector<CutkoskyBranchLedgerPrescription> prescriptions;
+  std::vector<std::size_t> cut_support;
+  std::string eta_half_plane;
+  std::string branch_provenance;
+};
+
 struct CutkoskyEtaZeroTransportAudit {
   bool reviewed_surface = false;
   bool live_coefficients_available = false;
@@ -150,6 +164,7 @@ struct CutkoskyEtaZeroTransportAudit {
   std::string coefficient_gap;
   std::string failure_code_contract;
   std::string summary;
+  std::vector<CutkoskyBranchLedgerEntry> branch_ledger;
   std::vector<std::string> branch_ledger_entries;
   std::vector<std::string> residue_variables;
   std::vector<CutkoskyResidueEndpointPole> endpoint_poles;
@@ -201,6 +216,10 @@ CutkoskyResidueSeries MultiplyCutkoskyPrefactorIntoResidueSeries(
 std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
     const CutkoskyResidueSeries& series,
     int eps_order);
+std::string SerializeCutkoskyBranchLedgerEntrySummary(
+    const CutkoskyBranchLedgerEntry& entry);
+std::vector<std::string> SerializeCutkoskyBranchLedgerSummaries(
+    const std::vector<CutkoskyBranchLedgerEntry>& ledger);
 CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
     const ProblemSpec& spec);
 CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(

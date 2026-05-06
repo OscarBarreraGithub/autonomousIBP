@@ -1303,6 +1303,95 @@ void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest
          "b63n feynman_prescription scaffold must not claim coefficient parity");
 }
 
+void B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest() {
+  const amflow::CutkoskyEtaZeroTransportAudit automatic_audit =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(MakeB63nAutomaticPhaseSpaceSpec());
+  const std::vector<std::string> expected_automatic_entries = {
+      "loop_prescriptions=[0, 0]",
+      "cut propagators D1,D3,D5 resolved as prescription-insensitive real "
+      "phase-space cuts",
+  };
+
+  Expect(automatic_audit.branch_ledger.size() == 2,
+         "b63n automatic_phasespace structured branch ledger should mirror legacy entries");
+  Expect(amflow::SerializeCutkoskyBranchLedgerSummaries(
+             automatic_audit.branch_ledger) == expected_automatic_entries,
+         "b63n automatic_phasespace structured branch ledger should serialize to the "
+         "legacy audit strings");
+  Expect(automatic_audit.branch_ledger_entries == expected_automatic_entries,
+         "b63n automatic_phasespace legacy branch ledger strings should remain exact");
+  const amflow::CutkoskyBranchLedgerEntry& automatic_cut =
+      automatic_audit.branch_ledger[1];
+  Expect(automatic_cut.cut_support == std::vector<std::size_t>({0, 2, 4}),
+         "b63n automatic_phasespace structured branch ledger should expose cut support");
+  Expect(automatic_cut.eta_half_plane == "lower",
+         "b63n automatic_phasespace structured branch ledger should expose eta half-plane");
+  Expect(automatic_cut.prescriptions.size() == 3 &&
+             automatic_cut.prescriptions[0].target == "D1" &&
+             automatic_cut.prescriptions[0].prescription ==
+                 amflow::FeynmanPrescription::None,
+         "b63n automatic_phasespace structured branch ledger should expose cut "
+         "prescriptions");
+  ExpectContains(automatic_cut.branch_provenance,
+                 "reviewed automatic_phasespace",
+                 "b63n automatic_phasespace structured branch ledger should expose provenance");
+
+  const amflow::CutkoskyEtaZeroTransportAudit plus_minus =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+  const std::vector<std::string> expected_plus_entries = {
+      "loop_prescriptions=[1, -1, 0]",
+      "uncut ledger: T_l1=plus_i0, T_l2=minus_i0",
+  };
+  Expect(amflow::SerializeCutkoskyBranchLedgerSummaries(plus_minus.branch_ledger) ==
+             expected_plus_entries,
+         "b63n feynman_prescription plus/minus branch ledger should serialize to the "
+         "legacy audit strings");
+  Expect(plus_minus.branch_ledger_entries == expected_plus_entries,
+         "b63n feynman_prescription plus/minus legacy branch ledger strings should remain "
+         "exact");
+  const amflow::CutkoskyBranchLedgerEntry& plus_uncut = plus_minus.branch_ledger[1];
+  Expect(plus_uncut.cut_support == std::vector<std::size_t>({8, 9}),
+         "b63n feynman_prescription structured branch ledger should expose q-cut support");
+  Expect(plus_uncut.eta_half_plane == "lower",
+         "b63n feynman_prescription structured branch ledger should expose eta half-plane");
+  Expect(plus_uncut.prescriptions.size() == 2 &&
+             plus_uncut.prescriptions[0].target == "T_l1" &&
+             plus_uncut.prescriptions[0].prescription ==
+                 amflow::FeynmanPrescription::PlusI0 &&
+             plus_uncut.prescriptions[1].target == "T_l2" &&
+             plus_uncut.prescriptions[1].prescription ==
+                 amflow::FeynmanPrescription::MinusI0,
+         "b63n feynman_prescription structured branch ledger should expose uncut "
+         "subintegral prescriptions");
+  ExpectContains(plus_uncut.branch_provenance,
+                 "conjugate loop-subintegral",
+                 "b63n feynman_prescription structured branch ledger should expose provenance");
+
+  const amflow::CutkoskyEtaZeroTransportAudit minus_plus =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::MinusI0,
+                                          amflow::FeynmanPrescription::PlusI0));
+  const std::vector<std::string> expected_minus_entries = {
+      "loop_prescriptions=[-1, 1, 0]",
+      "uncut ledger: T_l1=minus_i0, T_l2=plus_i0",
+  };
+  Expect(amflow::SerializeCutkoskyBranchLedgerSummaries(minus_plus.branch_ledger) ==
+             expected_minus_entries,
+         "b63n feynman_prescription minus/plus branch ledger should serialize to the "
+         "legacy audit strings");
+  Expect(minus_plus.branch_ledger_entries == expected_minus_entries,
+         "b63n feynman_prescription minus/plus legacy branch ledger strings should remain "
+         "exact");
+  Expect(minus_plus.branch_ledger[1].prescriptions[0].prescription ==
+             amflow::FeynmanPrescription::MinusI0 &&
+             minus_plus.branch_ledger[1].prescriptions[1].prescription ==
+                 amflow::FeynmanPrescription::PlusI0,
+         "b63n feynman_prescription structured branch ledger should preserve conjugate "
+         "prescription order");
+}
+
 void B63nCutkoskyResidueEndpointModelBuildsContourPlanTest() {
   const amflow::CutkoskyResidueEndpointModel automatic_model =
       amflow::BuildCutkoskyResidueEndpointModel(MakeB63nAutomaticPhaseSpaceSpec());
@@ -2211,6 +2300,7 @@ int main() {
     B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
+    B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();

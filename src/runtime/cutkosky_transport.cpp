@@ -404,6 +404,71 @@ std::string ContourHalfPlaneForDirection(const std::string& direction) {
   return direction == "Im" ? "upper" : "lower";
 }
 
+std::string PropagatorDisplayLabel(const std::size_t index) {
+  return "D" + std::to_string(index + 1);
+}
+
+CutkoskyBranchLedgerPrescription MakeBranchLedgerPrescription(
+    const std::string& target,
+    const FeynmanPrescription prescription,
+    const std::string& source) {
+  CutkoskyBranchLedgerPrescription entry;
+  entry.target = target;
+  entry.prescription = prescription;
+  entry.source = source;
+  return entry;
+}
+
+std::vector<CutkoskyBranchLedgerPrescription> BuildLoopPrescriptionLedger(
+    const FamilyDefinition& family) {
+  std::vector<CutkoskyBranchLedgerPrescription> prescriptions;
+  prescriptions.reserve(family.loop_prescriptions.size());
+  for (std::size_t index = 0; index < family.loop_prescriptions.size(); ++index) {
+    const std::string target = index < family.loop_momenta.size()
+                                   ? "loop:" + family.loop_momenta[index]
+                                   : "loop[" + std::to_string(index) + "]";
+    prescriptions.push_back(MakeBranchLedgerPrescription(
+        target, family.loop_prescriptions[index], "family.loop_prescriptions"));
+  }
+  return prescriptions;
+}
+
+std::vector<CutkoskyBranchLedgerPrescription> BuildCutProviderPrescriptionLedger(
+    const std::vector<std::size_t>& cut_indices,
+    const FeynmanPrescription cut_prescription) {
+  std::vector<CutkoskyBranchLedgerPrescription> prescriptions;
+  prescriptions.reserve(cut_indices.size());
+  for (const std::size_t cut_index : cut_indices) {
+    prescriptions.push_back(MakeBranchLedgerPrescription(
+        PropagatorDisplayLabel(cut_index),
+        cut_prescription,
+        "family.propagators[].prescription"));
+  }
+  return prescriptions;
+}
+
+CutkoskyBranchLedgerEntry MakeBranchLedgerEntry(
+    const std::string& summary,
+    const std::vector<CutkoskyBranchLedgerPrescription>& prescriptions,
+    const std::vector<std::size_t>& cut_support,
+    const std::string& eta_half_plane,
+    const std::string& branch_provenance) {
+  CutkoskyBranchLedgerEntry entry;
+  entry.summary = summary;
+  entry.prescriptions = prescriptions;
+  entry.cut_support = cut_support;
+  entry.eta_half_plane = eta_half_plane;
+  entry.branch_provenance = branch_provenance;
+  return entry;
+}
+
+void RecordBranchLedgerEntry(CutkoskyEtaZeroTransportAudit& audit,
+                             const CutkoskyBranchLedgerEntry& entry) {
+  audit.branch_ledger.push_back(entry);
+  audit.branch_ledger_entries.push_back(
+      SerializeCutkoskyBranchLedgerEntrySummary(entry));
+}
+
 std::string ImaginaryEtaWaypoint(const std::string& radius,
                                  const std::string& half_plane) {
   return half_plane == "upper" ? "eta=" + radius + "*I"
@@ -711,15 +776,31 @@ std::string SerializeCutkoskyResidueCoefficientAuditForFingerprint(
 
 void ClassifyReviewedSurface(const ProblemSpec& spec,
                              const std::vector<std::size_t>& cut_indices,
+                             const FeynmanPrescription cut_prescription,
                              CutkoskyEtaZeroTransportAudit& audit) {
+  const std::string eta_half_plane =
+      ContourHalfPlaneForDirection(EtaDirectionForPrescription(cut_prescription));
   if (MatchesAutomaticPhaseSpaceSurface(spec, cut_indices)) {
     audit.reviewed_surface = true;
     audit.reviewed_endpoint_model =
         "automatic_phasespace one-mass three-body Cutkosky residue scaffold";
-    audit.branch_ledger_entries.push_back("loop_prescriptions=[0, 0]");
-    audit.branch_ledger_entries.push_back(
-        "cut propagators D1,D3,D5 resolved as prescription-insensitive real "
-        "phase-space cuts");
+    RecordBranchLedgerEntry(
+        audit,
+        MakeBranchLedgerEntry(
+            "loop_prescriptions=[0, 0]",
+            BuildLoopPrescriptionLedger(spec.family),
+            cut_indices,
+            eta_half_plane,
+            "reviewed automatic_phasespace loop-prescription metadata"));
+    RecordBranchLedgerEntry(
+        audit,
+        MakeBranchLedgerEntry(
+            "cut propagators D1,D3,D5 resolved as prescription-insensitive real "
+            "phase-space cuts",
+            BuildCutProviderPrescriptionLedger(cut_indices, cut_prescription),
+            cut_indices,
+            eta_half_plane,
+            "reviewed automatic_phasespace real phase-space cut support"));
     return;
   }
 
@@ -743,11 +824,32 @@ void ClassifyReviewedSurface(const ProblemSpec& spec,
     audit.reviewed_endpoint_model =
         "feynman_prescription two-body cut with prescription-aware loop subintegral "
         "scaffold";
-    audit.branch_ledger_entries.push_back(
-        "loop_prescriptions=" + JoinPrescriptionVector(spec.family.loop_prescriptions));
-    audit.branch_ledger_entries.push_back(
-        plus_minus ? "uncut ledger: T_l1=plus_i0, T_l2=minus_i0"
-                   : "uncut ledger: T_l1=minus_i0, T_l2=plus_i0");
+    RecordBranchLedgerEntry(
+        audit,
+        MakeBranchLedgerEntry(
+            "loop_prescriptions=" + JoinPrescriptionVector(spec.family.loop_prescriptions),
+            BuildLoopPrescriptionLedger(spec.family),
+            cut_indices,
+            eta_half_plane,
+            "reviewed feynman_prescription loop-prescription metadata"));
+    RecordBranchLedgerEntry(
+        audit,
+        MakeBranchLedgerEntry(
+            plus_minus ? "uncut ledger: T_l1=plus_i0, T_l2=minus_i0"
+                       : "uncut ledger: T_l1=minus_i0, T_l2=plus_i0",
+            {MakeBranchLedgerPrescription(
+                 "T_l1",
+                 plus_minus ? FeynmanPrescription::PlusI0
+                            : FeynmanPrescription::MinusI0,
+                 "family.loop_prescriptions"),
+             MakeBranchLedgerPrescription(
+                 "T_l2",
+                 plus_minus ? FeynmanPrescription::MinusI0
+                            : FeynmanPrescription::PlusI0,
+                 "family.loop_prescriptions")},
+            cut_indices,
+            eta_half_plane,
+            "reviewed feynman_prescription conjugate loop-subintegral branch ledger"));
     return;
   }
 
@@ -1156,6 +1258,21 @@ std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
   return projected;
 }
 
+std::string SerializeCutkoskyBranchLedgerEntrySummary(
+    const CutkoskyBranchLedgerEntry& entry) {
+  return entry.summary;
+}
+
+std::vector<std::string> SerializeCutkoskyBranchLedgerSummaries(
+    const std::vector<CutkoskyBranchLedgerEntry>& ledger) {
+  std::vector<std::string> summaries;
+  summaries.reserve(ledger.size());
+  for (const CutkoskyBranchLedgerEntry& entry : ledger) {
+    summaries.push_back(SerializeCutkoskyBranchLedgerEntrySummary(entry));
+  }
+  return summaries;
+}
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec) {
   const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
@@ -1187,7 +1304,7 @@ CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
 
   const FeynmanPrescription cut_prescription = ResolveCutPrescription(spec, cut_indices);
   CutkoskyEtaZeroTransportAudit audit;
-  ClassifyReviewedSurface(spec, cut_indices, audit);
+  ClassifyReviewedSurface(spec, cut_indices, cut_prescription, audit);
   return BuildCutkoskyResidueEndpointModelInternal(spec, cut_indices, cut_prescription);
 }
 
@@ -1242,7 +1359,7 @@ CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
   audit.retained_solution_samples_used = false;
   audit.full_eta_zero_contour_applied = false;
 
-  ClassifyReviewedSurface(spec, cut_indices, audit);
+  ClassifyReviewedSurface(spec, cut_indices, cut_prescription, audit);
   const CutkoskyResidueEndpointModel endpoint_model =
       BuildCutkoskyResidueEndpointModelInternal(spec, cut_indices, cut_prescription);
   audit.runtime_application =

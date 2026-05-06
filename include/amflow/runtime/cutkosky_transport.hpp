@@ -205,6 +205,40 @@ struct CutkoskySymbolicIntegrand {
   std::string coefficient_policy;
 };
 
+struct CutkoskySymbolicSubintegralFactor {
+  std::string ledger_handle;
+  std::string ledger_sign;
+  std::string denominator_id;
+  std::size_t denominator_index{};
+  int propagator_power{};
+  std::string propagator_expression;
+  std::string role;
+  std::string structural_form;
+};
+
+struct CutkoskySymbolicSubintegral {
+  std::string ledger_handle;
+  std::string loop_momentum;
+  FeynmanPrescription prescription = FeynmanPrescription::None;
+  std::string ledger_sign;
+  std::string prescription_source;
+  std::vector<CutkoskySymbolicSubintegralFactor> factors;
+};
+
+struct CutkoskySymbolicSubintegralAssembly {
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  std::string surface_label;
+  std::string model_kind;
+  std::string phase_space_parameterization;
+  std::string physical_integration_domain;
+  std::vector<std::size_t> cut_denominator_indices;
+  std::vector<std::string> residue_variables;
+  std::string branch_ledger_summary;
+  std::vector<CutkoskySymbolicSubintegral> subintegrals;
+  std::string coefficient_policy;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -247,5 +281,9 @@ CutkoskySymbolicIntegrand BuildAutomaticPhaseSpaceSymbolicIntegrand(
     const ProblemSpec& spec);
 std::string SerializeCutkoskySymbolicIntegrandAudit(
     const CutkoskySymbolicIntegrand& integrand);
+CutkoskySymbolicSubintegralAssembly
+BuildFeynmanPrescriptionSymbolicSubintegralAssembly(const ProblemSpec& spec);
+std::string SerializeCutkoskySymbolicSubintegralAssemblyAudit(
+    const CutkoskySymbolicSubintegralAssembly& assembly);
 
 }  // namespace amflow

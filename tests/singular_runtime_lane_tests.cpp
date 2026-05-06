@@ -1487,6 +1487,164 @@ void B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest() {
          "b63n symbolic integrand audit serialization should be deterministic");
 }
 
+void B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest() {
+  const amflow::CutkoskySymbolicSubintegralAssembly assembly =
+      amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+
+  Expect(assembly.surface_label ==
+             "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+         "lane169 feynman symbolic subintegral assembly should bind the accepted "
+         "loopxloop surface");
+  Expect(assembly.model_kind ==
+             "feynman_prescription::two-body-residue::plus-minus",
+         "lane169 feynman symbolic subintegral assembly should reuse the reviewed "
+         "plus/minus endpoint model");
+  Expect(assembly.residue_variables == std::vector<std::string>({"cos_theta"}),
+         "lane169 feynman symbolic subintegral assembly should preserve the "
+         "two-body residue variable");
+  Expect(assembly.cut_denominator_indices == std::vector<std::size_t>({8, 9}),
+         "lane169 feynman symbolic subintegral assembly should keep D9,D10 as cuts");
+  Expect(assembly.subintegrals.size() == 2,
+         "lane169 feynman symbolic subintegral assembly should build T_l1 and T_l2");
+  ExpectContains(assembly.coefficient_policy,
+                 "coefficient-free symbolic assembly",
+                 "lane169 symbolic subintegral assembly must remain coefficient-free");
+  ExpectContains(assembly.coefficient_policy,
+                 "no endpoint Laurent coefficients evaluated or published",
+                 "lane169 symbolic subintegral assembly must not publish numeric "
+                 "expectations");
+  Expect(!assembly.retained_solution_samples_used,
+         "lane169 symbolic subintegral assembly must not read retained AMFlow final "
+         "samples");
+  Expect(!assembly.live_coefficients_available,
+         "lane169 symbolic subintegral assembly must not claim live coefficient parity");
+
+  const amflow::CutkoskySymbolicSubintegral& t_l1 = assembly.subintegrals[0];
+  Expect(t_l1.ledger_handle == "T_l1" && t_l1.loop_momentum == "l1" &&
+             t_l1.prescription == amflow::FeynmanPrescription::PlusI0 &&
+             t_l1.ledger_sign == "plus_i0",
+         "lane169 feynman symbolic subintegral assembly should attach plus_i0 to "
+         "T_l1");
+  Expect(t_l1.factors.size() == 3,
+         "lane169 T_l1 should contain only the accepted positive-power l1 "
+         "denominators");
+  Expect(t_l1.factors[0].denominator_id == "D2" &&
+             t_l1.factors[1].denominator_id == "D3" &&
+             t_l1.factors[2].denominator_id == "D4",
+         "lane169 T_l1 should assemble D2,D3,D4 in denominator order");
+  Expect(t_l1.factors[0].propagator_power == 1 &&
+             t_l1.factors[1].propagator_power == 1 &&
+             t_l1.factors[2].propagator_power == 1,
+         "lane169 T_l1 should preserve unit powers without numeric coefficients");
+  ExpectContains(t_l1.factors[0].structural_form,
+                 "T_l1.plus_i0:D2(cos_theta)",
+                 "lane169 T_l1 should expose a prescription-aware symbolic form");
+
+  const amflow::CutkoskySymbolicSubintegral& t_l2 = assembly.subintegrals[1];
+  Expect(t_l2.ledger_handle == "T_l2" && t_l2.loop_momentum == "l2" &&
+             t_l2.prescription == amflow::FeynmanPrescription::MinusI0 &&
+             t_l2.ledger_sign == "minus_i0",
+         "lane169 feynman symbolic subintegral assembly should attach minus_i0 to "
+         "T_l2");
+  Expect(t_l2.factors.size() == 3,
+         "lane169 T_l2 should contain only the accepted positive-power l2 "
+         "denominators");
+  Expect(t_l2.factors[0].denominator_id == "D5" &&
+             t_l2.factors[1].denominator_id == "D7" &&
+             t_l2.factors[2].denominator_id == "D8",
+         "lane169 T_l2 should assemble D5,D7,D8 and skip zero-power D6");
+  Expect(t_l2.factors[0].propagator_power == 1 &&
+             t_l2.factors[1].propagator_power == 1 &&
+             t_l2.factors[2].propagator_power == 1,
+         "lane169 T_l2 should preserve unit powers without numeric coefficients");
+  ExpectContains(t_l2.factors[2].role,
+                 "D8=(l2-q)^2 in T_l2 with minus_i0",
+                 "lane169 T_l2 should map factors from the recorded branch ledger");
+
+  const amflow::CutkoskySymbolicSubintegralAssembly conjugate =
+      amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::MinusI0,
+                                          amflow::FeynmanPrescription::PlusI0));
+  Expect(conjugate.model_kind ==
+             "feynman_prescription::two-body-residue::minus-plus",
+         "lane169 conjugate symbolic subintegral assembly should use the minus/plus "
+         "endpoint model");
+  Expect(conjugate.subintegrals[0].prescription ==
+                 amflow::FeynmanPrescription::MinusI0 &&
+             conjugate.subintegrals[1].prescription ==
+                 amflow::FeynmanPrescription::PlusI0,
+         "lane169 conjugate symbolic subintegral assembly should swap T_l1/T_l2 "
+         "prescriptions without changing denominator grouping");
+  Expect(conjugate.subintegrals[0].factors[0].denominator_id == "D2" &&
+             conjugate.subintegrals[1].factors[2].denominator_id == "D8",
+         "lane169 conjugate symbolic subintegral assembly should keep the reviewed "
+         "factor grouping");
+
+  const std::string audit =
+      amflow::SerializeCutkoskySymbolicSubintegralAssemblyAudit(assembly);
+  const std::string expected_audit =
+      "kind=b63n-feynman-prescription-symbolic-subintegral-assembly\n"
+      "live_coefficients_available=false\n"
+      "retained_solution_samples_used=false\n"
+      "surface=loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]\n"
+      "model=feynman_prescription::two-body-residue::plus-minus\n"
+      "parameterization=dPhi_2(P;sqrt(msq),sqrt(m2sq)) times prescription-aware "
+      "T_l1*T_l2\n"
+      "domain=cos_theta in [-1,1] at lambda(10,1,2/5)=1809/25\n"
+      "cut_denominators=D9,D10\n"
+      "variables=cos_theta\n"
+      "branch_ledger=uncut ledger: T_l1=plus_i0, T_l2=minus_i0\n"
+      "coefficient_policy=coefficient-free symbolic assembly; no endpoint Laurent "
+      "coefficients evaluated or published\n"
+      "subintegral_count=2\n"
+      "subintegral[0]=handle=T_l1;loop=l1;prescription=plus_i0;"
+      "prescription_source=family.loop_prescriptions;factor_count=3\n"
+      "subintegral[0].factor[0]=ledger_handle=T_l1;ledger_sign=plus_i0;"
+      "denominator=D2;denominator_index=1;power=1;form="
+      "inverse_subintegral_denominator[T_l1.plus_i0:D2(cos_theta)];role="
+      "D2=(l1+p1)^2 in T_l1 with plus_i0;propagator=(l1+p1)^2\n"
+      "subintegral[0].factor[1]=ledger_handle=T_l1;ledger_sign=plus_i0;"
+      "denominator=D3;denominator_index=2;power=1;form="
+      "inverse_subintegral_denominator[T_l1.plus_i0:D3(cos_theta)];role="
+      "D3=(l1+p1+p2)^2 in T_l1 with plus_i0;propagator=(l1+p1+p2)^2\n"
+      "subintegral[0].factor[2]=ledger_handle=T_l1;ledger_sign=plus_i0;"
+      "denominator=D4;denominator_index=3;power=1;form="
+      "inverse_subintegral_denominator[T_l1.plus_i0:D4(cos_theta)];role="
+      "D4=(l1+q)^2 in T_l1 with plus_i0;propagator=(l1+q)^2\n"
+      "subintegral[1]=handle=T_l2;loop=l2;prescription=minus_i0;"
+      "prescription_source=family.loop_prescriptions;factor_count=3\n"
+      "subintegral[1].factor[0]=ledger_handle=T_l2;ledger_sign=minus_i0;"
+      "denominator=D5;denominator_index=4;power=1;form="
+      "inverse_subintegral_denominator[T_l2.minus_i0:D5(cos_theta)];role="
+      "D5=l2^2 in T_l2 with minus_i0;propagator=l2^2\n"
+      "subintegral[1].factor[1]=ledger_handle=T_l2;ledger_sign=minus_i0;"
+      "denominator=D7;denominator_index=6;power=1;form="
+      "inverse_subintegral_denominator[T_l2.minus_i0:D7(cos_theta)];role="
+      "D7=(l2-p2-p1)^2 in T_l2 with minus_i0;propagator=(l2-p2-p1)^2\n"
+      "subintegral[1].factor[2]=ledger_handle=T_l2;ledger_sign=minus_i0;"
+      "denominator=D8;denominator_index=7;power=1;form="
+      "inverse_subintegral_denominator[T_l2.minus_i0:D8(cos_theta)];role="
+      "D8=(l2-q)^2 in T_l2 with minus_i0;propagator=(l2-q)^2\n";
+  Expect(audit == expected_audit,
+         "lane169 feynman symbolic subintegral audit serialization should be "
+         "deterministic");
+
+  amflow::ProblemSpec bridged = MakeB63nFeynmanPrescriptionSpec(
+      amflow::FeynmanPrescription::PlusI0,
+      amflow::FeynmanPrescription::MinusI0);
+  bridged.targets.front().indices[10] = 1;
+  ExpectRuntimeErrorContains(
+      [&bridged]() {
+        static_cast<void>(
+            amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly(bridged));
+      },
+      "exact feynman_prescription reviewed surface",
+      "lane169 symbolic subintegral assembly should reject nonzero bridge "
+      "denominator D11");
+}
+
 void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
   const amflow::CutkoskyEtaZeroSelectionResult selected =
       amflow::PickCutkoskyEtaZeroTerm({
@@ -2574,6 +2732,7 @@ int main() {
     B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
     B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest();
+    B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();

@@ -811,6 +811,146 @@ void ValidateAutomaticPhaseSpaceSymbolicFactorRole(
   }
 }
 
+std::string JoinPropagatorDisplayLabels(const std::vector<std::size_t>& indices) {
+  std::ostringstream out;
+  bool first = true;
+  for (const std::size_t index : indices) {
+    if (!first) {
+      out << ",";
+    }
+    first = false;
+    out << PropagatorDisplayLabel(index);
+  }
+  return out.str();
+}
+
+const CutkoskyBranchLedgerEntry& RequireFeynmanSubintegralLedger(
+    const CutkoskyEtaZeroTransportAudit& audit) {
+  for (const CutkoskyBranchLedgerEntry& entry : audit.branch_ledger) {
+    bool has_t_l1 = false;
+    bool has_t_l2 = false;
+    for (const CutkoskyBranchLedgerPrescription& prescription : entry.prescriptions) {
+      has_t_l1 = has_t_l1 || prescription.target == "T_l1";
+      has_t_l2 = has_t_l2 || prescription.target == "T_l2";
+    }
+    if (has_t_l1 && has_t_l2) {
+      return entry;
+    }
+  }
+  throw BoundaryUnsolvedError(
+      "b63n feynman_prescription symbolic subintegral assembly requires the recorded "
+      "T_l1/T_l2 branch ledger");
+}
+
+const CutkoskyBranchLedgerPrescription& RequireLedgerPrescription(
+    const CutkoskyBranchLedgerEntry& ledger,
+    const std::string& ledger_handle) {
+  for (const CutkoskyBranchLedgerPrescription& prescription : ledger.prescriptions) {
+    if (prescription.target == ledger_handle) {
+      return prescription;
+    }
+  }
+  throw BoundaryUnsolvedError(
+      "b63n feynman_prescription symbolic subintegral assembly is missing branch-ledger "
+      "prescription for " +
+      ledger_handle);
+}
+
+std::string LoopMomentumForFeynmanSubintegral(const std::string& ledger_handle) {
+  if (ledger_handle == "T_l1") {
+    return "l1";
+  }
+  if (ledger_handle == "T_l2") {
+    return "l2";
+  }
+  throw BoundaryUnsolvedError(
+      "b63n feynman_prescription symbolic subintegral assembly received unsupported "
+      "ledger handle " +
+      ledger_handle);
+}
+
+std::string FeynmanSubintegralHandleForDenominator(
+    const std::string& denominator_id) {
+  if (denominator_id == "D2" || denominator_id == "D3" ||
+      denominator_id == "D4") {
+    return "T_l1";
+  }
+  if (denominator_id == "D5" || denominator_id == "D7" ||
+      denominator_id == "D8") {
+    return "T_l2";
+  }
+  throw BoundaryUnsolvedError(
+      "b63n feynman_prescription symbolic subintegral assembly received unsupported "
+      "uncut denominator " +
+      denominator_id);
+}
+
+std::string FeynmanSubintegralStructuralFormForDenominator(
+    const std::string& denominator_id,
+    const std::string& ledger_handle,
+    const std::string& ledger_sign) {
+  return "inverse_subintegral_denominator[" + ledger_handle + "." + ledger_sign +
+         ":" + denominator_id + "(cos_theta)]";
+}
+
+void ValidateFeynmanSubintegralFactorRole(
+    const CutkoskyResidueEndpointModel& model,
+    const std::size_t role_index,
+    const std::string& denominator_id,
+    const std::string& ledger_handle,
+    const std::string& ledger_sign) {
+  if (role_index >= model.uncut_denominator_roles.size()) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly is missing an "
+        "endpoint-model uncut denominator role for " +
+        denominator_id);
+  }
+  const std::string& role = model.uncut_denominator_roles[role_index];
+  const std::string expected_prefix = denominator_id + "=";
+  if (role.substr(std::string::size_type{}, expected_prefix.size()) !=
+      expected_prefix) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly role/order mismatch "
+        "for " +
+        denominator_id);
+  }
+  if (role.find(" in " + ledger_handle + " ") == std::string::npos ||
+      role.find(" with " + ledger_sign) == std::string::npos) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly role does not match "
+        "the recorded " +
+        ledger_handle + " branch ledger");
+  }
+}
+
+CutkoskySymbolicSubintegral MakeFeynmanSubintegralCarrier(
+    const CutkoskyBranchLedgerEntry& ledger,
+    const std::string& ledger_handle) {
+  const CutkoskyBranchLedgerPrescription& prescription =
+      RequireLedgerPrescription(ledger, ledger_handle);
+  CutkoskySymbolicSubintegral subintegral;
+  subintegral.ledger_handle = ledger_handle;
+  subintegral.loop_momentum = LoopMomentumForFeynmanSubintegral(ledger_handle);
+  subintegral.prescription = prescription.prescription;
+  subintegral.ledger_sign = PrescriptionLabel(prescription.prescription);
+  subintegral.prescription_source = prescription.source;
+  return subintegral;
+}
+
+CutkoskySymbolicSubintegral& RequireMutableSubintegralByHandle(
+    std::vector<CutkoskySymbolicSubintegral>& subintegrals,
+    const std::string& ledger_handle) {
+  for (CutkoskySymbolicSubintegral& subintegral : subintegrals) {
+    if (subintegral.ledger_handle == ledger_handle) {
+      return subintegral;
+    }
+  }
+  throw BoundaryUnsolvedError(
+      "b63n feynman_prescription symbolic subintegral assembly cannot find carrier "
+      "for ledger handle " +
+      ledger_handle);
+}
+
 void ClassifyReviewedSurface(const ProblemSpec& spec,
                              const std::vector<std::size_t>& cut_indices,
                              const FeynmanPrescription cut_prescription,
@@ -1613,6 +1753,178 @@ std::string SerializeCutkoskySymbolicIntegrandAudit(
         << ";form=" << factor.structural_form
         << ";role=" << factor.role
         << ";propagator=" << factor.propagator_expression << "\n";
+  }
+  return out.str();
+}
+
+CutkoskySymbolicSubintegralAssembly
+BuildFeynmanPrescriptionSymbolicSubintegralAssembly(const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly requires cut "
+        "propagators");
+  }
+  RejectEtaOnCutPropagators(spec, cut_indices);
+  static_cast<void>(CollectCutPowers(spec, cut_indices));
+  if (!MatchesFeynmanPrescriptionSurface(spec, cut_indices)) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly is limited to the "
+        "exact feynman_prescription reviewed surface "
+        "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]");
+  }
+
+  const bool plus_minus =
+      VectorEquals(spec.family.loop_prescriptions,
+                   {FeynmanPrescription::PlusI0,
+                    FeynmanPrescription::MinusI0,
+                    FeynmanPrescription::None});
+  const bool minus_plus =
+      VectorEquals(spec.family.loop_prescriptions,
+                   {FeynmanPrescription::MinusI0,
+                    FeynmanPrescription::PlusI0,
+                    FeynmanPrescription::None});
+  if (!plus_minus && !minus_plus) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly recognizes only the "
+        "reviewed plus-minus and minus-plus loop-prescription ledgers");
+  }
+
+  const FeynmanPrescription cut_prescription = ResolveCutPrescription(spec, cut_indices);
+  const CutkoskyEtaZeroTransportAudit transport_audit =
+      BuildCutkoskyEtaZeroTransportScaffold(spec);
+  const CutkoskyBranchLedgerEntry& subintegral_ledger =
+      RequireFeynmanSubintegralLedger(transport_audit);
+  const CutkoskyResidueEndpointModel endpoint_model =
+      BuildCutkoskyResidueEndpointModelInternal(spec, cut_indices, cut_prescription);
+  if (endpoint_model.uncut_denominator_indices.size() !=
+      endpoint_model.uncut_denominator_roles.size()) {
+    throw BoundaryUnsolvedError(
+        "b63n feynman_prescription symbolic subintegral assembly requires one recorded "
+        "role per uncut subintegral denominator");
+  }
+
+  CutkoskySymbolicSubintegralAssembly assembly;
+  assembly.live_coefficients_available = false;
+  assembly.retained_solution_samples_used = false;
+  assembly.surface_label = spec.targets.front().Label();
+  assembly.model_kind = endpoint_model.model_kind;
+  assembly.phase_space_parameterization =
+      endpoint_model.phase_space_parameterization;
+  assembly.physical_integration_domain = endpoint_model.physical_integration_domain;
+  assembly.cut_denominator_indices = cut_indices;
+  assembly.residue_variables = endpoint_model.residue_variables;
+  assembly.branch_ledger_summary =
+      SerializeCutkoskyBranchLedgerEntrySummary(subintegral_ledger);
+  assembly.coefficient_policy =
+      "coefficient-free symbolic assembly; no endpoint Laurent coefficients evaluated "
+      "or published";
+  assembly.subintegrals.push_back(
+      MakeFeynmanSubintegralCarrier(subintegral_ledger, "T_l1"));
+  assembly.subintegrals.push_back(
+      MakeFeynmanSubintegralCarrier(subintegral_ledger, "T_l2"));
+
+  for (std::size_t role_index = 0;
+       role_index < endpoint_model.uncut_denominator_indices.size();
+       ++role_index) {
+    const std::size_t denominator_index =
+        endpoint_model.uncut_denominator_indices[role_index];
+    if (denominator_index >= spec.family.propagators.size() ||
+        denominator_index >= spec.targets.front().indices.size()) {
+      throw BoundaryUnsolvedError(
+          "b63n feynman_prescription symbolic subintegral assembly found an "
+          "out-of-range uncut denominator index");
+    }
+    const std::string denominator_id =
+        PropagatorDisplayLabel(denominator_index);
+    const std::string ledger_handle =
+        FeynmanSubintegralHandleForDenominator(denominator_id);
+    CutkoskySymbolicSubintegral& subintegral =
+        RequireMutableSubintegralByHandle(assembly.subintegrals, ledger_handle);
+    ValidateFeynmanSubintegralFactorRole(endpoint_model,
+                                         role_index,
+                                         denominator_id,
+                                         ledger_handle,
+                                         subintegral.ledger_sign);
+    const int propagator_power = spec.targets.front().indices[denominator_index];
+    if (propagator_power <= 0) {
+      throw BoundaryUnsolvedError(
+          "b63n feynman_prescription symbolic subintegral assembly requires positive "
+          "powers for reviewed T_l1/T_l2 denominators");
+    }
+    subintegral.factors.push_back(
+        {subintegral.ledger_handle,
+         subintegral.ledger_sign,
+         denominator_id,
+         denominator_index,
+         propagator_power,
+         spec.family.propagators[denominator_index].expression,
+         endpoint_model.uncut_denominator_roles[role_index],
+         FeynmanSubintegralStructuralFormForDenominator(
+             denominator_id, ledger_handle, subintegral.ledger_sign)});
+  }
+
+  return assembly;
+}
+
+std::string SerializeCutkoskySymbolicSubintegralAssemblyAudit(
+    const CutkoskySymbolicSubintegralAssembly& assembly) {
+  std::ostringstream out;
+  out << "kind=b63n-feynman-prescription-symbolic-subintegral-assembly\n";
+  out << "live_coefficients_available="
+      << (assembly.live_coefficients_available ? "true" : "false") << "\n";
+  out << "retained_solution_samples_used="
+      << (assembly.retained_solution_samples_used ? "true" : "false") << "\n";
+  out << "surface=" << assembly.surface_label << "\n";
+  out << "model=" << assembly.model_kind << "\n";
+  out << "parameterization=" << assembly.phase_space_parameterization << "\n";
+  out << "domain=" << assembly.physical_integration_domain << "\n";
+  out << "cut_denominators="
+      << JoinPropagatorDisplayLabels(assembly.cut_denominator_indices) << "\n";
+  out << "variables=";
+  for (std::size_t index = 0; index < assembly.residue_variables.size();
+       ++index) {
+    if (index != 0) {
+      out << ",";
+    }
+    out << assembly.residue_variables[index];
+  }
+  out << "\n";
+  out << "branch_ledger=" << assembly.branch_ledger_summary << "\n";
+  out << "coefficient_policy=" << assembly.coefficient_policy << "\n";
+  out << "subintegral_count=" << assembly.subintegrals.size() << "\n";
+  for (std::size_t subintegral_index = 0;
+       subintegral_index < assembly.subintegrals.size();
+       ++subintegral_index) {
+    const CutkoskySymbolicSubintegral& subintegral =
+        assembly.subintegrals[subintegral_index];
+    out << "subintegral[" << subintegral_index << "]="
+        << "handle=" << subintegral.ledger_handle
+        << ";loop=" << subintegral.loop_momentum
+        << ";prescription=" << subintegral.ledger_sign
+        << ";prescription_source=" << subintegral.prescription_source
+        << ";factor_count=" << subintegral.factors.size() << "\n";
+    for (std::size_t factor_index = 0;
+         factor_index < subintegral.factors.size();
+         ++factor_index) {
+      const CutkoskySymbolicSubintegralFactor& factor =
+          subintegral.factors[factor_index];
+      out << "subintegral[" << subintegral_index << "].factor["
+          << factor_index << "]="
+          << "ledger_handle=" << factor.ledger_handle
+          << ";ledger_sign=" << factor.ledger_sign
+          << ";denominator=" << factor.denominator_id
+          << ";denominator_index=" << factor.denominator_index
+          << ";power=" << factor.propagator_power
+          << ";form=" << factor.structural_form
+          << ";role=" << factor.role
+          << ";propagator=" << factor.propagator_expression << "\n";
+    }
   }
   return out.str();
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@ struct LightlikeGaugeLinkRuntimeState {
   std::string boundary_point;
   std::vector<std::string> singular_points;
   std::vector<std::string> boundary_file_names;
+  std::map<std::string, std::string> boundary_file_raws;
   std::vector<std::string> diffeq_variables;
   std::vector<std::string> epsilon_samples;
   std::vector<MasterIntegral> masters;
@@ -59,6 +61,35 @@ struct LightlikeGaugeLinkFinitePartResult {
   std::string summary;
 };
 
+struct LightlikeGaugeLinkPoleAudit {
+  std::string value;
+  int multiplicity = 0;
+  std::vector<std::string> sources;
+};
+
+struct LightlikeGaugeLinkContourPlanAudit {
+  bool success = false;
+  bool endpoint_is_singular = false;
+  std::size_t matrix_row_count = 0;
+  std::size_t matrix_column_count = 0;
+  std::size_t matrix_nonzero_cell_count = 0;
+  std::vector<LightlikeGaugeLinkPoleAudit> poles;
+  std::vector<std::string> waypoints;
+  std::string variable = "gaugex";
+  std::string desolver_local_variable = "eta";
+  std::string boundary_point;
+  std::string target_point;
+  std::string half_plane;
+  std::string nearest_nonzero_pole;
+  std::string boundary_point_selection_rule;
+  std::string endpoint_local_model_kind;
+  std::string dropped_term_audit;
+  std::string contour_fingerprint;
+  std::string minimum_nonendpoint_pole_distance_to_contour;
+  std::string pole_summary;
+  std::string waypoint_summary;
+};
+
 struct LightlikeGaugeLinkTransportAudit {
   bool reviewed_surface = false;
   bool live_coefficients_available = false;
@@ -68,6 +99,7 @@ struct LightlikeGaugeLinkTransportAudit {
   bool ir_subtraction_applied = false;
   bool boundary_data_available = false;
   bool diffeq_masters_cover_reduction_masters = false;
+  bool diffeq_matrix_parsed = false;
   std::string family;
   std::string variable;
   std::string desolver_local_variable;
@@ -79,15 +111,27 @@ struct LightlikeGaugeLinkTransportAudit {
   std::string endpoint_selection_rule;
   std::string coefficient_gap;
   std::string failure_code_contract;
+  std::string contour_half_plane;
+  std::string contour_fingerprint;
+  std::string endpoint_local_model_kind;
+  std::string dropped_term_audit;
+  std::string pole_summary;
+  std::string waypoint_summary;
+  std::string minimum_nonendpoint_pole_distance_to_contour;
   std::vector<std::size_t> affected_propagator_indices;
   std::vector<std::string> generated_square_propagators;
   std::vector<LightlikeGaugeLinkTargetNormalization> target_normalizations;
+  std::vector<LightlikeGaugeLinkPoleAudit> diffeq_poles;
+  std::vector<std::string> contour_waypoints;
   std::vector<std::string> pole_candidates;
   std::vector<std::string> boundary_file_names;
   std::size_t epsilon_sample_count = 0;
   std::size_t master_count = 0;
   std::size_t reduction_master_count = 0;
   std::size_t target_count = 0;
+  std::size_t diffeq_matrix_row_count = 0;
+  std::size_t diffeq_matrix_column_count = 0;
+  std::size_t diffeq_matrix_nonzero_cell_count = 0;
   std::string summary;
 };
 
@@ -108,6 +152,16 @@ ApplyLightlikeGaugeLinkPowerNormalization(
 
 LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
     const std::vector<LightlikeGaugeLinkFinitePartTerm>& terms);
+
+std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
+    const std::string& diffeq_raw);
+
+LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable = "gaugex",
+    const std::string& boundary_point = "gaugex -> 1/40",
+    const std::string& target_point = "gaugex=0");
 
 LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
     const LightlikeGaugeLinkRuntimeState& state);

@@ -4444,6 +4444,7 @@ amflow::LightlikeGaugeLinkRuntimeState MakeLightlikeGaugeLinkRuntimeState(
   state.boundary_point = spec.gauge_link_boundary_point;
   state.singular_points = spec.singular_points;
   state.boundary_file_names = BoundaryRawFileNames(spec);
+  state.boundary_file_raws = spec.boundary_state_raw_files;
   state.diffeq_variables = spec.gauge_link_diffeq_variables;
   state.epsilon_samples = spec.boundary_epsilon_samples;
   state.masters = spec.masters;

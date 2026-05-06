@@ -1143,6 +1143,31 @@ amflow::LightlikeGaugeLinkRuntimeState MakeB64agGaugeLinkRuntimeState() {
   state.boundary_point = "gaugex -> 1/40";
   state.singular_points = {"gaugex=0"};
   state.boundary_file_names = {"boundary", "diffeq", "reduction", "solution", "solve.wl"};
+  state.boundary_file_raws["diffeq"] =
+      "{{j[gauge,1,1,1,0,1,0,0,0,0],j[gauge,1,1,1,-1,1,0,0,0,0],"
+      "j[gauge,0,1,1,1,1,0,0,0,0],j[gauge,0,1,1,1,1,-1,0,0],"
+      "j[gauge,1,1,1,1,1,0,0,0,0],j[gauge,1,1,1,1,1,-1,0,0,0]},"
+      "{gaugex},"
+      "{{{(1 + 20*gaugex - 18*eps*gaugex)/(gaugex*(1 + 2*gaugex)),"
+      "(24*(-1 + eps)*gaugex)/(1 + 2*gaugex),0,0,0,0},"
+      "{(5 - 5*eps + 22*gaugex)/(gaugex^2*(1 + 2*gaugex)),"
+      "(2*(-3 + 3*eps - 14*gaugex))/(gaugex*(1 + 2*gaugex)),0,0,0,0},"
+      "{0,0,(-7 + 8*eps - 18*gaugex)/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(12*(-gaugex + eps*gaugex))/((1 + 2*gaugex)*(1 + 4*gaugex)),0,0},"
+      "{0,0,(3 - 2*eps + 6*gaugex)/(2*gaugex^3*(1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(6*(-3 + 3*eps - 4*gaugex))/((1 + 2*gaugex)*(1 + 4*gaugex)),0,0},"
+      "{(-22*(-gaugex + eps*gaugex))/(1 + 2*gaugex),"
+      "(24*(-1 + eps)*gaugex^2)/(1 + 2*gaugex),"
+      "(-8*(-2*gaugex + 2*eps*gaugex))/((1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(12*(-gaugex^2 + eps*gaugex^2))/((1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(2*(1 + 2*eps*gaugex))/(gaugex*(1 + 2*gaugex)),"
+      "(6*(-1 + eps))/(1 + 2*gaugex)},"
+      "{(4*(-7 + 7*eps - 11*gaugex))/(3*(1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(-8*(-1 + eps)*gaugex)/(1 + 4*gaugex),"
+      "(-3 + 2*eps + 2*gaugex)/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(-8*(gaugex - eps*gaugex))/((1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(-2*(-1 + eps))/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex)),"
+      "(2*(-1 + 2*eps - 7*gaugex))/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex))}}}}";
   state.diffeq_variables = {"gaugex"};
   state.epsilon_samples = {"101/208000", "51/104000"};
   for (const amflow::TargetIntegral& target : B64agReviewedTargets()) {
@@ -1193,9 +1218,44 @@ void B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest() {
          "b64ag target normalization should preserve zero affected-power sums");
   Expect(audit.diffeq_masters_cover_reduction_masters,
          "b64ag state should audit that DE masters contain reduced masters");
+  Expect(audit.diffeq_matrix_parsed,
+         "b64ag next layer should parse the retained rational gaugex DE matrix");
+  Expect(audit.diffeq_matrix_row_count == 6 && audit.diffeq_matrix_column_count == 6,
+         "b64ag DE matrix audit should preserve the reviewed six-master shape");
+  Expect(audit.diffeq_matrix_nonzero_cell_count > 0,
+         "b64ag DE matrix audit should count parsed nonzero matrix cells");
+  Expect(audit.diffeq_poles.size() == 3,
+         "b64ag pole extraction should find the endpoint and two nonzero DE poles");
+  Expect(audit.pole_candidates == std::vector<std::string>(
+                                      {"gaugex=-0.5", "gaugex=-0.25", "gaugex=0"}),
+         "b64ag pole candidates should come from parsed gaugex matrix denominators");
+  Expect(audit.contour_half_plane == "lower",
+         "b64ag contour planning should use the reviewed lower-half-plane route");
+  Expect(audit.contour_waypoints.size() == 5,
+         "b64ag contour planning should produce finite-boundary endpoint waypoints");
+  Expect(audit.contour_waypoints.front().find("0.025") == 0 &&
+             audit.contour_waypoints.back() == "0",
+         "b64ag contour should run from gaugex=1/40 to gaugex=0");
+  Expect(!audit.contour_fingerprint.empty(),
+         "b64ag contour planning should fingerprint the parsed pole and waypoint audit");
+  Expect(audit.endpoint_local_model_kind == "regular-singular-finite-part-r0",
+         "b64ag endpoint audit should classify gaugex=0 as a finite-part singular endpoint");
+  ExpectContains(audit.dropped_term_audit,
+                 "PickZeroRuleS-compatible finite-part extraction",
+                 "b64ag contour audit should preserve the finite-part extraction contract");
   ExpectContains(audit.coefficient_gap,
                  "Live gauge-link endpoint coefficients are not implemented",
                  "b64ag scaffold should explicitly report the remaining coefficient gap");
+}
+
+void B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest() {
+  ExpectRuntimeErrorContains(
+      []() {
+        static_cast<void>(amflow::ParseLightlikeGaugeLinkDiffeqMatrixRaw(
+            "{{j[gauge,1]}, {eta}, {{{1/eta}}}}"));
+      },
+      "single variable gaugex",
+      "b64ag diffeq parser should reject eta-hardcoded matrix metadata");
 }
 
 void B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest() {
@@ -1341,6 +1401,7 @@ int main() {
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest();
     B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest();
+    B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest();
     B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest();
     B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();
     B64agGaugeLinkRuntimeStateRejectsMissingBoundaryInputsTest();

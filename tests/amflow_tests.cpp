@@ -49223,6 +49223,21 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
                  "Live gauge-link endpoint coefficients are not implemented",
                  "b64ag retained run should keep the coefficient gap visible");
   ExpectContains(retained_json,
+                 "Parsed the 6x6 rational gaugex DE matrix",
+                 "b64ag retained run should exercise the rational DE-matrix parser");
+  ExpectContains(retained_json,
+                 "extracted 3 unique gaugex pole",
+                 "b64ag retained run should publish parsed gaugex pole extraction");
+  ExpectContains(retained_json,
+                 "lower-half-plane finite-boundary-to-endpoint contour plan with 5 waypoint",
+                 "b64ag retained run should build the reviewed lower-half-plane contour plan");
+  ExpectContains(retained_json,
+                 "endpoint_local_model_kind=regular-singular-finite-part-r0",
+                 "b64ag retained run should classify the singular finite-part endpoint");
+  ExpectContains(retained_json,
+                 "contour_fingerprint=",
+                 "b64ag retained run should fingerprint the gaugex contour audit");
+  ExpectContains(retained_json,
                  "full gauge-link gaugex=0 endpoint transport remains deferred",
                  "b64ag retained run should use the gauge-link blocked reason");
 
@@ -49264,6 +49279,18 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(stripped_json,
                  "\"full_eta_zero_contour_applied\": false",
                  "stripped b64ag state must keep the full-contour flag false");
+  ExpectContains(stripped_json,
+                 "Parsed the 6x6 rational gaugex DE matrix",
+                 "stripped b64ag state should parse raw diffeq metadata before failing closed");
+  ExpectContains(stripped_json,
+                 "gaugex_poles=[-0.5",
+                 "stripped b64ag state should publish the extracted gaugex pole list");
+  ExpectContains(stripped_json,
+                 "contour_fingerprint=",
+                 "stripped b64ag state should fingerprint the planned contour");
+  ExpectContains(stripped_json,
+                 "PickZeroRuleS-compatible finite-part extraction",
+                 "stripped b64ag state should retain the finite-part audit contract");
   ExpectContains(stripped_json,
                  "full_eta_zero_contour_applied stays false",
                  "stripped b64ag state should explicitly avoid overclaiming");

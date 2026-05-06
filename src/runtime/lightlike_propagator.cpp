@@ -2,13 +2,20 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <complex>
+#include <iomanip>
+#include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "amflow/runtime/artifact_store.hpp"
 
 namespace amflow {
 
@@ -250,6 +257,730 @@ LightlikeGaugeLinkRuntimeState RequireRuntimeState(
   return state;
 }
 
+std::string TrimAsciiWhitespace(const std::string& value) {
+  const std::size_t begin = value.find_first_not_of(" \t\r\n");
+  if (begin == std::string::npos) {
+    return "";
+  }
+  const std::size_t end = value.find_last_not_of(" \t\r\n");
+  return value.substr(begin, end - begin + 1);
+}
+
+std::vector<std::string> SplitMathematicaListElements(const std::string& raw_list) {
+  const std::string list = TrimAsciiWhitespace(raw_list);
+  if (list.size() < 2 || list.front() != '{' || list.back() != '}') {
+    throw std::runtime_error("b64ag gauge-link parser expected a Mathematica list");
+  }
+  const std::string body = TrimAsciiWhitespace(list.substr(1, list.size() - 2));
+  if (body.empty()) {
+    return {};
+  }
+
+  std::vector<std::string> elements;
+  int brace_depth = 0;
+  int paren_depth = 0;
+  int bracket_depth = 0;
+  std::size_t element_begin = 1;
+  for (std::size_t index = 1; index + 1 < list.size(); ++index) {
+    const char current = list[index];
+    if (current == '{') {
+      ++brace_depth;
+    } else if (current == '}') {
+      --brace_depth;
+    } else if (current == '(') {
+      ++paren_depth;
+    } else if (current == ')') {
+      --paren_depth;
+    } else if (current == '[') {
+      ++bracket_depth;
+    } else if (current == ']') {
+      --bracket_depth;
+    } else if (current == ',' && brace_depth == 0 && paren_depth == 0 &&
+               bracket_depth == 0) {
+      elements.push_back(TrimAsciiWhitespace(
+          list.substr(element_begin, index - element_begin)));
+      element_begin = index + 1;
+    }
+    if (brace_depth < 0 || paren_depth < 0 || bracket_depth < 0) {
+      throw std::runtime_error("b64ag gauge-link parser found unbalanced list syntax");
+    }
+  }
+  elements.push_back(TrimAsciiWhitespace(
+      list.substr(element_begin, list.size() - 1 - element_begin)));
+  return elements;
+}
+
+std::string NormalizeRuntimeExpression(std::string expression) {
+  expression = RemoveAsciiSpaces(std::move(expression));
+  std::string normalized;
+  normalized.reserve(expression.size());
+  for (std::size_t index = 0; index < expression.size(); ++index) {
+    if (expression[index] == '`') {
+      ++index;
+      while (index < expression.size() &&
+             (std::isdigit(static_cast<unsigned char>(expression[index])) != 0 ||
+              expression[index] == '.')) {
+        ++index;
+      }
+      --index;
+      continue;
+    }
+    if (expression[index] == '*' && index + 1 < expression.size() &&
+        expression[index + 1] == '^') {
+      normalized.push_back('e');
+      ++index;
+      continue;
+    }
+    normalized.push_back(expression[index]);
+  }
+  return normalized;
+}
+
+using RuntimeComplex = std::complex<long double>;
+
+constexpr long double kRuntimeTiny = 1e-18L;
+
+bool IsRuntimeTiny(const RuntimeComplex& value) {
+  return std::abs(value) < kRuntimeTiny;
+}
+
+struct RuntimePolynomial {
+  std::vector<RuntimeComplex> coefficients;
+};
+
+void PruneRuntimePolynomial(RuntimePolynomial& polynomial) {
+  while (!polynomial.coefficients.empty() &&
+         IsRuntimeTiny(polynomial.coefficients.back())) {
+    polynomial.coefficients.pop_back();
+  }
+}
+
+RuntimePolynomial MakeRuntimeConstantPolynomial(const RuntimeComplex& value) {
+  RuntimePolynomial polynomial;
+  if (!IsRuntimeTiny(value)) {
+    polynomial.coefficients.push_back(value);
+  }
+  return polynomial;
+}
+
+RuntimePolynomial MakeRuntimeVariablePolynomial() {
+  RuntimePolynomial polynomial;
+  polynomial.coefficients.assign(2, RuntimeComplex{0.0L, 0.0L});
+  polynomial.coefficients[1] = RuntimeComplex{1.0L, 0.0L};
+  return polynomial;
+}
+
+RuntimePolynomial AddRuntimePolynomials(RuntimePolynomial lhs,
+                                        const RuntimePolynomial& rhs,
+                                        const long double rhs_sign = 1.0L) {
+  if (lhs.coefficients.size() < rhs.coefficients.size()) {
+    lhs.coefficients.resize(rhs.coefficients.size(), RuntimeComplex{0.0L, 0.0L});
+  }
+  for (std::size_t index = 0; index < rhs.coefficients.size(); ++index) {
+    lhs.coefficients[index] += rhs.coefficients[index] * rhs_sign;
+  }
+  PruneRuntimePolynomial(lhs);
+  return lhs;
+}
+
+RuntimePolynomial MultiplyRuntimePolynomials(const RuntimePolynomial& lhs,
+                                             const RuntimePolynomial& rhs) {
+  if (lhs.coefficients.empty() || rhs.coefficients.empty()) {
+    return {};
+  }
+  RuntimePolynomial product;
+  product.coefficients.assign(lhs.coefficients.size() + rhs.coefficients.size() - 1,
+                              RuntimeComplex{0.0L, 0.0L});
+  for (std::size_t lhs_index = 0; lhs_index < lhs.coefficients.size(); ++lhs_index) {
+    for (std::size_t rhs_index = 0; rhs_index < rhs.coefficients.size(); ++rhs_index) {
+      product.coefficients[lhs_index + rhs_index] +=
+          lhs.coefficients[lhs_index] * rhs.coefficients[rhs_index];
+    }
+  }
+  PruneRuntimePolynomial(product);
+  return product;
+}
+
+struct RuntimeRationalPolynomial {
+  RuntimePolynomial numerator;
+  RuntimePolynomial denominator =
+      MakeRuntimeConstantPolynomial(RuntimeComplex{1.0L, 0.0L});
+};
+
+RuntimeRationalPolynomial AddRuntimeRationals(const RuntimeRationalPolynomial& lhs,
+                                              const RuntimeRationalPolynomial& rhs,
+                                              const long double rhs_sign = 1.0L) {
+  RuntimeRationalPolynomial result;
+  result.numerator = AddRuntimePolynomials(
+      MultiplyRuntimePolynomials(lhs.numerator, rhs.denominator),
+      MultiplyRuntimePolynomials(rhs.numerator, lhs.denominator),
+      rhs_sign);
+  result.denominator = MultiplyRuntimePolynomials(lhs.denominator, rhs.denominator);
+  return result;
+}
+
+RuntimeRationalPolynomial MultiplyRuntimeRationals(
+    const RuntimeRationalPolynomial& lhs,
+    const RuntimeRationalPolynomial& rhs) {
+  RuntimeRationalPolynomial result;
+  result.numerator = MultiplyRuntimePolynomials(lhs.numerator, rhs.numerator);
+  result.denominator = MultiplyRuntimePolynomials(lhs.denominator, rhs.denominator);
+  return result;
+}
+
+RuntimeRationalPolynomial DivideRuntimeRationals(const RuntimeRationalPolynomial& lhs,
+                                                 const RuntimeRationalPolynomial& rhs,
+                                                 const std::string& expression) {
+  if (rhs.numerator.coefficients.empty()) {
+    throw std::runtime_error("b64ag gauge-link rational parser divides by zero in \"" +
+                             expression + "\"");
+  }
+  RuntimeRationalPolynomial result;
+  result.numerator = MultiplyRuntimePolynomials(lhs.numerator, rhs.denominator);
+  result.denominator = MultiplyRuntimePolynomials(lhs.denominator, rhs.numerator);
+  return result;
+}
+
+RuntimeRationalPolynomial PowerRuntimeRational(RuntimeRationalPolynomial base,
+                                               int exponent,
+                                               const std::string& expression) {
+  if (exponent < 0) {
+    std::swap(base.numerator, base.denominator);
+    exponent = -exponent;
+  }
+  RuntimeRationalPolynomial result;
+  result.numerator = MakeRuntimeConstantPolynomial(RuntimeComplex{1.0L, 0.0L});
+  result.denominator = MakeRuntimeConstantPolynomial(RuntimeComplex{1.0L, 0.0L});
+  for (int index = 0; index < exponent; ++index) {
+    result = MultiplyRuntimeRationals(result, base);
+  }
+  if (result.denominator.coefficients.empty()) {
+    throw std::runtime_error(
+        "b64ag gauge-link rational parser produced an empty denominator in \"" +
+        expression + "\"");
+  }
+  return result;
+}
+
+long double ParseRuntimeRationalNumber(const std::string& raw_value) {
+  const std::string value = RemoveAsciiSpaces(raw_value);
+  const std::size_t slash = value.find('/');
+  if (slash != std::string::npos) {
+    const long double numerator = ParseRuntimeRationalNumber(value.substr(0, slash));
+    const long double denominator = ParseRuntimeRationalNumber(value.substr(slash + 1));
+    if (std::abs(denominator) < kRuntimeTiny) {
+      throw std::runtime_error("b64ag gauge-link parser found a zero rational denominator");
+    }
+    return numerator / denominator;
+  }
+  return std::stold(value);
+}
+
+class GaugeLinkRationalParser {
+ public:
+  GaugeLinkRationalParser(std::string expression,
+                          std::string variable,
+                          const long double epsilon_sample)
+      : expression_(NormalizeRuntimeExpression(std::move(expression))),
+        variable_(std::move(variable)),
+        epsilon_sample_(epsilon_sample) {}
+
+  RuntimeRationalPolynomial Parse() {
+    if (expression_.empty()) {
+      throw std::runtime_error("b64ag gauge-link rational parser received an empty input");
+    }
+    RuntimeRationalPolynomial value = ParseExpression();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("b64ag gauge-link rational parser found trailing input in \"" +
+                               expression_ + "\"");
+    }
+    return value;
+  }
+
+ private:
+  bool Consume(const char expected) {
+    if (position_ < expression_.size() && expression_[position_] == expected) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  bool StartsPrimary() const {
+    if (position_ >= expression_.size()) {
+      return false;
+    }
+    const char current = expression_[position_];
+    return current == '(' ||
+           std::isdigit(static_cast<unsigned char>(current)) != 0 ||
+           current == '.' ||
+           std::isalpha(static_cast<unsigned char>(current)) != 0 ||
+           current == '_';
+  }
+
+  RuntimeRationalPolynomial ParseExpression() {
+    RuntimeRationalPolynomial value = ParseTerm();
+    while (position_ < expression_.size()) {
+      if (Consume('+')) {
+        value = AddRuntimeRationals(value, ParseTerm());
+      } else if (Consume('-')) {
+        value = AddRuntimeRationals(value, ParseTerm(), -1.0L);
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  RuntimeRationalPolynomial ParseTerm() {
+    RuntimeRationalPolynomial value = ParsePower();
+    while (position_ < expression_.size()) {
+      if (Consume('*')) {
+        value = MultiplyRuntimeRationals(value, ParsePower());
+      } else if (Consume('/')) {
+        value = DivideRuntimeRationals(value, ParsePower(), expression_);
+      } else if (StartsPrimary()) {
+        value = MultiplyRuntimeRationals(value, ParsePower());
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  RuntimeRationalPolynomial ParsePower() {
+    RuntimeRationalPolynomial value = ParseUnary();
+    if (Consume('^')) {
+      value = PowerRuntimeRational(value, ParseSignedIntegerExponent(), expression_);
+    }
+    return value;
+  }
+
+  RuntimeRationalPolynomial ParseUnary() {
+    if (Consume('+')) {
+      return ParseUnary();
+    }
+    if (Consume('-')) {
+      RuntimeRationalPolynomial value = ParseUnary();
+      for (RuntimeComplex& coefficient : value.numerator.coefficients) {
+        coefficient = -coefficient;
+      }
+      return value;
+    }
+    return ParsePrimary();
+  }
+
+  int ParseSignedIntegerExponent() {
+    bool parenthesized = false;
+    if (Consume('(')) {
+      parenthesized = true;
+    }
+    bool negative = false;
+    if (Consume('+')) {
+      negative = false;
+    } else if (Consume('-')) {
+      negative = true;
+    }
+    if (position_ >= expression_.size() ||
+        std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+      throw std::runtime_error(
+          "b64ag gauge-link rational parser requires integer exponents in \"" +
+          expression_ + "\"");
+    }
+    int exponent = 0;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      exponent = exponent * 10 + (expression_[position_] - '0');
+      ++position_;
+    }
+    if (parenthesized && !Consume(')')) {
+      throw std::runtime_error(
+          "b64ag gauge-link rational parser expected ')' after exponent in \"" +
+          expression_ + "\"");
+    }
+    return negative ? -exponent : exponent;
+  }
+
+  RuntimeRationalPolynomial Constant(const RuntimeComplex& value) const {
+    RuntimeRationalPolynomial result;
+    result.numerator = MakeRuntimeConstantPolynomial(value);
+    result.denominator = MakeRuntimeConstantPolynomial(RuntimeComplex{1.0L, 0.0L});
+    return result;
+  }
+
+  RuntimeRationalPolynomial ParsePrimary() {
+    if (Consume('(')) {
+      RuntimeRationalPolynomial value = ParseExpression();
+      if (!Consume(')')) {
+        throw std::runtime_error("b64ag gauge-link rational parser expected ')' in \"" +
+                                 expression_ + "\"");
+      }
+      return value;
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '.')) {
+      const std::size_t begin = position_;
+      bool saw_digit = false;
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        saw_digit = true;
+        ++position_;
+      }
+      if (Consume('.')) {
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          saw_digit = true;
+          ++position_;
+        }
+      }
+      if (!saw_digit) {
+        throw std::runtime_error(
+            "b64ag gauge-link rational parser found malformed number in \"" +
+            expression_ + "\"");
+      }
+      if (position_ < expression_.size() &&
+          (expression_[position_] == 'e' || expression_[position_] == 'E')) {
+        ++position_;
+        if (position_ < expression_.size() &&
+            (expression_[position_] == '+' || expression_[position_] == '-')) {
+          ++position_;
+        }
+        if (position_ >= expression_.size() ||
+            std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+          throw std::runtime_error(
+              "b64ag gauge-link rational parser found malformed exponent in \"" +
+              expression_ + "\"");
+        }
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          ++position_;
+        }
+      }
+      return Constant(RuntimeComplex{
+          std::stold(expression_.substr(begin, position_ - begin)), 0.0L});
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isalpha(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '_')) {
+      const std::size_t begin = position_;
+      ++position_;
+      while (position_ < expression_.size() &&
+             (std::isalnum(static_cast<unsigned char>(expression_[position_])) != 0 ||
+              expression_[position_] == '_')) {
+        ++position_;
+      }
+      const std::string identifier = expression_.substr(begin, position_ - begin);
+      if (identifier == "I") {
+        return Constant(RuntimeComplex{0.0L, 1.0L});
+      }
+      if (identifier == variable_) {
+        RuntimeRationalPolynomial result;
+        result.numerator = MakeRuntimeVariablePolynomial();
+        result.denominator =
+            MakeRuntimeConstantPolynomial(RuntimeComplex{1.0L, 0.0L});
+        return result;
+      }
+      if (identifier == "eps") {
+        return Constant(RuntimeComplex{epsilon_sample_, 0.0L});
+      }
+      throw std::runtime_error("b64ag gauge-link rational parser requires a binding for " +
+                               identifier + " in \"" + expression_ + "\"");
+    }
+
+    throw std::runtime_error("b64ag gauge-link rational parser found malformed expression \"" +
+                             expression_ + "\"");
+  }
+
+  std::string expression_;
+  std::string variable_;
+  long double epsilon_sample_ = 0.0L;
+  std::size_t position_ = 0;
+};
+
+RuntimeRationalPolynomial ParseGaugeLinkRationalExpression(
+    const std::string& expression,
+    const std::string& variable,
+    const long double epsilon_sample) {
+  return GaugeLinkRationalParser(expression, variable, epsilon_sample).Parse();
+}
+
+int RuntimePolynomialDegree(const RuntimePolynomial& polynomial) {
+  for (std::size_t reverse_index = polynomial.coefficients.size();
+       reverse_index > 0;
+       --reverse_index) {
+    const std::size_t index = reverse_index - 1;
+    if (!IsRuntimeTiny(polynomial.coefficients[index])) {
+      return static_cast<int>(index);
+    }
+  }
+  return -1;
+}
+
+std::vector<RuntimeComplex> RuntimePolynomialRootsDurandKerner(
+    const RuntimePolynomial& polynomial) {
+  const int degree = RuntimePolynomialDegree(polynomial);
+  if (degree <= 0) {
+    return {};
+  }
+  const RuntimeComplex leading = polynomial.coefficients[static_cast<std::size_t>(degree)];
+  if (IsRuntimeTiny(leading)) {
+    return {};
+  }
+  if (degree == 1) {
+    return {-polynomial.coefficients[0] / leading};
+  }
+
+  std::vector<RuntimeComplex> normalized_coefficients(static_cast<std::size_t>(degree));
+  long double radius = 1.0L;
+  for (int index = 0; index < degree; ++index) {
+    normalized_coefficients[static_cast<std::size_t>(index)] =
+        polynomial.coefficients[static_cast<std::size_t>(index)] / leading;
+    radius = std::max(
+        radius,
+        1.0L + std::abs(normalized_coefficients[static_cast<std::size_t>(index)]));
+  }
+
+  constexpr long double kPi = 3.141592653589793238462643383279502884L;
+  std::vector<RuntimeComplex> roots(static_cast<std::size_t>(degree));
+  for (int index = 0; index < degree; ++index) {
+    const long double angle =
+        2.0L * kPi * static_cast<long double>(index) /
+            static_cast<long double>(degree) +
+        0.37L;
+    roots[static_cast<std::size_t>(index)] = std::polar(radius, angle);
+  }
+
+  auto evaluate = [&](const RuntimeComplex& variable_value) {
+    RuntimeComplex result = RuntimeComplex{1.0L, 0.0L};
+    for (int index = degree - 1; index >= 0; --index) {
+      result = result * variable_value +
+               normalized_coefficients[static_cast<std::size_t>(index)];
+    }
+    return result;
+  };
+
+  for (int iteration = 0; iteration < 400; ++iteration) {
+    long double max_delta = 0.0L;
+    for (int root_index = 0; root_index < degree; ++root_index) {
+      RuntimeComplex denominator = RuntimeComplex{1.0L, 0.0L};
+      for (int other_index = 0; other_index < degree; ++other_index) {
+        if (other_index == root_index) {
+          continue;
+        }
+        denominator *= roots[static_cast<std::size_t>(root_index)] -
+                       roots[static_cast<std::size_t>(other_index)];
+      }
+      if (std::abs(denominator) < 1e-30L) {
+        denominator += RuntimeComplex{1e-24L, 1e-24L};
+      }
+      const RuntimeComplex delta =
+          evaluate(roots[static_cast<std::size_t>(root_index)]) / denominator;
+      roots[static_cast<std::size_t>(root_index)] -= delta;
+      max_delta = std::max(max_delta, std::abs(delta));
+    }
+    if (max_delta < 1e-18L) {
+      break;
+    }
+  }
+  return roots;
+}
+
+std::string FormatLongDouble(const long double raw_value,
+                             const int precision_digits = 24) {
+  long double value = raw_value;
+  if (std::abs(value) < 1e-15L) {
+    value = 0.0L;
+  }
+  std::ostringstream stream;
+  stream << std::setprecision(precision_digits) << value;
+  std::string text = stream.str();
+  const std::size_t exponent = text.find_first_of("eE");
+  const std::size_t dot = text.find('.');
+  if (dot != std::string::npos && exponent == std::string::npos) {
+    while (!text.empty() && text.back() == '0') {
+      text.pop_back();
+    }
+    if (!text.empty() && text.back() == '.') {
+      text.pop_back();
+    }
+  }
+  return text.empty() ? "0" : text;
+}
+
+std::string FormatRuntimeComplex(const RuntimeComplex& value,
+                                 const int precision_digits = 24) {
+  const long double real = std::abs(value.real()) < 1e-15L ? 0.0L : value.real();
+  const long double imaginary =
+      std::abs(value.imag()) < 1e-15L ? 0.0L : value.imag();
+  const std::string real_text = FormatLongDouble(real, precision_digits);
+  const std::string imaginary_text =
+      FormatLongDouble(std::abs(imaginary), precision_digits);
+  if (std::abs(imaginary) < 1e-15L) {
+    return real_text;
+  }
+  if (std::abs(real) < 1e-15L) {
+    return (imaginary < 0 ? "-" : "") + imaginary_text + "*I";
+  }
+  return real_text + (imaginary < 0 ? " - " : " + ") + imaginary_text + "*I";
+}
+
+struct RuntimePoleAudit {
+  RuntimeComplex value;
+  int multiplicity = 0;
+  std::vector<std::string> sources;
+};
+
+bool SameRuntimePole(const RuntimeComplex& lhs, const RuntimeComplex& rhs) {
+  return std::abs(lhs - rhs) < 1e-7L;
+}
+
+void AddRuntimePole(std::vector<RuntimePoleAudit>& poles,
+                    const RuntimeComplex& value,
+                    const std::string& source) {
+  for (RuntimePoleAudit& pole : poles) {
+    if (SameRuntimePole(pole.value, value)) {
+      ++pole.multiplicity;
+      if (pole.sources.size() < 4) {
+        pole.sources.push_back(source);
+      }
+      return;
+    }
+  }
+  RuntimePoleAudit pole;
+  pole.value = value;
+  pole.multiplicity = 1;
+  pole.sources.push_back(source);
+  poles.push_back(std::move(pole));
+}
+
+std::vector<LightlikeGaugeLinkPoleAudit> PublicPoleAudits(
+    const std::vector<RuntimePoleAudit>& poles) {
+  std::vector<LightlikeGaugeLinkPoleAudit> public_poles;
+  public_poles.reserve(poles.size());
+  for (const RuntimePoleAudit& pole : poles) {
+    public_poles.push_back(
+        {FormatRuntimeComplex(pole.value, 24), pole.multiplicity, pole.sources});
+  }
+  return public_poles;
+}
+
+std::vector<RuntimePoleAudit> ExtractRuntimePolesFromMatrix(
+    const std::vector<std::vector<std::string>>& matrix,
+    const std::string& variable,
+    const long double epsilon_sample,
+    std::size_t* nonzero_cell_count) {
+  std::vector<RuntimePoleAudit> poles;
+  if (nonzero_cell_count != nullptr) {
+    *nonzero_cell_count = 0;
+  }
+  for (std::size_t row_index = 0; row_index < matrix.size(); ++row_index) {
+    for (std::size_t column_index = 0; column_index < matrix[row_index].size();
+         ++column_index) {
+      const RuntimeRationalPolynomial rational =
+          ParseGaugeLinkRationalExpression(matrix[row_index][column_index],
+                                           variable,
+                                           epsilon_sample);
+      if (nonzero_cell_count != nullptr && !rational.numerator.coefficients.empty()) {
+        ++(*nonzero_cell_count);
+      }
+      const int degree = RuntimePolynomialDegree(rational.denominator);
+      if (degree <= 0) {
+        continue;
+      }
+      for (const RuntimeComplex& root :
+           RuntimePolynomialRootsDurandKerner(rational.denominator)) {
+        AddRuntimePole(poles,
+                       root,
+                       "gaugex_matrix[" + std::to_string(row_index) + "," +
+                           std::to_string(column_index) + "]");
+      }
+    }
+  }
+  std::sort(poles.begin(),
+            poles.end(),
+            [](const RuntimePoleAudit& lhs, const RuntimePoleAudit& rhs) {
+              if (std::abs(lhs.value.real() - rhs.value.real()) > 1e-12L) {
+                return lhs.value.real() < rhs.value.real();
+              }
+              return lhs.value.imag() < rhs.value.imag();
+            });
+  return poles;
+}
+
+RuntimeComplex ParseRuntimePointValue(const std::string& raw_point,
+                                      const std::string& variable) {
+  std::string value = raw_point;
+  const std::size_t arrow = value.find("->");
+  const std::size_t equals = value.find('=');
+  if (arrow != std::string::npos) {
+    value = value.substr(arrow + 2);
+  } else if (equals != std::string::npos) {
+    value = value.substr(equals + 1);
+  }
+  const RuntimeRationalPolynomial rational =
+      ParseGaugeLinkRationalExpression(value, variable, 0.0L);
+  if (RuntimePolynomialDegree(rational.numerator) > 0 ||
+      RuntimePolynomialDegree(rational.denominator) > 0 ||
+      rational.denominator.coefficients.empty()) {
+    throw std::runtime_error("b64ag gauge-link contour point is not numeric: " +
+                             raw_point);
+  }
+  if (rational.numerator.coefficients.empty()) {
+    return RuntimeComplex{0.0L, 0.0L};
+  }
+  return rational.numerator.coefficients.front() /
+         rational.denominator.coefficients.front();
+}
+
+long double DistancePointToSegment(const RuntimeComplex& point,
+                                   const RuntimeComplex& start,
+                                   const RuntimeComplex& end) {
+  const RuntimeComplex segment = end - start;
+  const RuntimeComplex offset = point - start;
+  const long double length_squared = std::norm(segment);
+  if (length_squared < kRuntimeTiny) {
+    return std::abs(offset);
+  }
+  long double projection =
+      (offset.real() * segment.real() + offset.imag() * segment.imag()) /
+      length_squared;
+  if (projection < 0.0L) {
+    projection = 0.0L;
+  } else if (projection > 1.0L) {
+    projection = 1.0L;
+  }
+  const RuntimeComplex closest = start + segment * projection;
+  return std::abs(point - closest);
+}
+
+std::string SerializeGaugeLinkContourPlanForFingerprint(
+    const LightlikeGaugeLinkContourPlanAudit& plan) {
+  std::ostringstream out;
+  out << "kind=b64ag-gauge-link-gaugex-contour-plan\n";
+  out << "variable=" << plan.variable << "\n";
+  out << "desolver_local_variable=" << plan.desolver_local_variable << "\n";
+  out << "boundary_point=" << plan.boundary_point << "\n";
+  out << "target_point=" << plan.target_point << "\n";
+  out << "half_plane=" << plan.half_plane << "\n";
+  out << "matrix_rows=" << plan.matrix_row_count << "\n";
+  out << "matrix_columns=" << plan.matrix_column_count << "\n";
+  out << "waypoints=" << plan.waypoints.size() << "\n";
+  for (std::size_t index = 0; index < plan.waypoints.size(); ++index) {
+    out << "waypoint[" << index << "]=" << plan.waypoints[index] << "\n";
+  }
+  out << "poles=" << plan.poles.size() << "\n";
+  for (std::size_t index = 0; index < plan.poles.size(); ++index) {
+    out << "pole[" << index << "]=" << plan.poles[index].value
+        << ";multiplicity=" << plan.poles[index].multiplicity << "\n";
+  }
+  out << "endpoint_local_model_kind=" << plan.endpoint_local_model_kind << "\n";
+  out << "dropped_term_audit=" << plan.dropped_term_audit << "\n";
+  return out.str();
+}
+
 }  // namespace
 
 bool IsLightlikeGaugeLinkEtaZeroRuntimeState(
@@ -428,6 +1159,183 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
   return result;
 }
 
+std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
+    const std::string& diffeq_raw) {
+  const std::vector<std::string> root = SplitMathematicaListElements(diffeq_raw);
+  if (root.size() != 3) {
+    throw std::runtime_error(
+        "b64ag gauge-link diffeq raw file must contain masters, variables, and matrices");
+  }
+  const std::vector<std::string> variables = SplitMathematicaListElements(root[1]);
+  if (variables.size() != 1 || RemoveAsciiSpaces(variables.front()) != "gaugex") {
+    throw std::runtime_error(
+        "b64ag gauge-link diffeq raw file must carry the single variable gaugex");
+  }
+  const std::vector<std::string> variable_matrices = SplitMathematicaListElements(root[2]);
+  if (variable_matrices.size() != 1) {
+    throw std::runtime_error(
+        "b64ag gauge-link diffeq raw file must carry exactly one gaugex matrix");
+  }
+  const std::vector<std::string> row_lists =
+      SplitMathematicaListElements(variable_matrices.front());
+  std::vector<std::vector<std::string>> matrix;
+  matrix.reserve(row_lists.size());
+  std::optional<std::size_t> column_count;
+  for (const std::string& row_list : row_lists) {
+    std::vector<std::string> row = SplitMathematicaListElements(row_list);
+    if (!column_count.has_value()) {
+      column_count = row.size();
+    } else if (*column_count != row.size()) {
+      throw std::runtime_error(
+          "b64ag gauge-link diffeq raw matrix must be rectangular");
+    }
+    matrix.push_back(std::move(row));
+  }
+  if (matrix.empty() || !column_count.has_value() || *column_count == 0) {
+    throw std::runtime_error("b64ag gauge-link diffeq raw matrix must not be empty");
+  }
+  return matrix;
+}
+
+LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable,
+    const std::string& boundary_point,
+    const std::string& target_point) {
+  if (RemoveAsciiSpaces(variable) != "gaugex") {
+    throw std::runtime_error(
+        "b64ag gauge-link contour planning is reviewed only for variable gaugex");
+  }
+  if (RemoveAsciiSpaces(target_point) != "gaugex=0") {
+    throw std::runtime_error(
+        "b64ag gauge-link contour planning is reviewed only for target gaugex=0");
+  }
+  if (diffeq_matrix.empty()) {
+    throw std::runtime_error("b64ag gauge-link contour planning requires a DE matrix");
+  }
+  const std::size_t column_count = diffeq_matrix.front().size();
+  if (column_count == 0) {
+    throw std::runtime_error("b64ag gauge-link contour planning requires matrix columns");
+  }
+  for (const std::vector<std::string>& row : diffeq_matrix) {
+    if (row.size() != column_count) {
+      throw std::runtime_error(
+          "b64ag gauge-link contour planning requires a rectangular DE matrix");
+    }
+  }
+
+  const long double epsilon_sample =
+      epsilon_samples.empty() ? 0.0L : ParseRuntimeRationalNumber(epsilon_samples.front());
+  std::size_t nonzero_cell_count = 0;
+  const std::vector<RuntimePoleAudit> runtime_poles =
+      ExtractRuntimePolesFromMatrix(diffeq_matrix,
+                                    variable,
+                                    epsilon_sample,
+                                    &nonzero_cell_count);
+
+  const RuntimeComplex start = ParseRuntimePointValue(boundary_point, variable);
+  const RuntimeComplex target = ParseRuntimePointValue(target_point, variable);
+  bool endpoint_is_singular = false;
+  std::optional<RuntimeComplex> nearest_nonzero_pole;
+  for (const RuntimePoleAudit& pole : runtime_poles) {
+    if (std::abs(pole.value - target) < 1e-8L) {
+      endpoint_is_singular = true;
+      continue;
+    }
+    if (!nearest_nonzero_pole.has_value() ||
+        std::abs(pole.value - target) < std::abs(*nearest_nonzero_pole - target)) {
+      nearest_nonzero_pole = pole.value;
+    }
+  }
+
+  long double detour_radius = 1.0L / 16.0L;
+  if (nearest_nonzero_pole.has_value()) {
+    detour_radius =
+        std::max(detour_radius, std::abs(*nearest_nonzero_pole - target) / 16.0L);
+  }
+  detour_radius = std::max(detour_radius, std::abs(start - target) / 2.0L);
+  const std::vector<RuntimeComplex> runtime_waypoints = {
+      start,
+      RuntimeComplex{start.real(), -detour_radius},
+      RuntimeComplex{target.real(), -detour_radius},
+      RuntimeComplex{target.real(), -detour_radius / 4.0L},
+      target,
+  };
+
+  std::optional<long double> minimum_nonendpoint_distance;
+  for (const RuntimePoleAudit& pole : runtime_poles) {
+    if (std::abs(pole.value - target) < 1e-8L) {
+      continue;
+    }
+    for (std::size_t index = 1; index < runtime_waypoints.size(); ++index) {
+      const long double distance =
+          DistancePointToSegment(pole.value,
+                                 runtime_waypoints[index - 1],
+                                 runtime_waypoints[index]);
+      minimum_nonendpoint_distance =
+          minimum_nonendpoint_distance.has_value()
+              ? std::min(*minimum_nonendpoint_distance, distance)
+              : std::optional<long double>{distance};
+    }
+  }
+
+  std::ostringstream pole_summary;
+  for (std::size_t index = 0; index < runtime_poles.size(); ++index) {
+    if (index != 0) {
+      pole_summary << "; ";
+    }
+    pole_summary << FormatRuntimeComplex(runtime_poles[index].value, 24)
+                 << " (multiplicity " << runtime_poles[index].multiplicity << ")";
+  }
+  std::ostringstream waypoint_summary;
+  for (std::size_t index = 0; index < runtime_waypoints.size(); ++index) {
+    if (index != 0) {
+      waypoint_summary << " -> ";
+    }
+    waypoint_summary << FormatRuntimeComplex(runtime_waypoints[index], 24);
+  }
+
+  LightlikeGaugeLinkContourPlanAudit plan;
+  plan.success = true;
+  plan.endpoint_is_singular = endpoint_is_singular;
+  plan.matrix_row_count = diffeq_matrix.size();
+  plan.matrix_column_count = column_count;
+  plan.matrix_nonzero_cell_count = nonzero_cell_count;
+  plan.poles = PublicPoleAudits(runtime_poles);
+  for (const RuntimeComplex& waypoint : runtime_waypoints) {
+    plan.waypoints.push_back(FormatRuntimeComplex(waypoint, 24));
+  }
+  plan.variable = "gaugex";
+  plan.desolver_local_variable = "eta";
+  plan.boundary_point = boundary_point;
+  plan.target_point = target_point;
+  plan.half_plane = "lower";
+  plan.nearest_nonzero_pole =
+      nearest_nonzero_pole.has_value()
+          ? FormatRuntimeComplex(*nearest_nonzero_pole, 24)
+          : std::string{};
+  plan.boundary_point_selection_rule =
+      "AMFlow gauge-link boundary starts at one tenth of the nearest nonzero DE pole "
+      "distance on the reviewed surface";
+  plan.endpoint_local_model_kind =
+      endpoint_is_singular ? "regular-singular-finite-part-r0"
+                           : "regular-taylor-r0";
+  plan.dropped_term_audit =
+      "PickZeroRuleS-compatible finite-part extraction would drop negative gaugex "
+      "powers and select the gaugex^0 coefficient only after live gauge-link contour "
+      "transport; this scaffold publishes no endpoint coefficient.";
+  plan.minimum_nonendpoint_pole_distance_to_contour =
+      minimum_nonendpoint_distance.has_value()
+          ? FormatLongDouble(*minimum_nonendpoint_distance, 24)
+          : std::string{};
+  plan.pole_summary = pole_summary.str();
+  plan.waypoint_summary = waypoint_summary.str();
+  plan.contour_fingerprint =
+      ComputeArtifactFingerprint(SerializeGaugeLinkContourPlanForFingerprint(plan));
+  return plan;
+}
+
 LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
     const LightlikeGaugeLinkRuntimeState& state) {
   const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
@@ -498,10 +1406,69 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
   audit.master_count = checked_state.masters.size();
   audit.reduction_master_count = checked_state.reduction_masters.size();
   audit.target_count = checked_state.targets.size();
+  const auto diffeq_raw_it = checked_state.boundary_file_raws.find("diffeq");
+  if (diffeq_raw_it != checked_state.boundary_file_raws.end() &&
+      !diffeq_raw_it->second.empty()) {
+    const std::vector<std::vector<std::string>> diffeq_matrix =
+        ParseLightlikeGaugeLinkDiffeqMatrixRaw(diffeq_raw_it->second);
+    if (diffeq_matrix.size() != checked_state.diffeq_masters.size() ||
+        (!diffeq_matrix.empty() &&
+         diffeq_matrix.front().size() != checked_state.diffeq_masters.size())) {
+      throw std::runtime_error(
+          "master_set_instability: b64ag gauge-link diffeq matrix shape does not match "
+          "the reviewed DE master basis");
+    }
+    const LightlikeGaugeLinkContourPlanAudit contour_plan =
+        BuildLightlikeGaugeLinkContourPlanAudit(
+            diffeq_matrix,
+            checked_state.epsilon_samples,
+            checked_state.variable,
+            audit.boundary_point,
+            audit.target_point);
+    audit.diffeq_matrix_parsed = contour_plan.success;
+    audit.diffeq_matrix_row_count = contour_plan.matrix_row_count;
+    audit.diffeq_matrix_column_count = contour_plan.matrix_column_count;
+    audit.diffeq_matrix_nonzero_cell_count =
+        contour_plan.matrix_nonzero_cell_count;
+    audit.diffeq_poles = contour_plan.poles;
+    audit.contour_waypoints = contour_plan.waypoints;
+    audit.contour_half_plane = contour_plan.half_plane;
+    audit.contour_fingerprint = contour_plan.contour_fingerprint;
+    audit.endpoint_local_model_kind = contour_plan.endpoint_local_model_kind;
+    audit.dropped_term_audit = contour_plan.dropped_term_audit;
+    audit.pole_summary = contour_plan.pole_summary;
+    audit.waypoint_summary = contour_plan.waypoint_summary;
+    audit.minimum_nonendpoint_pole_distance_to_contour =
+        contour_plan.minimum_nonendpoint_pole_distance_to_contour;
+    audit.pole_candidates.clear();
+    for (const LightlikeGaugeLinkPoleAudit& pole : contour_plan.poles) {
+      audit.pole_candidates.push_back("gaugex=" + pole.value);
+    }
+  }
   audit.summary =
       "b64ag gauge-link scaffold recognized the retained linear_propagator gaugex=0 "
       "state metadata, audited the reviewed nine-target packet surface and D4,D5 power "
       "normalization, and kept live coefficient publication deferred.";
+  if (audit.diffeq_matrix_parsed) {
+    audit.summary +=
+        " Parsed the " + std::to_string(audit.diffeq_matrix_row_count) + "x" +
+        std::to_string(audit.diffeq_matrix_column_count) +
+        " rational gaugex DE matrix with " +
+        std::to_string(audit.diffeq_matrix_nonzero_cell_count) +
+        " nonzero cell(s), extracted " +
+        std::to_string(audit.diffeq_poles.size()) +
+        " unique gaugex pole(s), and built a deterministic " +
+        audit.contour_half_plane + "-half-plane finite-boundary-to-endpoint "
+        "contour plan with " +
+        std::to_string(audit.contour_waypoints.size()) +
+        " waypoint(s). gaugex_poles=[" + audit.pole_summary +
+        "]; contour_waypoints=[" + audit.waypoint_summary +
+        "]; contour_fingerprint=" + audit.contour_fingerprint +
+        "; endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+        "; dropped_term_audit=\"" + audit.dropped_term_audit +
+        "\"; minimum_nonendpoint_pole_distance_to_contour=" +
+        audit.minimum_nonendpoint_pole_distance_to_contour + ".";
+  }
   if (audit.retained_solution_samples_available) {
     audit.summary +=
         " The retained state still carries final solution samples, but this scaffold does not "

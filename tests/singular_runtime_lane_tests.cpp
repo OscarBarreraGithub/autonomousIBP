@@ -882,12 +882,36 @@ void B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest(
          "b63n automatic_phasespace scaffold should keep the no-prescription cut provider");
   Expect(audit.eta_contour_direction == "NegIm",
          "b63n automatic_phasespace scaffold should map no prescription to NegIm");
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b63n automatic_phasespace scaffold must not claim full contour transport");
   ExpectContains(audit.cutkosky_prefactor,
                  "K_2(eps)",
                  "b63n automatic_phasespace scaffold should audit the reviewed K_2 prefactor");
+  Expect(audit.residue_model_kind ==
+             "automatic_phasespace::one-mass-three-body-residue",
+         "b63n automatic_phasespace scaffold should parse the reviewed residue model");
+  Expect(audit.uncut_denominator_indices ==
+             std::vector<std::size_t>({1, 3, 5, 6}),
+         "b63n automatic_phasespace scaffold should preserve D2,D4,D6,D7 as uncut weights");
+  Expect(audit.endpoint_poles.size() == 6,
+         "b63n automatic_phasespace scaffold should extract endpoint pole candidates");
+  ExpectContains(audit.endpoint_poles[0].classification,
+                 "massless-pair soft endpoint",
+                 "b63n automatic_phasespace scaffold should classify the q2=0 endpoint");
+  Expect(audit.eta_contour_waypoints.size() == 5,
+         "b63n automatic_phasespace scaffold should plan a deterministic contour");
+  ExpectContains(audit.contour_fingerprint,
+                 "fnv1a64:",
+                 "b63n automatic_phasespace scaffold should fingerprint the contour plan");
+  ExpectContains(audit.eta_zero_selection_audit,
+                 "no endpoint coefficient terms are produced",
+                 "b63n automatic_phasespace scaffold should keep PickZero audit partial");
   ExpectContains(audit.coefficient_gap,
                  "Live Cutkosky residue coefficients are not yet implemented",
                  "b63n scaffold should explicitly report the remaining coefficient gap");
+  ExpectContains(audit.summary,
+                 "full_eta_zero_contour_applied stays false",
+                 "b63n automatic_phasespace scaffold should explicitly avoid overclaiming");
 }
 
 void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest() {
@@ -912,6 +936,20 @@ void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest
   ExpectContains(plus_minus.cutkosky_prefactor,
                  "K_1(eps)",
                  "b63n feynman_prescription scaffold should audit the reviewed K_1 prefactor");
+  Expect(plus_minus.residue_model_kind ==
+             "feynman_prescription::two-body-residue::plus-minus",
+         "b63n feynman_prescription scaffold should parse the plus/minus residue model");
+  Expect(minus_plus.residue_model_kind ==
+             "feynman_prescription::two-body-residue::minus-plus",
+         "b63n feynman_prescription scaffold should parse the conjugate residue model");
+  ExpectContains(plus_minus.physical_integration_domain,
+                 "lambda(10,1,2/5)=1809/25",
+                 "b63n feynman_prescription scaffold should audit the positive Kallen "
+                 "discriminant");
+  Expect(plus_minus.endpoint_poles.size() == 4,
+         "b63n feynman_prescription scaffold should extract endpoint and threshold poles");
+  Expect(plus_minus.contour_fingerprint != minus_plus.contour_fingerprint,
+         "b63n feynman_prescription conjugate ledgers should fingerprint distinct plans");
   ExpectContains(plus_minus.branch_ledger_entries.back(),
                  "T_l1=plus_i0, T_l2=minus_i0",
                  "b63n feynman_prescription scaffold should record the first uncut ledger");
@@ -920,6 +958,65 @@ void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest
                  "b63n feynman_prescription scaffold should record the conjugate uncut ledger");
   Expect(!plus_minus.live_coefficients_available && !minus_plus.live_coefficients_available,
          "b63n feynman_prescription scaffold must not claim coefficient parity");
+}
+
+void B63nCutkoskyResidueEndpointModelBuildsContourPlanTest() {
+  const amflow::CutkoskyResidueEndpointModel automatic_model =
+      amflow::BuildCutkoskyResidueEndpointModel(MakeB63nAutomaticPhaseSpaceSpec());
+  const amflow::CutkoskyResidueEndpointModel feynman_model =
+      amflow::BuildCutkoskyResidueEndpointModel(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+
+  Expect(automatic_model.parsed && feynman_model.parsed,
+         "b63n endpoint models should parse the two reviewed surfaces");
+  ExpectContains(automatic_model.kallen_discriminant,
+                 "(q2-81)*(q2-121)",
+                 "b63n automatic endpoint model should keep the reviewed Kallen roots");
+  ExpectContains(feynman_model.kallen_discriminant,
+                 "1809/25",
+                 "b63n feynman endpoint model should keep the reviewed Kallen value");
+  Expect(automatic_model.eta_contour_waypoints.front().eta == "eta=-64*I",
+         "b63n endpoint contour should start in the lower half-plane for NegIm");
+  Expect(automatic_model.eta_contour_waypoints.back().eta == "eta=0",
+         "b63n endpoint contour should terminate at eta=0");
+  ExpectContains(automatic_model.coefficient_gap,
+                 "not AMFlow parity evidence",
+                 "b63n endpoint model should state that the plan is not coefficient evidence");
+}
+
+void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
+  const amflow::CutkoskyEtaZeroSelectionResult selected =
+      amflow::PickCutkoskyEtaZeroTerm({
+          {"integer", -1, 0, "symbolic-cutkosky-pole"},
+          {"integer", 0, 0, "symbolic-cutkosky-eta0"},
+          {"integer", 1, 0, "symbolic-cutkosky-tail"},
+      });
+
+  Expect(selected.success,
+         "b63n PickCutkoskyEtaZeroTerm should select an explicit live eta^0 term");
+  Expect(selected.selected_coefficient_label == "symbolic-cutkosky-eta0",
+         "b63n PickCutkoskyEtaZeroTerm should preserve the selected coefficient label");
+  Expect(selected.dropped_singular_terms ==
+             std::vector<std::string>({"symbolic-cutkosky-pole"}),
+         "b63n PickCutkoskyEtaZeroTerm should audit dropped singular powers");
+
+  const amflow::CutkoskyEtaZeroSelectionResult missing =
+      amflow::PickCutkoskyEtaZeroTerm({{"integer", -1, 0, "symbolic-cutkosky-pole"}});
+  Expect(!missing.success && missing.failure_code == "continuation_budget_exhausted",
+         "b63n PickCutkoskyEtaZeroTerm should fail closed when eta^0 is absent");
+  ExpectContains(missing.summary,
+                 "does not publish an implicit coefficient",
+                 "b63n PickCutkoskyEtaZeroTerm must not invent an endpoint coefficient");
+
+  const amflow::CutkoskyEtaZeroSelectionResult ambiguous =
+      amflow::PickCutkoskyEtaZeroTerm({
+          {"integer", 0, 0, "symbolic-cutkosky-eta0-a"},
+          {"integer", 0, 0, "symbolic-cutkosky-eta0-b"},
+      });
+  Expect(!ambiguous.success &&
+             ambiguous.failure_code == "continuation_budget_exhausted",
+         "b63n PickCutkoskyEtaZeroTerm should fail closed on ambiguous eta^0 terms");
 }
 
 void B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest() {
@@ -1237,6 +1334,8 @@ int main() {
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
+    B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
+    B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();
     B63nCutkoskyTransportScaffoldRejectsNonUnitCutPowersTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();

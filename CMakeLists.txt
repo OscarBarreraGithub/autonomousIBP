@@ -34,6 +34,7 @@ add_library(amflow
   src/runtime/auxiliary_family.cpp
   src/runtime/boundary_generation.cpp
   src/runtime/continuation_path.cpp
+  src/runtime/cutkosky_transport.cpp
   src/runtime/endpoint_branch_ledger.cpp
   src/runtime/endpoint_local_model.cpp
   src/runtime/eta_mode.cpp

@@ -2,6 +2,7 @@
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
+#include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/endpoint_local_model.hpp"
 #include "amflow/solver/series_solver.hpp"
 
@@ -56,6 +57,19 @@ void ExpectInvalidArgumentContains(Callable&& callable,
     return;
   }
   throw std::runtime_error(message + "; expected std::invalid_argument");
+}
+
+template <typename Callable>
+void ExpectRuntimeErrorContains(Callable&& callable,
+                                const std::string& needle,
+                                const std::string& message) {
+  try {
+    callable();
+  } catch (const std::runtime_error& error) {
+    ExpectContains(error.what(), needle, message);
+    return;
+  }
+  throw std::runtime_error(message + "; expected std::runtime_error");
 }
 
 void ExpectAnalysisFailure(const amflow::EtaEndpointLocalModelAnalysis& analysis,
@@ -782,6 +796,182 @@ void Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest() {
                  "SRL-5 accepted golden should match the reviewed endpoint coefficient");
 }
 
+amflow::ProblemSpec MakeB63nAutomaticPhaseSpaceSpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "phase";
+  spec.family.loop_momenta = {"l1", "l2"};
+  spec.family.loop_prescriptions = {amflow::FeynmanPrescription::None,
+                                    amflow::FeynmanPrescription::None};
+  spec.family.propagators = {
+      amflow::Propagator("l1^2-msq"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l1+l2+p1)^2"),
+      amflow::Propagator("(l1+l2+p1+p2)^2"),
+      amflow::Propagator("(l1+l2+p2)^2"),
+      amflow::Propagator("(l1+p2)^2"),
+  };
+  for (std::size_t index : {std::size_t{0}, std::size_t{2}, std::size_t{4}}) {
+    spec.family.propagators[index].kind = amflow::PropagatorKind::Cut;
+    spec.family.propagators[index].prescription =
+        static_cast<int>(amflow::FeynmanPrescription::None);
+  }
+  spec.kinematics.invariants = {"s", "msq"};
+  spec.kinematics.numeric_substitutions = {{"s", "100"}, {"msq", "1"}};
+  spec.targets = {amflow::TargetIntegral{"phase", {1, 2, 1, 1, 1, 1, 1}}};
+  return spec;
+}
+
+amflow::ProblemSpec MakeB63nFeynmanPrescriptionSpec(
+    const amflow::FeynmanPrescription l1_prescription,
+    const amflow::FeynmanPrescription l2_prescription) {
+  amflow::ProblemSpec spec;
+  spec.family.name = "loopxloop";
+  spec.family.loop_momenta = {"l1", "l2", "q"};
+  spec.family.loop_prescriptions = {l1_prescription,
+                                    l2_prescription,
+                                    amflow::FeynmanPrescription::None};
+  spec.family.propagators = {
+      amflow::Propagator("l1^2"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("(l1+p1+p2)^2"),
+      amflow::Propagator("(l1+q)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l2-p2)^2"),
+      amflow::Propagator("(l2-p2-p1)^2"),
+      amflow::Propagator("(l2-q)^2"),
+      amflow::Propagator("q^2-msq"),
+      amflow::Propagator("(p1+p2-q)^2-m2sq"),
+      amflow::Propagator("(l1-l2)^2"),
+      amflow::Propagator("(p1-q)^2"),
+  };
+  for (std::size_t index : {std::size_t{8}, std::size_t{9}}) {
+    spec.family.propagators[index].kind = amflow::PropagatorKind::Cut;
+    spec.family.propagators[index].prescription =
+        static_cast<int>(amflow::FeynmanPrescription::None);
+  }
+  spec.kinematics.invariants = {"s", "msq", "m2sq"};
+  spec.kinematics.numeric_substitutions = {
+      {"s", "10"},
+      {"msq", "1"},
+      {"m2sq", "2/5"},
+  };
+  spec.targets = {
+      amflow::TargetIntegral{"loopxloop", {0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0}}};
+  return spec;
+}
+
+void B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest() {
+  const amflow::CutkoskyEtaZeroTransportAudit audit =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(MakeB63nAutomaticPhaseSpaceSpec());
+
+  Expect(audit.reviewed_surface,
+         "b63n scaffold should recognize the exact automatic_phasespace topology");
+  Expect(!audit.live_coefficients_available,
+         "b63n scaffold must not claim live residue coefficients");
+  Expect(!audit.retained_solution_samples_used,
+         "b63n scaffold must not consume retained AMFlow solution samples");
+  Expect(audit.cut_propagator_indices ==
+             std::vector<std::size_t>({0, 2, 4}),
+         "b63n automatic_phasespace scaffold should preserve the D1,D3,D5 cut support");
+  Expect(audit.phase_volume_loop_count == 2,
+         "b63n automatic_phasespace scaffold should identify the two-loop phase volume");
+  Expect(audit.provider_strategy == "builtin::cutkosky-phase-space::none",
+         "b63n automatic_phasespace scaffold should keep the no-prescription cut provider");
+  Expect(audit.eta_contour_direction == "NegIm",
+         "b63n automatic_phasespace scaffold should map no prescription to NegIm");
+  ExpectContains(audit.cutkosky_prefactor,
+                 "K_2(eps)",
+                 "b63n automatic_phasespace scaffold should audit the reviewed K_2 prefactor");
+  ExpectContains(audit.coefficient_gap,
+                 "Live Cutkosky residue coefficients are not yet implemented",
+                 "b63n scaffold should explicitly report the remaining coefficient gap");
+}
+
+void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest() {
+  const amflow::CutkoskyEtaZeroTransportAudit plus_minus =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+  const amflow::CutkoskyEtaZeroTransportAudit minus_plus =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::MinusI0,
+                                          amflow::FeynmanPrescription::PlusI0));
+
+  Expect(plus_minus.reviewed_surface && minus_plus.reviewed_surface,
+         "b63n scaffold should recognize both feynman_prescription conjugate inputs");
+  Expect(plus_minus.cut_propagator_indices ==
+             std::vector<std::size_t>({8, 9}),
+         "b63n feynman_prescription scaffold should preserve the D9,D10 cut support");
+  Expect(plus_minus.phase_volume_loop_count == 1,
+         "b63n feynman_prescription scaffold should identify the one-loop phase volume");
+  Expect(plus_minus.provider_strategy == "builtin::cutkosky-phase-space::none",
+         "b63n feynman_prescription q-cut should resolve to the no-prescription provider");
+  ExpectContains(plus_minus.cutkosky_prefactor,
+                 "K_1(eps)",
+                 "b63n feynman_prescription scaffold should audit the reviewed K_1 prefactor");
+  ExpectContains(plus_minus.branch_ledger_entries.back(),
+                 "T_l1=plus_i0, T_l2=minus_i0",
+                 "b63n feynman_prescription scaffold should record the first uncut ledger");
+  ExpectContains(minus_plus.branch_ledger_entries.back(),
+                 "T_l1=minus_i0, T_l2=plus_i0",
+                 "b63n feynman_prescription scaffold should record the conjugate uncut ledger");
+  Expect(!plus_minus.live_coefficients_available && !minus_plus.live_coefficients_available,
+         "b63n feynman_prescription scaffold must not claim coefficient parity");
+}
+
+void B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest() {
+  amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  spec.family.propagators[0].expression = "l1^2-msq+eta";
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildCutkoskyEtaZeroTransportScaffold(spec));
+      },
+      "rejects eta insertion on cut denominators",
+      "b63n scaffold should fail closed before moving eta through a cut residue");
+}
+
+void B63nCutkoskyTransportScaffoldRejectsNonUnitCutPowersTest() {
+  amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  spec.targets.front().indices[2] = 2;
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildCutkoskyEtaZeroTransportScaffold(spec));
+      },
+      "requires unit powers on reviewed cut propagators",
+      "b63n scaffold should fail closed on non-unit cut powers in the reviewed subset");
+}
+
+void B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest() {
+  amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  spec.family.propagators[1].expression = "(l1+p2)^2";
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildCutkoskyEtaZeroTransportScaffold(spec));
+      },
+      "intentionally limited to the exact automatic_phasespace and feynman_prescription "
+      "topologies",
+      "b63n scaffold should not recognize a reviewed surface after a denominator mutation");
+}
+
+void B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest() {
+  amflow::ProblemSpec spec = MakeB63nFeynmanPrescriptionSpec(
+      amflow::FeynmanPrescription::PlusI0,
+      amflow::FeynmanPrescription::MinusI0);
+  spec.family.propagators[8].mass = "msq";
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildCutkoskyEtaZeroTransportScaffold(spec));
+      },
+      "intentionally limited to the exact automatic_phasespace and feynman_prescription "
+      "topologies",
+      "b63n scaffold should not recognize a reviewed surface after a mass-field mutation");
+}
+
 }  // namespace
 
 int main() {
@@ -808,6 +998,12 @@ int main() {
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
+    B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
+    B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
+    B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();
+    B63nCutkoskyTransportScaffoldRejectsNonUnitCutPowersTest();
+    B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();
+    B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

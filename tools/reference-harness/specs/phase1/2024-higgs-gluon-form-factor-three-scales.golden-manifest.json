@@ -1,0 +1,242 @@
+{
+  "benchmark_id": "2024-higgs-gluon-form-factor-three-scales",
+  "capture_profile": {
+    "benchmark_class": "phase1-direct-selected-candidate-scoped-seed",
+    "black_box_dot": 0,
+    "black_box_rank": 3,
+    "digit_threshold_profile": "core-package-family-default",
+    "epsorder": 4,
+    "family": "hggThreeScaleSeed",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "mb2": "4/25",
+      "mt2": "1",
+      "q2": "-3"
+    },
+    "kinematic_region": "Euclidean q2 below two-mass thresholds",
+    "precision_goal_digits": 50,
+    "raw_scalar_targets": [
+      "j[hggThreeScaleSeed, 1, 1, 1]",
+      "j[hggThreeScaleSeed, 2, 1, 1]",
+      "j[hggThreeScaleSeed, 1, 2, 1]"
+    ],
+    "selected_benchmark_anchor_ref": "2024-higgs-gluon-form-factor-three-scales",
+    "source_reference": "arXiv:2312.05297 / JHEP 02 (2024) 087, scoped one-loop two-mass Higgs-gluon form-factor seed",
+    "topology": "one-loop two-mass Higgs-gluon form-factor seed"
+  },
+  "compare_cpp_vs_amflow_outputs": [],
+  "comparison_passed": false,
+  "created_at": "2026-05-06T00:13:37-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-scoped-seed",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/examples/higgs_gluon_form_factor_three_scales_seed",
+  "notes": [
+    "This benchmark is the next direct selected candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md after the ten prior phase-1 captures listed in the lane144 prompt.",
+    "The full source paper is a three-loop Higgs-gluon form-factor computation with three mass scales; lane144 freezes a deliberately scoped one-loop two-mass form-factor seed packet only.",
+    "The lane95 Kira imaginary-coefficient retry wrapper is installed as a reactive retry for the exact invalid coefficient string \"I\" parser failure; this capture did not trigger that retry.",
+    "No full three-loop Higgs-gluon literature packet, C++ ingest state, actual C++ vs AMFlow comparison for this seed, M6 closure, M7 closure, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "a140f9821f72e0b27544a3f0ad101a8b51278a7fa6afcacc709330779c7fc599",
+      "name": "sol-2024-higgs-gluon-form-factor-three-scales-seed",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/examples/higgs_gluon_form_factor_three_scales_seed/sol-2024-higgs-gluon-form-factor-three-scales-seed",
+      "present_at_capture": true,
+      "size_bytes": 1903
+    },
+    {
+      "canonical_sha256": "93db3b56f159f419f115d1c096ce8a37f43a9131d3d9a70a293a8d45c2f894c1",
+      "name": "sol-2024-higgs-gluon-form-factor-three-scales-seed.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/examples/higgs_gluon_form_factor_three_scales_seed/sol-2024-higgs-gluon-form-factor-three-scales-seed.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 778
+    },
+    {
+      "canonical_sha256": "6d4657a9ccec8312ef40c04f3df2da92ae1b754f9fcd7cb1df452d8a1d1207eb",
+      "name": "sol-2024-higgs-gluon-form-factor-three-scales-seed.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/examples/higgs_gluon_form_factor_three_scales_seed/sol-2024-higgs-gluon-form-factor-three-scales-seed.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 2239
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2024-higgs-gluon-form-factor-three-scales because it is the first direct AMFlow-use selected candidate in the survey not among the ten prior lane144 exclusions."
+    },
+    {
+      "role": "B",
+      "scope": "capture-template conformance and non-claim wording",
+      "status": "APPROVE",
+      "verdict": "The packet follows the phase-1 layout with a lane directory, sbatch-compatible runner, run.wl, fail-closed verifier, retained AMFlow outputs, hashed provenance, and explicit scoped-seed non-claims."
+    },
+    {
+      "role": "C",
+      "scope": "build and comparator self-check gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure, build, CTest, and compare_cpp_vs_amflow.py --self-check completed with exit code 0 after rerunning CTest with the CMake toolchain path."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics gate",
+      "status": "APPROVE",
+      "verdict": "The capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, AMFSystemSetup, and AMFSystemSolution execution; verifier passed on finite real Mathematica numerics with 3 requested target rules, 6 solution rules, 18 checked Laurent coefficients, 9 nonzero coefficients, nonzero coefficients per selected target, min nonzero precision 50, and zero Euclidean imaginary tail."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/examples/higgs_gluon_form_factor_three_scales_seed",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:05:02"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane144_capture.log",
+        "sha256": "79d18cd7c91daf517b9f6fc1a52beacacd2745d3600fd76a2f454a7e8e1dd9c9",
+        "size_bytes": 19338
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/run-manifest.10006275.txt",
+      "sha256": "db685042e00d5a3afb0919fc2b213ba4be1eedda3f68aa196f3028366dcebb82",
+      "size_bytes": 2670
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-higgs-gluon-form-factor-three-scales.lane144/capture_higgs_gluon_form_factor_three_scales_seed.sbatch",
+        "sha256": "cd1802da0acebbc1a1cdb1ac6c9cf6f135a430d4d7d9a080f96c1331bb0e0f87",
+        "size_bytes": 3506
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-higgs-gluon-form-factor-three-scales.lane144/run.wl",
+        "sha256": "d80de12eae7fd508655e3d5b36d6ee8868d6ef5d665a21db5b5f7ec4e2362cb4",
+        "size_bytes": 6211
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2024-higgs-gluon-form-factor-three-scales.lane144/verify_output.wl",
+        "sha256": "82d29d5973f710deee9c59dac8c474954b0601f5b821215be8eab68348ac3972",
+        "size_bytes": 4858
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+        "size_bytes": 63699
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84",
+        "size_bytes": 16727
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane144-higgs-gluon-form-factor-three-scales/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d",
+        "size_bytes": 223
+      }
+    ],
+    "source_article": {
+      "arxiv": "2312.05297",
+      "doi": "10.1007/JHEP02(2024)087",
+      "title": "The Higgs-gluon form factor at three loops in QCD with three mass scales",
+      "url": "https://arxiv.org/abs/2312.05297"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0-fasrc01"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-06T00:13:37-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 1",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane144_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane144_cmake_build.stdout",
+        "sha256": "e576265f21ac10ca620e900e4197bee3d6624c744e9df5d010c828d0135289db",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane144_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane144_cmake_configure.stdout",
+        "sha256": "cff853b473ee7c38c3ede0d98ad87f04677c42e59bc09008393d8400b6763cba",
+        "size_bytes": 143
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane144_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "ctest": {
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane144_ctest.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane144_ctest.stdout",
+        "sha256": "c523ca12335bcd87989851c151f4c54b26091b846ddfb59a1fd21b89e6bc5efa",
+        "size_bytes": 351
+      },
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Lane144 scoped Hgg seed AMFlow/Kira run reduced three requested two-mass form-factor seed targets, constructed and solved four AMF systems, wrote solution plus metadata, and the verifier passed on finite real Mathematica coefficients through eps^4.",
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "verification_output": {
+      "coefficient_count": 18,
+      "coefficient_powers": [
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "max_abs_imaginary_component": "0",
+      "min_nonzero_precision": "50.",
+      "min_precision": "50.",
+      "nonzero_coefficient_count": 9,
+      "solution_rule_count": 6,
+      "target_nonzero_counts": [
+        3,
+        3,
+        3
+      ],
+      "verified_target_rule_count": 3,
+      "verifier_status": "PASS"
+    }
+  }
+}

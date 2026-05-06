@@ -50815,11 +50815,11 @@ void Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest() {
                  "\"candidate_numeric_literal_skeletons_match_reference\": true",
                  "phase-0 correct-digit packet-set report should keep the retained nonnumeric "
                  "canonical skeleton fixed across the packet split");
-  ExpectContains(result.stdout_json, "\"all_compared_benchmarks_meet_digit_thresholds\": false",
+  ExpectContains(result.stdout_json, "\"all_compared_benchmarks_meet_digit_thresholds\": true",
                  "phase-0 correct-digit packet-set report should truthfully keep the retained "
-                 "packet split short of an M6-passing score verdict");
+                 "packet split at an M6-passing score verdict");
   ExpectContains(result.stdout_json,
-                 "\"minimum_observed_correct_digits_across_packet_set\": 38",
+                 "\"minimum_observed_correct_digits_across_packet_set\": 58",
                  "phase-0 correct-digit packet-set report should surface the lowest retained "
                  "packet-set score");
   ExpectContains(result.stdout_json, "\"required-set\"",
@@ -50833,9 +50833,11 @@ void Phase0CorrectDigitPacketSetMatchesRetainedPacketSetTruthfullyTest() {
                  "packet label");
   ExpectContains(result.stdout_json, "\"automatic_vs_manual\"",
                  "phase-0 correct-digit packet-set report should include automatic_vs_manual");
-  ExpectContains(result.stdout_json, "\"status\": \"digit-threshold-failed\"",
-                 "phase-0 correct-digit packet-set report should keep failing retained "
-                 "benchmarks visible");
+  ExpectContains(result.stdout_json, "\"automatic_loop\"",
+                 "phase-0 correct-digit packet-set report should include the retained "
+                 "automatic-loop benchmark");
+  Expect(result.stdout_json.find("\"status\": \"digit-threshold-failed\"") == std::string::npos,
+         "phase-0 correct-digit packet-set report should not keep stale failed score verdicts");
   ExpectContains(result.stdout_json, "\"differential_equation_solver\"",
                  "phase-0 correct-digit packet-set report should include the retained "
                  "differential-equation benchmark");
@@ -51104,7 +51106,7 @@ void Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest() {
                  "summary output");
 }
 
-void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTest() {
+void Phase0QualificationPacketSetRetainedReportShowsQualifiedPacketSetTest() {
   const std::filesystem::path required_root = RequiredPhase0ReferenceCapturedRoot();
   const std::vector<std::filesystem::path> optional_roots = OptionalPhase0ReferencePacketRoots();
   const std::filesystem::path qualification_summary_path =
@@ -51218,11 +51220,11 @@ void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTe
   ExpectContains(result.stdout_json, "\"packet_set_reference_comparison_passed\": true",
                  "phase-0 qualification packet-set summary should preserve the retained "
                  "reference comparison pass");
-  ExpectContains(result.stdout_json, "\"packet_set_correct_digits_passed\": false",
+  ExpectContains(result.stdout_json, "\"packet_set_correct_digits_passed\": true",
                  "phase-0 qualification packet-set summary should preserve the retained "
-                 "correct-digit blocker");
+                 "correct-digit pass verdict");
   ExpectContains(result.stdout_json,
-                 "\"minimum_observed_correct_digits_across_packet_set\": 38",
+                 "\"minimum_observed_correct_digits_across_packet_set\": 58",
                  "phase-0 qualification packet-set summary should keep the retained "
                  "minimum correct-digit score visible");
   ExpectContains(result.stdout_json, "\"phase0_digit_threshold_profiles_by_benchmark\": {",
@@ -51253,13 +51255,12 @@ void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTe
                  "\"packet_set_required_failure_codes_satisfied\": true",
                  "phase-0 qualification packet-set summary should record retained failure-code "
                  "coverage from audit sidecars");
-  ExpectContains(result.stdout_json,
-                 "\"current_state\": \"blocked-on-correct-digit-thresholds\"",
-                 "phase-0 qualification packet-set summary should keep the retained packet split "
-                 "blocked on the first unpassed prerequisite");
-  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
-                 "phase-0 qualification packet-set summary should not overclaim retained "
-                 "phase-0 qualification while correct digits are blocked");
+  ExpectContains(result.stdout_json, "\"current_state\": \"phase0-packet-set-qualified\"",
+                 "phase-0 qualification packet-set summary should show the retained packet split "
+                 "qualified after score and audit prerequisites pass");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": true",
+                 "phase-0 qualification packet-set summary should claim retained phase-0 "
+                 "qualification after correct digits and audit prerequisites pass");
   ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
                  "phase-0 qualification packet-set summary should not claim full M6 closure");
   ExpectContains(result.stdout_json,
@@ -51282,20 +51283,17 @@ void Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTe
              std::string::npos,
          "phase-0 qualification packet-set summary should not report the cleared packet-set "
          "failure-code audit blocker");
-  ExpectContains(result.stdout_json,
-                 "\"retained packet-set correct-digit scoring has not fully passed\"",
-                 "phase-0 qualification packet-set summary should report the retained "
-                 "correct-digit blocker explicitly");
+  Expect(result.stdout_json.find(
+             "\"retained packet-set correct-digit scoring has not fully passed\"") ==
+             std::string::npos,
+         "phase-0 qualification packet-set summary should not preserve the cleared "
+         "correct-digit blocker");
   ExpectContains(result.stdout_json, "\"blocking_reasons\": [",
                  "phase-0 qualification packet-set summary should preserve the retained "
                  "blocking-reason list");
-  ExpectContains(
-      result.stdout_json,
-      R"json("blocking_reasons": [
-    "retained packet-set correct-digit scoring has not fully passed"
-  ])json",
-      "phase-0 qualification packet-set summary should preserve the exact retained "
-      "blocking-reason list");
+  ExpectContains(result.stdout_json, R"json("blocking_reasons": [])json",
+                 "phase-0 qualification packet-set summary should preserve the exact cleared "
+                 "blocking-reason list");
   ExpectContains(result.stdout_json, "\"missing_required_failure_codes_across_packet_set\": [",
                  "phase-0 qualification packet-set summary should publish the retained missing "
                  "required failure-code list");
@@ -51848,12 +51846,12 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"scope\": \"milestone-m6-qualification\"",
                  "Milestone M6 retained qualification summary should publish the M6 scope");
   ExpectContains(result.stdout_json,
-                 "\"current_state\": \"blocked-on-phase0-packet-set\"",
+                 "\"current_state\": \"blocked-on-phase0-runtime-lanes\"",
                  "Milestone M6 retained qualification summary should preserve the first "
-                 "unpassed phase-0 verdict");
-  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
-                 "Milestone M6 retained qualification summary should preserve the blocked "
-                 "phase-0 verdict");
+                 "unpassed phase-0 runtime-lane verdict");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": true",
+                 "Milestone M6 retained qualification summary should preserve the qualified "
+                 "phase-0 packet-set verdict");
   ExpectContains(result.stdout_json, "\"case_study_families_qualified\": false",
                  "Milestone M6 retained qualification summary should preserve the blocked "
                  "case-study verdict");
@@ -51895,10 +51893,14 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
                  "required failure-code evidence");
   ExpectContains(result.stdout_json, "\"milestone_m6_ready\": false",
                  "Milestone M6 retained qualification summary should not claim M6 closure");
-  ExpectContains(result.stdout_json, "\"phase0: retained packet-set correct-digit scoring has "
-                                    "not fully passed\"",
+  Expect(result.stdout_json.find("\"phase0: retained packet-set correct-digit scoring has "
+                                 "not fully passed\"") == std::string::npos,
+         "Milestone M6 retained qualification summary should not preserve the cleared phase-0 "
+         "correct-digit blocker");
+  ExpectContains(result.stdout_json,
+                 "\"phase0: runtime-lane-blocked phase-0 examples remain pending\"",
                  "Milestone M6 retained qualification summary should preserve the phase-0 "
-                 "correct-digit blocker");
+                 "runtime-lane blocker");
   Expect(result.stdout_json.find(
              "\"phase0: retained packet-set is missing published failure-code audits\"") ==
              std::string::npos,
@@ -52272,11 +52274,11 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
                  "phase-0-aware release signoff readiness should record the consumed phase-0 "
                  "verdict");
   ExpectContains(release_result.stdout_json,
-                 "\"phase0_packet_set_current_state\": \"blocked-on-correct-digit-thresholds\"",
+                 "\"phase0_packet_set_current_state\": \"phase0-packet-set-qualified\"",
                  "phase-0-aware release signoff readiness should preserve the retained phase-0 "
                  "verdict state");
-  ExpectContains(release_result.stdout_json, "\"phase0_packet_set_qualified\": false",
-                 "phase-0-aware release signoff readiness should not overclaim phase-0 "
+  ExpectContains(release_result.stdout_json, "\"phase0_packet_set_qualified\": true",
+                 "phase-0-aware release signoff readiness should preserve phase-0 "
                  "qualification");
   ExpectContains(release_result.stdout_json,
                  "\"phase0_failure_code_blockers_preserved\": false",
@@ -52303,13 +52305,15 @@ void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
   ExpectContains(release_result.stdout_json, "\"phase0_packet_set_blocking_reasons\": [",
                  "phase-0-aware release signoff readiness should preserve the phase-0 "
                  "blocking-reason list");
-  ExpectContains(
-      release_result.stdout_json,
-      R"json("phase0_packet_set_blocking_reasons": [
-    "retained packet-set correct-digit scoring has not fully passed"
-  ])json",
-      "phase-0-aware release signoff readiness should preserve the exact phase-0 "
-      "blocking-reason list");
+  ExpectContains(release_result.stdout_json,
+                 R"json("phase0_packet_set_blocking_reasons": [])json",
+                 "phase-0-aware release signoff readiness should preserve the exact cleared "
+                 "phase-0 blocking-reason list");
+  Expect(release_result.stdout_json.find(
+             "\"retained packet-set correct-digit scoring has not fully passed\"") ==
+             std::string::npos,
+         "phase-0-aware release signoff readiness should not preserve cleared phase-0 "
+         "correct-digit blocking reasons");
   ExpectContains(release_result.stdout_json, "\"phase0_missing_required_failure_codes\": [",
                  "phase-0-aware release signoff readiness should publish the phase-0 missing "
                  "required failure-code list");
@@ -52648,16 +52652,19 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"case_study_verdict_present\": true",
                  "release qualification-corpus review should record the retained case-study "
                  "verdict sidecar");
-  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": false",
-                 "release qualification-corpus review should preserve the blocked phase-0 "
-                 "verdict state");
+  ExpectContains(result.stdout_json, "\"phase0_packet_set_qualified\": true",
+                 "release qualification-corpus review should preserve the qualified phase-0 "
+                 "packet-set verdict state");
   ExpectContains(result.stdout_json, "\"case_study_families_qualified\": false",
                  "release qualification-corpus review should preserve the blocked case-study "
                  "verdict state");
-  ExpectContains(result.stdout_json,
-                 "\"phase0-packet-set:blocked-on-correct-digit-thresholds\"",
+  Expect(result.stdout_json.find("\"phase0-packet-set:blocked-on-correct-digit-thresholds\"") ==
+             std::string::npos,
+         "release qualification-corpus review should not preserve the cleared retained phase-0 "
+         "packet-set blocker state");
+  ExpectContains(result.stdout_json, "\"phase0-pending:automatic_phasespace\"",
                  "release qualification-corpus review should preserve the retained phase-0 "
-                 "verdict blocker state");
+                 "pending runtime examples");
   Expect(result.stdout_json.find("\"phase0-failure-code-audit\"") == std::string::npos,
          "release qualification-corpus review should not preserve cleared retained phase-0 "
          "failure-code audit blockers");
@@ -52671,9 +52678,9 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
   ExpectContains(result.stdout_json, "\"case-study-numeric-evidence\"",
                  "release qualification-corpus review should preserve missing case-study "
                  "numeric evidence");
-  ExpectContains(result.stdout_json, "\"case-study-requires-phase0-verdict\"",
-                 "release qualification-corpus review should preserve the cross-verdict "
-                 "phase-0 prerequisite blocker");
+  Expect(result.stdout_json.find("\"case-study-requires-phase0-verdict\"") == std::string::npos,
+         "release qualification-corpus review should not preserve the cleared cross-verdict "
+         "phase-0 prerequisite blocker");
   Expect(result.stdout_json.find("\"phase0-packet-set-verdict\"") == std::string::npos,
          "release qualification-corpus review should not report the phase-0 verdict as missing "
          "after consuming it");
@@ -52717,10 +52724,15 @@ void ReleaseQualificationCorpusReviewRetainedVerdictsPreserveBlockersTest() {
                  "\"qualification_corpus_blockers_preserved\": true",
                  "retained qualification-corpus sidecar release signoff readiness should "
                  "preserve producer blockers");
+  Expect(release_result.stdout_json.find(
+             "\"qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds\"") ==
+             std::string::npos,
+         "retained qualification-corpus sidecar release signoff readiness should not preserve the "
+         "cleared retained phase-0 verdict blocker");
   ExpectContains(release_result.stdout_json,
-                 "\"qualification-path:phase0-packet-set:blocked-on-correct-digit-thresholds\"",
+                 "\"qualification-path:phase0-pending:automatic_phasespace\"",
                  "retained qualification-corpus sidecar release signoff readiness should "
-                 "preserve the retained phase-0 verdict blocker");
+                 "preserve the retained phase-0 pending runtime examples");
   Expect(release_result.stdout_json.find("\"qualification-path:phase0-failure-code-audit\"") ==
              std::string::npos,
          "retained qualification-corpus sidecar release signoff readiness should not preserve "
@@ -55572,7 +55584,7 @@ int main() {
     Phase0FailureCodePacketSetAuditSelfCheckAggregatesRetainedPacketRootsTest();
     Phase0FailureCodePacketSetAuditMatchesRetainedPacketSetTruthfullyTest();
     Phase0QualificationPacketSetSelfCheckComposesRetainedEvidenceTest();
-    Phase0QualificationPacketSetRetainedReportKeepsCorrectDigitBlockerVisibleTest();
+    Phase0QualificationPacketSetRetainedReportShowsQualifiedPacketSetTest();
     CaseStudyNumericComparisonSelfCheckBuildsQualificationSummaryTest();
     CaseStudyNumericComparisonRetainedReportFeedsQualificationBlockerTest();
     CaseStudySingularEndpointSrl5EvidenceRetiresRuntimeBlockerTest();

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "lane": "lane133",
+  "scope": "phase0-loop-50digit-recapture",
+  "diagnosis": "AMFlow capture precision/chopping in retained goldens. Candidate and reference canonical text matched before recapture, so no C++ runtime precision or BigFloat transport change was required.",
+  "baseline": {
+    "packet_minimum_correct_digits": 38,
+    "automatic_loop_minimum_correct_digits": 38,
+    "user_defined_amfmode_minimum_correct_digits": 48,
+    "user_defined_ending_minimum_correct_digits": 48,
+    "lowest_automatic_loop_coefficient": {
+      "benchmark_id": "automatic_loop",
+      "output": "sol1",
+      "literal_index": 22,
+      "target": "j[box1,1,2,2,1]",
+      "epsilon_order": 1,
+      "component": "imaginary",
+      "raw_correct_digits": "38.06149188056403"
+    },
+    "lowest_user_hook_coefficient": {
+      "benchmarks": [
+        "user_defined_amfmode",
+        "user_defined_ending"
+      ],
+      "target": "j[box1,1,2,2,1]",
+      "epsilon_order": 1,
+      "component": "imaginary",
+      "raw_correct_digits": "48.06149188056402"
+    }
+  },
+  "recapture": {
+    "automatic_loop": {
+      "capture_precision": 80,
+      "chop_pre": 40,
+      "promoted_primary_and_golden": true,
+      "duplicate_rerun_completed": false,
+      "duplicate_rerun_note": "The duplicate rerun stalled in Kira after primary promotion and was not used by the packet scorer.",
+      "duration_seconds": 380.27617,
+      "canonical_sha256": {
+        "sol1": "f7c59dbac73d4f181006fd5f0923656417a783c1639314dcc3e4b6c1d1b16c12",
+        "sol2": "47d0b46f5c2872c3d8bfdc68c457f72cf7cebdc612e9bdfbc87a65cd516a7f38"
+      }
+    },
+    "user_defined_amfmode": {
+      "capture_precision": 60,
+      "chop_pre": 40,
+      "promoted_primary_and_golden": true,
+      "duration_seconds": 107.334708,
+      "canonical_sha256": {
+        "sol": "fb269695e17dd097c0075a3adadb2d574098cb971e36e52e77fd66cf64f26219"
+      }
+    },
+    "user_defined_ending": {
+      "capture_precision": 60,
+      "chop_pre": 40,
+      "promoted_primary_and_golden": true,
+      "duration_seconds": 131.345409,
+      "canonical_sha256": {
+        "final_Tradition": "d9b93438cc471db00c6e78058f5423b96394824290bd22239a1bfd2e6b7693c6",
+        "final_usr": "6092b23e40e8070b95220374b6a492081480281f4b8e38a238565f4e50c3a500"
+      }
+    }
+  },
+  "post_fix": {
+    "packet_minimum_correct_digits": 58,
+    "automatic_loop_minimum_correct_digits": 78,
+    "user_defined_amfmode_minimum_correct_digits": 58,
+    "user_defined_ending_minimum_correct_digits": 58,
+    "phase0_packet_set_qualified": true,
+    "milestone_m6_current_state": "blocked-on-phase0-runtime-lanes"
+  },
+  "anti_fake_parity": {
+    "comparator_tolerance_loosened": false,
+    "per_benchmark_special_casing_added": false,
+    "runtime_precision_defaults_changed": false,
+    "bigfloat_transport_precision_changed": false
+  }
+}

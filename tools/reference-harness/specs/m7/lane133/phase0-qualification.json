@@ -1,0 +1,184 @@
+{
+  "blocked_phase0_examples": [
+    {
+      "id": "automatic_phasespace",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "complex_kinematics",
+      "next_runtime_lane": "b61n"
+    },
+    {
+      "id": "feynman_prescription",
+      "next_runtime_lane": "b63n"
+    },
+    {
+      "id": "linear_propagator",
+      "next_runtime_lane": "b64ag"
+    }
+  ],
+  "blocking_reasons": [],
+  "current_state": "phase0-packet-set-qualified",
+  "digit_threshold_profiles_reported": true,
+  "milestone_m6_ready": false,
+  "milestone_m6_requires_case_study_numerics": true,
+  "minimum_observed_correct_digits_across_packet_set": 58,
+  "missing_required_failure_codes_across_packet_set": [],
+  "packet_labels_match_across_inputs": true,
+  "packet_set_comparison_summary_path": "tools/reference-harness/specs/m7/lane133/phase0-packet-comparison.json",
+  "packet_set_correct_digit_summary_path": "tools/reference-harness/specs/m7/lane133/phase0-correct-digits.json",
+  "packet_set_correct_digits_passed": true,
+  "packet_set_failure_code_audits_complete": true,
+  "packet_set_failure_code_metadata_coherent": true,
+  "packet_set_failure_code_summary_path": "tools/reference-harness/specs/m7/lane133/phase0-failure-codes.json",
+  "packet_set_reference_comparison_passed": true,
+  "packet_set_required_failure_codes_satisfied": true,
+  "packet_set_unexpected_failure_codes_absent": true,
+  "phase0_digit_threshold_profiles_by_benchmark": {
+    "automatic_loop": "core-package-family-default",
+    "automatic_vs_manual": "core-package-family-default",
+    "differential_equation_solver": "core-package-family-default",
+    "spacetime_dimension": "core-package-family-default",
+    "user_defined_amfmode": "core-package-family-default",
+    "user_defined_ending": "core-package-family-default"
+  },
+  "phase0_digit_thresholds_by_benchmark": {
+    "automatic_loop": 50,
+    "automatic_vs_manual": 50,
+    "differential_equation_solver": 50,
+    "spacetime_dimension": 50,
+    "user_defined_amfmode": 50,
+    "user_defined_ending": 50
+  },
+  "phase0_failure_code_profiles_by_benchmark": {
+    "automatic_loop": "default-required-failure-codes",
+    "automatic_vs_manual": "default-required-failure-codes",
+    "differential_equation_solver": "default-required-failure-codes",
+    "spacetime_dimension": "default-required-failure-codes",
+    "user_defined_amfmode": "default-required-failure-codes",
+    "user_defined_ending": "default-required-failure-codes"
+  },
+  "phase0_ids_match_across_inputs": true,
+  "phase0_known_regression_families_by_benchmark": {
+    "automatic_loop": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ],
+    "automatic_vs_manual": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ],
+    "differential_equation_solver": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ],
+    "spacetime_dimension": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ],
+    "user_defined_amfmode": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ],
+    "user_defined_ending": [
+      "AnalyzeBlock on non-block-triangular systems",
+      "asymptotic-series overflow",
+      "boundary-generation errors for unnormalized loop momenta",
+      "incorrect Mass-mode insertion",
+      "unexpected master sets in Kira interface"
+    ]
+  },
+  "phase0_packet_set_qualified": true,
+  "phase0_pending_ids": [
+    "automatic_phasespace",
+    "complex_kinematics",
+    "feynman_prescription",
+    "linear_propagator"
+  ],
+  "phase0_reference_captured_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "phase0_regression_profiles_by_benchmark": {
+    "automatic_loop": "current-reviewed-regressions",
+    "automatic_vs_manual": "current-reviewed-regressions",
+    "differential_equation_solver": "current-reviewed-regressions",
+    "spacetime_dimension": "current-reviewed-regressions",
+    "user_defined_amfmode": "current-reviewed-regressions",
+    "user_defined_ending": "current-reviewed-regressions"
+  },
+  "phase0_required_failure_codes_by_benchmark": {
+    "automatic_loop": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ],
+    "automatic_vs_manual": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ],
+    "differential_equation_solver": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ],
+    "spacetime_dimension": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ],
+    "user_defined_amfmode": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ],
+    "user_defined_ending": [
+      "boundary_unsolved",
+      "continuation_budget_exhausted",
+      "insufficient_precision",
+      "master_set_instability"
+    ]
+  },
+  "qualification_evidence_coherent": true,
+  "qualification_summary_path": "tools/reference-harness/specs/m7/lane133/qualification-readiness.json",
+  "reference_packet_labels": [
+    "de-d0-pair",
+    "required-set",
+    "user-hook-pair"
+  ],
+  "regression_profiles_reported": true,
+  "required_failure_code_profiles_reported": true,
+  "schema_version": 1,
+  "scope": "phase0-packet-set-only",
+  "withheld_claims": [
+    "This summary does not compare retained case-study numerics.",
+    "This summary does not by itself claim Milestone M6 closure.",
+    "This summary does not mark Milestone M7 or release readiness.",
+    "This summary does not launch the C++ runtime or create new retained captures."
+  ]
+}

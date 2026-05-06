@@ -49056,6 +49056,103 @@ assert box2_box_target_eps3["imag_digits"].startswith("0.00398405933866044174827
                                                          : std::string{}));
 }
 
+void SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-eta-infinity-initial-data");
+  const std::filesystem::path state_path = run_root / "coupled-infinity.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "kind": "amflow_solve_series_state",
+  "schema_version": 1,
+  "benchmark_id": "lane171_synthetic_eta_infinity",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "infinity",
+  "target_location": "eta=0",
+  "masters": [
+    {"family": "toy", "indices": [1]},
+    {"family": "toy", "indices": [2]},
+    {"family": "toy", "indices": [3]}
+  ],
+  "coefficient_matrices": {
+    "eta": [
+      ["1/eta", "1/eta^9", "1/eta^9"],
+      ["(-1 + I/eta^20)/eta^2", "1/eta", "1/eta^9"],
+      ["1/eta^9", "(-1 + I/eta^20)/eta^2", "1/eta"]
+    ]
+  },
+  "boundary_state": {
+    "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
+    "direction": "NegIm",
+    "epsilon_samples": ["1/101", "1/103", "1/107"],
+    "files": {
+      "boundary": {"raw": "{{{1, 0, -1}, {}, {j[toy, 1]}, {{{1}}, {}, {}}}}"},
+      "boundarymi": {"raw": "{{j[toy, 1] -> {1, 1, 1}}}"}
+    }
+  },
+  "reduction": {
+    "targets": [{"family": "toy", "indices": [1]}]
+  }
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 "
+      "--eta-infinity-truncation-order 3 --out " +
+      ShellSingleQuote(output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "synthetic eta-infinity coupled initial-data state should run; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json,
+                 "Validated eta-infinity controlled initial data for 3/3 retained "
+                 "master(s)",
+                 "controlled initializer should certify every retained synthetic master");
+  ExpectContains(json,
+                 "coupled_missing_master_count=2",
+                 "controlled initializer should derive both coupled masters from the DE "
+                 "matrix and boundary seed");
+  ExpectContains(json,
+                 "truncation_order=3; overcheck_order=6",
+                 "controlled initializer should report the requested truncation policy");
+  ExpectContains(json,
+                 "initial_data_fingerprint=fnv1a64:41d33cc3316c40bb",
+                 "controlled initializer should lock the coupled finite-start data "
+                 "fingerprint");
+  ExpectContains(json,
+                 "total_initial_error_bound_abs=",
+                 "controlled initializer should publish an absolute error bound");
+  ExpectContains(json,
+                 "tail_geometric_ratio=",
+                 "controlled initializer should publish the radius-based tail ratio");
+  ExpectContains(json,
+                 "min_certified_digits=",
+                 "controlled initializer should publish certified-digit diagnostics");
+  ExpectContains(json,
+                 "ode_propagation_applied=false; coefficient_publication=false; "
+                 "final_solution_samples_used_as_input=false",
+                 "controlled initializer should not masquerade as ODE propagation or consume "
+                 "solution samples");
+  ExpectContains(json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "controlled initializer must keep the full eta-zero contour flag false");
+  Expect(json.find("\"integral\": \"toy[2]\"") == std::string::npos &&
+             json.find("\"integral\": \"toy[3]\"") == std::string::npos,
+         "controlled initial data should remain unpublished for coupled non-target masters");
+  Expect(json.find("retained-loop-solution-sample-cache-laurent-fit") == std::string::npos,
+         "synthetic controlled initializer must not read AMFlow final solution samples");
+}
+
 void SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -56080,6 +56177,7 @@ int main() {
     SolveSeriesCliWritesFullEpsilonExpansionJsonForTinyDirectSpecTest();
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
+    SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest();
     SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
     SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsFirstCutkoskyResidueTest();
     SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsSelected4CutkoskyResiduesTest();

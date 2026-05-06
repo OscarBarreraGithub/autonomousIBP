@@ -2115,6 +2115,8 @@ bool NearlyEqual(const BigFloat& lhs, const BigFloat& rhs) {
 }
 
 BigComplex RealBigComplex(const BigFloat& value);
+BigComplex BigComplexPowNegImBranch(const BigComplex& base,
+                                     const BigComplex& exponent);
 
 std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
                                          const std::string& name) {
@@ -4068,6 +4070,670 @@ std::vector<std::vector<AsymptoticSourceCoefficient>> BuildAsymptoticSourceCoeff
   return source_by_master;
 }
 
+struct ComplexInfinityEtaSeries {
+  std::map<int, BigComplex> coefficients_by_degree;
+};
+
+void PruneTinyComplexInfinityEtaTerms(ComplexInfinityEtaSeries& series) {
+  for (auto it = series.coefficients_by_degree.begin();
+       it != series.coefficients_by_degree.end();) {
+    if (IsTiny(it->second)) {
+      it = series.coefficients_by_degree.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+std::optional<std::pair<int, BigComplex>> LeadingComplexInfinityEtaTerm(
+    const ComplexInfinityEtaSeries& series) {
+  if (series.coefficients_by_degree.empty()) {
+    return std::nullopt;
+  }
+  const auto it = series.coefficients_by_degree.rbegin();
+  return std::make_pair(it->first, it->second);
+}
+
+BigComplex ComplexEtaPolynomialCoefficientOrZero(
+    const ComplexEtaPolynomial& polynomial,
+    const int index) {
+  if (index < 0 ||
+      static_cast<std::size_t>(index) >= polynomial.coefficients.size()) {
+    return {};
+  }
+  return polynomial.coefficients[static_cast<std::size_t>(index)];
+}
+
+ComplexInfinityEtaSeries ExpandComplexRationalAtInfinity(
+    const ComplexEtaRationalPolynomial& rational,
+    const int min_degree) {
+  const int numerator_degree = ComplexEtaPolynomialDegree(rational.numerator);
+  const int denominator_degree = ComplexEtaPolynomialDegree(rational.denominator);
+  if (numerator_degree < 0) {
+    return {};
+  }
+  if (denominator_degree < 0) {
+    throw std::runtime_error("eta-infinity initializer encountered zero denominator");
+  }
+
+  const BigComplex leading_denominator =
+      ComplexEtaPolynomialCoefficientOrZero(rational.denominator, denominator_degree);
+  if (IsTiny(leading_denominator)) {
+    throw std::runtime_error("eta-infinity initializer encountered zero leading denominator");
+  }
+
+  const int leading_degree = numerator_degree - denominator_degree;
+  ComplexInfinityEtaSeries series;
+  std::vector<BigComplex> coefficients;
+  coefficients.reserve(static_cast<std::size_t>(
+      std::max(0, leading_degree - min_degree + 1)));
+  for (int degree = leading_degree; degree >= min_degree; --degree) {
+    const int coefficient_index = leading_degree - degree;
+    BigComplex rhs =
+        ComplexEtaPolynomialCoefficientOrZero(rational.numerator,
+                                              denominator_degree + degree);
+    for (int previous = 0; previous < coefficient_index; ++previous) {
+      const int denominator_index =
+          denominator_degree - (coefficient_index - previous);
+      if (denominator_index < 0) {
+        continue;
+      }
+      rhs = rhs - ComplexEtaPolynomialCoefficientOrZero(rational.denominator,
+                                                        denominator_index) *
+                    coefficients[static_cast<std::size_t>(previous)];
+    }
+    const BigComplex coefficient = rhs / leading_denominator;
+    coefficients.push_back(coefficient);
+    if (!IsTiny(coefficient)) {
+      series.coefficients_by_degree.emplace(degree, coefficient);
+    }
+  }
+  PruneTinyComplexInfinityEtaTerms(series);
+  return series;
+}
+
+ComplexInfinityEtaSeries ExpandComplexRationalAtInfinity(
+    const std::string& expression,
+    const BigFloat& epsilon_value,
+    const int min_degree) {
+  std::map<std::string, BigComplex> bindings;
+  bindings["eps"] = RealBigComplex(epsilon_value);
+  return ExpandComplexRationalAtInfinity(
+      ParseComplexRationalEtaExpression(expression, bindings),
+      min_degree);
+}
+
+std::optional<int> TryNearestInteger(const BigFloat& value) {
+  BigFloat rounded;
+  if (value >= 0) {
+    rounded = floor(value + BigFloat("0.5"));
+  } else {
+    rounded = ceil(value - BigFloat("0.5"));
+  }
+  if (!NearlyEqual(value, rounded)) {
+    return std::nullopt;
+  }
+  return rounded.convert_to<int>();
+}
+
+std::optional<std::vector<BigComplex>> SolveComplexLinearSystem(
+    std::vector<std::vector<BigComplex>> matrix,
+    std::vector<BigComplex> rhs) {
+  const std::size_t size = rhs.size();
+  for (std::size_t pivot = 0; pivot < size; ++pivot) {
+    std::size_t best_row = pivot;
+    BigFloat best_abs = BigAbs(matrix[pivot][pivot]);
+    for (std::size_t row = pivot + 1; row < size; ++row) {
+      const BigFloat candidate_abs = BigAbs(matrix[row][pivot]);
+      if (candidate_abs > best_abs) {
+        best_abs = candidate_abs;
+        best_row = row;
+      }
+    }
+    if (IsTiny(best_abs)) {
+      return std::nullopt;
+    }
+    if (best_row != pivot) {
+      std::swap(matrix[pivot], matrix[best_row]);
+      std::swap(rhs[pivot], rhs[best_row]);
+    }
+    const BigComplex pivot_value = matrix[pivot][pivot];
+    for (std::size_t column = pivot; column < size; ++column) {
+      matrix[pivot][column] = matrix[pivot][column] / pivot_value;
+    }
+    rhs[pivot] = rhs[pivot] / pivot_value;
+    for (std::size_t row = 0; row < size; ++row) {
+      if (row == pivot || IsTiny(matrix[row][pivot])) {
+        continue;
+      }
+      const BigComplex factor = matrix[row][pivot];
+      for (std::size_t column = pivot; column < size; ++column) {
+        matrix[row][column] = matrix[row][column] - factor * matrix[pivot][column];
+      }
+      rhs[row] = rhs[row] - factor * rhs[pivot];
+    }
+  }
+  return rhs;
+}
+
+struct EtaInfinityInitialDataAudit {
+  std::size_t retained_master_count = 0;
+  std::size_t validated_master_count = 0;
+  std::size_t coupled_missing_master_count = 0;
+  int truncation_order = 0;
+  int overcheck_order = 0;
+  BigComplex eta_start;
+  BigComplex x_start;
+  BigFloat nearest_x_singularity_radius = 0;
+  BigFloat tail_bound_abs = 0;
+  BigFloat residual_bound_abs = 0;
+  BigFloat seed_consistency_bound_abs = 0;
+  BigFloat roundoff_bound_abs = 0;
+  BigFloat total_initial_error_bound_abs = 0;
+  BigFloat vector_norm_abs = 0;
+  BigFloat tail_geometric_ratio = 0;
+  BigFloat min_certified_digits = 0;
+  std::string initial_data_fingerprint;
+  std::string summary;
+};
+
+std::string SerializeEtaInfinityInitialDataForFingerprint(
+    const DirectSolveSeriesSpec& spec,
+    const EtaInfinityInitialDataAudit& audit,
+    const std::vector<std::vector<BigComplex>>& finite_start_samples) {
+  std::ostringstream out;
+  out << "kind=eta-infinity-controlled-initial-data\n";
+  out << "benchmark_id=" << spec.benchmark_id << "\n";
+  out << "family=" << spec.family << "\n";
+  out << "variable=" << spec.variable << "\n";
+  out << "truncation_order=" << audit.truncation_order << "\n";
+  out << "overcheck_order=" << audit.overcheck_order << "\n";
+  out << "eta_start=" << BigComplexCompactString(audit.eta_start, 50) << "\n";
+  out << "x_start=" << BigComplexCompactString(audit.x_start, 50) << "\n";
+  for (std::size_t master_index = 0; master_index < spec.masters.size(); ++master_index) {
+    out << "master[" << master_index << "]="
+        << IntegralLabel(spec.masters[master_index].family,
+                         spec.masters[master_index].indices)
+        << "\n";
+    for (std::size_t sample_index = 0;
+         sample_index < finite_start_samples[master_index].size();
+         ++sample_index) {
+      out << "sample[" << sample_index << "]="
+          << BigComplexCompactString(
+                 finite_start_samples[master_index][sample_index],
+                 50)
+          << "\n";
+    }
+  }
+  return out.str();
+}
+
+BigFloat ErrorBoundCertifiedDigits(const BigFloat& error_bound,
+                                   const BigFloat& vector_norm) {
+  if (IsTiny(error_bound)) {
+    return BigFloat(120);
+  }
+  const BigFloat scale = std::max(BigFloat(1), vector_norm);
+  const BigFloat relative = error_bound / scale;
+  if (relative <= 0) {
+    return BigFloat(120);
+  }
+  return -log(relative) / log(BigFloat(10));
+}
+
+BigFloat ControlledEtaStartRadius(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& epsilon_value,
+    BigFloat* nearest_x_singularity_radius) {
+  BigFloat max_pole_radius = 1;
+  std::map<std::string, BigComplex> bindings;
+  bindings["eps"] = RealBigComplex(epsilon_value);
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it != spec.coefficient_matrices.end()) {
+    for (const std::vector<std::string>& row : matrix_it->second) {
+      for (const std::string& cell : row) {
+        const ComplexEtaRationalPolynomial rational =
+            ParseComplexRationalEtaExpression(cell, bindings);
+        const std::vector<std::complex<long double>> roots =
+            PolynomialRootsDurandKerner(rational.denominator);
+        for (const std::complex<long double>& root : roots) {
+          max_pole_radius = std::max(max_pole_radius, BigAbs(FromLongDoubleComplex(root)));
+        }
+      }
+    }
+  }
+  if (nearest_x_singularity_radius != nullptr) {
+    *nearest_x_singularity_radius = BigFloat(1) / max_pole_radius;
+  }
+  const BigFloat radius = max_pole_radius * BigFloat("1e12");
+  return radius > BigFloat("1099511627776") ? radius : BigFloat("1099511627776");
+}
+
+std::vector<std::vector<ComplexInfinityEtaSeries>> BuildMatrixInfinitySeries(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& epsilon_value,
+    const int min_degree) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("eta-infinity initializer requires a DE matrix");
+  }
+  const std::vector<std::vector<std::string>>& matrix = matrix_it->second;
+  if (matrix.size() != spec.masters.size()) {
+    throw std::runtime_error("eta-infinity initializer matrix row count mismatch");
+  }
+  std::vector<std::vector<ComplexInfinityEtaSeries>> series(matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    if (matrix[row].size() != spec.masters.size()) {
+      throw std::runtime_error("eta-infinity initializer matrix column count mismatch");
+    }
+    series[row].reserve(matrix[row].size());
+    for (const std::string& cell : matrix[row]) {
+      ComplexInfinityEtaSeries cell_series =
+          ExpandComplexRationalAtInfinity(cell, epsilon_value, min_degree);
+      const std::optional<std::pair<int, BigComplex>> leading =
+          LeadingComplexInfinityEtaTerm(cell_series);
+      if (leading.has_value() && leading->first > -1) {
+        throw std::runtime_error(
+            "eta-infinity initializer requires a regular-singular infinity matrix");
+      }
+      series[row].push_back(std::move(cell_series));
+    }
+  }
+  return series;
+}
+
+std::vector<std::vector<std::vector<BigComplex>>> SolveEtaInfinityRegionSeries(
+    const DirectSolveSeriesSpec& spec,
+    const ParsedAmflowBoundaryRegion& region,
+    const std::vector<BigComplex>& leading_region_contributions,
+    const std::vector<std::vector<ComplexInfinityEtaSeries>>& matrix_series,
+    const std::string& epsilon_sample,
+    const int max_order,
+    BigFloat* seed_consistency_bound,
+    BigFloat* residual_bound) {
+  const std::size_t master_count = spec.masters.size();
+  std::vector<BigFloat> powers(master_count);
+  for (std::size_t master = 0; master < master_count; ++master) {
+    powers[master] = EvaluatePowerExpressionAtEpsilon(region.powers[master],
+                                                      epsilon_sample);
+  }
+
+  std::vector<std::vector<BigComplex>> coefficients(
+      master_count, std::vector<BigComplex>(static_cast<std::size_t>(max_order + 1)));
+  std::vector<std::vector<bool>> seeded(
+      master_count, std::vector<bool>(static_cast<std::size_t>(max_order + 1), false));
+  for (std::size_t master = 0; master < master_count; ++master) {
+    if (!IsTiny(leading_region_contributions[master])) {
+      coefficients[master][0] = leading_region_contributions[master];
+      seeded[master][0] = true;
+    }
+  }
+
+  struct SeriesSlot {
+    std::size_t master = 0;
+    int order = 0;
+  };
+  std::vector<SeriesSlot> unknown_slots;
+  for (std::size_t master = 0; master < master_count; ++master) {
+    for (int order = 0; order <= max_order; ++order) {
+      if (!seeded[master][static_cast<std::size_t>(order)]) {
+        unknown_slots.push_back({master, order});
+      }
+    }
+  }
+
+  const std::size_t equation_count =
+      master_count * static_cast<std::size_t>(max_order + 1);
+  std::vector<std::vector<BigComplex>> lhs(
+      equation_count, std::vector<BigComplex>(unknown_slots.size()));
+  std::vector<BigComplex> rhs(equation_count);
+
+  const auto slot_index = [&](const std::size_t master,
+                              const int order) -> std::optional<std::size_t> {
+    if (order < 0 || order > max_order) {
+      return std::nullopt;
+    }
+    for (std::size_t index = 0; index < unknown_slots.size(); ++index) {
+      if (unknown_slots[index].master == master && unknown_slots[index].order == order) {
+        return index;
+      }
+    }
+    return std::nullopt;
+  };
+
+  const auto add_entry = [&](const std::size_t equation,
+                             const std::size_t master,
+                             const int order,
+                             const BigComplex& entry) {
+    if (order < 0 || order > max_order || IsTiny(entry)) {
+      return;
+    }
+    if (seeded[master][static_cast<std::size_t>(order)]) {
+      rhs[equation] =
+          rhs[equation] -
+          entry * coefficients[master][static_cast<std::size_t>(order)];
+      return;
+    }
+    const std::optional<std::size_t> unknown_index = slot_index(master, order);
+    if (unknown_index.has_value()) {
+      lhs[equation][*unknown_index] = lhs[equation][*unknown_index] + entry;
+    }
+  };
+
+  for (std::size_t row = 0; row < master_count; ++row) {
+    for (int order = 0; order <= max_order; ++order) {
+      const std::size_t equation =
+          row * static_cast<std::size_t>(max_order + 1) +
+          static_cast<std::size_t>(order);
+      add_entry(equation,
+                row,
+                order,
+                RealBigComplex(powers[row] - BigFloat(order)));
+      for (std::size_t source = 0; source < master_count; ++source) {
+        for (const auto& [degree, matrix_coefficient] :
+             matrix_series[row][source].coefficients_by_degree) {
+          const BigFloat raw_source_order =
+              BigFloat(order) + BigFloat(degree) + powers[source] - powers[row] +
+              BigFloat(1);
+          const std::optional<int> source_order =
+              TryNearestInteger(raw_source_order);
+          if (!source_order.has_value()) {
+            continue;
+          }
+          add_entry(equation,
+                    source,
+                    *source_order,
+                    BigComplex{} - matrix_coefficient);
+        }
+      }
+    }
+  }
+
+  if (!unknown_slots.empty()) {
+    std::vector<std::vector<BigComplex>> square_lhs(
+        unknown_slots.size(),
+        std::vector<BigComplex>(unknown_slots.size()));
+    std::vector<BigComplex> square_rhs(unknown_slots.size());
+    for (std::size_t row_index = 0; row_index < unknown_slots.size(); ++row_index) {
+      const SeriesSlot& slot = unknown_slots[row_index];
+      const std::size_t equation =
+          slot.master * static_cast<std::size_t>(max_order + 1) +
+          static_cast<std::size_t>(slot.order);
+      square_lhs[row_index] = lhs[equation];
+      square_rhs[row_index] = rhs[equation];
+    }
+    const std::optional<std::vector<BigComplex>> solved =
+        SolveComplexLinearSystem(square_lhs, square_rhs);
+    if (!solved.has_value()) {
+      throw std::runtime_error(
+          "eta-infinity initializer could not solve a finite infinity recurrence "
+          "system");
+    }
+    for (std::size_t index = 0; index < unknown_slots.size(); ++index) {
+      const SeriesSlot& slot = unknown_slots[index];
+      coefficients[slot.master][static_cast<std::size_t>(slot.order)] =
+          (*solved)[index];
+    }
+  }
+
+  for (std::size_t equation = 0; equation < equation_count; ++equation) {
+    const std::size_t row =
+        equation / static_cast<std::size_t>(max_order + 1);
+    const int order =
+        static_cast<int>(equation % static_cast<std::size_t>(max_order + 1));
+    BigComplex residual = rhs[equation];
+    for (std::size_t unknown_index = 0; unknown_index < unknown_slots.size();
+         ++unknown_index) {
+      const SeriesSlot& slot = unknown_slots[unknown_index];
+      residual =
+          residual -
+          lhs[equation][unknown_index] *
+              coefficients[slot.master][static_cast<std::size_t>(slot.order)];
+    }
+    if (seed_consistency_bound != nullptr &&
+        seeded[row][static_cast<std::size_t>(order)]) {
+      *seed_consistency_bound =
+          std::max(*seed_consistency_bound, BigAbs(residual));
+    }
+    if (residual_bound != nullptr) {
+      *residual_bound = std::max(*residual_bound, BigAbs(residual));
+    }
+  }
+
+  return {std::move(coefficients)};
+}
+
+BigComplex EvaluateInfinitySeriesAtFiniteStart(
+    const std::vector<BigComplex>& coefficients,
+    const BigFloat& power,
+    const BigComplex& eta_start,
+    const int max_order) {
+  BigComplex value;
+  for (int order = 0; order <= max_order; ++order) {
+    const BigComplex exponent = RealBigComplex(power - BigFloat(order));
+    value = value +
+            coefficients[static_cast<std::size_t>(order)] *
+                BigComplexPowNegImBranch(eta_start, exponent);
+  }
+  return value;
+}
+
+BigComplex EvaluateInfinitySeriesDerivativeAtFiniteStart(
+    const std::vector<BigComplex>& coefficients,
+    const BigFloat& power,
+    const BigComplex& eta_start,
+    const int max_order) {
+  BigComplex value;
+  for (int order = 0; order <= max_order; ++order) {
+    const BigFloat exponent_value = power - BigFloat(order);
+    const BigComplex exponent = RealBigComplex(exponent_value - BigFloat(1));
+    value = value +
+            coefficients[static_cast<std::size_t>(order)] *
+                exponent_value * BigComplexPowNegImBranch(eta_start, exponent);
+  }
+  return value;
+}
+
+std::vector<std::vector<BigComplex>> EvaluateMatrixAtEtaStart(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& epsilon_value,
+    const BigComplex& eta_start) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("eta-infinity initializer requires a DE matrix");
+  }
+  std::map<std::string, BigComplex> bindings;
+  bindings["eps"] = RealBigComplex(epsilon_value);
+  bindings["eta"] = eta_start;
+  std::vector<std::vector<BigComplex>> evaluated(
+      matrix_it->second.size());
+  for (std::size_t row = 0; row < matrix_it->second.size(); ++row) {
+    evaluated[row].reserve(matrix_it->second[row].size());
+    for (const std::string& cell : matrix_it->second[row]) {
+      evaluated[row].push_back(ParseAmflowComplexExpression(cell, bindings));
+    }
+  }
+  return evaluated;
+}
+
+std::optional<EtaInfinityInitialDataAudit> TryBuildControlledEtaInfinityInitialData(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
+    const int requested_truncation_order) {
+  if (requested_truncation_order <= 0 || regions.empty() ||
+      spec.boundary_epsilon_samples.empty()) {
+    return std::nullopt;
+  }
+  const int truncation_order = requested_truncation_order;
+  const int overcheck_order = std::max(truncation_order + 1, truncation_order * 2);
+  const int min_matrix_degree = -overcheck_order - 16;
+  EtaInfinityInitialDataAudit audit;
+  audit.retained_master_count = spec.masters.size();
+  audit.validated_master_count = spec.masters.size();
+  audit.truncation_order = truncation_order;
+  audit.overcheck_order = overcheck_order;
+  const BigFloat first_epsilon =
+      ParseBigFloatRational(spec.boundary_epsilon_samples.front());
+  const BigFloat eta_start_radius =
+      ControlledEtaStartRadius(spec, first_epsilon, &audit.nearest_x_singularity_radius);
+  audit.eta_start = {0, -eta_start_radius};
+  audit.x_start = BigComplex{1, 0} / audit.eta_start;
+
+  std::vector<std::vector<BigComplex>> finite_start_samples(
+      spec.masters.size(),
+      std::vector<BigComplex>(spec.boundary_epsilon_samples.size()));
+  std::vector<bool> missing_master_has_coupled_data(spec.masters.size(), false);
+  for (std::size_t sample_index = 0;
+       sample_index < spec.boundary_epsilon_samples.size();
+       ++sample_index) {
+    const BigFloat epsilon_value =
+        ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]);
+    const std::vector<std::vector<ComplexInfinityEtaSeries>> matrix_series =
+        BuildMatrixInfinitySeries(spec, epsilon_value, min_matrix_degree);
+    std::vector<BigComplex> finite_low(spec.masters.size());
+    std::vector<BigComplex> finite_low_derivative(spec.masters.size());
+    std::vector<BigComplex> finite_hi(spec.masters.size());
+
+    for (std::size_t region_index = 0; region_index < regions.size(); ++region_index) {
+      BigFloat seed_bound;
+      BigFloat residual_bound;
+      std::vector<BigComplex> leading_region_contributions(spec.masters.size());
+      for (std::size_t master = 0; master < spec.masters.size(); ++master) {
+        leading_region_contributions[master] =
+            region_contributions[region_index][master][sample_index];
+      }
+      const std::vector<std::vector<std::vector<BigComplex>>> region_series_wrapper =
+          SolveEtaInfinityRegionSeries(spec,
+                                       regions[region_index],
+                                       leading_region_contributions,
+                                       matrix_series,
+                                       spec.boundary_epsilon_samples[sample_index],
+                                       overcheck_order,
+                                       &seed_bound,
+                                       &residual_bound);
+      audit.seed_consistency_bound_abs =
+          std::max(audit.seed_consistency_bound_abs, seed_bound);
+      audit.residual_bound_abs =
+          std::max(audit.residual_bound_abs, residual_bound);
+      const std::vector<std::vector<BigComplex>>& region_series =
+          region_series_wrapper.front();
+      for (std::size_t master = 0; master < spec.masters.size(); ++master) {
+        const BigFloat power = EvaluatePowerExpressionAtEpsilon(
+            regions[region_index].powers[master],
+            spec.boundary_epsilon_samples[sample_index]);
+        finite_low[master] =
+            finite_low[master] +
+            EvaluateInfinitySeriesAtFiniteStart(region_series[master],
+                                                power,
+                                                audit.eta_start,
+                                                truncation_order);
+        finite_low_derivative[master] =
+            finite_low_derivative[master] +
+            EvaluateInfinitySeriesDerivativeAtFiniteStart(region_series[master],
+                                                          power,
+                                                          audit.eta_start,
+                                                          truncation_order);
+        finite_hi[master] =
+            finite_hi[master] +
+            EvaluateInfinitySeriesAtFiniteStart(region_series[master],
+                                                power,
+                                                audit.eta_start,
+                                                overcheck_order);
+        if (IsTiny(region_contributions[region_index][master][sample_index]) &&
+            !IsTiny(region_series[master][0])) {
+          missing_master_has_coupled_data[master] = true;
+        }
+      }
+    }
+
+    const std::vector<std::vector<BigComplex>> matrix_at_start =
+        EvaluateMatrixAtEtaStart(spec, epsilon_value, audit.eta_start);
+    const BigFloat tail_ratio =
+        BigAbs(audit.x_start) / audit.nearest_x_singularity_radius;
+    if (tail_ratio >= BigFloat(1)) {
+      throw std::runtime_error(
+          "eta-infinity initializer finite start is outside the infinity expansion disk");
+    }
+    audit.tail_geometric_ratio = std::max(audit.tail_geometric_ratio, tail_ratio);
+    for (std::size_t master = 0; master < spec.masters.size(); ++master) {
+      finite_start_samples[master][sample_index] = finite_low[master];
+      audit.vector_norm_abs =
+          std::max(audit.vector_norm_abs, BigAbs(finite_low[master]));
+      BigComplex matrix_product;
+      for (std::size_t source = 0; source < spec.masters.size(); ++source) {
+        matrix_product =
+            matrix_product + matrix_at_start[master][source] * finite_low[source];
+      }
+      audit.residual_bound_abs =
+          std::max(audit.residual_bound_abs,
+                   BigAbs(finite_low_derivative[master] - matrix_product));
+      const BigFloat order_doubling_tail = BigAbs(finite_hi[master] - finite_low[master]);
+      const BigFloat geometric_tail =
+          order_doubling_tail / (BigFloat(1) - tail_ratio);
+      audit.tail_bound_abs =
+          std::max(audit.tail_bound_abs, geometric_tail);
+    }
+  }
+
+  for (const bool has_coupled_data : missing_master_has_coupled_data) {
+    if (has_coupled_data) {
+      ++audit.coupled_missing_master_count;
+    }
+  }
+  const int backend_digits = std::numeric_limits<BigFloat>::digits10;
+  const int roundoff_digits = std::max(80, backend_digits - 200);
+  const BigFloat roundoff_unit("1e-" + std::to_string(roundoff_digits));
+  const BigFloat recurrence_size =
+      BigFloat(spec.masters.size()) * BigFloat(overcheck_order + 1) *
+      BigFloat(spec.boundary_epsilon_samples.size());
+  audit.roundoff_bound_abs =
+      roundoff_unit * recurrence_size * std::max(BigFloat(1), audit.vector_norm_abs);
+  audit.total_initial_error_bound_abs =
+      audit.tail_bound_abs + audit.residual_bound_abs +
+      audit.seed_consistency_bound_abs + audit.roundoff_bound_abs;
+  audit.min_certified_digits =
+      ErrorBoundCertifiedDigits(audit.total_initial_error_bound_abs,
+                                audit.vector_norm_abs);
+  if (audit.min_certified_digits < BigFloat(70)) {
+    throw std::runtime_error(
+        "eta-infinity initializer did not certify the 70-digit finite-start guard");
+  }
+  audit.initial_data_fingerprint = amflow::ComputeArtifactFingerprint(
+      SerializeEtaInfinityInitialDataForFingerprint(spec, audit, finite_start_samples));
+  audit.summary =
+      "Validated eta-infinity controlled initial data for " +
+      std::to_string(audit.validated_master_count) + "/" +
+      std::to_string(audit.retained_master_count) +
+      " retained master(s) with infinity-variable expansion; truncation_order=" +
+      std::to_string(audit.truncation_order) +
+      "; overcheck_order=" + std::to_string(audit.overcheck_order) +
+      "; coupled_missing_master_count=" +
+      std::to_string(audit.coupled_missing_master_count) +
+      "; finite_start_eta=" + BigComplexCompactString(audit.eta_start, 24) +
+      "; x_start=" + BigComplexCompactString(audit.x_start, 24) +
+      "; nearest_x_singularity_radius=" +
+      BigFloatCompactString(audit.nearest_x_singularity_radius, 24) +
+      "; branch_direction=NegIm; tail_bound_abs=" +
+      BigFloatCompactString(audit.tail_bound_abs, 24) +
+      "; tail_geometric_ratio=" +
+      BigFloatCompactString(audit.tail_geometric_ratio, 24) +
+      "; residual_bound_abs=" +
+      BigFloatCompactString(audit.residual_bound_abs, 24) +
+      "; seed_consistency_bound_abs=" +
+      BigFloatCompactString(audit.seed_consistency_bound_abs, 24) +
+      "; roundoff_bound_abs=" +
+      BigFloatCompactString(audit.roundoff_bound_abs, 24) +
+      "; total_initial_error_bound_abs=" +
+      BigFloatCompactString(audit.total_initial_error_bound_abs, 24) +
+      "; min_certified_digits=" +
+      BigFloatCompactString(audit.min_certified_digits, 12) +
+      "; initial_data_fingerprint=" + audit.initial_data_fingerprint +
+      "; ode_propagation_applied=false; coefficient_publication=false; "
+      "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied stays false.";
+  return audit;
+}
+
 std::optional<BigComplex> TryComputeAsymptoticTransportCandidate(
     const DirectSolveSeriesSpec& spec,
     const std::vector<std::vector<AsymptoticSourceCoefficient>>& source_by_master,
@@ -4136,10 +4802,34 @@ int ApplyEtaInfinityAsymptoticTransportFromDE(
     const DirectSolveSeriesSpec& spec,
     const std::vector<ParsedAmflowBoundaryRegion>& regions,
     const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
-    std::vector<std::vector<BigComplex>>& master_samples) {
+    std::vector<std::vector<BigComplex>>& master_samples,
+    const int controlled_initial_truncation_order = 0,
+    EtaInfinityInitialDataAudit* controlled_initial_data_audit = nullptr) {
   try {
     if (regions.empty() || spec.boundary_epsilon_samples.empty()) {
       return 0;
+    }
+
+    if (controlled_initial_data_audit != nullptr) {
+      try {
+        const std::optional<EtaInfinityInitialDataAudit> audit =
+            TryBuildControlledEtaInfinityInitialData(spec,
+                                                     regions,
+                                                     region_contributions,
+                                                     controlled_initial_truncation_order);
+        if (audit.has_value()) {
+          *controlled_initial_data_audit = *audit;
+        }
+      } catch (const std::exception& error) {
+        if (controlled_initial_truncation_order > 0) {
+          controlled_initial_data_audit->summary =
+              "Eta-infinity controlled initial data failed closed: " +
+              std::string(error.what()) +
+              "; ode_propagation_applied=false; coefficient_publication=false; "
+              "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
+              "stays false.";
+        }
+      }
     }
 
     const std::vector<std::vector<AsymptoticSourceCoefficient>> first_sample_sources =
@@ -4791,13 +5481,6 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
       "eta-infinity-to-eta=0 ODE propagation and Laurent fitting remain deferred; "
       "full_eta_zero_contour_applied stays false.";
   return audit;
-}
-
-BigComplex ComplexEtaPolynomialCoefficientOrZero(
-    const ComplexEtaPolynomial& polynomial,
-    const std::size_t index) {
-  return index < polynomial.coefficients.size() ? polynomial.coefficients[index]
-                                                : BigComplex{};
 }
 
 BigComplex BigComplexPowNegImBranch(const BigComplex& base,
@@ -8102,7 +8785,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
 
 amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     const DirectSolveSeriesSpec& direct_spec,
-    const int endpoint_transport_order) {
+    const int endpoint_transport_order,
+    const int requested_eta_infinity_initial_truncation_order) {
   if (direct_spec.boundary_epsilon_samples.empty()) {
     throw std::runtime_error(
         "AMFlow eta-infinity boundary evaluation requires epsilon samples");
@@ -8142,11 +8826,18 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   for (const std::string& sample : direct_spec.boundary_epsilon_samples) {
     epsilon_values.push_back(ParseBigFloatRational(sample));
   }
+  const int eta_infinity_initial_truncation_order =
+      requested_eta_infinity_initial_truncation_order >= 0
+          ? requested_eta_infinity_initial_truncation_order
+          : (IsComplexKinematicsFullEtaZeroContourState(direct_spec) ? 8 : 0);
+  EtaInfinityInitialDataAudit eta_infinity_initial_data_audit;
   const int transported_asymptotic_count =
       ApplyEtaInfinityAsymptoticTransportFromDE(direct_spec,
                                                 regions,
                                                 region_contributions,
-                                                master_samples);
+                                                master_samples,
+                                                eta_infinity_initial_truncation_order,
+                                                &eta_infinity_initial_data_audit);
   std::optional<B61nScalarContourEndpointAudit> b61n_scalar_endpoint_audit;
   if (complex_contour_scaffold_audit.has_value()) {
     b61n_scalar_endpoint_audit =
@@ -8227,6 +8918,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         " Applied first eta-infinity DE asymptotic transport to " +
         std::to_string(transported_asymptotic_count) +
         " missing master coefficient set(s).";
+  }
+  if (!eta_infinity_initial_data_audit.summary.empty()) {
+    diagnostics.summary += " " + eta_infinity_initial_data_audit.summary;
   }
   if (endpoint_transport_count > 0) {
     diagnostics.summary +=
@@ -8622,6 +9316,7 @@ struct SolveSeriesCliArgs {
   std::filesystem::path output_path;
   int epsilon_order = -1;
   int digits = -1;
+  int eta_infinity_initial_truncation_order = -1;
   SolveSeriesRuntimeOptions runtime_options;
 };
 
@@ -8799,6 +9494,7 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
   for (int index = 3; index < argc; ++index) {
     const std::string flag = argv[index];
     if (flag != "--eps-order" && flag != "--digits" && flag != "--out" &&
+        flag != "--eta-infinity-truncation-order" &&
         flag != "--spacetime-dimension" && flag != "--amfmode" &&
         flag != "--ending") {
       throw std::invalid_argument("unknown solve-series flag: " + flag);
@@ -8816,6 +9512,13 @@ SolveSeriesCliArgs ParseSolveSeriesArgs(const int argc, char** argv) {
       args.digits = ParseRequiredIntegerFlag(flag, value);
     } else if (flag == "--out") {
       args.output_path = value;
+    } else if (flag == "--eta-infinity-truncation-order") {
+      args.eta_infinity_initial_truncation_order =
+          ParseRequiredIntegerFlag(flag, value);
+      if (args.eta_infinity_initial_truncation_order < 0) {
+        throw std::invalid_argument(
+            "solve-series requires --eta-infinity-truncation-order N with N >= 0");
+      }
     } else if (flag == "--spacetime-dimension") {
       const std::string dimension = TrimAsciiWhitespace(value);
       if (dimension.empty()) {
@@ -9239,7 +9942,8 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     DirectSolveSeriesSpec direct_spec,
     const int epsilon_order,
     const int digits,
-    const SolveSeriesRuntimeOptions& runtime_options) {
+    const SolveSeriesRuntimeOptions& runtime_options,
+    const int eta_infinity_initial_truncation_order) {
   if (direct_spec.family.empty()) {
     direct_spec.family = problem_spec.family.name;
   }
@@ -9290,7 +9994,8 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
                 ? EvaluateAmflowStateRetainedSolutionSamples(evaluation.direct_spec,
                                                              epsilon_order)
                 : EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec,
-                                                         epsilon_order);
+                                                         epsilon_order,
+                                                         eta_infinity_initial_truncation_order);
       }
       if (!(IsB64agLightlikeGaugeLinkRuntimeState(evaluation.direct_spec) &&
             evaluation.diagnostics.eta_endpoint_transport_count > 0 &&
@@ -9742,7 +10447,8 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
             state_spec,
             args.epsilon_order,
             args.digits,
-            args.runtime_options));
+            args.runtime_options,
+            args.eta_infinity_initial_truncation_order));
         exit_code = std::max(exit_code, evaluations.back().exit_code);
       }
       const auto end = std::chrono::steady_clock::now();
@@ -9787,7 +10493,8 @@ int RunSolveSeriesCommand(const int argc, char** argv) {
                                std::move(direct_spec),
                                args.epsilon_order,
                                args.digits,
-                               args.runtime_options);
+                               args.runtime_options,
+                               args.eta_infinity_initial_truncation_order);
   const auto end = std::chrono::steady_clock::now();
   const double duration_seconds =
       std::chrono::duration<double>(end - start).count();
@@ -9828,7 +10535,8 @@ void PrintUsage() {
             << "                           Parse Kira results/<family>/masters and kira_target.m\n"
             << "  run-kira-from-file <file> <kira> <fermat> [dir]\n"
             << "                           Emit and execute Kira for a file-backed ProblemSpec\n"
-            << "  solve-series <file> --eps-order N --digits N --out path\n"
+            << "  solve-series <file> --eps-order N --digits N --out path "
+               "[--eta-infinity-truncation-order N]\n"
             << "                           [--spacetime-dimension D] [--amfmode X[,Y]] [--ending X[,Y]]\n"
             << "                           Run a reviewed embedded direct solve_series request or AMFlow state JSON/bundle\n"
             << "  show-defaults            Print bootstrap AMF and reduction defaults\n"

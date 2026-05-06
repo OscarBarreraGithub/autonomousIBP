@@ -1,0 +1,326 @@
+{
+  "benchmark_id": "2025-moller-ew-double-box",
+  "capture_profile": {
+    "benchmark_class": "phase1-adjacent-selected-candidate-scoped-seed",
+    "black_box_dot": 1,
+    "black_box_rank": 2,
+    "chop_pre_digits": 40,
+    "digit_threshold_profile": "lane152-p80-chop40-scaffold",
+    "epsorder": 4,
+    "family": "mollerEwDoubleBoxSeed",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "me2": "1",
+      "mg2": "4",
+      "mz2": "25",
+      "s": "-11",
+      "t": "-3"
+    },
+    "kinematic_region": "Euclidean same-mass Moller scattering continuation",
+    "precision_goal_digits": 80,
+    "raw_scalar_targets": [
+      "j[mollerEwDoubleBoxSeed, 1, 1, 1, 1]",
+      "j[mollerEwDoubleBoxSeed, 2, 1, 1, 1]",
+      "j[mollerEwDoubleBoxSeed, 1, 2, 1, 1]"
+    ],
+    "selected_benchmark_anchor_ref": "2025-moller-ew-double-box",
+    "source_reference": "DOI 10.21468/SciPostPhys.18.6.172 / SciPost Phys. 18 (2025) 172, scoped one-loop Euclidean Moller t-channel box seed",
+    "topology": "one-loop Euclidean Moller t-channel box seed"
+  },
+  "compare_cpp_vs_amflow_outputs": [],
+  "comparison_passed": false,
+  "created_at": "2026-05-06T02:26:46-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-scoped-seed",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/examples/moller_ew_double_box_seed",
+  "notes": [
+    "The survey table is stale for already-landed rows, but docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md still identify 2025-moller-ew-double-box as the only remaining surveyed additional candidate without a root phase-1 manifest after the twelve prior captures.",
+    "The source article studies electroweak double-box integrals for Moller scattering; lane152 freezes a deliberately scoped one-loop Euclidean t-channel box seed packet only.",
+    "The capture used AMFlow SolveIntegrals at precisionGoal=80 and SetAMFOptions[\"ChopPre\" -> 40].",
+    "The lane95 Kira imaginary-coefficient retry wrapper is installed as a reactive retry for the exact invalid coefficient string \"I\" parser failure; this capture did not trigger that retry.",
+    "No full two-loop electroweak Moller packet, new C++ ingest, C++/AMFlow comparator row, milestone qualification, release signoff, or parity expansion is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "484c4923b2c23efe13dbf431dbd0c67493125e0839e9efeb3103a970db6ce83a",
+      "name": "sol-2025-moller-ew-double-box-seed",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/examples/moller_ew_double_box_seed/sol-2025-moller-ew-double-box-seed",
+      "present_at_capture": true,
+      "size_bytes": 4619
+    },
+    {
+      "canonical_sha256": "cad0aa1ea1cdd79956d94b51fe9451ee4dd95833cc2d614149a020b2caa63cc2",
+      "name": "sol-2025-moller-ew-double-box-seed.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/examples/moller_ew_double_box_seed/sol-2025-moller-ew-double-box-seed.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 878
+    },
+    {
+      "canonical_sha256": "df2c05627ea6514b0ade88e1cfef10d58b81dc5f72e996af1a3f7adb6e622346",
+      "name": "sol-2025-moller-ew-double-box-seed.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/examples/moller_ew_double_box_seed/sol-2025-moller-ew-double-box-seed.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 2492
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2025-moller-ew-double-box because it is the only surveyed additional candidate without a root phase-1 manifest after reconciling the stale survey table with the twelve current root manifests; it remains explicitly cataloged as a strong adjacent benchmark."
+    },
+    {
+      "role": "B",
+      "scope": "capture-template conformance and non-claim wording",
+      "status": "APPROVE",
+      "verdict": "The packet follows the stronger lane150 phase-1 pattern with a root manifest, adjacent lane directory, sbatch-compatible runner, run.wl, fail-closed verifier, hashed AMFlow outputs, p80/ChopPre40 contract, and explicit scaffold-only non-promotion wording."
+    },
+    {
+      "role": "C",
+      "scope": "build, comparator self-check, and scaffold-only gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure, CMake build, amflow-tests, singular-runtime-lane-tests, CTest, compare_cpp_vs_amflow.py --self-check, qualify_milestone_m6.py --self-check, manifest JSON validation, phase-1 schema guard, scaffold-only guard, and no-false-promotion guard completed with exit code 0."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics and diff gate",
+      "status": "APPROVE",
+      "verdict": "The capture log shows real WolframKernel, AMFlow, Kira, IBPSystem, AnalyticReduction, AMFSystemSetup, and AMFSystemSolution execution; verifier passed on finite nonzero 80-digit Mathematica numerics, output hashes match captured files, prior parity hash is unchanged, and the final diff gate contains no zero fabrication, sentinel literal, comparator loosening, transport promotion, or milestone promotion."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/examples/moller_ew_double_box_seed",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:06:08"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane152_capture.log",
+        "sha256": "b5aad249f7438b4a75386fcb5bc4832098eafbb6968748700a0eaaaa7d2ddc5a",
+        "size_bytes": 23758
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/run-manifest.10006275.txt",
+      "sha256": "f295c2ecaa6d798ff4970910d87f9112efe20156e7b6b536a6ecc0edb893eb17",
+      "size_bytes": 2456
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2025-moller-ew-double-box.lane152/capture_moller_ew_double_box_seed.sbatch",
+        "sha256": "3541661ffa1fcfd998f0b347f951df1ab8b2e119e7a3306b26ee57794258a3be",
+        "size_bytes": 3454
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2025-moller-ew-double-box.lane152/run.wl",
+        "sha256": "f1b398062b098b3d3f79dcf7ffadd6de894b12d42bc88fdc896bc0b0694ddcfc",
+        "size_bytes": 6632
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2025-moller-ew-double-box.lane152/verify_output.wl",
+        "sha256": "b2ea5be4d2cee96b1cc8782ae00d415e172036028611ad6d12202c3c39dbb5b2",
+        "size_bytes": 4937
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+        "size_bytes": 63699
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84",
+        "size_bytes": 16727
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2025-moller-ew-double-box/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d",
+        "size_bytes": 223
+      }
+    ],
+    "source_article": {
+      "doi": "10.21468/SciPostPhys.18.6.172",
+      "title": "Electroweak double-box integrals for Moller scattering",
+      "url": "https://doi.org/10.21468/SciPostPhys.18.6.172"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0 for Linux x86 (64-bit) (June 3, 2023)"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-06T02:26:46-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "amflow_tests": {
+      "command": "./build/amflow-tests",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane152_amflow_tests.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane152_amflow_tests.stdout",
+        "sha256": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+        "size_bytes": 30
+      },
+      "status": "passed"
+    },
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 1",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane152_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane152_cmake_build.stdout",
+        "sha256": "e576265f21ac10ca620e900e4197bee3d6624c744e9df5d010c828d0135289db",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane152_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane152_cmake_configure.stdout",
+        "sha256": "12ccdf7406c12d2b88feb598c1c98d932ca72545c2feea4770b7b7177fdabb63",
+        "size_bytes": 143
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane152_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "ctest": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH ctest --test-dir build --output-on-failure",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane152_ctest.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane152_ctest.stdout",
+        "sha256": "685c0625857a6a38785387920483a4a2cc7cac6400acd0ec9c5f8a8a0f513c8b",
+        "size_bytes": 351
+      },
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Lane152 scoped Moller seed AMFlow/Kira run reduced three requested one-loop Euclidean t-channel box seed targets to ten master integrals, constructed six AMF systems, solved them, wrote solution plus metadata, and the verifier passed on finite real Mathematica coefficients through eps^4.",
+    "m6_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane152_m6_selfcheck.stdout",
+      "sha256": "db8f5fc5c2c274a6780297c50ce691e46b6f4a2b802fa969e4651d7bf8b47393",
+      "size_bytes": 614,
+      "status": "passed"
+    },
+    "manifest_validation": {
+      "json_tool": {
+        "command": "python3 -m json.tool tools/reference-harness/specs/phase1/2025-moller-ew-double-box.golden-manifest.json",
+        "stderr": {
+          "path": "/tmp/autoibp_orch/exec/lane152_manifest_json_tool.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        "stdout": {
+          "note": "Hash intentionally omitted because the pretty-printed JSON includes this manifest field and would be self-referential.",
+          "path": "/tmp/autoibp_orch/exec/lane152_manifest_json_tool.stdout"
+        },
+        "status": "passed"
+      },
+      "no_false_m6_promotion_guard": {
+        "path": "/tmp/autoibp_orch/exec/lane152_no_false_m6_promotion_guard.stdout",
+        "sha256": "8941d9bf5124a478cf5429229b10eec5c45793a4ab4a7851cfc2fa5dea17151d",
+        "size_bytes": 35,
+        "status": "passed"
+      },
+      "phase1_schema_guard": {
+        "path": "/tmp/autoibp_orch/exec/lane152_manifest_phase1_schema_guard.stdout",
+        "sha256": "6a0b3d5702fd65fcad6e84f308b230536aec2d55eacb2c3e71efcd09289364ba",
+        "size_bytes": 27,
+        "status": "passed"
+      },
+      "scaffold_only_guard": {
+        "path": "/tmp/autoibp_orch/exec/lane152_manifest_scaffold_guard.stdout",
+        "sha256": "e8adf7c020a0ae0ae9d2accfc4917ec179fb7014645e16ef36505d734ffeaabe",
+        "size_bytes": 27,
+        "status": "passed"
+      }
+    },
+    "prior_parity_hash": {
+      "current_sha256": "47630d96301c9db54e52b5bc71b4d8ebf696ebd0a744690bd0af24769b3e855b",
+      "head_sha256": "47630d96301c9db54e52b5bc71b4d8ebf696ebd0a744690bd0af24769b3e855b",
+      "path": "tools/reference-harness/specs/m7/lane133/phase0-packet-comparison.json",
+      "status": "unchanged"
+    },
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "runtime_transport": {
+      "eta_infinity_asymptotic_transport_applied": false,
+      "eta_zero_endpoint_transport_applied": false,
+      "transport_applied": false
+    },
+    "singular_runtime_lane_tests": {
+      "command": "./build/singular-runtime-lane-tests",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane152_singular_runtime_lane_tests.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane152_singular_runtime_lane_tests.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "status": "passed"
+    },
+    "verification_output": {
+      "chop_pre_digits": 40,
+      "coefficient_count": 18,
+      "coefficient_powers": [
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "max_abs_imaginary_component": "0",
+      "min_nonzero_precision": "80.",
+      "min_precision": "80.",
+      "nonzero_coefficient_count": 9,
+      "precision_goal_digits": 80,
+      "solution_rule_count": 12,
+      "target_nonzero_counts": [
+        3,
+        3,
+        3
+      ],
+      "verified_target_rule_count": 3,
+      "verifier_status": "PASS"
+    }
+  }
+}

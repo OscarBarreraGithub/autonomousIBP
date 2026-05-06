@@ -1,6 +1,7 @@
 #include <array>
 #include <algorithm>
 #include <chrono>
+#include <complex>
 #include <cmath>
 #include <cctype>
 #include <iomanip>
@@ -2102,6 +2103,8 @@ bool NearlyEqual(const BigFloat& lhs, const BigFloat& rhs) {
   return abs(lhs - rhs) < BigFloat("1e-60");
 }
 
+BigComplex RealBigComplex(const BigFloat& value);
+
 std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
                                          const std::string& name) {
   const auto it = spec.boundary_state_raw_files.find(name);
@@ -2645,6 +2648,674 @@ std::map<std::string, BigComplex> ParseAmflowNumericSubstitutionsAsComplex(
     return substitutions;
   }
   throw std::runtime_error("AMFlow config does not carry a Numeric substitution list");
+}
+
+struct ComplexEtaPolynomial {
+  std::vector<BigComplex> coefficients;
+};
+
+void PruneComplexEtaPolynomial(ComplexEtaPolynomial& polynomial) {
+  while (!polynomial.coefficients.empty() &&
+         IsTiny(polynomial.coefficients.back())) {
+    polynomial.coefficients.pop_back();
+  }
+}
+
+ComplexEtaPolynomial MakeConstantComplexEtaPolynomial(const BigComplex& value) {
+  ComplexEtaPolynomial polynomial;
+  if (!IsTiny(value)) {
+    polynomial.coefficients.push_back(value);
+  }
+  return polynomial;
+}
+
+ComplexEtaPolynomial MakeEtaVariablePolynomial() {
+  ComplexEtaPolynomial polynomial;
+  polynomial.coefficients.resize(2);
+  polynomial.coefficients[1].real = 1;
+  return polynomial;
+}
+
+ComplexEtaPolynomial AddComplexEtaPolynomials(ComplexEtaPolynomial lhs,
+                                              const ComplexEtaPolynomial& rhs,
+                                              const BigFloat& rhs_sign = BigFloat(1)) {
+  if (lhs.coefficients.size() < rhs.coefficients.size()) {
+    lhs.coefficients.resize(rhs.coefficients.size());
+  }
+  for (std::size_t index = 0; index < rhs.coefficients.size(); ++index) {
+    lhs.coefficients[index] = lhs.coefficients[index] +
+                              rhs.coefficients[index] * rhs_sign;
+  }
+  PruneComplexEtaPolynomial(lhs);
+  return lhs;
+}
+
+ComplexEtaPolynomial MultiplyComplexEtaPolynomials(
+    const ComplexEtaPolynomial& lhs,
+    const ComplexEtaPolynomial& rhs) {
+  if (lhs.coefficients.empty() || rhs.coefficients.empty()) {
+    return {};
+  }
+  ComplexEtaPolynomial product;
+  product.coefficients.assign(lhs.coefficients.size() + rhs.coefficients.size() - 1,
+                              BigComplex{});
+  for (std::size_t lhs_index = 0; lhs_index < lhs.coefficients.size();
+       ++lhs_index) {
+    for (std::size_t rhs_index = 0; rhs_index < rhs.coefficients.size();
+         ++rhs_index) {
+      product.coefficients[lhs_index + rhs_index] =
+          product.coefficients[lhs_index + rhs_index] +
+          lhs.coefficients[lhs_index] * rhs.coefficients[rhs_index];
+    }
+  }
+  PruneComplexEtaPolynomial(product);
+  return product;
+}
+
+struct ComplexEtaRationalPolynomial {
+  ComplexEtaPolynomial numerator;
+  ComplexEtaPolynomial denominator =
+      MakeConstantComplexEtaPolynomial(RealBigComplex(1));
+};
+
+ComplexEtaRationalPolynomial AddComplexEtaRationals(
+    const ComplexEtaRationalPolynomial& lhs,
+    const ComplexEtaRationalPolynomial& rhs,
+    const BigFloat& rhs_sign = BigFloat(1)) {
+  ComplexEtaRationalPolynomial result;
+  result.numerator = AddComplexEtaPolynomials(
+      MultiplyComplexEtaPolynomials(lhs.numerator, rhs.denominator),
+      MultiplyComplexEtaPolynomials(rhs.numerator, lhs.denominator),
+      rhs_sign);
+  result.denominator = MultiplyComplexEtaPolynomials(lhs.denominator, rhs.denominator);
+  return result;
+}
+
+ComplexEtaRationalPolynomial MultiplyComplexEtaRationals(
+    const ComplexEtaRationalPolynomial& lhs,
+    const ComplexEtaRationalPolynomial& rhs) {
+  ComplexEtaRationalPolynomial result;
+  result.numerator = MultiplyComplexEtaPolynomials(lhs.numerator, rhs.numerator);
+  result.denominator = MultiplyComplexEtaPolynomials(lhs.denominator, rhs.denominator);
+  return result;
+}
+
+ComplexEtaRationalPolynomial DivideComplexEtaRationals(
+    const ComplexEtaRationalPolynomial& lhs,
+    const ComplexEtaRationalPolynomial& rhs,
+    const std::string& expression) {
+  if (rhs.numerator.coefficients.empty()) {
+    throw std::runtime_error("complex eta rational parser divides by zero in \"" +
+                             expression + "\"");
+  }
+  ComplexEtaRationalPolynomial result;
+  result.numerator = MultiplyComplexEtaPolynomials(lhs.numerator, rhs.denominator);
+  result.denominator = MultiplyComplexEtaPolynomials(lhs.denominator, rhs.numerator);
+  return result;
+}
+
+ComplexEtaRationalPolynomial PowerComplexEtaRational(
+    const ComplexEtaRationalPolynomial& base,
+    int exponent,
+    const std::string& expression) {
+  ComplexEtaRationalPolynomial factor = base;
+  if (exponent < 0) {
+    std::swap(factor.numerator, factor.denominator);
+    exponent = -exponent;
+  }
+  ComplexEtaRationalPolynomial result;
+  result.numerator = MakeConstantComplexEtaPolynomial(RealBigComplex(1));
+  result.denominator = MakeConstantComplexEtaPolynomial(RealBigComplex(1));
+  for (int index = 0; index < exponent; ++index) {
+    result = MultiplyComplexEtaRationals(result, factor);
+  }
+  if (result.denominator.coefficients.empty()) {
+    throw std::runtime_error(
+        "complex eta rational parser produced an empty denominator in \"" +
+        expression + "\"");
+  }
+  return result;
+}
+
+class AmflowComplexEtaRationalParser {
+ public:
+  AmflowComplexEtaRationalParser(std::string expression,
+                                 std::map<std::string, BigComplex> bindings)
+      : expression_(NormalizeMathematicaNumericAtom(std::move(expression))),
+        bindings_(std::move(bindings)) {}
+
+  ComplexEtaRationalPolynomial Parse() {
+    if (expression_.empty()) {
+      throw std::runtime_error("complex eta rational parser received an empty input");
+    }
+    ComplexEtaRationalPolynomial value = ParseExpression();
+    if (position_ != expression_.size()) {
+      throw std::runtime_error("complex eta rational parser found trailing input in \"" +
+                               expression_ + "\"");
+    }
+    return value;
+  }
+
+ private:
+  bool Consume(const char expected) {
+    if (position_ < expression_.size() && expression_[position_] == expected) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  bool StartsPrimary() const {
+    if (position_ >= expression_.size()) {
+      return false;
+    }
+    const char character = expression_[position_];
+    return character == '(' ||
+           std::isdigit(static_cast<unsigned char>(character)) != 0 ||
+           character == '.' ||
+           std::isalpha(static_cast<unsigned char>(character)) != 0 ||
+           character == '_';
+  }
+
+  ComplexEtaRationalPolynomial ParseExpression() {
+    ComplexEtaRationalPolynomial value = ParseTerm();
+    while (position_ < expression_.size()) {
+      if (Consume('+')) {
+        value = AddComplexEtaRationals(value, ParseTerm());
+      } else if (Consume('-')) {
+        value = AddComplexEtaRationals(value, ParseTerm(), BigFloat(-1));
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  ComplexEtaRationalPolynomial ParseTerm() {
+    ComplexEtaRationalPolynomial value = ParsePower();
+    while (position_ < expression_.size()) {
+      if (Consume('*')) {
+        value = MultiplyComplexEtaRationals(value, ParsePower());
+      } else if (Consume('/')) {
+        value = DivideComplexEtaRationals(value, ParsePower(), expression_);
+      } else if (StartsPrimary()) {
+        value = MultiplyComplexEtaRationals(value, ParsePower());
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  ComplexEtaRationalPolynomial ParsePower() {
+    ComplexEtaRationalPolynomial value = ParseUnary();
+    if (Consume('^')) {
+      value = PowerComplexEtaRational(value, ParseSignedIntegerExponent(), expression_);
+    }
+    return value;
+  }
+
+  ComplexEtaRationalPolynomial ParseUnary() {
+    if (Consume('+')) {
+      return ParseUnary();
+    }
+    if (Consume('-')) {
+      ComplexEtaRationalPolynomial value = ParseUnary();
+      for (BigComplex& coefficient : value.numerator.coefficients) {
+        coefficient = BigComplex{} - coefficient;
+      }
+      return value;
+    }
+    return ParsePrimary();
+  }
+
+  int ParseSignedIntegerExponent() {
+    bool parenthesized = false;
+    if (Consume('(')) {
+      parenthesized = true;
+    }
+    bool negative = false;
+    if (Consume('+')) {
+      negative = false;
+    } else if (Consume('-')) {
+      negative = true;
+    }
+    if (position_ >= expression_.size() ||
+        std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+      throw std::runtime_error(
+          "complex eta rational parser requires integer exponents in \"" +
+          expression_ + "\"");
+    }
+    int exponent = 0;
+    while (position_ < expression_.size() &&
+           std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+      exponent = exponent * 10 + (expression_[position_] - '0');
+      ++position_;
+    }
+    if (parenthesized && !Consume(')')) {
+      throw std::runtime_error(
+          "complex eta rational parser expected ')' after exponent in \"" +
+          expression_ + "\"");
+    }
+    return negative ? -exponent : exponent;
+  }
+
+  ComplexEtaRationalPolynomial Constant(const BigComplex& value) const {
+    ComplexEtaRationalPolynomial result;
+    result.numerator = MakeConstantComplexEtaPolynomial(value);
+    result.denominator = MakeConstantComplexEtaPolynomial(RealBigComplex(1));
+    return result;
+  }
+
+  ComplexEtaRationalPolynomial ParsePrimary() {
+    if (Consume('(')) {
+      ComplexEtaRationalPolynomial value = ParseExpression();
+      if (!Consume(')')) {
+        throw std::runtime_error("complex eta rational parser expected ')' in \"" +
+                                 expression_ + "\"");
+      }
+      return value;
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '.')) {
+      const std::size_t begin = position_;
+      bool saw_digit = false;
+      while (position_ < expression_.size() &&
+             std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+        saw_digit = true;
+        ++position_;
+      }
+      if (Consume('.')) {
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          saw_digit = true;
+          ++position_;
+        }
+      }
+      if (!saw_digit) {
+        throw std::runtime_error(
+            "complex eta rational parser found malformed number in \"" +
+            expression_ + "\"");
+      }
+      if (position_ < expression_.size() &&
+          (expression_[position_] == 'e' || expression_[position_] == 'E')) {
+        ++position_;
+        if (position_ < expression_.size() &&
+            (expression_[position_] == '+' || expression_[position_] == '-')) {
+          ++position_;
+        }
+        if (position_ >= expression_.size() ||
+            std::isdigit(static_cast<unsigned char>(expression_[position_])) == 0) {
+          throw std::runtime_error(
+              "complex eta rational parser found malformed exponent in \"" +
+              expression_ + "\"");
+        }
+        while (position_ < expression_.size() &&
+               std::isdigit(static_cast<unsigned char>(expression_[position_])) != 0) {
+          ++position_;
+        }
+      }
+      BigComplex value;
+      value.real = BigFloat(expression_.substr(begin, position_ - begin));
+      return Constant(value);
+    }
+
+    if (position_ < expression_.size() &&
+        (std::isalpha(static_cast<unsigned char>(expression_[position_])) != 0 ||
+         expression_[position_] == '_')) {
+      const std::size_t begin = position_;
+      ++position_;
+      while (position_ < expression_.size() &&
+             (std::isalnum(static_cast<unsigned char>(expression_[position_])) != 0 ||
+              expression_[position_] == '_')) {
+        ++position_;
+      }
+      const std::string identifier = expression_.substr(begin, position_ - begin);
+      if (identifier == "I") {
+        BigComplex value;
+        value.imaginary = 1;
+        return Constant(value);
+      }
+      if (identifier == "eta") {
+        ComplexEtaRationalPolynomial result;
+        result.numerator = MakeEtaVariablePolynomial();
+        result.denominator = MakeConstantComplexEtaPolynomial(RealBigComplex(1));
+        return result;
+      }
+      const auto binding_it = bindings_.find(identifier);
+      if (binding_it == bindings_.end()) {
+        throw std::runtime_error("complex eta rational parser requires a binding for " +
+                                 identifier + " in \"" + expression_ + "\"");
+      }
+      return Constant(binding_it->second);
+    }
+
+    throw std::runtime_error("complex eta rational parser found malformed expression \"" +
+                             expression_ + "\"");
+  }
+
+  std::string expression_;
+  std::map<std::string, BigComplex> bindings_;
+  std::size_t position_ = 0;
+};
+
+ComplexEtaRationalPolynomial ParseComplexRationalEtaExpression(
+    const std::string& expression,
+    const std::map<std::string, BigComplex>& bindings) {
+  return AmflowComplexEtaRationalParser(expression, bindings).Parse();
+}
+
+int ComplexEtaPolynomialDegree(const ComplexEtaPolynomial& polynomial) {
+  for (std::size_t reverse_index = polynomial.coefficients.size();
+       reverse_index > 0;
+       --reverse_index) {
+    const std::size_t index = reverse_index - 1;
+    if (!IsTiny(polynomial.coefficients[index])) {
+      return static_cast<int>(index);
+    }
+  }
+  return -1;
+}
+
+std::complex<long double> ToLongDoubleComplex(const BigComplex& value) {
+  return {value.real.convert_to<long double>(),
+          value.imaginary.convert_to<long double>()};
+}
+
+BigFloat LongDoubleToBigFloat(const long double value) {
+  std::ostringstream stream;
+  stream << std::setprecision(30) << value;
+  return BigFloat(stream.str());
+}
+
+BigComplex FromLongDoubleComplex(const std::complex<long double>& value) {
+  return {LongDoubleToBigFloat(value.real()), LongDoubleToBigFloat(value.imag())};
+}
+
+std::vector<std::complex<long double>> PolynomialRootsDurandKerner(
+    const ComplexEtaPolynomial& polynomial) {
+  const int degree = ComplexEtaPolynomialDegree(polynomial);
+  if (degree <= 0) {
+    return {};
+  }
+  const std::complex<long double> leading =
+      ToLongDoubleComplex(polynomial.coefficients[static_cast<std::size_t>(degree)]);
+  if (std::abs(leading) == 0.0L) {
+    return {};
+  }
+  if (degree == 1) {
+    return {-ToLongDoubleComplex(polynomial.coefficients[0]) / leading};
+  }
+
+  std::vector<std::complex<long double>> normalized_coefficients(
+      static_cast<std::size_t>(degree));
+  long double radius = 1.0L;
+  for (int index = 0; index < degree; ++index) {
+    normalized_coefficients[static_cast<std::size_t>(index)] =
+        ToLongDoubleComplex(polynomial.coefficients[static_cast<std::size_t>(index)]) /
+        leading;
+    radius = std::max(
+        radius,
+        1.0L + std::abs(normalized_coefficients[static_cast<std::size_t>(index)]));
+  }
+
+  constexpr long double kPi = 3.141592653589793238462643383279502884L;
+  std::vector<std::complex<long double>> roots(static_cast<std::size_t>(degree));
+  for (int index = 0; index < degree; ++index) {
+    const long double angle =
+        2.0L * kPi * static_cast<long double>(index) /
+            static_cast<long double>(degree) +
+        0.37L;
+    roots[static_cast<std::size_t>(index)] =
+        std::polar(radius, angle);
+  }
+
+  auto evaluate = [&](const std::complex<long double>& eta_value) {
+    std::complex<long double> result = 1.0L;
+    for (int index = degree - 1; index >= 0; --index) {
+      result = result * eta_value +
+               normalized_coefficients[static_cast<std::size_t>(index)];
+    }
+    return result;
+  };
+
+  for (int iteration = 0; iteration < 400; ++iteration) {
+    long double max_delta = 0.0L;
+    for (int root_index = 0; root_index < degree; ++root_index) {
+      std::complex<long double> denominator = 1.0L;
+      for (int other_index = 0; other_index < degree; ++other_index) {
+        if (other_index == root_index) {
+          continue;
+        }
+        denominator *= roots[static_cast<std::size_t>(root_index)] -
+                       roots[static_cast<std::size_t>(other_index)];
+      }
+      if (std::abs(denominator) < 1e-36L) {
+        denominator += std::complex<long double>(1e-30L, 1e-30L);
+      }
+      const std::complex<long double> delta =
+          evaluate(roots[static_cast<std::size_t>(root_index)]) / denominator;
+      roots[static_cast<std::size_t>(root_index)] -= delta;
+      max_delta = std::max(max_delta, std::abs(delta));
+    }
+    if (max_delta < 1e-24L) {
+      break;
+    }
+  }
+  return roots;
+}
+
+std::string BigFloatCompactString(const BigFloat& raw_value,
+                                  const int precision_digits = 36) {
+  if (IsTiny(raw_value)) {
+    return "0";
+  }
+  std::ostringstream stream;
+  stream << std::setprecision(precision_digits) << raw_value;
+  std::string value = stream.str();
+  const std::size_t exponent = value.find('e');
+  const std::size_t dot = value.find('.');
+  if (dot != std::string::npos && exponent == std::string::npos) {
+    while (!value.empty() && value.back() == '0') {
+      value.pop_back();
+    }
+    if (!value.empty() && value.back() == '.') {
+      value.pop_back();
+    }
+  }
+  return value.empty() ? "0" : value;
+}
+
+std::string BigComplexCompactString(const BigComplex& value,
+                                    const int precision_digits = 30) {
+  const std::string real = BigFloatCompactString(value.real, precision_digits);
+  const std::string imaginary =
+      BigFloatCompactString(abs(value.imaginary), precision_digits);
+  if (IsTiny(value.imaginary)) {
+    return real;
+  }
+  if (IsTiny(value.real)) {
+    return (value.imaginary < 0 ? "-" : "") + imaginary + "*I";
+  }
+  return real + (value.imaginary < 0 ? " - " : " + ") + imaginary + "*I";
+}
+
+struct ComplexEtaPoleAudit {
+  BigComplex value;
+  int multiplicity = 0;
+  std::vector<std::string> sources;
+};
+
+bool SameComplexPole(const BigComplex& lhs, const BigComplex& rhs) {
+  return BigAbs(lhs - rhs) < BigFloat("1e-6");
+}
+
+void AddComplexEtaPole(std::vector<ComplexEtaPoleAudit>& poles,
+                       const BigComplex& value,
+                       const std::string& source) {
+  for (ComplexEtaPoleAudit& pole : poles) {
+    if (SameComplexPole(pole.value, value)) {
+      ++pole.multiplicity;
+      if (pole.sources.size() < 4) {
+        pole.sources.push_back(source);
+      }
+      return;
+    }
+  }
+  ComplexEtaPoleAudit pole;
+  pole.value = value;
+  pole.multiplicity = 1;
+  pole.sources.push_back(source);
+  poles.push_back(std::move(pole));
+}
+
+std::vector<ComplexEtaPoleAudit> ExtractComplexEtaPolesFromMatrix(
+    const DirectSolveSeriesSpec& spec,
+    const std::map<std::string, BigComplex>& numeric_substitutions) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("b61n complex-kinematics state is missing eta matrix");
+  }
+  std::map<std::string, BigComplex> bindings = numeric_substitutions;
+  BigComplex epsilon_binding;
+  if (!spec.boundary_epsilon_samples.empty()) {
+    epsilon_binding.real = ParseBigFloatRational(spec.boundary_epsilon_samples.front());
+  }
+  bindings["eps"] = epsilon_binding;
+
+  std::vector<ComplexEtaPoleAudit> poles;
+  const std::vector<std::vector<std::string>>& matrix = matrix_it->second;
+  for (std::size_t row_index = 0; row_index < matrix.size(); ++row_index) {
+    for (std::size_t column_index = 0; column_index < matrix[row_index].size();
+         ++column_index) {
+      const ComplexEtaRationalPolynomial rational =
+          ParseComplexRationalEtaExpression(matrix[row_index][column_index], bindings);
+      const int degree = ComplexEtaPolynomialDegree(rational.denominator);
+      if (degree <= 0) {
+        continue;
+      }
+      const std::vector<std::complex<long double>> roots =
+          PolynomialRootsDurandKerner(rational.denominator);
+      for (const std::complex<long double>& root : roots) {
+        AddComplexEtaPole(
+            poles,
+            FromLongDoubleComplex(root),
+            "eta_matrix[" + std::to_string(row_index) + "," +
+                std::to_string(column_index) + "]");
+      }
+    }
+  }
+  std::sort(poles.begin(),
+            poles.end(),
+            [](const ComplexEtaPoleAudit& lhs, const ComplexEtaPoleAudit& rhs) {
+              if (abs(lhs.value.real - rhs.value.real) > BigFloat("1e-30")) {
+                return lhs.value.real < rhs.value.real;
+              }
+              return lhs.value.imaginary < rhs.value.imaginary;
+            });
+  return poles;
+}
+
+struct ComplexEtaContourPlanAudit {
+  std::vector<ComplexEtaPoleAudit> poles;
+  std::vector<BigComplex> waypoints;
+  std::string half_plane;
+  std::string endpoint_local_model_kind;
+  std::string dropped_term_audit;
+  std::string contour_fingerprint;
+  BigFloat minimum_pole_distance_to_waypoints = 0;
+};
+
+BigFloat DistancePointToSegment(const BigComplex& point,
+                                const BigComplex& start,
+                                const BigComplex& end) {
+  const BigComplex segment = end - start;
+  const BigComplex offset = point - start;
+  const BigFloat length_squared =
+      segment.real * segment.real + segment.imaginary * segment.imaginary;
+  if (IsTiny(length_squared)) {
+    return BigAbs(offset);
+  }
+  BigFloat projection =
+      (offset.real * segment.real + offset.imaginary * segment.imaginary) /
+      length_squared;
+  if (projection < 0) {
+    projection = 0;
+  } else if (projection > 1) {
+    projection = 1;
+  }
+  const BigComplex closest =
+      start + BigComplex{segment.real * projection, segment.imaginary * projection};
+  return BigAbs(point - closest);
+}
+
+std::string SerializeComplexEtaContourPlanForFingerprint(
+    const ComplexEtaContourPlanAudit& plan) {
+  std::ostringstream out;
+  out << "kind=b61n-complex-kinematics-contour-plan\n";
+  out << "half_plane=" << plan.half_plane << "\n";
+  out << "waypoints=" << plan.waypoints.size() << "\n";
+  for (std::size_t index = 0; index < plan.waypoints.size(); ++index) {
+    out << "waypoint[" << index << "]="
+        << BigComplexCompactString(plan.waypoints[index], 40) << "\n";
+  }
+  out << "poles=" << plan.poles.size() << "\n";
+  for (std::size_t index = 0; index < plan.poles.size(); ++index) {
+    out << "pole[" << index << "]="
+        << BigComplexCompactString(plan.poles[index].value, 40)
+        << ";multiplicity=" << plan.poles[index].multiplicity << "\n";
+  }
+  out << "endpoint_local_model_kind=" << plan.endpoint_local_model_kind << "\n";
+  out << "dropped_term_audit=" << plan.dropped_term_audit << "\n";
+  return out.str();
+}
+
+ComplexEtaContourPlanAudit BuildComplexEtaContourPlanAudit(
+    const DirectSolveSeriesSpec& spec,
+    const std::map<std::string, BigComplex>& numeric_substitutions) {
+  ComplexEtaContourPlanAudit plan;
+  plan.half_plane = "lower";
+  plan.poles = ExtractComplexEtaPolesFromMatrix(spec, numeric_substitutions);
+
+  BigFloat max_pole_radius = 1;
+  for (const ComplexEtaPoleAudit& pole : plan.poles) {
+    max_pole_radius = std::max(max_pole_radius, BigAbs(pole.value));
+  }
+  const BigFloat dynamic_radius = max_pole_radius * BigFloat(2) + BigFloat(16);
+  const BigFloat start_radius =
+      dynamic_radius > BigFloat(64) ? dynamic_radius : BigFloat(64);
+  plan.waypoints = {
+      BigComplex{0, -start_radius},
+      BigComplex{0, -(start_radius / 4)},
+      BigComplex{0, -1},
+      BigComplex{0, BigFloat("-0.0625")},
+      BigComplex{0, 0},
+  };
+
+  std::optional<BigFloat> minimum_distance;
+  for (const ComplexEtaPoleAudit& pole : plan.poles) {
+    for (std::size_t index = 1; index < plan.waypoints.size(); ++index) {
+      const BigFloat distance =
+          DistancePointToSegment(pole.value,
+                                 plan.waypoints[index - 1],
+                                 plan.waypoints[index]);
+      minimum_distance = minimum_distance.has_value()
+                             ? std::min(*minimum_distance, distance)
+                             : std::optional<BigFloat>{distance};
+    }
+  }
+  plan.minimum_pole_distance_to_waypoints =
+      minimum_distance.has_value() ? *minimum_distance : BigFloat(0);
+  plan.endpoint_local_model_kind = "regular-taylor-r0";
+  plan.dropped_term_audit =
+      "regular eta=0 endpoint: PickZero-equivalent extraction would select the "
+      "eta^0 term after live contour propagation; no singular branch term is "
+      "available to drop in this matrix slice";
+  plan.contour_fingerprint =
+      amflow::ComputeArtifactFingerprint(SerializeComplexEtaContourPlanForFingerprint(plan));
+  return plan;
 }
 
 class RealBoundaryExpressionParser {
@@ -3828,8 +4499,16 @@ struct ComplexKinematicsContourScaffoldAudit {
   std::size_t matrix_row_count = 0;
   std::size_t matrix_column_count = 0;
   std::size_t matrix_nonzero_cell_count = 0;
+  std::size_t complex_pole_count = 0;
+  std::size_t contour_waypoint_count = 0;
   bool final_solution_samples_used_as_input = false;
   std::string complex_mass_symbol;
+  std::string half_plane;
+  std::string contour_fingerprint;
+  std::string endpoint_local_model_kind;
+  std::string dropped_term_audit;
+  std::string pole_summary;
+  std::string waypoint_summary;
   std::string summary;
 };
 
@@ -3898,13 +4577,56 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
     }
   }
 
+  const ComplexEtaContourPlanAudit contour_plan =
+      BuildComplexEtaContourPlanAudit(spec, numeric_substitutions);
+  if (contour_plan.poles.empty()) {
+    throw std::runtime_error(
+        "b61n complex-kinematics eta matrix pole extraction produced no complex poles");
+  }
+  const bool endpoint_has_pole =
+      std::any_of(contour_plan.poles.begin(),
+                  contour_plan.poles.end(),
+                  [](const ComplexEtaPoleAudit& pole) {
+                    return BigAbs(pole.value) < BigFloat("1e-18");
+                  });
+  if (endpoint_has_pole) {
+    throw std::runtime_error(
+        "b61n complex-kinematics eta=0 endpoint is singular in the extracted "
+        "rational matrix; the current regular-endpoint scaffold must fail closed");
+  }
+
+  std::ostringstream pole_summary;
+  for (std::size_t index = 0; index < contour_plan.poles.size(); ++index) {
+    if (index != 0) {
+      pole_summary << "; ";
+    }
+    pole_summary << BigComplexCompactString(contour_plan.poles[index].value, 24)
+                 << " (multiplicity "
+                 << contour_plan.poles[index].multiplicity << ")";
+  }
+  std::ostringstream waypoint_summary;
+  for (std::size_t index = 0; index < contour_plan.waypoints.size(); ++index) {
+    if (index != 0) {
+      waypoint_summary << " -> ";
+    }
+    waypoint_summary << BigComplexCompactString(contour_plan.waypoints[index], 24);
+  }
+
   ComplexKinematicsContourScaffoldAudit audit;
   audit.numeric_substitution_count = numeric_substitutions.size();
   audit.matrix_row_count = matrix.size();
   audit.matrix_column_count = spec.masters.size();
   audit.matrix_nonzero_cell_count = nonzero_cell_count;
+  audit.complex_pole_count = contour_plan.poles.size();
+  audit.contour_waypoint_count = contour_plan.waypoints.size();
   audit.final_solution_samples_used_as_input = false;
   audit.complex_mass_symbol = "m3sq";
+  audit.half_plane = contour_plan.half_plane;
+  audit.contour_fingerprint = contour_plan.contour_fingerprint;
+  audit.endpoint_local_model_kind = contour_plan.endpoint_local_model_kind;
+  audit.dropped_term_audit = contour_plan.dropped_term_audit;
+  audit.pole_summary = pole_summary.str();
+  audit.waypoint_summary = waypoint_summary.str();
   audit.summary =
       " b61n complex-kinematics eta=0 contour scaffold parsed " +
       std::to_string(audit.numeric_substitution_count) +
@@ -3913,10 +4635,21 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
       std::to_string(audit.matrix_column_count) +
       " complex eta matrix at the endpoint with " +
       std::to_string(audit.matrix_nonzero_cell_count) +
-      " nonzero cell(s), preserved complex mass m3sq, and confirmed "
-      "final_solution_samples_used_as_input=false. Live complex contour propagation, "
-      "eta=0 local-model construction, and PickZero-equivalent extraction remain "
-      "deferred; full_eta_zero_contour_applied stays false.";
+      " nonzero cell(s), preserved complex mass m3sq, extracted " +
+      std::to_string(audit.complex_pole_count) +
+      " unique complex eta-matrix pole(s), and built a deterministic " +
+      audit.half_plane + "-half-plane contour plan with " +
+      std::to_string(audit.contour_waypoint_count) +
+      " waypoint(s). complex_poles=[" + audit.pole_summary +
+      "]; contour_waypoints=[" + audit.waypoint_summary +
+      "]; contour_fingerprint=" + audit.contour_fingerprint +
+      "; endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+      "; dropped_term_audit=\"" + audit.dropped_term_audit +
+      "\"; minimum_pole_distance_to_contour=" +
+      BigFloatCompactString(contour_plan.minimum_pole_distance_to_waypoints, 24) +
+      "; final_solution_samples_used_as_input=false. Live high-precision "
+      "eta-infinity-to-eta=0 ODE propagation and Laurent fitting remain deferred; "
+      "full_eta_zero_contour_applied stays false.";
   return audit;
 }
 

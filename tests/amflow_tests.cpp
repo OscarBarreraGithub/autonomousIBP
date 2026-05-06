@@ -49153,11 +49153,32 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "validated the 7x7 complex eta matrix",
                  "partial b61n scaffold should exercise the complex eta matrix parser");
   ExpectContains(stripped_json,
+                 "extracted 6 unique complex eta-matrix pole",
+                 "partial b61n scaffold should extract the complex eta pole list");
+  ExpectContains(stripped_json,
+                 "complex_poles=[-486.442201567",
+                 "partial b61n scaffold should publish the first complex pole");
+  ExpectContains(stripped_json,
+                 "1.5 + 1*I",
+                 "partial b61n scaffold should publish the positive-real complex pole");
+  ExpectContains(stripped_json,
+                 "lower-half-plane contour plan with 5 waypoint",
+                 "partial b61n scaffold should build a lower-half-plane contour plan");
+  ExpectContains(stripped_json,
+                 "contour_fingerprint=",
+                 "partial b61n scaffold should fingerprint the planned contour");
+  ExpectContains(stripped_json,
+                 "endpoint_local_model_kind=regular-taylor-r0",
+                 "partial b61n scaffold should classify the eta=0 endpoint local model");
+  ExpectContains(stripped_json,
+                 "dropped_term_audit=\\\"regular eta=0 endpoint",
+                 "partial b61n scaffold should record the PickZero-equivalent audit");
+  ExpectContains(stripped_json,
                  "final_solution_samples_used_as_input=false",
                  "partial b61n scaffold should audit that final solution samples were not used");
   ExpectContains(stripped_json,
-                 "Live complex contour propagation, eta=0 local-model construction, and "
-                 "PickZero-equivalent extraction remain deferred",
+                 "Live high-precision eta-infinity-to-eta=0 ODE propagation and Laurent "
+                 "fitting remain deferred",
                  "partial b61n scaffold should document the exact remaining runtime gap");
   ExpectContains(stripped_json,
                  "full_eta_zero_contour_applied stays false",

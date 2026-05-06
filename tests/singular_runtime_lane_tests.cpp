@@ -4,6 +4,7 @@
 #include "amflow/runtime/continuation_path.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/endpoint_local_model.hpp"
+#include "amflow/runtime/lightlike_propagator.hpp"
 #include "amflow/solver/series_solver.hpp"
 
 #include <exception>
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -972,6 +974,241 @@ void B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest() {
       "b63n scaffold should not recognize a reviewed surface after a mass-field mutation");
 }
 
+amflow::TargetIntegral B64agTarget(std::vector<int> indices) {
+  return amflow::TargetIntegral{"gauge", std::move(indices)};
+}
+
+amflow::MasterIntegral B64agMaster(std::vector<int> indices) {
+  amflow::MasterIntegral master;
+  master.family = "gauge";
+  master.indices = std::move(indices);
+  return master;
+}
+
+std::vector<amflow::TargetIntegral> B64agReviewedTargets() {
+  return {
+      B64agTarget({1, 1, 1, 1, 1, 0, -1, 0, 0}),
+      B64agTarget({1, 1, 1, 1, 1, 0, 0, -1, 0}),
+      B64agTarget({1, 1, 1, 1, 1, 0, 0, 0, -1}),
+      B64agTarget({1, 1, 1, 0, 1, 0, 0, 0, 0}),
+      B64agTarget({1, 1, 1, -1, 1, 0, 0, 0, 0}),
+      B64agTarget({0, 1, 1, 1, 1, 0, 0, 0, 0}),
+      B64agTarget({0, 1, 1, 1, 1, -1, 0, 0, 0}),
+      B64agTarget({1, 1, 1, 1, 1, 0, 0, 0, 0}),
+      B64agTarget({1, 1, 1, 1, 1, -1, 0, 0, 0}),
+  };
+}
+
+std::vector<amflow::MasterIntegral> B64agReviewedReductionMasters() {
+  return {
+      B64agMaster({1, 1, 1, 0, 1, 0, 0, 0, 0}),
+      B64agMaster({1, 1, 1, -1, 1, 0, 0, 0, 0}),
+      B64agMaster({0, 1, 1, 1, 1, 0, 0, 0, 0}),
+      B64agMaster({0, 1, 1, 1, 1, -1, 0, 0, 0}),
+      B64agMaster({1, 1, 1, 1, 1, 0, 0, 0, 0}),
+      B64agMaster({1, 1, 1, 1, 1, -1, 0, 0, 0}),
+  };
+}
+
+amflow::ProblemSpec MakeB64agGaugeLinkProblemSpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "gauge";
+  spec.family.loop_momenta = {"l1", "l2", "l3"};
+  spec.family.propagators = {
+      amflow::Propagator("l1^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("l3^2"),
+      amflow::Propagator("1 + l1*n"),
+      amflow::Propagator("1/2 + l1*n + l2*n + l3*n"),
+      amflow::Propagator("l1^2 + 2*l1*l2 + l2^2"),
+      amflow::Propagator("l1^2 + 2*l1*l3 + l3^2"),
+      amflow::Propagator("l2^2 + 2*l2*l3 + l3^2"),
+      amflow::Propagator("-1 + l2^2 + 2*l2*n"),
+  };
+  spec.kinematics.incoming_momenta = {"n"};
+  spec.kinematics.scalar_product_rules = {{"n^2", "-1"}};
+  spec.kinematics.invariants = {"n2"};
+  spec.targets = B64agReviewedTargets();
+  return spec;
+}
+
+amflow::LightlikeGaugeLinkRuntimeState MakeB64agGaugeLinkRuntimeState() {
+  amflow::LightlikeGaugeLinkRuntimeState state;
+  state.amflow_state_input = true;
+  state.solution_sample_cache_enabled = true;
+  state.benchmark_id = "linear_propagator";
+  state.family = "gauge";
+  state.integral_kind = "loop";
+  state.variable = "gaugex";
+  state.start_location = "gaugex -> 1/40";
+  state.target_location = "gaugex=0";
+  state.boundary_state_kind = "amflow_finite_solution_samples";
+  state.boundary_point = "gaugex -> 1/40";
+  state.singular_points = {"gaugex=0"};
+  state.boundary_file_names = {"boundary", "diffeq", "reduction", "solution", "solve.wl"};
+  state.diffeq_variables = {"gaugex"};
+  state.epsilon_samples = {"101/208000", "51/104000"};
+  for (const amflow::TargetIntegral& target : B64agReviewedTargets()) {
+    state.masters.push_back(B64agMaster(target.indices));
+    state.targets.push_back(target);
+  }
+  state.reduction_masters = B64agReviewedReductionMasters();
+  state.diffeq_masters = B64agReviewedReductionMasters();
+  return state;
+}
+
+void B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest() {
+  const amflow::ProblemSpec spec = MakeB64agGaugeLinkProblemSpec();
+  const amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+
+  const amflow::LightlikeGaugeLinkTransportAudit audit =
+      amflow::BuildLightlikeGaugeLinkTransportScaffold(spec, state);
+
+  Expect(amflow::IsLightlikeGaugeLinkEtaZeroRuntimeState(state),
+         "b64ag scaffold should recognize the retained linear_propagator gaugex state");
+  Expect(audit.reviewed_surface,
+         "b64ag scaffold should recognize the exact gauge-link topology");
+  Expect(!audit.live_coefficients_available,
+         "b64ag scaffold must not claim live gauge-link endpoint coefficients");
+  Expect(!audit.runtime_scaffold_consumes_retained_solution_samples,
+         "b64ag scaffold must not consume retained final solution samples as runtime evidence");
+  Expect(audit.retained_solution_samples_available,
+         "b64ag audit should record that the retained legacy state still has solution samples");
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b64ag partial scaffold must keep the full eta-zero contour flag false");
+  Expect(!audit.ir_subtraction_applied,
+         "b64ag partial scaffold must not claim endpoint IR subtraction on coefficients");
+  Expect(audit.desolver_local_variable == "eta",
+         "b64ag audit should preserve the gaugex to DESolver eta naming bridge");
+  Expect(audit.affected_propagator_indices == std::vector<std::size_t>({3, 4}),
+         "b64ag GenerateSquare scaffold should mark D4,D5 as affected");
+  ExpectContains(audit.generated_square_propagators[3],
+                 "(1 + l1*n)/gaugex",
+                 "b64ag GenerateSquare scaffold should rewrite the first linear denominator");
+  ExpectContains(audit.generated_square_propagators[4],
+                 "(1/2 + l1*n + l2*n + l3*n)/gaugex",
+                 "b64ag GenerateSquare scaffold should rewrite the second linear denominator");
+  Expect(audit.target_normalizations.size() == 9,
+         "b64ag audit should cover the retained nine-target packet surface");
+  Expect(audit.target_normalizations.front().normalization_factor == "gaugex^(-2)",
+         "b64ag target normalization should apply the reviewed affected-power exponent");
+  Expect(audit.target_normalizations[4].normalization_factor == "1",
+         "b64ag target normalization should preserve zero affected-power sums");
+  Expect(audit.diffeq_masters_cover_reduction_masters,
+         "b64ag state should audit that DE masters contain reduced masters");
+  ExpectContains(audit.coefficient_gap,
+                 "Live gauge-link endpoint coefficients are not implemented",
+                 "b64ag scaffold should explicitly report the remaining coefficient gap");
+}
+
+void B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest() {
+  amflow::ProblemSpec spec = MakeB64agGaugeLinkProblemSpec();
+  spec.kinematics.scalar_product_rules = {{"n^2", "0"}};
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildLightlikeGaugeLinkSquareFamily(spec));
+      },
+      "requires AMFlow replacement n^2 -> -1",
+      "b64ag scaffold should not accept the older strict lightlike auxiliary surface");
+}
+
+void B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest() {
+  amflow::ProblemSpec spec = MakeB64agGaugeLinkProblemSpec();
+  spec.family.propagators[4].expression = "1/2 + l1*n + l2*n";
+
+  ExpectRuntimeErrorContains(
+      [&spec]() {
+        static_cast<void>(amflow::BuildLightlikeGaugeLinkSquareFamily(spec));
+      },
+      "rejects non-reviewed denominator",
+      "b64ag scaffold should fail closed on source denominator drift");
+}
+
+void B64agGaugeLinkRuntimeStateRejectsMissingBoundaryInputsTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.boundary_file_names = {"solution"};
+
+  Expect(!amflow::IsLightlikeGaugeLinkEtaZeroRuntimeState(state),
+         "b64ag runtime-state detection should reject solution-only retained states");
+  ExpectRuntimeErrorContains(
+      [&state]() {
+        static_cast<void>(amflow::BuildLightlikeGaugeLinkTransportScaffold(
+            MakeB64agGaugeLinkProblemSpec(),
+            state));
+      },
+      "non-linear_propagator gaugex=0 state",
+      "b64ag scaffold should fail closed when raw boundary/diffeq/reduction inputs are absent");
+}
+
+void B64agGaugeLinkRuntimeStateRejectsMasterSetDriftTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.diffeq_masters.pop_back();
+
+  ExpectRuntimeErrorContains(
+      [&state]() {
+        static_cast<void>(amflow::BuildLightlikeGaugeLinkTransportScaffold(
+            MakeB64agGaugeLinkProblemSpec(),
+            state));
+      },
+      "master_set_instability",
+      "b64ag scaffold should use the reviewed fail-closed code for DE master drift");
+}
+
+void B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest() {
+  const amflow::LightlikeGaugeLinkFinitePartResult result =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer", -2, 0, "singular_-2"},
+          {"integer", -1, 0, "singular_-1"},
+          {"integer", 0, 0, "finite"},
+      });
+
+  Expect(result.success,
+         "b64ag finite-part helper should accept the single integer-region subset");
+  Expect(result.ir_subtraction_applied,
+         "b64ag finite-part helper should record finite-part subtraction");
+  Expect(result.finite_part_coefficient == "finite",
+         "b64ag finite-part helper should select the power-zero coefficient");
+  Expect(result.dropped_singular_terms.size() == 2,
+         "b64ag finite-part helper should audit dropped singular endpoint powers");
+}
+
+void B64agGaugeLinkFinitePartRejectsMultipleRegionsTest() {
+  const amflow::LightlikeGaugeLinkFinitePartResult result =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer-region-a", 0, 0, "a"},
+          {"integer-region-b", 0, 0, "b"},
+      });
+
+  Expect(!result.success,
+         "b64ag finite-part helper should fail closed on multiple endpoint regions");
+  Expect(result.failure_code == "continuation_budget_exhausted",
+         "b64ag multiple-region rejection should use the reviewed continuation failure code");
+  ExpectContains(result.summary,
+                 "multiple integer endpoint regions",
+                 "b64ag finite-part rejection should explain the unsupported structure");
+}
+
+void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
+  const amflow::LightlikeGaugeLinkFinitePartResult positive_only =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer", 2, 0, "positive"},
+      });
+  const amflow::LightlikeGaugeLinkFinitePartResult missing_zero =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer", -1, 0, "singular"},
+      });
+
+  Expect(!positive_only.success && !missing_zero.success,
+         "b64ag finite-part helper should not publish implicit zero coefficients");
+  Expect(positive_only.failure_code == "continuation_budget_exhausted" &&
+             missing_zero.failure_code == "continuation_budget_exhausted",
+         "b64ag implicit-zero cases should fail with the reviewed continuation code");
+  Expect(positive_only.finite_part_coefficient.empty() &&
+             missing_zero.finite_part_coefficient.empty(),
+         "b64ag implicit-zero cases should not populate coefficient strings");
+}
+
 }  // namespace
 
 int main() {
@@ -1004,6 +1241,14 @@ int main() {
     B63nCutkoskyTransportScaffoldRejectsNonUnitCutPowersTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest();
+    B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest();
+    B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest();
+    B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();
+    B64agGaugeLinkRuntimeStateRejectsMissingBoundaryInputsTest();
+    B64agGaugeLinkRuntimeStateRejectsMasterSetDriftTest();
+    B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
+    B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
+    B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

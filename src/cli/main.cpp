@@ -33,6 +33,7 @@
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
+#include "amflow/runtime/lightlike_propagator.hpp"
 #include "amflow/solver/series_solver.hpp"
 
 namespace {
@@ -412,6 +413,9 @@ struct DirectSolveSeriesSpec {
   std::string finite_source_variable;
   std::string finite_solution_basis_reduction_path;
   std::string target_reduction_path;
+  std::string gauge_link_boundary_point;
+  std::vector<amflow::MasterIntegral> gauge_link_diffeq_masters;
+  std::vector<std::string> gauge_link_diffeq_variables;
   std::vector<int> phase_space_prescription;
   std::vector<int> phase_space_cut;
 };
@@ -419,6 +423,7 @@ struct DirectSolveSeriesSpec {
 std::string RemoveAsciiSpaces(std::string value);
 bool HasBoundaryRawFile(const DirectSolveSeriesSpec& spec, const std::string& name);
 bool IsComplexKinematicsFullEtaZeroContourState(const DirectSolveSeriesSpec& spec);
+bool IsB64agLightlikeGaugeLinkRuntimeState(const DirectSolveSeriesSpec& spec);
 
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
                                    const std::string& message) {
@@ -899,6 +904,7 @@ void ValidateDirectSolveSeriesSpec(const DirectSolveSeriesSpec& spec) {
     throw std::invalid_argument("solve_series.masters must not be empty");
   }
   if (!(spec.amflow_state_input && spec.retained_solution_samples_input) &&
+      !IsB64agLightlikeGaugeLinkRuntimeState(spec) &&
       spec.coefficient_matrices.find(spec.variable) == spec.coefficient_matrices.end()) {
     throw std::invalid_argument("solve_series.coefficient_matrices must include variable " +
                                 spec.variable);
@@ -1581,6 +1587,21 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
     spec.boundary_state_raw_files =
         ParseAmflowStateBoundaryRawFiles(*files, path + ".boundary_state.files");
   }
+  if (const CliJsonValue* gauge_link = FindJsonField(root, "gauge_link")) {
+    RequireJsonObject(*gauge_link, path + ".gauge_link");
+    spec.gauge_link_boundary_point =
+        OptionalJsonStringField(*gauge_link, "boundary_point", "");
+    if (const CliJsonValue* diffeq_variables = FindJsonField(*gauge_link,
+                                                             "diffeq_variables")) {
+      spec.gauge_link_diffeq_variables =
+          RequireJsonStringArray(*diffeq_variables, path + ".gauge_link.diffeq_variables");
+    }
+    if (const CliJsonValue* diffeq_masters = FindJsonField(*gauge_link,
+                                                           "diffeq_masters")) {
+      spec.gauge_link_diffeq_masters =
+          ParseAmflowStateMasters(*diffeq_masters, path + ".gauge_link.diffeq_masters");
+    }
+  }
 
   std::vector<amflow::MasterIntegral> phase_space_output_masters;
   if (const CliJsonValue* phase_space = FindJsonField(root, "phase_space")) {
@@ -1652,7 +1673,12 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
         HasBoundaryRawFile(spec, "boundary") && HasBoundaryRawFile(spec, "boundarymi") &&
         HasBoundaryRawFile(spec, "bpattern") && HasBoundaryRawFile(spec, "direction") &&
         HasBoundaryRawFile(spec, "epslist");
-    if (b61n_contour_scaffold_can_run_without_solution) {
+    const bool b64ag_gauge_link_scaffold_can_run_without_solution =
+        IsB64agLightlikeGaugeLinkRuntimeState(spec) &&
+        HasBoundaryRawFile(spec, "boundary") && HasBoundaryRawFile(spec, "diffeq") &&
+        HasBoundaryRawFile(spec, "reduction") && HasBoundaryRawFile(spec, "solve.wl");
+    if (b61n_contour_scaffold_can_run_without_solution ||
+        b64ag_gauge_link_scaffold_can_run_without_solution) {
       spec.retained_solution_samples_input = false;
     } else {
       throw std::invalid_argument(
@@ -3721,6 +3747,44 @@ bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
 bool HasBoundaryRawFile(const DirectSolveSeriesSpec& spec, const std::string& name) {
   const auto it = spec.boundary_state_raw_files.find(name);
   return it != spec.boundary_state_raw_files.end() && !it->second.empty();
+}
+
+std::vector<std::string> BoundaryRawFileNames(const DirectSolveSeriesSpec& spec) {
+  std::vector<std::string> names;
+  names.reserve(spec.boundary_state_raw_files.size());
+  for (const auto& [name, _] : spec.boundary_state_raw_files) {
+    names.push_back(name);
+  }
+  return names;
+}
+
+amflow::LightlikeGaugeLinkRuntimeState MakeLightlikeGaugeLinkRuntimeState(
+    const DirectSolveSeriesSpec& spec) {
+  amflow::LightlikeGaugeLinkRuntimeState state;
+  state.amflow_state_input = spec.amflow_state_input;
+  state.solution_sample_cache_enabled = spec.retained_solution_samples_input;
+  state.benchmark_id = spec.benchmark_id;
+  state.family = spec.family;
+  state.integral_kind = spec.integral_kind;
+  state.variable = spec.variable;
+  state.start_location = spec.start_location;
+  state.target_location = spec.target_location;
+  state.boundary_state_kind = spec.boundary_state_kind;
+  state.boundary_point = spec.gauge_link_boundary_point;
+  state.singular_points = spec.singular_points;
+  state.boundary_file_names = BoundaryRawFileNames(spec);
+  state.diffeq_variables = spec.gauge_link_diffeq_variables;
+  state.epsilon_samples = spec.boundary_epsilon_samples;
+  state.masters = spec.masters;
+  state.reduction_masters = spec.retained_reduction_masters;
+  state.diffeq_masters = spec.gauge_link_diffeq_masters;
+  state.targets = spec.targets;
+  return state;
+}
+
+bool IsB64agLightlikeGaugeLinkRuntimeState(const DirectSolveSeriesSpec& spec) {
+  return amflow::IsLightlikeGaugeLinkEtaZeroRuntimeState(
+      MakeLightlikeGaugeLinkRuntimeState(spec));
 }
 
 bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
@@ -6083,6 +6147,29 @@ amflow::SolverDiagnostics EvaluateAmflowStateRetainedSolutionSamples(
       }
     }
   }
+  if (IsB64agLightlikeGaugeLinkRuntimeState(direct_spec)) {
+    const amflow::LightlikeGaugeLinkTransportAudit audit =
+        amflow::BuildLightlikeGaugeLinkRetainedStateScaffold(
+            MakeLightlikeGaugeLinkRuntimeState(direct_spec));
+    diagnostics.summary += " " + audit.summary + " " + audit.coefficient_gap;
+  }
+  return diagnostics;
+}
+
+amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkRuntimeScaffold(
+    const DirectSolveSeriesSpec& direct_spec) {
+  const amflow::LightlikeGaugeLinkTransportAudit audit =
+      amflow::BuildLightlikeGaugeLinkRetainedStateScaffold(
+          MakeLightlikeGaugeLinkRuntimeState(direct_spec));
+
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = false;
+  diagnostics.failure_code = "boundary_unsolved";
+  diagnostics.summary =
+      audit.summary + " " +
+      "Finite boundary solve/replay, gaugex=0 endpoint transport, PickZeroRuleS "
+      "application, and Laurent fitting are still deferred in this partial scaffold; "
+      "full_eta_zero_contour_applied stays false.";
   return diagnostics;
 }
 
@@ -6907,6 +6994,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     const bool finite_transport_applied =
         IsFiniteSolutionSampleState(direct_spec) &&
         AppliesFiniteSolutionSampleTransport(direct_spec);
+    const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
     out << "  \"boundary_state\": {\n";
     out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
@@ -6943,7 +7031,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
                                  : "retained-asymptotic-subsystem-sample-boundary-evaluator")
-                          : "deferred-asymptotic-subsystem-sample-provider")
+                      : b64ag_gauge_link_state
+                          ? "deferred-b64ag-gauge-link-boundary-provider"
+                      : "deferred-asymptotic-subsystem-sample-provider")
         << "\n";
     out << "  },\n";
     out << "  \"continuation\": {\n";
@@ -7022,6 +7112,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                              ? "full complex eta-contour endpoint reconstruction remains "
                                "deferred after retained loop solution-sample coefficient "
                                "fitting"
+                         : b64ag_gauge_link_state
+                             ? "full gauge-link gaugex=0 endpoint transport remains deferred "
+                               "after retained gauge-link solution-sample coefficient fitting"
                          : finite_transport_applied
                              ? (direct_spec.finite_solution_basis_reduction_path.empty()
                                     ? "solution-only integrals outside the transported finite "
@@ -7034,6 +7127,9 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                "solution-sample ingestion")
                       : diagnostics.full_eta_zero_contour_applied
                           ? "none"
+                      : b64ag_gauge_link_state
+                          ? "finite boundary solve/replay, gaugex=0 endpoint transport, "
+                            "PickZeroRuleS application, and Laurent fitting remain deferred"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -7154,20 +7250,29 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
     }
     ValidateDirectSolveSeriesSpec(evaluation.direct_spec);
     if (evaluation.direct_spec.amflow_state_input) {
-      evaluation.diagnostics =
-          UsesRetainedSolutionSamples(evaluation.direct_spec)
-              ? EvaluateAmflowStateRetainedSolutionSamples(evaluation.direct_spec,
-                                                           epsilon_order)
-              : EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec,
-                                                       epsilon_order);
+      if (IsB64agLightlikeGaugeLinkRuntimeState(evaluation.direct_spec) &&
+          !UsesRetainedSolutionSamples(evaluation.direct_spec)) {
+        evaluation.diagnostics =
+            EvaluateLightlikeGaugeLinkRuntimeScaffold(evaluation.direct_spec);
+      } else {
+        evaluation.diagnostics =
+            UsesRetainedSolutionSamples(evaluation.direct_spec)
+                ? EvaluateAmflowStateRetainedSolutionSamples(evaluation.direct_spec,
+                                                             epsilon_order)
+                : EvaluateAmflowStateEtaInfinityBoundary(evaluation.direct_spec,
+                                                         epsilon_order);
+      }
       evaluation.retained_master_diagnostics = evaluation.diagnostics;
-      const bool applied_target_reduction =
-          ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
-                                                  evaluation.problem_spec.targets,
-                                                  evaluation.problem_spec.dimension,
-                                                  epsilon_order,
-                                                  evaluation.diagnostics,
-                                                  evaluation.error);
+      bool applied_target_reduction = false;
+      if (evaluation.diagnostics.success) {
+        applied_target_reduction =
+            ApplyDirectSpecTargetReductionIfPresent(evaluation.direct_spec,
+                                                    evaluation.problem_spec.targets,
+                                                    evaluation.problem_spec.dimension,
+                                                    epsilon_order,
+                                                    evaluation.diagnostics,
+                                                    evaluation.error);
+      }
       if (!evaluation.error.empty()) {
         evaluation.status = "failed";
         evaluation.exit_code = 2;
@@ -7367,6 +7472,7 @@ std::string SerializeSolveSeriesBundleJson(
     const bool finite_transport_applied =
         IsFiniteSolutionSampleState(direct_spec) &&
         AppliesFiniteSolutionSampleTransport(direct_spec);
+    const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
     out << "{"
         << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
         << ", \"amflow_output_name\": " << JsonString(direct_spec.amflow_output_name)
@@ -7404,7 +7510,9 @@ std::string SerializeSolveSeriesBundleJson(
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
                                  : "retained-asymptotic-subsystem-sample-boundary-evaluator")
-                          : "deferred-asymptotic-subsystem-sample-provider")
+                      : b64ag_gauge_link_state
+                          ? "deferred-b64ag-gauge-link-boundary-provider"
+                      : "deferred-asymptotic-subsystem-sample-provider")
         << "}, \"continuation\": {"
         << "\"variable\": " << JsonString(direct_spec.variable)
         << ", \"start_location\": " << JsonString(direct_spec.start_location)
@@ -7481,6 +7589,9 @@ std::string SerializeSolveSeriesBundleJson(
                              ? "full complex eta-contour endpoint reconstruction remains "
                                "deferred after retained loop solution-sample coefficient "
                                "fitting"
+                         : b64ag_gauge_link_state
+                             ? "full gauge-link gaugex=0 endpoint transport remains deferred "
+                               "after retained gauge-link solution-sample coefficient fitting"
                          : finite_transport_applied
                              ? (direct_spec.finite_solution_basis_reduction_path.empty()
                                     ? "solution-only integrals outside the transported finite "
@@ -7493,6 +7604,9 @@ std::string SerializeSolveSeriesBundleJson(
                                "solution-sample ingestion")
                       : diagnostics.full_eta_zero_contour_applied
                           ? "none"
+                      : b64ag_gauge_link_state
+                          ? "finite boundary solve/replay, gaugex=0 endpoint transport, "
+                            "PickZeroRuleS application, and Laurent fitting remain deferred"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? EndpointTransportDeferredReason(diagnostics)
                       : diagnostics.eta_asymptotic_transport_count > 0

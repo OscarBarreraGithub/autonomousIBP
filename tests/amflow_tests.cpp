@@ -49164,6 +49164,90 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "partial b61n scaffold should explicitly avoid overclaiming");
 }
 
+void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-linear-propagator-b64ag");
+  const std::filesystem::path source_state_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json";
+  const std::filesystem::path stripped_state_path = run_root / "linear-stripped.json";
+  const std::filesystem::path retained_output_path = run_root / "retained-result.json";
+  const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path strip_script_path = run_root / "strip_solution.py";
+
+  const std::string retained_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(source_state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(retained_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(retained_command) == 0,
+         "retained linear_propagator state should still evaluate retained samples; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string retained_json = ReadFile(retained_output_path);
+  ExpectContains(retained_json,
+                 "\"benchmark_id\": \"linear_propagator\"",
+                 "linear_propagator retained run should preserve benchmark identity");
+  ExpectContains(retained_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "b64ag retained run must not claim full gauge-link endpoint transport");
+  ExpectContains(retained_json,
+                 "b64ag gauge-link scaffold recognized the retained linear_propagator gaugex=0 "
+                 "state metadata",
+                 "b64ag retained run should append the partial scaffold audit");
+  ExpectContains(retained_json,
+                 "Live gauge-link endpoint coefficients are not implemented",
+                 "b64ag retained run should keep the coefficient gap visible");
+  ExpectContains(retained_json,
+                 "full gauge-link gaugex=0 endpoint transport remains deferred",
+                 "b64ag retained run should use the gauge-link blocked reason");
+
+  OverwriteTextFile(
+      strip_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["boundary_state"]["files"].pop("solution", None)
+payload.setdefault("solution_sample_cache", {})["enabled"] = True
+json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
+)PY");
+
+  const std::string strip_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(strip_script_path.string()) + " " +
+      ShellSingleQuote(source_state_path.string()) + " " +
+      ShellSingleQuote(stripped_state_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(strip_command) == 0,
+         "linear_propagator solution-strip fixture should be created; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string stripped_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(stripped_command) != 0,
+         "stripped b64ag state should fail closed until real endpoint residues are implemented");
+  const std::string stripped_json = ReadFile(stripped_output_path);
+  ExpectContains(stripped_json,
+                 "\"failure_code\": \"boundary_unsolved\"",
+                 "stripped b64ag state should fail with the reviewed missing-boundary code");
+  ExpectContains(stripped_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "stripped b64ag state must keep the full-contour flag false");
+  ExpectContains(stripped_json,
+                 "full_eta_zero_contour_applied stays false",
+                 "stripped b64ag state should explicitly avoid overclaiming");
+}
+
 void SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -55455,6 +55539,7 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
+    SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
     SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest();
     SolveSeriesCliUsesRetainedFiniteOutputSamplesAtBoundaryTest();

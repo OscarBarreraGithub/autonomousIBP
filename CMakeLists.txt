@@ -39,6 +39,7 @@ add_library(amflow
   src/runtime/endpoint_local_model.cpp
   src/runtime/eta_mode.cpp
   src/runtime/ending_scheme.cpp
+  src/runtime/lightlike_propagator.cpp
   src/runtime/physical_kinematics_guardrails.cpp
   src/solver/boundary_provider.cpp
   src/solver/boundary_request.cpp

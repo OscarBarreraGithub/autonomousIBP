@@ -39,6 +39,30 @@ void ExpectNotContains(const std::string& value,
   }
 }
 
+const amflow::CutkoskyPrefactorSeriesTerm& CutkoskyPrefactorTermAt(
+    const amflow::CutkoskyPrefactorSeries& series,
+    const int eps_order) {
+  for (const amflow::CutkoskyPrefactorSeriesTerm& term : series.terms) {
+    if (term.eps_order == eps_order) {
+      return term;
+    }
+  }
+  throw std::runtime_error("missing Cutkosky prefactor eps order " +
+                           std::to_string(eps_order));
+}
+
+const amflow::CutkoskyPrefactorSeriesTerm& CutkoskyLaurentTermAt(
+    const std::vector<amflow::CutkoskyPrefactorSeriesTerm>& series,
+    const int eps_order) {
+  for (const amflow::CutkoskyPrefactorSeriesTerm& term : series) {
+    if (term.eps_order == eps_order) {
+      return term;
+    }
+  }
+  throw std::runtime_error("missing Cutkosky Laurent eps order " +
+                           std::to_string(eps_order));
+}
+
 std::string ReadRepoFile(const std::string& path) {
   std::ifstream stream(path);
   if (!stream) {
@@ -861,6 +885,109 @@ amflow::ProblemSpec MakeB63nFeynmanPrescriptionSpec(
   spec.targets = {
       amflow::TargetIntegral{"loopxloop", {0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0}}};
   return spec;
+}
+
+void B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest() {
+  const amflow::CutkoskyPrefactorSeries k1 =
+      amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 3, 70);
+  Expect(k1.loop_count == 1 && k1.terms.size() == 4,
+         "b63n K_1 prefactor should emit the requested eps^0..eps^3 terms");
+  ExpectContains(k1.formula,
+                 "K_1(eps)",
+                 "b63n K_1 prefactor should retain the reviewed formula string");
+  ExpectContains(k1.source_reference,
+                 "AMFlow.m:941-950",
+                 "b63n prefactor should cite the reviewed AMFlow source lines");
+  ExpectContains(k1.precision_diagnostics,
+                 "requested_digits=70",
+                 "b63n prefactor should report requested precision");
+  ExpectContains(CutkoskyPrefactorTermAt(k1, 0).real,
+                 "1.266514795529222143048493290121595486",
+                 "b63n K_1 eps^0 coefficient should match the closed form");
+  ExpectContains(CutkoskyPrefactorTermAt(k1, 1).real,
+                 "3.205579656629814776052568833811351026",
+                 "b63n K_1 eps^1 coefficient should match the closed form");
+  ExpectContains(CutkoskyPrefactorTermAt(k1, 3).real,
+                 "3.422535285265455831395416287729280494",
+                 "b63n K_1 eps^3 coefficient should match the closed form");
+
+  const amflow::CutkoskyPrefactorSeries k2 =
+      amflow::BuildCutkoskyPrefactorEpsilonSeries(2, 0, 3, 70);
+  Expect(k2.loop_count == 2 && k2.terms.size() == 4,
+         "b63n K_2 prefactor should emit the requested eps^0..eps^3 terms");
+  ExpectContains(k2.formula,
+                 "K_2(eps)",
+                 "b63n K_2 prefactor should retain the reviewed formula string");
+  ExpectContains(CutkoskyPrefactorTermAt(k2, 0).real,
+                 "-8.020298636472136866525611927436479798",
+                 "b63n K_2 eps^0 coefficient should include the reviewed sign");
+  ExpectContains(CutkoskyPrefactorTermAt(k2, 1).real,
+                 "-4.059914063369143987574473963550411920",
+                 "b63n K_2 eps^1 coefficient should match the closed form");
+  ExpectContains(CutkoskyPrefactorTermAt(k2, 3).real,
+                 "-1.733876630803810708483436431638325963",
+                 "b63n K_2 eps^3 coefficient should match the closed form");
+
+  const amflow::CutkoskyPrefactorSeries kr =
+      amflow::BuildCutkoskyPrefactorEpsilonSeries(3, 0, 4, 70);
+  Expect(kr.loop_count == 3 && kr.terms.size() == 5,
+         "b63n generic K_r prefactor should emit the requested eps^0..eps^4 terms");
+  ExpectContains(kr.formula,
+                 "K_r(eps)",
+                 "b63n generic prefactor should retain the reviewed K_r formula string");
+  ExpectContains(CutkoskyPrefactorTermAt(kr, 0).real,
+                 "5.078913443827403789501160326729518709",
+                 "b63n K_r eps^0 coefficient should match the r=3 closed form");
+  ExpectContains(CutkoskyPrefactorTermAt(kr, 2).real,
+                 "1.464117517035159373273158303298927815",
+                 "b63n K_r eps^2 coefficient should match the r=3 closed form");
+  ExpectContains(CutkoskyPrefactorTermAt(kr, 4).real,
+                 "7.034444563119589252532449050178716610",
+                 "b63n K_r eps^4 coefficient should match the r=3 closed form");
+
+  const std::vector<amflow::CutkoskyPrefactorSeriesTerm> multiplied =
+      amflow::MultiplyCutkoskyPrefactorIntoLaurentSeries(
+          k1,
+          {{-1, "3", "0"}, {0, "5", "0"}},
+          -1,
+          1);
+  Expect(multiplied.size() == 3,
+         "b63n prefactor multiplication should preserve the explicit Laurent range");
+  ExpectContains(CutkoskyLaurentTermAt(multiplied, -1).real,
+                 "3.799544386587666429145479870364786458",
+                 "b63n prefactor multiplication should handle residue pole terms");
+  ExpectContains(CutkoskyLaurentTermAt(multiplied, 0).real,
+                 "1.594931294753555504340017295204203050",
+                 "b63n prefactor multiplication should convolve eps^0 terms");
+  ExpectContains(CutkoskyLaurentTermAt(multiplied, 1).real,
+                 "2.819799803793140591827277792660639686",
+                 "b63n prefactor multiplication should convolve eps^1 terms");
+
+  ExpectInvalidArgumentContains(
+      []() {
+        static_cast<void>(amflow::BuildCutkoskyPrefactorEpsilonSeries(0, 0, 2, 70));
+      },
+      "positive phase-volume loop count",
+      "b63n prefactor should reject r=0");
+  ExpectInvalidArgumentContains(
+      []() {
+        static_cast<void>(amflow::BuildCutkoskyPrefactorEpsilonSeries(1, -1, 2, 70));
+      },
+      "analytic at eps=0",
+      "b63n prefactor should not emit implicit negative-power zeros");
+  ExpectInvalidArgumentContains(
+      []() {
+        static_cast<void>(amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 2, 96));
+      },
+      "insufficient_precision",
+      "b63n prefactor should reject requests beyond its working precision");
+
+  const amflow::CutkoskyEtaZeroTransportAudit audit =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(MakeB63nAutomaticPhaseSpaceSpec());
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b63n prefactor primitive must not promote the full eta=0 contour flag");
+  Expect(!audit.retained_solution_samples_used,
+         "b63n prefactor primitive must not introduce final-solution sample input");
 }
 
 void B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest() {
@@ -1806,6 +1933,7 @@ int main() {
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
+    B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();

@@ -56,6 +56,27 @@ struct CutkoskyEtaZeroSelectionResult {
   std::string summary;
 };
 
+struct CutkoskyPrefactorSeriesTerm {
+  int eps_order = 0;
+  std::string real;
+  std::string imaginary = "0";
+};
+
+struct CutkoskyPrefactorSeries {
+  std::size_t loop_count = 0;
+  int min_eps_order = 0;
+  int max_eps_order = 0;
+  int requested_precision_digits = 0;
+  int working_precision_digits = 0;
+  std::string formula;
+  std::string expansion_variable = "eps";
+  std::string normalization_factor;
+  std::string exponential_scale;
+  std::string source_reference;
+  std::string precision_diagnostics;
+  std::vector<CutkoskyPrefactorSeriesTerm> terms;
+};
+
 struct CutkoskyEtaZeroTransportAudit {
   bool reviewed_surface = false;
   bool live_coefficients_available = false;
@@ -114,6 +135,20 @@ std::vector<CutkoskyEtaContourWaypoint> PlanCutkoskyEtaZeroContour(
     const CutkoskyResidueEndpointModel& model);
 CutkoskyEtaZeroSelectionResult PickCutkoskyEtaZeroTerm(
     const std::vector<CutkoskyEtaZeroTerm>& terms);
+// Reviewed AMFlow Cutkosky convention, see docs/theory/b63n-runtime-lane.md
+// and AMFlow.m:941-950: K_r(eps)=2*(-1)^(r+1)*
+// (Pi^(2-eps)*(2*Pi)^(2*eps-4))^r.
+CutkoskyPrefactorSeries BuildCutkoskyPrefactorEpsilonSeries(
+    std::size_t loop_count,
+    int min_eps_order,
+    int max_eps_order,
+    int requested_precision_digits = 80);
+std::vector<CutkoskyPrefactorSeriesTerm>
+MultiplyCutkoskyPrefactorIntoLaurentSeries(
+    const CutkoskyPrefactorSeries& prefactor,
+    const std::vector<CutkoskyPrefactorSeriesTerm>& residue_series,
+    int min_eps_order,
+    int max_eps_order);
 CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
     const ProblemSpec& spec);
 CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(

@@ -2,12 +2,18 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iomanip>
+#include <limits>
+#include <map>
 #include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+#include <boost/math/constants/constants.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 
 #include "amflow/core/boundary_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
@@ -18,6 +24,7 @@ namespace amflow {
 namespace {
 
 constexpr char kCutkoskyStrategy[] = "builtin::cutkosky-phase-space";
+using CutkoskyPrefactorFloat = boost::multiprecision::cpp_dec_float_100;
 
 std::string RemoveAsciiSpaces(std::string value) {
   value.erase(std::remove_if(value.begin(),
@@ -288,6 +295,46 @@ std::string CutkoskyPrefactorForLoopCount(const std::size_t loop_count) {
     return "K_2(eps) = -2*(Pi^(2-eps)*(2*Pi)^(2*eps-4))^2";
   }
   return "K_r(eps) = 2*(Pi^(2-eps)*(2*Pi)^(2*eps-4))^r*(-1)^(r+1)";
+}
+
+CutkoskyPrefactorFloat PositiveIntegerPower(CutkoskyPrefactorFloat base,
+                                            const std::size_t exponent) {
+  CutkoskyPrefactorFloat result = 1;
+  for (std::size_t index = 0; index < exponent; ++index) {
+    result *= base;
+  }
+  return result;
+}
+
+std::string FormatCutkoskyPrefactorFloat(const CutkoskyPrefactorFloat& value,
+                                         const int precision_digits) {
+  std::ostringstream out;
+  out << std::scientific << std::setprecision(precision_digits - 1) << value;
+  return out.str();
+}
+
+CutkoskyPrefactorFloat ParseCutkoskyPrefactorFloat(const std::string& value,
+                                                   const std::string& label) {
+  try {
+    return CutkoskyPrefactorFloat(value);
+  } catch (const std::exception& error) {
+    throw std::invalid_argument("b63n Cutkosky prefactor multiplication requires "
+                                "decimal numeric " +
+                                label + "; got `" + value + "` (" + error.what() + ")");
+  }
+}
+
+struct CutkoskyComplexCoefficient {
+  CutkoskyPrefactorFloat real = 0;
+  CutkoskyPrefactorFloat imaginary = 0;
+};
+
+CutkoskyComplexCoefficient ParseCutkoskySeriesTerm(
+    const CutkoskyPrefactorSeriesTerm& term,
+    const std::string& label) {
+  return {ParseCutkoskyPrefactorFloat(term.real, label + ".real"),
+          ParseCutkoskyPrefactorFloat(term.imaginary.empty() ? "0" : term.imaginary,
+                                      label + ".imaginary")};
 }
 
 std::string ContourHalfPlaneForDirection(const std::string& direction) {
@@ -752,6 +799,159 @@ CutkoskyEtaZeroSelectionResult PickCutkoskyEtaZeroTerm(
           : "b63n PickCutkoskyEtaZeroTerm dropped singular endpoint powers and selected "
             "the unique eta^0 residue term";
   return result;
+}
+
+CutkoskyPrefactorSeries BuildCutkoskyPrefactorEpsilonSeries(
+    const std::size_t loop_count,
+    const int min_eps_order,
+    const int max_eps_order,
+    const int requested_precision_digits) {
+  if (loop_count == 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky K_r(eps) prefactor requires positive phase-volume loop count");
+  }
+  if (min_eps_order < 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky K_r(eps) prefactor is analytic at eps=0; negative Laurent "
+        "orders belong to the residue series before prefactor multiplication");
+  }
+  if (max_eps_order < min_eps_order) {
+    throw std::invalid_argument(
+        "b63n Cutkosky K_r(eps) prefactor requires max_eps_order >= min_eps_order");
+  }
+  if (requested_precision_digits < 16 || requested_precision_digits > 90) {
+    throw std::invalid_argument(
+        "insufficient_precision: b63n Cutkosky K_r(eps) primitive uses cpp_dec_float_100 "
+        "and accepts requested precision in [16, 90] decimal digits");
+  }
+
+  const CutkoskyPrefactorFloat pi =
+      boost::math::constants::pi<CutkoskyPrefactorFloat>();
+  const CutkoskyPrefactorFloat base = CutkoskyPrefactorFloat(1) / (16 * pi * pi);
+  const CutkoskyPrefactorFloat sign = (loop_count % 2 == 1) ? 1 : -1;
+  const CutkoskyPrefactorFloat normalization =
+      2 * sign * PositiveIntegerPower(base, loop_count);
+  const CutkoskyPrefactorFloat exponential_scale =
+      CutkoskyPrefactorFloat(loop_count) * log(4 * pi);
+
+  CutkoskyPrefactorSeries series;
+  series.loop_count = loop_count;
+  series.min_eps_order = min_eps_order;
+  series.max_eps_order = max_eps_order;
+  series.requested_precision_digits = requested_precision_digits;
+  series.working_precision_digits =
+      std::numeric_limits<CutkoskyPrefactorFloat>::digits10;
+  series.formula = CutkoskyPrefactorForLoopCount(loop_count);
+  series.normalization_factor =
+      FormatCutkoskyPrefactorFloat(normalization, requested_precision_digits);
+  series.exponential_scale =
+      FormatCutkoskyPrefactorFloat(exponential_scale, requested_precision_digits);
+  series.source_reference =
+      "AMFlow.m:941-950 and docs/theory/b63n-runtime-lane.md:149-167; lane149 "
+      "requires numerical/series K_2(eps) before multiplication into live residues";
+
+  std::ostringstream diagnostics;
+  diagnostics << "b63n Cutkosky K_r(eps) prefactor expanded from reviewed closed form "
+              << "K_r=2*(-1)^(r+1)/(16*pi^2)^r*exp(r*eps*log(4*pi)); "
+              << "requested_digits=" << requested_precision_digits
+              << ", working_digits=" << series.working_precision_digits
+              << ", guard_digits="
+              << (series.working_precision_digits - requested_precision_digits)
+              << ", emitted_orders=[" << min_eps_order << "," << max_eps_order
+              << "], coefficients are real for real eps and positive loop count; "
+              << "weighted residue integration and coefficient publication remain "
+              << "deferred.";
+  series.precision_diagnostics = diagnostics.str();
+
+  CutkoskyPrefactorFloat coefficient = normalization;
+  for (int order = 0; order <= max_eps_order; ++order) {
+    if (order > 0) {
+      coefficient *= exponential_scale;
+      coefficient /= order;
+    }
+    if (order < min_eps_order) {
+      continue;
+    }
+    series.terms.push_back(
+        {order, FormatCutkoskyPrefactorFloat(coefficient, requested_precision_digits),
+         "0"});
+  }
+  return series;
+}
+
+std::vector<CutkoskyPrefactorSeriesTerm>
+MultiplyCutkoskyPrefactorIntoLaurentSeries(
+    const CutkoskyPrefactorSeries& prefactor,
+    const std::vector<CutkoskyPrefactorSeriesTerm>& residue_series,
+    const int min_eps_order,
+    const int max_eps_order) {
+  if (prefactor.loop_count == 0 || prefactor.terms.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires a non-empty prefactor series");
+  }
+  if (prefactor.requested_precision_digits < 16 ||
+      prefactor.requested_precision_digits > 90) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires a prefactor precision in "
+        "[16, 90] decimal digits");
+  }
+  if (prefactor.min_eps_order != 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires prefactor terms from eps^0");
+  }
+  if (residue_series.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires explicit residue terms");
+  }
+  if (max_eps_order < min_eps_order) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication requires max_eps_order >= min_eps_order");
+  }
+
+  int residue_min_order = residue_series.front().eps_order;
+  for (const CutkoskyPrefactorSeriesTerm& term : residue_series) {
+    residue_min_order = std::min(residue_min_order, term.eps_order);
+  }
+  const int needed_prefactor_order = max_eps_order - residue_min_order;
+  if (prefactor.max_eps_order < needed_prefactor_order) {
+    throw std::invalid_argument(
+        "b63n Cutkosky prefactor multiplication needs prefactor terms through eps^" +
+        std::to_string(needed_prefactor_order) + " for the requested output range");
+  }
+
+  std::map<int, CutkoskyComplexCoefficient> output_terms;
+  for (const CutkoskyPrefactorSeriesTerm& prefactor_term : prefactor.terms) {
+    const CutkoskyComplexCoefficient k =
+        ParseCutkoskySeriesTerm(prefactor_term, "prefactor");
+    for (const CutkoskyPrefactorSeriesTerm& residue_term : residue_series) {
+      const int order = prefactor_term.eps_order + residue_term.eps_order;
+      if (order < min_eps_order || order > max_eps_order) {
+        continue;
+      }
+      const CutkoskyComplexCoefficient residue =
+          ParseCutkoskySeriesTerm(residue_term, "residue");
+      CutkoskyComplexCoefficient& target = output_terms[order];
+      target.real += k.real * residue.real - k.imaginary * residue.imaginary;
+      target.imaginary += k.real * residue.imaginary + k.imaginary * residue.real;
+    }
+  }
+
+  std::vector<CutkoskyPrefactorSeriesTerm> multiplied;
+  multiplied.reserve(output_terms.size());
+  for (const auto& [order, coefficient] : output_terms) {
+    if (coefficient.real == 0 && coefficient.imaginary == 0) {
+      continue;
+    }
+    multiplied.push_back(
+        {order,
+         FormatCutkoskyPrefactorFloat(coefficient.real,
+                                      prefactor.requested_precision_digits),
+         coefficient.imaginary == 0
+             ? "0"
+             : FormatCutkoskyPrefactorFloat(coefficient.imaginary,
+                                            prefactor.requested_precision_digits)});
+  }
+  return multiplied;
 }
 
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(

@@ -186,6 +186,25 @@ struct CutkoskyResidueCoefficientAudit {
   std::string summary;
 };
 
+struct CutkoskySymbolicIntegrandFactor {
+  std::string denominator_id;
+  std::size_t denominator_index;
+  int propagator_power;
+  std::string propagator_expression;
+  std::string role;
+  std::string structural_form;
+};
+
+struct CutkoskySymbolicIntegrand {
+  std::string surface_label;
+  std::string model_kind;
+  std::string phase_space_parameterization;
+  std::string physical_integration_domain;
+  std::vector<std::string> residue_variables;
+  std::vector<CutkoskySymbolicIntegrandFactor> factors;
+  std::string coefficient_policy;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -224,5 +243,9 @@ CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
     const ProblemSpec& spec);
 CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(
     const ProblemSpec& spec);
+CutkoskySymbolicIntegrand BuildAutomaticPhaseSpaceSymbolicIntegrand(
+    const ProblemSpec& spec);
+std::string SerializeCutkoskySymbolicIntegrandAudit(
+    const CutkoskySymbolicIntegrand& integrand);
 
 }  // namespace amflow

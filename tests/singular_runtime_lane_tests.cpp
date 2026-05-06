@@ -1422,6 +1422,71 @@ void B63nCutkoskyResidueEndpointModelBuildsContourPlanTest() {
                  "b63n endpoint model should state that the plan is not coefficient evidence");
 }
 
+void B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest() {
+  const amflow::CutkoskySymbolicIntegrand integrand =
+      amflow::BuildAutomaticPhaseSpaceSymbolicIntegrand(
+          MakeB63nAutomaticPhaseSpaceSpec());
+
+  Expect(integrand.surface_label == "phase[1,2,1,1,1,1,1]",
+         "b63n symbolic integrand should bind the accepted weighted phase surface");
+  Expect(integrand.model_kind ==
+             "automatic_phasespace::one-mass-three-body-residue",
+         "b63n symbolic integrand should reuse the endpoint-model kind");
+  Expect(integrand.residue_variables ==
+             std::vector<std::string>({"q2", "cos_theta_a", "cos_theta_b"}),
+         "b63n symbolic integrand should preserve endpoint-model variables");
+  Expect(integrand.factors.size() == 4,
+         "b63n symbolic integrand should assemble D2,D4,D6,D7 factors");
+  Expect(integrand.factors[0].denominator_id == "D2" &&
+             integrand.factors[0].propagator_power == 2,
+         "b63n symbolic integrand should record the D2 squared weight");
+  Expect(integrand.factors[1].denominator_id == "D4" &&
+             integrand.factors[1].propagator_power == 1,
+         "b63n symbolic integrand should record the D4 weight");
+  Expect(integrand.factors[2].denominator_id == "D6" &&
+             integrand.factors[2].propagator_power == 1,
+         "b63n symbolic integrand should record the D6 weight");
+  Expect(integrand.factors[3].denominator_id == "D7" &&
+             integrand.factors[3].propagator_power == 1,
+         "b63n symbolic integrand should record the D7 weight");
+  Expect(integrand.factors[0].role ==
+             "D2=(l1+p1)^2 angular weight with power 2",
+         "b63n symbolic integrand should map from the recorded D2 role");
+  ExpectContains(integrand.factors[1].structural_form,
+                 "D4(q2,cos_theta_a,cos_theta_b)",
+                 "b63n symbolic integrand should expose the D4 angular variable shape");
+  ExpectContains(integrand.coefficient_policy,
+                 "no endpoint Laurent coefficients evaluated or published",
+                 "b63n symbolic integrand must remain coefficient-free");
+
+  const std::string audit =
+      amflow::SerializeCutkoskySymbolicIntegrandAudit(integrand);
+  const std::string expected_audit =
+      "kind=b63n-automatic-phasespace-symbolic-integrand\n"
+      "surface=phase[1,2,1,1,1,1,1]\n"
+      "model=automatic_phasespace::one-mass-three-body-residue\n"
+      "parameterization=dPhi_3(P;m,0,0)=dq2/(2*pi)*dPhi_2(P;m,sqrt(q2))*dPhi_2(q;0,0)\n"
+      "domain=q2 in [0,81] with angular moments for D2,D4,D6,D7\n"
+      "variables=q2,cos_theta_a,cos_theta_b\n"
+      "coefficient_policy=coefficient-free symbolic assembly; no endpoint Laurent "
+      "coefficients evaluated or published\n"
+      "factor_count=4\n"
+      "factor[0]=denominator=D2;denominator_index=1;power=2;form="
+      "inverse_denominator_weight[D2(q2,cos_theta_a)];role=D2=(l1+p1)^2 "
+      "angular weight with power 2;propagator=(l1+p1)^2\n"
+      "factor[1]=denominator=D4;denominator_index=3;power=1;form="
+      "inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)];role="
+      "D4=(l1+l2+p1)^2 angular weight;propagator=(l1+l2+p1)^2\n"
+      "factor[2]=denominator=D6;denominator_index=5;power=1;form="
+      "inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)];role="
+      "D6=(l1+l2+p2)^2 angular weight;propagator=(l1+l2+p2)^2\n"
+      "factor[3]=denominator=D7;denominator_index=6;power=1;form="
+      "inverse_denominator_weight[D7(q2,cos_theta_a)];role=D7=(l1+p2)^2 "
+      "angular weight;propagator=(l1+p2)^2\n";
+  Expect(audit == expected_audit,
+         "b63n symbolic integrand audit serialization should be deterministic");
+}
+
 void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
   const amflow::CutkoskyEtaZeroSelectionResult selected =
       amflow::PickCutkoskyEtaZeroTerm({
@@ -2508,6 +2573,7 @@ int main() {
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
     B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
+    B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();

@@ -774,6 +774,43 @@ std::string SerializeCutkoskyResidueCoefficientAuditForFingerprint(
   return out.str();
 }
 
+std::string AutomaticPhaseSpaceStructuralFormForDenominator(
+    const std::string& denominator_id) {
+  if (denominator_id == "D2") {
+    return "inverse_denominator_weight[D2(q2,cos_theta_a)]";
+  }
+  if (denominator_id == "D4") {
+    return "inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]";
+  }
+  if (denominator_id == "D6") {
+    return "inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]";
+  }
+  if (denominator_id == "D7") {
+    return "inverse_denominator_weight[D7(q2,cos_theta_a)]";
+  }
+  throw BoundaryUnsolvedError(
+      "b63n automatic phase-space symbolic integrand received unsupported uncut " +
+      denominator_id);
+}
+
+void ValidateAutomaticPhaseSpaceSymbolicFactorRole(
+    const CutkoskyResidueEndpointModel& model,
+    const std::size_t role_index,
+    const std::string& denominator_id) {
+  if (role_index >= model.uncut_denominator_roles.size()) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space symbolic integrand is missing an endpoint-model "
+        "uncut denominator role for " +
+        denominator_id);
+  }
+  const std::string& role = model.uncut_denominator_roles[role_index];
+  if (role.find(denominator_id + "=") != 0) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space symbolic integrand role/order mismatch for " +
+        denominator_id);
+  }
+}
+
 void ClassifyReviewedSurface(const ProblemSpec& spec,
                              const std::vector<std::size_t>& cut_indices,
                              const FeynmanPrescription cut_prescription,
@@ -1472,6 +1509,112 @@ CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficient
       "automatic_phasespace residues and feynman_prescription Cutkosky residues remain "
       "deferred; full_eta_zero_contour_applied stays false.";
   return audit;
+}
+
+CutkoskySymbolicIntegrand BuildAutomaticPhaseSpaceSymbolicIntegrand(
+    const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space symbolic integrand requires cut propagators");
+  }
+  RejectEtaOnCutPropagators(spec, cut_indices);
+  static_cast<void>(CollectCutPowers(spec, cut_indices));
+  if (!MatchesAutomaticPhaseSpaceSurface(spec, cut_indices)) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space symbolic integrand is limited to "
+        "phase[1,2,1,1,1,1,1]");
+  }
+
+  const FeynmanPrescription cut_prescription = ResolveCutPrescription(spec, cut_indices);
+  const CutkoskyResidueEndpointModel endpoint_model =
+      BuildCutkoskyResidueEndpointModelInternal(spec, cut_indices, cut_prescription);
+  if (endpoint_model.uncut_denominator_indices.size() !=
+      endpoint_model.uncut_denominator_roles.size()) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space symbolic integrand requires one recorded role per "
+        "uncut denominator");
+  }
+
+  CutkoskySymbolicIntegrand integrand;
+  integrand.surface_label = spec.targets.front().Label();
+  integrand.model_kind = endpoint_model.model_kind;
+  integrand.phase_space_parameterization =
+      endpoint_model.phase_space_parameterization;
+  integrand.physical_integration_domain =
+      endpoint_model.physical_integration_domain;
+  integrand.residue_variables = endpoint_model.residue_variables;
+  integrand.coefficient_policy =
+      "coefficient-free symbolic assembly; no endpoint Laurent coefficients evaluated "
+      "or published";
+  integrand.factors.reserve(endpoint_model.uncut_denominator_indices.size());
+  for (std::size_t role_index = 0;
+       role_index < endpoint_model.uncut_denominator_indices.size();
+       ++role_index) {
+    const std::size_t denominator_index =
+        endpoint_model.uncut_denominator_indices[role_index];
+    if (denominator_index >= spec.family.propagators.size() ||
+        denominator_index >= spec.targets.front().indices.size()) {
+      throw BoundaryUnsolvedError(
+          "b63n automatic phase-space symbolic integrand found an out-of-range "
+          "uncut denominator index");
+    }
+    const std::string denominator_id =
+        "D" + std::to_string(denominator_index + 1);
+    ValidateAutomaticPhaseSpaceSymbolicFactorRole(
+        endpoint_model, role_index, denominator_id);
+    const int propagator_power = spec.targets.front().indices[denominator_index];
+    if (propagator_power <= 0) {
+      throw BoundaryUnsolvedError(
+          "b63n automatic phase-space symbolic integrand requires positive uncut "
+          "denominator powers on the reviewed surface");
+    }
+    integrand.factors.push_back(
+        {denominator_id,
+         denominator_index,
+         propagator_power,
+         spec.family.propagators[denominator_index].expression,
+         endpoint_model.uncut_denominator_roles[role_index],
+         AutomaticPhaseSpaceStructuralFormForDenominator(denominator_id)});
+  }
+  return integrand;
+}
+
+std::string SerializeCutkoskySymbolicIntegrandAudit(
+    const CutkoskySymbolicIntegrand& integrand) {
+  std::ostringstream out;
+  out << "kind=b63n-automatic-phasespace-symbolic-integrand\n";
+  out << "surface=" << integrand.surface_label << "\n";
+  out << "model=" << integrand.model_kind << "\n";
+  out << "parameterization=" << integrand.phase_space_parameterization << "\n";
+  out << "domain=" << integrand.physical_integration_domain << "\n";
+  out << "variables=";
+  for (std::size_t index = 0; index < integrand.residue_variables.size();
+       ++index) {
+    if (index != 0) {
+      out << ",";
+    }
+    out << integrand.residue_variables[index];
+  }
+  out << "\n";
+  out << "coefficient_policy=" << integrand.coefficient_policy << "\n";
+  out << "factor_count=" << integrand.factors.size() << "\n";
+  for (std::size_t index = 0; index < integrand.factors.size(); ++index) {
+    const CutkoskySymbolicIntegrandFactor& factor = integrand.factors[index];
+    out << "factor[" << index << "]="
+        << "denominator=" << factor.denominator_id
+        << ";denominator_index=" << factor.denominator_index
+        << ";power=" << factor.propagator_power
+        << ";form=" << factor.structural_form
+        << ";role=" << factor.role
+        << ";propagator=" << factor.propagator_expression << "\n";
+  }
+  return out.str();
 }
 
 }  // namespace amflow

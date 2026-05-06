@@ -49540,10 +49540,15 @@ import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
-selected = {"family": "gauge", "indices": [1, 1, 1, 0, 1, 0, 0, 0, 0]}
+selected = [
+    {"family": "gauge", "indices": [1, 1, 1, 0, 1, 0, 0, 0, 0]},
+    {"family": "gauge", "indices": [1, 1, 1, -1, 1, 0, 0, 0, 0]},
+    {"family": "gauge", "indices": [1, 1, 1, 1, 1, 0, 0, 0, 0]},
+    {"family": "gauge", "indices": [1, 1, 1, 1, 1, -1, 0, 0, 0]},
+]
 payload["boundary_state"]["files"].pop("solution", None)
-payload["masters"] = [selected]
-payload.setdefault("reduction", {})["targets"] = [selected]
+payload["masters"] = selected
+payload.setdefault("reduction", {})["targets"] = selected
 payload.setdefault("solution_sample_cache", {})["enabled"] = True
 json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
 )PY");
@@ -49570,9 +49575,13 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
          "stderr=" +
              (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
   const std::string stripped_json = ReadFile(stripped_output_path);
-  ExpectContains(stripped_json,
-                 "\"targets\": [\"gauge[1,1,1,0,1,0,0,0,0]\"]",
-                 "stripped b64ag state should expose only the selected master");
+  ExpectContains(
+      stripped_json,
+      "\"targets\": [\"gauge[1,1,1,0,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,-1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,-1,0,0,0]\"]",
+      "stripped b64ag state should expose only the reviewed selected masters");
   ExpectContains(stripped_json,
                  "\"runtime_boundary_provider\": "
                  "\"retained-finite-gauge-link-boundary+gaugex-zero-selected-endpoint-"
@@ -49584,21 +49593,25 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
          "stripped b64ag state must not fall back to retained final solution samples");
   ExpectContains(stripped_json,
                  "\"transport_applied\": true",
-                 "b64ag first endpoint transport should report transport only after selected "
+                 "b64ag selected endpoint transport should report transport only after selected "
                  "evaluation");
   ExpectContains(stripped_json,
                  "\"transport_scope\": \"eta-zero-selected-endpoint-coefficients\"",
-                 "b64ag first endpoint transport should stay selected-master scoped");
+                 "b64ag selected endpoint transport should stay selected-master scoped");
   ExpectContains(stripped_json,
                  "\"eta_zero_endpoint_transport_applied\": true",
-                 "b64ag first endpoint transport should set endpoint transport");
+                 "b64ag selected endpoint transport should set endpoint transport");
   ExpectContains(stripped_json,
-                 "\"eta_zero_endpoint_transported_master_count\": 1",
-                 "b64ag first endpoint transport should count one transported master");
-  ExpectContains(stripped_json,
-                 "\"eta_zero_endpoint_transported_integrals\": "
-                 "[\"gauge[1,1,1,0,1,0,0,0,0]\"]",
-                 "b64ag first endpoint transport should name only the selected master");
+                 "\"eta_zero_endpoint_transported_master_count\": 4",
+                 "b64ag selected endpoint transport should count four transported masters");
+  ExpectContains(
+      stripped_json,
+      "\"eta_zero_endpoint_transported_integrals\": "
+      "[\"gauge[1,1,1,0,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,-1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,-1,0,0,0]\"]",
+      "b64ag selected endpoint transport should name exactly the reviewed selected masters");
   ExpectContains(stripped_json,
                  "\"full_eta_zero_contour_applied\": false",
                  "stripped b64ag state must keep the full-contour flag false");
@@ -49620,8 +49633,12 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "gauge[1,1,1,0,1,0,0,0,0]",
                  "b64ag first endpoint transport should document the applied runtime path");
   ExpectContains(stripped_json,
+                 "Applied b64ag selected lightlike gauge-link endpoint coefficient transport "
+                 "to 4 reviewed master",
+                 "b64ag selected endpoint transport should document the extension");
+  ExpectContains(stripped_json,
                  "final_solution_samples_used_as_input=false",
-                 "b64ag first endpoint transport should publish anti-fake provenance");
+                 "b64ag selected endpoint transport should publish anti-fake provenance");
   ExpectContains(stripped_json,
                  "\"order\": 2",
                  "b64ag first endpoint transport should emit the fourth compared epsilon "
@@ -49633,6 +49650,46 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"imag_digits\": \"-0.026179938779914943653855361527329190",
                  "b64ag first endpoint eps^0 imaginary coefficient should match the "
                  "reviewed value");
+  const std::filesystem::path selected_audit_script_path =
+      run_root / "audit_b64ag_selected_coefficients.py";
+  const std::filesystem::path selected_audit_stdout_path =
+      run_root / "selected-audit.stdout";
+  const std::filesystem::path selected_audit_stderr_path =
+      run_root / "selected-audit.stderr";
+  OverwriteTextFile(
+      selected_audit_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+results = {entry["integral"]: entry for entry in payload["results"]}
+
+def coefficient(integral, order):
+    for item in results[integral]["epsilon_orders"]:
+        if item["order"] == order:
+            return item
+    raise AssertionError(f"missing {integral} eps^{order}")
+
+assert coefficient("gauge[1,1,1,-1,1,0,0,0,0]", -1)["real_digits"].startswith("-0.002314814814814814814814814814")
+assert coefficient("gauge[1,1,1,-1,1,0,0,0,0]", 2)["imag_digits"].startswith("-2.514093217487249032413140907107")
+assert coefficient("gauge[1,1,1,1,1,0,0,0,0]", -2)["real_digits"].startswith("-0.055555555555555555555555555555")
+assert coefficient("gauge[1,1,1,1,1,0,0,0,0]", 0)["imag_digits"].startswith("-3.286177433279899075464215141110")
+assert coefficient("gauge[1,1,1,1,1,-1,0,0,0]", -2)["real_digits"].startswith("-0.027777777777777777777777777777")
+assert coefficient("gauge[1,1,1,1,1,-1,0,0,0]", 2)["imag_digits"].startswith("-123.566210292475469714329128033")
+)PY");
+  const std::string selected_audit_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(selected_audit_script_path.string()) + " " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(selected_audit_stdout_path.string()) + " 2>" +
+      ShellSingleQuote(selected_audit_stderr_path.string());
+  Expect(RunShellCommand(selected_audit_command) == 0,
+         "b64ag selected endpoint coefficients should match reviewed AMFlow prefixes; "
+         "stderr=" +
+             (std::filesystem::exists(selected_audit_stderr_path)
+                  ? ReadFile(selected_audit_stderr_path)
+                  : std::string{}));
   ExpectContains(stripped_json,
                  "full_eta_zero_contour_applied stays false",
                  "stripped b64ag state should explicitly avoid overclaiming");

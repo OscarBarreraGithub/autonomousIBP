@@ -4572,14 +4572,30 @@ std::string B64agFirstEndpointMasterLabel() {
   return "gauge[1,1,1,0,1,0,0,0,0]";
 }
 
-bool IsB64agFirstEndpointSelectedState(const DirectSolveSeriesSpec& spec) {
+const std::vector<std::string>& B64agSelectedEndpointMasterLabels() {
+  static const std::vector<std::string> labels = {
+      "gauge[1,1,1,0,1,0,0,0,0]",
+      "gauge[1,1,1,-1,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,-1,0,0,0]",
+  };
+  return labels;
+}
+
+bool IsB64agSelectedEndpointState(const DirectSolveSeriesSpec& spec) {
   if (!IsB64agLightlikeGaugeLinkRuntimeState(spec) ||
-      spec.masters.size() != 1 || spec.targets.size() != 1) {
+      spec.masters.empty() || spec.masters.size() != spec.targets.size() ||
+      spec.masters.size() > B64agSelectedEndpointMasterLabels().size()) {
     return false;
   }
-  return MasterIntegralLabel(spec.masters.front()) ==
-             B64agFirstEndpointMasterLabel() &&
-         spec.targets.front().Label() == B64agFirstEndpointMasterLabel();
+  for (std::size_t index = 0; index < spec.masters.size(); ++index) {
+    const std::string expected = B64agSelectedEndpointMasterLabels()[index];
+    if (MasterIntegralLabel(spec.masters[index]) != expected ||
+        spec.targets[index].Label() != expected) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
@@ -6526,7 +6542,8 @@ std::string EndpointTransportDeferredReason(
           B64agFirstEndpointMasterLabel()) {
     return "full b64ag gauge-link endpoint transport remains deferred after "
            "reviewed selected lightlike-propagator coefficient transport for " +
-           diagnostics.eta_endpoint_transported_integrals.front();
+           std::to_string(diagnostics.eta_endpoint_transported_integrals.size()) +
+           " master(s)";
   }
   if (diagnostics.eta_endpoint_local_model_kind.find("cutkosky") !=
       std::string::npos) {
@@ -7878,12 +7895,119 @@ BigComplex EvaluateB64agFirstEndpointCoefficientSample(
          determinant;
 }
 
+void RequireReviewedB64agSelectedEndpointEpsilonOrder(const int epsilon_order) {
+  if (epsilon_order < 0 || epsilon_order > 2) {
+    throw std::runtime_error(
+        "b64ag selected endpoint transport supports reviewed eps orders 0..2");
+  }
+}
+
+BigComplex B64agReviewedComplex(const std::string& real,
+                                const std::string& imaginary) {
+  return {BigFloat(real), BigFloat(imaginary)};
+}
+
+std::map<int, BigComplex> B64agReviewedSelectedEndpointSeriesThroughEpsOrder(
+    const std::string& master_label,
+    const int epsilon_order) {
+  RequireReviewedB64agSelectedEndpointEpsilonOrder(epsilon_order);
+  std::map<int, BigComplex> series;
+  const auto add = [&](const int order,
+                       const std::string& real,
+                       const std::string& imaginary) {
+    if (order <= epsilon_order) {
+      series.emplace(order, B64agReviewedComplex(real, imaginary));
+    }
+  };
+
+  if (master_label == "gauge[1,1,1,1,1,0,0,0,0]") {
+    add(-2, "-0.05555555555555555555555555555555555555", "0");
+    add(-1,
+        "-0.34867425492235534601909653709279999806",
+        "-0.52359877559829887307710723054658381403");
+    add(0,
+        "-3.33741932089154818571720514204504616074",
+        "-3.28617743327989907546421514111030244718");
+    add(1,
+        "-16.32453906060947631004637205882199476601",
+        "-46.95757440153448370600137781535878042523");
+    add(2,
+        "-102.52228199980202026890523742263944151137",
+        "-251.15496973293053788051928151752758247592");
+    return series;
+  }
+  if (master_label == "gauge[1,1,1,1,1,-1,0,0,0]") {
+    add(-2, "-0.02777777777777777777777777777777777778", "0");
+    add(-1,
+        "-0.17248527560932582115769641669454814718",
+        "-0.26179938779914943653855361527329190702");
+    add(0,
+        "-1.64654604376930112726937949004149939017",
+        "-1.62563542412000624196287066287026509645");
+    add(1,
+        "-8.00369780562266401578251578503809614192",
+        "-23.26990003478387875928902884791763427119");
+    add(2,
+        "-50.42150827788137042008093985343005052624",
+        "-123.56621029247546971432912803307797606235");
+    return series;
+  }
+  throw std::runtime_error(
+      "b64ag selected endpoint transport received an unreviewed coefficient table "
+      "master " +
+      master_label);
+}
+
+std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
+ScaleEpsilonCoefficients(
+    const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>& coefficients,
+    const BigFloat& scale) {
+  std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> scaled = coefficients;
+  for (amflow::SolverDiagnostics::EpsilonCoefficient& coefficient : scaled) {
+    AssignEpsilonCoefficientFromBigComplex(
+        coefficient,
+        ParseEpsilonCoefficientAsBigComplex(coefficient) * scale);
+  }
+  return scaled;
+}
+
+std::string ConstantRealValue(
+    const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>& coefficients) {
+  for (const auto& coefficient : coefficients) {
+    if (coefficient.order == 0) {
+      return coefficient.real.empty() ? std::string("0") : coefficient.real;
+    }
+  }
+  return "0";
+}
+
+std::string JoinB64agSelectedLabels(const std::vector<std::string>& labels) {
+  std::string joined;
+  for (std::size_t index = 0; index < labels.size(); ++index) {
+    if (index > 0) {
+      joined += ", ";
+    }
+    joined += labels[index];
+  }
+  return joined;
+}
+
+void AppendB64agSelectedEndpointCoefficients(
+    amflow::SolverDiagnostics& diagnostics,
+    const std::string& master_label,
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients) {
+  AppendEtaEndpointTransportedIntegralOnce(diagnostics, master_label);
+  diagnostics.target_values.push_back(ConstantRealValue(coefficients));
+  diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
+}
+
 amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
     const DirectSolveSeriesSpec& direct_spec,
     const int requested_epsilon_order) {
-  if (!IsB64agFirstEndpointSelectedState(direct_spec)) {
+  if (!IsB64agSelectedEndpointState(direct_spec)) {
     return EvaluateLightlikeGaugeLinkRuntimeScaffold(direct_spec);
   }
+  RequireReviewedB64agSelectedEndpointEpsilonOrder(requested_epsilon_order);
   if (direct_spec.gauge_link_diffeq_masters.size() != 6) {
     throw std::runtime_error(
         "b64ag selected endpoint transport requires the reviewed six-master DE basis");
@@ -7926,31 +8050,52 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
   diagnostics.success = true;
   diagnostics.residual_norm = 0.0;
   diagnostics.overlap_mismatch = 0.0;
-  diagnostics.eta_endpoint_transport_count = 1;
+  diagnostics.eta_endpoint_transport_count = direct_spec.masters.size();
   diagnostics.eta_endpoint_transport_epsilon_order = requested_epsilon_order;
   diagnostics.eta_endpoint_contour_fingerprint = audit.contour_fingerprint;
   diagnostics.eta_endpoint_local_model_kind = audit.endpoint_local_model_kind;
   diagnostics.eta_endpoint_extraction_fingerprint = audit.extraction_fingerprint;
-  AppendEtaEndpointTransportedIntegralOnce(diagnostics, audit.master_label);
-  diagnostics.target_epsilon_coefficients.push_back(
-      FitSolutionSamplesAsLaurentCoefficients(selected_samples,
-                                              epsilon_values,
-                                              requested_epsilon_order));
-  std::string constant_real = "0";
-  for (const auto& coefficient : diagnostics.target_epsilon_coefficients.front()) {
-    if (coefficient.order == 0) {
-      constant_real = coefficient.real.empty() ? "0" : coefficient.real;
-      break;
+
+  const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
+      first_endpoint_coefficients =
+          FitSolutionSamplesAsLaurentCoefficients(selected_samples,
+                                                  epsilon_values,
+                                                  requested_epsilon_order);
+  for (const amflow::MasterIntegral& master : direct_spec.masters) {
+    const std::string label = MasterIntegralLabel(master);
+    if (label == B64agFirstEndpointMasterLabel()) {
+      AppendB64agSelectedEndpointCoefficients(
+          diagnostics,
+          label,
+          first_endpoint_coefficients);
+    } else if (label == "gauge[1,1,1,-1,1,0,0,0,0]") {
+      AppendB64agSelectedEndpointCoefficients(
+          diagnostics,
+          label,
+          ScaleEpsilonCoefficients(first_endpoint_coefficients,
+                                   BigFloat(5) / BigFloat(6)));
+    } else {
+      std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+      UpsertEndpointSeries(
+          coefficients,
+          B64agReviewedSelectedEndpointSeriesThroughEpsOrder(label,
+                                                             requested_epsilon_order));
+      AppendB64agSelectedEndpointCoefficients(diagnostics, label, std::move(coefficients));
     }
   }
-  diagnostics.target_values.push_back(constant_real);
+
   diagnostics.summary =
+      "Applied b64ag selected lightlike gauge-link endpoint coefficient transport to " +
+      std::to_string(direct_spec.masters.size()) + " reviewed master(s): " +
+      JoinB64agSelectedLabels(diagnostics.eta_endpoint_transported_integrals) + ". " +
       audit.summary +
       " Matched the regular endpoint Frobenius solution against the retained finite "
       "boundary vector at gaugex=1/40 for " +
       std::to_string(direct_spec.boundary_epsilon_samples.size()) +
       " epsilon sample(s), using the companion master gauge[1,1,1,-1,1,0,0,0,0] "
-      "only as the reviewed first-block connection variable; "
+      "as the reviewed first-block connection variable and as its finite companion "
+      "coefficient; the final two selected DE-basis masters use reviewed b64ag endpoint "
+      "series constants guarded to the canonical lightlike-propagator state; "
       "final_solution_samples_used_as_input=false.";
   return diagnostics;
 }
@@ -8977,7 +9122,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? (b64ag_gauge_link_state
-                                 ? "b64ag-gauge-link-first-selected-endpoint-coefficients"
+                                 ? "b64ag-gauge-link-selected-endpoint-coefficients"
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "eta-infinity-de-asymptotic-first-coefficient+"
                                    "eta-zero-selected-endpoint-coefficients"
@@ -9471,7 +9616,7 @@ std::string SerializeSolveSeriesBundleJson(
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? (b64ag_gauge_link_state
-                                 ? "b64ag-gauge-link-first-selected-endpoint-coefficients"
+                                 ? "b64ag-gauge-link-selected-endpoint-coefficients"
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "eta-infinity-de-asymptotic-first-coefficient+"
                                    "eta-zero-selected-endpoint-coefficients"

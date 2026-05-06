@@ -146,9 +146,19 @@ const std::vector<std::string>& ReviewedTargetLabels() {
   return labels;
 }
 
-const std::vector<std::string>& ReviewedFirstEndpointTargetLabels() {
+const std::vector<std::string>& ReviewedSelectedEndpointTargetLabels() {
   static const std::vector<std::string> labels = {
       "gauge[1,1,1,0,1,0,0,0,0]",
+      "gauge[1,1,1,-1,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,-1,0,0,0]",
+  };
+  return labels;
+}
+
+const std::vector<std::string>& ReviewedFirstEndpointTargetLabels() {
+  static const std::vector<std::string> labels = {
+      ReviewedSelectedEndpointTargetLabels().front(),
   };
   return labels;
 }
@@ -193,8 +203,19 @@ bool LabelsExactlyMatch(const std::vector<MasterIntegral>& values,
 
 bool LabelsMatchReviewedGaugeLinkTargets(
     const std::vector<TargetIntegral>& values) {
-  return LabelsExactlyMatch(values, ReviewedTargetLabels()) ||
-         LabelsExactlyMatch(values, ReviewedFirstEndpointTargetLabels());
+  if (LabelsExactlyMatch(values, ReviewedTargetLabels())) {
+    return true;
+  }
+  if (values.empty() || values.size() > ReviewedSelectedEndpointTargetLabels().size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (TargetLabel(values[index]) !=
+        ReviewedSelectedEndpointTargetLabels()[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool LabelsContainAll(const std::vector<MasterIntegral>& haystack,
@@ -249,8 +270,8 @@ void RequireReviewedGaugeLinkSourceSurface(const ProblemSpec& spec) {
   }
   if (!spec.targets.empty() && !LabelsMatchReviewedGaugeLinkTargets(spec.targets)) {
     throw std::runtime_error(
-        "b64ag gauge-link scaffold requires the reviewed packet surface or the selected "
-        "first endpoint target");
+        "b64ag gauge-link scaffold requires the reviewed packet surface or the reviewed "
+        "selected endpoint target prefix");
   }
 }
 
@@ -1371,7 +1392,7 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
       !LabelsMatchReviewedGaugeLinkTargets(checked_state.targets)) {
     throw std::runtime_error(
         "b64ag gauge-link state target surface drifted from the reviewed packet or selected "
-        "first endpoint target");
+        "endpoint target prefix");
   }
   if (checked_state.targets.empty()) {
     throw std::runtime_error(
@@ -1536,10 +1557,10 @@ BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
     const LightlikeGaugeLinkRuntimeState& state) {
   LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
   if (!checked_state.targets.empty() &&
-      !LabelsExactlyMatch(checked_state.targets, ReviewedFirstEndpointTargetLabels())) {
+      !LabelsMatchReviewedGaugeLinkTargets(checked_state.targets)) {
     throw std::runtime_error(
-        "b64ag first endpoint coefficient evaluator is limited to "
-        "gauge[1,1,1,0,1,0,0,0,0]");
+        "b64ag selected endpoint coefficient evaluator is limited to the reviewed "
+        "selected endpoint target prefix");
   }
 
   LightlikeGaugeLinkTransportAudit scaffold =
@@ -1561,7 +1582,7 @@ BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
   audit.ir_subtraction_applied = finite_part.ir_subtraction_applied;
   audit.master_label = master_label;
   audit.runtime_application =
-      "b64ag-gauge-link-first-selected-endpoint-coefficient";
+      "b64ag-gauge-link-selected-endpoint-coefficient";
   audit.transport_scope = "eta-zero-selected-endpoint-coefficients";
   audit.endpoint_local_model_kind = scaffold.endpoint_local_model_kind;
   audit.contour_fingerprint = scaffold.contour_fingerprint;

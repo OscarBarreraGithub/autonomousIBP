@@ -135,6 +135,21 @@ struct LightlikeGaugeLinkTransportAudit {
   std::string summary;
 };
 
+struct LightlikeGaugeLinkSelectedCoefficientAudit {
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  bool ir_subtraction_applied = false;
+  std::string master_label;
+  std::string runtime_application;
+  std::string transport_scope;
+  std::string endpoint_local_model_kind;
+  std::string contour_fingerprint;
+  std::string extraction_fingerprint;
+  std::string eta_zero_selection_audit;
+  std::string summary;
+};
+
 bool IsLightlikeGaugeLinkEtaZeroRuntimeState(
     const LightlikeGaugeLinkRuntimeState& state);
 
@@ -168,6 +183,10 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
 
 LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkTransportScaffold(
     const ProblemSpec& spec,
+    const LightlikeGaugeLinkRuntimeState& state);
+
+LightlikeGaugeLinkSelectedCoefficientAudit
+BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
     const LightlikeGaugeLinkRuntimeState& state);
 
 }  // namespace amflow

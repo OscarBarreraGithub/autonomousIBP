@@ -49447,7 +49447,10 @@ import json
 import sys
 
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
+selected = {"family": "gauge", "indices": [1, 1, 1, 0, 1, 0, 0, 0, 0]}
 payload["boundary_state"]["files"].pop("solution", None)
+payload["masters"] = [selected]
+payload.setdefault("reduction", {})["targets"] = [selected]
 payload.setdefault("solution_sample_cache", {})["enabled"] = True
 json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
 )PY");
@@ -49465,22 +49468,51 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
 
   const std::string stripped_command =
       ShellSingleQuote(cli_path.string()) + " solve-series " +
-      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 2 --digits 40 --out " +
+      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 2 --digits 50 --out " +
       ShellSingleQuote(stripped_output_path.string()) + " >" +
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
-  Expect(RunShellCommand(stripped_command) != 0,
-         "stripped b64ag state should fail closed until real endpoint residues are implemented");
+  Expect(RunShellCommand(stripped_command) == 0,
+         "stripped b64ag selected endpoint state should run without reading solution samples; "
+         "stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
   const std::string stripped_json = ReadFile(stripped_output_path);
   ExpectContains(stripped_json,
-                 "\"failure_code\": \"boundary_unsolved\"",
-                 "stripped b64ag state should fail with the reviewed missing-boundary code");
+                 "\"targets\": [\"gauge[1,1,1,0,1,0,0,0,0]\"]",
+                 "stripped b64ag state should expose only the selected master");
+  ExpectContains(stripped_json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-finite-gauge-link-boundary+gaugex-zero-selected-endpoint-"
+                 "transport\"",
+                 "stripped b64ag state should use the non-solution gauge-link endpoint "
+                 "provider");
+  Expect(stripped_json.find("retained-finite-solution-sample-cache") ==
+             std::string::npos,
+         "stripped b64ag state must not fall back to retained final solution samples");
+  ExpectContains(stripped_json,
+                 "\"transport_applied\": true",
+                 "b64ag first endpoint transport should report transport only after selected "
+                 "evaluation");
+  ExpectContains(stripped_json,
+                 "\"transport_scope\": \"eta-zero-selected-endpoint-coefficients\"",
+                 "b64ag first endpoint transport should stay selected-master scoped");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transport_applied\": true",
+                 "b64ag first endpoint transport should set endpoint transport");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_master_count\": 1",
+                 "b64ag first endpoint transport should count one transported master");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_integrals\": "
+                 "[\"gauge[1,1,1,0,1,0,0,0,0]\"]",
+                 "b64ag first endpoint transport should name only the selected master");
   ExpectContains(stripped_json,
                  "\"full_eta_zero_contour_applied\": false",
                  "stripped b64ag state must keep the full-contour flag false");
   ExpectContains(stripped_json,
                  "Parsed the 6x6 rational gaugex DE matrix",
-                 "stripped b64ag state should parse raw diffeq metadata before failing closed");
+                 "stripped b64ag state should parse raw diffeq metadata before selected "
+                 "transport");
   ExpectContains(stripped_json,
                  "gaugex_poles=[-0.5",
                  "stripped b64ag state should publish the extracted gaugex pole list");
@@ -49490,6 +49522,24 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(stripped_json,
                  "PickZeroRuleS-compatible finite-part extraction",
                  "stripped b64ag state should retain the finite-part audit contract");
+  ExpectContains(stripped_json,
+                 "Applied b64ag lightlike gauge-link endpoint transport for "
+                 "gauge[1,1,1,0,1,0,0,0,0]",
+                 "b64ag first endpoint transport should document the applied runtime path");
+  ExpectContains(stripped_json,
+                 "final_solution_samples_used_as_input=false",
+                 "b64ag first endpoint transport should publish anti-fake provenance");
+  ExpectContains(stripped_json,
+                 "\"order\": 2",
+                 "b64ag first endpoint transport should emit the fourth compared epsilon "
+                 "coefficient");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"-0.002777777777777777777777777777777777",
+                 "b64ag first endpoint eps^-1 coefficient should match the reviewed value");
+  ExpectContains(stripped_json,
+                 "\"imag_digits\": \"-0.026179938779914943653855361527329190",
+                 "b64ag first endpoint eps^0 imaginary coefficient should match the "
+                 "reviewed value");
   ExpectContains(stripped_json,
                  "full_eta_zero_contour_applied stays false",
                  "stripped b64ag state should explicitly avoid overclaiming");

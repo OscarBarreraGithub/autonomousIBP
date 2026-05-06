@@ -1405,6 +1405,44 @@ void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
          "b64ag implicit-zero cases should not populate coefficient strings");
 }
 
+void B64agGaugeLinkFirstEndpointCoefficientAuditTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.targets = {B64agTarget({1, 1, 1, 0, 1, 0, 0, 0, 0})};
+
+  const amflow::LightlikeGaugeLinkSelectedCoefficientAudit audit =
+      amflow::BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(state);
+
+  Expect(audit.live_coefficients_available,
+         "b64ag first endpoint audit should mark the selected coefficient live");
+  Expect(!audit.retained_solution_samples_used,
+         "b64ag first endpoint audit must not use retained final solution samples");
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b64ag first endpoint audit must keep full contour false");
+  Expect(audit.ir_subtraction_applied,
+         "b64ag first endpoint audit should record finite-part subtraction");
+  Expect(audit.master_label == "gauge[1,1,1,0,1,0,0,0,0]",
+         "b64ag first endpoint audit should name only the selected master");
+  Expect(audit.transport_scope == "eta-zero-selected-endpoint-coefficients",
+         "b64ag first endpoint audit should stay selected-master scoped");
+  Expect(audit.endpoint_local_model_kind == "regular-singular-finite-part-r0",
+         "b64ag first endpoint audit should classify the gaugex=0 endpoint");
+  ExpectContains(audit.contour_fingerprint,
+                 "fnv1a64:",
+                 "b64ag first endpoint audit should fingerprint the contour");
+  ExpectContains(audit.extraction_fingerprint,
+                 "fnv1a64:",
+                 "b64ag first endpoint audit should fingerprint extraction");
+  ExpectContains(audit.eta_zero_selection_audit,
+                 "selected the power-zero coefficient",
+                 "b64ag first endpoint audit should use finite-part selection");
+  ExpectContains(audit.summary,
+                 "final_solution_samples_used_as_input=false",
+                 "b64ag first endpoint audit should publish anti-fake provenance");
+  ExpectContains(audit.summary,
+                 "full_eta_zero_contour_applied stays false",
+                 "b64ag first endpoint audit should avoid full-lane overclaiming");
+}
+
 }  // namespace
 
 int main() {
@@ -1449,6 +1487,7 @@ int main() {
     B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
     B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
+    B64agGaugeLinkFirstEndpointCoefficientAuditTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

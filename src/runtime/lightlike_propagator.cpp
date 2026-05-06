@@ -146,6 +146,13 @@ const std::vector<std::string>& ReviewedTargetLabels() {
   return labels;
 }
 
+const std::vector<std::string>& ReviewedFirstEndpointTargetLabels() {
+  static const std::vector<std::string> labels = {
+      "gauge[1,1,1,0,1,0,0,0,0]",
+  };
+  return labels;
+}
+
 const std::vector<std::string>& ReviewedReductionMasterLabels() {
   static const std::vector<std::string> labels = {
       "gauge[1,1,1,0,1,0,0,0,0]",
@@ -182,6 +189,12 @@ bool LabelsExactlyMatch(const std::vector<MasterIntegral>& values,
     }
   }
   return true;
+}
+
+bool LabelsMatchReviewedGaugeLinkTargets(
+    const std::vector<TargetIntegral>& values) {
+  return LabelsExactlyMatch(values, ReviewedTargetLabels()) ||
+         LabelsExactlyMatch(values, ReviewedFirstEndpointTargetLabels());
 }
 
 bool LabelsContainAll(const std::vector<MasterIntegral>& haystack,
@@ -234,9 +247,10 @@ void RequireReviewedGaugeLinkSourceSurface(const ProblemSpec& spec) {
           "b64ag gauge-link scaffold rejects cut propagators on the loop gauge-link surface");
     }
   }
-  if (!spec.targets.empty() && !LabelsExactlyMatch(spec.targets, ReviewedTargetLabels())) {
+  if (!spec.targets.empty() && !LabelsMatchReviewedGaugeLinkTargets(spec.targets)) {
     throw std::runtime_error(
-        "b64ag gauge-link scaffold requires the reviewed nine-target retained packet surface");
+        "b64ag gauge-link scaffold requires the reviewed packet surface or the selected "
+        "first endpoint target");
   }
 }
 
@@ -981,6 +995,20 @@ std::string SerializeGaugeLinkContourPlanForFingerprint(
   return out.str();
 }
 
+std::string SerializeGaugeLinkSelectedCoefficientAuditForFingerprint(
+    const LightlikeGaugeLinkSelectedCoefficientAudit& audit) {
+  std::ostringstream out;
+  out << "kind=b64ag-gauge-link-selected-endpoint-coefficient\n";
+  out << "master=" << audit.master_label << "\n";
+  out << "runtime_application=" << audit.runtime_application << "\n";
+  out << "transport_scope=" << audit.transport_scope << "\n";
+  out << "endpoint_local_model_kind=" << audit.endpoint_local_model_kind << "\n";
+  out << "contour_fingerprint=" << audit.contour_fingerprint << "\n";
+  out << "eta_zero_selection_audit=" << audit.eta_zero_selection_audit << "\n";
+  out << "final_solution_samples_used_as_input=false\n";
+  return out.str();
+}
+
 }  // namespace
 
 bool IsLightlikeGaugeLinkEtaZeroRuntimeState(
@@ -1340,9 +1368,10 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
     const LightlikeGaugeLinkRuntimeState& state) {
   const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
   if (!checked_state.targets.empty() &&
-      !LabelsExactlyMatch(checked_state.targets, ReviewedTargetLabels())) {
+      !LabelsMatchReviewedGaugeLinkTargets(checked_state.targets)) {
     throw std::runtime_error(
-        "b64ag gauge-link state target surface drifted from the reviewed nine-target packet");
+        "b64ag gauge-link state target surface drifted from the reviewed packet or selected "
+        "first endpoint target");
   }
   if (checked_state.targets.empty()) {
     throw std::runtime_error(
@@ -1498,6 +1527,78 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkTransportScaffold(
     audit.summary +=
         " The retained state still carries final solution samples, but this scaffold does not "
         "consume them as runtime evidence.";
+  }
+  return audit;
+}
+
+LightlikeGaugeLinkSelectedCoefficientAudit
+BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
+    const LightlikeGaugeLinkRuntimeState& state) {
+  LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  if (!checked_state.targets.empty() &&
+      !LabelsExactlyMatch(checked_state.targets, ReviewedFirstEndpointTargetLabels())) {
+    throw std::runtime_error(
+        "b64ag first endpoint coefficient evaluator is limited to "
+        "gauge[1,1,1,0,1,0,0,0,0]");
+  }
+
+  LightlikeGaugeLinkTransportAudit scaffold =
+      BuildLightlikeGaugeLinkRetainedStateScaffold(checked_state);
+  const std::string master_label = ReviewedFirstEndpointTargetLabels().front();
+  const LightlikeGaugeLinkFinitePartResult finite_part =
+      ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer", -1, 0, "dropped-selected-gauge-link-singular-branch"},
+          {"integer", 0, 0, master_label},
+      });
+  if (!finite_part.success) {
+    throw std::runtime_error(finite_part.summary);
+  }
+
+  LightlikeGaugeLinkSelectedCoefficientAudit audit;
+  audit.live_coefficients_available = true;
+  audit.retained_solution_samples_used = false;
+  audit.full_eta_zero_contour_applied = false;
+  audit.ir_subtraction_applied = finite_part.ir_subtraction_applied;
+  audit.master_label = master_label;
+  audit.runtime_application =
+      "b64ag-gauge-link-first-selected-endpoint-coefficient";
+  audit.transport_scope = "eta-zero-selected-endpoint-coefficients";
+  audit.endpoint_local_model_kind = scaffold.endpoint_local_model_kind;
+  audit.contour_fingerprint = scaffold.contour_fingerprint;
+  audit.eta_zero_selection_audit =
+      finite_part.summary + "; selected_coefficient_label=" +
+      finite_part.finite_part_coefficient;
+  audit.extraction_fingerprint =
+      ComputeArtifactFingerprint(
+          SerializeGaugeLinkSelectedCoefficientAuditForFingerprint(audit));
+  audit.summary =
+      "Applied b64ag lightlike gauge-link endpoint transport for " +
+      audit.master_label +
+      " from retained finite gaugex=1/40 boundary samples and the parsed first "
+      "gaugex DE block without reading final solution samples; selected the "
+      "PickZeroRuleS-compatible finite-part extraction of gaugex^(-1)*M0, "
+      "endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+      ", contour_fingerprint=" + audit.contour_fingerprint +
+      ", extraction_fingerprint=" + audit.extraction_fingerprint +
+      ", final_solution_samples_used_as_input=false. Full six-master gauge-link "
+      "endpoint transport remains deferred; full_eta_zero_contour_applied stays false.";
+  if (scaffold.diffeq_matrix_parsed) {
+    audit.summary +=
+        " Parsed the " + std::to_string(scaffold.diffeq_matrix_row_count) + "x" +
+        std::to_string(scaffold.diffeq_matrix_column_count) +
+        " rational gaugex DE matrix with " +
+        std::to_string(scaffold.diffeq_matrix_nonzero_cell_count) +
+        " nonzero cell(s), extracted " +
+        std::to_string(scaffold.diffeq_poles.size()) +
+        " unique gaugex pole(s), and built a deterministic " +
+        scaffold.contour_half_plane +
+        "-half-plane finite-boundary-to-endpoint contour plan with " +
+        std::to_string(scaffold.contour_waypoints.size()) +
+        " waypoint(s). gaugex_poles=[" + scaffold.pole_summary +
+        "]; contour_waypoints=[" + scaffold.waypoint_summary +
+        "]; dropped_term_audit=\"" + scaffold.dropped_term_audit +
+        "\"; minimum_nonendpoint_pole_distance_to_contour=" +
+        scaffold.minimum_nonendpoint_pole_distance_to_contour + ".";
   }
   return audit;
 }

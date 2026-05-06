@@ -1,0 +1,41 @@
+{
+  "amflow_golden_slice": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.amflow-golden.txt",
+  "amflow_nonzero_orders_verified": [
+    -1,
+    0,
+    1,
+    2
+  ],
+  "amflow_value_zero_sentinel_applicable": false,
+  "anti_fake_role_d_contract": "transport_applied=true is scoped to the selected b64ag lightlike gauge-link master and is backed by compare30 4/4 coefficient output against the canonical AMFlow rule; the coefficient is nonzero and retained final solution samples are not used by the C++ stripped runtime path.",
+  "benchmark_id": "linear_propagator",
+  "comparator": {
+    "compared_coefficient_count": 4,
+    "minimum_digit_agreement": 37,
+    "passed": true,
+    "passed_coefficient_count": 4,
+    "path": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.compare30.json",
+    "tolerance_digits": 30
+  },
+  "cpp_result": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.cpp-result.json",
+  "endpoint_local_model_kind": "regular-singular-finite-part-r0",
+  "eta_zero_endpoint_transport_applied": true,
+  "eta_zero_endpoint_transported_integrals": [
+    "gauge[1,1,1,0,1,0,0,0,0]"
+  ],
+  "final_solution_samples_used_as_input": false,
+  "full_eta_zero_contour_applied": false,
+  "full_stripped_result": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.stripped-result.json",
+  "lane": "lane145",
+  "master": "gauge[1,1,1,0,1,0,0,0,0]",
+  "runtime_application": "b64ag-gauge-link-first-selected-endpoint-coefficients",
+  "runtime_boundary_provider": "retained-finite-gauge-link-boundary+gaugex-zero-selected-endpoint-transport",
+  "runtime_lane": "b64ag",
+  "schema_version": 1,
+  "selected_endpoint_de_block": [
+    "gauge[1,1,1,0,1,0,0,0,0]",
+    "gauge[1,1,1,-1,1,0,0,0,0]"
+  ],
+  "transport_applied": true,
+  "transport_scope": "eta-zero-selected-endpoint-coefficients"
+}

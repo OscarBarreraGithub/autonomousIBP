@@ -1,0 +1,72 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.amflow-golden.txt",
+  "benchmark_id": "linear_propagator",
+  "compared_coefficient_count": 4,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "tools/reference-harness/specs/m6/lane145/linear_propagator.first-lightlike.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "-0.00277777777777777777777777777777777778",
+          "cpp_imag": "-7.1067907140E-50",
+          "cpp_present": true,
+          "cpp_real": "-0.002777777777777777777777777777777777777777777777777778670943",
+          "imag_agreement_digits": 50,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "amflow_imag": "-0.0261799387799149436538553615273291907",
+          "amflow_present": true,
+          "amflow_real": "-0.0332454250147094483838346214715355353",
+          "cpp_imag": "-0.026179938779914943653855361527329190701643075768903711485407",
+          "cpp_present": true,
+          "cpp_real": "-0.033245425014709448383834621471535535296870894422690692669476",
+          "imag_agreement_digits": 39,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "amflow_imag": "-0.31333074897504464056749008964263391214",
+          "amflow_present": true,
+          "amflow_real": "-0.23785758702311120886100536655935186163",
+          "cpp_imag": "-0.313330748975044640567490089642633912134862216464983797617623",
+          "cpp_present": true,
+          "cpp_real": "-0.237857587023111208861005366559351861624979178784595730521771",
+          "imag_agreement_digits": 39,
+          "order": 1,
+          "passed": true,
+          "real_agreement_digits": 39
+        },
+        {
+          "amflow_imag": "-3.01691186098469883889576908852872276342",
+          "amflow_present": true,
+          "amflow_real": "-1.25944908302945957155751828683450534417",
+          "cpp_imag": "-3.016911860984698838895769088528722762952411838683911055462766",
+          "cpp_present": true,
+          "cpp_real": "-1.259449083029459571557518286834505344169363907427239238461658",
+          "imag_agreement_digits": 37,
+          "order": 2,
+          "passed": true,
+          "real_agreement_digits": 40
+        }
+      ],
+      "integral": "gauge[1,1,1,0,1,0,0,0,0]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 1,
+  "minimum_digit_agreement": 37,
+  "passed": true,
+  "passed_coefficient_count": 4,
+  "schema_version": 1,
+  "tolerance_digits": 30
+}

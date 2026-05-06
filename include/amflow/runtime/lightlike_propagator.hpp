@@ -56,6 +56,7 @@ struct LightlikeGaugeLinkFinitePartResult {
   bool success = false;
   bool ir_subtraction_applied = false;
   std::string failure_code;
+  std::string selected_region_key;
   std::string finite_part_coefficient;
   std::vector<std::string> dropped_singular_terms;
   std::string summary;
@@ -112,6 +113,7 @@ struct LightlikeGaugeLinkReducedFinitePartTarget {
   std::string target_label;
   int affected_power_sum = LightlikeGaugeLinkFinitePartTerm{}.power;
   std::string normalization_factor;
+  std::string selected_region_key;
   std::string finite_part_coefficient;
   std::vector<LightlikeGaugeLinkFinitePartTerm> reduced_endpoint_terms;
   std::vector<std::string> dropped_singular_terms;

@@ -1995,6 +1995,14 @@ B64agTestBigFloat B64agLog(const B64agTestBigFloat& value) {
   return log(value);
 }
 
+B64agTestBigFloat B64agFactorial(const int value) {
+  B64agTestBigFloat result = 1;
+  for (int factor = 2; factor <= value; ++factor) {
+    result *= B64agTestBigFloat(factor);
+  }
+  return result;
+}
+
 B64agTestBigFloat B64agParseRational(const std::string& raw_value) {
   const std::size_t slash = raw_value.find('/');
   if (slash != std::string::npos) {
@@ -2107,6 +2115,20 @@ std::string B64agFrobeniusOnlyDiffeqRaw() {
       "{0,0,(-3 + 2*eps)/gaugex,0,0,(-2 + 4*eps)/gaugex}}}}";
 }
 
+std::string B64agFrobeniusFinitePartDiffeqRaw() {
+  return
+      "{{j[gauge,1,1,1,0,1,0,0,0,0],j[gauge,1,1,1,-1,1,0,0,0,0],"
+      "j[gauge,0,1,1,1,1,0,0,0,0],j[gauge,0,1,1,1,1,-1,0,0],"
+      "j[gauge,1,1,1,1,1,0,0,0,0],j[gauge,1,1,1,1,1,-1,0,0,0]},"
+      "{gaugex},"
+      "{{{0,0,0,0,0,0},"
+      "{0,0,0,0,0,0},"
+      "{0,0,((-7 + 8*eps)/gaugex) + 1,0,0,0},"
+      "{0,0,(3 - 2*eps)/(2*gaugex^3),0,0,0},"
+      "{0,0,0,0,2/gaugex,0},"
+      "{0,0,(-3 + 2*eps)/gaugex,0,0,(-2 + 4*eps)/gaugex}}}}";
+}
+
 const amflow::LightlikeGaugeLinkFinitePartTerm& B64agFindEndpointTerm(
     const amflow::LightlikeGaugeLinkSixMasterEndpointTerms& master_terms,
     const std::string& region_prefix,
@@ -2129,7 +2151,11 @@ B64agTestBigFloat B64agFrobeniusExponent(
   const std::string prefix = "frobenius:";
   Expect(region_key.rfind(prefix, 0) == 0,
          "b64ag endpoint term should carry a Frobenius region key");
-  return B64agTestBigFloat(region_key.substr(prefix.size()));
+  const std::size_t end = region_key.find(';', prefix.size());
+  return B64agTestBigFloat(
+      region_key.substr(prefix.size(),
+                        end == std::string::npos ? std::string::npos
+                                                 : end - prefix.size()));
 }
 
 B64agTestBigComplex B64agEndpointCoefficient(
@@ -2485,6 +2511,34 @@ void B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest() {
          "b64ag finite-part helper should audit dropped singular endpoint powers");
 }
 
+void B64agGaugeLinkFinitePartSelectsNonIntegerFrobeniusFinitePowerTest() {
+  const std::string region =
+      "frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+      "base:-7";
+  const amflow::LightlikeGaugeLinkFinitePartResult result =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {region, 6, 0, "frobenius_singular"},
+          {region, 7, 0, "frobenius_finite"},
+      });
+
+  Expect(result.success,
+         "b64ag finite-part helper should accept a single Frobenius endpoint region");
+  Expect(result.selected_region_key == region,
+         "b64ag finite-part helper should audit the selected Frobenius region");
+  Expect(result.ir_subtraction_applied,
+         "b64ag Frobenius finite-part helper should record finite-part subtraction");
+  Expect(result.finite_part_coefficient == "frobenius_finite",
+         "b64ag Frobenius finite-part helper should select the exponent-aware finite power");
+  Expect(result.dropped_singular_terms.size() == 1,
+         "b64ag Frobenius finite-part helper should audit dropped singular powers");
+  ExpectContains(result.summary,
+                 "non-integer Frobenius region",
+                 "b64ag Frobenius selector summary should record the non-integer branch");
+  ExpectContains(result.summary,
+                 "finite-part power 7",
+                 "b64ag Frobenius selector summary should record the exponent-aware power");
+}
+
 void B64agGaugeLinkFinitePartRejectsMultipleRegionsTest() {
   const amflow::LightlikeGaugeLinkFinitePartResult result =
       amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
@@ -2497,11 +2551,13 @@ void B64agGaugeLinkFinitePartRejectsMultipleRegionsTest() {
   Expect(result.failure_code == "continuation_budget_exhausted",
          "b64ag multiple-region rejection should use the reviewed continuation failure code");
   ExpectContains(result.summary,
-                 "multiple integer endpoint regions",
+                 "multiple endpoint regions",
                  "b64ag finite-part rejection should explain the unsupported structure");
 }
 
 void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
+  const amflow::LightlikeGaugeLinkFinitePartResult empty =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({});
   const amflow::LightlikeGaugeLinkFinitePartResult positive_only =
       amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
           {"integer", 2, 0, "positive"},
@@ -2510,15 +2566,58 @@ void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
       amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
           {"integer", -1, 0, "singular"},
       });
+  const amflow::LightlikeGaugeLinkFinitePartResult missing_frobenius_power =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+           "base:-7",
+           6,
+           0,
+           "frobenius_singular"},
+      });
+  const amflow::LightlikeGaugeLinkFinitePartResult unsupported_fractional_region =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"frobenius:-6.5", 7, 0, "unsupported_fractional"},
+      });
+  const amflow::LightlikeGaugeLinkFinitePartResult log_without_finite_part =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+           "base:-7",
+           7,
+           1,
+           "log_only"},
+      });
 
-  Expect(!positive_only.success && !missing_zero.success,
-         "b64ag finite-part helper should not publish implicit zero coefficients");
-  Expect(positive_only.failure_code == "continuation_budget_exhausted" &&
-             missing_zero.failure_code == "continuation_budget_exhausted",
+  Expect(!empty.success && !positive_only.success && !missing_zero.success &&
+             !missing_frobenius_power.success &&
+             !unsupported_fractional_region.success &&
+             !log_without_finite_part.success,
+         "b64ag finite-part helper should reject implicit or unresolved coefficients");
+  Expect(empty.failure_code == "continuation_budget_exhausted" &&
+             positive_only.failure_code == "continuation_budget_exhausted" &&
+             missing_zero.failure_code == "continuation_budget_exhausted" &&
+             missing_frobenius_power.failure_code == "continuation_budget_exhausted" &&
+             unsupported_fractional_region.failure_code ==
+                 "continuation_budget_exhausted" &&
+             log_without_finite_part.failure_code == "continuation_budget_exhausted",
          "b64ag implicit-zero cases should fail with the reviewed continuation code");
   Expect(positive_only.finite_part_coefficient.empty() &&
-             missing_zero.finite_part_coefficient.empty(),
+             missing_zero.finite_part_coefficient.empty() &&
+             missing_frobenius_power.finite_part_coefficient.empty() &&
+             unsupported_fractional_region.finite_part_coefficient.empty() &&
+             log_without_finite_part.finite_part_coefficient.empty(),
          "b64ag implicit-zero cases should not populate coefficient strings");
+  ExpectContains(empty.summary,
+                 "no endpoint terms",
+                 "b64ag empty endpoint selector should fail closed without an implicit zero");
+  ExpectContains(log_without_finite_part.summary,
+                 "logarithmic endpoint structure",
+                 "b64ag log-only Frobenius selector should fail closed");
+  ExpectContains(missing_frobenius_power.summary,
+                 "finite-part power 7",
+                 "b64ag missing Frobenius finite power should fail closed");
+  ExpectContains(unsupported_fractional_region.summary,
+                 "no reviewed finite-part base",
+                 "b64ag unsupported fractional Frobenius region should fail closed");
 }
 
 void B64agGaugeLinkReducedFinitePartAppliesTargetReductionBeforePickZeroRuleSTest() {
@@ -2644,7 +2743,7 @@ void B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest() {
   Expect(result.failures.front().failure_code == "continuation_budget_exhausted",
          "b64ag multiple-region rejection should reuse the finite-part failure code");
   ExpectContains(result.failures.front().summary,
-                 "multiple integer endpoint regions",
+                 "multiple endpoint regions",
                  "b64ag multiple-region rejection should come from the PickZeroRuleS selector");
   Expect(!result.full_eta_zero_contour_applied,
          "b64ag failed reduced finite-part result must not set the full contour flag");
@@ -3072,6 +3171,123 @@ void B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest() {
          "b64ag Frobenius roundtrip transport must keep full contour false");
 }
 
+void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.boundary_file_raws["diffeq"] = B64agFrobeniusFinitePartDiffeqRaw();
+  state.epsilon_samples = {"101/208000", "1/2000", "131/208000"};
+  const std::vector<B64agTestBigComplex> first_coefficients = {
+      {B64agTestBigFloat(
+           "7.1234567890123456789012345678901234567890123456789012345678"),
+       B64agTestBigFloat(
+           "-0.1234567890123456789012345678901234567890123456789012345678")},
+      {B64agTestBigFloat(
+           "8.2345678901234567890123456789012345678901234567890123456789"),
+       B64agTestBigFloat(
+           "0.2345678901234567890123456789012345678901234567890123456789")},
+      {B64agTestBigFloat(
+           "9.3456789012345678901234567890123456789012345678901234567891"),
+       B64agTestBigFloat(
+           "-0.3456789012345678901234567890123456789012345678901234567891")},
+  };
+  const std::vector<B64agTestBigComplex> second_boundaries = {
+      {B64agTestBigFloat(
+           "31.2345678901234567890123456789012345678901234567890123456789"),
+       B64agTestBigFloat(
+           "1.1234567890123456789012345678901234567890123456789012345678")},
+      {B64agTestBigFloat(
+           "32.3456789012345678901234567890123456789012345678901234567891"),
+       B64agTestBigFloat(
+           "-1.2345678901234567890123456789012345678901234567890123456789")},
+      {B64agTestBigFloat(
+           "33.4567890123456789012345678901234567890123456789012345678912"),
+       B64agTestBigFloat(
+           "1.3456789012345678901234567890123456789012345678901234567891")},
+  };
+  std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> boundary_samples;
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    boundary_samples.push_back({
+        state.epsilon_samples[index],
+        B64agRegularFirstBlockBoundaryValues(
+            state.epsilon_samples[index],
+            first_coefficients[index],
+            {B64agBigComplexText(second_boundaries[index]), "13", "17", "19"}),
+    });
+  }
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag retained-style Frobenius finite-part transport should succeed: " +
+             transport.summary);
+  Expect(!transport.retained_solution_samples_used,
+         "b64ag Frobenius finite-part transport must not read retained solutions");
+  Expect(!transport.full_eta_zero_contour_applied,
+         "b64ag Frobenius finite-part transport must keep full contour false");
+
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+  const int affected_power_sum = target.indices[3] + target.indices[4];
+  const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
+        amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+            {target},
+            transport.epsilon_endpoint_terms[index].endpoint_terms,
+            {B64agReductionFixtureTerm(target,
+                                       masters[2],
+                                       affected_power_sum,
+                                       "1")});
+
+    Expect(reduced.success,
+           "b64ag Frobenius reduced finite-part chain should accept sample " +
+               state.epsilon_samples[index] + ": " + reduced.summary);
+    Expect(reduced.targets.size() == 1 && reduced.targets.front().success,
+           "b64ag Frobenius reduced finite-part chain should publish one target result");
+    Expect(reduced.failures.empty(),
+           "b64ag Frobenius reduced finite-part chain should not record failures");
+    Expect(!reduced.retained_solution_samples_used,
+           "b64ag Frobenius reduced finite-part chain must not read retained solutions");
+    Expect(!reduced.full_eta_zero_contour_applied,
+           "b64ag Frobenius reduced finite-part chain must keep full contour false");
+    Expect(reduced.ir_subtraction_applied,
+           "b64ag Frobenius reduced finite-part chain should apply finite-part selection");
+
+    const amflow::LightlikeGaugeLinkReducedFinitePartTarget& reduced_target =
+        reduced.targets.front();
+    Expect(reduced_target.selected_region_key.rfind("frobenius:", 0) == 0,
+           "b64ag Frobenius reduced finite-part chain should select a Frobenius region");
+    const B64agTestBigFloat epsilon_value =
+        B64agParseRational(state.epsilon_samples[index]);
+    const B64agTestBigFloat exponent =
+        B64agFrobeniusExponent(reduced_target.selected_region_key);
+    ExpectB64agRelativeClose(exponent,
+                             B64agTestBigFloat(-7) +
+                                 B64agTestBigFloat(8) * epsilon_value,
+                             B64agTestBigFloat("1e-65"),
+                             "b64ag finite-part selector should keep the eps-dependent region");
+    const B64agTestBigComplex expected_coefficient =
+        second_boundaries[index] *
+        B64agExp(-exponent * B64agLog(x) - x) / B64agFactorial(7);
+    const B64agTestBigComplex selected_coefficient =
+        B64agEndpointCoefficient(reduced_target.finite_part_coefficient);
+    ExpectB64agRelativeClose(
+        selected_coefficient,
+        expected_coefficient,
+        B64agTestBigFloat("1e-55"),
+        "b64ag reduced finite part should match the independent Frobenius boundary formula");
+    ExpectContains(
+        reduced_target.finite_part_coefficient,
+        B64agBigFloatText(expected_coefficient.real()).substr(0, 56),
+        "b64ag reduced finite part should preserve >=50 real digits");
+    ExpectContains(
+        reduced_target.finite_part_coefficient,
+        B64agBigFloatText(B64agAbs(expected_coefficient.imag())).substr(0, 56),
+        "b64ag reduced finite part should preserve >=50 imaginary digits");
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -3121,6 +3337,7 @@ int main() {
     B64agGaugeLinkInlineReductionParserExpandsSyntheticLaurentRowsTest();
     B64agGaugeLinkRetainedReductionParserCoversInlineStateTableTest();
     B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
+    B64agGaugeLinkFinitePartSelectsNonIntegerFrobeniusFinitePowerTest();
     B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
     B64agGaugeLinkReducedFinitePartAppliesTargetReductionBeforePickZeroRuleSTest();
@@ -3132,6 +3349,7 @@ int main() {
     B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
     B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest();
     B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest();
+    B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

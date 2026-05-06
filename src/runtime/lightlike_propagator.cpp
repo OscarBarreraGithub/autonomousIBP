@@ -1162,9 +1162,11 @@ std::string CanonicalGaugeLinkRegionKey(const std::string& region_key) {
   return region_key.empty() ? "integer" : region_key;
 }
 
-std::string GaugeLinkFrobeniusRegionKey(const RuntimeFloat& exponent) {
+std::string GaugeLinkFrobeniusRegionKey(const RuntimeFloat& exponent,
+                                        const int finite_part_base) {
   return "frobenius:" +
-         FormatRuntimeFloat(exponent, kEndpointRegionPrecisionDigits);
+         FormatRuntimeFloat(exponent, kEndpointRegionPrecisionDigits) +
+         ";base:" + std::to_string(finite_part_base);
 }
 
 std::optional<RuntimeComplex> GaugeLinkRegionExponent(
@@ -1175,9 +1177,49 @@ std::optional<RuntimeComplex> GaugeLinkRegionExponent(
   }
   const std::string prefix = "frobenius:";
   if (region_key.rfind(prefix, 0) == 0 && region_key.size() > prefix.size()) {
-    return RuntimeComplex{RuntimeFloat(region_key.substr(prefix.size())), 0.0L};
+    const std::size_t base_marker = region_key.find(";base:", prefix.size());
+    const std::string exponent_text =
+        region_key.substr(prefix.size(),
+                          base_marker == std::string::npos
+                              ? std::string::npos
+                              : base_marker - prefix.size());
+    try {
+      return RuntimeComplex{RuntimeFloat(exponent_text), 0.0L};
+    } catch (const std::exception&) {
+      return std::nullopt;
+    }
   }
   return std::nullopt;
+}
+
+std::optional<int> GaugeLinkRegionFinitePartBase(
+    const std::string& raw_region_key) {
+  const std::string region_key = CanonicalGaugeLinkRegionKey(raw_region_key);
+  if (region_key == "integer") {
+    return 0;
+  }
+  const std::string prefix = "frobenius:";
+  const std::string base_marker = ";base:";
+  if (region_key.rfind(prefix, 0) != 0) {
+    return std::nullopt;
+  }
+  const std::size_t marker_position = region_key.find(base_marker, prefix.size());
+  if (marker_position == std::string::npos ||
+      marker_position + base_marker.size() >= region_key.size()) {
+    return std::nullopt;
+  }
+  try {
+    std::size_t parsed = 0;
+    const int value =
+        std::stoi(region_key.substr(marker_position + base_marker.size()),
+                  &parsed);
+    if (marker_position + base_marker.size() + parsed != region_key.size()) {
+      return std::nullopt;
+    }
+    return value;
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
 }
 
 RuntimeComplex RequireGaugeLinkRegionExponent(
@@ -1938,6 +1980,41 @@ std::optional<int> TryIntegerResidue(const RuntimeFloat& residue) {
   return rounded.convert_to<int>();
 }
 
+std::optional<int> GaugeLinkFinitePartPowerForRegion(
+    const std::string& selected_region,
+    const RuntimeComplex& region_exponent) {
+  if (RuntimeAbs(region_exponent.imag()) > RuntimeFloat("1e-50")) {
+    return std::nullopt;
+  }
+  if (CanonicalGaugeLinkRegionKey(selected_region) == "integer") {
+    return 0;
+  }
+  const std::optional<int> finite_part_base =
+      GaugeLinkRegionFinitePartBase(selected_region);
+  if (!finite_part_base.has_value()) {
+    return std::nullopt;
+  }
+  return -*finite_part_base;
+}
+
+std::optional<int> ReviewedGaugeLinkFrobeniusFinitePartBase(
+    const std::size_t row,
+    const RuntimeFloat& residue,
+    const RuntimeFloat& epsilon_value) {
+  const auto matches = [&residue](const RuntimeFloat& expected) {
+    return RuntimeAbs(residue - expected) < RuntimeFloat("1e-50");
+  };
+  if (row == 2 &&
+      matches(RuntimeFloat(-7) + RuntimeFloat(8) * epsilon_value)) {
+    return -7;
+  }
+  if (row == 5 &&
+      matches(RuntimeFloat(-2) + RuntimeFloat(4) * epsilon_value)) {
+    return -2;
+  }
+  return std::nullopt;
+}
+
 RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
     const std::vector<std::vector<std::string>>& diffeq_matrix,
     const std::size_t row,
@@ -1954,9 +2031,18 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
           diffeq_matrix, row, row, -1, variable, epsilon_value),
       "diagonal");
   const std::optional<int> integer_residue = TryIntegerResidue(residue);
-  const std::string homogeneous_region_key =
-      integer_residue.has_value() ? "integer"
-                                  : GaugeLinkFrobeniusRegionKey(residue);
+  std::string homogeneous_region_key = "integer";
+  if (!integer_residue.has_value()) {
+    const std::optional<int> finite_part_base =
+        ReviewedGaugeLinkFrobeniusFinitePartBase(row, residue, epsilon_value);
+    if (!finite_part_base.has_value()) {
+      throw std::runtime_error(
+          "b64ag finite-boundary endpoint transport found a non-integer "
+          "Frobenius residue without a reviewed finite-part base");
+    }
+    homogeneous_region_key =
+        GaugeLinkFrobeniusRegionKey(residue, *finite_part_base);
+  }
   std::map<int, RuntimeComplex> diagonal_regular_coefficients;
   for (int power = 0; power <= kMaxPower - kMinPower + 1; ++power) {
     const RuntimeComplex coefficient = GaugeLinkMatrixLaurentCoefficient(
@@ -2345,8 +2431,38 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
   }
   std::set<std::string> region_keys;
   for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
-    region_keys.insert(term.region_key.empty() ? "integer" : term.region_key);
-    if (term.log_power != 0 && term.power <= 0) {
+    region_keys.insert(CanonicalGaugeLinkRegionKey(term.region_key));
+  }
+  if (region_keys.size() > 1) {
+    result.failure_code = "continuation_budget_exhausted";
+    result.summary =
+        "b64ag finite-part extraction rejects multiple endpoint regions";
+    return result;
+  }
+  const std::string selected_region =
+      region_keys.empty() ? "integer" : *region_keys.begin();
+  const std::optional<RuntimeComplex> selected_region_exponent =
+      GaugeLinkRegionExponent(selected_region);
+  if (!selected_region_exponent.has_value()) {
+    result.failure_code = "continuation_budget_exhausted";
+    result.summary =
+        "b64ag finite-part extraction rejects unknown endpoint region " +
+        selected_region;
+    return result;
+  }
+  const std::optional<int> finite_part_power =
+      GaugeLinkFinitePartPowerForRegion(selected_region,
+                                        *selected_region_exponent);
+  if (!finite_part_power.has_value()) {
+    result.failure_code = "continuation_budget_exhausted";
+    result.summary =
+        "b64ag finite-part extraction rejects endpoint region " +
+        selected_region +
+        " because its Frobenius exponent has no reviewed finite-part base";
+    return result;
+  }
+  for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
+    if (term.log_power != 0 && term.power <= *finite_part_power) {
       result.failure_code = "continuation_budget_exhausted";
       result.summary =
           "b64ag finite-part extraction rejects unresolved non-vanishing "
@@ -2355,60 +2471,62 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
       return result;
     }
   }
-  if (region_keys.size() > 1) {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction rejects multiple integer endpoint regions";
-    return result;
-  }
-  if (!region_keys.empty() && *region_keys.begin() != "integer") {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction rejects non-integer Frobenius endpoint "
-        "regions until the production target-reduction bridge is exponent-aware";
-    return result;
-  }
   const auto min_power_it =
       std::min_element(terms.begin(),
                        terms.end(),
                        [](const LightlikeGaugeLinkFinitePartTerm& lhs,
                           const LightlikeGaugeLinkFinitePartTerm& rhs) {
-                         return lhs.power < rhs.power;
-                       });
-  if (min_power_it != terms.end() && min_power_it->power > 0) {
+                           return lhs.power < rhs.power;
+                         });
+  if (min_power_it != terms.end() && min_power_it->power > *finite_part_power) {
     result.failure_code = "continuation_budget_exhausted";
     result.summary =
-        "b64ag finite-part extraction found a positive starting power; this partial scaffold "
-        "does not publish an implicit zero coefficient";
+        "b64ag finite-part extraction found no term at or below finite-part power " +
+        std::to_string(*finite_part_power) +
+        "; this partial scaffold does not publish an implicit zero coefficient";
     return result;
   }
 
-  const auto zero_it =
+  const auto finite_it =
       std::find_if(terms.begin(),
                    terms.end(),
-                   [](const LightlikeGaugeLinkFinitePartTerm& term) {
-                     return term.power == 0;
+                   [finite_part_power](const LightlikeGaugeLinkFinitePartTerm& term) {
+                     return term.power == *finite_part_power;
                    });
   for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
-    if (term.power < 0) {
+    if (term.power < *finite_part_power) {
       result.dropped_singular_terms.push_back(term.coefficient);
     }
   }
-  if (zero_it == terms.end()) {
+  if (finite_it == terms.end()) {
     result.failure_code = "continuation_budget_exhausted";
     result.summary =
-        "b64ag finite-part extraction did not find a power-zero coefficient; this partial "
-        "scaffold does not publish an implicit zero coefficient";
+        "b64ag finite-part extraction did not find finite-part power " +
+        std::to_string(*finite_part_power) +
+        "; this partial scaffold does not publish an implicit zero coefficient";
     return result;
   }
   result.success = true;
   result.ir_subtraction_applied = true;
-  result.finite_part_coefficient = zero_it->coefficient;
+  result.selected_region_key = selected_region;
+  result.finite_part_coefficient = finite_it->coefficient;
+  const std::string region_audit =
+      selected_region == "integer"
+          ? std::string{}
+          : " in non-integer Frobenius region " + selected_region;
+  const std::string selected_power_audit =
+      *finite_part_power == 0
+          ? "power-zero coefficient"
+          : "finite-part power " + std::to_string(*finite_part_power) +
+                " coefficient";
   result.summary =
       result.dropped_singular_terms.empty()
-          ? "b64ag finite-part extraction selected the endpoint power-zero coefficient"
-          : "b64ag finite-part extraction dropped singular endpoint powers and selected the "
-            "power-zero coefficient";
+          ? "b64ag finite-part extraction selected the endpoint " +
+                selected_power_audit +
+                region_audit
+          : "b64ag finite-part extraction dropped singular endpoint powers and selected the " +
+                selected_power_audit +
+                region_audit;
   return result;
 }
 
@@ -2627,6 +2745,7 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
 
     target_result.success = true;
     target_result.ir_subtraction_applied = finite_part.ir_subtraction_applied;
+    target_result.selected_region_key = finite_part.selected_region_key;
     target_result.finite_part_coefficient =
         finite_part.finite_part_coefficient;
     target_result.dropped_singular_terms =
@@ -2953,6 +3072,7 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
 
       LightlikeGaugeLinkEndpointSampleTerms sample_terms;
       sample_terms.epsilon_sample = epsilon_sample;
+      constexpr int kFrobeniusFinitePartTransportMaxPower = 8;
       sample_terms.endpoint_terms.push_back(
           {first_label,
            {endpoint_term(
@@ -2963,16 +3083,20 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                0, coefficients.companion_regular_coefficient)}});
       sample_terms.endpoint_terms.push_back(
           {second_label,
-           EndpointTermsFromRuntimeSeries(endpoint_series[2], 2)});
+           EndpointTermsFromRuntimeSeries(endpoint_series[2],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       sample_terms.endpoint_terms.push_back(
           {second_companion_label,
-           EndpointTermsFromRuntimeSeries(endpoint_series[3], 2)});
+           EndpointTermsFromRuntimeSeries(endpoint_series[3],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       sample_terms.endpoint_terms.push_back(
           {downstream_label,
-           EndpointTermsFromRuntimeSeries(endpoint_series[4], 2)});
+           EndpointTermsFromRuntimeSeries(endpoint_series[4],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       sample_terms.endpoint_terms.push_back(
           {downstream_companion_label,
-           EndpointTermsFromRuntimeSeries(endpoint_series[5], 2)});
+           EndpointTermsFromRuntimeSeries(endpoint_series[5],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
            sample_terms.endpoint_terms) {
         if (master_terms.endpoint_terms.empty()) {

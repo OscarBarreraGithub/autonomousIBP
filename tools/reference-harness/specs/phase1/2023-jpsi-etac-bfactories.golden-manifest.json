@@ -1,0 +1,312 @@
+{
+  "benchmark_id": "2023-jpsi-etac-bfactories",
+  "capture_profile": {
+    "benchmark_class": "phase1-direct-selected-candidate-scoped-seed",
+    "black_box_dot": 1,
+    "black_box_rank": 2,
+    "chop_pre_digits": 40,
+    "digit_threshold_profile": "lane150-p80-chop40-scaffold",
+    "epsorder": 4,
+    "family": "jpsiEtacBFactoriesSeed",
+    "ibp_reducer": "Kira",
+    "kinematic_point": {
+      "mc2": "1",
+      "s": "-112"
+    },
+    "kinematic_region": "Euclidean B-factory short-distance continuation",
+    "precision_goal_digits": 80,
+    "raw_scalar_targets": [
+      "j[jpsiEtacBFactoriesSeed, 1, 1]",
+      "j[jpsiEtacBFactoriesSeed, 2, 1]",
+      "j[jpsiEtacBFactoriesSeed, 1, 2]"
+    ],
+    "selected_benchmark_anchor_ref": "2023-jpsi-etac-bfactories",
+    "source_reference": "arXiv:2212.03631 / JHEP 02 (2023) 049, scoped one-loop equal-mass charm bubble seed",
+    "topology": "one-loop equal-mass charm bubble seed"
+  },
+  "compare_cpp_vs_amflow_outputs": [],
+  "comparison_passed": false,
+  "created_at": "2026-05-06T01:53:08-04:00",
+  "evidence_kind": "dedicated-amflow-packet-local-script-success-scoped-seed",
+  "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/examples/jpsi_etac_bfactories_seed",
+  "notes": [
+    "This benchmark is the next direct selected candidate from docs/milestones/phase1-survey.md and references/case-studies/selected-benchmarks.md after the eleven prior phase-1 captures; the only other uncaptured surveyed candidate is the adjacent 2025-moller-ew-double-box row.",
+    "The full source paper computes NNLO corrections to e+e- -> J/psi + eta_c at B factories; lane150 freezes a deliberately scoped one-loop equal-mass charm bubble seed packet only.",
+    "The capture used AMFlow SolveIntegrals at precisionGoal=80 and SetAMFOptions[\"ChopPre\" -> 40].",
+    "The lane95 Kira imaginary-coefficient retry wrapper is installed as a reactive retry for the exact invalid coefficient string \"I\" parser failure; this capture did not trigger that retry.",
+    "No full NNLO B-factory literature packet, C++ ingest state, actual C++ vs AMFlow comparison for this seed, M6 closure, M7 closure, release-readiness, or broader AMFlow parity claim is made."
+  ],
+  "outputs": [
+    {
+      "canonical_sha256": "10c09dac12a42166d83e20bd3601df62916e11b713dba114766601b25d26d8ed",
+      "name": "sol-2023-jpsi-etac-bfactories-seed",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/examples/jpsi_etac_bfactories_seed/sol-2023-jpsi-etac-bfactories-seed",
+      "present_at_capture": true,
+      "size_bytes": 1510
+    },
+    {
+      "canonical_sha256": "e806cee701d47b65406331568d477ef5a98183098dfafdab75d2c002e39d108f",
+      "name": "sol-2023-jpsi-etac-bfactories-seed.meta.wl",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/examples/jpsi_etac_bfactories_seed/sol-2023-jpsi-etac-bfactories-seed.meta.wl",
+      "present_at_capture": true,
+      "size_bytes": 768
+    },
+    {
+      "canonical_sha256": "6ba27db25da70254568f1f47eaf7475a941c6661cc9d60dc1675ce255506c17e",
+      "name": "sol-2023-jpsi-etac-bfactories-seed.verify.txt",
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/examples/jpsi_etac_bfactories_seed/sol-2023-jpsi-etac-bfactories-seed.verify.txt",
+      "present_at_capture": true,
+      "size_bytes": 2376
+    }
+  ],
+  "role_reviews": [
+    {
+      "role": "A",
+      "scope": "benchmark selection and exclusions",
+      "status": "APPROVE",
+      "verdict": "Selected 2023-jpsi-etac-bfactories because it remains the first uncaptured direct/clear-build-on selected candidate after the eleven existing phase-1 manifests; 2025-moller-ew-double-box is only an adjacent candidate."
+    },
+    {
+      "role": "B",
+      "scope": "capture-template conformance and non-claim wording",
+      "status": "APPROVE",
+      "verdict": "The packet follows the phase-1 root-manifest plus adjacent lane directory pattern with capture script, run.wl, fail-closed verifier, hashed outputs, AMFlow/toolchain provenance, and explicit scoped-seed non-claims."
+    },
+    {
+      "role": "C",
+      "scope": "build, comparator self-check, and scaffold-only gates",
+      "status": "APPROVE",
+      "verdict": "CMake configure, CMake build, amflow-tests, singular-runtime-lane-tests, CTest, compare_cpp_vs_amflow.py --self-check, manifest JSON validation, and the scaffold-only non-promotion assertion completed with exit code 0."
+    },
+    {
+      "role": "D",
+      "scope": "anti-fake Mathematica numerics and diff gate",
+      "status": "APPROVE",
+      "verdict": "The staged diff contains no sentinel-literal matches, comparator policy loosening, true-valued comparison or transport flags, C++ ingest promotion, M6/M7/release-readiness claim, or fabricated zero-substitution pattern; the manifest hashes match the captured AMFlow outputs and verifier transcript with finite nonzero 80-digit Mathematica numerics."
+    }
+  ],
+  "run": {
+    "example_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/examples/jpsi_etac_bfactories_seed",
+    "execution": {
+      "job_id_env": "10006275",
+      "mode": "local execution of the sbatch-compatible capture script inside an existing allocation",
+      "status": "COMPLETED",
+      "wall_time_observed": "00:02:00"
+    },
+    "logs": {
+      "capture": {
+        "path": "/tmp/autoibp_orch/exec/lane150_capture.log",
+        "sha256": "7ce7bc06f38d3e54f82636840566610d0f1e45dc0a34ddab399bff7e2e019f65",
+        "size_bytes": 16244
+      }
+    },
+    "manifest": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/run-manifest.10006275.txt",
+      "sha256": "2ce2549253e1de4cf7061925dc7455a041ebfa7c4af91ba589f863546295411e",
+      "size_bytes": 2456
+    },
+    "run_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories",
+    "scripts": [
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.lane150/capture_jpsi_etac_bfactories_seed.sbatch",
+        "sha256": "70568274bc61675f1aa2aed4efca0f101665c09f7943de01c3e8e3690f3853bb",
+        "size_bytes": 3451
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.lane150/run.wl",
+        "sha256": "3ef5eead67ced5a700660ec22d6bbfc6ed73a8687dca258d9d722d9ee98b6f56",
+        "size_bytes": 6225
+      },
+      {
+        "path": "tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.lane150/verify_output.wl",
+        "sha256": "37f3ea420fe4a4cb1b61c131021973ac23ced6f24386be8e58270685c6aac44a",
+        "size_bytes": 4894
+      }
+    ],
+    "source_amflow": {
+      "commit": "775162498ab18493c45254b861669b4151b841ee",
+      "local_clone_source": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow",
+      "remote": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/lane93-box-integrals-fermion-bubbles/amflow"
+    },
+    "source_amflow_files": [
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/AMFlow.m",
+        "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+        "size_bytes": 63699
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/ibp_interface/Kira/interface.m",
+        "sha256": "d845101385b3610043160633a4068fd3ac502654c46be83521c781bfe8896e84",
+        "size_bytes": 16727
+      },
+      {
+        "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work-phase1-2023-jpsi-etac-bfactories/amflow/ibp_interface/Kira/install.m",
+        "sha256": "518fcce14eae376450ae5cee2c14a0d94f8820a237a75c5536d60e2f3452464d",
+        "size_bytes": 223
+      }
+    ],
+    "source_article": {
+      "arxiv": "2212.03631",
+      "doi": "10.1007/JHEP02(2023)049",
+      "title": "Next-to-next-to-leading-order QCD corrections to J/psi plus eta_c production at the B factories",
+      "url": "https://arxiv.org/abs/2212.03631"
+    },
+    "toolchain": {
+      "fermat_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/fermat/fer64",
+      "fermat_version": "5.25",
+      "kira_executable": "/n/holylabs/schwartz_lab/Lab/obarrera/toolchains/kira/bin/kira",
+      "kira_version": "3.1",
+      "wolfram_kernel": "/n/sw/helmod/apps/centos7/Core/mathematica/Mathematica_13.3.0/Executables/WolframKernel",
+      "wolfram_version": "13.3.0 for Linux x86 (64-bit) (June 3, 2023)"
+    }
+  },
+  "schema_version": 1,
+  "status": "amflow-captured-verified",
+  "updated_at": "2026-05-06T02:05:25-04:00",
+  "verification": {
+    "anti_fake_parity_gate": "passed-role-d-approved",
+    "amflow_tests": {
+      "command": "./build/amflow-tests",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane150_amflow_tests.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane150_amflow_tests.stdout",
+        "sha256": "05c1ab3227c3f37c3d1d68dc4cccaac360504b4de29b6605ad3cae93461f48a0",
+        "size_bytes": 30
+      },
+      "status": "passed"
+    },
+    "build_gate": "passed",
+    "cmake_build": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake --build build --parallel 1",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane150_cmake_build.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane150_cmake_build.stdout",
+        "sha256": "e576265f21ac10ca620e900e4197bee3d6624c744e9df5d010c828d0135289db",
+        "size_bytes": 139
+      },
+      "status": "passed"
+    },
+    "cmake_configure": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH cmake -S . -B build",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane150_cmake_configure.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane150_cmake_configure.stdout",
+        "sha256": "cc89ae7957b3ef3682faec91cad742762298642920aabf64edbc146bc79673df",
+        "size_bytes": 143
+      },
+      "status": "passed"
+    },
+    "compare_cpp_vs_amflow_self_check": {
+      "path": "/tmp/autoibp_orch/exec/lane150_compare_selfcheck.json",
+      "sha256": "88f52889ffdd32aa612df489d98064c380c9b26aa540ef48dd15dbd02e046bb4",
+      "size_bytes": 573,
+      "status": "passed"
+    },
+    "ctest": {
+      "command": "PATH=/n/sw/helmod-rocky8/apps/Core/cmake/4.2.3-fasrc01/bin:$PATH ctest --test-dir build --output-on-failure",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane150_ctest.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane150_ctest.stdout",
+        "sha256": "ecc1b00a12998339a92bae7fb23f4e09a035df4b4320f669fd1e6d141bd6169d",
+        "size_bytes": 351
+      },
+      "status": "passed"
+    },
+    "latest_log_stage_at_capture": "Lane150 scoped J/psi eta_c seed AMFlow/Kira run reduced three requested equal-mass charm bubble seed targets to two master integrals, constructed and solved two AMF systems, wrote solution plus metadata, and the verifier passed on finite real Mathematica coefficients through eps^4.",
+    "manifest_validation": {
+      "json_tool": {
+        "command": "python3 -m json.tool tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.golden-manifest.json",
+        "stderr": {
+          "path": "/tmp/autoibp_orch/exec/lane150_manifest_json_tool.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "size_bytes": 0
+        },
+        "stdout": {
+          "note": "Hash intentionally omitted because the pretty-printed JSON includes this manifest field and would be self-referential.",
+          "path": "/tmp/autoibp_orch/exec/lane150_manifest_json_tool.stdout"
+        },
+        "status": "passed"
+      },
+      "phase1_schema_guard": {
+        "path": "/tmp/autoibp_orch/exec/lane150_manifest_phase1_schema_guard.stdout",
+        "sha256": "6a0b3d5702fd65fcad6e84f308b230536aec2d55eacb2c3e71efcd09289364ba",
+        "size_bytes": 27,
+        "status": "passed"
+      },
+      "scaffold_only_guard": {
+        "path": "/tmp/autoibp_orch/exec/lane150_manifest_scaffold_guard.stdout",
+        "sha256": "b1e183e54b6e885c4269d083b5d6a7ebf9f206985f34f51dea8adbf893ba47a8",
+        "size_bytes": 34,
+        "status": "passed"
+      }
+    },
+    "prior_parity_hash": {
+      "current_sha256": "47630d96301c9db54e52b5bc71b4d8ebf696ebd0a744690bd0af24769b3e855b",
+      "head_sha256": "47630d96301c9db54e52b5bc71b4d8ebf696ebd0a744690bd0af24769b3e855b",
+      "path": "tools/reference-harness/specs/m7/lane133/phase0-packet-comparison.json",
+      "status": "unchanged"
+    },
+    "real_mathematica_execution_verified": true,
+    "real_mathematica_numerics_verified": true,
+    "runtime_transport": {
+      "eta_infinity_asymptotic_transport_applied": false,
+      "eta_zero_endpoint_transport_applied": false,
+      "transport_applied": false
+    },
+    "singular_runtime_lane_tests": {
+      "command": "./build/singular-runtime-lane-tests",
+      "stderr": {
+        "path": "/tmp/autoibp_orch/exec/lane150_singular_runtime_lane_tests.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "path": "/tmp/autoibp_orch/exec/lane150_singular_runtime_lane_tests.stdout",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "status": "passed"
+    },
+    "verification_output": {
+      "chop_pre_digits": 40,
+      "coefficient_count": 18,
+      "coefficient_powers": [
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "max_abs_imaginary_component": "0",
+      "min_nonzero_precision": "80.",
+      "min_precision": "80.",
+      "nonzero_coefficient_count": 10,
+      "precision_goal_digits": 80,
+      "solution_rule_count": 4,
+      "target_nonzero_counts": [
+        3,
+        3,
+        4
+      ],
+      "verified_target_rule_count": 3,
+      "verifier_status": "PASS"
+    }
+  }
+}

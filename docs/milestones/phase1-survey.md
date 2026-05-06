@@ -78,8 +78,8 @@ those rows to selected literature anchors where available
 | `five-point-one-mass-scattering` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `complex_kinematics`; comparison passes `14/14` at 50 digits, but no dedicated five-point literature packet is frozen (`tools/reference-harness/specs/case-studies/five-point-one-mass-scattering.numeric-evidence.json:3-32`). |
 | `ttbar-w` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current comparator row remains proxy evidence through retained `automatic_loop` eps11 at the default profile. Lane122 now also freezes a fresh AMFlow/Kira packet for that current proxy surface and ties it to the `2025-ttw-leading-colour-integrals` anchor (`tools/reference-harness/specs/phase1/ttbar-w.golden-manifest.json`); it is not a dedicated full two-loop `ttbar-W` literature packet and does not replace the C++ numeric-evidence proxy. |
 | `diphoton-heavy-quark-form-factors` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Dedicated lane103 AMFlow verifier evidence now freezes the diphotonNPL J39-J42 packet from SLURM `10204166`: the repaired verifier selects four requested targets from the 74-rule AMFlow superset and validates 36 Laurent coefficients at the 200-digit profile (`tools/reference-harness/specs/phase1/diphoton-heavy-quark-form-factors.golden-manifest.json`, `tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json`). No dedicated C++ ingest for J39-J42 is claimed. |
-| `h-to-bb` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps9; comparison passes at the default profile, but no dedicated `h -> bb` packet is frozen. |
-| `n4-sym-three-loop-form-factor` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row is proxy evidence through retained `automatic_loop` eps10; comparison passes at the default profile, but no dedicated N=4 packet is frozen. |
+| `h-to-bb` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current comparator row remains proxy evidence through retained `automatic_loop` eps9 at the default profile. Lane154 also freezes a scoped AMFlow/Kira packet for the `2024-h-to-bb-nnlo` anchor using a one-loop equal-mass Euclidean H-to-bb vertex seed (`tools/reference-harness/specs/phase1/2024-h-to-bb-nnlo.golden-manifest.json`); it is not a full NNLO `h -> bb` literature packet and does not replace the C++ numeric-evidence proxy. |
+| `n4-sym-three-loop-form-factor` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current row remains proxy evidence through retained `automatic_loop` eps10; comparison passes at the default profile. No dedicated N=4 three-loop packet is frozen under the current survey contract, and this row is not treated as a low-budget tractable uncaptured phase-1 capture target without a new scoped benchmark contract. |
 | `single-top-planar-nonplanar` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Current M6 row remains the retained `automatic_loop` eps12 proxy at the default profile, and lane103 also freezes the dedicated singleTopPL1 Euclidean AMFlow packet from SLURM `10248008`: the repaired verifier selects two requested targets from the 32-rule AMFlow superset and validates 18 Laurent coefficients (`tools/reference-harness/specs/phase1/single-top-planar-nonplanar.golden-manifest.json`). |
 | `one-singular-endpoint-case` | CAPTURED | INGEST-IMPLEMENTED | COMPARED | Internal SRL-5 singular endpoint row with accepted exact golden; comparison passes `1/1` with 999 observed digits (`tools/reference-harness/specs/case-studies/one-singular-endpoint-case.numeric-evidence.json:3-45`). |
 
@@ -95,15 +95,25 @@ It also records strong adjacent candidates:
 `2024-box-integrals-fermion-bubbles` and `2025-moller-ew-double-box`
 (`references/case-studies/selected-benchmarks.md:32-37`).
 
-Current status for all seven candidate rows is:
+Current status for the seven candidate rows after lanes 93, 99, 101, 106,
+144, 150, and 152 is:
 
-| Rows | Capture | Ingest | Compare |
-| --- | --- | --- | --- |
-| Non-scaffold direct and adjacent candidates listed above | NOT-CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED |
+| Row | Capture | Ingest | Compare | Current evidence |
+| --- | --- | --- | --- | --- |
+| `2023-gg-to-gammagamma-light-quark-mi` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane101 freezes a dedicated AMFlow/Kira packet for the selected light-quark diphoton anchor (`tools/reference-harness/specs/phase1/2023-gg-to-gammagamma-light-quark-mi.golden-manifest.json`). No C++ ingest or comparator row is claimed. |
+| `2024-higgs-gluon-form-factor-three-scales` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane144 freezes a scoped one-loop two-mass Higgs-gluon form-factor seed packet for the three-scale anchor (`tools/reference-harness/specs/phase1/2024-higgs-gluon-form-factor-three-scales.golden-manifest.json`). No full three-loop packet, C++ ingest, or comparator row is claimed. |
+| `2024-gg-to-tth-one-loop-oeps2` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane99 freezes a dedicated one-loop AMF packet for the selected `gg -> ttH` one-loop `O(eps^2)` anchor (`tools/reference-harness/specs/phase1/2024-gg-to-tth-one-loop-oeps2.golden-manifest.json`). No C++ ingest or comparator row is claimed. |
+| `2024-wpair-planar-mi` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane106 freezes a dedicated AMFlow/Kira packet for the W-pair planar T1 Euclidean anchor (`tools/reference-harness/specs/phase1/2024-wpair-planar-mi.golden-manifest.json`). No C++ ingest or comparator row is claimed. |
+| `2023-jpsi-etac-bfactories` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane150 freezes a scoped one-loop equal-mass charm bubble seed packet for the J/psi + eta_c selected benchmark (`tools/reference-harness/specs/phase1/2023-jpsi-etac-bfactories.golden-manifest.json`). No full production packet, C++ ingest, or comparator row is claimed. |
+| `2024-box-integrals-fermion-bubbles` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane93 freezes a dedicated AMFlow/Kira packet for topology H of the fermion-bubble box-integral anchor (`tools/reference-harness/specs/phase1/2024-box-integrals-fermion-bubbles.golden-manifest.json`). No C++ ingest or comparator row is claimed. |
+| `2025-moller-ew-double-box` | CAPTURED | NOT-IMPLEMENTED | NOT-COMPARED | Lane152 freezes a scoped one-loop Euclidean Moller t-channel box seed packet for the adjacent electroweak double-box anchor (`tools/reference-harness/specs/phase1/2025-moller-ew-double-box.golden-manifest.json`). No full two-loop electroweak packet, C++ ingest, or comparator row is claimed. |
 
-These are tracking candidates, not the shortest route to the next closure
-horizon. They become useful after the frozen qualification surface is no longer
-blocked.
+These are scaffold-only tracking captures, not new runtime parity claims and not
+the shortest route to the next closure horizon. They become useful after the
+frozen qualification surface is no longer blocked. As of lane156, this survey
+does not list a remaining tractable uncaptured phase-1 benchmark; adding another
+capture requires a new selected benchmark or a new scoped contract rather than
+re-labeling an already-covered proxy row.
 
 ## Lane103 Phase-1 Promotion Status
 

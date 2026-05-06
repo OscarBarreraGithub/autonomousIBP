@@ -380,6 +380,7 @@ using RuntimeComplex = std::complex<RuntimeFloat>;
 
 const RuntimeFloat kRuntimeTiny("1e-80");
 constexpr int kEndpointTransportPrecisionDigits = 70;
+constexpr int kEndpointRegionPrecisionDigits = 95;
 
 RuntimeFloat RuntimeAbs(const RuntimeFloat& value) {
   using boost::multiprecision::abs;
@@ -394,6 +395,14 @@ RuntimeFloat RuntimeAbs(const RuntimeComplex& value) {
 RuntimeFloat RuntimeLog(const RuntimeFloat& value) {
   using boost::multiprecision::log;
   return log(value);
+}
+
+RuntimeComplex RuntimeExp(const RuntimeComplex& value) {
+  using boost::multiprecision::cos;
+  using boost::multiprecision::exp;
+  using boost::multiprecision::sin;
+  const RuntimeFloat radial = exp(value.real());
+  return {radial * cos(value.imag()), radial * sin(value.imag())};
 }
 
 RuntimeFloat RuntimeExp(const RuntimeFloat& value) {
@@ -411,6 +420,14 @@ RuntimeFloat RuntimeIntegerPower(const RuntimeFloat& base, const int exponent) {
     result *= base;
   }
   return exponent < 0 ? RuntimeFloat(1) / result : result;
+}
+
+RuntimeComplex RuntimePower(const RuntimeFloat& positive_base,
+                            const RuntimeComplex& exponent) {
+  if (RuntimeAbs(exponent.imag()) < kRuntimeTiny) {
+    return {RuntimeExp(exponent.real() * RuntimeLog(positive_base)), 0.0L};
+  }
+  return RuntimeExp(exponent * RuntimeLog(positive_base));
 }
 
 bool IsRuntimeTiny(const RuntimeComplex& value) {
@@ -1145,6 +1162,37 @@ std::string CanonicalGaugeLinkRegionKey(const std::string& region_key) {
   return region_key.empty() ? "integer" : region_key;
 }
 
+std::string GaugeLinkFrobeniusRegionKey(const RuntimeFloat& exponent) {
+  return "frobenius:" +
+         FormatRuntimeFloat(exponent, kEndpointRegionPrecisionDigits);
+}
+
+std::optional<RuntimeComplex> GaugeLinkRegionExponent(
+    const std::string& raw_region_key) {
+  const std::string region_key = CanonicalGaugeLinkRegionKey(raw_region_key);
+  if (region_key == "integer") {
+    return RuntimeComplex{0.0L, 0.0L};
+  }
+  const std::string prefix = "frobenius:";
+  if (region_key.rfind(prefix, 0) == 0 && region_key.size() > prefix.size()) {
+    return RuntimeComplex{RuntimeFloat(region_key.substr(prefix.size())), 0.0L};
+  }
+  return std::nullopt;
+}
+
+RuntimeComplex RequireGaugeLinkRegionExponent(
+    const std::string& raw_region_key) {
+  const std::optional<RuntimeComplex> exponent =
+      GaugeLinkRegionExponent(raw_region_key);
+  if (!exponent.has_value()) {
+    throw std::runtime_error(
+        "b64ag finite-boundary endpoint transport found an unknown endpoint "
+        "region key " +
+        raw_region_key);
+  }
+  return *exponent;
+}
+
 std::string MultiplyGaugeLinkCoefficients(const std::string& reduction_coefficient,
                                           const std::string& endpoint_coefficient) {
   if (reduction_coefficient == "1") {
@@ -1785,23 +1833,35 @@ void RequireGaugeLinkLaurentCoefficient(
 using RuntimeSeries = std::map<GaugeLinkEndpointTermKey, RuntimeComplex>;
 
 RuntimeComplex RuntimeSeriesCoefficient(const RuntimeSeries& series,
+                                        const std::string& region_key,
                                         const int power,
                                         const int log_power) {
-  const auto it = series.find({"integer", power, log_power});
+  const auto it = series.find(
+      {CanonicalGaugeLinkRegionKey(region_key), power, log_power});
   return it == series.end() ? RuntimeComplex{0.0L, 0.0L} : it->second;
 }
 
 void AddRuntimeSeriesTerm(RuntimeSeries& series,
+                          const std::string& region_key,
                           const int power,
                           const int log_power,
                           const RuntimeComplex& coefficient) {
   if (IsRuntimeTiny(coefficient)) {
     return;
   }
-  series[{"integer", power, log_power}] += coefficient;
-  if (IsRuntimeTiny(series[{"integer", power, log_power}])) {
-    series.erase({"integer", power, log_power});
+  const GaugeLinkEndpointTermKey key = {
+      CanonicalGaugeLinkRegionKey(region_key), power, log_power};
+  series[key] += coefficient;
+  if (IsRuntimeTiny(series[key])) {
+    series.erase(key);
   }
+}
+
+void AddRuntimeSeriesTerm(RuntimeSeries& series,
+                          const int power,
+                          const int log_power,
+                          const RuntimeComplex& coefficient) {
+  AddRuntimeSeriesTerm(series, "integer", power, log_power, coefficient);
 }
 
 RuntimeSeries AddRuntimeSeries(RuntimeSeries lhs,
@@ -1810,6 +1870,7 @@ RuntimeSeries AddRuntimeSeries(RuntimeSeries lhs,
                                    RuntimeComplex{1.0L, 0.0L}) {
   for (const auto& entry : rhs) {
     AddRuntimeSeriesTerm(lhs,
+                         entry.first.region_key,
                          entry.first.power,
                          entry.first.log_power,
                          rhs_scale * entry.second);
@@ -1817,13 +1878,23 @@ RuntimeSeries AddRuntimeSeries(RuntimeSeries lhs,
   return lhs;
 }
 
+std::set<std::string> RuntimeSeriesRegions(const RuntimeSeries& series) {
+  std::set<std::string> regions;
+  for (const auto& entry : series) {
+    regions.insert(CanonicalGaugeLinkRegionKey(entry.first.region_key));
+  }
+  return regions;
+}
+
 RuntimeComplex RuntimeSeriesValue(const RuntimeSeries& series,
                                   const RuntimeFloat x) {
   const RuntimeFloat log_x = RuntimeLog(x);
   RuntimeComplex value{0.0L, 0.0L};
   for (const auto& entry : series) {
-    value += entry.second *
-             RuntimeIntegerPower(x, entry.first.power) *
+    const RuntimeComplex exponent =
+        RequireGaugeLinkRegionExponent(entry.first.region_key) +
+        RuntimeComplex{static_cast<RuntimeFloat>(entry.first.power), 0.0L};
+    value += entry.second * RuntimePower(x, exponent) *
              RuntimeIntegerPower(log_x, entry.first.log_power);
   }
   return value;
@@ -1842,25 +1913,27 @@ int RuntimeRationalLowestPower(const RuntimeRationalPolynomial& rational) {
   return numerator_lowest - denominator_lowest;
 }
 
-int RequireIntegerResidue(const RuntimeComplex& residue,
-                          const std::string& description) {
+RuntimeFloat RequireRealResidue(const RuntimeComplex& residue,
+                                const std::string& description) {
   if (RuntimeAbs(residue.imag()) > RuntimeFloat("1e-50")) {
     throw std::runtime_error(
         "b64ag finite-boundary endpoint transport found a complex " +
         description + " residue");
   }
+  return residue.real();
+}
+
+std::optional<int> TryIntegerResidue(const RuntimeFloat& residue) {
   using boost::multiprecision::ceil;
   using boost::multiprecision::floor;
   RuntimeFloat rounded;
-  if (residue.real() < 0) {
-    rounded = ceil(residue.real() - RuntimeFloat("0.5"));
+  if (residue < 0) {
+    rounded = ceil(residue - RuntimeFloat("0.5"));
   } else {
-    rounded = floor(residue.real() + RuntimeFloat("0.5"));
+    rounded = floor(residue + RuntimeFloat("0.5"));
   }
-  if (RuntimeAbs(residue.real() - rounded) > RuntimeFloat("1e-50")) {
-    throw std::runtime_error(
-        "b64ag finite-boundary endpoint transport requires an integer " +
-        description + " residue");
+  if (RuntimeAbs(residue - rounded) > RuntimeFloat("1e-50")) {
+    return std::nullopt;
   }
   return rounded.convert_to<int>();
 }
@@ -1876,10 +1949,14 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
   constexpr int kMaxPower = 80;
   const RuntimeFloat kBoundaryPoint = RuntimeFloat(1) / RuntimeFloat(40);
 
-  const int residue = RequireIntegerResidue(
+  const RuntimeFloat residue = RequireRealResidue(
       GaugeLinkMatrixLaurentCoefficient(
           diffeq_matrix, row, row, -1, variable, epsilon_value),
       "diagonal");
+  const std::optional<int> integer_residue = TryIntegerResidue(residue);
+  const std::string homogeneous_region_key =
+      integer_residue.has_value() ? "integer"
+                                  : GaugeLinkFrobeniusRegionKey(residue);
   std::map<int, RuntimeComplex> diagonal_regular_coefficients;
   for (int power = 0; power <= kMaxPower - kMinPower + 1; ++power) {
     const RuntimeComplex coefficient = GaugeLinkMatrixLaurentCoefficient(
@@ -1916,6 +1993,7 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
       }
       for (const auto& term : known_series[column]) {
         AddRuntimeSeriesTerm(source,
+                             term.first.region_key,
                              term.first.power + matrix_power,
                              term.first.log_power,
                              matrix_coefficient * term.second);
@@ -1923,18 +2001,23 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
     }
   }
 
-  const auto solve_with_seed = [&](const RuntimeSeries& forcing,
-                                   const RuntimeComplex& resonance_seed) {
+  const auto solve_region_with_seed = [&](const RuntimeSeries& forcing,
+                                          const std::string& region_key,
+                                          const RuntimeComplex& resonance_seed) {
     RuntimeSeries series;
+    const RuntimeComplex region_exponent =
+        RequireGaugeLinkRegionExponent(region_key);
     for (int power = kMinPower; power <= kMaxPower; ++power) {
-      const RuntimeFloat denominator =
-          static_cast<RuntimeFloat>(power - residue);
+      const RuntimeComplex denominator =
+          region_exponent +
+          RuntimeComplex{static_cast<RuntimeFloat>(power), 0.0L} -
+          RuntimeComplex{residue, 0.0L};
       RuntimeComplex log_rhs =
-          RuntimeSeriesCoefficient(forcing, power - 1, 1);
+          RuntimeSeriesCoefficient(forcing, region_key, power - 1, 1);
       for (const auto& diagonal : diagonal_regular_coefficients) {
         log_rhs += diagonal.second *
                    RuntimeSeriesCoefficient(
-                       series, power - 1 - diagonal.first, 1);
+                       series, region_key, power - 1 - diagonal.first, 1);
       }
 
       RuntimeComplex log_coefficient{0.0L, 0.0L};
@@ -1949,11 +2032,11 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
       }
 
       RuntimeComplex regular_rhs =
-          RuntimeSeriesCoefficient(forcing, power - 1, 0);
+          RuntimeSeriesCoefficient(forcing, region_key, power - 1, 0);
       for (const auto& diagonal : diagonal_regular_coefficients) {
         regular_rhs += diagonal.second *
                        RuntimeSeriesCoefficient(
-                           series, power - 1 - diagonal.first, 0);
+                           series, region_key, power - 1 - diagonal.first, 0);
       }
 
       RuntimeComplex regular_coefficient{0.0L, 0.0L};
@@ -1964,16 +2047,22 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
         regular_coefficient =
             (regular_rhs - log_coefficient) / denominator;
       }
-      AddRuntimeSeriesTerm(series, power, 1, log_coefficient);
-      AddRuntimeSeriesTerm(series, power, 0, regular_coefficient);
+      AddRuntimeSeriesTerm(series, region_key, power, 1, log_coefficient);
+      AddRuntimeSeriesTerm(series, region_key, power, 0, regular_coefficient);
     }
     return series;
   };
 
-  const RuntimeSeries particular =
-      solve_with_seed(source, RuntimeComplex{0.0L, 0.0L});
+  RuntimeSeries particular;
+  for (const std::string& region_key : RuntimeSeriesRegions(source)) {
+    particular = AddRuntimeSeries(
+        particular,
+        solve_region_with_seed(source, region_key, RuntimeComplex{0.0L, 0.0L}));
+  }
   const RuntimeSeries homogeneous =
-      solve_with_seed(RuntimeSeries{}, RuntimeComplex{1.0L, 0.0L});
+      solve_region_with_seed(RuntimeSeries{},
+                             homogeneous_region_key,
+                             RuntimeComplex{1.0L, 0.0L});
   const RuntimeComplex homogeneous_boundary =
       RuntimeSeriesValue(homogeneous, kBoundaryPoint);
   if (IsRuntimeTiny(homogeneous_boundary)) {
@@ -1997,7 +2086,7 @@ std::vector<LightlikeGaugeLinkFinitePartTerm> EndpointTermsFromRuntimeSeries(
         IsRuntimeTiny(entry.second)) {
       continue;
     }
-    terms.push_back({"integer",
+    terms.push_back({entry.first.region_key,
                      entry.first.power,
                      entry.first.log_power,
                      FormatRuntimeComplex(entry.second,
@@ -2270,6 +2359,13 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
     result.failure_code = "continuation_budget_exhausted";
     result.summary =
         "b64ag finite-part extraction rejects multiple integer endpoint regions";
+    return result;
+  }
+  if (!region_keys.empty() && *region_keys.begin() != "integer") {
+    result.failure_code = "continuation_budget_exhausted";
+    result.summary =
+        "b64ag finite-part extraction rejects non-integer Frobenius endpoint "
+        "regions until the production target-reduction bridge is exponent-aware";
     return result;
   }
   const auto min_power_it =
@@ -2744,7 +2840,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                                          2,
                                          2,
                                          -1,
-                                         RuntimeComplex{1.0L, 0.0L},
+                                         RuntimeComplex{
+                                             RuntimeFloat(-7) +
+                                                 RuntimeFloat(8) * epsilon_value,
+                                             0.0L},
                                          checked_state.variable,
                                          epsilon_value,
                                          "second-block self");
@@ -2752,7 +2851,11 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                                          3,
                                          2,
                                          -3,
-                                         RuntimeComplex{0.5L, 0.0L},
+                                         RuntimeComplex{
+                                             (RuntimeFloat(3) -
+                                              RuntimeFloat(2) * epsilon_value) /
+                                                 RuntimeFloat(2),
+                                             0.0L},
                                          checked_state.variable,
                                          epsilon_value,
                                          "second-block companion source");
@@ -2768,7 +2871,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                                          5,
                                          2,
                                          -1,
-                                         RuntimeComplex{-1.0L, 0.0L},
+                                         RuntimeComplex{
+                                             RuntimeFloat(-3) +
+                                                 RuntimeFloat(2) * epsilon_value,
+                                             0.0L},
                                          checked_state.variable,
                                          epsilon_value,
                                          "downstream second-block source");
@@ -2776,7 +2882,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                                          5,
                                          5,
                                          -1,
-                                         RuntimeComplex{2.0L, 0.0L},
+                                         RuntimeComplex{
+                                             RuntimeFloat(-2) +
+                                                 RuntimeFloat(4) * epsilon_value,
+                                             0.0L},
                                          checked_state.variable,
                                          epsilon_value,
                                          "downstream companion self");

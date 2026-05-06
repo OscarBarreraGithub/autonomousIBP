@@ -1968,6 +1968,118 @@ std::string B64agBigFloatText(const B64agTestBigFloat& value) {
   return stream.str();
 }
 
+B64agTestBigFloat B64agAbs(const B64agTestBigFloat& value) {
+  using boost::multiprecision::abs;
+  return abs(value);
+}
+
+std::string B64agBigComplexText(const B64agTestBigComplex& value) {
+  if (value.imag() == B64agTestBigFloat(0)) {
+    return B64agBigFloatText(value.real());
+  }
+  if (value.real() == B64agTestBigFloat(0)) {
+    return B64agBigFloatText(value.imag()) + "*I";
+  }
+  return B64agBigFloatText(value.real()) +
+         (value.imag() < B64agTestBigFloat(0) ? " - " : " + ") +
+         B64agBigFloatText(B64agAbs(value.imag())) + "*I";
+}
+
+B64agTestBigFloat B64agExp(const B64agTestBigFloat& value) {
+  using boost::multiprecision::exp;
+  return exp(value);
+}
+
+B64agTestBigFloat B64agLog(const B64agTestBigFloat& value) {
+  using boost::multiprecision::log;
+  return log(value);
+}
+
+B64agTestBigFloat B64agParseRational(const std::string& raw_value) {
+  const std::size_t slash = raw_value.find('/');
+  if (slash != std::string::npos) {
+    return B64agParseRational(raw_value.substr(0, slash)) /
+           B64agParseRational(raw_value.substr(slash + 1));
+  }
+  return B64agTestBigFloat(raw_value);
+}
+
+struct B64agFirstBlockBasisValue {
+  B64agTestBigFloat y = 0;
+  B64agTestBigFloat w = 0;
+};
+
+B64agFirstBlockBasisValue B64agEvaluateRegularFirstBlockBasis(
+    const B64agTestBigFloat& epsilon_value) {
+  constexpr int kSeriesOrder = 180;
+  const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
+  const B64agTestBigFloat lambda =
+      B64agTestBigFloat(6) * (epsilon_value - B64agTestBigFloat(1));
+  std::vector<B64agFirstBlockBasisValue> coefficients(
+      static_cast<std::size_t>(kSeriesOrder) + 1);
+  coefficients[0] = {B64agTestBigFloat(1), B64agTestBigFloat(0)};
+
+  B64agTestBigFloat minus_two_power = 1;
+  std::vector<B64agTestBigFloat> regular_scales(
+      static_cast<std::size_t>(kSeriesOrder));
+  for (int index = 0; index < kSeriesOrder; ++index) {
+    regular_scales[static_cast<std::size_t>(index)] =
+        (epsilon_value - B64agTestBigFloat(1)) * minus_two_power;
+    minus_two_power *= B64agTestBigFloat(-2);
+  }
+
+  for (int order = 1; order <= kSeriesOrder; ++order) {
+    B64agTestBigFloat rhs_y = 0;
+    B64agTestBigFloat rhs_w = 0;
+    for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
+      const B64agFirstBlockBasisValue& previous =
+          coefficients[static_cast<std::size_t>(order - 1 - matrix_order)];
+      const B64agTestBigFloat scale =
+          regular_scales[static_cast<std::size_t>(matrix_order)];
+      rhs_y += scale * (B64agTestBigFloat(2) * previous.y +
+                         B64agTestBigFloat(24) * previous.w);
+      rhs_w += scale * (-previous.y / B64agTestBigFloat(3) -
+                         B64agTestBigFloat(4) * previous.w);
+    }
+    coefficients[static_cast<std::size_t>(order)].y =
+        rhs_y / B64agTestBigFloat(order);
+    coefficients[static_cast<std::size_t>(order)].w =
+        rhs_w / (B64agTestBigFloat(order) - lambda);
+  }
+
+  B64agFirstBlockBasisValue value;
+  B64agTestBigFloat x_power = 1;
+  for (const B64agFirstBlockBasisValue& coefficient : coefficients) {
+    value.y += coefficient.y * x_power;
+    value.w += coefficient.w * x_power;
+    x_power *= x;
+  }
+  return value;
+}
+
+std::vector<std::string> B64agRegularFirstBlockBoundaryValues(
+    const std::string& epsilon_sample,
+    const B64agTestBigComplex& regular_coefficient,
+    const std::vector<std::string>& downstream_values) {
+  Expect(downstream_values.size() == 4,
+         "b64ag first-block boundary helper expects four downstream values");
+  const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
+  const B64agFirstBlockBasisValue basis =
+      B64agEvaluateRegularFirstBlockBasis(B64agParseRational(epsilon_sample));
+  const B64agTestBigComplex boundary_y = regular_coefficient * basis.y;
+  const B64agTestBigComplex first_boundary = boundary_y * x;
+  const B64agTestBigComplex companion_boundary =
+      regular_coefficient * basis.w +
+      boundary_y * B64agTestBigFloat(5) / B64agTestBigFloat(6);
+
+  std::vector<std::string> values = {
+      B64agBigComplexText(first_boundary),
+      B64agBigComplexText(companion_boundary),
+  };
+  values.insert(values.end(), downstream_values.begin(), downstream_values.end());
+  return values;
+}
+
 std::vector<std::string> B64agHighPrecisionBoundaryValues(
     const B64agTestBigComplex& regular_coefficient) {
   const std::string coefficient = B64agBigFloatText(regular_coefficient.real());
@@ -1979,6 +2091,102 @@ std::vector<std::string> B64agHighPrecisionBoundaryValues(
       "17",
       "19",
   };
+}
+
+std::string B64agFrobeniusOnlyDiffeqRaw() {
+  return
+      "{{j[gauge,1,1,1,0,1,0,0,0,0],j[gauge,1,1,1,-1,1,0,0,0,0],"
+      "j[gauge,0,1,1,1,1,0,0,0,0],j[gauge,0,1,1,1,1,-1,0,0],"
+      "j[gauge,1,1,1,1,1,0,0,0,0],j[gauge,1,1,1,1,1,-1,0,0,0]},"
+      "{gaugex},"
+      "{{{0,0,0,0,0,0},"
+      "{0,0,0,0,0,0},"
+      "{0,0,(-7 + 8*eps)/gaugex,0,0,0},"
+      "{0,0,(3 - 2*eps)/(2*gaugex^3),0,0,0},"
+      "{0,0,0,0,2/gaugex,0},"
+      "{0,0,(-3 + 2*eps)/gaugex,0,0,(-2 + 4*eps)/gaugex}}}}";
+}
+
+const amflow::LightlikeGaugeLinkFinitePartTerm& B64agFindEndpointTerm(
+    const amflow::LightlikeGaugeLinkSixMasterEndpointTerms& master_terms,
+    const std::string& region_prefix,
+    const int power,
+    const int log_power) {
+  for (const amflow::LightlikeGaugeLinkFinitePartTerm& term :
+       master_terms.endpoint_terms) {
+    if (term.region_key.rfind(region_prefix, 0) == 0 &&
+        term.power == power &&
+        term.log_power == log_power) {
+      return term;
+    }
+  }
+  throw std::runtime_error("missing b64ag endpoint term with region prefix " +
+                           region_prefix);
+}
+
+B64agTestBigFloat B64agFrobeniusExponent(
+    const std::string& region_key) {
+  const std::string prefix = "frobenius:";
+  Expect(region_key.rfind(prefix, 0) == 0,
+         "b64ag endpoint term should carry a Frobenius region key");
+  return B64agTestBigFloat(region_key.substr(prefix.size()));
+}
+
+B64agTestBigComplex B64agEndpointCoefficient(
+    const std::string& coefficient) {
+  std::string value;
+  value.reserve(coefficient.size());
+  for (const char ch : coefficient) {
+    if (ch != ' ') {
+      value.push_back(ch);
+    }
+  }
+  if (value.find('I') == std::string::npos) {
+    return {B64agTestBigFloat(value), B64agTestBigFloat(0)};
+  }
+  Expect(value.size() > 2 && value.substr(value.size() - 2) == "*I",
+         "b64ag complex endpoint coefficient should end in *I");
+  const std::string without_i = value.substr(0, value.size() - 2);
+  std::size_t split = std::string::npos;
+  for (std::size_t index = 1; index < without_i.size(); ++index) {
+    if ((without_i[index] == '+' || without_i[index] == '-') &&
+        without_i[index - 1] != 'e' && without_i[index - 1] != 'E') {
+      split = index;
+    }
+  }
+  if (split == std::string::npos) {
+    return {B64agTestBigFloat(0), B64agTestBigFloat(without_i)};
+  }
+  return {B64agTestBigFloat(without_i.substr(0, split)),
+          B64agTestBigFloat(without_i.substr(split))};
+}
+
+void ExpectB64agRelativeClose(const B64agTestBigFloat& actual,
+                              const B64agTestBigFloat& expected,
+                              const B64agTestBigFloat& tolerance,
+                              const std::string& message) {
+  const B64agTestBigFloat scale =
+      std::max(B64agTestBigFloat(1), B64agAbs(expected));
+  const B64agTestBigFloat relative_error = B64agAbs(actual - expected) / scale;
+  Expect(relative_error < tolerance,
+         message + "; relative_error=" + B64agBigFloatText(relative_error));
+}
+
+B64agTestBigFloat B64agComplexAbs(const B64agTestBigComplex& value) {
+  using boost::multiprecision::sqrt;
+  return sqrt(value.real() * value.real() + value.imag() * value.imag());
+}
+
+void ExpectB64agRelativeClose(const B64agTestBigComplex& actual,
+                              const B64agTestBigComplex& expected,
+                              const B64agTestBigFloat& tolerance,
+                              const std::string& message) {
+  const B64agTestBigFloat scale =
+      std::max(B64agTestBigFloat(1), B64agComplexAbs(expected));
+  const B64agTestBigFloat relative_error =
+      B64agComplexAbs(actual - expected) / scale;
+  Expect(relative_error < tolerance,
+         message + "; relative_error=" + B64agBigFloatText(relative_error));
 }
 
 amflow::ProblemSpec MakeB64agGaugeLinkProblemSpec() {
@@ -2699,6 +2907,171 @@ void B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisi
                  "b64ag high-precision transport summary should keep full contour false");
 }
 
+void B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"101/208000", "1/2000", "131/208000"};
+  const std::vector<B64agTestBigComplex> first_coefficients = {
+      {B64agTestBigFloat(
+           "1.2345678901234567890123456789012345678901234567890123456789"),
+       B64agTestBigFloat(
+           "-0.2468135790246813579024681357902468135790246813579024681357")},
+      {B64agTestBigFloat(
+           "2.3456789012345678901234567890123456789012345678901234567891"),
+       B64agTestBigFloat(
+           "0.1357913579135791357913579135791357913579135791357913579135")},
+      {B64agTestBigFloat(
+           "3.4567890123456789012345678901234567890123456789012345678912"),
+       B64agTestBigFloat(
+           "-0.9753197531975319753197531975319753197531975319753197531975")},
+  };
+  const std::vector<B64agTestBigComplex> second_boundaries = {
+      {B64agTestBigFloat(
+           "11.1111111111111111111111111111111111111111111111111111111111"),
+       B64agTestBigFloat(
+           "0.2222222222222222222222222222222222222222222222222222222222")},
+      {B64agTestBigFloat(
+           "12.2222222222222222222222222222222222222222222222222222222222"),
+       B64agTestBigFloat(
+           "-0.3333333333333333333333333333333333333333333333333333333333")},
+      {B64agTestBigFloat(
+           "13.3333333333333333333333333333333333333333333333333333333333"),
+       B64agTestBigFloat(
+           "0.4444444444444444444444444444444444444444444444444444444444")},
+  };
+  std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> boundary_samples;
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    boundary_samples.push_back({
+        state.epsilon_samples[index],
+        B64agRegularFirstBlockBoundaryValues(
+            state.epsilon_samples[index],
+            first_coefficients[index],
+            {B64agBigComplexText(second_boundaries[index]), "13", "17", "19"}),
+    });
+  }
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag retained-style small-epsilon Frobenius transport should succeed: " +
+             transport.summary);
+  Expect(!transport.retained_solution_samples_used,
+         "b64ag retained-style Frobenius transport must not read retained solutions");
+  Expect(!transport.full_eta_zero_contour_applied,
+         "b64ag retained-style Frobenius transport must not promote full contour");
+  Expect(transport.epsilon_sample_count == 3 &&
+             transport.epsilon_endpoint_terms.size() == 3,
+         "b64ag retained-style Frobenius transport should carry three eps samples");
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms =
+        transport.epsilon_endpoint_terms[index];
+    Expect(sample_terms.epsilon_sample == state.epsilon_samples[index],
+           "b64ag retained-style Frobenius transport should preserve eps labels");
+    const std::string first_published =
+        sample_terms.endpoint_terms[0].endpoint_terms[0].coefficient;
+    ExpectContains(first_published,
+                   B64agBigFloatText(first_coefficients[index].real()).substr(0, 56),
+                   "b64ag small-epsilon BigComplex transport should preserve real digits");
+    ExpectContains(first_published,
+                   B64agBigFloatText(B64agAbs(first_coefficients[index].imag()))
+                       .substr(0, 56),
+                   "b64ag small-epsilon BigComplex transport should preserve imaginary digits");
+    ExpectContains(first_published,
+                   "*I",
+                   "b64ag small-epsilon BigComplex transport should publish complex output");
+
+    const B64agTestBigFloat epsilon_value =
+        B64agParseRational(state.epsilon_samples[index]);
+    const amflow::LightlikeGaugeLinkFinitePartTerm& second_frobenius =
+        B64agFindEndpointTerm(sample_terms.endpoint_terms[2], "frobenius:", 0, 0);
+    const amflow::LightlikeGaugeLinkFinitePartTerm& downstream_frobenius =
+        B64agFindEndpointTerm(sample_terms.endpoint_terms[5], "frobenius:", 0, 0);
+    ExpectB64agRelativeClose(B64agFrobeniusExponent(second_frobenius.region_key),
+                             B64agTestBigFloat(-7) +
+                                 B64agTestBigFloat(8) * epsilon_value,
+                             B64agTestBigFloat("1e-65"),
+                             "b64ag second block should publish -7+8eps region");
+    ExpectB64agRelativeClose(B64agFrobeniusExponent(downstream_frobenius.region_key),
+                             B64agTestBigFloat(-2) +
+                                 B64agTestBigFloat(4) * epsilon_value,
+                             B64agTestBigFloat("1e-65"),
+                             "b64ag downstream block should publish -2+4eps region");
+  }
+}
+
+void B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.boundary_file_raws["diffeq"] = B64agFrobeniusOnlyDiffeqRaw();
+  state.epsilon_samples = {"101/208000", "1/2000", "131/208000"};
+  const std::vector<B64agTestBigComplex> first_coefficients = {
+      {B64agTestBigFloat(
+           "4.5678901234567890123456789012345678901234567890123456789123"),
+       B64agTestBigFloat(
+           "0.1111111111111111111111111111111111111111111111111111111111")},
+      {B64agTestBigFloat(
+           "5.6789012345678901234567890123456789012345678901234567891234"),
+       B64agTestBigFloat(
+           "-0.2222222222222222222222222222222222222222222222222222222222")},
+      {B64agTestBigFloat(
+           "6.7890123456789012345678901234567890123456789012345678912345"),
+       B64agTestBigFloat(
+           "0.3333333333333333333333333333333333333333333333333333333333")},
+  };
+  const std::vector<B64agTestBigComplex> second_boundaries = {
+      {B64agTestBigFloat(
+           "21.2345678901234567890123456789012345678901234567890123456789"),
+       B64agTestBigFloat(
+           "-1.2345678901234567890123456789012345678901234567890123456789")},
+      {B64agTestBigFloat(
+           "22.3456789012345678901234567890123456789012345678901234567891"),
+       B64agTestBigFloat(
+           "1.3456789012345678901234567890123456789012345678901234567891")},
+      {B64agTestBigFloat(
+           "23.4567890123456789012345678901234567890123456789012345678912"),
+       B64agTestBigFloat(
+           "-1.4567890123456789012345678901234567890123456789012345678912")},
+  };
+  std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> boundary_samples;
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    boundary_samples.push_back({
+        state.epsilon_samples[index],
+        B64agRegularFirstBlockBoundaryValues(
+            state.epsilon_samples[index],
+            first_coefficients[index],
+            {B64agBigComplexText(second_boundaries[index]), "13", "17", "19"}),
+    });
+  }
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag synthetic Frobenius-only transport should succeed: " +
+             transport.summary);
+  const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
+  for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
+    const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms =
+        transport.epsilon_endpoint_terms[index];
+    const amflow::LightlikeGaugeLinkFinitePartTerm& second_frobenius =
+        B64agFindEndpointTerm(sample_terms.endpoint_terms[2], "frobenius:", 0, 0);
+    const B64agTestBigComplex published_coefficient =
+        B64agEndpointCoefficient(second_frobenius.coefficient);
+    const B64agTestBigFloat exponent =
+        B64agFrobeniusExponent(second_frobenius.region_key);
+    const B64agTestBigComplex reconstructed_boundary =
+        published_coefficient * B64agExp(exponent * B64agLog(x));
+    ExpectB64agRelativeClose(
+        reconstructed_boundary,
+        second_boundaries[index],
+        B64agTestBigFloat("1e-55"),
+        "b64ag Frobenius BigComplex carrier should round-trip the second block");
+  }
+  Expect(!transport.full_eta_zero_contour_applied,
+         "b64ag Frobenius roundtrip transport must keep full contour false");
+}
+
 }  // namespace
 
 int main() {
@@ -2757,6 +3130,8 @@ int main() {
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();
     B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
+    B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest();
+    B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

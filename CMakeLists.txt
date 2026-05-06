@@ -89,4 +89,5 @@ if(BUILD_TESTING)
   add_test(NAME singular-runtime-lane-tests COMMAND singular-runtime-lane-tests)
   set_tests_properties(singular-runtime-lane-tests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_dependencies(amflow-tests amflow-cli singular-runtime-lane-tests)
 endif()

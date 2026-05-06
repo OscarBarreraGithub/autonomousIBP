@@ -49985,6 +49985,89 @@ void UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest() {
   }
 }
 
+void UserHookAmfModeRetainedPacketManifestGateTest() {
+  const std::filesystem::path retained_root = UserHookOptionalPhase0ReferencePacketRoot();
+  const std::filesystem::path result_manifest_path =
+      retained_root / "results/phase0/user_defined_amfmode/result-manifest.json";
+  const std::filesystem::path primary_run_manifest_path =
+      retained_root / "results/phase0/user_defined_amfmode/primary/run-manifest.json";
+  const std::filesystem::path golden_manifest_path =
+      retained_root / "goldens/phase0/user_defined_amfmode/golden-manifest.json";
+  const std::filesystem::path primary_canonical_path =
+      retained_root /
+      "results/phase0/user_defined_amfmode/primary/canonical/sol.canonical.txt";
+  const std::filesystem::path golden_canonical_path =
+      retained_root /
+      "goldens/phase0/user_defined_amfmode/captured/canonical/sol.canonical.txt";
+  const std::filesystem::path primary_output_path =
+      retained_root / "results/phase0/user_defined_amfmode/primary/sol";
+  const std::filesystem::path golden_output_path =
+      retained_root / "goldens/phase0/user_defined_amfmode/captured/sol";
+
+  Expect(std::filesystem::exists(result_manifest_path),
+         "user_defined_amfmode retained packet should publish the per-benchmark result manifest");
+  Expect(std::filesystem::exists(primary_run_manifest_path),
+         "user_defined_amfmode retained packet should publish the primary run manifest");
+  Expect(std::filesystem::exists(golden_manifest_path),
+         "user_defined_amfmode retained packet should publish the golden manifest");
+  Expect(std::filesystem::exists(primary_canonical_path),
+         "user_defined_amfmode retained packet should publish primary canonical text");
+  Expect(std::filesystem::exists(golden_canonical_path),
+         "user_defined_amfmode retained packet should publish golden canonical text");
+
+  const std::string canonical_sha256 =
+      "fb269695e17dd097c0075a3adadb2d574098cb971e36e52e77fd66cf64f26219";
+  const std::string result_manifest_json = ReadFile(result_manifest_path);
+  const std::string primary_run_manifest_json = ReadFile(primary_run_manifest_path);
+  const std::string golden_manifest_json = ReadFile(golden_manifest_path);
+  ExpectContains(result_manifest_json, "\"benchmark_id\": \"user_defined_amfmode\"",
+                 "user_defined_amfmode result manifest should identify the retained benchmark");
+  ExpectContains(result_manifest_json, "\"primary_run_manifest\": \"" +
+                                           primary_run_manifest_path.string() + "\"",
+                 "user_defined_amfmode result manifest should point at the retained primary run "
+                 "manifest");
+  ExpectContains(result_manifest_json, "\"golden_manifest\": \"" + golden_manifest_path.string() +
+                                           "\"",
+                 "user_defined_amfmode result manifest should point at the retained golden "
+                 "manifest");
+  ExpectContains(primary_run_manifest_json, "\"label\": \"primary\"",
+                 "user_defined_amfmode primary run manifest should keep the primary label");
+  ExpectContains(primary_run_manifest_json, "\"canonical_sha256\": \"" + canonical_sha256 + "\"",
+                 "user_defined_amfmode primary run manifest should preserve the real retained "
+                 "canonical hash");
+  ExpectContains(primary_run_manifest_json, "\"path\": \"" + primary_output_path.string() + "\"",
+                 "user_defined_amfmode primary run manifest should point at the retained raw "
+                 "output");
+  ExpectContains(primary_run_manifest_json,
+                 "\"canonical_text\": \"" + primary_canonical_path.string() + "\"",
+                 "user_defined_amfmode primary run manifest should point at the retained "
+                 "canonical text");
+  ExpectContains(primary_run_manifest_json,
+                 "Lane 133 direct staged precision60 primary recapture.",
+                 "user_defined_amfmode primary run manifest should retain the recapture "
+                 "provenance note");
+  ExpectContains(golden_manifest_json, "\"canonical_sha256\": \"" + canonical_sha256 + "\"",
+                 "user_defined_amfmode golden manifest should preserve the same real retained "
+                 "canonical hash");
+  ExpectContains(golden_manifest_json,
+                 "\"canonical_text\": \"" + golden_canonical_path.string() + "\"",
+                 "user_defined_amfmode golden manifest should point at the retained golden "
+                 "canonical text");
+
+  const std::string primary_canonical_text = ReadFile(primary_canonical_path);
+  Expect(primary_canonical_text == ReadFile(golden_canonical_path),
+         "user_defined_amfmode primary and golden canonical texts should be byte-identical");
+  Expect(ReadFile(primary_output_path) == ReadFile(golden_output_path),
+         "user_defined_amfmode primary and golden raw outputs should be byte-identical");
+  ExpectContains(primary_canonical_text, "j[box1, 1, 1, 1, 1]",
+                 "user_defined_amfmode retained canonical text should contain real box1 numeric "
+                 "output");
+  ExpectContains(primary_canonical_text,
+                 "0.07176763945390710330248117895298677305157419367606364140791043912717551144028",
+                 "user_defined_amfmode retained canonical text should preserve a real captured "
+                 "numeric value");
+}
+
 void QualificationScaffoldReadinessSelfCheckAggregatesRetainedPacketsTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessSelfCheck(
       "amflow-reference-harness-qualification-scaffold-self-check",
@@ -55560,6 +55643,7 @@ int main() {
     BootstrapReferenceHarnessSelfCheckLocksQualificationScaffoldTest();
     BootstrapReferenceHarnessCopiesTemplatesVerbatimTest();
     UserHookOptionalPhase0ReferencePacketRetainedArtifactsAreCoherentTest();
+    UserHookAmfModeRetainedPacketManifestGateTest();
     QualificationScaffoldReadinessSelfCheckAggregatesRetainedPacketsTest();
     QualificationScaffoldReadinessMatchesRetainedPacketSetTest();
     QualificationReadinessSummaryAggregatesRetainedPhase0PacketRootsTest();

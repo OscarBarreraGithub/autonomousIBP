@@ -1,0 +1,46 @@
+{
+  "anti_fake_parity": {
+    "canonical_text_contains_real_user_defined_amfmode_values": true,
+    "manifest_values_synthesized_for_test": false,
+    "role_d_required": true
+  },
+  "failure_observed_in_lane132": {
+    "exact_error": "candidate primary run manifest missing for user_defined_amfmode in /n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair",
+    "log_path": "/tmp/autoibp_orch/logs/lane132_b64ag_impl.log",
+    "log_line": 208265
+  },
+  "manifest_chain": {
+    "golden_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/goldens/phase0/user_defined_amfmode/golden-manifest.json",
+    "packet_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/manifests/phase0-reference.json",
+    "primary_run_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/primary/run-manifest.json",
+    "result_manifest": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair/results/phase0/user_defined_amfmode/result-manifest.json"
+  },
+  "manifest_evidence": {
+    "canonical_sha256_recorded_by_manifests": "fb269695e17dd097c0075a3adadb2d574098cb971e36e52e77fd66cf64f26219",
+    "created_at_utc": "2026-05-06T01:26:26.294007Z",
+    "duration_seconds": 107.334708,
+    "golden_canonical_text_sha256": "a3174ed9c52b330b1ccfb6d853db19a471d6775566ef56b2801a75f834860e3b",
+    "golden_manifest_sha256": "5546d15395a8b0d79475287860c7f359e50248c3f91e9466c5350b7e471a5e1f",
+    "golden_sol_sha256": "a3d1bf9be3e8dc118da7c576732364dc40c684e4f2324ecff040277b694da2e7",
+    "primary_canonical_text_sha256": "a3174ed9c52b330b1ccfb6d853db19a471d6775566ef56b2801a75f834860e3b",
+    "primary_run_manifest_sha256": "91404215fc6a9370655c1b37e382892eb7eec4119a8b4a1efe23e61c0f588eeb",
+    "primary_sol_sha256": "a3d1bf9be3e8dc118da7c576732364dc40c684e4f2324ecff040277b694da2e7",
+    "result_manifest_sha256": "5a188c0fde059c152a80bbe578ded4efe57308a04989c0e81ef4a30ea15aff52"
+  },
+  "numeric_evidence": {
+    "approximate_literal_count": 51,
+    "minimum_observed_correct_digits": 58,
+    "sample_integral": "j[box1, -2, 1, 1, 2]",
+    "sample_integral_coefficients": {
+      "eps^-2": "-20000",
+      "eps^-1": "-28254.68670196934278786975819835195137915681328120152802388465530230264546444670658",
+      "eps^0": "-43508.83232217881605918103502390265602135777297935529374528202090513973257490128172",
+      "eps^1": "-39906.69549536643491018849669531004987065017515625300961952145494047711202665188008",
+      "eps^2": "-46432.74064733690010335465485518896970869524216234462021361741664133916215217705683",
+      "eps^3": "-38636.12982363111341027278770098713551090126727328267417662442183118548604125576357"
+    }
+  },
+  "schema_version": 1,
+  "scope": "lane135-user-defined-amfmode-packet-manifest-gate",
+  "source_packet_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair"
+}

@@ -1,0 +1,41 @@
+{
+  "amflow_golden_slice": "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.amflow-golden.txt",
+  "anti_fake_parity_gate": "scoped comparator output against AMFlow positive-order golden slice; final solution samples stripped from C++ input",
+  "benchmark_id": "complex_kinematics",
+  "compare30": {
+    "compared_coefficient_count": 20,
+    "matched_integral_count": 5,
+    "minimum_digit_agreement": 54,
+    "passed": true,
+    "passed_coefficient_count": 20,
+    "path": "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.compare30.json",
+    "per_integral_minimum_digit_agreement": {
+      "box[0,0,0,1]": 54,
+      "box[0,0,1,1]": 59,
+      "box[0,1,0,1]": 59,
+      "box[1,0,0,1]": 59,
+      "box[1,0,1,0]": 59
+    }
+  },
+  "cpp_result": "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.cpp-result.json",
+  "eta_zero_endpoint_transport_applied": true,
+  "eta_zero_endpoint_transported_integrals": [
+    "box[0,0,0,1]",
+    "box[1,0,1,0]",
+    "box[1,0,0,1]",
+    "box[0,1,0,1]",
+    "box[0,0,1,1]"
+  ],
+  "full_eta_zero_contour_applied": false,
+  "full_stripped_result": "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.stripped-result.json",
+  "lane": "lane142",
+  "new_lane142_masters": [
+    "box[1,0,1,0]",
+    "box[1,0,0,1]",
+    "box[0,1,0,1]",
+    "box[0,0,1,1]"
+  ],
+  "schema_version": 1,
+  "transport_applied": true,
+  "transport_scope": "eta-zero-selected-endpoint-coefficients"
+}

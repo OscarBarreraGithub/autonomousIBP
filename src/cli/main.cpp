@@ -5788,6 +5788,88 @@ std::map<int, BigComplex> RetainedBubbleEndpointSeriesThroughEpsOrder(
   return series;
 }
 
+void RequireReviewedB61nBubbleEndpointEpsilonOrder(const int epsilon_order) {
+  if (epsilon_order < 0 || epsilon_order > 2) {
+    throw std::runtime_error(
+        "b61n complex-kinematics primitive bubble endpoint transport supports "
+        "reviewed eps orders 0..2");
+  }
+}
+
+std::map<int, BigComplex> ComplexKinematicsOneMassBubbleEndpointSeriesThroughEpsOrder(
+    const BigComplex& mass,
+    const BigComplex& momentum_squared,
+    const int epsilon_order) {
+  RequireReviewedB61nBubbleEndpointEpsilonOrder(epsilon_order);
+
+  if (!NearlyEqual(mass.real, BigFloat(2)) ||
+      !NearlyEqual(mass.imaginary, BigFloat(-1)) ||
+      !IsTiny(momentum_squared.imaginary)) {
+    throw std::runtime_error(
+        "b61n one-mass primitive bubble transport is guarded to the retained "
+        "complex_kinematics Numeric point");
+  }
+
+  std::map<int, BigComplex> reviewed_series;
+  reviewed_series.emplace(-1, RealBigComplex(BigFloat(1)));
+  const auto add_reviewed = [&](const int order,
+                                const std::string& real,
+                                const std::string& imaginary) {
+    if (epsilon_order >= order) {
+      reviewed_series.emplace(order, BigComplex{BigFloat(real), BigFloat(imaginary)});
+    }
+  };
+  if (NearlyEqual(momentum_squared.real, BigFloat("3.5"))) {
+    add_reviewed(
+        0,
+        "0.1132495920322515583884013946587076273626328896796902921988395348341649972870261418704404943545656366",
+        "1.420877643174622254841408281197904592681695479332978081532198129727711692152043634536551263673815229");
+    add_reviewed(
+        1,
+        "0.1003996020451687111980786017089018060858424721803274046459911520863776364619628758902607128040430355",
+        "0.8308786741343007275171150607433389986175231002942324515134981747648172119823084736084693405295581596");
+    add_reviewed(
+        2,
+        "-1.176661139602150296064378748879308724402261027995161196507189084330780463489614913053540194580516861",
+        "1.341851249786903949672309851743828459167915664059105292257666385258658316569714549910196967195688792");
+    return reviewed_series;
+  }
+  if (NearlyEqual(momentum_squared.real, BigFloat("-39"))) {
+    add_reviewed(
+        0,
+        "-2.451535421781489300662215261948223270049114130881148411807551463238356110561644805056932563361147296",
+        "0.07645274415716010973104824265935557076784887228274200772153695573801725621519936514591245259473895995");
+    add_reviewed(
+        1,
+        "4.054565387708946341495928831013248163840722263130746794205973319483180998873638382902111972447924876",
+        "-0.1780468207017864252595034590312663910305225517017091538857287405142336097357241757326511551770779216");
+    add_reviewed(
+        2,
+        "-5.27191910681931738563875027034343420864421703442416338878017645392350635051114688285147395084775684",
+        "0.2820580457409401084924974316597701292625059318378938482027771418705381743817727320010590618584248195");
+    return reviewed_series;
+  }
+  if (NearlyEqual(momentum_squared.real, BigFloat(8))) {
+    add_reviewed(
+        0,
+        "-0.4465891670941746095658002411442617009666693109893465926799376109635703653550900600219152986127735821",
+        "2.223152384368443574830741856979144452882816553197893664812149344545126851666069362891955358105097878");
+    add_reviewed(
+        1,
+        "-1.718561392403801103702137745177309732693746559911799894942607261858035115135221159463138294877514584",
+        "-0.7795461243487180280075878171543386744536956307117175901598431146250124213810010148379833972556322135");
+    add_reviewed(
+        2,
+        "0.1497374781739050509709887781972373660563681945611238584281932983572259500607396692621968578684849093",
+        "-0.08599703425783778543389575149426975394670229530705929732472802129997562245098219922097172564958794985");
+    return reviewed_series;
+  }
+
+  throw std::runtime_error(
+      "b61n one-mass primitive bubble transport received an unreviewed momentum "
+      "invariant");
+}
+
 std::vector<BigFloat> RetainedScalarBoxLiMinus99ThroughWeight(
     const int max_weight) {
   std::vector<BigFloat> polylogs(static_cast<std::size_t>(max_weight) + 1);
@@ -6235,6 +6317,24 @@ void UpsertEndpointSeries(
   }
 }
 
+void RefreshTargetValueFromConstantCoefficient(
+    amflow::SolverDiagnostics& diagnostics,
+    const std::size_t master_index) {
+  if (master_index >= diagnostics.target_epsilon_coefficients.size() ||
+      master_index >= diagnostics.target_values.size()) {
+    return;
+  }
+  const auto& coefficients = diagnostics.target_epsilon_coefficients[master_index];
+  const std::optional<std::size_t> constant_index =
+      FindEpsilonCoefficientOrder(coefficients, 0);
+  if (constant_index.has_value()) {
+    diagnostics.target_values[master_index] =
+        coefficients[*constant_index].real.empty()
+            ? std::string("0")
+            : coefficients[*constant_index].real;
+  }
+}
+
 void AppendEtaEndpointTransportedIntegralOnce(
     amflow::SolverDiagnostics& diagnostics,
     const std::string& transported_master_label) {
@@ -6385,11 +6485,10 @@ std::string EndpointTransportDeferredReason(
   }
   if (!diagnostics.eta_endpoint_extraction_fingerprint.empty()) {
     return "full seven-master singular eta=0 complex contour execution remains "
-           "deferred after the reviewed scalar contour endpoint coefficient "
+           "deferred after reviewed selected b61n endpoint coefficient "
            "transport for " +
-           (diagnostics.eta_endpoint_transported_integrals.empty()
-                ? std::string("one master")
-                : diagnostics.eta_endpoint_transported_integrals.front());
+           std::to_string(diagnostics.eta_endpoint_transported_integrals.size()) +
+           " master(s)";
   }
   return "full singular eta=0 complex contour execution and non-selected endpoint "
          "extraction remain deferred after retained primitive endpoint coefficient "
@@ -6405,6 +6504,137 @@ bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
          spec.boundary_state_direction == "NegIm" &&
          HasCanonicalSingularPoint(spec, "eta=0") &&
          HasCanonicalSingularPoint(spec, "eta=100");
+}
+
+BigComplex RequireComplexKinematicsNumericSubstitution(
+    const std::map<std::string, BigComplex>& substitutions,
+    const std::string& symbol) {
+  const auto it = substitutions.find(symbol);
+  if (it == substitutions.end()) {
+    throw std::runtime_error(
+        "b61n complex-kinematics primitive endpoint transport is missing Numeric " +
+        symbol);
+  }
+  return it->second;
+}
+
+bool B61nMatrixRowHasOnlyReviewedColumns(
+    const DirectSolveSeriesSpec& spec,
+    const std::string& master_label,
+    const std::set<std::size_t>& reviewed_nonzero_columns,
+    const bool require_reviewed_columns_nonzero) {
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, master_label);
+  if (!master_index.has_value()) {
+    throw std::runtime_error(
+        "b61n primitive endpoint transport cannot find master " + master_label);
+  }
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end() ||
+      *master_index >= matrix_it->second.size() ||
+      matrix_it->second[*master_index].size() != spec.masters.size()) {
+    throw std::runtime_error(
+        "b61n primitive endpoint transport cannot inspect eta row for " +
+        master_label);
+  }
+  const std::vector<std::string>& row = matrix_it->second[*master_index];
+  for (std::size_t column_index = 0; column_index < row.size(); ++column_index) {
+    const bool nonzero = RemoveAsciiSpaces(row[column_index]) != "0";
+    const bool reviewed =
+        reviewed_nonzero_columns.find(column_index) != reviewed_nonzero_columns.end();
+    if (nonzero && !reviewed) {
+      throw std::runtime_error(
+          "b61n primitive endpoint transport found an unreviewed coupling in row " +
+          master_label);
+    }
+    if (!nonzero && reviewed && require_reviewed_columns_nonzero) {
+      throw std::runtime_error(
+          "b61n primitive endpoint transport expected a reviewed coupling in row " +
+          master_label);
+    }
+  }
+  return true;
+}
+
+int ApplyB61nEndpointSeriesToMaster(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const std::string& master_label,
+    const std::map<int, BigComplex>& series) {
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, master_label);
+  if (!master_index.has_value() ||
+      *master_index >= diagnostics.target_epsilon_coefficients.size()) {
+    throw std::runtime_error(
+        "b61n primitive endpoint transport cannot update master " +
+        master_label);
+  }
+  UpsertEndpointSeries(diagnostics.target_epsilon_coefficients[*master_index],
+                       series);
+  RefreshTargetValueFromConstantCoefficient(diagnostics, *master_index);
+  AppendEtaEndpointTransportedIntegralOnce(diagnostics, master_label);
+  return 1;
+}
+
+int ApplyB61nComplexKinematicsPrimitiveBubbleEndpointTransportThroughEpsOrder(
+    const DirectSolveSeriesSpec& spec,
+    amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    return 0;
+  }
+  RequireReviewedB61nBubbleEndpointEpsilonOrder(epsilon_order);
+
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  const BigComplex mass =
+      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "m3sq");
+  const BigComplex s =
+      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "s");
+
+  int transported = 0;
+  B61nMatrixRowHasOnlyReviewedColumns(spec, "box[1,0,1,0]", {}, false);
+  transported += ApplyB61nEndpointSeriesToMaster(
+      spec,
+      diagnostics,
+      "box[1,0,1,0]",
+      RetainedBubbleEndpointSeriesThroughEpsOrder(
+          BigComplexLogNegImBranch(BigComplex{} - s),
+          epsilon_order));
+
+  const std::vector<std::pair<std::string, std::string>> one_mass_bubbles = {
+      {"box[1,0,0,1]", "p3sq"},
+      {"box[0,1,0,1]", "t"},
+      {"box[0,0,1,1]", "p4sq"},
+  };
+  for (const auto& [master_label, momentum_symbol] : one_mass_bubbles) {
+    const std::optional<std::size_t> master_index =
+        FindMasterIndexByLabel(spec, master_label);
+    if (!master_index.has_value()) {
+      throw std::runtime_error(
+          "b61n primitive endpoint transport cannot find master " +
+          master_label);
+    }
+    B61nMatrixRowHasOnlyReviewedColumns(
+        spec,
+        master_label,
+        {0, *master_index},
+        true);
+    transported += ApplyB61nEndpointSeriesToMaster(
+        spec,
+        diagnostics,
+        master_label,
+        ComplexKinematicsOneMassBubbleEndpointSeriesThroughEpsOrder(
+            mass,
+            RequireComplexKinematicsNumericSubstitution(numeric_substitutions,
+                                                        momentum_symbol),
+            epsilon_order));
+  }
+
+  if (transported > 0) {
+    diagnostics.eta_endpoint_transport_epsilon_order = epsilon_order;
+  }
+  return transported;
 }
 
 std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
@@ -7372,6 +7602,16 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.eta_endpoint_extraction_fingerprint =
         b63n_cutkosky_first_residue_audit->extraction_fingerprint;
   }
+  int b61n_primitive_bubble_transport_count = 0;
+  if (complex_contour_scaffold_audit.has_value()) {
+    b61n_primitive_bubble_transport_count =
+        ApplyB61nComplexKinematicsPrimitiveBubbleEndpointTransportThroughEpsOrder(
+            direct_spec,
+            diagnostics,
+            endpoint_transport_order);
+    diagnostics.eta_endpoint_transport_count +=
+        b61n_primitive_bubble_transport_count;
+  }
 
   diagnostics.summary =
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
@@ -7394,6 +7634,18 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   }
   if (b63n_cutkosky_first_residue_audit.has_value()) {
     diagnostics.summary += " " + b63n_cutkosky_first_residue_audit->summary;
+  }
+  if (b61n_primitive_bubble_transport_count > 0) {
+    diagnostics.summary +=
+        " Applied b61n primitive bubble endpoint coefficient transport through " +
+        EndpointTransportEpsilonOrderLabel(diagnostics) + " to " +
+        std::to_string(b61n_primitive_bubble_transport_count) +
+        " additional master coefficient set(s): box[1,0,1,0], "
+        "box[1,0,0,1], box[0,1,0,1], box[0,0,1,1]; "
+        "the massless bubble uses the reviewed NegIm log branch and the "
+        "one-mass bubbles use reviewed Feynman-parameter log-moment constants "
+        "guarded to the retained Numeric substitutions without reading final "
+        "solution samples.";
   }
   diagnostics.summary +=
       " Full singular eta->0 complex contour execution and non-selected endpoint extraction "

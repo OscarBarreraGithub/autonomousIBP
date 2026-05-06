@@ -49157,12 +49157,15 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"eta_zero_endpoint_transport_applied\": true",
                  "single-master b61n scalar contour transport should set endpoint transport");
   ExpectContains(stripped_json,
-                 "\"eta_zero_endpoint_transported_master_count\": 1",
-                 "single-master b61n scalar contour transport should count only one master");
+                 "\"eta_zero_endpoint_transported_master_count\": 5",
+                 "b61n selected endpoint transport should count the reviewed primitive "
+                 "masters");
   ExpectContains(stripped_json,
-                 "\"eta_zero_endpoint_transported_integrals\": [\"box[0,0,0,1]\"]",
-                 "single-master b61n scalar contour transport should name only the tadpole "
-                 "master");
+                 "\"eta_zero_endpoint_transported_integrals\": [\"box[0,0,0,1]\", "
+                 "\"box[1,0,1,0]\", \"box[1,0,0,1]\", \"box[0,1,0,1]\", "
+                 "\"box[0,0,1,1]\"]",
+                 "b61n selected endpoint transport should name the tadpole and four "
+                 "primitive bubble masters");
   ExpectContains(stripped_json,
                  "b61n complex-kinematics eta=0 contour scaffold parsed 5 complex Numeric "
                  "substitution",
@@ -49199,6 +49202,51 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "box[0,0,0,1]",
                  "single-master b61n scalar contour transport should document the applied "
                  "runtime path");
+  ExpectContains(stripped_json,
+                 "Applied b61n primitive bubble endpoint coefficient transport through eps^2 "
+                 "to 4 additional master",
+                 "b61n primitive bubble transport should document the selected extension");
+  const std::filesystem::path bubble_audit_script_path =
+      run_root / "audit_b61n_bubble_coefficients.py";
+  const std::filesystem::path bubble_audit_stdout_path =
+      run_root / "bubble-audit.stdout";
+  const std::filesystem::path bubble_audit_stderr_path =
+      run_root / "bubble-audit.stderr";
+  OverwriteTextFile(
+      bubble_audit_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+results = {entry["integral"]: entry for entry in payload["results"]}
+
+def coefficient(integral, order):
+    for item in results[integral]["epsilon_orders"]:
+        if item["order"] == order:
+            return item
+    raise AssertionError(f"missing {integral} eps^{order}")
+
+assert coefficient("box[1,0,1,0]", 0)["imag_digits"].startswith("3.141592653589793238462643383279")
+assert coefficient("box[1,0,0,1]", 0)["real_digits"].startswith("0.113249592032251558388401394658")
+assert coefficient("box[1,0,0,1]", 2)["imag_digits"].startswith("1.341851249786903949672309851743")
+assert coefficient("box[0,1,0,1]", 0)["real_digits"].startswith("-2.451535421781489300662215261948")
+assert coefficient("box[0,1,0,1]", 2)["imag_digits"].startswith("0.282058045740940108492497431659")
+assert coefficient("box[0,0,1,1]", 0)["imag_digits"].startswith("2.223152384368443574830741856979")
+assert coefficient("box[0,0,1,1]", 2)["real_digits"].startswith("0.149737478173905050970988778197")
+)PY");
+  const std::string bubble_audit_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(bubble_audit_script_path.string()) + " " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(bubble_audit_stdout_path.string()) + " 2>" +
+      ShellSingleQuote(bubble_audit_stderr_path.string());
+  Expect(RunShellCommand(bubble_audit_command) == 0,
+         "b61n primitive bubble endpoint coefficients should match reviewed "
+         "AMFlow prefixes; stderr=" +
+             (std::filesystem::exists(bubble_audit_stderr_path)
+                  ? ReadFile(bubble_audit_stderr_path)
+                  : std::string{}));
   ExpectContains(stripped_json,
                  "Full seven-master eta-infinity-to-eta=0 ODE propagation and Laurent "
                  "fitting remain deferred",

@@ -346,6 +346,30 @@ bool MatchesAutomaticPhaseSpaceSurface(const ProblemSpec& spec,
          NumericSubstitutionEquals(spec, "msq", "1");
 }
 
+bool MatchesAutomaticPhaseSpaceFirstCoefficientSurface(
+    const ProblemSpec& spec,
+    const std::vector<std::size_t>& cut_indices) {
+  if (spec.targets.empty()) {
+    return false;
+  }
+  const std::vector<std::string> automatic_phasespace_propagators = {
+      "l1^2-msq",
+      "(l1+p1)^2",
+      "l2^2",
+      "(l1+l2+p1)^2",
+      "(l1+l2+p1+p2)^2",
+      "(l1+l2+p2)^2",
+      "(l1+p2)^2",
+  };
+  return spec.family.name == "phase" &&
+         VectorEquals(spec.family.loop_momenta, {"l1", "l2"}) &&
+         PropagatorsMatchExactSurface(spec, automatic_phasespace_propagators) &&
+         VectorEquals(cut_indices, {0, 2, 4}) &&
+         VectorEquals(spec.targets.front().indices, {1, 0, 1, 0, 1, 0, 0}) &&
+         NumericSubstitutionEquals(spec, "s", "100") &&
+         NumericSubstitutionEquals(spec, "msq", "1");
+}
+
 bool MatchesFeynmanPrescriptionSurface(const ProblemSpec& spec,
                                        const std::vector<std::size_t>& cut_indices) {
   if (spec.targets.empty()) {
@@ -526,6 +550,53 @@ CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModelInternal(
   model.contour_fingerprint =
       ComputeArtifactFingerprint(SerializeCutkoskyResidueContourPlanForFingerprint(model));
   return model;
+}
+
+CutkoskyResidueEndpointModel BuildAutomaticPhaseSpaceFirstCoefficientEndpointModel(
+    const FeynmanPrescription cut_prescription) {
+  CutkoskyResidueEndpointModel model;
+  model.parsed = true;
+  model.model_kind = "automatic_phasespace::pure-cut-three-body-volume";
+  model.phase_space_parameterization =
+      "dPhi_3(P;m,0,0)=dq2/(2*pi)*dPhi_2(P;m,sqrt(q2))*dPhi_2(q;0,0)";
+  model.physical_integration_domain =
+      "q2 in [0,81] with no uncut denominator weights for the selected master";
+  model.kallen_discriminant = "lambda(100,1,q2)=(q2-81)*(q2-121)";
+  model.contour_half_plane =
+      ContourHalfPlaneForDirection(EtaDirectionForPrescription(cut_prescription));
+  model.endpoint_local_model_kind = "cutkosky-pure-phase-volume-r0";
+  model.ir_pole_classification =
+      "pure three-body phase-volume residue is regular in the selected eta row; "
+      "non-selected soft/collinear weighted residues remain deferred";
+  model.eta_zero_selection_rule =
+      "selected pure-cut master has a unique integer eta^0 residue coefficient";
+  model.residue_variables = {"q2", "cos_theta_a", "cos_theta_b"};
+  model.residue_factors = {
+      "Cut(D1=l1^2-msq)",
+      "Cut(D3=l2^2)",
+      "Cut(D5=(l1+l2+p1+p2)^2)",
+      "K_2(eps)",
+      "unit uncut-denominator moment",
+  };
+  model.endpoint_poles = AutomaticPhaseSpaceEndpointPoles();
+  model.eta_contour_waypoints = PlanCutkoskyEtaZeroContour(model);
+  model.contour_fingerprint =
+      ComputeArtifactFingerprint(SerializeCutkoskyResidueContourPlanForFingerprint(model));
+  return model;
+}
+
+std::string SerializeCutkoskyResidueCoefficientAuditForFingerprint(
+    const CutkoskyResidueCoefficientAudit& audit) {
+  std::ostringstream out;
+  out << "kind=b63n-cutkosky-selected-residue-coefficient\n";
+  out << "master=" << audit.master_label << "\n";
+  out << "runtime_application=" << audit.runtime_application << "\n";
+  out << "transport_scope=" << audit.transport_scope << "\n";
+  out << "residue_model_kind=" << audit.residue_model_kind << "\n";
+  out << "endpoint_local_model_kind=" << audit.endpoint_local_model_kind << "\n";
+  out << "contour_fingerprint=" << audit.contour_fingerprint << "\n";
+  out << "final_solution_samples_used_as_input=false\n";
+  return out.str();
 }
 
 void ClassifyReviewedSurface(const ProblemSpec& spec,
@@ -805,6 +876,82 @@ CutkoskyEtaZeroTransportAudit BuildCutkoskyEtaZeroTransportScaffold(
       ". Live Cutkosky residue integration, eta=0 coefficient construction, and "
       "AMFlow-matching Laurent coefficients remain deferred; retained solution samples "
       "are not consumed and full_eta_zero_contour_applied stays false.";
+  return audit;
+}
+
+CutkoskyResidueCoefficientAudit BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(
+    const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    throw BoundaryUnsolvedError(
+        "b63n first Cutkosky coefficient evaluator requires cut propagators");
+  }
+  RejectEtaOnCutPropagators(spec, cut_indices);
+  static_cast<void>(CollectCutPowers(spec, cut_indices));
+
+  const CutkoskyPhaseSpaceTopology topology =
+      AnalyzeCutkoskyPhaseSpaceCutTopology(spec);
+  if (topology.cut_components.size() != 1) {
+    throw BoundaryUnsolvedError(
+        "b63n first Cutkosky coefficient evaluator requires a single phase-volume "
+        "cut component");
+  }
+  const CutkoskyPhaseSpaceCutComponent& component = topology.cut_components.front();
+  if (component.cut_propagator_indices.size() != component.loop_momenta.size() + 1) {
+    throw BoundaryUnsolvedError(
+        "b63n first Cutkosky coefficient evaluator requires phase-volume cut count "
+        "to equal loop count plus one");
+  }
+
+  const FeynmanPrescription cut_prescription = ResolveCutPrescription(spec, cut_indices);
+  if (!MatchesAutomaticPhaseSpaceFirstCoefficientSurface(spec, cut_indices)) {
+    throw BoundaryUnsolvedError(
+        "b63n first Cutkosky coefficient evaluator is limited to "
+        "automatic_phasespace phase[1,0,1,0,1,0,0]");
+  }
+
+  const CutkoskyResidueEndpointModel endpoint_model =
+      BuildAutomaticPhaseSpaceFirstCoefficientEndpointModel(cut_prescription);
+  const CutkoskyEtaZeroSelectionResult selection =
+      PickCutkoskyEtaZeroTerm({{"integer", 0, 0, spec.targets.front().Label()}});
+  if (!selection.success) {
+    throw BoundaryUnsolvedError(selection.summary);
+  }
+
+  CutkoskyResidueCoefficientAudit audit;
+  audit.live_coefficients_available = true;
+  audit.retained_solution_samples_used = false;
+  audit.full_eta_zero_contour_applied = false;
+  audit.master_label = spec.targets.front().Label();
+  audit.runtime_application =
+      "b63n-cutkosky-pure-phase-volume-selected-residue";
+  audit.transport_scope = "eta-zero-selected-endpoint-coefficients";
+  audit.residue_model_kind = endpoint_model.model_kind;
+  audit.endpoint_local_model_kind = endpoint_model.endpoint_local_model_kind;
+  audit.contour_fingerprint = endpoint_model.contour_fingerprint;
+  audit.eta_zero_selection_audit =
+      selection.summary + "; selected_coefficient_label=" +
+      selection.selected_coefficient_label;
+  audit.extraction_fingerprint =
+      ComputeArtifactFingerprint(
+          SerializeCutkoskyResidueCoefficientAuditForFingerprint(audit));
+  audit.summary =
+      "Applied b63n automatic_phasespace pure Cutkosky residue endpoint transport for " +
+      audit.master_label +
+      " from retained eta-infinity Cutkosky boundary samples without reading final "
+      "solution samples; selected the unique eta^0 pure phase-volume residue, "
+      "residue_model_kind=" + audit.residue_model_kind +
+      ", endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+      ", contour_fingerprint=" + audit.contour_fingerprint +
+      ", extraction_fingerprint=" + audit.extraction_fingerprint +
+      ", final_solution_samples_used_as_input=false. Full weighted "
+      "automatic_phasespace residues and feynman_prescription Cutkosky residues remain "
+      "deferred; full_eta_zero_contour_applied stays false.";
   return audit;
 }
 

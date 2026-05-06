@@ -32,6 +32,7 @@
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
 #include "amflow/runtime/lightlike_propagator.hpp"
@@ -423,8 +424,12 @@ struct DirectSolveSeriesSpec {
 
 std::string RemoveAsciiSpaces(std::string value);
 bool HasBoundaryRawFile(const DirectSolveSeriesSpec& spec, const std::string& name);
+bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
+                               const std::string& singular_point);
 bool IsComplexKinematicsFullEtaZeroContourState(const DirectSolveSeriesSpec& spec);
 bool IsB64agLightlikeGaugeLinkRuntimeState(const DirectSolveSeriesSpec& spec);
+bool IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(
+    const DirectSolveSeriesSpec& spec);
 
 [[noreturn]] void FailCliYamlParse(const std::size_t line_number,
                                    const std::string& message) {
@@ -1678,8 +1683,14 @@ DirectSolveSeriesSpec ParseAmflowSolveSeriesStateJsonRoot(
         IsB64agLightlikeGaugeLinkRuntimeState(spec) &&
         HasBoundaryRawFile(spec, "boundary") && HasBoundaryRawFile(spec, "diffeq") &&
         HasBoundaryRawFile(spec, "reduction") && HasBoundaryRawFile(spec, "solve.wl");
+    const bool b63n_cutkosky_first_residue_can_run_without_solution =
+        IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(spec) &&
+        HasBoundaryRawFile(spec, "boundary") && HasBoundaryRawFile(spec, "boundarymi") &&
+        HasBoundaryRawFile(spec, "bpattern") && HasBoundaryRawFile(spec, "direction") &&
+        HasBoundaryRawFile(spec, "epslist");
     if (b61n_contour_scaffold_can_run_without_solution ||
-        b64ag_gauge_link_scaffold_can_run_without_solution) {
+        b64ag_gauge_link_scaffold_can_run_without_solution ||
+        b63n_cutkosky_first_residue_can_run_without_solution) {
       spec.retained_solution_samples_input = false;
     } else {
       throw std::invalid_argument(
@@ -4396,13 +4407,79 @@ bool IsPhaseSpaceAmflowState(const DirectSolveSeriesSpec& spec) {
 }
 
 bool UsesRetainedSolutionSamples(const DirectSolveSeriesSpec& spec) {
-  return spec.amflow_state_input &&
-         (spec.retained_solution_samples_input || IsPhaseSpaceAmflowState(spec));
+  return spec.amflow_state_input && spec.retained_solution_samples_input;
 }
 
 bool IsRetainedLoopSolutionSampleState(const DirectSolveSeriesSpec& spec) {
   return UsesRetainedSolutionSamples(spec) && !IsPhaseSpaceAmflowState(spec) &&
          spec.boundary_state_kind == "amflow_eta_infinity_asymptotic_with_subsystem_samples";
+}
+
+std::string B63nAutomaticPhaseSpaceFirstMasterLabel() {
+  return "phase[1,0,1,0,1,0,0]";
+}
+
+bool B63nAutomaticPhaseSpaceFirstMasterEtaRowIsZero(
+    const DirectSolveSeriesSpec& spec) {
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, B63nAutomaticPhaseSpaceFirstMasterLabel());
+  if (!master_index.has_value()) {
+    return false;
+  }
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end() ||
+      *master_index >= matrix_it->second.size()) {
+    return false;
+  }
+  const std::vector<std::string>& row = matrix_it->second[*master_index];
+  if (row.size() != spec.masters.size()) {
+    return false;
+  }
+  return std::all_of(row.begin(), row.end(), [](const std::string& cell) {
+    return RemoveAsciiSpaces(cell) == "0";
+  });
+}
+
+bool IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(
+    const DirectSolveSeriesSpec& spec) {
+  return spec.amflow_state_input &&
+         spec.benchmark_id == "automatic_phasespace" &&
+         spec.family == "phase" &&
+         spec.integral_kind == "phase_space" &&
+         spec.variable == "eta" &&
+         spec.boundary_state_kind ==
+             "amflow_eta_infinity_asymptotic_with_subsystem_samples" &&
+         spec.boundary_state_direction == "NegIm" &&
+         spec.phase_space_cut == std::vector<int>({1, 0, 1, 0, 1, 0, 0}) &&
+         spec.phase_space_prescription == std::vector<int>({0, 0}) &&
+         HasCanonicalSingularPoint(spec, "eta=0") &&
+         B63nAutomaticPhaseSpaceFirstMasterEtaRowIsZero(spec);
+}
+
+amflow::ProblemSpec MakeB63nAutomaticPhaseSpaceFirstCutkoskyProblemSpec() {
+  amflow::ProblemSpec spec;
+  spec.family.name = "phase";
+  spec.family.loop_momenta = {"l1", "l2"};
+  spec.family.loop_prescriptions = {amflow::FeynmanPrescription::None,
+                                    amflow::FeynmanPrescription::None};
+  spec.family.propagators = {
+      amflow::Propagator("l1^2-msq"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l1+l2+p1)^2"),
+      amflow::Propagator("(l1+l2+p1+p2)^2"),
+      amflow::Propagator("(l1+l2+p2)^2"),
+      amflow::Propagator("(l1+p2)^2"),
+  };
+  for (const std::size_t index : {std::size_t{0}, std::size_t{2}, std::size_t{4}}) {
+    spec.family.propagators[index].kind = amflow::PropagatorKind::Cut;
+    spec.family.propagators[index].prescription =
+        static_cast<int>(amflow::FeynmanPrescription::None);
+  }
+  spec.kinematics.invariants = {"s", "msq"};
+  spec.kinematics.numeric_substitutions = {{"s", "100"}, {"msq", "1"}};
+  spec.targets = {amflow::TargetIntegral{"phase", {1, 0, 1, 0, 1, 0, 0}}};
+  return spec;
 }
 
 bool HasCanonicalSingularPoint(const DirectSolveSeriesSpec& spec,
@@ -6298,6 +6375,14 @@ std::string EndpointTransportEpsilonOrderLabel(
 
 std::string EndpointTransportDeferredReason(
     const amflow::SolverDiagnostics& diagnostics) {
+  if (diagnostics.eta_endpoint_local_model_kind.find("cutkosky") !=
+      std::string::npos) {
+    return "full b63n Cutkosky residue coverage remains deferred after reviewed "
+           "selected endpoint coefficient transport for " +
+           (diagnostics.eta_endpoint_transported_integrals.empty()
+                ? std::string("one master")
+                : diagnostics.eta_endpoint_transported_integrals.front());
+  }
   if (!diagnostics.eta_endpoint_extraction_fingerprint.empty()) {
     return "full seven-master singular eta=0 complex contour execution remains "
            "deferred after the reviewed scalar contour endpoint coefficient "
@@ -7204,6 +7289,13 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     complex_contour_scaffold_audit =
         BuildComplexKinematicsContourScaffoldAudit(direct_spec);
   }
+  std::optional<amflow::CutkoskyResidueCoefficientAudit>
+      b63n_cutkosky_first_residue_audit;
+  if (IsB63nAutomaticPhaseSpaceFirstCutkoskyResidueState(direct_spec)) {
+    b63n_cutkosky_first_residue_audit =
+        amflow::BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(
+            MakeB63nAutomaticPhaseSpaceFirstCutkoskyProblemSpec());
+  }
 
   const std::vector<ParsedAmflowBoundaryRegion> regions =
       ParseAmflowBoundaryRegions(RequireAmflowBoundaryRawFile(direct_spec, "boundary"),
@@ -7269,6 +7361,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.eta_endpoint_extraction_fingerprint =
         b61n_scalar_endpoint_audit->extraction_fingerprint;
   }
+  if (b63n_cutkosky_first_residue_audit.has_value()) {
+    ++diagnostics.eta_endpoint_transport_count;
+    AppendEtaEndpointTransportedIntegralOnce(
+        diagnostics, b63n_cutkosky_first_residue_audit->master_label);
+    diagnostics.eta_endpoint_contour_fingerprint =
+        b63n_cutkosky_first_residue_audit->contour_fingerprint;
+    diagnostics.eta_endpoint_local_model_kind =
+        b63n_cutkosky_first_residue_audit->endpoint_local_model_kind;
+    diagnostics.eta_endpoint_extraction_fingerprint =
+        b63n_cutkosky_first_residue_audit->extraction_fingerprint;
+  }
 
   diagnostics.summary =
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
@@ -7288,6 +7391,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   }
   if (b61n_scalar_endpoint_audit.has_value()) {
     diagnostics.summary += " " + b61n_scalar_endpoint_audit->summary;
+  }
+  if (b63n_cutkosky_first_residue_audit.has_value()) {
+    diagnostics.summary += " " + b63n_cutkosky_first_residue_audit->summary;
   }
   diagnostics.summary +=
       " Full singular eta->0 complex contour execution and non-selected endpoint extraction "

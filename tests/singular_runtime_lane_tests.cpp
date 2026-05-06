@@ -1019,6 +1019,45 @@ void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
          "b63n PickCutkoskyEtaZeroTerm should fail closed on ambiguous eta^0 terms");
 }
 
+void B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest() {
+  amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  spec.targets = {amflow::TargetIntegral{"phase", {1, 0, 1, 0, 1, 0, 0}}};
+
+  const amflow::CutkoskyResidueCoefficientAudit audit =
+      amflow::BuildAutomaticPhaseSpaceFirstCutkoskyCoefficientAudit(spec);
+
+  Expect(audit.live_coefficients_available,
+         "b63n first Cutkosky coefficient audit should mark the selected residue live");
+  Expect(!audit.retained_solution_samples_used,
+         "b63n first Cutkosky coefficient audit must not use retained solution samples");
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b63n first Cutkosky coefficient audit must keep full contour false");
+  Expect(audit.master_label == "phase[1,0,1,0,1,0,0]",
+         "b63n first Cutkosky coefficient audit should name the pure cut master");
+  Expect(audit.transport_scope == "eta-zero-selected-endpoint-coefficients",
+         "b63n first Cutkosky coefficient audit should stay selected-master scoped");
+  Expect(audit.residue_model_kind ==
+             "automatic_phasespace::pure-cut-three-body-volume",
+         "b63n first Cutkosky coefficient audit should use the pure phase-volume model");
+  Expect(audit.endpoint_local_model_kind == "cutkosky-pure-phase-volume-r0",
+         "b63n first Cutkosky coefficient audit should classify the selected endpoint");
+  ExpectContains(audit.contour_fingerprint,
+                 "fnv1a64:",
+                 "b63n first Cutkosky coefficient audit should fingerprint the contour");
+  ExpectContains(audit.extraction_fingerprint,
+                 "fnv1a64:",
+                 "b63n first Cutkosky coefficient audit should fingerprint the extraction");
+  ExpectContains(audit.eta_zero_selection_audit,
+                 "selected the unique eta^0 residue term",
+                 "b63n first Cutkosky coefficient audit should use live PickZero input");
+  ExpectContains(audit.summary,
+                 "final_solution_samples_used_as_input=false",
+                 "b63n first Cutkosky coefficient audit should publish anti-fake provenance");
+  ExpectContains(audit.summary,
+                 "full_eta_zero_contour_applied stays false",
+                 "b63n first Cutkosky coefficient audit should avoid full-lane overclaiming");
+}
+
 void B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest() {
   amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
   spec.family.propagators[0].expression = "l1^2-msq+eta";
@@ -1396,6 +1435,7 @@ int main() {
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
+    B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();
     B63nCutkoskyTransportScaffoldRejectsNonUnitCutPowersTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();

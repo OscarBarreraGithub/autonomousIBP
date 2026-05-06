@@ -49208,6 +49208,134 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "partial b61n scaffold should explicitly avoid overclaiming");
 }
 
+void SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsFirstCutkoskyResidueTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-automatic-phasespace-b63n-stripped");
+  const std::filesystem::path source_state_path =
+      std::filesystem::path(AMFLOW_SOURCE_DIR) /
+      "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json";
+  const std::filesystem::path stripped_state_path = run_root / "automatic-stripped.json";
+  const std::filesystem::path retained_output_path = run_root / "retained-result.json";
+  const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path strip_script_path = run_root / "strip_solution.py";
+
+  OverwriteTextFile(
+      strip_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["boundary_state"]["files"].pop("solution", None)
+payload["phase_space"]["output_masters"] = [
+    {"family": "phase", "indices": [1, 0, 1, 0, 1, 0, 0]}
+]
+payload["reduction"] = {
+    "targets": [{"family": "phase", "indices": [1, 0, 1, 0, 1, 0, 0]}]
+}
+payload.setdefault("solution_sample_cache", {})["enabled"] = True
+json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
+)PY");
+
+  const std::string strip_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(strip_script_path.string()) + " " +
+      ShellSingleQuote(source_state_path.string()) + " " +
+      ShellSingleQuote(stripped_state_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(strip_command) == 0,
+         "automatic_phasespace solution-strip fixture should be created; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string retained_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(source_state_path.string()) + " --eps-order 3 --digits 40 --out " +
+      ShellSingleQuote(retained_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(retained_command) == 0,
+         "unstripped automatic_phasespace state should keep the retained solution-sample "
+         "path; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string retained_json = ReadFile(retained_output_path);
+  ExpectContains(retained_json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-phase-space-solution-sample-cache-laurent-fit\"",
+                 "unstripped automatic_phasespace should identify retained samples");
+  Expect(retained_json.find("b63n automatic_phasespace pure Cutkosky residue") ==
+             std::string::npos,
+         "retained automatic_phasespace path should not masquerade as the live residue");
+
+  const std::string stripped_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(stripped_state_path.string()) + " --eps-order 3 --digits 40 --out " +
+      ShellSingleQuote(stripped_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(stripped_command) == 0,
+         "stripped automatic_phasespace state should run without reading solution samples; "
+         "stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string stripped_json = ReadFile(stripped_output_path);
+  ExpectContains(stripped_json,
+                 "\"benchmark_id\": \"automatic_phasespace\"",
+                 "stripped automatic_phasespace should preserve benchmark identity");
+  ExpectContains(stripped_json,
+                 "\"targets\": [\"phase[1,0,1,0,1,0,0]\"]",
+                 "stripped automatic_phasespace should expose only the selected master");
+  ExpectContains(stripped_json,
+                 "\"transport_applied\": true",
+                 "b63n first residue should set transport only after selected evaluation");
+  ExpectContains(stripped_json,
+                 "\"transport_scope\": \"eta-zero-selected-endpoint-coefficients\"",
+                 "b63n first residue should stay selected-master scoped");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transport_applied\": true",
+                 "b63n first residue should set endpoint transport");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_master_count\": 1",
+                 "b63n first residue should count one transported master");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_integrals\": [\"phase[1,0,1,0,1,0,0]\"]",
+                 "b63n first residue should name only the pure cut master");
+  ExpectContains(stripped_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "b63n first residue must not claim full Cutkosky contour coverage");
+  Expect(stripped_json.find("retained-phase-space-solution-sample-cache-laurent-fit") ==
+             std::string::npos,
+         "stripped automatic_phasespace must not fall back to retained samples");
+  ExpectContains(stripped_json,
+                 "Applied b63n automatic_phasespace pure Cutkosky residue endpoint "
+                 "transport for phase[1,0,1,0,1,0,0]",
+                 "b63n first residue should document the applied runtime path");
+  ExpectContains(stripped_json,
+                 "residue_model_kind=automatic_phasespace::pure-cut-three-body-volume",
+                 "b63n first residue should record the reviewed residue model");
+  ExpectContains(stripped_json,
+                 "endpoint_local_model_kind=cutkosky-pure-phase-volume-r0",
+                 "b63n first residue should classify the selected endpoint");
+  ExpectContains(stripped_json,
+                 "final_solution_samples_used_as_input=false",
+                 "b63n first residue should publish anti-fake provenance");
+  ExpectContains(stripped_json,
+                 "full b63n Cutkosky residue coverage remains deferred",
+                 "b63n first residue should preserve the remaining lane gap");
+  ExpectContains(stripped_json,
+                 "\"order\": 3",
+                 "b63n first residue should emit the fourth compared epsilon coefficient");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"0.0114366535872161706034882064745407811774",
+                 "b63n first residue eps^0 coefficient should match the reviewed value");
+  ExpectContains(stripped_json,
+                 "\"real_digits\": \"-0.0063012552844268729995768248728420665148",
+                 "b63n first residue eps^3 coefficient should match the reviewed value");
+}
+
 void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -55705,6 +55833,7 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
+    SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsFirstCutkoskyResidueTest();
     SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest();
     SolveSeriesCliEvaluatesFiniteAmflowSolutionSampleStateTest();
     SolveSeriesCliFollowsManifestSolveSeriesInputPointerTest();

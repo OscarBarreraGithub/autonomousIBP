@@ -1,0 +1,28 @@
+{
+  "amflow_golden_slice": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.amflow-golden.txt",
+  "anti_fake_role_d_contract": "transport_applied=true is scoped to the selected pure Cutkosky phase-volume master and is backed by compare30 4/4 coefficient output; retained final solution samples are not used by the C++ stripped runtime path.",
+  "benchmark_id": "automatic_phasespace",
+  "comparator": {
+    "compared_coefficient_count": 4,
+    "minimum_digit_agreement": 999,
+    "passed": true,
+    "passed_coefficient_count": 4,
+    "path": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.compare30.json",
+    "tolerance_digits": 30
+  },
+  "cpp_result": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.cpp-result.json",
+  "eta_zero_endpoint_transport_applied": true,
+  "eta_zero_endpoint_transported_integrals": [
+    "phase[1,0,1,0,1,0,0]"
+  ],
+  "final_solution_samples_used_as_input": false,
+  "full_eta_zero_contour_applied": false,
+  "full_stripped_result": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.stripped-result.json",
+  "lane": "lane143",
+  "master": "phase[1,0,1,0,1,0,0]",
+  "runtime_boundary_provider": "retained-asymptotic-subsystem-sample-boundary-evaluator+eta-infinity-de-asymptotic-transport+eta-zero-selected-endpoint-transport",
+  "runtime_lane": "b63n",
+  "schema_version": 1,
+  "transport_applied": true,
+  "transport_scope": "eta-zero-selected-endpoint-coefficients"
+}

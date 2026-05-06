@@ -1146,6 +1146,95 @@ std::vector<amflow::MasterIntegral> B64agReviewedReductionMasters() {
   };
 }
 
+std::string B64agMasterLabel(const amflow::MasterIntegral& master) {
+  return amflow::TargetIntegral{master.family, master.indices}.Label();
+}
+
+int B64agPickZeroRuleSPower() {
+  return amflow::LightlikeGaugeLinkFinitePartTerm{}.power;
+}
+
+int B64agSinglePolePower() {
+  return B64agPickZeroRuleSPower() - 1;
+}
+
+amflow::LightlikeGaugeLinkFinitePartTerm B64agEndpointFixtureTerm(
+    const int power,
+    std::string coefficient,
+    std::string region_key = "integer") {
+  amflow::LightlikeGaugeLinkFinitePartTerm term;
+  term.region_key = std::move(region_key);
+  term.power = power;
+  term.coefficient = std::move(coefficient);
+  return term;
+}
+
+amflow::LightlikeGaugeLinkTargetReductionTerm B64agReductionFixtureTerm(
+    const std::string& target_label,
+    const std::string& master_label,
+    const int gaugex_power_shift,
+    std::string coefficient) {
+  amflow::LightlikeGaugeLinkTargetReductionTerm term;
+  term.target_label = target_label;
+  term.master_label = master_label;
+  term.gaugex_power_shift = gaugex_power_shift;
+  term.coefficient = std::move(coefficient);
+  return term;
+}
+
+amflow::LightlikeGaugeLinkTargetReductionTerm B64agReductionFixtureTerm(
+    const amflow::TargetIntegral& target,
+    const amflow::MasterIntegral& master,
+    const int gaugex_power_shift,
+    std::string coefficient) {
+  return B64agReductionFixtureTerm(target.Label(),
+                                   B64agMasterLabel(master),
+                                   gaugex_power_shift,
+                                   std::move(coefficient));
+}
+
+std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms>
+B64agSixMasterEndpointFixture() {
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+  return {
+      {B64agMasterLabel(masters.front()),
+       {B64agEndpointFixtureTerm(B64agSinglePolePower(), "F0_singular"),
+        B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F0_finite")}},
+      {B64agMasterLabel(masters[1]),
+       {B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F1_finite")}},
+      {B64agMasterLabel(masters[2]),
+       {B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F2_fixture")}},
+      {B64agMasterLabel(masters[3]),
+       {B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F3_fixture")}},
+      {B64agMasterLabel(masters[4]),
+       {B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F4_fixture")}},
+      {B64agMasterLabel(masters[5]),
+       {B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(), "F5_fixture")}},
+  };
+}
+
+std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm>
+B64agTwoMasterReductionRow(const amflow::TargetIntegral& target,
+                           const int gaugex_power_shift) {
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+  return {
+      B64agReductionFixtureTerm(target, masters.front(), gaugex_power_shift, "R0"),
+      B64agReductionFixtureTerm(target, masters[1], gaugex_power_shift, "R1"),
+  };
+}
+
+std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm>
+B64agTwoMasterReductionRows(const std::vector<amflow::TargetIntegral>& targets) {
+  std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
+  for (const amflow::TargetIntegral& target : targets) {
+    const int affected_power_sum = target.indices[3] + target.indices[4];
+    const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> row =
+        B64agTwoMasterReductionRow(target, affected_power_sum);
+    reduction_terms.insert(reduction_terms.end(), row.begin(), row.end());
+  }
+  return reduction_terms;
+}
+
 amflow::ProblemSpec MakeB64agGaugeLinkProblemSpec() {
   amflow::ProblemSpec spec;
   spec.family.name = "gauge";
@@ -1405,6 +1494,160 @@ void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
          "b64ag implicit-zero cases should not populate coefficient strings");
 }
 
+void B64agGaugeLinkReducedFinitePartAppliesTargetReductionBeforePickZeroRuleSTest() {
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const amflow::TargetIntegral target = targets.front();
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          targets,
+          B64agSixMasterEndpointFixture(),
+          B64agTwoMasterReductionRows(targets));
+
+  Expect(result.success,
+         "b64ag reduced finite-part functional should accept fixture endpoint terms");
+  Expect(result.failures.empty(),
+         "b64ag reduced finite-part functional should not record target failures");
+  Expect(!result.retained_solution_samples_used,
+         "b64ag reduced finite-part functional must not read retained solution samples");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag reduced finite-part functional must not claim full contour success");
+  Expect(result.ir_subtraction_applied,
+         "b64ag reduced finite-part functional should record finite-part subtraction");
+  Expect(result.targets.size() == targets.size(),
+         "b64ag reduced finite-part functional should publish the reviewed target packet");
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartTarget& reduced =
+      result.targets.front();
+  Expect(reduced.success,
+         "b64ag reduced target should succeed after row reduction and normalization");
+  Expect(reduced.target_label == target.Label(),
+         "b64ag reduced target should preserve the retained target label");
+  Expect(reduced.affected_power_sum == 2,
+         "b64ag reduced target should apply the D4,D5 affected-power sum");
+  Expect(reduced.normalization_factor == "gaugex^(-2)",
+         "b64ag reduced target should audit the reviewed normalization factor");
+  Expect(reduced.dropped_singular_terms.size() == 1,
+         "b64ag reduced target should drop the normalized singular endpoint term");
+  ExpectContains(reduced.finite_part_coefficient,
+                 "R0",
+                 "b64ag reduced coefficient should include the first target-reduction entry");
+  ExpectContains(reduced.finite_part_coefficient,
+                 "F0_finite",
+                 "b64ag reduced coefficient should include the first finite endpoint term");
+  ExpectContains(reduced.finite_part_coefficient,
+                 "R1",
+                 "b64ag reduced coefficient should include the second target-reduction entry");
+  ExpectContains(reduced.finite_part_coefficient,
+                 "F1_finite",
+                 "b64ag reduced coefficient should include the second finite endpoint term");
+  ExpectContains(reduced.summary,
+                 "before PickZeroRuleS-compatible finite-part extraction",
+                 "b64ag target reduction must run before finite-part selection");
+  ExpectContains(result.summary,
+                 "retained_solution_samples_used=false",
+                 "b64ag reduced result should publish non-consumption provenance");
+  ExpectContains(result.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b64ag reduced result should publish full-contour non-promotion");
+}
+
+void B64agGaugeLinkReducedFinitePartRejectsMissingTermsTest() {
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms.pop_back();
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult missing_endpoint =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          endpoint_terms,
+          B64agTwoMasterReductionRow(target, 2));
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult missing_reduction =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          B64agSixMasterEndpointFixture(),
+          {});
+
+  Expect(!missing_endpoint.success,
+         "b64ag reduced finite-part functional should fail when a six-master term is absent");
+  Expect(missing_endpoint.failures.size() == 1,
+         "b64ag missing endpoint rejection should record one diagnostic");
+  Expect(missing_endpoint.failures.front().failure_code == "boundary_unsolved",
+         "b64ag missing endpoint rejection should use the boundary failure code");
+  ExpectContains(missing_endpoint.failures.front().summary,
+                 "missing supplied endpoint terms",
+                 "b64ag missing endpoint rejection should explain the absent six-master term");
+  Expect(!missing_reduction.success,
+         "b64ag reduced finite-part functional should fail when target reduction is absent");
+  Expect(missing_reduction.targets.size() == 1 && missing_reduction.failures.size() == 1,
+         "b64ag missing reduction rejection should produce per-target diagnostics");
+  Expect(missing_reduction.failures.front().failure_code == "boundary_unsolved",
+         "b64ag missing reduction rejection should use the boundary failure code");
+  ExpectContains(missing_reduction.failures.front().summary,
+                 "missing the retained target-reduction row",
+                 "b64ag missing reduction rejection should explain the incomplete row");
+}
+
+void B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest() {
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms.front().endpoint_terms = {
+      B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(),
+                               "F0_region_a",
+                               "integer-region-a"),
+      B64agEndpointFixtureTerm(B64agPickZeroRuleSPower(),
+                               "F0_region_b",
+                               "integer-region-b"),
+  };
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          endpoint_terms,
+          {B64agReductionFixtureTerm(target.Label(),
+                                     endpoint_terms.front().master_label,
+                                     1,
+                                     "R0")});
+
+  Expect(!result.success,
+         "b64ag reduced finite-part functional should reject multiple endpoint regions");
+  Expect(result.targets.size() == 1 && result.failures.size() == 1,
+         "b64ag multiple-region rejection should remain target scoped");
+  Expect(result.failures.front().failure_code == "continuation_budget_exhausted",
+         "b64ag multiple-region rejection should reuse the finite-part failure code");
+  ExpectContains(result.failures.front().summary,
+                 "multiple integer endpoint regions",
+                 "b64ag multiple-region rejection should come from the PickZeroRuleS selector");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag failed reduced finite-part result must not set the full contour flag");
+}
+
+void B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest() {
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          B64agSixMasterEndpointFixture(),
+          B64agTwoMasterReductionRow(target, 1));
+
+  Expect(result.success,
+         "b64ag reduced finite-part functional should accept the selected endpoint prefix");
+  Expect(result.targets.size() == 1,
+         "b64ag selected-prefix reduced functional should stay selected-target scoped");
+  Expect(result.targets.front().affected_power_sum == 1,
+         "b64ag selected-prefix target should apply its D4,D5 normalization");
+  Expect(result.targets.front().normalization_factor == "gaugex^(-1)",
+         "b64ag selected-prefix target should record the selected normalization factor");
+  Expect(!result.retained_solution_samples_used,
+         "b64ag selected-prefix reduced functional must not consume retained solution samples");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag selected-prefix reduced functional must not promote to full contour");
+  ExpectContains(result.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b64ag selected-prefix summary should record no full contour success");
+}
+
 void B64agGaugeLinkFirstEndpointCoefficientAuditTest() {
   amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
   state.targets = {B64agTarget({1, 1, 1, 0, 1, 0, 0, 0, 0})};
@@ -1487,6 +1730,10 @@ int main() {
     B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
     B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
+    B64agGaugeLinkReducedFinitePartAppliesTargetReductionBeforePickZeroRuleSTest();
+    B64agGaugeLinkReducedFinitePartRejectsMissingTermsTest();
+    B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest();
+    B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";

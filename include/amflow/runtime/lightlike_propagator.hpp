@@ -61,6 +61,49 @@ struct LightlikeGaugeLinkFinitePartResult {
   std::string summary;
 };
 
+struct LightlikeGaugeLinkSixMasterEndpointTerms {
+  std::string master_label;
+  std::vector<LightlikeGaugeLinkFinitePartTerm> endpoint_terms;
+};
+
+struct LightlikeGaugeLinkTargetReductionTerm {
+  std::string target_label;
+  std::string master_label;
+  int gaugex_power_shift = LightlikeGaugeLinkFinitePartTerm{}.power;
+  int log_power = LightlikeGaugeLinkFinitePartTerm{}.log_power;
+  std::string coefficient;
+};
+
+struct LightlikeGaugeLinkReducedFinitePartTarget {
+  bool success = false;
+  bool ir_subtraction_applied = false;
+  std::string target_label;
+  int affected_power_sum = LightlikeGaugeLinkFinitePartTerm{}.power;
+  std::string normalization_factor;
+  std::string finite_part_coefficient;
+  std::vector<LightlikeGaugeLinkFinitePartTerm> reduced_endpoint_terms;
+  std::vector<std::string> dropped_singular_terms;
+  std::string failure_code;
+  std::string summary;
+};
+
+struct LightlikeGaugeLinkReducedFinitePartFailure {
+  std::string target_label;
+  std::string failure_code;
+  std::string summary;
+};
+
+struct LightlikeGaugeLinkReducedFinitePartResult {
+  bool success = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  bool ir_subtraction_applied = false;
+  std::string runtime_application;
+  std::vector<LightlikeGaugeLinkReducedFinitePartTarget> targets;
+  std::vector<LightlikeGaugeLinkReducedFinitePartFailure> failures;
+  std::string summary;
+};
+
 struct LightlikeGaugeLinkPoleAudit {
   std::string value;
   int multiplicity = 0;
@@ -167,6 +210,13 @@ ApplyLightlikeGaugeLinkPowerNormalization(
 
 LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
     const std::vector<LightlikeGaugeLinkFinitePartTerm>& terms);
+
+LightlikeGaugeLinkReducedFinitePartResult
+EvaluateLightlikeGaugeLinkReducedFiniteParts(
+    const std::vector<TargetIntegral>& targets,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::vector<LightlikeGaugeLinkTargetReductionTerm>& target_reduction_terms,
+    const std::string& variable = "gaugex");
 
 std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
     const std::string& diffeq_raw);

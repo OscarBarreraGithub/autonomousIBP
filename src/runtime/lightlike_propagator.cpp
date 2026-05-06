@@ -1030,6 +1030,53 @@ std::string SerializeGaugeLinkSelectedCoefficientAuditForFingerprint(
   return out.str();
 }
 
+struct GaugeLinkEndpointTermKey {
+  std::string region_key;
+  int power;
+  int log_power;
+
+  bool operator<(const GaugeLinkEndpointTermKey& other) const {
+    if (region_key != other.region_key) {
+      return region_key < other.region_key;
+    }
+    if (power != other.power) {
+      return power < other.power;
+    }
+    return log_power < other.log_power;
+  }
+};
+
+std::string CanonicalGaugeLinkRegionKey(const std::string& region_key) {
+  return region_key.empty() ? "integer" : region_key;
+}
+
+std::string MultiplyGaugeLinkCoefficients(const std::string& reduction_coefficient,
+                                          const std::string& endpoint_coefficient) {
+  if (reduction_coefficient == "1") {
+    return endpoint_coefficient;
+  }
+  if (endpoint_coefficient == "1") {
+    return reduction_coefficient;
+  }
+  return "(" + reduction_coefficient + ")*(" + endpoint_coefficient + ")";
+}
+
+std::string AddGaugeLinkCoefficients(const std::string& lhs,
+                                     const std::string& rhs) {
+  if (lhs.empty()) {
+    return rhs;
+  }
+  return "(" + lhs + ")+(" + rhs + ")";
+}
+
+void RecordReducedFinitePartFailure(
+    LightlikeGaugeLinkReducedFinitePartResult& result,
+    const std::string& target_label,
+    const std::string& failure_code,
+    const std::string& summary) {
+  result.failures.push_back({target_label, failure_code, summary});
+}
+
 }  // namespace
 
 bool IsLightlikeGaugeLinkEtaZeroRuntimeState(
@@ -1205,6 +1252,253 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
           ? "b64ag finite-part extraction selected the endpoint power-zero coefficient"
           : "b64ag finite-part extraction dropped singular endpoint powers and selected the "
             "power-zero coefficient";
+  return result;
+}
+
+LightlikeGaugeLinkReducedFinitePartResult
+EvaluateLightlikeGaugeLinkReducedFiniteParts(
+    const std::vector<TargetIntegral>& targets,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::vector<LightlikeGaugeLinkTargetReductionTerm>& target_reduction_terms,
+    const std::string& variable) {
+  LightlikeGaugeLinkReducedFinitePartResult result;
+  result.runtime_application =
+      "b64ag-gauge-link-reduced-finite-part-functional";
+
+  const auto fail_global = [&result](const std::string& failure_code,
+                                     const std::string& summary) {
+    RecordReducedFinitePartFailure(result, "<target-set>", failure_code, summary);
+    result.summary =
+        summary +
+        "; retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
+    return result;
+  };
+
+  if (RemoveAsciiSpaces(variable) != "gaugex") {
+    return fail_global(
+        "master_set_instability",
+        "b64ag reduced finite-part functional is reviewed only for variable gaugex");
+  }
+  if (targets.empty()) {
+    return fail_global(
+        "boundary_unsolved",
+        "b64ag reduced finite-part functional requires at least one retained target");
+  }
+  if (!LabelsMatchReviewedGaugeLinkTargets(targets)) {
+    return fail_global(
+        "master_set_instability",
+        "b64ag reduced finite-part functional requires the reviewed target packet or selected "
+        "endpoint prefix");
+  }
+
+  std::vector<LightlikeGaugeLinkTargetNormalization> normalizations;
+  try {
+    normalizations = ApplyLightlikeGaugeLinkPowerNormalization(
+        targets, AffectedPropagatorIndices(), variable);
+  } catch (const std::runtime_error& error) {
+    return fail_global("master_set_instability", error.what());
+  }
+
+  std::map<std::string, std::vector<LightlikeGaugeLinkFinitePartTerm>>
+      endpoint_terms_by_master;
+  for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
+       endpoint_terms) {
+    if (master_terms.master_label.empty()) {
+      return fail_global(
+          "master_set_instability",
+          "b64ag reduced finite-part functional received an unlabeled six-master endpoint row");
+    }
+    const auto inserted =
+        endpoint_terms_by_master.emplace(master_terms.master_label,
+                                         master_terms.endpoint_terms);
+    if (!inserted.second) {
+      return fail_global(
+          "master_set_instability",
+          "b64ag reduced finite-part functional received duplicate endpoint terms for " +
+              master_terms.master_label);
+    }
+  }
+
+  const std::set<std::string> reviewed_master_labels(
+      ReviewedReductionMasterLabels().begin(), ReviewedReductionMasterLabels().end());
+  for (const auto& entry : endpoint_terms_by_master) {
+    if (reviewed_master_labels.find(entry.first) == reviewed_master_labels.end()) {
+      return fail_global(
+          "master_set_instability",
+          "b64ag reduced finite-part functional received non-reviewed six-master label " +
+              entry.first);
+    }
+  }
+  for (const std::string& master_label : ReviewedReductionMasterLabels()) {
+    const auto terms_it = endpoint_terms_by_master.find(master_label);
+    if (terms_it == endpoint_terms_by_master.end() || terms_it->second.empty()) {
+      return fail_global(
+          "boundary_unsolved",
+          "b64ag reduced finite-part functional is missing supplied endpoint terms for " +
+              master_label);
+    }
+  }
+
+  std::set<std::string> requested_target_labels;
+  for (const LightlikeGaugeLinkTargetNormalization& normalization :
+       normalizations) {
+    requested_target_labels.insert(normalization.target_label);
+  }
+  std::map<std::string, std::vector<LightlikeGaugeLinkTargetReductionTerm>>
+      reduction_terms_by_target;
+  for (const LightlikeGaugeLinkTargetReductionTerm& term :
+       target_reduction_terms) {
+    if (term.target_label.empty() || term.master_label.empty() ||
+        term.coefficient.empty()) {
+      return fail_global(
+          "boundary_unsolved",
+          "b64ag reduced finite-part functional received an incomplete target-reduction term");
+    }
+    if (requested_target_labels.find(term.target_label) ==
+        requested_target_labels.end()) {
+      return fail_global(
+          "master_set_instability",
+          "b64ag reduced finite-part functional received a target-reduction row outside the "
+          "requested retained target set: " +
+              term.target_label);
+    }
+    reduction_terms_by_target[term.target_label].push_back(term);
+  }
+
+  for (const LightlikeGaugeLinkTargetNormalization& normalization :
+       normalizations) {
+    LightlikeGaugeLinkReducedFinitePartTarget target_result;
+    target_result.target_label = normalization.target_label;
+    target_result.affected_power_sum = normalization.affected_power_sum;
+    target_result.normalization_factor = normalization.normalization_factor;
+
+    const auto reduction_it =
+        reduction_terms_by_target.find(normalization.target_label);
+    if (reduction_it == reduction_terms_by_target.end() ||
+        reduction_it->second.empty()) {
+      target_result.failure_code = "boundary_unsolved";
+      target_result.summary =
+          "b64ag reduced finite-part functional is missing the retained target-reduction row "
+          "for " +
+          normalization.target_label;
+      RecordReducedFinitePartFailure(result,
+                                     target_result.target_label,
+                                     target_result.failure_code,
+                                     target_result.summary);
+      result.targets.push_back(std::move(target_result));
+      continue;
+    }
+
+    std::map<GaugeLinkEndpointTermKey, LightlikeGaugeLinkFinitePartTerm>
+        reduced_terms_by_key;
+    bool row_failed = false;
+    for (const LightlikeGaugeLinkTargetReductionTerm& reduction_term :
+         reduction_it->second) {
+      const auto endpoint_it =
+          endpoint_terms_by_master.find(reduction_term.master_label);
+      if (endpoint_it == endpoint_terms_by_master.end()) {
+        target_result.failure_code = "boundary_unsolved";
+        target_result.summary =
+            "b64ag reduced finite-part functional is missing endpoint terms for reduction "
+            "master " +
+            reduction_term.master_label + " while evaluating " +
+            normalization.target_label;
+        row_failed = true;
+        break;
+      }
+      for (const LightlikeGaugeLinkFinitePartTerm& endpoint_term :
+           endpoint_it->second) {
+        if (endpoint_term.coefficient.empty()) {
+          target_result.failure_code = "boundary_unsolved";
+          target_result.summary =
+              "b64ag reduced finite-part functional received an empty endpoint coefficient for " +
+              reduction_term.master_label;
+          row_failed = true;
+          break;
+        }
+        const int reduced_power = endpoint_term.power +
+                                  reduction_term.gaugex_power_shift -
+                                  normalization.affected_power_sum;
+        const int reduced_log_power =
+            endpoint_term.log_power + reduction_term.log_power;
+        const GaugeLinkEndpointTermKey key{
+            CanonicalGaugeLinkRegionKey(endpoint_term.region_key),
+            reduced_power,
+            reduced_log_power};
+        LightlikeGaugeLinkFinitePartTerm& reduced_term =
+            reduced_terms_by_key[key];
+        reduced_term.region_key = key.region_key;
+        reduced_term.power = key.power;
+        reduced_term.log_power = key.log_power;
+        reduced_term.coefficient =
+            AddGaugeLinkCoefficients(
+                reduced_term.coefficient,
+                MultiplyGaugeLinkCoefficients(reduction_term.coefficient,
+                                               endpoint_term.coefficient));
+      }
+      if (row_failed) {
+        break;
+      }
+    }
+    if (row_failed) {
+      RecordReducedFinitePartFailure(result,
+                                     target_result.target_label,
+                                     target_result.failure_code,
+                                     target_result.summary);
+      result.targets.push_back(std::move(target_result));
+      continue;
+    }
+
+    for (const auto& entry : reduced_terms_by_key) {
+      target_result.reduced_endpoint_terms.push_back(entry.second);
+    }
+    const LightlikeGaugeLinkFinitePartResult finite_part =
+        ExtractLightlikeGaugeLinkEndpointFinitePart(
+            target_result.reduced_endpoint_terms);
+    if (!finite_part.success) {
+      target_result.failure_code = finite_part.failure_code;
+      target_result.summary =
+          "b64ag reduced finite-part functional failed closed for " +
+          normalization.target_label + ": " + finite_part.summary;
+      RecordReducedFinitePartFailure(result,
+                                     target_result.target_label,
+                                     target_result.failure_code,
+                                     target_result.summary);
+      result.targets.push_back(std::move(target_result));
+      continue;
+    }
+
+    target_result.success = true;
+    target_result.ir_subtraction_applied = finite_part.ir_subtraction_applied;
+    target_result.finite_part_coefficient =
+        finite_part.finite_part_coefficient;
+    target_result.dropped_singular_terms =
+        finite_part.dropped_singular_terms;
+    target_result.summary =
+        "Applied retained target reduction and D4,D5 normalization before "
+        "PickZeroRuleS-compatible finite-part extraction for " +
+        normalization.target_label + "; normalization_factor=" +
+        normalization.normalization_factor + ".";
+    result.ir_subtraction_applied =
+        result.ir_subtraction_applied || target_result.ir_subtraction_applied;
+    result.targets.push_back(std::move(target_result));
+  }
+
+  result.success = !result.targets.empty() && result.failures.empty();
+  if (result.success) {
+    result.summary =
+        "b64ag reduced gauge-link finite-part functional evaluated " +
+        std::to_string(result.targets.size()) +
+        " retained target(s) from supplied six-master endpoint terms; retained_solution_samples_"
+        "used=false; full_eta_zero_contour_applied=false; full endpoint transport from "
+        "gaugex=1/40 remains deferred.";
+  } else {
+    result.summary =
+        "b64ag reduced gauge-link finite-part functional failed closed for " +
+        std::to_string(result.failures.size()) +
+        " target diagnostic(s); retained_solution_samples_used=false; "
+        "full_eta_zero_contour_applied=false.";
+  }
   return result;
 }
 

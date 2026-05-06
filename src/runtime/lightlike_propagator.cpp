@@ -15,7 +15,11 @@
 #include <utility>
 #include <vector>
 
+#include <boost/math/constants/constants.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/solver/coefficient_evaluator.hpp"
 
 namespace amflow {
 
@@ -371,12 +375,46 @@ std::string NormalizeRuntimeExpression(std::string expression) {
   return normalized;
 }
 
-using RuntimeComplex = std::complex<long double>;
+using RuntimeFloat = boost::multiprecision::cpp_dec_float_100;
+using RuntimeComplex = std::complex<RuntimeFloat>;
 
-constexpr long double kRuntimeTiny = 1e-18L;
+const RuntimeFloat kRuntimeTiny("1e-80");
+constexpr int kEndpointTransportPrecisionDigits = 70;
+
+RuntimeFloat RuntimeAbs(const RuntimeFloat& value) {
+  using boost::multiprecision::abs;
+  return abs(value);
+}
+
+RuntimeFloat RuntimeAbs(const RuntimeComplex& value) {
+  using boost::multiprecision::sqrt;
+  return sqrt(value.real() * value.real() + value.imag() * value.imag());
+}
+
+RuntimeFloat RuntimeLog(const RuntimeFloat& value) {
+  using boost::multiprecision::log;
+  return log(value);
+}
+
+RuntimeFloat RuntimeExp(const RuntimeFloat& value) {
+  using boost::multiprecision::exp;
+  return exp(value);
+}
+
+RuntimeFloat RuntimeIntegerPower(const RuntimeFloat& base, const int exponent) {
+  if (exponent == 0) {
+    return RuntimeFloat(1);
+  }
+  RuntimeFloat result = RuntimeFloat(1);
+  const int magnitude = exponent < 0 ? -exponent : exponent;
+  for (int index = 0; index < magnitude; ++index) {
+    result *= base;
+  }
+  return exponent < 0 ? RuntimeFloat(1) / result : result;
+}
 
 bool IsRuntimeTiny(const RuntimeComplex& value) {
-  return std::abs(value) < kRuntimeTiny;
+  return RuntimeAbs(value) < kRuntimeTiny;
 }
 
 struct RuntimePolynomial {
@@ -407,7 +445,7 @@ RuntimePolynomial MakeRuntimeVariablePolynomial() {
 
 RuntimePolynomial AddRuntimePolynomials(RuntimePolynomial lhs,
                                         const RuntimePolynomial& rhs,
-                                        const long double rhs_sign = 1.0L) {
+                                        const RuntimeFloat rhs_sign = 1.0L) {
   if (lhs.coefficients.size() < rhs.coefficients.size()) {
     lhs.coefficients.resize(rhs.coefficients.size(), RuntimeComplex{0.0L, 0.0L});
   }
@@ -444,7 +482,7 @@ struct RuntimeRationalPolynomial {
 
 RuntimeRationalPolynomial AddRuntimeRationals(const RuntimeRationalPolynomial& lhs,
                                               const RuntimeRationalPolynomial& rhs,
-                                              const long double rhs_sign = 1.0L) {
+                                              const RuntimeFloat rhs_sign = 1.0L) {
   RuntimeRationalPolynomial result;
   result.numerator = AddRuntimePolynomials(
       MultiplyRuntimePolynomials(lhs.numerator, rhs.denominator),
@@ -497,25 +535,25 @@ RuntimeRationalPolynomial PowerRuntimeRational(RuntimeRationalPolynomial base,
   return result;
 }
 
-long double ParseRuntimeRationalNumber(const std::string& raw_value) {
+RuntimeFloat ParseRuntimeRationalNumber(const std::string& raw_value) {
   const std::string value = RemoveAsciiSpaces(raw_value);
   const std::size_t slash = value.find('/');
   if (slash != std::string::npos) {
-    const long double numerator = ParseRuntimeRationalNumber(value.substr(0, slash));
-    const long double denominator = ParseRuntimeRationalNumber(value.substr(slash + 1));
-    if (std::abs(denominator) < kRuntimeTiny) {
+    const RuntimeFloat numerator = ParseRuntimeRationalNumber(value.substr(0, slash));
+    const RuntimeFloat denominator = ParseRuntimeRationalNumber(value.substr(slash + 1));
+    if (RuntimeAbs(denominator) < kRuntimeTiny) {
       throw std::runtime_error("b64ag gauge-link parser found a zero rational denominator");
     }
     return numerator / denominator;
   }
-  return std::stold(value);
+  return RuntimeFloat(value);
 }
 
 class GaugeLinkRationalParser {
  public:
   GaugeLinkRationalParser(std::string expression,
                           std::string variable,
-                          const long double epsilon_sample)
+                          const RuntimeFloat epsilon_sample)
       : expression_(NormalizeRuntimeExpression(std::move(expression))),
         variable_(std::move(variable)),
         epsilon_sample_(epsilon_sample) {}
@@ -694,7 +732,7 @@ class GaugeLinkRationalParser {
         }
       }
       return Constant(RuntimeComplex{
-          std::stold(expression_.substr(begin, position_ - begin)), 0.0L});
+          RuntimeFloat(expression_.substr(begin, position_ - begin)), 0.0L});
     }
 
     if (position_ < expression_.size() &&
@@ -731,14 +769,14 @@ class GaugeLinkRationalParser {
 
   std::string expression_;
   std::string variable_;
-  long double epsilon_sample_ = 0.0L;
+  RuntimeFloat epsilon_sample_ = 0.0L;
   std::size_t position_ = 0;
 };
 
 RuntimeRationalPolynomial ParseGaugeLinkRationalExpression(
     const std::string& expression,
     const std::string& variable,
-    const long double epsilon_sample) {
+    const RuntimeFloat epsilon_sample) {
   return GaugeLinkRationalParser(expression, variable, epsilon_sample).Parse();
 }
 
@@ -769,23 +807,28 @@ std::vector<RuntimeComplex> RuntimePolynomialRootsDurandKerner(
   }
 
   std::vector<RuntimeComplex> normalized_coefficients(static_cast<std::size_t>(degree));
-  long double radius = 1.0L;
+  RuntimeFloat radius = 1.0L;
   for (int index = 0; index < degree; ++index) {
     normalized_coefficients[static_cast<std::size_t>(index)] =
         polynomial.coefficients[static_cast<std::size_t>(index)] / leading;
-    radius = std::max(
-        radius,
-        1.0L + std::abs(normalized_coefficients[static_cast<std::size_t>(index)]));
+    const RuntimeFloat candidate_radius =
+        RuntimeFloat(1) +
+        RuntimeAbs(normalized_coefficients[static_cast<std::size_t>(index)]);
+    radius = std::max(radius, candidate_radius);
   }
 
-  constexpr long double kPi = 3.141592653589793238462643383279502884L;
+  const RuntimeFloat kPi =
+      boost::math::constants::pi<RuntimeFloat>();
   std::vector<RuntimeComplex> roots(static_cast<std::size_t>(degree));
   for (int index = 0; index < degree; ++index) {
-    const long double angle =
-        2.0L * kPi * static_cast<long double>(index) /
-            static_cast<long double>(degree) +
-        0.37L;
-    roots[static_cast<std::size_t>(index)] = std::polar(radius, angle);
+    const RuntimeFloat angle =
+        RuntimeFloat(2) * kPi * static_cast<RuntimeFloat>(index) /
+            static_cast<RuntimeFloat>(degree) +
+        RuntimeFloat("0.37");
+    const long double angle_for_seed = angle.convert_to<long double>();
+    roots[static_cast<std::size_t>(index)] =
+        RuntimeComplex{radius * RuntimeFloat(std::cos(angle_for_seed)),
+                       radius * RuntimeFloat(std::sin(angle_for_seed))};
   }
 
   auto evaluate = [&](const RuntimeComplex& variable_value) {
@@ -798,7 +841,7 @@ std::vector<RuntimeComplex> RuntimePolynomialRootsDurandKerner(
   };
 
   for (int iteration = 0; iteration < 400; ++iteration) {
-    long double max_delta = 0.0L;
+    RuntimeFloat max_delta = 0.0L;
     for (int root_index = 0; root_index < degree; ++root_index) {
       RuntimeComplex denominator = RuntimeComplex{1.0L, 0.0L};
       for (int other_index = 0; other_index < degree; ++other_index) {
@@ -808,26 +851,27 @@ std::vector<RuntimeComplex> RuntimePolynomialRootsDurandKerner(
         denominator *= roots[static_cast<std::size_t>(root_index)] -
                        roots[static_cast<std::size_t>(other_index)];
       }
-      if (std::abs(denominator) < 1e-30L) {
-        denominator += RuntimeComplex{1e-24L, 1e-24L};
+      if (RuntimeAbs(denominator) < RuntimeFloat("1e-80")) {
+        denominator += RuntimeComplex{RuntimeFloat("1e-70"),
+                                      RuntimeFloat("1e-70")};
       }
       const RuntimeComplex delta =
           evaluate(roots[static_cast<std::size_t>(root_index)]) / denominator;
       roots[static_cast<std::size_t>(root_index)] -= delta;
-      max_delta = std::max(max_delta, std::abs(delta));
+      max_delta = std::max(max_delta, RuntimeAbs(delta));
     }
-    if (max_delta < 1e-18L) {
+    if (max_delta < RuntimeFloat("1e-70")) {
       break;
     }
   }
   return roots;
 }
 
-std::string FormatLongDouble(const long double raw_value,
-                             const int precision_digits = 24) {
-  long double value = raw_value;
-  if (std::abs(value) < 1e-15L) {
-    value = 0.0L;
+std::string FormatRuntimeFloat(const RuntimeFloat raw_value,
+                               const int precision_digits = 24) {
+  RuntimeFloat value = raw_value;
+  if (RuntimeAbs(value) < RuntimeFloat("1e-80")) {
+    value = RuntimeFloat(0);
   }
   std::ostringstream stream;
   stream << std::setprecision(precision_digits) << value;
@@ -847,16 +891,19 @@ std::string FormatLongDouble(const long double raw_value,
 
 std::string FormatRuntimeComplex(const RuntimeComplex& value,
                                  const int precision_digits = 24) {
-  const long double real = std::abs(value.real()) < 1e-15L ? 0.0L : value.real();
-  const long double imaginary =
-      std::abs(value.imag()) < 1e-15L ? 0.0L : value.imag();
-  const std::string real_text = FormatLongDouble(real, precision_digits);
+  const RuntimeFloat real =
+      RuntimeAbs(value.real()) < RuntimeFloat("1e-80") ? RuntimeFloat(0)
+                                                       : value.real();
+  const RuntimeFloat imaginary =
+      RuntimeAbs(value.imag()) < RuntimeFloat("1e-80") ? RuntimeFloat(0)
+                                                       : value.imag();
+  const std::string real_text = FormatRuntimeFloat(real, precision_digits);
   const std::string imaginary_text =
-      FormatLongDouble(std::abs(imaginary), precision_digits);
-  if (std::abs(imaginary) < 1e-15L) {
+      FormatRuntimeFloat(RuntimeAbs(imaginary), precision_digits);
+  if (RuntimeAbs(imaginary) < RuntimeFloat("1e-80")) {
     return real_text;
   }
-  if (std::abs(real) < 1e-15L) {
+  if (RuntimeAbs(real) < RuntimeFloat("1e-80")) {
     return (imaginary < 0 ? "-" : "") + imaginary_text + "*I";
   }
   return real_text + (imaginary < 0 ? " - " : " + ") + imaginary_text + "*I";
@@ -869,7 +916,7 @@ struct RuntimePoleAudit {
 };
 
 bool SameRuntimePole(const RuntimeComplex& lhs, const RuntimeComplex& rhs) {
-  return std::abs(lhs - rhs) < 1e-7L;
+  return RuntimeAbs(lhs - rhs) < RuntimeFloat("1e-7");
 }
 
 void AddRuntimePole(std::vector<RuntimePoleAudit>& poles,
@@ -905,7 +952,7 @@ std::vector<LightlikeGaugeLinkPoleAudit> PublicPoleAudits(
 std::vector<RuntimePoleAudit> ExtractRuntimePolesFromMatrix(
     const std::vector<std::vector<std::string>>& matrix,
     const std::string& variable,
-    const long double epsilon_sample,
+    const RuntimeFloat epsilon_sample,
     std::size_t* nonzero_cell_count) {
   std::vector<RuntimePoleAudit> poles;
   if (nonzero_cell_count != nullptr) {
@@ -937,7 +984,8 @@ std::vector<RuntimePoleAudit> ExtractRuntimePolesFromMatrix(
   std::sort(poles.begin(),
             poles.end(),
             [](const RuntimePoleAudit& lhs, const RuntimePoleAudit& rhs) {
-              if (std::abs(lhs.value.real() - rhs.value.real()) > 1e-12L) {
+              if (RuntimeAbs(lhs.value.real() - rhs.value.real()) >
+                  RuntimeFloat("1e-12")) {
                 return lhs.value.real() < rhs.value.real();
               }
               return lhs.value.imag() < rhs.value.imag();
@@ -970,16 +1018,17 @@ RuntimeComplex ParseRuntimePointValue(const std::string& raw_point,
          rational.denominator.coefficients.front();
 }
 
-long double DistancePointToSegment(const RuntimeComplex& point,
+RuntimeFloat DistancePointToSegment(const RuntimeComplex& point,
                                    const RuntimeComplex& start,
                                    const RuntimeComplex& end) {
   const RuntimeComplex segment = end - start;
   const RuntimeComplex offset = point - start;
-  const long double length_squared = std::norm(segment);
+  const RuntimeFloat length_squared =
+      segment.real() * segment.real() + segment.imag() * segment.imag();
   if (length_squared < kRuntimeTiny) {
-    return std::abs(offset);
+    return RuntimeAbs(offset);
   }
-  long double projection =
+  RuntimeFloat projection =
       (offset.real() * segment.real() + offset.imag() * segment.imag()) /
       length_squared;
   if (projection < 0.0L) {
@@ -988,7 +1037,7 @@ long double DistancePointToSegment(const RuntimeComplex& point,
     projection = 1.0L;
   }
   const RuntimeComplex closest = start + segment * projection;
-  return std::abs(point - closest);
+  return RuntimeAbs(point - closest);
 }
 
 std::string SerializeGaugeLinkContourPlanForFingerprint(
@@ -1045,13 +1094,29 @@ std::string SerializeGaugeLinkEndpointTransportForFingerprint(
   for (const std::string& label : result.transported_master_labels) {
     out << "transported_master=" << label << "\n";
   }
-  for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
-       result.endpoint_terms) {
-    out << "endpoint_master=" << master_terms.master_label << "\n";
-    for (const LightlikeGaugeLinkFinitePartTerm& term :
-         master_terms.endpoint_terms) {
-      out << "term=" << term.region_key << "," << term.power << ","
-          << term.log_power << "," << term.coefficient << "\n";
+  if (!result.epsilon_endpoint_terms.empty()) {
+    for (const LightlikeGaugeLinkEndpointSampleTerms& sample_terms :
+         result.epsilon_endpoint_terms) {
+      out << "epsilon_sample=" << sample_terms.epsilon_sample << "\n";
+      for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
+           sample_terms.endpoint_terms) {
+        out << "endpoint_master=" << master_terms.master_label << "\n";
+        for (const LightlikeGaugeLinkFinitePartTerm& term :
+             master_terms.endpoint_terms) {
+          out << "term=" << term.region_key << "," << term.power << ","
+              << term.log_power << "," << term.coefficient << "\n";
+        }
+      }
+    }
+  } else {
+    for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
+         result.endpoint_terms) {
+      out << "endpoint_master=" << master_terms.master_label << "\n";
+      for (const LightlikeGaugeLinkFinitePartTerm& term :
+           master_terms.endpoint_terms) {
+        out << "term=" << term.region_key << "," << term.power << ","
+            << term.log_power << "," << term.coefficient << "\n";
+      }
     }
   }
   for (const std::string& gap : result.remaining_master_gaps) {
@@ -1099,6 +1164,491 @@ std::string AddGaugeLinkCoefficients(const std::string& lhs,
   return "(" + lhs + ")+(" + rhs + ")";
 }
 
+ExactRational GaugeLinkExactOne() {
+  return {"1", "1"};
+}
+
+std::string ParenthesizeExact(const ExactRational& value) {
+  return "(" + value.ToString() + ")";
+}
+
+ExactRational EvaluateGaugeLinkExactRational(const std::string& expression) {
+  return EvaluateCoefficientExpression(expression, NumericEvaluationPoint{});
+}
+
+ExactRational AddGaugeLinkExactRational(const ExactRational& lhs,
+                                        const ExactRational& rhs) {
+  return EvaluateGaugeLinkExactRational(
+      ParenthesizeExact(lhs) + "+" + ParenthesizeExact(rhs));
+}
+
+ExactRational NegateGaugeLinkExactRational(const ExactRational& value) {
+  return EvaluateGaugeLinkExactRational("-" + ParenthesizeExact(value));
+}
+
+ExactRational MultiplyGaugeLinkExactRational(const ExactRational& lhs,
+                                             const ExactRational& rhs) {
+  return EvaluateGaugeLinkExactRational(
+      ParenthesizeExact(lhs) + "*" + ParenthesizeExact(rhs));
+}
+
+ExactRational DivideGaugeLinkExactRational(const ExactRational& lhs,
+                                           const ExactRational& rhs) {
+  return EvaluateGaugeLinkExactRational(
+      ParenthesizeExact(lhs) + "/" + ParenthesizeExact(rhs));
+}
+
+ExactRational PowerGaugeLinkExactRational(const ExactRational& base,
+                                          const int exponent) {
+  ExactRational result = GaugeLinkExactOne();
+  const int magnitude = exponent < 0 ? -exponent : exponent;
+  for (int index = 0; index < magnitude; ++index) {
+    result = MultiplyGaugeLinkExactRational(result, base);
+  }
+  if (exponent < 0) {
+    result = DivideGaugeLinkExactRational(GaugeLinkExactOne(), result);
+  }
+  return result;
+}
+
+using GaugeLinkExactLaurentSeries = std::map<int, ExactRational>;
+
+void AddGaugeLinkExactLaurentTerm(GaugeLinkExactLaurentSeries& series,
+                                  const int power,
+                                  const ExactRational& coefficient) {
+  if (coefficient.IsZero()) {
+    return;
+  }
+  const auto existing = series.find(power);
+  if (existing == series.end()) {
+    series.emplace(power, coefficient);
+    return;
+  }
+  const ExactRational sum =
+      AddGaugeLinkExactRational(existing->second, coefficient);
+  if (sum.IsZero()) {
+    series.erase(existing);
+  } else {
+    existing->second = sum;
+  }
+}
+
+GaugeLinkExactLaurentSeries MakeGaugeLinkExactConstantSeries(
+    const ExactRational& value) {
+  GaugeLinkExactLaurentSeries series;
+  AddGaugeLinkExactLaurentTerm(series, 0, value);
+  return series;
+}
+
+GaugeLinkExactLaurentSeries MakeGaugeLinkExactVariableSeries() {
+  GaugeLinkExactLaurentSeries series;
+  AddGaugeLinkExactLaurentTerm(series, 1, GaugeLinkExactOne());
+  return series;
+}
+
+GaugeLinkExactLaurentSeries AddGaugeLinkExactLaurentSeries(
+    GaugeLinkExactLaurentSeries lhs,
+    const GaugeLinkExactLaurentSeries& rhs) {
+  for (const auto& [power, coefficient] : rhs) {
+    AddGaugeLinkExactLaurentTerm(lhs, power, coefficient);
+  }
+  return lhs;
+}
+
+GaugeLinkExactLaurentSeries NegateGaugeLinkExactLaurentSeries(
+    const GaugeLinkExactLaurentSeries& series) {
+  GaugeLinkExactLaurentSeries result;
+  for (const auto& [power, coefficient] : series) {
+    AddGaugeLinkExactLaurentTerm(
+        result, power, NegateGaugeLinkExactRational(coefficient));
+  }
+  return result;
+}
+
+GaugeLinkExactLaurentSeries MultiplyGaugeLinkExactLaurentSeries(
+    const GaugeLinkExactLaurentSeries& lhs,
+    const GaugeLinkExactLaurentSeries& rhs) {
+  GaugeLinkExactLaurentSeries result;
+  for (const auto& [lhs_power, lhs_coefficient] : lhs) {
+    for (const auto& [rhs_power, rhs_coefficient] : rhs) {
+      AddGaugeLinkExactLaurentTerm(
+          result,
+          lhs_power + rhs_power,
+          MultiplyGaugeLinkExactRational(lhs_coefficient, rhs_coefficient));
+    }
+  }
+  return result;
+}
+
+GaugeLinkExactLaurentSeries DivideGaugeLinkExactLaurentSeriesByMonomial(
+    const GaugeLinkExactLaurentSeries& numerator,
+    const GaugeLinkExactLaurentSeries& denominator,
+    const std::string& expression) {
+  if (denominator.size() != 1) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser supports only finite Laurent "
+        "monomial denominators in \"" +
+        expression + "\"");
+  }
+  const int denominator_power = denominator.begin()->first;
+  const ExactRational denominator_coefficient = denominator.begin()->second;
+  GaugeLinkExactLaurentSeries result;
+  for (const auto& [power, coefficient] : numerator) {
+    AddGaugeLinkExactLaurentTerm(
+        result,
+        power - denominator_power,
+        DivideGaugeLinkExactRational(coefficient, denominator_coefficient));
+  }
+  return result;
+}
+
+GaugeLinkExactLaurentSeries PowerGaugeLinkExactLaurentSeries(
+    const GaugeLinkExactLaurentSeries& base,
+    const int exponent,
+    const std::string& expression) {
+  if (exponent == 0) {
+    return MakeGaugeLinkExactConstantSeries(GaugeLinkExactOne());
+  }
+  if (exponent < 0) {
+    if (base.size() != 1) {
+      throw std::runtime_error(
+          "b64ag inline target-reduction parser supports negative powers only "
+          "for monomials in \"" +
+          expression + "\"");
+    }
+    GaugeLinkExactLaurentSeries result;
+    AddGaugeLinkExactLaurentTerm(
+        result,
+        base.begin()->first * exponent,
+        PowerGaugeLinkExactRational(base.begin()->second, exponent));
+    return result;
+  }
+  GaugeLinkExactLaurentSeries result =
+      MakeGaugeLinkExactConstantSeries(GaugeLinkExactOne());
+  for (int index = 0; index < exponent; ++index) {
+    result = MultiplyGaugeLinkExactLaurentSeries(result, base);
+  }
+  return result;
+}
+
+enum class GaugeLinkLaurentTokenKind {
+  Identifier,
+  Number,
+  Plus,
+  Minus,
+  Star,
+  Slash,
+  Caret,
+  LeftParen,
+  RightParen,
+  End,
+};
+
+struct GaugeLinkLaurentToken {
+  GaugeLinkLaurentTokenKind kind = GaugeLinkLaurentTokenKind::End;
+  std::string text;
+};
+
+std::vector<GaugeLinkLaurentToken> TokenizeGaugeLinkLaurentExpression(
+    const std::string& expression) {
+  std::vector<GaugeLinkLaurentToken> tokens;
+  for (std::size_t index = 0; index < expression.size();) {
+    const char ch = expression[index];
+    if (std::isspace(static_cast<unsigned char>(ch)) != 0) {
+      ++index;
+      continue;
+    }
+    if (std::isdigit(static_cast<unsigned char>(ch)) != 0 || ch == '.') {
+      const std::size_t begin = index;
+      bool saw_digit = false;
+      while (index < expression.size() &&
+             std::isdigit(static_cast<unsigned char>(expression[index])) != 0) {
+        saw_digit = true;
+        ++index;
+      }
+      if (index < expression.size() && expression[index] == '.') {
+        ++index;
+        while (index < expression.size() &&
+               std::isdigit(static_cast<unsigned char>(expression[index])) != 0) {
+          saw_digit = true;
+          ++index;
+        }
+      }
+      if (!saw_digit) {
+        throw std::runtime_error(
+            "b64ag inline target-reduction parser found malformed number in \"" +
+            expression + "\"");
+      }
+      tokens.push_back({GaugeLinkLaurentTokenKind::Number,
+                        expression.substr(begin, index - begin)});
+      continue;
+    }
+    if (std::isalpha(static_cast<unsigned char>(ch)) != 0 || ch == '_') {
+      const std::size_t begin = index;
+      ++index;
+      while (index < expression.size() &&
+             (std::isalnum(static_cast<unsigned char>(expression[index])) != 0 ||
+              expression[index] == '_')) {
+        ++index;
+      }
+      tokens.push_back({GaugeLinkLaurentTokenKind::Identifier,
+                        expression.substr(begin, index - begin)});
+      continue;
+    }
+    switch (ch) {
+      case '+':
+        tokens.push_back({GaugeLinkLaurentTokenKind::Plus, "+"});
+        break;
+      case '-':
+        tokens.push_back({GaugeLinkLaurentTokenKind::Minus, "-"});
+        break;
+      case '*':
+        tokens.push_back({GaugeLinkLaurentTokenKind::Star, "*"});
+        break;
+      case '/':
+        tokens.push_back({GaugeLinkLaurentTokenKind::Slash, "/"});
+        break;
+      case '^':
+        tokens.push_back({GaugeLinkLaurentTokenKind::Caret, "^"});
+        break;
+      case '(':
+        tokens.push_back({GaugeLinkLaurentTokenKind::LeftParen, "("});
+        break;
+      case ')':
+        tokens.push_back({GaugeLinkLaurentTokenKind::RightParen, ")"});
+        break;
+      default:
+        throw std::runtime_error(
+            "b64ag inline target-reduction parser found unexpected character \"" +
+            std::string(1, ch) + "\" in \"" + expression + "\"");
+    }
+    ++index;
+  }
+  tokens.push_back({GaugeLinkLaurentTokenKind::End, ""});
+  return tokens;
+}
+
+class GaugeLinkExactLaurentParser {
+ public:
+  GaugeLinkExactLaurentParser(std::string expression, std::string variable)
+      : expression_(NormalizeRuntimeExpression(std::move(expression))),
+        variable_(std::move(variable)),
+        tokens_(TokenizeGaugeLinkLaurentExpression(expression_)) {}
+
+  GaugeLinkExactLaurentSeries Parse() {
+    GaugeLinkExactLaurentSeries result = ParseExpression();
+    if (Current().kind != GaugeLinkLaurentTokenKind::End) {
+      throw Error("unexpected trailing token \"" + Current().text + "\"");
+    }
+    return result;
+  }
+
+ private:
+  const GaugeLinkLaurentToken& Current() const { return tokens_[position_]; }
+
+  bool Consume(const GaugeLinkLaurentTokenKind kind) {
+    if (Current().kind == kind) {
+      ++position_;
+      return true;
+    }
+    return false;
+  }
+
+  bool StartsPrimary() const {
+    return Current().kind == GaugeLinkLaurentTokenKind::Identifier ||
+           Current().kind == GaugeLinkLaurentTokenKind::Number ||
+           Current().kind == GaugeLinkLaurentTokenKind::LeftParen;
+  }
+
+  std::runtime_error Error(const std::string& message) const {
+    return std::runtime_error(
+        "b64ag inline target-reduction parser " + message + " in \"" +
+        expression_ + "\"");
+  }
+
+  GaugeLinkExactLaurentSeries ParseExpression() {
+    GaugeLinkExactLaurentSeries value = ParseTerm();
+    while (Current().kind != GaugeLinkLaurentTokenKind::End &&
+           Current().kind != GaugeLinkLaurentTokenKind::RightParen) {
+      if (Consume(GaugeLinkLaurentTokenKind::Plus)) {
+        value = AddGaugeLinkExactLaurentSeries(value, ParseTerm());
+      } else if (Consume(GaugeLinkLaurentTokenKind::Minus)) {
+        value = AddGaugeLinkExactLaurentSeries(
+            value, NegateGaugeLinkExactLaurentSeries(ParseTerm()));
+      } else {
+        break;
+      }
+    }
+    return value;
+  }
+
+  GaugeLinkExactLaurentSeries ParseTerm() {
+    GaugeLinkExactLaurentSeries value = ParsePower();
+    while (Current().kind != GaugeLinkLaurentTokenKind::End &&
+           Current().kind != GaugeLinkLaurentTokenKind::RightParen &&
+           Current().kind != GaugeLinkLaurentTokenKind::Plus &&
+           Current().kind != GaugeLinkLaurentTokenKind::Minus) {
+      if (Consume(GaugeLinkLaurentTokenKind::Star)) {
+        value = MultiplyGaugeLinkExactLaurentSeries(value, ParsePower());
+      } else if (Consume(GaugeLinkLaurentTokenKind::Slash)) {
+        value = DivideGaugeLinkExactLaurentSeriesByMonomial(
+            value, ParsePower(), expression_);
+      } else if (StartsPrimary()) {
+        value = MultiplyGaugeLinkExactLaurentSeries(value, ParsePower());
+      } else {
+        throw Error("found malformed term");
+      }
+    }
+    return value;
+  }
+
+  GaugeLinkExactLaurentSeries ParsePower() {
+    GaugeLinkExactLaurentSeries value = ParseUnary();
+    if (Consume(GaugeLinkLaurentTokenKind::Caret)) {
+      value = PowerGaugeLinkExactLaurentSeries(
+          value, ParseSignedIntegerExponent(), expression_);
+    }
+    return value;
+  }
+
+  GaugeLinkExactLaurentSeries ParseUnary() {
+    if (Consume(GaugeLinkLaurentTokenKind::Plus)) {
+      return ParseUnary();
+    }
+    if (Consume(GaugeLinkLaurentTokenKind::Minus)) {
+      return NegateGaugeLinkExactLaurentSeries(ParseUnary());
+    }
+    return ParsePrimary();
+  }
+
+  int ParseSignedIntegerExponent() {
+    const bool parenthesized = Consume(GaugeLinkLaurentTokenKind::LeftParen);
+    bool negative = false;
+    if (Consume(GaugeLinkLaurentTokenKind::Plus)) {
+      negative = false;
+    } else if (Consume(GaugeLinkLaurentTokenKind::Minus)) {
+      negative = true;
+    }
+    if (Current().kind != GaugeLinkLaurentTokenKind::Number ||
+        Current().text.find('.') != std::string::npos) {
+      throw Error("requires integer exponents");
+    }
+    const int exponent = std::stoi(Current().text);
+    ++position_;
+    if (parenthesized && !Consume(GaugeLinkLaurentTokenKind::RightParen)) {
+      throw Error("expected ')' after exponent");
+    }
+    return negative ? -exponent : exponent;
+  }
+
+  GaugeLinkExactLaurentSeries ParsePrimary() {
+    if (Consume(GaugeLinkLaurentTokenKind::LeftParen)) {
+      GaugeLinkExactLaurentSeries value = ParseExpression();
+      if (!Consume(GaugeLinkLaurentTokenKind::RightParen)) {
+        throw Error("expected ')'");
+      }
+      return value;
+    }
+    if (Current().kind == GaugeLinkLaurentTokenKind::Number) {
+      const std::string number = Current().text;
+      ++position_;
+      return MakeGaugeLinkExactConstantSeries(
+          EvaluateGaugeLinkExactRational(number));
+    }
+    if (Current().kind == GaugeLinkLaurentTokenKind::Identifier) {
+      const std::string identifier = Current().text;
+      ++position_;
+      if (identifier == variable_) {
+        return MakeGaugeLinkExactVariableSeries();
+      }
+      throw Error("requires only the retained gaugex Laurent variable, found " +
+                  identifier);
+    }
+    throw Error("found malformed expression");
+  }
+
+  std::string expression_;
+  std::string variable_;
+  std::vector<GaugeLinkLaurentToken> tokens_;
+  std::size_t position_ = 0;
+};
+
+GaugeLinkExactLaurentSeries ParseGaugeLinkExactLaurentExpression(
+    const std::string& expression,
+    const std::string& variable) {
+  return GaugeLinkExactLaurentParser(expression, variable).Parse();
+}
+
+std::size_t FindTopLevelArrow(const std::string& rule) {
+  int brace_depth = 0;
+  int paren_depth = 0;
+  int bracket_depth = 0;
+  for (std::size_t index = 0; index + 1 < rule.size(); ++index) {
+    const char current = rule[index];
+    if (current == '{') {
+      ++brace_depth;
+    } else if (current == '}') {
+      --brace_depth;
+    } else if (current == '(') {
+      ++paren_depth;
+    } else if (current == ')') {
+      --paren_depth;
+    } else if (current == '[') {
+      ++bracket_depth;
+    } else if (current == ']') {
+      --bracket_depth;
+    } else if (current == '-' && rule[index + 1] == '>' &&
+               brace_depth == 0 && paren_depth == 0 && bracket_depth == 0) {
+      return index;
+    }
+    if (brace_depth < 0 || paren_depth < 0 || bracket_depth < 0) {
+      throw std::runtime_error(
+          "b64ag inline target-reduction parser found unbalanced rule syntax");
+    }
+  }
+  return std::string::npos;
+}
+
+std::pair<std::string, std::string> SplitMathematicaRule(
+    const std::string& raw_rule) {
+  const std::size_t arrow = FindTopLevelArrow(raw_rule);
+  if (arrow == std::string::npos) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser expected a top-level rule arrow");
+  }
+  return {TrimAsciiWhitespace(raw_rule.substr(0, arrow)),
+          TrimAsciiWhitespace(raw_rule.substr(arrow + 2))};
+}
+
+std::vector<std::string> SplitMathematicaFunctionArguments(
+    const std::string& raw_value,
+    const std::string& head) {
+  const std::string value = TrimAsciiWhitespace(raw_value);
+  const std::string prefix = head + "[";
+  if (value.rfind(prefix, 0) != 0 || value.size() <= prefix.size() ||
+      value.back() != ']') {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser expected " + head + "[...]");
+  }
+  return SplitMathematicaListElements(
+      "{" + value.substr(prefix.size(), value.size() - prefix.size() - 1) + "}");
+}
+
+std::string IntegralLabelFromMathematicaJ(const std::string& raw_integral) {
+  const std::vector<std::string> arguments =
+      SplitMathematicaFunctionArguments(raw_integral, "j");
+  if (arguments.size() < 2) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser found an integral with no indices");
+  }
+  std::vector<int> indices;
+  indices.reserve(arguments.size() - 1);
+  for (std::size_t index = 1; index < arguments.size(); ++index) {
+    indices.push_back(std::stoi(TrimAsciiWhitespace(arguments[index])));
+  }
+  return IntegralLabel(RemoveAsciiSpaces(arguments.front()), indices);
+}
+
 void RecordReducedFinitePartFailure(
     LightlikeGaugeLinkReducedFinitePartResult& result,
     const std::string& target_label,
@@ -1124,7 +1674,7 @@ RuntimeComplex RuntimeRationalValue(const RuntimeRationalPolynomial& rational,
                                     const std::string& expression) {
   const RuntimeComplex denominator =
       RuntimePolynomialValue(rational.denominator, variable_value);
-  if (std::abs(denominator) < kRuntimeTiny) {
+  if (RuntimeAbs(denominator) < kRuntimeTiny) {
     throw std::runtime_error("b64ag gauge-link endpoint transport divides by zero in \"" +
                              expression + "\"");
   }
@@ -1200,7 +1750,7 @@ RuntimeComplex GaugeLinkMatrixLaurentCoefficient(
     const std::size_t column,
     const int power,
     const std::string& variable,
-    const long double epsilon_sample) {
+    const RuntimeFloat epsilon_sample) {
   if (row >= diffeq_matrix.size() || column >= diffeq_matrix[row].size()) {
     throw std::runtime_error(
         "b64ag gauge-link endpoint transport inspected a matrix cell outside the "
@@ -1220,12 +1770,12 @@ void RequireGaugeLinkLaurentCoefficient(
     const int power,
     const RuntimeComplex& expected,
     const std::string& variable,
-    const long double epsilon_sample,
+    const RuntimeFloat epsilon_sample,
     const std::string& description) {
   const RuntimeComplex actual = GaugeLinkMatrixLaurentCoefficient(
       diffeq_matrix, row, column, power, variable, epsilon_sample);
-  const long double reference = std::max(1.0L, std::abs(expected));
-  if (std::abs(actual - expected) > reference * 1e-12L) {
+  const RuntimeFloat reference = std::max(RuntimeFloat(1), RuntimeAbs(expected));
+  if (RuntimeAbs(actual - expected) > reference * RuntimeFloat("1e-50")) {
     throw std::runtime_error(
         "b64ag finite-boundary endpoint transport rejected the reviewed " +
         description + " Laurent coefficient");
@@ -1268,13 +1818,13 @@ RuntimeSeries AddRuntimeSeries(RuntimeSeries lhs,
 }
 
 RuntimeComplex RuntimeSeriesValue(const RuntimeSeries& series,
-                                  const long double x) {
-  const long double log_x = std::log(x);
+                                  const RuntimeFloat x) {
+  const RuntimeFloat log_x = RuntimeLog(x);
   RuntimeComplex value{0.0L, 0.0L};
   for (const auto& entry : series) {
     value += entry.second *
-             std::pow(x, static_cast<long double>(entry.first.power)) *
-             std::pow(log_x, static_cast<long double>(entry.first.log_power));
+             RuntimeIntegerPower(x, entry.first.power) *
+             RuntimeIntegerPower(log_x, entry.first.log_power);
   }
   return value;
 }
@@ -1294,18 +1844,25 @@ int RuntimeRationalLowestPower(const RuntimeRationalPolynomial& rational) {
 
 int RequireIntegerResidue(const RuntimeComplex& residue,
                           const std::string& description) {
-  if (std::abs(residue.imag()) > 1e-12L) {
+  if (RuntimeAbs(residue.imag()) > RuntimeFloat("1e-50")) {
     throw std::runtime_error(
         "b64ag finite-boundary endpoint transport found a complex " +
         description + " residue");
   }
-  const long double rounded = std::round(residue.real());
-  if (std::abs(residue.real() - rounded) > 1e-12L) {
+  using boost::multiprecision::ceil;
+  using boost::multiprecision::floor;
+  RuntimeFloat rounded;
+  if (residue.real() < 0) {
+    rounded = ceil(residue.real() - RuntimeFloat("0.5"));
+  } else {
+    rounded = floor(residue.real() + RuntimeFloat("0.5"));
+  }
+  if (RuntimeAbs(residue.real() - rounded) > RuntimeFloat("1e-50")) {
     throw std::runtime_error(
         "b64ag finite-boundary endpoint transport requires an integer " +
         description + " residue");
   }
-  return static_cast<int>(rounded);
+  return rounded.convert_to<int>();
 }
 
 RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
@@ -1314,10 +1871,10 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
     const std::vector<RuntimeSeries>& known_series,
     const RuntimeComplex& boundary_value,
     const std::string& variable,
-    const long double epsilon_value) {
+    const RuntimeFloat epsilon_value) {
   constexpr int kMinPower = -4;
   constexpr int kMaxPower = 80;
-  constexpr long double kBoundaryPoint = 1.0L / 40.0L;
+  const RuntimeFloat kBoundaryPoint = RuntimeFloat(1) / RuntimeFloat(40);
 
   const int residue = RequireIntegerResidue(
       GaugeLinkMatrixLaurentCoefficient(
@@ -1370,8 +1927,8 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
                                    const RuntimeComplex& resonance_seed) {
     RuntimeSeries series;
     for (int power = kMinPower; power <= kMaxPower; ++power) {
-      const long double denominator =
-          static_cast<long double>(power - residue);
+      const RuntimeFloat denominator =
+          static_cast<RuntimeFloat>(power - residue);
       RuntimeComplex log_rhs =
           RuntimeSeriesCoefficient(forcing, power - 1, 1);
       for (const auto& diagonal : diagonal_regular_coefficients) {
@@ -1381,8 +1938,8 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
       }
 
       RuntimeComplex log_coefficient{0.0L, 0.0L};
-      if (std::abs(denominator) < kRuntimeTiny) {
-        if (std::abs(log_rhs) > 1e-12L) {
+      if (RuntimeAbs(denominator) < kRuntimeTiny) {
+        if (RuntimeAbs(log_rhs) > RuntimeFloat("1e-50")) {
           throw std::runtime_error(
               "b64ag finite-boundary endpoint transport encountered an "
               "unresolved log-squared resonance");
@@ -1400,7 +1957,7 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
       }
 
       RuntimeComplex regular_coefficient{0.0L, 0.0L};
-      if (std::abs(denominator) < kRuntimeTiny) {
+      if (RuntimeAbs(denominator) < kRuntimeTiny) {
         regular_coefficient = resonance_seed;
         log_coefficient = regular_rhs;
       } else {
@@ -1443,7 +2000,8 @@ std::vector<LightlikeGaugeLinkFinitePartTerm> EndpointTermsFromRuntimeSeries(
     terms.push_back({"integer",
                      entry.first.power,
                      entry.first.log_power,
-                     FormatRuntimeComplex(entry.second, 24)});
+                     FormatRuntimeComplex(entry.second,
+                                          kEndpointTransportPrecisionDigits)});
   }
   return terms;
 }
@@ -1451,7 +2009,7 @@ std::vector<LightlikeGaugeLinkFinitePartTerm> EndpointTermsFromRuntimeSeries(
 RuntimeComplex ParseRuntimeConstantComplexExpression(
     const std::string& expression,
     const std::string& variable,
-    const long double epsilon_sample) {
+    const RuntimeFloat epsilon_sample) {
   const RuntimeRationalPolynomial rational =
       ParseGaugeLinkRationalExpression(expression, variable, epsilon_sample);
   if (RuntimePolynomialDegree(rational.numerator) > 0 ||
@@ -1464,45 +2022,47 @@ RuntimeComplex ParseRuntimeConstantComplexExpression(
 }
 
 struct GaugeLinkFirstBlockEndpointBasisValue {
-  long double y = 0.0L;
-  long double w = 0.0L;
+  RuntimeFloat y = 0.0L;
+  RuntimeFloat w = 0.0L;
 };
 
 GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
-    const long double epsilon_value,
-    const long double rho,
+    const RuntimeFloat epsilon_value,
+    const RuntimeFloat rho,
     const GaugeLinkFirstBlockEndpointBasisValue& leading,
-    const long double x) {
+    const RuntimeFloat x) {
   constexpr int kSeriesOrder = 180;
-  const long double lambda = 6.0L * (epsilon_value - 1.0L);
+  const RuntimeFloat lambda = RuntimeFloat(6) * (epsilon_value - RuntimeFloat(1));
   std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients(
       static_cast<std::size_t>(kSeriesOrder) + 1);
   coefficients[0] = leading;
 
-  long double minus_two_power = 1.0L;
-  std::vector<long double> regular_scales(static_cast<std::size_t>(kSeriesOrder));
+  RuntimeFloat minus_two_power = RuntimeFloat(1);
+  std::vector<RuntimeFloat> regular_scales(static_cast<std::size_t>(kSeriesOrder));
   for (int index = 0; index < kSeriesOrder; ++index) {
     regular_scales[static_cast<std::size_t>(index)] =
-        (epsilon_value - 1.0L) * minus_two_power;
-    minus_two_power *= -2.0L;
+        (epsilon_value - RuntimeFloat(1)) * minus_two_power;
+    minus_two_power *= RuntimeFloat(-2);
   }
 
   for (int order = 1; order <= kSeriesOrder; ++order) {
-    long double rhs_y = 0.0L;
-    long double rhs_w = 0.0L;
+    RuntimeFloat rhs_y = 0.0L;
+    RuntimeFloat rhs_w = 0.0L;
     for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
       const GaugeLinkFirstBlockEndpointBasisValue& previous =
           coefficients[static_cast<std::size_t>(order - 1 - matrix_order)];
-      const long double scale =
+      const RuntimeFloat scale =
           regular_scales[static_cast<std::size_t>(matrix_order)];
-      rhs_y += scale * (2.0L * previous.y + 24.0L * previous.w);
-      rhs_w += scale * (-previous.y / 3.0L - 4.0L * previous.w);
+      rhs_y += scale * (RuntimeFloat(2) * previous.y +
+                         RuntimeFloat(24) * previous.w);
+      rhs_w += scale * (-previous.y / RuntimeFloat(3) -
+                         RuntimeFloat(4) * previous.w);
     }
-    const long double y_denominator = rho + static_cast<long double>(order);
-    const long double w_denominator =
-        rho + static_cast<long double>(order) - lambda;
-    if (std::abs(y_denominator) < kRuntimeTiny ||
-        std::abs(w_denominator) < kRuntimeTiny) {
+    const RuntimeFloat y_denominator = rho + static_cast<RuntimeFloat>(order);
+    const RuntimeFloat w_denominator =
+        rho + static_cast<RuntimeFloat>(order) - lambda;
+    if (RuntimeAbs(y_denominator) < kRuntimeTiny ||
+        RuntimeAbs(w_denominator) < kRuntimeTiny) {
       throw std::runtime_error(
           "b64ag first-block endpoint transport hit a resonant Frobenius denominator");
     }
@@ -1511,13 +2071,13 @@ GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
   }
 
   GaugeLinkFirstBlockEndpointBasisValue value;
-  long double x_power = 1.0L;
+  RuntimeFloat x_power = RuntimeFloat(1);
   for (const GaugeLinkFirstBlockEndpointBasisValue& coefficient : coefficients) {
     value.y += coefficient.y * x_power;
     value.w += coefficient.w * x_power;
     x_power *= x;
   }
-  const long double frobenius_power = std::exp(rho * std::log(x));
+  const RuntimeFloat frobenius_power = RuntimeExp(rho * RuntimeLog(x));
   value.y *= frobenius_power;
   value.w *= frobenius_power;
   return value;
@@ -1531,28 +2091,29 @@ struct GaugeLinkFirstBlockEndpointCoefficients {
 
 GaugeLinkFirstBlockEndpointCoefficients
 EvaluateGaugeLinkFirstBlockEndpointCoefficients(
-    const long double epsilon_value,
+    const RuntimeFloat epsilon_value,
     const RuntimeComplex& first_master_boundary,
     const RuntimeComplex& companion_boundary) {
-  const long double x = 1.0L / 40.0L;
-  const long double lambda = 6.0L * (epsilon_value - 1.0L);
+  const RuntimeFloat x = RuntimeFloat(1) / RuntimeFloat(40);
+  const RuntimeFloat lambda = RuntimeFloat(6) * (epsilon_value - RuntimeFloat(1));
   const GaugeLinkFirstBlockEndpointBasisValue regular_basis =
       EvaluateGaugeLinkFirstBlockEndpointBasis(epsilon_value,
-                                               0.0L,
-                                               {1.0L, 0.0L},
+                                               RuntimeFloat(0),
+                                               {RuntimeFloat(1), RuntimeFloat(0)},
                                                x);
   const GaugeLinkFirstBlockEndpointBasisValue singular_basis =
       EvaluateGaugeLinkFirstBlockEndpointBasis(epsilon_value,
                                                lambda,
-                                               {0.0L, 1.0L},
+                                               {RuntimeFloat(0), RuntimeFloat(1)},
                                                x);
   const RuntimeComplex boundary_y = first_master_boundary / x;
+  const RuntimeFloat five_six = RuntimeFloat(5) / RuntimeFloat(6);
   const RuntimeComplex boundary_w =
-      companion_boundary - boundary_y * (5.0L / 6.0L);
-  const long double determinant =
+      companion_boundary - boundary_y * five_six;
+  const RuntimeFloat determinant =
       regular_basis.y * singular_basis.w -
       singular_basis.y * regular_basis.w;
-  if (std::abs(determinant) < kRuntimeTiny) {
+  if (RuntimeAbs(determinant) < kRuntimeTiny) {
     throw std::runtime_error(
         "b64ag first-block endpoint transport produced a singular connection matrix");
   }
@@ -1565,14 +2126,14 @@ EvaluateGaugeLinkFirstBlockEndpointCoefficients(
       (regular_basis.y * boundary_w - regular_basis.w * boundary_y) /
       determinant;
   coefficients.companion_regular_coefficient =
-      coefficients.first_master_regular_coefficient * (5.0L / 6.0L);
+      coefficients.first_master_regular_coefficient * five_six;
   return coefficients;
 }
 
 bool IsSmallRelativeToTransportScale(const RuntimeComplex& value,
                                      const RuntimeComplex& scale) {
-  const long double reference = std::max(1.0L, std::abs(scale));
-  return std::abs(value) < reference * 1e-12L;
+  const RuntimeFloat reference = std::max(RuntimeFloat(1), RuntimeAbs(scale));
+  return RuntimeAbs(value) < reference * RuntimeFloat("1e-50");
 }
 
 }  // namespace
@@ -2002,6 +2563,84 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
   return result;
 }
 
+std::vector<LightlikeGaugeLinkTargetReductionTerm>
+ParseLightlikeGaugeLinkTargetReductionRaw(
+    const std::string& reduction_raw,
+    const std::string& variable) {
+  const std::vector<std::string> root =
+      SplitMathematicaListElements(reduction_raw);
+  if (root.size() != 2) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser expected {masters, rules}");
+  }
+
+  const std::vector<std::string> raw_masters =
+      SplitMathematicaListElements(root[0]);
+  if (raw_masters.empty()) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser requires a nonempty master basis");
+  }
+  std::vector<std::string> master_labels;
+  master_labels.reserve(raw_masters.size());
+  for (const std::string& raw_master : raw_masters) {
+    master_labels.push_back(IntegralLabelFromMathematicaJ(raw_master));
+  }
+
+  const std::vector<std::string> raw_rules =
+      SplitMathematicaListElements(root[1]);
+  if (raw_rules.empty()) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser requires at least one target rule");
+  }
+
+  std::vector<LightlikeGaugeLinkTargetReductionTerm> terms;
+  for (const std::string& raw_rule : raw_rules) {
+    const auto [raw_target, raw_coefficients] = SplitMathematicaRule(raw_rule);
+    const std::string target_label = IntegralLabelFromMathematicaJ(raw_target);
+    const std::vector<std::string> coefficients =
+        SplitMathematicaListElements(raw_coefficients);
+    if (coefficients.size() != master_labels.size()) {
+      throw std::runtime_error(
+          "b64ag inline target-reduction parser found a coefficient row whose "
+          "width does not match the retained master basis");
+    }
+    for (std::size_t master_index = 0; master_index < coefficients.size();
+         ++master_index) {
+      const GaugeLinkExactLaurentSeries coefficient_series =
+          ParseGaugeLinkExactLaurentExpression(coefficients[master_index],
+                                               variable);
+      for (const auto& [gaugex_power, coefficient] : coefficient_series) {
+        if (coefficient.IsZero()) {
+          continue;
+        }
+        LightlikeGaugeLinkTargetReductionTerm term;
+        term.target_label = target_label;
+        term.master_label = master_labels[master_index];
+        term.gaugex_power_shift = gaugex_power;
+        term.log_power = 0;
+        term.coefficient = coefficient.ToString();
+        terms.push_back(std::move(term));
+      }
+    }
+  }
+  return terms;
+}
+
+std::vector<LightlikeGaugeLinkTargetReductionTerm>
+ParseLightlikeGaugeLinkRetainedTargetReduction(
+    const LightlikeGaugeLinkRuntimeState& state) {
+  const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  const auto reduction_raw_it = checked_state.boundary_file_raws.find("reduction");
+  if (reduction_raw_it == checked_state.boundary_file_raws.end() ||
+      reduction_raw_it->second.empty()) {
+    throw std::runtime_error(
+        "b64ag inline target-reduction parser requires boundary_state.files."
+        "reduction.raw");
+  }
+  return ParseLightlikeGaugeLinkTargetReductionRaw(reduction_raw_it->second,
+                                                   checked_state.variable);
+}
+
 LightlikeGaugeLinkEndpointTransportResult
 TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
     const LightlikeGaugeLinkRuntimeState& state,
@@ -2043,30 +2682,8 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                 "b64ag finite-boundary endpoint transport requires finite "
                 "gaugex=1/40 boundary samples");
   }
-  if (boundary_samples.size() != 1) {
-    return fail("insufficient_precision",
-                "b64ag finite-boundary endpoint transport currently publishes "
-                "six-master endpoint terms for one supplied epsilon sample; "
-                "multi-sample Laurent fitting remains a downstream gap");
-  }
-
-  const LightlikeGaugeLinkFiniteBoundarySample& sample = boundary_samples.front();
-  const std::string epsilon_sample =
-      sample.epsilon_sample.empty() && !checked_state.epsilon_samples.empty()
-          ? checked_state.epsilon_samples.front()
-          : sample.epsilon_sample;
-  if (epsilon_sample.empty()) {
-    return fail("boundary_unsolved",
-                "b64ag finite-boundary endpoint transport requires an epsilon sample label");
-  }
-  if (sample.master_values.size() != checked_state.diffeq_masters.size()) {
-    return fail("master_set_instability",
-                "b64ag finite-boundary endpoint transport boundary vector width does "
-                "not match the reviewed six-master DE basis");
-  }
 
   try {
-    const long double epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
     const auto diffeq_raw_it = checked_state.boundary_file_raws.find("diffeq");
     if (diffeq_raw_it == checked_state.boundary_file_raws.end()) {
       return fail("boundary_unsolved",
@@ -2082,68 +2699,6 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
                   "b64ag finite-boundary endpoint transport parsed a DE matrix "
                   "whose shape does not match the reviewed six-master basis");
     }
-    RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
-                                       2,
-                                       2,
-                                       -1,
-                                       RuntimeComplex{1.0L, 0.0L},
-                                       checked_state.variable,
-                                       epsilon_value,
-                                       "second-block self");
-    RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
-                                       3,
-                                       2,
-                                       -3,
-                                       RuntimeComplex{0.5L, 0.0L},
-                                       checked_state.variable,
-                                       epsilon_value,
-                                       "second-block companion source");
-    RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
-                                       4,
-                                       4,
-                                       -1,
-                                       RuntimeComplex{2.0L, 0.0L},
-                                       checked_state.variable,
-                                       epsilon_value,
-                                       "downstream first-row self");
-    RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
-                                       5,
-                                       2,
-                                       -1,
-                                       RuntimeComplex{-1.0L, 0.0L},
-                                       checked_state.variable,
-                                       epsilon_value,
-                                       "downstream second-block source");
-    RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
-                                       5,
-                                       5,
-                                       -1,
-                                       RuntimeComplex{2.0L, 0.0L},
-                                       checked_state.variable,
-                                       epsilon_value,
-                                       "downstream companion self");
-
-    std::vector<RuntimeComplex> boundary_values;
-    boundary_values.reserve(sample.master_values.size());
-    for (const std::string& master_value : sample.master_values) {
-      boundary_values.push_back(ParseRuntimeConstantComplexExpression(
-          master_value, checked_state.variable, epsilon_value));
-    }
-    const RuntimeComplex first_boundary = boundary_values[0];
-    const RuntimeComplex companion_boundary = boundary_values[1];
-    const GaugeLinkFirstBlockEndpointCoefficients coefficients =
-        EvaluateGaugeLinkFirstBlockEndpointCoefficients(epsilon_value,
-                                                        first_boundary,
-                                                        companion_boundary);
-    if (!IsSmallRelativeToTransportScale(
-            coefficients.unresolved_frobenius_coefficient,
-            coefficients.first_master_regular_coefficient)) {
-      return fail(
-          "continuation_budget_exhausted",
-          "b64ag first-block endpoint transport found an unresolved non-integer "
-          "Frobenius branch; publishing PickZeroRuleS terms would overclaim the "
-          "finite-gaugex transport");
-    }
 
     const std::string first_label = ReviewedReductionMasterLabels()[0];
     const std::string companion_label = ReviewedReductionMasterLabels()[1];
@@ -2152,89 +2707,192 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
     const std::string downstream_label = ReviewedReductionMasterLabels()[4];
     const std::string downstream_companion_label =
         ReviewedReductionMasterLabels()[5];
-    std::vector<RuntimeSeries> endpoint_series(
-        ReviewedReductionMasterLabels().size());
-    AddRuntimeSeriesTerm(endpoint_series[0],
-                         1,
-                         0,
-                         coefficients.first_master_regular_coefficient);
-    AddRuntimeSeriesTerm(endpoint_series[1],
-                         0,
-                         0,
-                         coefficients.companion_regular_coefficient);
-    endpoint_series[2] = BuildGaugeLinkScalarEndpointSeries(
-        diffeq_matrix,
-        2,
-        endpoint_series,
-        boundary_values[2],
-        checked_state.variable,
-        epsilon_value);
-    endpoint_series[3] = BuildGaugeLinkScalarEndpointSeries(
-        diffeq_matrix,
-        3,
-        endpoint_series,
-        boundary_values[3],
-        checked_state.variable,
-        epsilon_value);
-    endpoint_series[4] = BuildGaugeLinkScalarEndpointSeries(
-        diffeq_matrix,
-        4,
-        endpoint_series,
-        boundary_values[4],
-        checked_state.variable,
-        epsilon_value);
-    endpoint_series[5] = BuildGaugeLinkScalarEndpointSeries(
-        diffeq_matrix,
-        5,
-        endpoint_series,
-        boundary_values[5],
-        checked_state.variable,
-        epsilon_value);
     const auto endpoint_term = [](const int power,
                                   const RuntimeComplex& coefficient) {
       return LightlikeGaugeLinkFinitePartTerm{
-          "integer", power, 0, FormatRuntimeComplex(coefficient, 24)};
+          "integer",
+          power,
+          0,
+          FormatRuntimeComplex(coefficient, kEndpointTransportPrecisionDigits)};
     };
-    result.endpoint_terms.push_back(
-        {first_label,
-         {endpoint_term(
-             1, coefficients.first_master_regular_coefficient)}});
-    result.endpoint_terms.push_back(
-        {companion_label,
-         {endpoint_term(
-             0, coefficients.companion_regular_coefficient)}});
-    result.endpoint_terms.push_back(
-        {second_label,
-         EndpointTermsFromRuntimeSeries(endpoint_series[2], 2)});
-    result.endpoint_terms.push_back(
-        {second_companion_label,
-         EndpointTermsFromRuntimeSeries(endpoint_series[3], 2)});
-    result.endpoint_terms.push_back(
-        {downstream_label,
-         EndpointTermsFromRuntimeSeries(endpoint_series[4], 2)});
-    result.endpoint_terms.push_back(
-        {downstream_companion_label,
-         EndpointTermsFromRuntimeSeries(endpoint_series[5], 2)});
-    for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
-         result.endpoint_terms) {
-      if (master_terms.endpoint_terms.empty()) {
-        return fail("boundary_unsolved",
-                    "b64ag finite-boundary endpoint transport produced no "
-                    "publishable endpoint terms for " +
-                        master_terms.master_label);
+
+    for (std::size_t sample_index = 0; sample_index < boundary_samples.size();
+         ++sample_index) {
+      const LightlikeGaugeLinkFiniteBoundarySample& sample =
+          boundary_samples[sample_index];
+      const std::string epsilon_sample =
+          !sample.epsilon_sample.empty()
+              ? sample.epsilon_sample
+              : (sample_index < checked_state.epsilon_samples.size()
+                     ? checked_state.epsilon_samples[sample_index]
+                     : std::string{});
+      if (epsilon_sample.empty()) {
+        return fail(
+            "boundary_unsolved",
+            "b64ag finite-boundary endpoint transport requires an epsilon "
+            "sample label for every supplied boundary vector");
       }
+      if (sample.master_values.size() != checked_state.diffeq_masters.size()) {
+        return fail("master_set_instability",
+                    "b64ag finite-boundary endpoint transport boundary vector "
+                    "width does not match the reviewed six-master DE basis");
+      }
+
+      const RuntimeFloat epsilon_value =
+          ParseRuntimeRationalNumber(epsilon_sample);
+      RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
+                                         2,
+                                         2,
+                                         -1,
+                                         RuntimeComplex{1.0L, 0.0L},
+                                         checked_state.variable,
+                                         epsilon_value,
+                                         "second-block self");
+      RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
+                                         3,
+                                         2,
+                                         -3,
+                                         RuntimeComplex{0.5L, 0.0L},
+                                         checked_state.variable,
+                                         epsilon_value,
+                                         "second-block companion source");
+      RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
+                                         4,
+                                         4,
+                                         -1,
+                                         RuntimeComplex{2.0L, 0.0L},
+                                         checked_state.variable,
+                                         epsilon_value,
+                                         "downstream first-row self");
+      RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
+                                         5,
+                                         2,
+                                         -1,
+                                         RuntimeComplex{-1.0L, 0.0L},
+                                         checked_state.variable,
+                                         epsilon_value,
+                                         "downstream second-block source");
+      RequireGaugeLinkLaurentCoefficient(diffeq_matrix,
+                                         5,
+                                         5,
+                                         -1,
+                                         RuntimeComplex{2.0L, 0.0L},
+                                         checked_state.variable,
+                                         epsilon_value,
+                                         "downstream companion self");
+
+      std::vector<RuntimeComplex> boundary_values;
+      boundary_values.reserve(sample.master_values.size());
+      for (const std::string& master_value : sample.master_values) {
+        boundary_values.push_back(ParseRuntimeConstantComplexExpression(
+            master_value, checked_state.variable, epsilon_value));
+      }
+      const RuntimeComplex first_boundary = boundary_values[0];
+      const RuntimeComplex companion_boundary = boundary_values[1];
+      const GaugeLinkFirstBlockEndpointCoefficients coefficients =
+          EvaluateGaugeLinkFirstBlockEndpointCoefficients(epsilon_value,
+                                                          first_boundary,
+                                                          companion_boundary);
+      if (!IsSmallRelativeToTransportScale(
+              coefficients.unresolved_frobenius_coefficient,
+              coefficients.first_master_regular_coefficient)) {
+        return fail(
+            "continuation_budget_exhausted",
+            "b64ag first-block endpoint transport found an unresolved "
+            "non-integer Frobenius branch; publishing PickZeroRuleS terms "
+            "would overclaim the finite-gaugex transport");
+      }
+
+      std::vector<RuntimeSeries> endpoint_series(
+          ReviewedReductionMasterLabels().size());
+      AddRuntimeSeriesTerm(endpoint_series[0],
+                           1,
+                           0,
+                           coefficients.first_master_regular_coefficient);
+      AddRuntimeSeriesTerm(endpoint_series[1],
+                           0,
+                           0,
+                           coefficients.companion_regular_coefficient);
+      endpoint_series[2] = BuildGaugeLinkScalarEndpointSeries(
+          diffeq_matrix,
+          2,
+          endpoint_series,
+          boundary_values[2],
+          checked_state.variable,
+          epsilon_value);
+      endpoint_series[3] = BuildGaugeLinkScalarEndpointSeries(
+          diffeq_matrix,
+          3,
+          endpoint_series,
+          boundary_values[3],
+          checked_state.variable,
+          epsilon_value);
+      endpoint_series[4] = BuildGaugeLinkScalarEndpointSeries(
+          diffeq_matrix,
+          4,
+          endpoint_series,
+          boundary_values[4],
+          checked_state.variable,
+          epsilon_value);
+      endpoint_series[5] = BuildGaugeLinkScalarEndpointSeries(
+          diffeq_matrix,
+          5,
+          endpoint_series,
+          boundary_values[5],
+          checked_state.variable,
+          epsilon_value);
+
+      LightlikeGaugeLinkEndpointSampleTerms sample_terms;
+      sample_terms.epsilon_sample = epsilon_sample;
+      sample_terms.endpoint_terms.push_back(
+          {first_label,
+           {endpoint_term(
+               1, coefficients.first_master_regular_coefficient)}});
+      sample_terms.endpoint_terms.push_back(
+          {companion_label,
+           {endpoint_term(
+               0, coefficients.companion_regular_coefficient)}});
+      sample_terms.endpoint_terms.push_back(
+          {second_label,
+           EndpointTermsFromRuntimeSeries(endpoint_series[2], 2)});
+      sample_terms.endpoint_terms.push_back(
+          {second_companion_label,
+           EndpointTermsFromRuntimeSeries(endpoint_series[3], 2)});
+      sample_terms.endpoint_terms.push_back(
+          {downstream_label,
+           EndpointTermsFromRuntimeSeries(endpoint_series[4], 2)});
+      sample_terms.endpoint_terms.push_back(
+          {downstream_companion_label,
+           EndpointTermsFromRuntimeSeries(endpoint_series[5], 2)});
+      for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
+           sample_terms.endpoint_terms) {
+        if (master_terms.endpoint_terms.empty()) {
+          return fail("boundary_unsolved",
+                      "b64ag finite-boundary endpoint transport produced no "
+                      "publishable endpoint terms for " +
+                          master_terms.master_label + " at epsilon " +
+                          epsilon_sample);
+        }
+      }
+      result.epsilon_endpoint_terms.push_back(std::move(sample_terms));
+    }
+
+    if (result.epsilon_endpoint_terms.size() == 1) {
+      result.endpoint_terms = result.epsilon_endpoint_terms.front().endpoint_terms;
     }
     result.transported_master_labels = ReviewedReductionMasterLabels();
-    result.transported_master_count = result.endpoint_terms.size();
+    result.transported_master_count = ReviewedReductionMasterLabels().size();
     result.success = true;
     result.extraction_fingerprint = ComputeArtifactFingerprint(
         SerializeGaugeLinkEndpointTransportForFingerprint(result));
     result.summary =
         "Applied b64ag finite-gaugex endpoint transport from the retained "
-        "gaugex=1/40 boundary vector to live endpoint terms for all six "
-        "reviewed gauge-link DE masters using the parsed first block, "
-        "second-block, and downstream Laurent/Frobenius recurrence without "
-        "reading retained final solution samples; "
+        "gaugex=1/40 boundary vector(s) to high-precision live endpoint "
+        "terms for all six reviewed gauge-link DE masters across " +
+        std::to_string(result.epsilon_endpoint_terms.size()) +
+        " epsilon sample(s) using the parsed first block, second-block, and "
+        "downstream Laurent/Frobenius recurrence without reading retained "
+        "final solution samples; "
         "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
     return result;
   } catch (const std::exception& error) {
@@ -2308,8 +2966,9 @@ LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
     }
   }
 
-  const long double epsilon_sample =
-      epsilon_samples.empty() ? 0.0L : ParseRuntimeRationalNumber(epsilon_samples.front());
+  const RuntimeFloat epsilon_sample =
+      epsilon_samples.empty() ? RuntimeFloat(0)
+                              : ParseRuntimeRationalNumber(epsilon_samples.front());
   std::size_t nonzero_cell_count = 0;
   const std::vector<RuntimePoleAudit> runtime_poles =
       ExtractRuntimePolesFromMatrix(diffeq_matrix,
@@ -2322,44 +2981,47 @@ LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
   bool endpoint_is_singular = false;
   std::optional<RuntimeComplex> nearest_nonzero_pole;
   for (const RuntimePoleAudit& pole : runtime_poles) {
-    if (std::abs(pole.value - target) < 1e-8L) {
+    if (RuntimeAbs(pole.value - target) < RuntimeFloat("1e-8")) {
       endpoint_is_singular = true;
       continue;
     }
     if (!nearest_nonzero_pole.has_value() ||
-        std::abs(pole.value - target) < std::abs(*nearest_nonzero_pole - target)) {
+        RuntimeAbs(pole.value - target) <
+            RuntimeAbs(*nearest_nonzero_pole - target)) {
       nearest_nonzero_pole = pole.value;
     }
   }
 
-  long double detour_radius = 1.0L / 16.0L;
+  RuntimeFloat detour_radius = RuntimeFloat(1) / RuntimeFloat(16);
   if (nearest_nonzero_pole.has_value()) {
-    detour_radius =
-        std::max(detour_radius, std::abs(*nearest_nonzero_pole - target) / 16.0L);
+    const RuntimeFloat pole_radius =
+        RuntimeAbs(*nearest_nonzero_pole - target) / RuntimeFloat(16);
+    detour_radius = std::max(detour_radius, pole_radius);
   }
-  detour_radius = std::max(detour_radius, std::abs(start - target) / 2.0L);
+  const RuntimeFloat span_radius = RuntimeAbs(start - target) / RuntimeFloat(2);
+  detour_radius = std::max(detour_radius, span_radius);
   const std::vector<RuntimeComplex> runtime_waypoints = {
       start,
       RuntimeComplex{start.real(), -detour_radius},
       RuntimeComplex{target.real(), -detour_radius},
-      RuntimeComplex{target.real(), -detour_radius / 4.0L},
+      RuntimeComplex{target.real(), -detour_radius / RuntimeFloat(4)},
       target,
   };
 
-  std::optional<long double> minimum_nonendpoint_distance;
+  std::optional<RuntimeFloat> minimum_nonendpoint_distance;
   for (const RuntimePoleAudit& pole : runtime_poles) {
-    if (std::abs(pole.value - target) < 1e-8L) {
+    if (RuntimeAbs(pole.value - target) < RuntimeFloat("1e-8")) {
       continue;
     }
     for (std::size_t index = 1; index < runtime_waypoints.size(); ++index) {
-      const long double distance =
+      const RuntimeFloat distance =
           DistancePointToSegment(pole.value,
                                  runtime_waypoints[index - 1],
                                  runtime_waypoints[index]);
       minimum_nonendpoint_distance =
           minimum_nonendpoint_distance.has_value()
               ? std::min(*minimum_nonendpoint_distance, distance)
-              : std::optional<long double>{distance};
+              : std::optional<RuntimeFloat>{distance};
     }
   }
 
@@ -2410,7 +3072,7 @@ LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
       "transport; this scaffold publishes no endpoint coefficient.";
   plan.minimum_nonendpoint_pole_distance_to_contour =
       minimum_nonendpoint_distance.has_value()
-          ? FormatLongDouble(*minimum_nonendpoint_distance, 24)
+          ? FormatRuntimeFloat(*minimum_nonendpoint_distance, 24)
           : std::string{};
   plan.pole_summary = pole_summary.str();
   plan.waypoint_summary = waypoint_summary.str();

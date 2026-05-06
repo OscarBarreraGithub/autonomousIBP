@@ -8,13 +8,18 @@
 #include "amflow/solver/series_solver.hpp"
 
 #include <algorithm>
+#include <complex>
 #include <exception>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <boost/multiprecision/cpp_dec_float.hpp>
 
 namespace {
 
@@ -1689,6 +1694,70 @@ B64agSixMasterReductionRows(const std::vector<amflow::TargetIntegral>& targets) 
   return reduction_terms;
 }
 
+std::string B64agRetainedReductionRaw() {
+  return
+      "{{j[gauge,1,1,1,0,1,0,0,0,0],"
+      "j[gauge,1,1,1,-1,1,0,0,0,0],"
+      "j[gauge,0,1,1,1,1,0,0,0,0],"
+      "j[gauge,0,1,1,1,1,-1,0,0,0],"
+      "j[gauge,1,1,1,1,1,0,0,0,0],"
+      "j[gauge,1,1,1,1,1,-1,0,0,0]},"
+      "{j[gauge,1,1,1,1,1,0,-1,0,0]->"
+      "{0,0,0,0,0,gaugex^(-2)},"
+      "j[gauge,1,1,1,1,1,0,0,-1,0]->"
+      "{8/(3*gaugex^2),-4/gaugex,2/gaugex^2,-2/gaugex,"
+      "1/(2*gaugex^3),(-1-4*gaugex)/gaugex^3},"
+      "j[gauge,1,1,1,1,1,0,0,0,-1]->"
+      "{-11/(3*gaugex),4,0,2,-gaugex^(-2),"
+      "(1+2*gaugex)/gaugex^2},"
+      "j[gauge,1,1,1,0,1,0,0,0,0]->{gaugex^(-1),0,0,0,0,0},"
+      "j[gauge,1,1,1,-1,1,0,0,0,0]->{0,1,0,0,0,0},"
+      "j[gauge,0,1,1,1,1,0,0,0,0]->{0,0,gaugex^(-2),0,0,0},"
+      "j[gauge,0,1,1,1,1,-1,0,0,0]->{0,0,0,gaugex^(-2),0,0},"
+      "j[gauge,1,1,1,1,1,0,0,0,0]->{0,0,0,0,gaugex^(-2),0},"
+      "j[gauge,1,1,1,1,1,-1,0,0,0]->{0,0,0,0,0,gaugex^(-2)}}}";
+}
+
+bool HasB64agReductionTerm(
+    const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm>& terms,
+    const std::string& target_label,
+    const std::string& master_label,
+    const int gaugex_power_shift,
+    const std::string& coefficient) {
+  return std::any_of(
+      terms.begin(),
+      terms.end(),
+      [&](const amflow::LightlikeGaugeLinkTargetReductionTerm& term) {
+        return term.target_label == target_label &&
+               term.master_label == master_label &&
+               term.gaugex_power_shift == gaugex_power_shift &&
+               term.log_power == 0 &&
+               term.coefficient == coefficient;
+      });
+}
+
+using B64agTestBigFloat = boost::multiprecision::cpp_dec_float_100;
+using B64agTestBigComplex = std::complex<B64agTestBigFloat>;
+
+std::string B64agBigFloatText(const B64agTestBigFloat& value) {
+  std::ostringstream stream;
+  stream << std::setprecision(70) << value;
+  return stream.str();
+}
+
+std::vector<std::string> B64agHighPrecisionBoundaryValues(
+    const B64agTestBigComplex& regular_coefficient) {
+  const std::string coefficient = B64agBigFloatText(regular_coefficient.real());
+  return {
+      "(" + coefficient + ")/40",
+      "(" + coefficient + ")*5/6",
+      "11",
+      "13",
+      "17",
+      "19",
+  };
+}
+
 amflow::ProblemSpec MakeB64agGaugeLinkProblemSpec() {
   amflow::ProblemSpec spec;
   spec.family.name = "gauge";
@@ -1750,6 +1819,7 @@ amflow::LightlikeGaugeLinkRuntimeState MakeB64agGaugeLinkRuntimeState() {
       "(-8*(gaugex - eps*gaugex))/((1 + 2*gaugex)*(1 + 4*gaugex)),"
       "(-2*(-1 + eps))/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex)),"
       "(2*(-1 + 2*eps - 7*gaugex))/(gaugex*(1 + 2*gaugex)*(1 + 4*gaugex))}}}}";
+  state.boundary_file_raws["reduction"] = B64agRetainedReductionRaw();
   state.diffeq_variables = {"gaugex"};
   state.epsilon_samples = {"101/208000", "51/104000"};
   for (const amflow::TargetIntegral& target : B64agReviewedTargets()) {
@@ -1892,6 +1962,78 @@ void B64agGaugeLinkRuntimeStateRejectsMasterSetDriftTest() {
       },
       "master_set_instability",
       "b64ag scaffold should use the reviewed fail-closed code for DE master drift");
+}
+
+void B64agGaugeLinkInlineReductionParserExpandsSyntheticLaurentRowsTest() {
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+  const std::string raw =
+      "{{j[gauge,1,1,1,0,1,0,0,0,0],"
+      "j[gauge,1,1,1,-1,1,0,0,0,0]},"
+      "{j[gauge,1,1,1,1,1,0,-1,0,0]->"
+      "{gaugex^(-2),(1+2*gaugex)/gaugex^2}}}";
+
+  const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> terms =
+      amflow::ParseLightlikeGaugeLinkTargetReductionRaw(raw);
+
+  Expect(terms.size() == 3,
+         "b64ag inline reduction parser should split synthetic Laurent cells into rows");
+  Expect(HasB64agReductionTerm(terms,
+                               targets.front().Label(),
+                               B64agMasterLabel(masters.front()),
+                               -2,
+                               "1"),
+         "b64ag inline reduction parser should preserve a monomial gaugex shift");
+  Expect(HasB64agReductionTerm(terms,
+                               targets.front().Label(),
+                               B64agMasterLabel(masters[1]),
+                               -2,
+                               "1"),
+         "b64ag inline reduction parser should split the constant numerator term");
+  Expect(HasB64agReductionTerm(terms,
+                               targets.front().Label(),
+                               B64agMasterLabel(masters[1]),
+                               -1,
+                               "2"),
+         "b64ag inline reduction parser should split the linear numerator term");
+}
+
+void B64agGaugeLinkRetainedReductionParserCoversInlineStateTableTest() {
+  const amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+
+  const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> terms =
+      amflow::ParseLightlikeGaugeLinkRetainedTargetReduction(state);
+
+  Expect(terms.size() == 20,
+         "b64ag retained inline reduction parser should expand every nonzero retained row");
+  Expect(std::all_of(terms.begin(),
+                     terms.end(),
+                     [](const amflow::LightlikeGaugeLinkTargetReductionTerm& term) {
+                       return term.log_power == 0 && !term.target_label.empty() &&
+                              !term.master_label.empty() &&
+                              !term.coefficient.empty();
+                     }),
+         "b64ag retained inline reduction parser should emit complete non-log rows");
+  Expect(HasB64agReductionTerm(terms,
+                               targets[1].Label(),
+                               B64agMasterLabel(masters[5]),
+                               -3,
+                               "-1"),
+         "b64ag retained inline reduction parser should split the M5 cubic-pole constant");
+  Expect(HasB64agReductionTerm(terms,
+                               targets[1].Label(),
+                               B64agMasterLabel(masters[5]),
+                               -2,
+                               "-4"),
+         "b64ag retained inline reduction parser should split the M5 cubic-pole linear term");
+  Expect(HasB64agReductionTerm(terms,
+                               targets[2].Label(),
+                               B64agMasterLabel(masters[5]),
+                               -1,
+                               "2"),
+         "b64ag retained inline reduction parser should split the positive M5 linear term");
 }
 
 void B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest() {
@@ -2270,6 +2412,70 @@ void B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest() {
                  "b64ag reduced finite-part chain should preserve reducer ordering");
 }
 
+void B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"1", "2/2"};
+  const B64agTestBigComplex first_coefficient{
+      B64agTestBigFloat(
+          "1.2345678901234567890123456789012345678901234567890123456789"),
+      B64agTestBigFloat(0)};
+  const B64agTestBigComplex second_coefficient{
+      B64agTestBigFloat(
+          "9.8765432109876543210987654321098765432109876543210987654321"),
+      B64agTestBigFloat(0)};
+  const std::string first_text = B64agBigFloatText(first_coefficient.real());
+  const std::string second_text = B64agBigFloatText(second_coefficient.real());
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> boundary_samples = {
+      {"1", B64agHighPrecisionBoundaryValues(first_coefficient)},
+      {"2/2", B64agHighPrecisionBoundaryValues(second_coefficient)},
+  };
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag high-precision multi-epsilon transport should succeed: " +
+             transport.summary);
+  Expect(!transport.retained_solution_samples_used,
+         "b64ag high-precision multi-epsilon transport must not use retained solutions");
+  Expect(!transport.full_eta_zero_contour_applied,
+         "b64ag high-precision multi-epsilon transport must not promote full contour");
+  Expect(transport.epsilon_sample_count == 2 &&
+             transport.epsilon_endpoint_terms.size() == 2,
+         "b64ag high-precision transport should carry both epsilon samples");
+  Expect(transport.endpoint_terms.empty(),
+         "b64ag multi-epsilon transport should avoid an ambiguous flat endpoint mirror");
+  Expect(transport.epsilon_endpoint_terms[0].epsilon_sample == "1" &&
+             transport.epsilon_endpoint_terms[1].epsilon_sample == "2/2",
+         "b64ag high-precision transport should preserve epsilon sample labels");
+  Expect(transport.epsilon_endpoint_terms[0].endpoint_terms.size() == 6 &&
+             transport.epsilon_endpoint_terms[1].endpoint_terms.size() == 6,
+         "b64ag high-precision transport should publish six masters per sample");
+  const std::string first_published =
+      transport.epsilon_endpoint_terms[0]
+          .endpoint_terms[0]
+          .endpoint_terms[0]
+          .coefficient;
+  const std::string second_published =
+      transport.epsilon_endpoint_terms[1]
+          .endpoint_terms[0]
+          .endpoint_terms[0]
+          .coefficient;
+  ExpectContains(first_published,
+                 first_text.substr(0, 56),
+                 "b64ag high-precision transport should preserve >=50 first-sample digits");
+  ExpectContains(second_published,
+                 second_text.substr(0, 56),
+                 "b64ag high-precision transport should preserve >=50 second-sample digits");
+  ExpectContains(transport.summary,
+                 "retained_solution_samples_used=false",
+                 "b64ag high-precision transport summary should record non-consumption");
+  ExpectContains(transport.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b64ag high-precision transport summary should keep full contour false");
+}
+
 }  // namespace
 
 int main() {
@@ -2314,6 +2520,8 @@ int main() {
     B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();
     B64agGaugeLinkRuntimeStateRejectsMissingBoundaryInputsTest();
     B64agGaugeLinkRuntimeStateRejectsMasterSetDriftTest();
+    B64agGaugeLinkInlineReductionParserExpandsSyntheticLaurentRowsTest();
+    B64agGaugeLinkRetainedReductionParserCoversInlineStateTableTest();
     B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
     B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
@@ -2323,6 +2531,7 @@ int main() {
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();
+    B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

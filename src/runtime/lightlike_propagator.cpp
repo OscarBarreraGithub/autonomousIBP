@@ -1030,6 +1030,36 @@ std::string SerializeGaugeLinkSelectedCoefficientAuditForFingerprint(
   return out.str();
 }
 
+std::string SerializeGaugeLinkEndpointTransportForFingerprint(
+    const LightlikeGaugeLinkEndpointTransportResult& result) {
+  std::ostringstream out;
+  out << "kind=b64ag-gauge-link-finite-boundary-endpoint-transport\n";
+  out << "runtime_application=" << result.runtime_application << "\n";
+  out << "transport_scope=" << result.transport_scope << "\n";
+  out << "epsilon_samples=" << result.epsilon_sample_count << "\n";
+  out << "requested_masters=" << result.requested_master_count << "\n";
+  out << "transported_masters=" << result.transported_master_count << "\n";
+  out << "contour_fingerprint=" << result.contour_fingerprint << "\n";
+  out << "endpoint_local_model_kind=" << result.endpoint_local_model_kind << "\n";
+  out << "final_solution_samples_used_as_input=false\n";
+  for (const std::string& label : result.transported_master_labels) {
+    out << "transported_master=" << label << "\n";
+  }
+  for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms :
+       result.endpoint_terms) {
+    out << "endpoint_master=" << master_terms.master_label << "\n";
+    for (const LightlikeGaugeLinkFinitePartTerm& term :
+         master_terms.endpoint_terms) {
+      out << "term=" << term.region_key << "," << term.power << ","
+          << term.log_power << "," << term.coefficient << "\n";
+    }
+  }
+  for (const std::string& gap : result.remaining_master_gaps) {
+    out << "remaining_gap=" << gap << "\n";
+  }
+  return out.str();
+}
+
 struct GaugeLinkEndpointTermKey {
   std::string region_key;
   int power;
@@ -1075,6 +1105,157 @@ void RecordReducedFinitePartFailure(
     const std::string& failure_code,
     const std::string& summary) {
   result.failures.push_back({target_label, failure_code, summary});
+}
+
+RuntimeComplex RuntimePolynomialValue(const RuntimePolynomial& polynomial,
+                                      const RuntimeComplex& variable_value) {
+  RuntimeComplex value = RuntimeComplex{0.0L, 0.0L};
+  for (std::size_t reverse_index = polynomial.coefficients.size();
+       reverse_index > 0;
+       --reverse_index) {
+    value = value * variable_value +
+            polynomial.coefficients[reverse_index - 1];
+  }
+  return value;
+}
+
+RuntimeComplex RuntimeRationalValue(const RuntimeRationalPolynomial& rational,
+                                    const RuntimeComplex& variable_value,
+                                    const std::string& expression) {
+  const RuntimeComplex denominator =
+      RuntimePolynomialValue(rational.denominator, variable_value);
+  if (std::abs(denominator) < kRuntimeTiny) {
+    throw std::runtime_error("b64ag gauge-link endpoint transport divides by zero in \"" +
+                             expression + "\"");
+  }
+  return RuntimePolynomialValue(rational.numerator, variable_value) / denominator;
+}
+
+RuntimeComplex ParseRuntimeConstantComplexExpression(
+    const std::string& expression,
+    const std::string& variable,
+    const long double epsilon_sample) {
+  const RuntimeRationalPolynomial rational =
+      ParseGaugeLinkRationalExpression(expression, variable, epsilon_sample);
+  if (RuntimePolynomialDegree(rational.numerator) > 0 ||
+      RuntimePolynomialDegree(rational.denominator) > 0) {
+    throw std::runtime_error(
+        "b64ag gauge-link endpoint transport boundary value is not finite-constant: " +
+        expression);
+  }
+  return RuntimeRationalValue(rational, RuntimeComplex{0.0L, 0.0L}, expression);
+}
+
+struct GaugeLinkFirstBlockEndpointBasisValue {
+  long double y = 0.0L;
+  long double w = 0.0L;
+};
+
+GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
+    const long double epsilon_value,
+    const long double rho,
+    const GaugeLinkFirstBlockEndpointBasisValue& leading,
+    const long double x) {
+  constexpr int kSeriesOrder = 180;
+  const long double lambda = 6.0L * (epsilon_value - 1.0L);
+  std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients(
+      static_cast<std::size_t>(kSeriesOrder) + 1);
+  coefficients[0] = leading;
+
+  long double minus_two_power = 1.0L;
+  std::vector<long double> regular_scales(static_cast<std::size_t>(kSeriesOrder));
+  for (int index = 0; index < kSeriesOrder; ++index) {
+    regular_scales[static_cast<std::size_t>(index)] =
+        (epsilon_value - 1.0L) * minus_two_power;
+    minus_two_power *= -2.0L;
+  }
+
+  for (int order = 1; order <= kSeriesOrder; ++order) {
+    long double rhs_y = 0.0L;
+    long double rhs_w = 0.0L;
+    for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
+      const GaugeLinkFirstBlockEndpointBasisValue& previous =
+          coefficients[static_cast<std::size_t>(order - 1 - matrix_order)];
+      const long double scale =
+          regular_scales[static_cast<std::size_t>(matrix_order)];
+      rhs_y += scale * (2.0L * previous.y + 24.0L * previous.w);
+      rhs_w += scale * (-previous.y / 3.0L - 4.0L * previous.w);
+    }
+    const long double y_denominator = rho + static_cast<long double>(order);
+    const long double w_denominator =
+        rho + static_cast<long double>(order) - lambda;
+    if (std::abs(y_denominator) < kRuntimeTiny ||
+        std::abs(w_denominator) < kRuntimeTiny) {
+      throw std::runtime_error(
+          "b64ag first-block endpoint transport hit a resonant Frobenius denominator");
+    }
+    coefficients[static_cast<std::size_t>(order)].y = rhs_y / y_denominator;
+    coefficients[static_cast<std::size_t>(order)].w = rhs_w / w_denominator;
+  }
+
+  GaugeLinkFirstBlockEndpointBasisValue value;
+  long double x_power = 1.0L;
+  for (const GaugeLinkFirstBlockEndpointBasisValue& coefficient : coefficients) {
+    value.y += coefficient.y * x_power;
+    value.w += coefficient.w * x_power;
+    x_power *= x;
+  }
+  const long double frobenius_power = std::exp(rho * std::log(x));
+  value.y *= frobenius_power;
+  value.w *= frobenius_power;
+  return value;
+}
+
+struct GaugeLinkFirstBlockEndpointCoefficients {
+  RuntimeComplex first_master_regular_coefficient;
+  RuntimeComplex companion_regular_coefficient;
+  RuntimeComplex unresolved_frobenius_coefficient;
+};
+
+GaugeLinkFirstBlockEndpointCoefficients
+EvaluateGaugeLinkFirstBlockEndpointCoefficients(
+    const long double epsilon_value,
+    const RuntimeComplex& first_master_boundary,
+    const RuntimeComplex& companion_boundary) {
+  const long double x = 1.0L / 40.0L;
+  const long double lambda = 6.0L * (epsilon_value - 1.0L);
+  const GaugeLinkFirstBlockEndpointBasisValue regular_basis =
+      EvaluateGaugeLinkFirstBlockEndpointBasis(epsilon_value,
+                                               0.0L,
+                                               {1.0L, 0.0L},
+                                               x);
+  const GaugeLinkFirstBlockEndpointBasisValue singular_basis =
+      EvaluateGaugeLinkFirstBlockEndpointBasis(epsilon_value,
+                                               lambda,
+                                               {0.0L, 1.0L},
+                                               x);
+  const RuntimeComplex boundary_y = first_master_boundary / x;
+  const RuntimeComplex boundary_w =
+      companion_boundary - boundary_y * (5.0L / 6.0L);
+  const long double determinant =
+      regular_basis.y * singular_basis.w -
+      singular_basis.y * regular_basis.w;
+  if (std::abs(determinant) < kRuntimeTiny) {
+    throw std::runtime_error(
+        "b64ag first-block endpoint transport produced a singular connection matrix");
+  }
+
+  GaugeLinkFirstBlockEndpointCoefficients coefficients;
+  coefficients.first_master_regular_coefficient =
+      (boundary_y * singular_basis.w - boundary_w * singular_basis.y) /
+      determinant;
+  coefficients.unresolved_frobenius_coefficient =
+      (regular_basis.y * boundary_w - regular_basis.w * boundary_y) /
+      determinant;
+  coefficients.companion_regular_coefficient =
+      coefficients.first_master_regular_coefficient * (5.0L / 6.0L);
+  return coefficients;
+}
+
+bool IsSmallRelativeToTransportScale(const RuntimeComplex& value,
+                                     const RuntimeComplex& scale) {
+  const long double reference = std::max(1.0L, std::abs(scale));
+  return std::abs(value) < reference * 1e-12L;
 }
 
 }  // namespace
@@ -1500,6 +1681,132 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
         "full_eta_zero_contour_applied=false.";
   }
   return result;
+}
+
+LightlikeGaugeLinkEndpointTransportResult
+TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkFiniteBoundarySample>& boundary_samples) {
+  LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  LightlikeGaugeLinkTransportAudit scaffold =
+      BuildLightlikeGaugeLinkRetainedStateScaffold(checked_state);
+
+  LightlikeGaugeLinkEndpointTransportResult result;
+  result.retained_solution_samples_available =
+      scaffold.retained_solution_samples_available;
+  result.epsilon_sample_count = boundary_samples.size();
+  result.requested_master_count = checked_state.diffeq_masters.size();
+  result.runtime_application =
+      "b64ag-gauge-link-finite-boundary-endpoint-transport";
+  result.transport_scope =
+      "eta-zero-first-block-endpoint-terms-partial-six-master-gap";
+  result.contour_fingerprint = scaffold.contour_fingerprint;
+  result.endpoint_local_model_kind = scaffold.endpoint_local_model_kind;
+
+  const auto fail = [&result](const std::string& failure_code,
+                              const std::string& summary) {
+    result.failure_code = failure_code;
+    result.summary =
+        summary +
+        "; retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
+    return result;
+  };
+
+  if (checked_state.diffeq_masters.size() != ReviewedReductionMasterLabels().size() ||
+      !LabelsExactlyMatch(checked_state.diffeq_masters,
+                          ReviewedReductionMasterLabels())) {
+    return fail("master_set_instability",
+                "b64ag finite-boundary endpoint transport requires the reviewed "
+                "six-master DE basis");
+  }
+  if (boundary_samples.empty()) {
+    return fail("boundary_unsolved",
+                "b64ag finite-boundary endpoint transport requires finite "
+                "gaugex=1/40 boundary samples");
+  }
+  if (boundary_samples.size() != 1) {
+    return fail("insufficient_precision",
+                "b64ag finite-boundary endpoint transport currently publishes "
+                "first-block endpoint terms for one synthetic epsilon sample; "
+                "multi-sample Laurent fitting remains a downstream gap");
+  }
+
+  const LightlikeGaugeLinkFiniteBoundarySample& sample = boundary_samples.front();
+  const std::string epsilon_sample =
+      sample.epsilon_sample.empty() && !checked_state.epsilon_samples.empty()
+          ? checked_state.epsilon_samples.front()
+          : sample.epsilon_sample;
+  if (epsilon_sample.empty()) {
+    return fail("boundary_unsolved",
+                "b64ag finite-boundary endpoint transport requires an epsilon sample label");
+  }
+  if (sample.master_values.size() != checked_state.diffeq_masters.size()) {
+    return fail("master_set_instability",
+                "b64ag finite-boundary endpoint transport boundary vector width does "
+                "not match the reviewed six-master DE basis");
+  }
+
+  try {
+    const long double epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
+    const RuntimeComplex first_boundary =
+        ParseRuntimeConstantComplexExpression(sample.master_values[0],
+                                              checked_state.variable,
+                                              epsilon_value);
+    const RuntimeComplex companion_boundary =
+        ParseRuntimeConstantComplexExpression(sample.master_values[1],
+                                              checked_state.variable,
+                                              epsilon_value);
+    const GaugeLinkFirstBlockEndpointCoefficients coefficients =
+        EvaluateGaugeLinkFirstBlockEndpointCoefficients(epsilon_value,
+                                                        first_boundary,
+                                                        companion_boundary);
+    if (!IsSmallRelativeToTransportScale(
+            coefficients.unresolved_frobenius_coefficient,
+            coefficients.first_master_regular_coefficient)) {
+      return fail(
+          "continuation_budget_exhausted",
+          "b64ag first-block endpoint transport found an unresolved non-integer "
+          "Frobenius branch; publishing PickZeroRuleS terms would overclaim the "
+          "finite-gaugex transport");
+    }
+
+    const std::string first_label = ReviewedReductionMasterLabels()[0];
+    const std::string companion_label = ReviewedReductionMasterLabels()[1];
+    result.endpoint_terms.push_back(
+        {first_label,
+         {{"integer",
+           1,
+           0,
+           FormatRuntimeComplex(coefficients.first_master_regular_coefficient, 24)}}});
+    result.endpoint_terms.push_back(
+        {companion_label,
+         {{"integer",
+           0,
+           0,
+           FormatRuntimeComplex(coefficients.companion_regular_coefficient, 24)}}});
+    result.transported_master_labels = {first_label, companion_label};
+    for (std::size_t index = 2; index < ReviewedReductionMasterLabels().size();
+         ++index) {
+      result.remaining_master_gaps.push_back(
+          ReviewedReductionMasterLabels()[index] +
+          ": second DE block/downstream endpoint extraction remains unimplemented");
+    }
+    result.transported_master_count = result.endpoint_terms.size();
+    result.partial_success = true;
+    result.failure_code = "boundary_unsolved";
+    result.extraction_fingerprint = ComputeArtifactFingerprint(
+        SerializeGaugeLinkEndpointTransportForFingerprint(result));
+    result.summary =
+        "Applied b64ag finite-gaugex endpoint transport from the retained "
+        "gaugex=1/40 boundary vector to live first-block endpoint terms for " +
+        first_label + " and " + companion_label +
+        " without reading retained final solution samples. Remaining four "
+        "six-master gauge-link endpoint rows are explicit gaps; "
+        "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
+    return result;
+  } catch (const std::exception& error) {
+    return fail("boundary_unsolved", error.what());
+  }
 }
 
 std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(

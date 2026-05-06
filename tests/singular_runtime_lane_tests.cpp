@@ -1685,6 +1685,100 @@ void B64agGaugeLinkFirstEndpointCoefficientAuditTest() {
                  "full_eta_zero_contour_applied stays false",
                  "b64ag first endpoint audit should avoid full-lane overclaiming");
 }
+void B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"1"};
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> boundary_samples = {
+      {"1", {"3/20", "5", "11", "13", "17", "19"}},
+  };
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(!transport.success,
+         "b64ag finite-boundary transport must not claim full six-master success");
+  Expect(transport.partial_success,
+         "b64ag finite-boundary transport should publish the reviewed first DE block");
+  Expect(!transport.retained_solution_samples_used,
+         "b64ag finite-boundary transport must not consume retained final solution samples");
+  Expect(transport.retained_solution_samples_available,
+         "b64ag finite-boundary audit should record legacy solution sample availability");
+  Expect(!transport.full_eta_zero_contour_applied,
+         "b64ag finite-boundary transport must keep the full contour flag false");
+  Expect(transport.requested_master_count == 6 && transport.transported_master_count == 2,
+         "b64ag finite-boundary transport should report two of six live masters");
+  Expect(transport.endpoint_terms.size() == 2,
+         "b64ag finite-boundary transport should return first-block endpoint terms");
+  Expect(transport.remaining_master_gaps.size() == 4,
+         "b64ag finite-boundary transport should document the remaining four-master gap");
+  ExpectContains(transport.extraction_fingerprint,
+                 "fnv1a64:",
+                 "b64ag finite-boundary transport should fingerprint extraction");
+  Expect(transport.endpoint_terms[0].master_label ==
+             "gauge[1,1,1,0,1,0,0,0,0]",
+         "b64ag finite-boundary transport should preserve the first reviewed master");
+  Expect(transport.endpoint_terms[0].endpoint_terms.size() == 1 &&
+             transport.endpoint_terms[0].endpoint_terms.front().power == 1 &&
+             transport.endpoint_terms[0].endpoint_terms.front().coefficient == "6",
+         "b64ag finite-boundary transport should recover the synthetic first coefficient");
+  Expect(transport.endpoint_terms[1].master_label ==
+             "gauge[1,1,1,-1,1,0,0,0,0]",
+         "b64ag finite-boundary transport should preserve the companion reviewed master");
+  Expect(transport.endpoint_terms[1].endpoint_terms.size() == 1 &&
+             transport.endpoint_terms[1].endpoint_terms.front().power == 0 &&
+             transport.endpoint_terms[1].endpoint_terms.front().coefficient == "5",
+         "b64ag finite-boundary transport should recover the synthetic companion coefficient");
+  ExpectContains(transport.summary,
+                 "Remaining four six-master gauge-link endpoint rows are explicit gaps",
+                 "b64ag finite-boundary transport should not hide the unresolved masters");
+
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      transport.endpoint_terms;
+  const std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> gap_fixture =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms.insert(endpoint_terms.end(), gap_fixture.begin() + 2, gap_fixture.end());
+
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          endpoint_terms,
+          {B64agReductionFixtureTerm(target, masters[0], 0, "R0_live"),
+           B64agReductionFixtureTerm(target, masters[1], 1, "R1_live")});
+
+  Expect(reduced.success,
+         "b64ag reduced finite-part primitive should accept live first-block endpoint terms");
+  Expect(reduced.failures.empty(),
+         "b64ag reduced finite-part chain should not record failures for the synthetic target");
+  Expect(!reduced.retained_solution_samples_used,
+         "b64ag reduced finite-part chain must not consume retained solution samples");
+  Expect(!reduced.full_eta_zero_contour_applied,
+         "b64ag reduced finite-part chain must not promote full contour success");
+  Expect(reduced.ir_subtraction_applied,
+         "b64ag reduced finite-part chain should still run finite-part selection");
+  Expect(reduced.targets.size() == 1 && reduced.targets.front().success,
+         "b64ag reduced finite-part chain should publish one successful synthetic target");
+  Expect(reduced.targets.front().affected_power_sum == 1 &&
+             reduced.targets.front().normalization_factor == "gaugex^(-1)",
+         "b64ag reduced finite-part chain should keep D4,D5 normalization");
+  ExpectContains(reduced.targets.front().finite_part_coefficient,
+                 "R0_live",
+                 "b64ag reduced finite-part chain should include the live first row");
+  ExpectContains(reduced.targets.front().finite_part_coefficient,
+                 "6",
+                 "b64ag reduced finite-part chain should include the live first coefficient");
+  ExpectContains(reduced.targets.front().finite_part_coefficient,
+                 "R1_live",
+                 "b64ag reduced finite-part chain should include the live companion row");
+  ExpectContains(reduced.targets.front().finite_part_coefficient,
+                 "5",
+                 "b64ag reduced finite-part chain should include the live companion coefficient");
+  ExpectContains(reduced.targets.front().summary,
+                 "before PickZeroRuleS-compatible finite-part extraction",
+                 "b64ag reduced finite-part chain should preserve reducer ordering");
+}
 
 }  // namespace
 
@@ -1735,6 +1829,7 @@ int main() {
     B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
+    B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();
   } catch (const std::exception& error) {
     std::cerr << "singular-runtime-lane-tests failed: " << error.what() << "\n";
     return 1;

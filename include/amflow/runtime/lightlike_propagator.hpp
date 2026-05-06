@@ -66,6 +66,32 @@ struct LightlikeGaugeLinkSixMasterEndpointTerms {
   std::vector<LightlikeGaugeLinkFinitePartTerm> endpoint_terms;
 };
 
+struct LightlikeGaugeLinkFiniteBoundarySample {
+  std::string epsilon_sample;
+  std::vector<std::string> master_values;
+};
+
+struct LightlikeGaugeLinkEndpointTransportResult {
+  bool success = false;
+  bool partial_success = false;
+  bool retained_solution_samples_used = false;
+  bool retained_solution_samples_available = false;
+  bool full_eta_zero_contour_applied = false;
+  std::size_t epsilon_sample_count = 0;
+  std::size_t requested_master_count = 0;
+  std::size_t transported_master_count = 0;
+  std::string runtime_application;
+  std::string transport_scope;
+  std::string failure_code;
+  std::string contour_fingerprint;
+  std::string endpoint_local_model_kind;
+  std::string extraction_fingerprint;
+  std::vector<std::string> transported_master_labels;
+  std::vector<std::string> remaining_master_gaps;
+  std::vector<LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms;
+  std::string summary;
+};
+
 struct LightlikeGaugeLinkTargetReductionTerm {
   std::string target_label;
   std::string master_label;
@@ -217,6 +243,11 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
     const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
     const std::vector<LightlikeGaugeLinkTargetReductionTerm>& target_reduction_terms,
     const std::string& variable = "gaugex");
+
+LightlikeGaugeLinkEndpointTransportResult
+TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkFiniteBoundarySample>& boundary_samples);
 
 std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
     const std::string& diffeq_raw);

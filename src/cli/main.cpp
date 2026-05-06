@@ -4648,9 +4648,172 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
       "; dropped_term_audit=\"" + audit.dropped_term_audit +
       "\"; minimum_pole_distance_to_contour=" +
       BigFloatCompactString(contour_plan.minimum_pole_distance_to_waypoints, 24) +
-      "; final_solution_samples_used_as_input=false. Live high-precision "
+      "; final_solution_samples_used_as_input=false. Full seven-master "
       "eta-infinity-to-eta=0 ODE propagation and Laurent fitting remain deferred; "
       "full_eta_zero_contour_applied stays false.";
+  return audit;
+}
+
+BigComplex ComplexEtaPolynomialCoefficientOrZero(
+    const ComplexEtaPolynomial& polynomial,
+    const std::size_t index) {
+  return index < polynomial.coefficients.size() ? polynomial.coefficients[index]
+                                                : BigComplex{};
+}
+
+BigComplex BigComplexPowNegImBranch(const BigComplex& base,
+                                     const BigComplex& exponent);
+
+struct B61nScalarContourEndpointAudit {
+  std::size_t master_index = 0;
+  std::string master_label;
+  std::size_t epsilon_sample_count = 0;
+  BigComplex denominator_shift;
+  BigComplex contour_pole;
+  BigComplex first_sample_exponent;
+  BigComplex first_sample_endpoint_factor;
+  BigComplex first_sample_endpoint_value;
+  std::string contour_fingerprint;
+  std::string endpoint_local_model_kind;
+  std::string extraction_order;
+  std::string extraction_fingerprint;
+  std::string summary;
+};
+
+std::string SerializeB61nScalarContourEndpointAuditForFingerprint(
+    const B61nScalarContourEndpointAudit& audit) {
+  std::ostringstream out;
+  out << "kind=b61n-scalar-contour-endpoint-evaluation\n";
+  out << "master=" << audit.master_label << "\n";
+  out << "epsilon_sample_count=" << audit.epsilon_sample_count << "\n";
+  out << "denominator_shift="
+      << BigComplexCompactString(audit.denominator_shift, 50) << "\n";
+  out << "contour_pole="
+      << BigComplexCompactString(audit.contour_pole, 50) << "\n";
+  out << "first_sample_exponent="
+      << BigComplexCompactString(audit.first_sample_exponent, 50) << "\n";
+  out << "contour_fingerprint=" << audit.contour_fingerprint << "\n";
+  out << "endpoint_local_model_kind=" << audit.endpoint_local_model_kind << "\n";
+  out << "extraction_order=" << audit.extraction_order << "\n";
+  out << "final_solution_samples_used_as_input=false\n";
+  return out.str();
+}
+
+std::optional<B61nScalarContourEndpointAudit>
+ApplyB61nFirstScalarContourEndpointTransport(
+    const DirectSolveSeriesSpec& spec,
+    const ComplexKinematicsContourScaffoldAudit& contour_scaffold_audit,
+    std::vector<std::vector<BigComplex>>& master_samples) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    return std::nullopt;
+  }
+
+  const std::string master_label = "box[0,0,0,1]";
+  const std::optional<std::size_t> master_index =
+      FindMasterIndexByLabel(spec, master_label);
+  if (!master_index.has_value() || *master_index >= master_samples.size()) {
+    return std::nullopt;
+  }
+
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end() ||
+      *master_index >= matrix_it->second.size() ||
+      matrix_it->second[*master_index].size() != spec.masters.size()) {
+    return std::nullopt;
+  }
+  const std::vector<std::string>& row = matrix_it->second[*master_index];
+
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  std::vector<BigComplex> transported_samples(spec.boundary_epsilon_samples.size());
+  B61nScalarContourEndpointAudit audit;
+  audit.master_index = *master_index;
+  audit.master_label = master_label;
+  audit.epsilon_sample_count = spec.boundary_epsilon_samples.size();
+  audit.contour_fingerprint = contour_scaffold_audit.contour_fingerprint;
+  audit.endpoint_local_model_kind = contour_scaffold_audit.endpoint_local_model_kind;
+  audit.extraction_order = "regular-taylor-r0 eta^0 endpoint coefficient";
+
+  for (std::size_t sample_index = 0;
+       sample_index < spec.boundary_epsilon_samples.size();
+       ++sample_index) {
+    std::map<std::string, BigComplex> bindings = numeric_substitutions;
+    bindings["eps"] =
+        RealBigComplex(ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]));
+
+    std::optional<ComplexEtaRationalPolynomial> diagonal_rational;
+    for (std::size_t column_index = 0; column_index < row.size(); ++column_index) {
+      const ComplexEtaRationalPolynomial rational =
+          ParseComplexRationalEtaExpression(row[column_index], bindings);
+      const bool nonzero = ComplexEtaPolynomialDegree(rational.numerator) >= 0;
+      if (!nonzero) {
+        continue;
+      }
+      if (column_index != *master_index) {
+        return std::nullopt;
+      }
+      diagonal_rational = rational;
+    }
+    if (!diagonal_rational.has_value()) {
+      return std::nullopt;
+    }
+
+    if (ComplexEtaPolynomialDegree(diagonal_rational->numerator) > 0 ||
+        ComplexEtaPolynomialDegree(diagonal_rational->denominator) != 1) {
+      return std::nullopt;
+    }
+    const BigComplex numerator_constant =
+        ComplexEtaPolynomialCoefficientOrZero(diagonal_rational->numerator, 0);
+    const BigComplex denominator_constant =
+        ComplexEtaPolynomialCoefficientOrZero(diagonal_rational->denominator, 0);
+    const BigComplex denominator_eta =
+        ComplexEtaPolynomialCoefficientOrZero(diagonal_rational->denominator, 1);
+    if (IsTiny(denominator_eta)) {
+      return std::nullopt;
+    }
+
+    const BigComplex exponent = numerator_constant / denominator_eta;
+    const BigComplex denominator_shift = denominator_constant / denominator_eta;
+    const BigComplex endpoint_factor =
+        BigComplexPowNegImBranch(denominator_shift, exponent);
+    transported_samples[sample_index] =
+        master_samples[*master_index][sample_index] * endpoint_factor;
+
+    if (sample_index == 0) {
+      audit.denominator_shift = denominator_shift;
+      audit.contour_pole = BigComplex{} - denominator_shift;
+      audit.first_sample_exponent = exponent;
+      audit.first_sample_endpoint_factor = endpoint_factor;
+      audit.first_sample_endpoint_value = transported_samples[sample_index];
+    }
+  }
+
+  audit.extraction_fingerprint =
+      amflow::ComputeArtifactFingerprint(
+          SerializeB61nScalarContourEndpointAuditForFingerprint(audit));
+  audit.summary =
+      "Applied b61n scalar lower-half-plane contour endpoint transport for " +
+      audit.master_label +
+      " from eta-infinity boundary samples without reading final solution samples; "
+      "detected a decoupled first-order eta equation with contour pole " +
+      BigComplexCompactString(audit.contour_pole, 24) +
+      ", denominator shift " +
+      BigComplexCompactString(audit.denominator_shift, 24) +
+      ", first epsilon-sample exponent " +
+      BigComplexCompactString(audit.first_sample_exponent, 24) +
+      ", endpoint factor " +
+      BigComplexCompactString(audit.first_sample_endpoint_factor, 24) +
+      ", extraction_order=\"" + audit.extraction_order +
+      "\", endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+      ", contour_fingerprint=" + audit.contour_fingerprint +
+      ", extraction_fingerprint=" + audit.extraction_fingerprint +
+      ", epsilon_sample_count=" +
+      std::to_string(audit.epsilon_sample_count) +
+      ", final_solution_samples_used_as_input=false. Full seven-master complex "
+      "eta-contour endpoint transport remains deferred; full_eta_zero_contour_applied "
+      "stays false.";
+
+  master_samples[*master_index] = std::move(transported_samples);
   return audit;
 }
 
@@ -4714,6 +4877,53 @@ BigComplex RealBigComplex(const BigFloat& value) {
   BigComplex result;
   result.real = value;
   return result;
+}
+
+BigFloat PiConstant() {
+  return boost::math::constants::pi<BigFloat>();
+}
+
+BigFloat BigAtan2(const BigFloat& y, const BigFloat& x) {
+  if (x > 0) {
+    return atan(y / x);
+  }
+  if (x < 0) {
+    const BigFloat base = atan(y / x);
+    return y >= 0 ? BigFloat(base + PiConstant())
+                  : BigFloat(base - PiConstant());
+  }
+  if (y > 0) {
+    return PiConstant() / BigFloat(2);
+  }
+  if (y < 0) {
+    return -PiConstant() / BigFloat(2);
+  }
+  return 0;
+}
+
+BigComplex BigComplexLogNegImBranch(const BigComplex& value) {
+  if (IsTiny(value)) {
+    throw std::runtime_error("complex logarithm encountered zero");
+  }
+  BigComplex result;
+  result.real = log(BigAbs(value));
+  if (IsTiny(value.imaginary) && value.real < 0) {
+    result.imaginary = -PiConstant();
+  } else {
+    result.imaginary = BigAtan2(value.imaginary, value.real);
+  }
+  return result;
+}
+
+BigComplex BigComplexExp(const BigComplex& value) {
+  const BigFloat magnitude = exp(value.real);
+  return {magnitude * cos(value.imaginary),
+          magnitude * sin(value.imaginary)};
+}
+
+BigComplex BigComplexPowNegImBranch(const BigComplex& base,
+                                     const BigComplex& exponent) {
+  return BigComplexExp(exponent * BigComplexLogNegImBranch(base));
 }
 
 BigFloat EulerGammaConstant() {
@@ -6088,6 +6298,14 @@ std::string EndpointTransportEpsilonOrderLabel(
 
 std::string EndpointTransportDeferredReason(
     const amflow::SolverDiagnostics& diagnostics) {
+  if (!diagnostics.eta_endpoint_extraction_fingerprint.empty()) {
+    return "full seven-master singular eta=0 complex contour execution remains "
+           "deferred after the reviewed scalar contour endpoint coefficient "
+           "transport for " +
+           (diagnostics.eta_endpoint_transported_integrals.empty()
+                ? std::string("one master")
+                : diagnostics.eta_endpoint_transported_integrals.front());
+  }
   return "full singular eta=0 complex contour execution and non-selected endpoint "
          "extraction remain deferred after retained primitive endpoint coefficient "
          "transport through " +
@@ -7009,6 +7227,13 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
                                                 regions,
                                                 region_contributions,
                                                 master_samples);
+  std::optional<B61nScalarContourEndpointAudit> b61n_scalar_endpoint_audit;
+  if (complex_contour_scaffold_audit.has_value()) {
+    b61n_scalar_endpoint_audit =
+        ApplyB61nFirstScalarContourEndpointTransport(direct_spec,
+                                                     *complex_contour_scaffold_audit,
+                                                     master_samples);
+  }
 
   amflow::SolverDiagnostics diagnostics;
   diagnostics.success = true;
@@ -7033,6 +7258,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
   const int endpoint_transport_count =
       TransportThroughEpsOrder(direct_spec, diagnostics, endpoint_transport_order);
   diagnostics.eta_endpoint_transport_count = endpoint_transport_count;
+  if (b61n_scalar_endpoint_audit.has_value()) {
+    ++diagnostics.eta_endpoint_transport_count;
+    AppendEtaEndpointTransportedIntegralOnce(
+        diagnostics, b61n_scalar_endpoint_audit->master_label);
+    diagnostics.eta_endpoint_contour_fingerprint =
+        b61n_scalar_endpoint_audit->contour_fingerprint;
+    diagnostics.eta_endpoint_local_model_kind =
+        b61n_scalar_endpoint_audit->endpoint_local_model_kind;
+    diagnostics.eta_endpoint_extraction_fingerprint =
+        b61n_scalar_endpoint_audit->extraction_fingerprint;
+  }
 
   diagnostics.summary =
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
@@ -7049,6 +7285,9 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         " Applied retained eta=0 primitive endpoint coefficient transport through " +
         EndpointTransportEpsilonOrderLabel(diagnostics) + " to " +
         std::to_string(endpoint_transport_count) + " master coefficient set(s).";
+  }
+  if (b61n_scalar_endpoint_audit.has_value()) {
+    diagnostics.summary += " " + b61n_scalar_endpoint_audit->summary;
   }
   diagnostics.summary +=
       " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
@@ -7820,9 +8059,12 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                         : "deferred-finite-solution-sample-provider"))
                       : status == "success"
                           ? (diagnostics.eta_endpoint_transport_count > 0
-                                 ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
-                                   "eta-infinity-de-asymptotic-transport+"
-                                   "eta-zero-selected-endpoint-transport"
+                                 ? (diagnostics.eta_asymptotic_transport_count > 0
+                                        ? "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-infinity-de-asymptotic-transport+"
+                                          "eta-zero-selected-endpoint-transport"
+                                        : "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-zero-selected-endpoint-transport")
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
@@ -7892,8 +8134,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                       : diagnostics.full_eta_zero_contour_applied
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
-                          ? "eta-infinity-de-asymptotic-first-coefficient+"
-                            "eta-zero-selected-endpoint-coefficients"
+                          ? (diagnostics.eta_asymptotic_transport_count > 0
+                                 ? "eta-infinity-de-asymptotic-first-coefficient+"
+                                   "eta-zero-selected-endpoint-coefficients"
+                                 : "eta-zero-selected-endpoint-coefficients")
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient"
                           : "not-applied-boundary-only")
@@ -8299,9 +8543,12 @@ std::string SerializeSolveSeriesBundleJson(
                                         : "deferred-finite-solution-sample-provider"))
                       : evaluation.status == "success"
                           ? (diagnostics.eta_endpoint_transport_count > 0
-                                 ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
-                                   "eta-infinity-de-asymptotic-transport+"
-                                   "eta-zero-selected-endpoint-transport"
+                                 ? (diagnostics.eta_asymptotic_transport_count > 0
+                                        ? "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-infinity-de-asymptotic-transport+"
+                                          "eta-zero-selected-endpoint-transport"
+                                        : "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-zero-selected-endpoint-transport")
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "retained-asymptotic-subsystem-sample-boundary-evaluator+"
                                    "eta-infinity-de-asymptotic-transport"
@@ -8370,8 +8617,10 @@ std::string SerializeSolveSeriesBundleJson(
                       : diagnostics.full_eta_zero_contour_applied
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
-                          ? "eta-infinity-de-asymptotic-first-coefficient+"
-                            "eta-zero-selected-endpoint-coefficients"
+                          ? (diagnostics.eta_asymptotic_transport_count > 0
+                                 ? "eta-infinity-de-asymptotic-first-coefficient+"
+                                   "eta-zero-selected-endpoint-coefficients"
+                                 : "eta-zero-selected-endpoint-coefficients")
                       : diagnostics.eta_asymptotic_transport_count > 0
                           ? "eta-infinity-de-asymptotic-first-coefficient"
                           : "not-applied-boundary-only")

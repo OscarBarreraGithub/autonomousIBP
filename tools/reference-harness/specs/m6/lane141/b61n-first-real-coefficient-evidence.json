@@ -1,0 +1,26 @@
+{
+  "amflow_golden_slice": "tools/reference-harness/specs/m6/lane141/complex_kinematics.box0001.amflow-golden.txt",
+  "benchmark_id": "complex_kinematics",
+  "comparator": {
+    "compared_coefficient_count": 4,
+    "minimum_digit_agreement": 54,
+    "passed": true,
+    "passed_coefficient_count": 4,
+    "path": "tools/reference-harness/specs/m6/lane141/complex_kinematics.box0001.compare30.json",
+    "tolerance_digits": 30
+  },
+  "cpp_result": "tools/reference-harness/specs/m6/lane141/complex_kinematics.box0001.cpp-result.json",
+  "eta_zero_endpoint_transport_applied": true,
+  "eta_zero_endpoint_transported_integrals": [
+    "box[0,0,0,1]"
+  ],
+  "final_solution_samples_used_as_input": false,
+  "full_eta_zero_contour_applied": false,
+  "full_stripped_result": "tools/reference-harness/specs/m6/lane141/complex_kinematics.box0001.stripped-result.json",
+  "lane": "lane141",
+  "master": "box[0,0,0,1]",
+  "runtime_boundary_provider": "retained-asymptotic-subsystem-sample-boundary-evaluator+eta-zero-selected-endpoint-transport",
+  "schema_version": 1,
+  "transport_applied": true,
+  "transport_scope": "eta-zero-selected-endpoint-coefficients"
+}

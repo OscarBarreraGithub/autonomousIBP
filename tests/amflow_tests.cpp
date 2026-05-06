@@ -49134,17 +49134,35 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "stripped complex_kinematics should preserve benchmark identity");
   ExpectContains(stripped_json,
                  "\"runtime_boundary_provider\": "
-                 "\"retained-asymptotic-subsystem-sample-boundary-evaluator\"",
-                 "stripped complex_kinematics should use the non-solution boundary provider");
+                 "\"retained-asymptotic-subsystem-sample-boundary-evaluator+"
+                 "eta-zero-selected-endpoint-transport\"",
+                 "stripped complex_kinematics should use the non-solution scalar contour "
+                 "endpoint provider");
   Expect(stripped_json.find("retained-loop-solution-sample-cache-laurent-fit") ==
              std::string::npos,
          "stripped complex_kinematics must not fall back to retained samples");
   ExpectContains(stripped_json,
-                 "\"transport_applied\": false",
-                 "partial b61n scaffold must not report contour transport");
+                 "\"transport_applied\": true",
+                 "b61n scalar endpoint contour transport should report transport only after "
+                 "the first master is evaluated");
+  ExpectContains(stripped_json,
+                 "\"transport_scope\": \"eta-zero-selected-endpoint-coefficients\"",
+                 "b61n scalar endpoint contour transport should not claim full seven-master "
+                 "contour scope");
   ExpectContains(stripped_json,
                  "\"full_eta_zero_contour_applied\": false",
-                 "partial b61n scaffold must keep the full-contour flag false");
+                 "single-master b61n scalar contour transport must keep the full-contour flag "
+                 "false");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transport_applied\": true",
+                 "single-master b61n scalar contour transport should set endpoint transport");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_master_count\": 1",
+                 "single-master b61n scalar contour transport should count only one master");
+  ExpectContains(stripped_json,
+                 "\"eta_zero_endpoint_transported_integrals\": [\"box[0,0,0,1]\"]",
+                 "single-master b61n scalar contour transport should name only the tadpole "
+                 "master");
   ExpectContains(stripped_json,
                  "b61n complex-kinematics eta=0 contour scaffold parsed 5 complex Numeric "
                  "substitution",
@@ -49177,9 +49195,14 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "final_solution_samples_used_as_input=false",
                  "partial b61n scaffold should audit that final solution samples were not used");
   ExpectContains(stripped_json,
-                 "Live high-precision eta-infinity-to-eta=0 ODE propagation and Laurent "
+                 "Applied b61n scalar lower-half-plane contour endpoint transport for "
+                 "box[0,0,0,1]",
+                 "single-master b61n scalar contour transport should document the applied "
+                 "runtime path");
+  ExpectContains(stripped_json,
+                 "Full seven-master eta-infinity-to-eta=0 ODE propagation and Laurent "
                  "fitting remain deferred",
-                 "partial b61n scaffold should document the exact remaining runtime gap");
+                 "partial b61n scaffold should document the remaining runtime gap");
   ExpectContains(stripped_json,
                  "full_eta_zero_contour_applied stays false",
                  "partial b61n scaffold should explicitly avoid overclaiming");

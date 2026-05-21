@@ -1929,4 +1929,166 @@ std::string SerializeCutkoskySymbolicSubintegralAssemblyAudit(
   return out.str();
 }
 
+CutkoskyWeightedResidueEvaluationPlan
+BuildCutkoskyWeightedResidueEvaluationPlan(const ProblemSpec& spec) {
+  const std::vector<std::string> validation_messages = ValidateProblemSpec(spec);
+  if (!validation_messages.empty()) {
+    throw std::invalid_argument(JoinMessages(validation_messages));
+  }
+
+  const std::vector<std::size_t> cut_indices = CollectCutPropagatorIndices(spec);
+  if (cut_indices.empty()) {
+    throw BoundaryUnsolvedError(
+        "b63n Cutkosky weighted residue evaluation plan requires exact "
+        "automatic_phasespace and feynman_prescription weighted residue surfaces");
+  }
+  RejectEtaOnCutPropagators(spec, cut_indices);
+  static_cast<void>(CollectCutPowers(spec, cut_indices));
+
+  if (MatchesAutomaticPhaseSpaceFirstCoefficientSurface(spec, cut_indices)) {
+    throw BoundaryUnsolvedError(
+        "b63n Cutkosky weighted residue evaluation plan rejects selected pure-cut "
+        "coefficient surfaces; use the selected pure-cut coefficient evaluator instead");
+  }
+
+  CutkoskyWeightedResidueEvaluationPlan plan;
+  plan.reviewed_surface = true;
+  plan.coefficient_free = true;
+  plan.live_coefficients_available = false;
+  plan.retained_solution_samples_used = false;
+  plan.full_eta_zero_contour_applied = false;
+  plan.requires_moment_reduction = true;
+  plan.requires_branch_ledger_validation = true;
+  plan.requires_endpoint_laurent_series = true;
+  plan.requires_external_cas_validation = true;
+  plan.coefficient_policy = "coefficient-free";
+
+  if (MatchesAutomaticPhaseSpaceSurface(spec, cut_indices)) {
+    const CutkoskySymbolicIntegrand integrand =
+        BuildAutomaticPhaseSpaceSymbolicIntegrand(spec);
+    const CutkoskyEtaZeroTransportAudit transport_audit =
+        BuildCutkoskyEtaZeroTransportScaffold(spec);
+    plan.surface_label = integrand.surface_label;
+    plan.residue_model_kind = integrand.model_kind;
+    plan.phase_space_parameterization = integrand.phase_space_parameterization;
+    plan.physical_integration_domain = integrand.physical_integration_domain;
+    plan.cut_denominator_indices = cut_indices;
+    plan.residue_variables = integrand.residue_variables;
+    if (!transport_audit.branch_ledger_entries.empty()) {
+      plan.branch_ledger_summary = transport_audit.branch_ledger_entries.back();
+    }
+    plan.uncut_denominator_indices.reserve(integrand.factors.size());
+    plan.uncut_denominator_roles.reserve(integrand.factors.size());
+    for (const CutkoskySymbolicIntegrandFactor& factor : integrand.factors) {
+      plan.uncut_denominator_indices.push_back(factor.denominator_index);
+      plan.uncut_denominator_roles.push_back(factor.role);
+    }
+    return plan;
+  }
+
+  if (MatchesFeynmanPrescriptionSurface(spec, cut_indices)) {
+    const bool plus_minus =
+        VectorEquals(spec.family.loop_prescriptions,
+                     {FeynmanPrescription::PlusI0,
+                      FeynmanPrescription::MinusI0,
+                      FeynmanPrescription::None});
+    const bool minus_plus =
+        VectorEquals(spec.family.loop_prescriptions,
+                     {FeynmanPrescription::MinusI0,
+                      FeynmanPrescription::PlusI0,
+                      FeynmanPrescription::None});
+    if (!plus_minus && !minus_plus) {
+      throw BoundaryUnsolvedError(
+          "b63n Cutkosky weighted residue evaluation plan requires exact "
+          "automatic_phasespace and feynman_prescription weighted residue surfaces, "
+          "with feynman_prescription restricted to reviewed plus/minus or minus/plus "
+          "loop-prescription assignments");
+    }
+
+    const CutkoskySymbolicSubintegralAssembly assembly =
+        BuildFeynmanPrescriptionSymbolicSubintegralAssembly(spec);
+    plan.requires_feynman_conjugate_validation = true;
+    plan.surface_label = assembly.surface_label;
+    plan.residue_model_kind = assembly.model_kind;
+    plan.conjugate_residue_model_kind =
+        plus_minus ? "feynman_prescription::two-body-residue::minus-plus"
+                   : "feynman_prescription::two-body-residue::plus-minus";
+    plan.phase_space_parameterization = assembly.phase_space_parameterization;
+    plan.physical_integration_domain = assembly.physical_integration_domain;
+    plan.cut_denominator_indices = assembly.cut_denominator_indices;
+    plan.residue_variables = assembly.residue_variables;
+    plan.branch_ledger_summary = assembly.branch_ledger_summary;
+    for (const CutkoskySymbolicSubintegral& subintegral : assembly.subintegrals) {
+      for (const CutkoskySymbolicSubintegralFactor& factor : subintegral.factors) {
+        plan.uncut_denominator_indices.push_back(factor.denominator_index);
+        plan.uncut_denominator_roles.push_back(factor.role);
+      }
+    }
+    return plan;
+  }
+
+  throw BoundaryUnsolvedError(
+      "b63n Cutkosky weighted residue evaluation plan requires exact "
+      "automatic_phasespace and feynman_prescription weighted residue surfaces");
+}
+
+std::string SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+    const CutkoskyWeightedResidueEvaluationPlan& plan) {
+  std::ostringstream out;
+  out << "kind=b63n-cutkosky-weighted-residue-evaluation-plan\n";
+  out << "reviewed_surface=" << (plan.reviewed_surface ? "true" : "false") << "\n";
+  out << "surface=" << plan.surface_label << "\n";
+  out << "residue_model_kind=" << plan.residue_model_kind << "\n";
+  out << "coefficient_policy="
+      << (plan.coefficient_policy.empty() ? "coefficient-free"
+                                          : plan.coefficient_policy)
+      << "\n";
+  out << "live_coefficients_available="
+      << (plan.live_coefficients_available ? "true" : "false") << "\n";
+  out << "retained_solution_samples_used="
+      << (plan.retained_solution_samples_used ? "true" : "false") << "\n";
+  out << "full_eta_zero_contour_applied="
+      << (plan.full_eta_zero_contour_applied ? "true" : "false") << "\n";
+  out << "parameterization=" << plan.phase_space_parameterization << "\n";
+  out << "domain=" << plan.physical_integration_domain << "\n";
+  out << "cut_denominators="
+      << JoinPropagatorDisplayLabels(plan.cut_denominator_indices) << "\n";
+  out << "moment_weights="
+      << JoinPropagatorDisplayLabels(plan.uncut_denominator_indices) << "\n";
+  out << "variables=";
+  for (std::size_t index = 0; index < plan.residue_variables.size(); ++index) {
+    if (index != 0) {
+      out << ",";
+    }
+    out << plan.residue_variables[index];
+  }
+  out << "\n";
+  for (std::size_t index = 0; index < plan.uncut_denominator_roles.size(); ++index) {
+    out << "moment_weight[" << index << "]=" << plan.uncut_denominator_roles[index]
+        << "\n";
+  }
+  if (!plan.branch_ledger_summary.empty()) {
+    out << "branch_ledger=" << plan.branch_ledger_summary << "\n";
+  }
+  if (!plan.conjugate_residue_model_kind.empty()) {
+    out << "conjugate_partner=" << plan.conjugate_residue_model_kind << "\n";
+  }
+  if (plan.requires_moment_reduction) {
+    out << "required_validation=moment-reduction\n";
+  }
+  if (plan.requires_branch_ledger_validation) {
+    out << "required_validation=branch-ledger\n";
+  }
+  if (plan.requires_endpoint_laurent_series) {
+    out << "required_validation=endpoint-Laurent\n";
+  }
+  if (plan.requires_external_cas_validation) {
+    out << "required_validation=external-CAS\n";
+  }
+  if (plan.requires_feynman_conjugate_validation) {
+    out << "required_validation=feynman-conjugate\n";
+  }
+  return out.str();
+}
+
 }  // namespace amflow

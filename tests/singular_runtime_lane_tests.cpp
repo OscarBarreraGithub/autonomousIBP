@@ -1647,6 +1647,194 @@ void B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest() {
       "denominator D11");
 }
 
+template <typename WeightedResiduePlan>
+void ExpectB63nWeightedResiduePlanKeepsDeferredContract(
+    const WeightedResiduePlan& plan,
+    const std::string& audit,
+    const std::string& context,
+    const bool requires_feynman_conjugate_validation) {
+  Expect(plan.reviewed_surface,
+         context + " weighted residue plan should recognize a reviewed b63n surface");
+  Expect(plan.coefficient_free,
+         context + " weighted residue plan must remain coefficient-free");
+  Expect(!plan.live_coefficients_available,
+         context + " weighted residue plan must not claim live coefficients");
+  Expect(!plan.retained_solution_samples_used,
+         context + " weighted residue plan must not read retained final samples");
+  Expect(!plan.full_eta_zero_contour_applied,
+         context + " weighted residue plan must keep the full eta=0 contour flag false");
+  Expect(plan.requires_moment_reduction,
+         context + " weighted residue plan should require moment reduction");
+  Expect(plan.requires_branch_ledger_validation,
+         context + " weighted residue plan should require branch-ledger validation");
+  Expect(plan.requires_endpoint_laurent_series,
+         context + " weighted residue plan should require endpoint-Laurent construction");
+  Expect(plan.requires_external_cas_validation,
+         context + " weighted residue plan should require external-CAS validation");
+  Expect(plan.requires_feynman_conjugate_validation ==
+             requires_feynman_conjugate_validation,
+         context + " weighted residue plan should expose the expected feynman "
+                   "conjugate validation gate");
+
+  ExpectContains(audit,
+                 "kind=b63n-cutkosky-weighted-residue-evaluation-plan",
+                 context + " weighted residue audit should identify the plan kind");
+  ExpectContains(audit,
+                 "coefficient_policy=coefficient-free",
+                 context + " weighted residue audit must be coefficient-free");
+  ExpectContains(audit,
+                 "live_coefficients_available=false",
+                 context + " weighted residue audit must not publish coefficients");
+  ExpectContains(audit,
+                 "retained_solution_samples_used=false",
+                 context + " weighted residue audit must reject retained final samples");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 context + " weighted residue audit must keep the full contour flag false");
+  ExpectContains(audit,
+                 "required_validation=moment-reduction",
+                 context + " weighted residue audit should require moment reduction");
+  ExpectContains(audit,
+                 "required_validation=branch-ledger",
+                 context + " weighted residue audit should require branch-ledger validation");
+  ExpectContains(audit,
+                 "required_validation=endpoint-Laurent",
+                 context + " weighted residue audit should require endpoint-Laurent "
+                           "construction");
+  ExpectContains(audit,
+                 "required_validation=external-CAS",
+                 context + " weighted residue audit should require external-CAS validation");
+  if (requires_feynman_conjugate_validation) {
+    ExpectContains(audit,
+                   "required_validation=feynman-conjugate",
+                   context + " weighted residue audit should require feynman conjugate "
+                             "validation");
+  } else {
+    ExpectNotContains(audit,
+                      "required_validation=feynman-conjugate",
+                      context + " weighted residue audit should not require feynman "
+                                "conjugate validation");
+  }
+}
+
+void B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest() {
+  const auto automatic_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          MakeB63nAutomaticPhaseSpaceSpec());
+  const std::string automatic_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(automatic_plan);
+  Expect(automatic_plan.surface_label == "phase[1,2,1,1,1,1,1]",
+         "b63n automatic weighted residue plan should bind the weighted phase-space "
+         "target");
+  Expect(automatic_plan.residue_model_kind ==
+             "automatic_phasespace::one-mass-three-body-residue",
+         "b63n automatic weighted residue plan should use the weighted residue model");
+  ExpectContains(automatic_audit,
+                 "D2,D4,D6,D7",
+                 "b63n automatic weighted residue audit should name the required "
+                 "uncut moment weights");
+  ExpectContains(automatic_audit,
+                 "cut propagators D1,D3,D5",
+                 "b63n automatic weighted residue audit should preserve the branch "
+                 "ledger for the cut support");
+  ExpectB63nWeightedResiduePlanKeepsDeferredContract(
+      automatic_plan,
+      automatic_audit,
+      "b63n automatic_phasespace",
+      false);
+
+  const auto plus_minus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+  const auto minus_plus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::MinusI0,
+                                          amflow::FeynmanPrescription::PlusI0));
+  const std::string plus_minus_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plus_minus_plan);
+  const std::string minus_plus_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(minus_plus_plan);
+
+  Expect(plus_minus_plan.surface_label ==
+             "loopxloop[0,1,1,1,1,0,1,1,1,1,0,0]",
+         "b63n feynman plus/minus weighted residue plan should bind the reviewed "
+         "target");
+  Expect(plus_minus_plan.residue_model_kind ==
+             "feynman_prescription::two-body-residue::plus-minus",
+         "b63n feynman plus/minus weighted residue plan should record the "
+         "plus/minus model");
+  Expect(minus_plus_plan.residue_model_kind ==
+             "feynman_prescription::two-body-residue::minus-plus",
+         "b63n feynman minus/plus weighted residue plan should record the "
+         "minus/plus model");
+  Expect(plus_minus_plan.conjugate_residue_model_kind ==
+             minus_plus_plan.residue_model_kind,
+         "b63n feynman plus/minus weighted residue plan should name its conjugate "
+         "validation partner");
+  Expect(minus_plus_plan.conjugate_residue_model_kind ==
+             plus_minus_plan.residue_model_kind,
+         "b63n feynman minus/plus weighted residue plan should name its conjugate "
+         "validation partner");
+  ExpectContains(plus_minus_audit,
+                 "T_l1=plus_i0, T_l2=minus_i0",
+                 "b63n feynman plus/minus weighted residue audit should preserve the "
+                 "subintegral ledger");
+  ExpectContains(minus_plus_audit,
+                 "T_l1=minus_i0, T_l2=plus_i0",
+                 "b63n feynman minus/plus weighted residue audit should preserve the "
+                 "subintegral ledger");
+  ExpectContains(plus_minus_audit,
+                 "conjugate_partner=feynman_prescription::two-body-residue::minus-plus",
+                 "b63n feynman plus/minus audit should require its conjugate partner");
+  ExpectContains(minus_plus_audit,
+                 "conjugate_partner=feynman_prescription::two-body-residue::plus-minus",
+                 "b63n feynman minus/plus audit should require its conjugate partner");
+  ExpectB63nWeightedResiduePlanKeepsDeferredContract(
+      plus_minus_plan,
+      plus_minus_audit,
+      "b63n feynman_prescription plus/minus",
+      true);
+  ExpectB63nWeightedResiduePlanKeepsDeferredContract(
+      minus_plus_plan,
+      minus_plus_audit,
+      "b63n feynman_prescription minus/plus",
+      true);
+
+  amflow::ProblemSpec pure_cut = MakeB63nAutomaticPhaseSpaceSpec();
+  pure_cut.targets = {
+      amflow::TargetIntegral{"phase", {1, 0, 1, 0, 1, 0, 0}}};
+  ExpectRuntimeErrorContains(
+      [&pure_cut]() {
+        static_cast<void>(
+            amflow::BuildCutkoskyWeightedResidueEvaluationPlan(pure_cut));
+      },
+      "rejects selected pure-cut coefficient surfaces",
+      "b63n weighted residue plan should not reuse selected pure-cut evidence");
+
+  amflow::ProblemSpec mutated_automatic = MakeB63nAutomaticPhaseSpaceSpec();
+  mutated_automatic.family.propagators[1].expression = "(l1+p2)^2";
+  ExpectRuntimeErrorContains(
+      [&mutated_automatic]() {
+        static_cast<void>(
+            amflow::BuildCutkoskyWeightedResidueEvaluationPlan(mutated_automatic));
+      },
+      "exact automatic_phasespace and feynman_prescription weighted residue surfaces",
+      "b63n weighted residue plan should reject a mutated automatic surface");
+
+  amflow::ProblemSpec mutated_feynman = MakeB63nFeynmanPrescriptionSpec(
+      amflow::FeynmanPrescription::PlusI0,
+      amflow::FeynmanPrescription::MinusI0);
+  mutated_feynman.family.propagators[8].mass = "msq";
+  ExpectRuntimeErrorContains(
+      [&mutated_feynman]() {
+        static_cast<void>(
+            amflow::BuildCutkoskyWeightedResidueEvaluationPlan(mutated_feynman));
+      },
+      "exact automatic_phasespace and feynman_prescription weighted residue surfaces",
+      "b63n weighted residue plan should reject a mutated feynman surface");
+}
+
 void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
   const amflow::CutkoskyEtaZeroSelectionResult selected =
       amflow::PickCutkoskyEtaZeroTerm({
@@ -3676,6 +3864,7 @@ int main() {
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
     B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest();
     B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest();
+    B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();

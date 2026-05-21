@@ -239,6 +239,30 @@ struct CutkoskySymbolicSubintegralAssembly {
   std::string coefficient_policy;
 };
 
+struct CutkoskyWeightedResidueEvaluationPlan {
+  bool reviewed_surface = false;
+  bool coefficient_free = false;
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  bool requires_moment_reduction = false;
+  bool requires_branch_ledger_validation = false;
+  bool requires_endpoint_laurent_series = false;
+  bool requires_external_cas_validation = false;
+  bool requires_feynman_conjugate_validation = false;
+  std::string surface_label;
+  std::string residue_model_kind;
+  std::string conjugate_residue_model_kind;
+  std::string phase_space_parameterization;
+  std::string physical_integration_domain;
+  std::vector<std::size_t> cut_denominator_indices;
+  std::vector<std::size_t> uncut_denominator_indices;
+  std::vector<std::string> uncut_denominator_roles;
+  std::vector<std::string> residue_variables;
+  std::string branch_ledger_summary;
+  std::string coefficient_policy;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -285,5 +309,9 @@ CutkoskySymbolicSubintegralAssembly
 BuildFeynmanPrescriptionSymbolicSubintegralAssembly(const ProblemSpec& spec);
 std::string SerializeCutkoskySymbolicSubintegralAssemblyAudit(
     const CutkoskySymbolicSubintegralAssembly& assembly);
+CutkoskyWeightedResidueEvaluationPlan
+BuildCutkoskyWeightedResidueEvaluationPlan(const ProblemSpec& spec);
+std::string SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+    const CutkoskyWeightedResidueEvaluationPlan& plan);
 
 }  // namespace amflow

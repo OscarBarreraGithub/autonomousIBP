@@ -962,6 +962,188 @@ amflow::CutkoskyResidueSeries MakeSyntheticB63nResidueSeries(
   return series;
 }
 
+amflow::CutkoskyResidueSeriesTerm MakeReviewedB63nPublishedResidueTerm() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeSyntheticB63nResidueTerm(0,
+                                   0,
+                                   0,
+                                   "integer",
+                                   "3.2500000000000000000000000000000000000000000000000000000000001",
+                                   "-0.5000000000000000000000000000000000000000000000000000000000001",
+                                   "reviewed_b63n_eta0_eps0",
+                                   "lane-b63n-reviewed-publication-gate");
+  term.precision.summary =
+      "reviewed b63n residue coefficient precision metadata for publication";
+  term.provenance.source =
+      "reviewed b63n external CAS residue derivation; not AMFlow final solution "
+      "samples";
+  term.provenance.derivation =
+      "reviewed b63n Cutkosky residue derivation with independent CAS artifact";
+  term.provenance.synthetic_fixture = false;
+  term.provenance.retained_solution_samples_used = false;
+  term.provenance.coefficient_published = true;
+  return term;
+}
+
+amflow::CutkoskyResidueSeries MakeB63nPublicationGateResidueSeries(
+    std::vector<amflow::CutkoskyResidueSeriesTerm> terms) {
+  amflow::CutkoskyResidueSeries series;
+  series.series_label = "reviewed-b63n-residue-publication-gate";
+  series.requested_precision_digits = 70;
+  series.working_precision_digits = 100;
+  series.precision_diagnostics =
+      "reviewed b63n publication gate residue series; no retained final "
+      "solution samples";
+  if (!terms.empty()) {
+    series.min_eps_order = terms.front().eps_order;
+    series.max_eps_order = terms.front().eps_order;
+    for (const amflow::CutkoskyResidueSeriesTerm& term : terms) {
+      series.min_eps_order = std::min(series.min_eps_order, term.eps_order);
+      series.max_eps_order = std::max(series.max_eps_order, term.eps_order);
+    }
+  }
+  series.terms = std::move(terms);
+  return series;
+}
+
+void B63nCutkoskyResiduePublicationGateAcceptsReviewedPublishedResidueTest() {
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({
+          MakeReviewedB63nPublishedResidueTerm(),
+      });
+
+  amflow::ValidateCutkoskyResiduePublicationGate(series);
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsSyntheticResidueTest() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeReviewedB63nPublishedResidueTerm();
+  term.provenance.synthetic_fixture = true;
+  term.provenance.source = "synthetic fixture promoted by mistake";
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({term});
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "synthetic",
+      "b63n publication gate should reject synthetic published residues");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsRetainedSolutionSampleResidueTest() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeReviewedB63nPublishedResidueTerm();
+  term.provenance.retained_solution_samples_used = true;
+  term.provenance.source = "retained AMFlow final solution samples";
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({term});
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "retained",
+      "b63n publication gate should reject retained-solution-sample residues");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsUnpublishedSyntheticResidueTest() {
+  amflow::CutkoskyResidueSeriesTerm synthetic_term =
+      MakeSyntheticB63nResidueTerm(0,
+                                   0,
+                                   0,
+                                   "integer",
+                                   "2.0000000000000000000000000000000000000000000000000000000000001",
+                                   "0",
+                                   "synthetic_fixture_eta0_eps0",
+                                   "lane-b63n-unpublished-synthetic-fixture");
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({
+          MakeReviewedB63nPublishedResidueTerm(),
+          synthetic_term,
+      });
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "synthetic",
+      "b63n publication gate should reject synthetic residues anywhere in series");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsUnpublishedRetainedResidueTest() {
+  amflow::CutkoskyResidueSeriesTerm retained_term =
+      MakeReviewedB63nPublishedResidueTerm();
+  retained_term.provenance.coefficient_published = false;
+  retained_term.provenance.retained_solution_samples_used = true;
+  retained_term.provenance.source = "retained AMFlow final solution samples";
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({
+          MakeReviewedB63nPublishedResidueTerm(),
+          retained_term,
+      });
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "retained",
+      "b63n publication gate should reject retained residues anywhere in series");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsMissingDerivationTest() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeReviewedB63nPublishedResidueTerm();
+  term.provenance.derivation.clear();
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({term});
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "derivation",
+      "b63n publication gate should reject published residues without derivation");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsNoPublishedTermTest() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeReviewedB63nPublishedResidueTerm();
+  term.provenance.coefficient_published = false;
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({term});
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "published",
+      "b63n publication gate should reject residue series without a published term");
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsLowCoefficientLiteralPrecisionTest() {
+  amflow::CutkoskyResidueSeriesTerm term =
+      MakeReviewedB63nPublishedResidueTerm();
+  term.coefficient.real = "3.25";
+  term.coefficient.imaginary = "-0.5";
+
+  const amflow::CutkoskyResidueSeries series =
+      MakeB63nPublicationGateResidueSeries({term});
+
+  ExpectInvalidArgumentContains(
+      [&series]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(series);
+      },
+      "coefficient literal precision",
+      "b63n publication gate should reject low-precision coefficient literals");
+}
+
 void B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest() {
   const amflow::CutkoskyPrefactorSeries k1 =
       amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 3, 70);
@@ -3856,6 +4038,14 @@ int main() {
     B61nComplexContourPropagatorRejectsPositiveImaginaryWaypointTest();
     B61nComplexContourPropagatorRejectsRealAxisInteriorWaypointTest();
     B61nComplexContourPropagatorRejectsNonfiniteWaypointTest();
+    B63nCutkoskyResiduePublicationGateAcceptsReviewedPublishedResidueTest();
+    B63nCutkoskyResiduePublicationGateRejectsSyntheticResidueTest();
+    B63nCutkoskyResiduePublicationGateRejectsRetainedSolutionSampleResidueTest();
+    B63nCutkoskyResiduePublicationGateRejectsUnpublishedSyntheticResidueTest();
+    B63nCutkoskyResiduePublicationGateRejectsUnpublishedRetainedResidueTest();
+    B63nCutkoskyResiduePublicationGateRejectsMissingDerivationTest();
+    B63nCutkoskyResiduePublicationGateRejectsNoPublishedTermTest();
+    B63nCutkoskyResiduePublicationGateRejectsLowCoefficientLiteralPrecisionTest();
     B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest();
     B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();

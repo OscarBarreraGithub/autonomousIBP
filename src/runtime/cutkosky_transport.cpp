@@ -24,6 +24,7 @@ namespace amflow {
 namespace {
 
 constexpr char kCutkoskyStrategy[] = "builtin::cutkosky-phase-space";
+constexpr int kCutkoskyPublicationMinimumPrecisionDigits = 50;
 using CutkoskyPrefactorFloat = boost::multiprecision::cpp_dec_float_100;
 
 std::string RemoveAsciiSpaces(std::string value) {
@@ -34,6 +35,29 @@ std::string RemoveAsciiSpaces(std::string value) {
                              }),
               value.end());
   return value;
+}
+
+bool HasNonWhitespace(const std::string& value) {
+  return !RemoveAsciiSpaces(value).empty();
+}
+
+std::size_t CountSignificantDecimalDigits(const std::string& value) {
+  const std::size_t exponent_position = value.find_first_of("eE");
+  const std::string mantissa = value.substr(0, exponent_position);
+  bool found_nonzero = false;
+  std::size_t digits = 0;
+  for (const char character : mantissa) {
+    if (std::isdigit(static_cast<unsigned char>(character)) == 0) {
+      continue;
+    }
+    if (character != '0') {
+      found_nonzero = true;
+    }
+    if (found_nonzero) {
+      ++digits;
+    }
+  }
+  return digits;
 }
 
 std::string JoinMessages(const std::vector<std::string>& messages) {
@@ -349,6 +373,69 @@ CutkoskyComplexCoefficient ParseCutkoskyResidueSeriesTermCoefficient(
 
 bool IsZeroCutkoskyCoefficient(const CutkoskyComplexCoefficient& coefficient) {
   return coefficient.real == 0 && coefficient.imaginary == 0;
+}
+
+std::string CutkoskyPublicationTermLabel(const std::size_t index) {
+  return "published residue term[" + std::to_string(index) + "]";
+}
+
+void ValidateCutkoskyPublicationPrecision(const int requested_digits,
+                                          const int working_digits,
+                                          const std::string& label) {
+  if (requested_digits < kCutkoskyPublicationMinimumPrecisionDigits) {
+    throw std::invalid_argument(
+        "insufficient_precision: b63n Cutkosky residue publication gate requires " +
+        label + " requested precision >= " +
+        std::to_string(kCutkoskyPublicationMinimumPrecisionDigits) +
+        " decimal digits");
+  }
+  if (working_digits < requested_digits) {
+    throw std::invalid_argument(
+        "insufficient_precision: b63n Cutkosky residue publication gate requires " +
+        label + " working precision >= requested precision");
+  }
+}
+
+CutkoskyComplexCoefficient ParseCutkoskyPublishedResidueCoefficient(
+    const CutkoskyResidueSeriesTerm& term,
+    const std::string& label) {
+  if (!HasNonWhitespace(term.coefficient.real) &&
+      !HasNonWhitespace(term.coefficient.imaginary)) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate requires an explicit coefficient for " +
+        label);
+  }
+  try {
+    return ParseCutkoskyResidueSeriesTermCoefficient(term, label);
+  } catch (const std::invalid_argument& error) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate requires a numeric coefficient for " +
+        label + ": " + error.what());
+  }
+}
+
+void ValidateCutkoskyPublishedCoefficientLiteralPrecision(
+    const CutkoskyResidueSeriesTerm& term,
+    const CutkoskyComplexCoefficient& coefficient,
+    const std::string& label) {
+  if (coefficient.real != 0 &&
+      CountSignificantDecimalDigits(term.coefficient.real) <
+          kCutkoskyPublicationMinimumPrecisionDigits) {
+    throw std::invalid_argument(
+        "insufficient_precision: b63n Cutkosky residue publication gate requires " +
+        label + " real coefficient literal precision >= " +
+        std::to_string(kCutkoskyPublicationMinimumPrecisionDigits) +
+        " significant decimal digits");
+  }
+  if (coefficient.imaginary != 0 &&
+      CountSignificantDecimalDigits(term.coefficient.imaginary) <
+          kCutkoskyPublicationMinimumPrecisionDigits) {
+    throw std::invalid_argument(
+        "insufficient_precision: b63n Cutkosky residue publication gate requires " +
+        label + " imaginary coefficient literal precision >= " +
+        std::to_string(kCutkoskyPublicationMinimumPrecisionDigits) +
+        " significant decimal digits");
+  }
 }
 
 struct CutkoskyResidueSeriesTermKey {
@@ -1433,6 +1520,83 @@ std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
                          residue_term.coefficient_label});
   }
   return projected;
+}
+
+void ValidateCutkoskyResiduePublicationGate(
+    const CutkoskyResidueSeries& series) {
+  if (series.terms.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate requires at least one published "
+        "residue term; received empty residue series");
+  }
+
+  for (std::size_t index = 0; index < series.terms.size(); ++index) {
+    const CutkoskyResidueSeriesTerm& term = series.terms[index];
+    const std::string label = CutkoskyPublicationTermLabel(index);
+    if (term.provenance.synthetic_fixture) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate rejects synthetic " + label);
+    }
+    if (term.provenance.retained_solution_samples_used) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate rejects retained-solution-sample " +
+          label);
+    }
+  }
+
+  std::vector<std::size_t> published_indices;
+  for (std::size_t index = 0; index < series.terms.size(); ++index) {
+    if (series.terms[index].provenance.coefficient_published) {
+      published_indices.push_back(index);
+    }
+  }
+  if (published_indices.empty()) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate requires at least one published "
+        "residue term");
+  }
+
+  for (const std::size_t index : published_indices) {
+    const CutkoskyResidueSeriesTerm& term = series.terms[index];
+    const std::string label = CutkoskyPublicationTermLabel(index);
+    if (!HasNonWhitespace(term.provenance.source)) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate requires source provenance for " +
+          label);
+    }
+    if (!HasNonWhitespace(term.provenance.derivation)) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate requires derivation provenance for " +
+          label);
+    }
+    if (!HasNonWhitespace(term.coefficient_label)) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate requires coefficient label for " +
+          label);
+    }
+    const CutkoskyComplexCoefficient coefficient =
+        ParseCutkoskyPublishedResidueCoefficient(term, label);
+    ValidateCutkoskyPublishedCoefficientLiteralPrecision(term,
+                                                        coefficient,
+                                                        label);
+    if (IsZeroCutkoskyCoefficient(coefficient)) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate rejects zero coefficient for " +
+          label);
+    }
+  }
+
+  ValidateCutkoskyPublicationPrecision(series.requested_precision_digits,
+                                       series.working_precision_digits,
+                                       "series");
+  for (const std::size_t index : published_indices) {
+    const std::string label = CutkoskyPublicationTermLabel(index);
+    const CutkoskyResiduePrecisionDiagnostics& precision =
+        series.terms[index].precision;
+    ValidateCutkoskyPublicationPrecision(precision.requested_precision_digits,
+                                         precision.working_precision_digits,
+                                         label);
+  }
 }
 
 std::string SerializeCutkoskyBranchLedgerEntrySummary(

@@ -293,6 +293,8 @@ CutkoskyResidueSeries MultiplyCutkoskyPrefactorIntoResidueSeries(
 std::vector<CutkoskyEtaZeroTerm> ProjectCutkoskyResidueSeriesToEtaZeroTerms(
     const CutkoskyResidueSeries& series,
     int eps_order);
+void ValidateCutkoskyResiduePublicationGate(
+    const CutkoskyResidueSeries& series);
 std::string SerializeCutkoskyBranchLedgerEntrySummary(
     const CutkoskyBranchLedgerEntry& entry);
 std::vector<std::string> SerializeCutkoskyBranchLedgerSummaries(

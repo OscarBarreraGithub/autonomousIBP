@@ -33,6 +33,7 @@ add_library(amflow
   src/runtime/artifact_store.cpp
   src/runtime/auxiliary_family.cpp
   src/runtime/boundary_generation.cpp
+  src/runtime/complex_contour_propagator.cpp
   src/runtime/continuation_path.cpp
   src/runtime/cutkosky_transport.cpp
   src/runtime/endpoint_branch_ledger.cpp

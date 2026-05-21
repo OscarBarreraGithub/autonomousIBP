@@ -1,5 +1,6 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
@@ -13,6 +14,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -3288,6 +3290,348 @@ void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
   }
 }
 
+using B61nContourFloat = amflow::ComplexContourFloat;
+using B61nContourNumber = amflow::ComplexContourNumber;
+
+B61nContourFloat B61nContourAbs(const B61nContourNumber& value) {
+  return sqrt(value.real() * value.real() + value.imag() * value.imag());
+}
+
+void ExpectB61nContourClose(const B61nContourNumber& actual,
+                            const B61nContourNumber& expected,
+                            const B61nContourFloat& tolerance,
+                            const std::string& message) {
+  const B61nContourFloat difference = B61nContourAbs(actual - expected);
+  if (difference > tolerance) {
+    std::ostringstream out;
+    out << message << "; difference=" << std::setprecision(40) << difference
+        << "; actual=(" << actual.real() << "," << actual.imag() << ")"
+        << "; expected=(" << expected.real() << "," << expected.imag() << ")";
+    throw std::runtime_error(out.str());
+  }
+}
+
+void ExpectB61nContourPropagationFailure(
+    const amflow::ComplexContourPropagationResult& result,
+    const std::string& failure_code,
+    const std::string& message) {
+  Expect(!result.success, message + "; result should fail closed");
+  Expect(result.endpoint_values.empty(),
+         message + "; failed propagation must not publish endpoint values");
+  Expect(!result.diagnostics.ode_propagation_applied,
+         message + "; failed propagation must not mark ODE propagation");
+  Expect(!result.diagnostics.coefficient_publication,
+         message + "; failed propagation must not publish coefficients");
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         message + "; failed propagation must not consume retained solution samples");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         message + "; failed propagation must keep full contour false");
+  Expect(result.diagnostics.failure_code == failure_code,
+         message + "; expected failure_code=" + failure_code + ", got " +
+             result.diagnostics.failure_code);
+}
+
+void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
+  const B61nContourNumber eta_start{0, -3};
+  const B61nContourNumber eta_mid{0, -1};
+  const B61nContourNumber eta_end{0, 0};
+  const std::vector<B61nContourNumber> waypoints = {eta_start, eta_mid, eta_end};
+  const amflow::ComplexContourVector initial = {
+      {2, -1},
+      {-3, 2},
+      {1, 4},
+  };
+  const B61nContourNumber c10{
+      B61nContourFloat(1) / B61nContourFloat(3),
+      B61nContourFloat(1) / B61nContourFloat(5)};
+  const B61nContourNumber c20{
+      -B61nContourFloat(2) / B61nContourFloat(7),
+      B61nContourFloat(1) / B61nContourFloat(11)};
+  const B61nContourNumber c21{
+      B61nContourFloat(5) / B61nContourFloat(13),
+      -B61nContourFloat(3) / B61nContourFloat(17)};
+
+  const auto evaluator = [c10, c20, c21](const B61nContourNumber&) {
+    amflow::ComplexContourMatrix matrix(
+        3, std::vector<B61nContourNumber>(3, B61nContourNumber{}));
+    matrix[1][0] = c10;
+    matrix[2][0] = c20;
+    matrix[2][1] = c21;
+    return matrix;
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 8;
+  options.refinement_doublings = 1;
+  options.matrix_fingerprint = "synthetic-b61n-lower-triangular-constant-v1";
+  options.branch_policy = "NegIm lower-half-plane b61n test contour";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  Expect(result.success, "b61n coupled contour propagation should succeed: " +
+                             result.diagnostics.summary);
+  Expect(result.endpoint_values.size() == 3,
+         "b61n coupled contour propagation should preserve vector dimension");
+  Expect(result.diagnostics.ode_propagation_applied,
+         "b61n contour harness should mark live ODE propagation");
+  Expect(!result.diagnostics.coefficient_publication,
+         "b61n contour harness should not publish endpoint coefficients");
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         "b61n contour harness must not read final AMFlow solution samples");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n contour harness must not promote the full M6 contour flag");
+  Expect(result.diagnostics.transport_scope ==
+             "lower-half-plane-complex-ode-vector-propagation",
+         "b61n contour harness should expose the scoped propagation contract");
+  ExpectContains(result.diagnostics.contour_fingerprint,
+                 "fnv1a64:",
+                 "b61n contour harness should fingerprint contour provenance");
+  ExpectContains(result.diagnostics.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b61n contour harness summary should keep anti-fake flag false");
+  ExpectContains(result.diagnostics.summary,
+                 "matrix_fingerprint=synthetic-b61n-lower-triangular-constant-v1",
+                 "b61n contour harness should publish matrix provenance");
+
+  const B61nContourNumber delta = eta_end - eta_start;
+  const B61nContourNumber expected0 = initial[0];
+  const B61nContourNumber expected1 = initial[1] + c10 * initial[0] * delta;
+  const B61nContourNumber expected2 =
+      initial[2] + c20 * initial[0] * delta +
+      c21 * (initial[1] * delta + c10 * initial[0] * delta * delta /
+                                      B61nContourFloat(2));
+  const B61nContourFloat tolerance("1e-70");
+  ExpectB61nContourClose(result.endpoint_values[0],
+                         expected0,
+                         tolerance,
+                         "b61n contour row 0 should stay constant");
+  ExpectB61nContourClose(result.endpoint_values[1],
+                         expected1,
+                         tolerance,
+                         "b61n contour row 1 should integrate source row 0");
+  ExpectB61nContourClose(result.endpoint_values[2],
+                         expected2,
+                         tolerance,
+                         "b61n contour row 2 should integrate coupled row 1");
+}
+
+void B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}, {2, 0}};
+  const auto bad_evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.matrix_fingerprint = "synthetic-b61n-bad-shape-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, bad_evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "propagation-failed",
+      "b61n contour harness should fail closed on malformed matrix shape");
+  ExpectContains(result.diagnostics.summary,
+                 "matrix-dimension-mismatch",
+                 "b61n contour harness should surface matrix shape failure");
+}
+
+void B61nComplexContourPropagatorRequiresMatrixFingerprintTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "missing-matrix-fingerprint",
+      "b61n contour harness should require matrix provenance before success");
+}
+
+void B61nComplexContourPropagatorRejectsInvalidInputsTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.matrix_fingerprint = "synthetic-b61n-invalid-inputs-v1";
+
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector({}, waypoints, evaluator, options),
+      "empty-initial-vector",
+      "b61n contour harness should reject empty initial vectors");
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector(initial, {{0, -1}}, evaluator, options),
+      "insufficient-contour-waypoints",
+      "b61n contour harness should reject insufficient waypoint lists");
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, amflow::ComplexContourMatrixEvaluator{}, options),
+      "missing-matrix-evaluator",
+      "b61n contour harness should reject a missing matrix evaluator");
+
+  amflow::ComplexContourPropagationOptions zero_step_options = options;
+  zero_step_options.steps_per_segment = 0;
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, zero_step_options),
+      "invalid-step-count",
+      "b61n contour harness should reject zero step counts");
+
+  amflow::ComplexContourPropagationOptions bad_budget_options = options;
+  bad_budget_options.refinement_doublings = 2;
+  bad_budget_options.max_refinement_doublings = 1;
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, bad_budget_options),
+      "invalid-refinement-budget",
+      "b61n contour harness should reject inconsistent refinement budgets");
+}
+
+void B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {eta * eta * eta * eta},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 1;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 1;
+  options.refinement_error_tolerance = B61nContourFloat("1e-90");
+  options.matrix_fingerprint = "synthetic-b61n-refinement-fail-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "refinement-tolerance-failed",
+      "b61n contour harness should fail closed when refinement exceeds tolerance");
+}
+
+void B61nComplexContourPropagatorRejectsInfiniteToleranceTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.refinement_error_tolerance =
+      std::numeric_limits<B61nContourFloat>::infinity();
+  options.matrix_fingerprint = "synthetic-b61n-infinite-tolerance-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "invalid-refinement-tolerance",
+      "b61n contour harness should reject non-finite refinement tolerance");
+}
+
+void B61nComplexContourPropagatorRejectsUnreviewedHalfPlaneTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, 1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.half_plane = amflow::EtaContourHalfPlane::Upper;
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "unsupported-contour-half-plane",
+      "b61n contour harness should reject the unreviewed upper half-plane");
+  ExpectContains(result.diagnostics.summary,
+                 "NegIm lower-half-plane",
+                 "b61n contour harness should name the reviewed branch");
+}
+
+void B61nComplexContourPropagatorRejectsPositiveImaginaryWaypointTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "non-lower-half-plane-waypoint",
+      "b61n contour harness should reject positive-imaginary waypoints");
+}
+
+void B61nComplexContourPropagatorRejectsRealAxisInteriorWaypointTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {-1, 0}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.matrix_fingerprint = "synthetic-b61n-real-axis-interior-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "non-lower-half-plane-waypoint",
+      "b61n contour harness should reject real-axis interior waypoints");
+}
+
+void B61nComplexContourPropagatorRejectsNonfiniteWaypointTest() {
+  const B61nContourFloat negative_infinity =
+      -std::numeric_limits<B61nContourFloat>::infinity();
+  const std::vector<B61nContourNumber> waypoints = {
+      {0, negative_infinity},
+      {0, 0},
+  };
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.matrix_fingerprint = "synthetic-b61n-nonfinite-waypoint-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "nonfinite-contour-waypoint",
+      "b61n contour harness should reject nonfinite waypoints");
+}
+
 }  // namespace
 
 int main() {
@@ -3314,6 +3658,16 @@ int main() {
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
+    B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
+    B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();
+    B61nComplexContourPropagatorRequiresMatrixFingerprintTest();
+    B61nComplexContourPropagatorRejectsInvalidInputsTest();
+    B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest();
+    B61nComplexContourPropagatorRejectsInfiniteToleranceTest();
+    B61nComplexContourPropagatorRejectsUnreviewedHalfPlaneTest();
+    B61nComplexContourPropagatorRejectsPositiveImaginaryWaypointTest();
+    B61nComplexContourPropagatorRejectsRealAxisInteriorWaypointTest();
+    B61nComplexContourPropagatorRejectsNonfiniteWaypointTest();
     B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest();
     B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();

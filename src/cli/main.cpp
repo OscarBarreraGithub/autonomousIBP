@@ -5288,6 +5288,17 @@ bool IsB64agSelectedEndpointState(const DirectSolveSeriesSpec& spec) {
   return true;
 }
 
+bool IsB64agFullEndpointPacketTransportState(
+    const DirectSolveSeriesSpec& spec,
+    const amflow::SolverDiagnostics& diagnostics) {
+  return IsB64agLightlikeGaugeLinkRuntimeState(spec) &&
+         !IsB64agSelectedEndpointState(spec) &&
+         !UsesRetainedSolutionSamples(spec) &&
+         spec.gauge_link_diffeq_masters.size() == 6 &&
+         diagnostics.eta_endpoint_transport_count >=
+             static_cast<int>(spec.gauge_link_diffeq_masters.size());
+}
+
 bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
                                const std::vector<std::string>& expected_labels) {
   if (spec.masters.size() != expected_labels.size()) {
@@ -7219,7 +7230,13 @@ std::string EndpointTransportEpsilonOrderLabel(
 }
 
 std::string EndpointTransportDeferredReason(
+    const DirectSolveSeriesSpec& direct_spec,
     const amflow::SolverDiagnostics& diagnostics) {
+  if (IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics)) {
+    return "M6 qualifier promotion remains deferred after full b64ag gauge-link "
+           "endpoint transport, retained target reduction, and finite-part "
+           "coefficient extraction";
+  }
   if (!diagnostics.eta_endpoint_transported_integrals.empty() &&
       diagnostics.eta_endpoint_transported_integrals.front() ==
           B64agFirstEndpointMasterLabel()) {
@@ -8489,6 +8506,68 @@ std::vector<std::vector<BigComplex>> ParseB64agFiniteBoundarySamples(
   return samples;
 }
 
+std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
+ParseB64agFiniteBoundarySampleTerms(
+    const std::string& raw,
+    const std::vector<std::string>& epsilon_samples,
+    const std::size_t master_count) {
+  const std::vector<std::string> fields =
+      SplitMathList(raw, "boundary_state.files.boundary.raw");
+  if (fields.size() != 2) {
+    throw std::runtime_error(
+        "b64ag finite boundary file must contain the point and epsilon sample rules");
+  }
+  const std::size_t point_arrow = FindTopLevelArrow(fields[0]);
+  if (point_arrow == std::string::npos ||
+      RemoveAsciiSpaces(fields[0].substr(0, point_arrow)) != "gaugex" ||
+      RemoveAsciiSpaces(fields[0].substr(point_arrow + 2)) != "1/40") {
+    throw std::runtime_error(
+        "b64ag full endpoint transport requires boundary point gaugex -> 1/40");
+  }
+
+  std::map<std::string, std::vector<std::string>> samples_by_epsilon;
+  const std::vector<std::string> sample_rules =
+      SplitMathList(fields[1], "boundary_state.files.boundary.raw.samples");
+  for (std::size_t rule_index = 0; rule_index < sample_rules.size(); ++rule_index) {
+    const std::string path =
+        "boundary_state.files.boundary.raw.samples[" +
+        std::to_string(rule_index) + "]";
+    const std::size_t arrow = FindTopLevelArrow(sample_rules[rule_index]);
+    if (arrow == std::string::npos) {
+      throw std::runtime_error(path + " is missing ->");
+    }
+    const std::string epsilon_key =
+        RemoveAsciiSpaces(sample_rules[rule_index].substr(0, arrow));
+    const std::vector<std::string> raw_values =
+        SplitMathList(sample_rules[rule_index].substr(arrow + 2), path + ".rhs");
+    if (raw_values.size() != master_count) {
+      throw std::runtime_error(path + " master sample width does not match the "
+                               "reviewed b64ag DE master count");
+    }
+    std::vector<std::string> normalized_values;
+    normalized_values.reserve(raw_values.size());
+    for (const std::string& raw_value : raw_values) {
+      normalized_values.push_back(NormalizeMathematicaNumericAtom(raw_value));
+    }
+    if (!samples_by_epsilon.emplace(epsilon_key, std::move(normalized_values)).second) {
+      throw std::runtime_error(path + " duplicates epsilon sample " + epsilon_key);
+    }
+  }
+
+  std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample> samples;
+  samples.reserve(epsilon_samples.size());
+  for (const std::string& epsilon_sample : epsilon_samples) {
+    const std::string epsilon_key = RemoveAsciiSpaces(epsilon_sample);
+    const auto sample_it = samples_by_epsilon.find(epsilon_key);
+    if (sample_it == samples_by_epsilon.end()) {
+      throw std::runtime_error(
+          "b64ag finite boundary file is missing epsilon sample " + epsilon_key);
+    }
+    samples.push_back({epsilon_sample, sample_it->second});
+  }
+  return samples;
+}
+
 struct B64agEndpointBasisValue {
   BigFloat y = 0;
   BigFloat w = 0;
@@ -8780,6 +8859,190 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
       "coefficient; the final two selected DE-basis masters use reviewed b64ag endpoint "
       "series constants guarded to the canonical lightlike-propagator state; "
       "final_solution_samples_used_as_input=false.";
+  return diagnostics;
+}
+
+amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
+    const DirectSolveSeriesSpec& direct_spec,
+    const int requested_epsilon_order) {
+  const auto fail = [](const std::string& failure_code,
+                       const std::string& summary) {
+    amflow::SolverDiagnostics diagnostics;
+    diagnostics.success = false;
+    diagnostics.failure_code = failure_code;
+    diagnostics.summary = summary;
+    return diagnostics;
+  };
+
+  if (!IsB64agLightlikeGaugeLinkRuntimeState(direct_spec)) {
+    return EvaluateLightlikeGaugeLinkRuntimeScaffold(direct_spec);
+  }
+  if (direct_spec.gauge_link_diffeq_masters.size() != 6) {
+    return fail(
+        "master_set_instability",
+        "b64ag full endpoint packet requires the reviewed six-master DE basis");
+  }
+
+  const amflow::LightlikeGaugeLinkRuntimeState state =
+      MakeLightlikeGaugeLinkRuntimeState(direct_spec);
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
+      boundary_samples =
+          ParseB64agFiniteBoundarySampleTerms(
+              RequireAmflowBoundaryRawFile(direct_spec, "boundary"),
+              direct_spec.boundary_epsilon_samples,
+              direct_spec.gauge_link_diffeq_masters.size());
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+  if (!transport.success) {
+    amflow::SolverDiagnostics diagnostics =
+        fail(transport.failure_code.empty() ? "boundary_unsolved"
+                                            : transport.failure_code,
+             transport.summary);
+    diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
+    diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
+    diagnostics.eta_endpoint_extraction_fingerprint =
+        transport.extraction_fingerprint;
+    return diagnostics;
+  }
+  const auto fail_after_transport = [&](const std::string& failure_code,
+                                        const std::string& summary) {
+    amflow::SolverDiagnostics diagnostics = fail(failure_code, summary);
+    diagnostics.eta_endpoint_transport_count =
+        static_cast<int>(transport.transported_master_count);
+    diagnostics.eta_endpoint_transport_epsilon_order = requested_epsilon_order;
+    diagnostics.eta_endpoint_transported_integrals = transport.transported_master_labels;
+    diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
+    diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
+    diagnostics.eta_endpoint_extraction_fingerprint =
+        transport.extraction_fingerprint;
+    return diagnostics;
+  };
+  if (transport.epsilon_endpoint_terms.size() != boundary_samples.size()) {
+    return fail_after_transport(
+        "boundary_unsolved",
+        "b64ag full endpoint packet transport did not publish one endpoint term set per "
+        "retained epsilon sample");
+  }
+
+  std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
+  try {
+    reduction_terms = amflow::ParseLightlikeGaugeLinkRetainedTargetReduction(state);
+  } catch (const std::exception& error) {
+    return fail_after_transport(
+        "target_reduction_parse_failed",
+        "b64ag full endpoint packet failed to parse retained target reduction after "
+        "endpoint transport: " +
+            std::string(error.what()));
+  }
+  std::vector<BigFloat> epsilon_values;
+  epsilon_values.reserve(direct_spec.boundary_epsilon_samples.size());
+  for (const std::string& epsilon_sample : direct_spec.boundary_epsilon_samples) {
+    epsilon_values.push_back(ParseBigFloatRational(epsilon_sample));
+  }
+
+  std::vector<std::vector<BigComplex>> target_samples(direct_spec.targets.size());
+  for (const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms :
+       transport.epsilon_endpoint_terms) {
+    amflow::LightlikeGaugeLinkReducedFinitePartResult reduced;
+    try {
+      reduced = amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          direct_spec.targets,
+          sample_terms.endpoint_terms,
+          reduction_terms,
+          direct_spec.variable);
+    } catch (const std::exception& error) {
+      return fail_after_transport(
+          "finite_part_evaluation_failed",
+          "b64ag full endpoint packet failed reduced finite-part evaluation after "
+          "endpoint transport at epsilon " +
+              sample_terms.epsilon_sample + ": " + error.what());
+    }
+    if (!reduced.success) {
+      const std::string first_failure =
+          reduced.failures.empty() ? reduced.summary : reduced.failures.front().summary;
+      return fail_after_transport(
+          reduced.failures.empty() || reduced.failures.front().failure_code.empty()
+              ? "boundary_unsolved"
+              : reduced.failures.front().failure_code,
+          "b64ag full endpoint packet failed reduced finite-part evaluation at epsilon " +
+              sample_terms.epsilon_sample + ": " + first_failure + "; " +
+              reduced.summary);
+    }
+    if (reduced.targets.size() != direct_spec.targets.size()) {
+      return fail_after_transport(
+          "boundary_unsolved",
+          "b64ag full endpoint packet reduced finite-part result count does not match "
+          "the retained target packet");
+    }
+    for (std::size_t target_index = 0; target_index < reduced.targets.size();
+         ++target_index) {
+      const std::string expected_label = direct_spec.targets[target_index].Label();
+      const amflow::LightlikeGaugeLinkReducedFinitePartTarget& reduced_target =
+          reduced.targets[target_index];
+      if (!reduced_target.success || reduced_target.target_label != expected_label ||
+          reduced_target.finite_part_coefficient.empty()) {
+        return fail_after_transport(
+            reduced_target.failure_code.empty() ? "boundary_unsolved"
+                                                : reduced_target.failure_code,
+            "b64ag full endpoint packet did not publish a finite part for " +
+                expected_label + " at epsilon " + sample_terms.epsilon_sample);
+      }
+      try {
+        target_samples[target_index].push_back(
+            ParseAmflowComplexExpression(reduced_target.finite_part_coefficient));
+      } catch (const std::exception& error) {
+        return fail_after_transport(
+            "finite_part_coefficient_parse_failed",
+            "b64ag full endpoint packet could not parse the reduced finite-part "
+            "coefficient for " +
+                expected_label + " at epsilon " + sample_terms.epsilon_sample +
+                ": " + error.what());
+      }
+    }
+  }
+
+  amflow::SolverDiagnostics diagnostics;
+  diagnostics.success = true;
+  diagnostics.residual_norm = 0.0;
+  diagnostics.overlap_mismatch = 0.0;
+  diagnostics.full_eta_zero_contour_applied = false;
+  diagnostics.eta_endpoint_transport_count =
+      static_cast<int>(transport.transported_master_count);
+  diagnostics.eta_endpoint_transport_epsilon_order = requested_epsilon_order;
+  diagnostics.eta_endpoint_transported_integrals = transport.transported_master_labels;
+  diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
+  diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
+  diagnostics.eta_endpoint_extraction_fingerprint = transport.extraction_fingerprint;
+
+  for (const std::vector<BigComplex>& samples : target_samples) {
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+    try {
+      coefficients = FitSolutionSamplesAsLaurentCoefficients(samples,
+                                                             epsilon_values,
+                                                             requested_epsilon_order);
+    } catch (const std::exception& error) {
+      return fail_after_transport(
+          "laurent_fit_failed",
+          "b64ag full endpoint packet could not fit post-endpoint finite-part "
+          "samples as Laurent coefficients: " +
+              std::string(error.what()));
+    }
+    diagnostics.target_values.push_back(ConstantRealValue(coefficients));
+    diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));
+  }
+
+  diagnostics.summary =
+      transport.summary +
+      " Applied retained target reduction, D4,D5 affected-power normalization, "
+      "PickZeroRuleS-compatible finite-part extraction, and post-endpoint Laurent "
+      "fitting for " +
+      std::to_string(direct_spec.targets.size()) +
+      " retained b64ag target(s) across " +
+      std::to_string(transport.epsilon_endpoint_terms.size()) +
+      " epsilon sample(s); final_solution_samples_used_as_input=false; "
+      "full_eta_zero_contour_applied=false pending external AMFlow packet "
+      "comparison and qualifier promotion.";
   return diagnostics;
 }
 
@@ -9716,6 +9979,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         IsFiniteSolutionSampleState(direct_spec) &&
         AppliesFiniteSolutionSampleTransport(direct_spec);
     const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
+    const bool b64ag_full_endpoint_packet_transport =
+        IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
     out << "  \"boundary_state\": {\n";
     out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
@@ -9746,8 +10011,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                       : status == "success"
                           ? (b64ag_gauge_link_state &&
                                      diagnostics.eta_endpoint_transport_count > 0
-                                 ? "retained-finite-gauge-link-boundary+gaugex-zero-"
-                                   "selected-endpoint-transport"
+                                 ? (b64ag_full_endpoint_packet_transport
+                                        ? "retained-finite-gauge-link-boundary+gaugex-zero-"
+                                          "full-packet-finite-part-transport"
+                                        : "retained-finite-gauge-link-boundary+gaugex-zero-"
+                                          "selected-endpoint-transport")
                              : diagnostics.eta_endpoint_transport_count > 0
                                  ? (diagnostics.eta_asymptotic_transport_count > 0
                                         ? "retained-asymptotic-subsystem-sample-boundary-"
@@ -9789,6 +10057,8 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                                : "finite-solution-samples")
                       : diagnostics.full_eta_zero_contour_applied
                           ? "eta-zero-full-contour-endpoint-coefficients"
+                      : b64ag_full_endpoint_packet_transport
+                          ? "eta-zero-b64ag-full-packet-finite-part-coefficients"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -9825,7 +10095,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? (b64ag_gauge_link_state
-                                 ? "b64ag-gauge-link-selected-endpoint-coefficients"
+                                 ? (b64ag_full_endpoint_packet_transport
+                                        ? "b64ag-gauge-link-full-packet-finite-part-"
+                                          "coefficients"
+                                        : "b64ag-gauge-link-selected-endpoint-coefficients")
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "eta-infinity-de-asymptotic-first-coefficient+"
                                    "eta-zero-selected-endpoint-coefficients"
@@ -9860,7 +10133,7 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                       : diagnostics.full_eta_zero_contour_applied
                           ? "none"
                       : diagnostics.eta_endpoint_transport_count > 0
-                          ? EndpointTransportDeferredReason(diagnostics)
+                          ? EndpointTransportDeferredReason(direct_spec, diagnostics)
                       : b64ag_gauge_link_state
                           ? "finite boundary solve/replay, gaugex=0 endpoint transport, "
                             "PickZeroRuleS application, and Laurent fitting remain deferred"
@@ -9888,7 +10161,12 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                             ? "applied-after-finite-de-transport"
                                             : "applied-after-finite-solution-sample-ingest")
                                     : diagnostics.eta_endpoint_transport_count > 0
-                                        ? "applied-after-eta-zero-selected-endpoint-transport"
+                                        ? (IsB64agFullEndpointPacketTransportState(
+                                               direct_spec, diagnostics)
+                                               ? "applied-after-b64ag-full-endpoint-"
+                                                 "finite-part-transport"
+                                               : "applied-after-eta-zero-selected-endpoint-"
+                                                 "transport")
                                     : diagnostics.eta_asymptotic_transport_count > 0
                                         ? "applied-after-eta-infinity-asymptotic-de-transport"
                                         : "applied-after-eta-infinity-boundary-evaluation")
@@ -9986,8 +10264,11 @@ SolveSeriesEvaluation EvaluateSolveSeriesInput(
       if (IsB64agLightlikeGaugeLinkRuntimeState(evaluation.direct_spec) &&
           !UsesRetainedSolutionSamples(evaluation.direct_spec)) {
         evaluation.diagnostics =
-            EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(evaluation.direct_spec,
-                                                               epsilon_order);
+            IsB64agSelectedEndpointState(evaluation.direct_spec)
+                ? EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
+                      evaluation.direct_spec, epsilon_order)
+                : EvaluateLightlikeGaugeLinkFullEndpointPacket(
+                      evaluation.direct_spec, epsilon_order);
       } else {
         evaluation.diagnostics =
             UsesRetainedSolutionSamples(evaluation.direct_spec)
@@ -10212,6 +10493,8 @@ std::string SerializeSolveSeriesBundleJson(
         IsFiniteSolutionSampleState(direct_spec) &&
         AppliesFiniteSolutionSampleTransport(direct_spec);
     const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
+    const bool b64ag_full_endpoint_packet_transport =
+        IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
     out << "{"
         << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
         << ", \"amflow_output_name\": " << JsonString(direct_spec.amflow_output_name)
@@ -10243,8 +10526,11 @@ std::string SerializeSolveSeriesBundleJson(
                       : evaluation.status == "success"
                           ? (b64ag_gauge_link_state &&
                                      diagnostics.eta_endpoint_transport_count > 0
-                                 ? "retained-finite-gauge-link-boundary+gaugex-zero-"
-                                   "selected-endpoint-transport"
+                                 ? (b64ag_full_endpoint_packet_transport
+                                        ? "retained-finite-gauge-link-boundary+gaugex-zero-"
+                                          "full-packet-finite-part-transport"
+                                        : "retained-finite-gauge-link-boundary+gaugex-zero-"
+                                          "selected-endpoint-transport")
                              : diagnostics.eta_endpoint_transport_count > 0
                                  ? (diagnostics.eta_asymptotic_transport_count > 0
                                         ? "retained-asymptotic-subsystem-sample-boundary-"
@@ -10285,6 +10571,8 @@ std::string SerializeSolveSeriesBundleJson(
                                                : "finite-solution-samples")
                       : diagnostics.full_eta_zero_contour_applied
                           ? "eta-zero-full-contour-endpoint-coefficients"
+                      : b64ag_full_endpoint_packet_transport
+                          ? "eta-zero-b64ag-full-packet-finite-part-coefficients"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? "eta-zero-selected-endpoint-coefficients"
                       : diagnostics.eta_asymptotic_transport_count > 0
@@ -10321,7 +10609,10 @@ std::string SerializeSolveSeriesBundleJson(
                           ? "full-eta-zero-contour-endpoint-extraction"
                       : diagnostics.eta_endpoint_transport_count > 0
                           ? (b64ag_gauge_link_state
-                                 ? "b64ag-gauge-link-selected-endpoint-coefficients"
+                                 ? (b64ag_full_endpoint_packet_transport
+                                        ? "b64ag-gauge-link-full-packet-finite-part-"
+                                          "coefficients"
+                                        : "b64ag-gauge-link-selected-endpoint-coefficients")
                              : diagnostics.eta_asymptotic_transport_count > 0
                                  ? "eta-infinity-de-asymptotic-first-coefficient+"
                                    "eta-zero-selected-endpoint-coefficients"
@@ -10355,7 +10646,7 @@ std::string SerializeSolveSeriesBundleJson(
                       : diagnostics.full_eta_zero_contour_applied
                           ? "none"
                       : diagnostics.eta_endpoint_transport_count > 0
-                          ? EndpointTransportDeferredReason(diagnostics)
+                          ? EndpointTransportDeferredReason(direct_spec, diagnostics)
                       : b64ag_gauge_link_state
                           ? "finite boundary solve/replay, gaugex=0 endpoint transport, "
                             "PickZeroRuleS application, and Laurent fitting remain deferred"
@@ -10380,7 +10671,11 @@ std::string SerializeSolveSeriesBundleJson(
                                           ? "applied-after-finite-de-transport"
                                           : "applied-after-finite-solution-sample-ingest")
                                : diagnostics.eta_endpoint_transport_count > 0
-                                   ? "applied-after-eta-zero-selected-endpoint-transport"
+                                   ? (b64ag_full_endpoint_packet_transport
+                                          ? "applied-after-b64ag-full-endpoint-"
+                                            "finite-part-transport"
+                                          : "applied-after-eta-zero-selected-endpoint-"
+                                            "transport")
                                : diagnostics.eta_asymptotic_transport_count > 0
                                    ? "applied-after-eta-infinity-asymptotic-de-transport"
                                    : "applied-after-eta-infinity-boundary-evaluation")

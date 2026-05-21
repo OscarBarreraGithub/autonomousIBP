@@ -49581,11 +49581,17 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
   const std::filesystem::path source_state_path =
       std::filesystem::path(AMFLOW_SOURCE_DIR) /
       "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json";
+  const std::filesystem::path full_stripped_state_path =
+      run_root / "linear-full-stripped.json";
+  const std::filesystem::path full_stripped_output_path =
+      run_root / "full-stripped-result.json";
   const std::filesystem::path stripped_state_path = run_root / "linear-stripped.json";
   const std::filesystem::path retained_output_path = run_root / "retained-result.json";
   const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
   const std::filesystem::path stdout_path = run_root / "stdout.log";
   const std::filesystem::path stderr_path = run_root / "stderr.log";
+  const std::filesystem::path full_strip_script_path =
+      run_root / "strip_solution_full_packet.py";
   const std::filesystem::path strip_script_path = run_root / "strip_solution.py";
 
   const std::string retained_command =
@@ -49629,6 +49635,60 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
   ExpectContains(retained_json,
                  "full gauge-link gaugex=0 endpoint transport remains deferred",
                  "b64ag retained run should use the gauge-link blocked reason");
+
+  OverwriteTextFile(
+      full_strip_script_path,
+      R"PY(
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+payload["boundary_state"]["files"].pop("solution", None)
+payload.setdefault("solution_sample_cache", {})["enabled"] = True
+json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
+)PY");
+
+  const std::string full_strip_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote(full_strip_script_path.string()) + " " +
+      ShellSingleQuote(source_state_path.string()) + " " +
+      ShellSingleQuote(full_stripped_state_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(full_strip_command) == 0,
+         "linear_propagator full-packet solution-strip fixture should be created; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+
+  const std::string full_stripped_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(full_stripped_state_path.string()) +
+      " --eps-order 2 --digits 50 --out " +
+      ShellSingleQuote(full_stripped_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(full_stripped_command) != 0,
+         "full stripped b64ag packet should fail closed on the unresolved first-block "
+         "Frobenius branch before publishing target finite parts");
+  const std::string full_stripped_json = ReadFile(full_stripped_output_path);
+  ExpectContains(full_stripped_json,
+                 "\"failure_code\": \"continuation_budget_exhausted\"",
+                 "full stripped b64ag packet should surface the live transport blocker");
+  ExpectContains(full_stripped_json,
+                 "unresolved non-integer Frobenius branch",
+                 "full stripped b64ag packet should report the first-block branch blocker");
+  ExpectContains(full_stripped_json,
+                 "retained_solution_samples_used=false",
+                 "full stripped b64ag packet must not consume retained final solution samples");
+  ExpectContains(full_stripped_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "full stripped b64ag packet must not promote full contour while blocked");
+  Expect(full_stripped_json.find("retained-finite-solution-sample-cache") ==
+             std::string::npos,
+         "full stripped b64ag packet must not fall back to retained final solution samples");
+  Expect(full_stripped_json.find("Live gauge-link endpoint coefficients are not implemented") ==
+             std::string::npos,
+         "full stripped b64ag packet should reach the live endpoint transport blocker rather "
+         "than the old metadata-only scaffold");
 
   OverwriteTextFile(
       strip_script_path,

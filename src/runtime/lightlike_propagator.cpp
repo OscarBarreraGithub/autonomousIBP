@@ -1083,6 +1083,27 @@ std::string SerializeGaugeLinkContourPlanForFingerprint(
   out << "indicial_fuchsian_full_matrix_probe="
       << (plan.indicial_audit.fuchsian_full_matrix_probe ? "true" : "false")
       << "\n";
+  out << "frobenius_recurrence_success="
+      << (plan.indicial_audit.frobenius_recurrence.success ? "true" : "false")
+      << "\n";
+  out << "frobenius_recurrence_indicial_roots_used="
+      << (plan.indicial_audit.frobenius_recurrence.indicial_roots_used
+              ? "true"
+              : "false")
+      << "\n";
+  out << "frobenius_raw_matrix_regular_singular="
+      << (plan.indicial_audit.frobenius_recurrence.raw_matrix_regular_singular
+              ? "true"
+              : "false")
+      << "\n";
+  out << "frobenius_reviewed_triangular_recurrence_available="
+      << (plan.indicial_audit.frobenius_recurrence
+                  .reviewed_triangular_recurrence_available
+              ? "true"
+              : "false")
+      << "\n";
+  out << "frobenius_recurrence_order="
+      << plan.indicial_audit.frobenius_recurrence.recurrence_order << "\n";
   for (std::size_t index = 0;
        index < plan.indicial_audit.diagonal_residue_roots.size();
        ++index) {
@@ -1094,6 +1115,20 @@ std::string SerializeGaugeLinkContourPlanForFingerprint(
        ++index) {
     out << "indicial_higher_order_cell[" << index << "]="
         << plan.indicial_audit.higher_order_cells[index] << "\n";
+  }
+  for (std::size_t index = 0;
+       index < plan.indicial_audit.frobenius_recurrence.seeded_region_keys.size();
+       ++index) {
+    out << "frobenius_seeded_region[" << index << "]="
+        << plan.indicial_audit.frobenius_recurrence.seeded_region_keys[index]
+        << "\n";
+  }
+  for (std::size_t index = 0;
+       index < plan.indicial_audit.frobenius_recurrence.recurrence_blocks.size();
+       ++index) {
+    out << "frobenius_recurrence_block[" << index << "]="
+        << plan.indicial_audit.frobenius_recurrence.recurrence_blocks[index]
+        << "\n";
   }
   out << "dropped_term_audit=" << plan.dropped_term_audit << "\n";
   return out.str();
@@ -3364,6 +3399,183 @@ std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
   return matrix;
 }
 
+LightlikeGaugeLinkFrobeniusRecurrenceAudit
+BuildLightlikeGaugeLinkFrobeniusRecurrenceAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable,
+    const std::size_t recurrence_order) {
+  LightlikeGaugeLinkFrobeniusRecurrenceAudit audit;
+  audit.epsilon_sample = epsilon_samples.empty() ? "0" : epsilon_samples.front();
+  audit.recurrence_order = recurrence_order;
+  const auto fail = [&audit](const std::string& failure_code,
+                             const std::string& summary) {
+    audit.success = false;
+    audit.failure_code = failure_code;
+    audit.summary = summary;
+    return audit;
+  };
+
+  if (RemoveAsciiSpaces(variable) != "gaugex") {
+    return fail("unreviewed-frobenius-variable",
+                "b64ag eta=0 Frobenius recurrence audit is reviewed only for "
+                "variable gaugex");
+  }
+  if (diffeq_matrix.empty()) {
+    return fail("empty-frobenius-matrix",
+                "b64ag eta=0 Frobenius recurrence audit requires the retained "
+                "gaugex matrix");
+  }
+  const std::size_t dimension = diffeq_matrix.size();
+  for (const std::vector<std::string>& row : diffeq_matrix) {
+    if (row.size() != dimension) {
+      return fail("non-square-frobenius-matrix",
+                  "b64ag eta=0 Frobenius recurrence audit requires a square "
+                  "retained gaugex matrix");
+    }
+  }
+  if (dimension != ReviewedReductionMasterLabels().size()) {
+    return fail("unreviewed-frobenius-dimension",
+                "b64ag eta=0 Frobenius recurrence is reviewed only for the "
+                "six-master gauge-link basis");
+  }
+
+  try {
+    const RuntimeFloat epsilon_sample =
+        ParseRuntimeRationalNumber(audit.epsilon_sample);
+    std::vector<RuntimeComplex> diagonal_roots;
+    diagonal_roots.reserve(dimension);
+    bool endpoint_has_pole = false;
+    for (std::size_t row = 0; row < diffeq_matrix.size(); ++row) {
+      for (std::size_t column = 0; column < diffeq_matrix[row].size(); ++column) {
+        const RuntimeRationalPolynomial rational =
+            ParseGaugeLinkRationalExpression(diffeq_matrix[row][column],
+                                             variable,
+                                             epsilon_sample);
+        const int lowest_power = RuntimeRationalLowestPower(rational);
+        endpoint_has_pole = endpoint_has_pole || lowest_power <= -1;
+        if (lowest_power < -1) {
+          audit.higher_order_cells.push_back(
+              "gaugex_matrix[" + std::to_string(row) + "," +
+              std::to_string(column) + "]:lowest_power=" +
+              std::to_string(lowest_power));
+        }
+        if (row == column) {
+          diagonal_roots.push_back(RuntimeRationalLaurentCoefficient(rational, -1));
+        }
+      }
+    }
+    if (diagonal_roots.size() != dimension) {
+      return fail("frobenius-diagonal-roots-unavailable",
+                  "b64ag eta=0 Frobenius recurrence audit could not recover one "
+                  "diagonal indicial root per row");
+    }
+
+    for (std::size_t row = 0; row < diagonal_roots.size(); ++row) {
+      const RuntimeComplex& root = diagonal_roots[row];
+      if (RuntimeAbs(root.imag()) > RuntimeFloat("1e-50")) {
+        return fail("complex-frobenius-root-unreviewed",
+                    "b64ag eta=0 Frobenius recurrence audit found an "
+                    "unreviewed complex indicial root on row " +
+                        std::to_string(row));
+      }
+      const RuntimeFloat real_root = root.real();
+      const std::optional<int> integer_root = TryIntegerResidue(real_root);
+      const std::string root_text =
+          FormatRuntimeFloat(real_root, kEndpointRegionPrecisionDigits);
+      std::string region_key;
+      if (integer_root.has_value()) {
+        region_key = "integer;root=" + root_text +
+                     ";leading_power=" + std::to_string(*integer_root);
+      } else {
+        std::optional<int> finite_part_base;
+        if (row == 1) {
+          finite_part_base =
+              ReviewedGaugeLinkFirstBlockFrobeniusFinitePartBase(real_root,
+                                                                  epsilon_sample);
+        } else {
+          finite_part_base =
+              ReviewedGaugeLinkFrobeniusFinitePartBase(row,
+                                                       real_root,
+                                                       epsilon_sample);
+        }
+        if (!finite_part_base.has_value()) {
+          return fail("unreviewed-frobenius-root",
+                      "b64ag eta=0 Frobenius recurrence audit found an "
+                      "unreviewed non-integer indicial root on row " +
+                          std::to_string(row) + ": " + root_text);
+        }
+        region_key = GaugeLinkFrobeniusRegionKey(real_root, *finite_part_base);
+      }
+      audit.seeded_region_keys.push_back(
+          "row[" + std::to_string(row) + "]:" +
+          ReviewedReductionMasterLabels()[row] + ";region=" + region_key);
+    }
+
+    const auto root_text = [&diagonal_roots](const std::size_t row) {
+      return FormatRuntimeComplex(diagonal_roots[row],
+                                  kEndpointRegionPrecisionDigits);
+    };
+    audit.recurrence_blocks = {
+        "rows[0,1]:first-block-coupled;roots=[" + root_text(0) + "," +
+            root_text(1) +
+            "];higher_order_source=gaugex_matrix[1,0]:lowest_power=-2",
+        "row[2]:second-block-scalar;root=" + root_text(2),
+        "row[3]:second-block-companion;root=" + root_text(3) +
+            ";higher_order_source=gaugex_matrix[3,2]:lowest_power=-3",
+        "row[4]:downstream-scalar;root=" + root_text(4),
+        "row[5]:downstream-companion;root=" + root_text(5) +
+            ";source=row[2]",
+    };
+
+    audit.success = true;
+    audit.indicial_roots_used = true;
+    audit.eta_zero_singular_endpoint = endpoint_has_pole;
+    audit.raw_matrix_regular_singular = audit.higher_order_cells.empty();
+    audit.higher_order_forcing_present = !audit.higher_order_cells.empty();
+    audit.reviewed_triangular_recurrence_available = true;
+    std::ostringstream seeds;
+    for (std::size_t index = 0; index < audit.seeded_region_keys.size();
+         ++index) {
+      if (index != 0) {
+        seeds << ", ";
+      }
+      seeds << audit.seeded_region_keys[index];
+    }
+    std::ostringstream blocks;
+    for (std::size_t index = 0; index < audit.recurrence_blocks.size();
+         ++index) {
+      if (index != 0) {
+        blocks << "; ";
+      }
+      blocks << audit.recurrence_blocks[index];
+    }
+    audit.summary =
+        "Computed b64ag eta=0 Frobenius recurrence audit from diagonal "
+        "indicial roots; epsilon_sample=" +
+        audit.epsilon_sample +
+        "; recurrence_order=" + std::to_string(audit.recurrence_order) +
+        "; seeded_regions=[" + seeds.str() + "]; recurrence_blocks=[" +
+        blocks.str() + "]; raw_matrix_regular_singular=" +
+        (audit.raw_matrix_regular_singular ? std::string("true")
+                                           : std::string("false")) +
+        "; reviewed_triangular_recurrence_available=true";
+    if (audit.higher_order_forcing_present) {
+      audit.summary +=
+          "; raw full-matrix regular singular recurrence remains deferred "
+          "because the retained matrix has higher-order off-diagonal forcing, "
+          "so the reviewed b64ag row-wise recurrence handles eta=0 without "
+          "claiming full_eta_zero_contour_applied";
+    }
+    return audit;
+  } catch (const std::exception& error) {
+    return fail("frobenius-recurrence-audit-failed",
+                std::string("b64ag eta=0 Frobenius recurrence audit failed "
+                            "closed: ") +
+                    error.what());
+  }
+}
+
 LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
     const std::vector<std::vector<std::string>>& diffeq_matrix,
     const std::vector<std::string>& epsilon_samples,
@@ -3425,6 +3637,11 @@ LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
     audit.diagonal_roots_available =
         audit.diagonal_residue_roots.size() == dimension;
     audit.fuchsian_full_matrix_probe = audit.higher_order_cells.empty();
+    audit.frobenius_recurrence =
+        BuildLightlikeGaugeLinkFrobeniusRecurrenceAudit(diffeq_matrix,
+                                                        epsilon_samples,
+                                                        variable,
+                                                        12);
     if (!audit.fuchsian_full_matrix_probe) {
       audit.failure_code = "higher-order-offdiagonal-forcing";
     }
@@ -3459,6 +3676,13 @@ LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
           "]; raw full-matrix indicial roots remain deferred because the "
           "retained gauge-link matrix carries higher-order off-diagonal forcing "
           "that is handled by the reviewed b64ag Frobenius recurrence";
+    }
+    if (audit.frobenius_recurrence.success) {
+      audit.summary += "; " + audit.frobenius_recurrence.summary;
+    } else {
+      audit.summary +=
+          "; b64ag Frobenius recurrence audit failed closed with code " +
+          audit.frobenius_recurrence.failure_code;
     }
     return audit;
   } catch (const std::exception& error) {

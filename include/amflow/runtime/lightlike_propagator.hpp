@@ -144,6 +144,24 @@ struct LightlikeGaugeLinkPoleAudit {
   std::vector<std::string> sources;
 };
 
+struct LightlikeGaugeLinkFrobeniusRecurrenceAudit {
+  bool success = false;
+  bool indicial_roots_used = false;
+  bool eta_zero_singular_endpoint = false;
+  bool raw_matrix_regular_singular = false;
+  bool higher_order_forcing_present = false;
+  bool reviewed_triangular_recurrence_available = false;
+  std::size_t recurrence_order = 0;
+  std::string failure_code;
+  std::string epsilon_sample;
+  std::string recurrence_convention =
+      "((rho+n)-r_i)c_{i,n}=regular-tail-and-reviewed-forcing";
+  std::vector<std::string> seeded_region_keys;
+  std::vector<std::string> recurrence_blocks;
+  std::vector<std::string> higher_order_cells;
+  std::string summary;
+};
+
 struct LightlikeGaugeLinkIndicialAudit {
   bool success = false;
   bool fuchsian_full_matrix_probe = false;
@@ -154,6 +172,7 @@ struct LightlikeGaugeLinkIndicialAudit {
       "det(rho*I - Res_{gaugex=0} A(gaugex))=0";
   std::vector<std::string> diagonal_residue_roots;
   std::vector<std::string> higher_order_cells;
+  LightlikeGaugeLinkFrobeniusRecurrenceAudit frobenius_recurrence;
   std::string summary;
 };
 
@@ -288,6 +307,13 @@ LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
     const std::vector<std::vector<std::string>>& diffeq_matrix,
     const std::vector<std::string>& epsilon_samples,
     const std::string& variable = "gaugex");
+
+LightlikeGaugeLinkFrobeniusRecurrenceAudit
+BuildLightlikeGaugeLinkFrobeniusRecurrenceAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable = "gaugex",
+    std::size_t recurrence_order = 12);
 
 LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
     const std::vector<std::vector<std::string>>& diffeq_matrix,

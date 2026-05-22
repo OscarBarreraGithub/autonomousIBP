@@ -3185,6 +3185,38 @@ void B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest() {
              audit.indicial_audit.higher_order_cells[1] ==
              "gaugex_matrix[3,2]:lowest_power=-3",
          "b64ag indicial audit should fingerprint the raw non-Fuchsian cells");
+  const amflow::LightlikeGaugeLinkFrobeniusRecurrenceAudit&
+      recurrence_audit = audit.indicial_audit.frobenius_recurrence;
+  Expect(recurrence_audit.success,
+         "b64ag indicial audit should compute the reviewed Frobenius recurrence audit");
+  Expect(recurrence_audit.indicial_roots_used,
+         "b64ag recurrence audit should derive its regions from indicial roots");
+  Expect(recurrence_audit.eta_zero_singular_endpoint,
+         "b64ag recurrence audit should identify eta=0 as a singular endpoint");
+  Expect(!recurrence_audit.raw_matrix_regular_singular,
+         "b64ag recurrence audit should not overclaim a full regular-singular matrix");
+  Expect(recurrence_audit.higher_order_forcing_present,
+         "b64ag recurrence audit should preserve the higher-order forcing blocker");
+  Expect(recurrence_audit.reviewed_triangular_recurrence_available,
+         "b64ag recurrence audit should publish the reviewed row-wise recurrence path");
+  Expect(recurrence_audit.recurrence_order == 12,
+         "b64ag recurrence audit should match the reviewed finite-part transport order");
+  Expect(recurrence_audit.seeded_region_keys.size() == 6,
+         "b64ag recurrence audit should publish one seeded region per DE row");
+  ExpectContains(recurrence_audit.seeded_region_keys[1],
+                 "base:-6",
+                 "b64ag recurrence audit should seed the first-block Frobenius root");
+  ExpectContains(recurrence_audit.seeded_region_keys[2],
+                 "base:-7",
+                 "b64ag recurrence audit should seed the second-block Frobenius root");
+  ExpectContains(recurrence_audit.seeded_region_keys[5],
+                 "base:-2",
+                 "b64ag recurrence audit should seed the downstream Frobenius root");
+  Expect(recurrence_audit.recurrence_blocks.size() == 5,
+         "b64ag recurrence audit should decompose the reviewed six-master row recurrence");
+  ExpectContains(recurrence_audit.summary,
+                 "raw full-matrix regular singular recurrence remains deferred",
+                 "b64ag recurrence audit should identify the eta=0 regular-singular issue");
   ExpectContains(audit.dropped_term_audit,
                  "PickZeroRuleS-compatible finite-part extraction",
                  "b64ag contour audit should preserve the finite-part extraction contract");

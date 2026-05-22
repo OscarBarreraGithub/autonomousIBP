@@ -190,6 +190,8 @@ std::string SerializePropagationForFingerprint(
   out << "half_plane=" << ToString(options.half_plane) << "\n";
   out << "branch_policy=" << options.branch_policy << "\n";
   out << "matrix_fingerprint=" << options.matrix_fingerprint << "\n";
+  out << "endpoint_target=eta=0\n";
+  out << "endpoint_local_model_kind=" << options.endpoint_local_model_kind << "\n";
   out << "working_precision_digits=" << options.working_precision_digits << "\n";
   out << "refinement_error_tolerance_abs="
       << CompactFloat(options.refinement_error_tolerance) << "\n";
@@ -219,12 +221,15 @@ ComplexContourPropagationResult FailureResult(
   result.diagnostics.segment_count =
       waypoints.empty() ? 0 : waypoints.size() - 1;
   result.diagnostics.half_plane = options.half_plane;
+  result.diagnostics.eta_zero_endpoint_reached = false;
   result.diagnostics.working_precision_digits = options.working_precision_digits;
   result.diagnostics.runtime_application =
       "b61n-complex-contour-propagator-harness";
   result.diagnostics.transport_scope =
       "lower-half-plane-complex-ode-vector-propagation";
   result.diagnostics.branch_policy = options.branch_policy;
+  result.diagnostics.endpoint_target = "eta=0";
+  result.diagnostics.endpoint_local_model_kind = options.endpoint_local_model_kind;
   result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
   result.diagnostics.refinement_error_tolerance_abs =
       CompactFloat(options.refinement_error_tolerance, 40);
@@ -326,6 +331,24 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         waypoints,
         options);
   }
+  if (options.endpoint_local_model_kind.empty()) {
+    return FailureResult(
+        "missing-endpoint-local-model-kind",
+        "b61n complex contour propagator requires eta=0 endpoint local-model provenance "
+        "before publishing propagated samples",
+        initial_values,
+        waypoints,
+        options);
+  }
+  if (waypoints.back().real() != 0 || waypoints.back().imag() != 0) {
+    return FailureResult(
+        "non-eta-zero-contour-endpoint",
+        "b61n complex contour propagator requires the final waypoint to be exactly eta=0; "
+        "got " + CompactComplex(waypoints.back(), 40),
+        initial_values,
+        waypoints,
+        options);
+  }
 
   try {
     RequireFiniteVector(initial_values, "initial");
@@ -393,11 +416,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.diagnostics.refinement_doublings_used = refinement_doublings_used;
     result.diagnostics.working_precision_digits = options.working_precision_digits;
     result.diagnostics.half_plane = options.half_plane;
+    result.diagnostics.eta_zero_endpoint_reached = true;
     result.diagnostics.runtime_application =
         "b61n-complex-contour-propagator-harness";
     result.diagnostics.transport_scope =
         "lower-half-plane-complex-ode-vector-propagation";
     result.diagnostics.branch_policy = options.branch_policy;
+    result.diagnostics.endpoint_target = "eta=0";
+    result.diagnostics.endpoint_local_model_kind = options.endpoint_local_model_kind;
     result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
     result.diagnostics.refinement_error_abs = CompactFloat(refinement_error, 40);
     result.diagnostics.refinement_error_tolerance_abs =
@@ -414,6 +440,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         std::to_string(result.diagnostics.dimension) +
         "; ode_propagation_applied=true; coefficient_publication=false; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
+        "endpoint_target=eta=0; eta_zero_endpoint_reached=true; "
+        "endpoint_local_model_kind=" + result.diagnostics.endpoint_local_model_kind +
+        "; endpoint_extraction_applied=false; "
         "matrix_fingerprint=" + result.diagnostics.matrix_fingerprint +
         "; working_precision_digits=" +
         std::to_string(result.diagnostics.working_precision_digits) +

@@ -27,6 +27,7 @@ struct ComplexContourPropagationOptions {
   std::size_t working_precision_digits = 100;
   ComplexContourFloat refinement_error_tolerance = ComplexContourFloat("1e-60");
   std::string matrix_fingerprint;
+  std::string endpoint_local_model_kind = "regular-taylor-r0-pending-laurent-fit";
   std::string branch_policy = "NegIm lower-half-plane contour supplied by caller";
 };
 
@@ -44,9 +45,12 @@ struct ComplexContourPropagationDiagnostics {
   std::size_t refinement_doublings_used = 0;
   std::size_t working_precision_digits = 0;
   EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower;
+  bool eta_zero_endpoint_reached = false;
   std::string runtime_application;
   std::string transport_scope;
   std::string branch_policy;
+  std::string endpoint_target;
+  std::string endpoint_local_model_kind;
   std::string matrix_fingerprint;
   std::string contour_fingerprint;
   std::string refinement_error_abs;

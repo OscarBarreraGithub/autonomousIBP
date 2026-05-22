@@ -3696,6 +3696,10 @@ void ExpectB61nContourPropagationFailure(
          message + "; failed propagation must not consume retained solution samples");
   Expect(!result.diagnostics.full_eta_zero_contour_applied,
          message + "; failed propagation must keep full contour false");
+  Expect(!result.diagnostics.eta_zero_endpoint_reached,
+         message + "; failed propagation must not mark eta=0 endpoint arrival");
+  Expect(result.diagnostics.endpoint_target == "eta=0",
+         message + "; failed propagation should still publish the required endpoint target");
   Expect(result.diagnostics.failure_code == failure_code,
          message + "; expected failure_code=" + failure_code + ", got " +
              result.diagnostics.failure_code);
@@ -3734,6 +3738,7 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
   options.steps_per_segment = 8;
   options.refinement_doublings = 1;
   options.matrix_fingerprint = "synthetic-b61n-lower-triangular-constant-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0-synthetic-b61n";
   options.branch_policy = "NegIm lower-half-plane b61n test contour";
 
   const amflow::ComplexContourPropagationResult result =
@@ -3751,6 +3756,13 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
          "b61n contour harness must not read final AMFlow solution samples");
   Expect(!result.diagnostics.full_eta_zero_contour_applied,
          "b61n contour harness must not promote the full M6 contour flag");
+  Expect(result.diagnostics.eta_zero_endpoint_reached,
+         "b61n contour harness should record exact eta=0 endpoint arrival");
+  Expect(result.diagnostics.endpoint_target == "eta=0",
+         "b61n contour harness should publish the endpoint target");
+  Expect(result.diagnostics.endpoint_local_model_kind ==
+             "regular-taylor-r0-synthetic-b61n",
+         "b61n contour harness should preserve endpoint local-model provenance");
   Expect(result.diagnostics.transport_scope ==
              "lower-half-plane-complex-ode-vector-propagation",
          "b61n contour harness should expose the scoped propagation contract");
@@ -3760,6 +3772,13 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
   ExpectContains(result.diagnostics.summary,
                  "full_eta_zero_contour_applied=false",
                  "b61n contour harness summary should keep anti-fake flag false");
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_target=eta=0; eta_zero_endpoint_reached=true",
+                 "b61n contour harness summary should publish the eta=0 endpoint contract");
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_local_model_kind=regular-taylor-r0-synthetic-b61n; "
+                 "endpoint_extraction_applied=false",
+                 "b61n contour harness should not claim endpoint coefficient extraction");
   ExpectContains(result.diagnostics.summary,
                  "matrix_fingerprint=synthetic-b61n-lower-triangular-constant-v1",
                  "b61n contour harness should publish matrix provenance");
@@ -3868,6 +3887,14 @@ void B61nComplexContourPropagatorRejectsInvalidInputsTest() {
           initial, waypoints, evaluator, bad_budget_options),
       "invalid-refinement-budget",
       "b61n contour harness should reject inconsistent refinement budgets");
+
+  amflow::ComplexContourPropagationOptions missing_local_model_options = options;
+  missing_local_model_options.endpoint_local_model_kind.clear();
+  ExpectB61nContourPropagationFailure(
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, missing_local_model_options),
+      "missing-endpoint-local-model-kind",
+      "b61n contour harness should require endpoint local-model provenance");
 }
 
 void B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest() {
@@ -4002,6 +4029,29 @@ void B61nComplexContourPropagatorRejectsNonfiniteWaypointTest() {
       "b61n contour harness should reject nonfinite waypoints");
 }
 
+void B61nComplexContourPropagatorRejectsNonEtaZeroEndpointTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {1, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.matrix_fingerprint = "synthetic-b61n-non-eta-zero-endpoint-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "non-eta-zero-contour-endpoint",
+      "b61n contour harness should reject contours that do not terminate at eta=0");
+  ExpectContains(result.diagnostics.summary,
+                 "final waypoint to be exactly eta=0",
+                 "b61n contour harness should explain the eta=0 endpoint contract");
+}
+
 }  // namespace
 
 int main() {
@@ -4038,6 +4088,7 @@ int main() {
     B61nComplexContourPropagatorRejectsPositiveImaginaryWaypointTest();
     B61nComplexContourPropagatorRejectsRealAxisInteriorWaypointTest();
     B61nComplexContourPropagatorRejectsNonfiniteWaypointTest();
+    B61nComplexContourPropagatorRejectsNonEtaZeroEndpointTest();
     B63nCutkoskyResiduePublicationGateAcceptsReviewedPublishedResidueTest();
     B63nCutkoskyResiduePublicationGateRejectsSyntheticResidueTest();
     B63nCutkoskyResiduePublicationGateRejectsRetainedSolutionSampleResidueTest();

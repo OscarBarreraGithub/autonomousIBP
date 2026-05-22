@@ -66,6 +66,83 @@ BAD_TEXT = tuple(
     )
 )
 
+UNKNOWN_FAILURE_CODE = "b64ag_unknown_readiness_failure"
+
+FAILURE_CODE_BY_CHECK = {
+    "runtime_lane_is_b64ag": "b64ag_runtime_packet_contract_mismatch",
+    "benchmark_is_linear_propagator": "b64ag_runtime_packet_contract_mismatch",
+    "runtime_provenance_rejects_final_solution_samples": "b64ag_provenance_contract_mismatch",
+    "continuation_present": "b64ag_runtime_scope_not_full_contour",
+    "continuation_variable_gaugex": "b64ag_runtime_scope_not_full_contour",
+    "continuation_start_one_fortieth": "b64ag_runtime_scope_not_full_contour",
+    "continuation_target_zero": "b64ag_runtime_scope_not_full_contour",
+    "continuation_singular_zero": "b64ag_runtime_scope_not_full_contour",
+    "full_eta_zero_contour_applied": "b64ag_runtime_scope_not_full_contour",
+    "blocked_reason_absent": "b64ag_runtime_scope_not_full_contour",
+    "runtime_text_rejects_fake_scope_words": "b64ag_runtime_scope_not_full_contour",
+    "runtime_targets_match_packet": "b64ag_runtime_packet_contract_mismatch",
+    "runtime_results_match_packet": "b64ag_runtime_packet_contract_mismatch",
+    "runtime_results_have_coefficients": "b64ag_digit_evidence_incomplete",
+    "state_gauge_link_present": "b64ag_amflow_state_contract_mismatch",
+    "state_exact_six_master_basis": "b64ag_amflow_state_contract_mismatch",
+    "state_boundary_one_fortieth": "b64ag_amflow_state_contract_mismatch",
+    "state_variable_gaugex": "b64ag_amflow_state_contract_mismatch",
+    "full_contour_diagnostics_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_contour_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_poles_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_finite_part_extraction_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_target_reduction_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_precision_present": "b64ag_full_contour_diagnostics_missing",
+    "diagnostic_provenance_present": "b64ag_full_contour_diagnostics_missing",
+    "contour_fingerprint_present": "b64ag_contour_pole_diagnostics_incomplete",
+    "contour_waypoints_present": "b64ag_contour_pole_diagnostics_incomplete",
+    "nonzero_poles_present": "b64ag_contour_pole_diagnostics_incomplete",
+    "finite_rule_pick_zero_rule_s": "b64ag_finite_part_diagnostics_incomplete",
+    "ir_subtraction_applied": "b64ag_finite_part_diagnostics_incomplete",
+    "finite_part_order_zero": "b64ag_finite_part_diagnostics_incomplete",
+    "dropped_singular_powers_present": "b64ag_finite_part_diagnostics_incomplete",
+    "target_reduction_fingerprint_present": "b64ag_finite_part_diagnostics_incomplete",
+    "target_reduction_row_count_nine": "b64ag_finite_part_diagnostics_incomplete",
+    "working_digits_at_least_50": "b64ag_precision_floor_not_met",
+    "epsilon_samples_at_least_31": "b64ag_precision_floor_not_met",
+    "diagnostic_final_solution_samples_false": "b64ag_provenance_contract_mismatch",
+    "diagnostic_provenance_fingerprints_present": "b64ag_provenance_contract_mismatch",
+    "comparison_kind_cpp_vs_amflow": "b64ag_comparison_contract_mismatch",
+    "comparison_benchmark_linear_propagator": "b64ag_comparison_contract_mismatch",
+    "comparison_passed": "b64ag_comparison_contract_mismatch",
+    "comparison_failures_empty": "b64ag_comparison_contract_mismatch",
+    "comparison_cpp_result_matches_input": "b64ag_provenance_contract_mismatch",
+    "comparison_state_matches_input": "b64ag_provenance_contract_mismatch",
+    "comparison_golden_matches_phase0_linear_propagator": "b64ag_provenance_contract_mismatch",
+    "comparison_tolerance_at_least_50": "b64ag_precision_floor_not_met",
+    "comparison_integrals_match_packet": "b64ag_comparison_packet_mismatch",
+    "comparison_matched_integral_count_consistent": "b64ag_comparison_packet_mismatch",
+    "comparison_target_counts_match_packet": "b64ag_comparison_packet_mismatch",
+    "comparison_target_orders_match_packet": "b64ag_comparison_packet_mismatch",
+    "comparison_has_57_rows": "b64ag_comparison_packet_mismatch",
+    "comparison_compared_passed_counts_consistent": "b64ag_comparison_packet_mismatch",
+    "comparison_all_coefficients_passed": "b64ag_digit_evidence_incomplete",
+    "comparison_cpp_amflow_presence_true": "b64ag_digit_evidence_incomplete",
+    "comparison_real_imag_digits_present": "b64ag_digit_evidence_incomplete",
+    "comparison_not_all_999": "b64ag_digit_evidence_incomplete",
+    "comparison_detailed_digits_meet_50": "b64ag_precision_floor_not_met",
+}
+
+FAILURE_CODE_PRIORITY = [
+    "b64ag_runtime_scope_not_full_contour",
+    "b64ag_full_contour_diagnostics_missing",
+    "b64ag_contour_pole_diagnostics_incomplete",
+    "b64ag_finite_part_diagnostics_incomplete",
+    "b64ag_amflow_state_contract_mismatch",
+    "b64ag_runtime_packet_contract_mismatch",
+    "b64ag_comparison_packet_mismatch",
+    "b64ag_digit_evidence_incomplete",
+    "b64ag_precision_floor_not_met",
+    "b64ag_provenance_contract_mismatch",
+    "b64ag_comparison_contract_mismatch",
+    UNKNOWN_FAILURE_CODE,
+]
+
 
 def expect(condition: bool, message: str) -> None:
     if not condition:
@@ -150,6 +227,46 @@ def add(checks: dict[str, bool], blockers: list[str], key: str, ok: bool, messag
     checks[key] = ok
     if not ok:
         blockers.append(message)
+
+
+def classify_failed_check(check_name: str) -> str:
+    return FAILURE_CODE_BY_CHECK.get(check_name, UNKNOWN_FAILURE_CODE)
+
+
+def ordered_failure_codes(failed_checks_by_code: dict[str, list[str]]) -> list[str]:
+    ordered = [code for code in FAILURE_CODE_PRIORITY if code in failed_checks_by_code]
+    seen = set(ordered)
+    ordered.extend(sorted(code for code in failed_checks_by_code if code not in seen))
+    return ordered
+
+
+def failure_code_postmortem(
+    checks: dict[str, bool],
+    blockers: list[str],
+) -> dict[str, Any]:
+    failed_checks_by_code: dict[str, list[str]] = {}
+    for check_name, passed in checks.items():
+        if passed:
+            continue
+        failure_code = classify_failed_check(check_name)
+        failed_checks_by_code.setdefault(failure_code, []).append(check_name)
+
+    if blockers and not failed_checks_by_code:
+        failed_checks_by_code[UNKNOWN_FAILURE_CODE] = ["blocking_reason_without_failed_check"]
+
+    failure_codes = ordered_failure_codes(failed_checks_by_code)
+    return {
+        "schema_version": 1,
+        "profile": "b64ag-golden-recapture-readiness-postmortem-v1",
+        "status": "blocked" if failure_codes else "ready",
+        "primary_failure_code": failure_codes[0] if failure_codes else "",
+        "failure_codes": failure_codes,
+        "failed_checks_by_code": failed_checks_by_code,
+        "unknown_failed_checks": failed_checks_by_code.get(UNKNOWN_FAILURE_CODE, []),
+        "blocking_reason_count": len(blockers),
+        "m6_closure_claimed": False,
+        "full_eta_zero_contour_applied_claimed_by_helper": False,
+    }
 
 
 def full_contour_diagnostics(cpp_result: dict[str, Any]) -> dict[str, Any] | None:
@@ -418,6 +535,7 @@ def audit_b64ag_golden_recapture_readiness(
         "golden_recapture_ready": ready,
         "checks": checks,
         "blocking_reasons": blockers,
+        "failure_code_postmortem": failure_code_postmortem(checks, blockers),
         "details": details,
         "inputs": {
             "cpp_result": str(cpp_result_path),
@@ -603,6 +721,26 @@ def run_self_check() -> dict[str, bool]:
                 state_mutation(state)
             return not audit_payloads(cpp, comparison, state, tmp / label)["golden_recapture_ready"]
 
+        def postmortem_primary_code(
+            label: str,
+            cpp_mutation: Any | None = None,
+            comparison_mutation: Any | None = None,
+            state_mutation: Any | None = None,
+        ) -> str:
+            cpp = copy.deepcopy(base_cpp)
+            comparison = copy.deepcopy(base_comparison)
+            state = copy.deepcopy(base_state)
+            if cpp_mutation is not None:
+                cpp_mutation(cpp)
+            if comparison_mutation is not None:
+                comparison_mutation(comparison)
+            if state_mutation is not None:
+                state_mutation(state)
+            postmortem = audit_payloads(cpp, comparison, state, tmp / label)[
+                "failure_code_postmortem"
+            ]
+            return str(postmortem["primary_failure_code"])
+
         def selected_wording(cpp: dict[str, Any]) -> None:
             cpp["boundary_state"]["runtime_boundary_provider"] = "selected-endpoint-solution-samples"
 
@@ -681,15 +819,49 @@ def run_self_check() -> dict[str, bool]:
             repo_root()
             / "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
         )
+        unknown_postmortem = failure_code_postmortem(
+            {"future_unmapped_check": False},
+            ["synthetic unmapped blocker"],
+        )
 
         summary = {
             "ready_synthetic_passed": ready_summary["golden_recapture_ready"] is True,
+            "ready_postmortem_empty": ready_summary["failure_code_postmortem"] == {
+                "schema_version": 1,
+                "profile": "b64ag-golden-recapture-readiness-postmortem-v1",
+                "status": "ready",
+                "primary_failure_code": "",
+                "failure_codes": [],
+                "failed_checks_by_code": {},
+                "unknown_failed_checks": [],
+                "blocking_reason_count": 0,
+                "m6_closure_claimed": False,
+                "full_eta_zero_contour_applied_claimed_by_helper": False,
+            },
             "selected_lane147_fixture_rejected": selected_fixture["golden_recapture_ready"] is False,
+            "selected_lane147_primary_failure_code_reported": (
+                selected_fixture["failure_code_postmortem"]["primary_failure_code"]
+                == "b64ag_runtime_scope_not_full_contour"
+            ),
+            "selected_lane147_has_no_unknown_failure_codes": (
+                selected_fixture["failure_code_postmortem"]["unknown_failed_checks"] == []
+            ),
+            "selected_lane147_m6_claims_withheld": (
+                selected_fixture["failure_code_postmortem"]["m6_closure_claimed"] is False
+                and selected_fixture["failure_code_postmortem"][
+                    "full_eta_zero_contour_applied_claimed_by_helper"
+                ]
+                is False
+            ),
             "wrong_runtime_lane_rejected": rejected("bad-lane", cpp_mutation=bad_lane),
             "contour_false_rejected": rejected("contour-false", cpp_mutation=contour_false),
             "selected_solution_sample_wording_rejected": rejected("bad-text", cpp_mutation=selected_wording),
             "wrong_gaugex_start_rejected": rejected("bad-start", cpp_mutation=bad_start),
             "missing_full_contour_rejected": rejected("missing-contour", cpp_mutation=missing_contour),
+            "missing_full_contour_primary_failure_code_reported": (
+                postmortem_primary_code("missing-contour-code", cpp_mutation=missing_contour)
+                == "b64ag_full_contour_diagnostics_missing"
+            ),
             "empty_nonzero_poles_rejected": rejected("empty-poles", cpp_mutation=empty_poles),
             "runtime_final_solution_sample_true_rejected": rejected("bad-runtime-sample", cpp_mutation=bad_runtime_sample),
             "diagnostic_final_solution_sample_true_rejected": rejected("bad-diag-sample", cpp_mutation=bad_diag_sample),
@@ -704,8 +876,22 @@ def run_self_check() -> dict[str, bool]:
             "missing_order_rejected": rejected("missing-order", comparison_mutation=missing_order),
             "missing_side_presence_rejected": rejected("missing-presence", comparison_mutation=missing_presence),
             "forged_integral_count_rejected": rejected("bad-integral-count", comparison_mutation=bad_integral_count),
+            "low_digits_primary_failure_code_reported": (
+                postmortem_primary_code("low-digits-code", comparison_mutation=low_digits)
+                == "b64ag_precision_floor_not_met"
+            ),
             "all_999_sentinel_rejected": rejected("all-999", comparison_mutation=all_999),
+            "all_999_primary_failure_code_reported": (
+                postmortem_primary_code("all-999-code", comparison_mutation=all_999)
+                == "b64ag_digit_evidence_incomplete"
+            ),
             "sparse_comparison_rejected": rejected("sparse", comparison_mutation=sparse),
+            "unmapped_failure_code_fails_closed": (
+                unknown_postmortem["status"] == "blocked"
+                and unknown_postmortem["primary_failure_code"] == UNKNOWN_FAILURE_CODE
+                and unknown_postmortem["unknown_failed_checks"] == ["future_unmapped_check"]
+                and unknown_postmortem["m6_closure_claimed"] is False
+            ),
         }
         expect(all(summary.values()), "b64ag golden recapture readiness self-check failed")
         return summary
@@ -754,7 +940,12 @@ if __name__ == "__main__":
                 "status": "blocked",
                 "golden_recapture_ready": False,
                 "blocking_reasons": [str(error)],
+                "failure_code_postmortem": failure_code_postmortem(
+                    {"audit_exception": False},
+                    [str(error)],
+                ),
                 "m6_closure_claimed": False,
+                "full_eta_zero_contour_applied_claimed_by_helper": False,
             }
         )
         raise SystemExit(1)

@@ -4189,9 +4189,9 @@ amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions() {
   return options;
 }
 
-amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubble(
-    const amflow::ComplexContourPropagationOptions& options) {
-  const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
+amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubbleOverWaypoints(
+    const amflow::ComplexContourPropagationOptions& options,
+    const std::vector<B61nContourNumber>& waypoints) {
   const amflow::ComplexContourVector initial = {{3, -1}};
   const auto evaluator = [](const B61nContourNumber&) {
     return amflow::ComplexContourMatrix{
@@ -4199,6 +4199,12 @@ amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubble(
     };
   };
   return amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+}
+
+amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubble(
+    const amflow::ComplexContourPropagationOptions& options) {
+  const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
+  return PropagateB61nLane142PrimitiveBubbleOverWaypoints(options, waypoints);
 }
 
 void B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest() {
@@ -4267,6 +4273,37 @@ void B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest() 
          "b61n primitive-bubble endpoint must not extract without lane142 fingerprint");
   Expect(!no_fingerprint.diagnostics.full_eta_zero_contour_applied,
          "b61n primitive-bubble bad fingerprint must keep M6 flag false");
+}
+
+void B61nComplexContourPropagatorRequiresReviewedPublicationContourTest() {
+  const std::vector<B61nContourNumber> off_axis_waypoints = {
+      {0, -2},
+      {B61nContourFloat("0.25"), -1},
+      {0, 0},
+  };
+  const amflow::ComplexContourPropagationResult off_axis =
+      PropagateB61nLane142PrimitiveBubbleOverWaypoints(
+          B61nLane142PrimitiveBubbleOptions(), off_axis_waypoints);
+
+  Expect(off_axis.success,
+         "b61n primitive-bubble off-axis propagation should still execute: " +
+             off_axis.diagnostics.summary);
+  Expect(off_axis.endpoint_values.size() == 1,
+         "b61n primitive-bubble off-axis propagation should preserve endpoint value");
+  Expect(!off_axis.diagnostics.coefficient_publication,
+         "b61n primitive-bubble publication must require the reviewed eta-axis contour");
+  Expect(!off_axis.diagnostics.endpoint_extraction_applied,
+         "b61n primitive-bubble off-axis contour must not mark endpoint extraction");
+  Expect(!off_axis.diagnostics.full_eta_zero_contour_applied,
+         "b61n primitive-bubble off-axis contour must keep M6 flag false");
+  Expect(off_axis.diagnostics.endpoint_integral_id == "box[1,0,1,0]",
+         "b61n primitive-bubble off-axis diagnostics should preserve integral provenance");
+  ExpectContains(off_axis.diagnostics.summary,
+                 "coefficient_publication=false",
+                 "b61n primitive-bubble off-axis summary should withhold publication");
+  ExpectContains(off_axis.diagnostics.summary,
+                 "endpoint_extraction_applied=false",
+                 "b61n primitive-bubble off-axis summary should withhold extraction");
 }
 
 void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
@@ -4714,6 +4751,7 @@ int main() {
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
+    B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();
     B61nComplexContourPropagatorRequiresMatrixFingerprintTest();

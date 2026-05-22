@@ -286,9 +286,38 @@ bool IsReviewedLane142PrimitiveBubbleEndpoint(
          options.endpoint_integral_id == "box[0,0,1,1]";
 }
 
+bool IsReviewedB61nPublicationContour(
+    const std::vector<ComplexContourNumber>& waypoints) {
+  if (waypoints.size() < 2) {
+    return false;
+  }
+  for (std::size_t index = 0; index < waypoints.size(); ++index) {
+    if (!IsFinite(waypoints[index]) || waypoints[index].real() != 0) {
+      return false;
+    }
+    const ComplexContourFloat imaginary = waypoints[index].imag();
+    const bool final_waypoint = index + 1 == waypoints.size();
+    if (final_waypoint) {
+      if (imaginary != 0) {
+        return false;
+      }
+    } else if (imaginary >= 0) {
+      return false;
+    }
+    if (index > 0 && imaginary <= waypoints[index - 1].imag()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool AppliesReviewedB61nEndpointExtraction(
     const ComplexContourVector& endpoint_values,
+    const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourPropagationOptions& options) {
+  if (!IsReviewedB61nPublicationContour(waypoints)) {
+    return false;
+  }
   if (endpoint_values.size() != 1) {
     return false;
   }
@@ -484,7 +513,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.success = true;
     result.endpoint_values = refined;
     const bool endpoint_extraction_applied =
-        AppliesReviewedB61nEndpointExtraction(result.endpoint_values, options);
+        AppliesReviewedB61nEndpointExtraction(result.endpoint_values,
+                                             waypoints,
+                                             options);
     const bool coefficient_publication = endpoint_extraction_applied;
     result.diagnostics.success = true;
     result.diagnostics.ode_propagation_applied = true;

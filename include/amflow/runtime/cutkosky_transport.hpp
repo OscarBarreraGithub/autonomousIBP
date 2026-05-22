@@ -339,7 +339,14 @@ BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
     std::size_t uncut_denominator_index,
     int max_eps_order,
     int requested_precision_digits = 80);
+std::vector<CutkoskyWeightedResidueMomentSeed>
+BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+    const ProblemSpec& spec,
+    int max_eps_order,
+    int requested_precision_digits = 80);
 std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
     const CutkoskyWeightedResidueMomentSeed& seed);
+std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+    const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds);
 
 }  // namespace amflow

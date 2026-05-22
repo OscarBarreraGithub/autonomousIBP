@@ -2106,6 +2106,82 @@ void B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest() {
                  "publication_gate=blocked-by-publication-gate",
                  "b63n automatic weighted moment seed audit should include the gate");
 
+  struct ExpectedWeightedSeed {
+    std::size_t denominator_index;
+    std::string denominator_id;
+    int power;
+  };
+  const std::vector<ExpectedWeightedSeed> expected_seeds = {
+      {1, "D2", 2},
+      {3, "D4", 1},
+      {5, "D6", 1},
+      {6, "D7", 1},
+  };
+  const auto seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          1,
+          70);
+  Expect(seed_packet.size() == expected_seeds.size(),
+         "b63n automatic weighted moment seed packet should cover D2,D4,D6,D7");
+  for (std::size_t index = 0; index < expected_seeds.size(); ++index) {
+    const ExpectedWeightedSeed& expected = expected_seeds[index];
+    const amflow::CutkoskyWeightedResidueMomentSeed& packet_seed =
+        seed_packet[index];
+    Expect(packet_seed.selected_weight_denominator == expected.denominator_id &&
+               packet_seed.selected_weight_denominator_index ==
+                   expected.denominator_index &&
+               packet_seed.selected_weight_power == expected.power,
+           "b63n automatic weighted moment seed packet should preserve reviewed "
+           "integrand order for " +
+               expected.denominator_id);
+    Expect(!packet_seed.live_coefficients_available &&
+               !packet_seed.retained_solution_samples_used &&
+               !packet_seed.full_eta_zero_contour_applied,
+           "b63n automatic weighted moment seed packet must keep " +
+               expected.denominator_id + " non-publishing");
+    ExpectContains(packet_seed.publication_gate_status,
+                   "blocked-by-publication-gate",
+                   "b63n automatic weighted moment seed packet should gate " +
+                       expected.denominator_id);
+    Expect(packet_seed.residue_series.terms.size() == 2,
+           "b63n automatic weighted moment seed packet should carry " +
+               expected.denominator_id + " through eps^1");
+    const amflow::CutkoskyResidueSeriesTerm& packet_eps0 =
+        CutkoskyResidueTermAt(packet_seed.residue_series, 0, 0, 0, "integer");
+    Expect(packet_eps0.coefficient_label ==
+               "automatic_phasespace_" + expected.denominator_id +
+                   "_weighted_moment_seed",
+           "b63n automatic weighted moment seed packet should label " +
+               expected.denominator_id);
+    ExpectContains(packet_eps0.provenance.derivation,
+                   expected.denominator_id + " weighted moment seed",
+                   "b63n automatic weighted moment seed packet should scope " +
+                       expected.denominator_id + " provenance");
+  }
+  const std::string packet_audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(seed_packet);
+  ExpectContains(packet_audit,
+                 "kind=b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
+                 "b63n automatic weighted moment seed packet audit should identify the "
+                 "step");
+  ExpectContains(packet_audit,
+                 "seed_count=4",
+                 "b63n automatic weighted moment seed packet audit should count seeds");
+  ExpectContains(packet_audit,
+                 "seed[1]=selected_weight=D4",
+                 "b63n automatic weighted moment seed packet audit should include D4");
+  ExpectContains(packet_audit,
+                 "seed[2]=selected_weight=D6",
+                 "b63n automatic weighted moment seed packet audit should include D6");
+  ExpectContains(packet_audit,
+                 "seed[3]=selected_weight=D7",
+                 "b63n automatic weighted moment seed packet audit should include D7");
+  ExpectNotContains(packet_audit,
+                    "full_eta_zero_contour_applied=true",
+                    "b63n automatic weighted moment seed packet audit must not promote "
+                    "M6");
+
   ExpectRuntimeErrorContains(
       []() {
         static_cast<void>(

@@ -2360,6 +2360,28 @@ BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
   return seed;
 }
 
+std::vector<CutkoskyWeightedResidueMomentSeed>
+BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+    const ProblemSpec& spec,
+    const int max_eps_order,
+    const int requested_precision_digits) {
+  if (max_eps_order < 0) {
+    throw std::invalid_argument(
+        "b63n automatic phase-space weighted residue moment seed requires "
+        "max_eps_order >= 0");
+  }
+
+  const CutkoskySymbolicIntegrand integrand =
+      BuildAutomaticPhaseSpaceSymbolicIntegrand(spec);
+  std::vector<CutkoskyWeightedResidueMomentSeed> seeds;
+  seeds.reserve(integrand.factors.size());
+  for (const CutkoskySymbolicIntegrandFactor& factor : integrand.factors) {
+    seeds.push_back(BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
+        spec, factor.denominator_index, max_eps_order, requested_precision_digits));
+  }
+  return seeds;
+}
+
 std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
     const CutkoskyWeightedResidueMomentSeed& seed) {
   std::ostringstream out;
@@ -2390,6 +2412,29 @@ std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
         << seed.eta_zero_selection.selected_coefficient_label << "\n";
   }
   out << "publication_gate=" << seed.publication_gate_status << "\n";
+  return out.str();
+}
+
+std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+    const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds) {
+  std::ostringstream out;
+  out << "kind=b63n-automatic-phasespace-weighted-residue-moment-seed-packet\n";
+  out << "seed_count=" << seeds.size() << "\n";
+  for (std::size_t index = 0; index < seeds.size(); ++index) {
+    const CutkoskyWeightedResidueMomentSeed& seed = seeds[index];
+    out << "seed[" << index << "]="
+        << "selected_weight=" << seed.selected_weight_denominator
+        << ";selected_weight_index=" << seed.selected_weight_denominator_index
+        << ";selected_weight_power=" << seed.selected_weight_power
+        << ";series_terms=" << seed.residue_series.terms.size()
+        << ";live_coefficients_available="
+        << (seed.live_coefficients_available ? "true" : "false")
+        << ";retained_solution_samples_used="
+        << (seed.retained_solution_samples_used ? "true" : "false")
+        << ";full_eta_zero_contour_applied="
+        << (seed.full_eta_zero_contour_applied ? "true" : "false")
+        << ";publication_gate=" << seed.publication_gate_status << "\n";
+  }
   return out.str();
 }
 

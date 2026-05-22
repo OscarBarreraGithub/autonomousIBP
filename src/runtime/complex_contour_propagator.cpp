@@ -1129,7 +1129,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     AdaptiveRk45Result refined = previous;
     ComplexContourFloat refinement_error =
         std::numeric_limits<ComplexContourFloat>::infinity();
-    ComplexContourFloat endpoint_vector_norm = 0;
+    ComplexContourFloat endpoint_vector_norm = MaxVectorNorm(coarse.values);
     ComplexContourFloat effective_refinement_tolerance =
         options.refinement_error_tolerance;
     std::size_t refined_steps_per_segment = options.steps_per_segment;
@@ -1160,7 +1160,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
       }
     }
     if (!refinement_passed) {
-      return FailureResult(
+      ComplexContourPropagationResult failure = FailureResult(
           "refinement-tolerance-failed",
           "b61n complex contour propagation failed closed because " +
               IntegratorLabel(options.integrator) + " refinement error " +
@@ -1175,6 +1175,26 @@ ComplexContourPropagationResult PropagateComplexContourVector(
           initial_values,
           waypoints,
           options);
+      failure.diagnostics.coarse_step_count =
+          options.steps_per_segment * failure.diagnostics.segment_count;
+      failure.diagnostics.refined_step_count =
+          refined_steps_per_segment * failure.diagnostics.segment_count;
+      failure.diagnostics.refinement_doublings_used =
+          refinement_doublings_used;
+      failure.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
+      failure.diagnostics.adaptive_rejected_step_count =
+          refined.stats.rejected_steps;
+      failure.diagnostics.pole_pinch_step_count =
+          refined.stats.pole_pinched_steps;
+      failure.diagnostics.endpoint_vector_norm_abs =
+          CompactFloat(endpoint_vector_norm, 40);
+      failure.diagnostics.refinement_error_abs =
+          CompactFloat(refinement_error, 40);
+      failure.diagnostics.refinement_effective_tolerance_abs =
+          CompactFloat(effective_refinement_tolerance, 40);
+      failure.diagnostics.max_embedded_error_abs =
+          CompactFloat(refined.stats.max_embedded_error_abs, 40);
+      return failure;
     }
 
     ComplexContourPropagationResult result;

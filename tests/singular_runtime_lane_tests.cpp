@@ -4760,6 +4760,33 @@ void B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest() {
       result,
       "refinement-tolerance-failed",
       "b61n contour harness should fail closed when refinement exceeds tolerance");
+
+  amflow::ComplexContourPropagationOptions diagnostic_options = options;
+  diagnostic_options.refinement_doublings = 0;
+  diagnostic_options.max_refinement_doublings = 0;
+  diagnostic_options.refinement_error_tolerance = B61nContourFloat("1e-12");
+  diagnostic_options.matrix_fingerprint =
+      "synthetic-b61n-refinement-diagnostics-v1";
+  const amflow::ComplexContourPropagationResult diagnostic_result =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, diagnostic_options);
+  ExpectB61nContourPropagationFailure(
+      diagnostic_result,
+      "refinement-tolerance-failed",
+      "b61n contour harness should fail closed when no refinement depth is "
+      "available");
+  Expect(!diagnostic_result.diagnostics.refinement_error_abs.empty(),
+         "b61n refinement failure diagnostics should publish the observed "
+         "refinement error");
+  Expect(!diagnostic_result.diagnostics.refinement_effective_tolerance_abs.empty(),
+         "b61n refinement failure diagnostics should publish the effective "
+         "refinement tolerance");
+  Expect(!diagnostic_result.diagnostics.endpoint_vector_norm_abs.empty(),
+         "b61n refinement failure diagnostics should publish the endpoint scale");
+  Expect(!diagnostic_result.diagnostics.max_embedded_error_abs.empty(),
+         "b61n refinement failure diagnostics should publish the embedded error");
+  Expect(diagnostic_result.diagnostics.adaptive_step_count > 0,
+         "b61n refinement failure diagnostics should retain adaptive step counts");
 }
 
 void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {

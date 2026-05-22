@@ -1078,6 +1078,23 @@ std::string SerializeGaugeLinkContourPlanForFingerprint(
         << ";multiplicity=" << plan.poles[index].multiplicity << "\n";
   }
   out << "endpoint_local_model_kind=" << plan.endpoint_local_model_kind << "\n";
+  out << "indicial_convention="
+      << plan.indicial_audit.characteristic_polynomial_convention << "\n";
+  out << "indicial_fuchsian_full_matrix_probe="
+      << (plan.indicial_audit.fuchsian_full_matrix_probe ? "true" : "false")
+      << "\n";
+  for (std::size_t index = 0;
+       index < plan.indicial_audit.diagonal_residue_roots.size();
+       ++index) {
+    out << "indicial_diagonal_root[" << index << "]="
+        << plan.indicial_audit.diagonal_residue_roots[index] << "\n";
+  }
+  for (std::size_t index = 0;
+       index < plan.indicial_audit.higher_order_cells.size();
+       ++index) {
+    out << "indicial_higher_order_cell[" << index << "]="
+        << plan.indicial_audit.higher_order_cells[index] << "\n";
+  }
   out << "dropped_term_audit=" << plan.dropped_term_audit << "\n";
   return out.str();
 }
@@ -3347,6 +3364,110 @@ std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
   return matrix;
 }
 
+LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable) {
+  LightlikeGaugeLinkIndicialAudit audit;
+  audit.epsilon_sample = epsilon_samples.empty() ? "0" : epsilon_samples.front();
+  const auto fail = [&audit](const std::string& failure_code,
+                             const std::string& summary) {
+    audit.success = false;
+    audit.failure_code = failure_code;
+    audit.summary = summary;
+    return audit;
+  };
+
+  if (RemoveAsciiSpaces(variable) != "gaugex") {
+    return fail("unreviewed-indicial-variable",
+                "b64ag eta=0 indicial audit is reviewed only for variable gaugex");
+  }
+  if (diffeq_matrix.empty()) {
+    return fail("empty-indicial-matrix",
+                "b64ag eta=0 indicial audit requires the retained gaugex matrix");
+  }
+  const std::size_t dimension = diffeq_matrix.size();
+  for (const std::vector<std::string>& row : diffeq_matrix) {
+    if (row.size() != dimension) {
+      return fail("non-square-indicial-matrix",
+                  "b64ag eta=0 indicial audit requires a square retained "
+                  "six-master gaugex matrix");
+    }
+  }
+
+  try {
+    const RuntimeFloat epsilon_sample =
+        ParseRuntimeRationalNumber(audit.epsilon_sample);
+    audit.diagonal_residue_roots.reserve(dimension);
+    for (std::size_t row = 0; row < diffeq_matrix.size(); ++row) {
+      for (std::size_t column = 0; column < diffeq_matrix[row].size(); ++column) {
+        const RuntimeRationalPolynomial rational =
+            ParseGaugeLinkRationalExpression(diffeq_matrix[row][column],
+                                             variable,
+                                             epsilon_sample);
+        const int lowest_power = RuntimeRationalLowestPower(rational);
+        if (lowest_power < -1) {
+          audit.higher_order_cells.push_back(
+              "gaugex_matrix[" + std::to_string(row) + "," +
+              std::to_string(column) + "]:lowest_power=" +
+              std::to_string(lowest_power));
+        }
+        if (row == column) {
+          audit.diagonal_residue_roots.push_back(
+              FormatRuntimeComplex(
+                  RuntimeRationalLaurentCoefficient(rational, -1),
+                  kEndpointTransportPrecisionDigits));
+        }
+      }
+    }
+
+    audit.success = true;
+    audit.diagonal_roots_available =
+        audit.diagonal_residue_roots.size() == dimension;
+    audit.fuchsian_full_matrix_probe = audit.higher_order_cells.empty();
+    if (!audit.fuchsian_full_matrix_probe) {
+      audit.failure_code = "higher-order-offdiagonal-forcing";
+    }
+    std::ostringstream roots;
+    for (std::size_t index = 0; index < audit.diagonal_residue_roots.size();
+         ++index) {
+      if (index != 0) {
+        roots << ", ";
+      }
+      roots << audit.diagonal_residue_roots[index];
+    }
+    std::ostringstream higher_order;
+    for (std::size_t index = 0; index < audit.higher_order_cells.size();
+         ++index) {
+      if (index != 0) {
+        higher_order << ", ";
+      }
+      higher_order << audit.higher_order_cells[index];
+    }
+    audit.summary =
+        "Computed b64ag eta=0 diagonal indicial audit using AMFlow Frobenius "
+        "convention " +
+        audit.characteristic_polynomial_convention +
+        "; epsilon_sample=" + audit.epsilon_sample +
+        "; diagonal_residue_roots=[" + roots.str() +
+        "]; fuchsian_full_matrix_probe=" +
+        (audit.fuchsian_full_matrix_probe ? std::string("true")
+                                          : std::string("false"));
+    if (!audit.higher_order_cells.empty()) {
+      audit.summary +=
+          "; higher_order_cells=[" + higher_order.str() +
+          "]; raw full-matrix indicial roots remain deferred because the "
+          "retained gauge-link matrix carries higher-order off-diagonal forcing "
+          "that is handled by the reviewed b64ag Frobenius recurrence";
+    }
+    return audit;
+  } catch (const std::exception& error) {
+    return fail("indicial-audit-failed",
+                std::string("b64ag eta=0 indicial audit failed closed: ") +
+                    error.what());
+  }
+}
+
 LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
     const std::vector<std::vector<std::string>>& diffeq_matrix,
     const std::vector<std::string>& epsilon_samples,
@@ -3479,6 +3600,10 @@ LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
       "PickZeroRuleS-compatible finite-part extraction would drop negative gaugex "
       "powers and select the gaugex^0 coefficient only after live gauge-link contour "
       "transport; this scaffold publishes no endpoint coefficient.";
+  plan.indicial_audit =
+      BuildLightlikeGaugeLinkIndicialAudit(diffeq_matrix,
+                                           epsilon_samples,
+                                           variable);
   plan.minimum_nonendpoint_pole_distance_to_contour =
       minimum_nonendpoint_distance.has_value()
           ? FormatRuntimeFloat(*minimum_nonendpoint_distance, 24)
@@ -3591,6 +3716,7 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
     audit.contour_fingerprint = contour_plan.contour_fingerprint;
     audit.endpoint_local_model_kind = contour_plan.endpoint_local_model_kind;
     audit.dropped_term_audit = contour_plan.dropped_term_audit;
+    audit.indicial_audit = contour_plan.indicial_audit;
     audit.pole_summary = contour_plan.pole_summary;
     audit.waypoint_summary = contour_plan.waypoint_summary;
     audit.minimum_nonendpoint_pole_distance_to_contour =
@@ -3620,6 +3746,7 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkRetainedStateScaffold(
         "]; contour_waypoints=[" + audit.waypoint_summary +
         "]; contour_fingerprint=" + audit.contour_fingerprint +
         "; endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
+        "; " + audit.indicial_audit.summary +
         "; dropped_term_audit=\"" + audit.dropped_term_audit +
         "\"; minimum_nonendpoint_pole_distance_to_contour=" +
         audit.minimum_nonendpoint_pole_distance_to_contour + ".";

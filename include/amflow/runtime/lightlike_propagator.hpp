@@ -144,6 +144,19 @@ struct LightlikeGaugeLinkPoleAudit {
   std::vector<std::string> sources;
 };
 
+struct LightlikeGaugeLinkIndicialAudit {
+  bool success = false;
+  bool fuchsian_full_matrix_probe = false;
+  bool diagonal_roots_available = false;
+  std::string failure_code;
+  std::string epsilon_sample;
+  std::string characteristic_polynomial_convention =
+      "det(rho*I - Res_{gaugex=0} A(gaugex))=0";
+  std::vector<std::string> diagonal_residue_roots;
+  std::vector<std::string> higher_order_cells;
+  std::string summary;
+};
+
 struct LightlikeGaugeLinkContourPlanAudit {
   bool success = false;
   bool endpoint_is_singular = false;
@@ -165,6 +178,7 @@ struct LightlikeGaugeLinkContourPlanAudit {
   std::string minimum_nonendpoint_pole_distance_to_contour;
   std::string pole_summary;
   std::string waypoint_summary;
+  LightlikeGaugeLinkIndicialAudit indicial_audit;
 };
 
 struct LightlikeGaugeLinkTransportAudit {
@@ -209,6 +223,7 @@ struct LightlikeGaugeLinkTransportAudit {
   std::size_t diffeq_matrix_row_count = 0;
   std::size_t diffeq_matrix_column_count = 0;
   std::size_t diffeq_matrix_nonzero_cell_count = 0;
+  LightlikeGaugeLinkIndicialAudit indicial_audit;
   std::string summary;
 };
 
@@ -268,6 +283,11 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
 
 std::vector<std::vector<std::string>> ParseLightlikeGaugeLinkDiffeqMatrixRaw(
     const std::string& diffeq_raw);
+
+LightlikeGaugeLinkIndicialAudit BuildLightlikeGaugeLinkIndicialAudit(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<std::string>& epsilon_samples,
+    const std::string& variable = "gaugex");
 
 LightlikeGaugeLinkContourPlanAudit BuildLightlikeGaugeLinkContourPlanAudit(
     const std::vector<std::vector<std::string>>& diffeq_matrix,

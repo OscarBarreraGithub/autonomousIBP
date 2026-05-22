@@ -3152,6 +3152,39 @@ void B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest() {
          "b64ag contour planning should fingerprint the parsed pole and waypoint audit");
   Expect(audit.endpoint_local_model_kind == "regular-singular-finite-part-r0",
          "b64ag endpoint audit should classify gaugex=0 as a finite-part singular endpoint");
+  Expect(audit.indicial_audit.success,
+         "b64ag contour audit should compute the eta=0 indicial diagnostic");
+  Expect(audit.indicial_audit.characteristic_polynomial_convention ==
+             "det(rho*I - Res_{gaugex=0} A(gaugex))=0",
+         "b64ag indicial audit should record the AMFlow Frobenius convention");
+  Expect(audit.indicial_audit.diagonal_roots_available,
+         "b64ag indicial audit should publish diagonal residue exponent candidates");
+  Expect(audit.indicial_audit.diagonal_residue_roots.size() == 6,
+         "b64ag indicial audit should publish one diagonal residue per DE row");
+  Expect(audit.indicial_audit.diagonal_residue_roots[0] == "1" &&
+             audit.indicial_audit.diagonal_residue_roots[3] == "0" &&
+             audit.indicial_audit.diagonal_residue_roots[4] == "2",
+         "b64ag indicial audit should preserve integer diagonal exponents");
+  ExpectContains(audit.indicial_audit.diagonal_residue_roots[1],
+                 "-5.997086538461538",
+                 "b64ag indicial audit should expose the first-block companion root");
+  ExpectContains(audit.indicial_audit.diagonal_residue_roots[2],
+                 "-6.996115384615384",
+                 "b64ag indicial audit should expose the second-block root");
+  ExpectContains(audit.indicial_audit.diagonal_residue_roots[5],
+                 "-1.998057692307692",
+                 "b64ag indicial audit should expose the downstream companion root");
+  Expect(!audit.indicial_audit.fuchsian_full_matrix_probe,
+         "b64ag raw matrix indicial audit should not overclaim a full Fuchsian probe");
+  Expect(audit.indicial_audit.failure_code == "higher-order-offdiagonal-forcing",
+         "b64ag indicial audit should name the raw-matrix full-probe blocker");
+  Expect(audit.indicial_audit.higher_order_cells.size() == 2,
+         "b64ag indicial audit should identify the retained higher-order forcing cells");
+  Expect(audit.indicial_audit.higher_order_cells[0] ==
+             "gaugex_matrix[1,0]:lowest_power=-2" &&
+             audit.indicial_audit.higher_order_cells[1] ==
+             "gaugex_matrix[3,2]:lowest_power=-3",
+         "b64ag indicial audit should fingerprint the raw non-Fuchsian cells");
   ExpectContains(audit.dropped_term_audit,
                  "PickZeroRuleS-compatible finite-part extraction",
                  "b64ag contour audit should preserve the finite-part extraction contract");

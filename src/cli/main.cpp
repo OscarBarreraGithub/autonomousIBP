@@ -5877,6 +5877,10 @@ struct B61nCoupledRowContourTransportAudit {
   BigFloat initial_error_bound_abs = 0;
   std::size_t closer_start_candidate_count = 0;
   bool closer_start_certified = false;
+  std::size_t closer_start_slot_incompatibility_count = 0;
+  std::size_t closer_start_divisibility_count = 0;
+  std::size_t closer_start_recurrence_depth_count = 0;
+  std::size_t closer_start_precision_count = 0;
   std::vector<std::string> transported_master_labels;
   std::vector<std::string> closer_start_failures;
   std::string closer_start_first_failure;
@@ -5890,6 +5894,110 @@ struct B61nCoupledRowContourTransportAudit {
       "dormand-prince-rk45-adaptive";
   std::string summary;
 };
+
+std::string ClassifyB61nCloserStartFailureRootCause(
+    const std::string& failure) {
+  if (failure.find("did not certify the 70-digit finite-start guard") !=
+          std::string::npos ||
+      failure.find("min_certified_digits=") != std::string::npos) {
+    return "precision";
+  }
+  if (failure.find("zero denominator") != std::string::npos ||
+      failure.find("zero leading denominator") != std::string::npos ||
+      failure.find("regular-singular infinity matrix") != std::string::npos) {
+    return "divisibility";
+  }
+  if (failure.find("could not solve a finite infinity recurrence system") !=
+      std::string::npos) {
+    return "slot-incompatibility";
+  }
+  return "recurrence-depth";
+}
+
+void IncrementB61nCloserStartFailureRootCause(
+    B61nCoupledRowContourTransportAudit& audit,
+    const std::string& root_cause) {
+  if (root_cause == "slot-incompatibility") {
+    ++audit.closer_start_slot_incompatibility_count;
+  } else if (root_cause == "divisibility") {
+    ++audit.closer_start_divisibility_count;
+  } else if (root_cause == "precision") {
+    ++audit.closer_start_precision_count;
+  } else {
+    ++audit.closer_start_recurrence_depth_count;
+  }
+}
+
+void RecordB61nCloserStartFailure(B61nCoupledRowContourTransportAudit& audit,
+                                  const std::string& failure) {
+  const std::string root_cause =
+      ClassifyB61nCloserStartFailureRootCause(failure);
+  IncrementB61nCloserStartFailureRootCause(audit, root_cause);
+  const std::string annotated_failure =
+      failure + "; root_cause=" + root_cause;
+  audit.closer_start_failures.push_back(annotated_failure);
+  if (audit.closer_start_first_failure.empty()) {
+    audit.closer_start_first_failure = annotated_failure;
+  }
+  audit.closer_start_last_failure = annotated_failure;
+}
+
+std::string B61nCloserStartRootCauseCountsSummary(
+    const B61nCoupledRowContourTransportAudit& audit) {
+  return "{slot-incompatibility:" +
+         std::to_string(audit.closer_start_slot_incompatibility_count) +
+         ", divisibility:" +
+         std::to_string(audit.closer_start_divisibility_count) +
+         ", recurrence-depth:" +
+         std::to_string(audit.closer_start_recurrence_depth_count) +
+         ", precision:" + std::to_string(audit.closer_start_precision_count) +
+         "}";
+}
+
+std::string B61nCloserStartLargestRootCause(
+    const B61nCoupledRowContourTransportAudit& audit) {
+  std::string largest = "none";
+  std::size_t largest_count = 0;
+  const std::array<std::pair<std::string, std::size_t>, 4> counts = {{
+      {"slot-incompatibility", audit.closer_start_slot_incompatibility_count},
+      {"divisibility", audit.closer_start_divisibility_count},
+      {"recurrence-depth", audit.closer_start_recurrence_depth_count},
+      {"precision", audit.closer_start_precision_count},
+  }};
+  for (const auto& [root_cause, count] : counts) {
+    if (count > largest_count) {
+      largest = root_cause;
+      largest_count = count;
+    }
+  }
+  return largest;
+}
+
+std::string B61nCloserStartNextFixTarget(const std::string& root_cause) {
+  if (root_cause == "slot-incompatibility") {
+    return "expand finite-infinity recurrence slot-pattern coverage";
+  }
+  if (root_cause == "divisibility") {
+    return "resolve finite-infinity divisibility or resonance handling";
+  }
+  if (root_cause == "recurrence-depth") {
+    return "increase or adapt finite-infinity recurrence depth";
+  }
+  if (root_cause == "precision") {
+    return "improve finite-start precision guard evidence";
+  }
+  return "none";
+}
+
+std::string B61nCloserStartCategorizationSummary(
+    const B61nCoupledRowContourTransportAudit& audit) {
+  const std::string largest = B61nCloserStartLargestRootCause(audit);
+  return "; closer_start_root_causes=" +
+         B61nCloserStartRootCauseCountsSummary(audit) +
+         "; closer_start_largest_root_cause=" + largest +
+         "; closer_start_next_fix_target=" +
+         B61nCloserStartNextFixTarget(largest);
+}
 
 amflow::ComplexContourFloat ToComplexContourFloat(const BigFloat& value) {
   return value.convert_to<amflow::ComplexContourFloat>();
@@ -6064,6 +6172,7 @@ ApplyB61nCoupledRowContourTransport(
           (audit.closer_start_last_failure.empty()
                ? std::string("none")
                : audit.closer_start_last_failure) +
+          B61nCloserStartCategorizationSummary(audit) +
           "; ode_propagation_applied=false; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
           "endpoint_refinement_integrator=" +
@@ -6104,6 +6213,7 @@ ApplyB61nCoupledRowContourTransport(
           "; closer_start_failures=[" +
           JoinTextList(audit.closer_start_failures, " | ") +
           "]" +
+          B61nCloserStartCategorizationSummary(audit) +
           "; endpoint_refinement_integrator=" +
           audit.endpoint_refinement_integrator +
           "; initial_error_bound_abs=" +
@@ -6164,20 +6274,12 @@ ApplyB61nCoupledRowContourTransport(
         const std::string failure =
             "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
             " returned no certified finite-start data";
-        audit.closer_start_failures.push_back(failure);
-        if (audit.closer_start_first_failure.empty()) {
-          audit.closer_start_first_failure = failure;
-        }
-        audit.closer_start_last_failure = failure;
+        RecordB61nCloserStartFailure(audit, failure);
       } catch (const std::exception& error) {
         const std::string failure =
             "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
             " failed: " + error.what();
-        audit.closer_start_failures.push_back(failure);
-        if (audit.closer_start_first_failure.empty()) {
-          audit.closer_start_first_failure = failure;
-        }
-        audit.closer_start_last_failure = failure;
+        RecordB61nCloserStartFailure(audit, failure);
       }
     }
     if (!propagation_initial_data.has_value() ||
@@ -6373,6 +6475,7 @@ ApplyB61nCoupledRowContourTransport(
         "; closer_start_failures=[" +
         JoinTextList(audit.closer_start_failures, " | ") +
         "]" +
+        B61nCloserStartCategorizationSummary(audit) +
         "; initial_error_bound_abs=" +
         BigFloatCompactString(audit.initial_error_bound_abs, 24) +
         "; endpoint_refinement_integrator=" +

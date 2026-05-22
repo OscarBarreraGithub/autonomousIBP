@@ -49450,6 +49450,24 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row RK45 test should keep the closer-start recurrence "
                  "bottleneck visible");
   ExpectContains(stripped_json,
+                 "root_cause=slot-incompatibility",
+                 "b61n coupled-row closer-start ledger should classify each failed "
+                 "candidate");
+  ExpectContains(stripped_json,
+                 "closer_start_root_causes={slot-incompatibility:11, divisibility:0, "
+                 "recurrence-depth:0, precision:0}",
+                 "b61n coupled-row closer-start ledger should count the 11 failures by "
+                 "root cause");
+  ExpectContains(stripped_json,
+                 "closer_start_largest_root_cause=slot-incompatibility",
+                 "b61n coupled-row closer-start ledger should identify the largest "
+                 "failure category");
+  ExpectContains(stripped_json,
+                 "closer_start_next_fix_target=expand finite-infinity recurrence "
+                 "slot-pattern coverage",
+                 "b61n coupled-row closer-start ledger should name the atomic next fix "
+                 "surface");
+  ExpectContains(stripped_json,
                  "complex contour propagator failed closed for epsilon sample 0",
                  "b61n coupled-row runtime should publish the failed RK45 endpoint "
                  "sample");

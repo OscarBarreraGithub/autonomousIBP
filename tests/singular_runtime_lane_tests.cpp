@@ -4516,6 +4516,134 @@ void ExpectB61nContourPropagationFailure(
              result.diagnostics.failure_code);
 }
 
+void B61nScalarFrobeniusPatchComputesIndicialResidueTest() {
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {{B61nContourNumber{1, 0} / eta + B61nContourNumber{2, 0} +
+          B61nContourNumber{3, 0} * eta}},
+    };
+  };
+
+  const amflow::ComplexContourScalarFrobeniusSeriesPatch patch =
+      amflow::GenerateScalarComplexFrobeniusEndpointPatch(
+          evaluator,
+          B61nContourNumber{0, 0},
+          B61nContourFloat("0.0625"),
+          3,
+          64);
+
+  ExpectB61nContourClose(patch.indicial_exponent,
+                         {1, 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius indicial exponent should be the "
+                         "simple-pole residue");
+  Expect(patch.indicial_equation == "lambda - Res[(eta-eta0) A(eta)] = 0",
+         "b61n scalar Frobenius patch should publish the AMFlow residue "
+         "indicial convention");
+  Expect(patch.regular_tail_coefficients.size() == 3,
+         "b61n scalar Frobenius patch should retain the requested regular tail");
+  ExpectB61nContourClose(patch.regular_tail_coefficients[0],
+                         {2, 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius tail a0 should be reconstructed");
+  ExpectB61nContourClose(patch.regular_tail_coefficients[1],
+                         {3, 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius tail a1 should be reconstructed");
+  ExpectB61nContourClose(patch.series_coefficients[1],
+                         {2, 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius c1 should satisfy the reduced recurrence");
+  ExpectB61nContourClose(patch.series_coefficients[2],
+                         {B61nContourFloat("3.5"), 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius c2 should satisfy the reduced recurrence");
+  ExpectB61nContourClose(patch.series_coefficients[3],
+                         {B61nContourFloat(13) / B61nContourFloat(3), 0},
+                         B61nContourFloat("1e-55"),
+                         "b61n scalar Frobenius c3 should satisfy the reduced recurrence");
+  ExpectContains(patch.summary,
+                 "endpoint_coefficient_convention=leading-Frobenius-coefficient",
+                 "b61n scalar Frobenius patch should document AMFlow-style endpoint "
+                 "coefficient selection");
+}
+
+void B61nScalarFrobeniusEndpointCoefficientMatchesLowerBranchTest() {
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {{B61nContourNumber{B61nContourFloat("0.5"), 0} / eta +
+          B61nContourNumber{2, 0}}},
+    };
+  };
+
+  const amflow::ComplexContourScalarFrobeniusSeriesPatch patch =
+      amflow::GenerateScalarComplexFrobeniusEndpointPatch(
+          evaluator,
+          B61nContourNumber{0, 0},
+          B61nContourFloat("0.03125"),
+          5,
+          96);
+  const B61nContourNumber expected_endpoint_coefficient{2, -3};
+  const B61nContourNumber match_eta{-1, 0};
+  const B61nContourNumber lower_branch_basis =
+      amflow::EvaluateScalarComplexFrobeniusSeries(
+          patch,
+          match_eta,
+          amflow::EtaContourHalfPlane::Lower);
+  const B61nContourNumber match_value =
+      expected_endpoint_coefficient * lower_branch_basis;
+  const B61nContourNumber recovered_endpoint_coefficient =
+      amflow::MatchScalarComplexFrobeniusEndpointCoefficient(
+          patch,
+          match_eta,
+          match_value,
+          amflow::EtaContourHalfPlane::Lower);
+
+  ExpectB61nContourClose(recovered_endpoint_coefficient,
+                         expected_endpoint_coefficient,
+                         B61nContourFloat("1e-50"),
+                         "b61n scalar Frobenius endpoint handler should recover the "
+                         "matched leading coefficient on the NegIm lower branch");
+
+  const B61nContourNumber upper_branch_recovered =
+      amflow::MatchScalarComplexFrobeniusEndpointCoefficient(
+          patch,
+          match_eta,
+          match_value,
+          amflow::EtaContourHalfPlane::Upper);
+  Expect(B61nContourAbs(upper_branch_recovered -
+                        expected_endpoint_coefficient) >
+             B61nContourFloat(1),
+         "b61n scalar Frobenius endpoint handler should keep the lower and upper "
+         "AMFlow log branches distinct for fractional indicial exponents");
+}
+
+void B61nScalarFrobeniusPatchRejectsNonScalarMatrixTest() {
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{1, 0}, B61nContourNumber{0, 0}},
+        {B61nContourNumber{0, 0}, B61nContourNumber{1, 0}},
+    };
+  };
+
+  bool rejected = false;
+  try {
+    (void)amflow::GenerateScalarComplexFrobeniusEndpointPatch(
+        evaluator,
+        B61nContourNumber{0, 0},
+        B61nContourFloat("0.125"),
+        2,
+        32);
+  } catch (const std::runtime_error& error) {
+    rejected =
+        std::string(error.what()).find("requires a scalar 1x1 eta matrix") !=
+        std::string::npos;
+  }
+  Expect(rejected,
+         "b61n scalar Frobenius endpoint handler should reject nonscalar matrix "
+         "input before claiming a local indicial equation");
+}
+
 void B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest() {
   const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
   const B61nContourNumber initial_value{5, -2};
@@ -5714,6 +5842,9 @@ int main() {
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
+    B61nScalarFrobeniusPatchComputesIndicialResidueTest();
+    B61nScalarFrobeniusEndpointCoefficientMatchesLowerBranchTest();
+    B61nScalarFrobeniusPatchRejectsNonScalarMatrixTest();
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();

@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <boost/math/constants/constants.hpp>
+
 #include "amflow/runtime/artifact_store.hpp"
 
 namespace amflow {
@@ -1702,6 +1704,93 @@ ComplexContourVector SolveComplexLinearSystem(ComplexContourMatrix matrix,
   return solution;
 }
 
+std::size_t DefaultFrobeniusSampleCount(const std::size_t order) {
+  return std::max<std::size_t>(32, 4 * (order + 2));
+}
+
+ComplexContourNumber ComplexIntegerPower(ComplexContourNumber base,
+                                         long long exponent) {
+  if (exponent == 0) {
+    return {1, 0};
+  }
+  bool invert = false;
+  if (exponent < 0) {
+    invert = true;
+    exponent = -exponent;
+  }
+  ComplexContourNumber result{1, 0};
+  while (exponent > 0) {
+    if ((exponent & 1LL) != 0) {
+      result *= base;
+    }
+    exponent >>= 1LL;
+    if (exponent > 0) {
+      base *= base;
+    }
+  }
+  return invert ? ComplexContourNumber{1, 0} / result : result;
+}
+
+ComplexContourNumber UnitComplexAtRootOfUnity(const std::size_t index,
+                                              const std::size_t sample_count) {
+  const ComplexContourFloat two_pi =
+      boost::math::constants::two_pi<ComplexContourFloat>();
+  const ComplexContourFloat theta =
+      two_pi * ComplexContourFloat(index) / ComplexContourFloat(sample_count);
+  return {cos(theta), sin(theta)};
+}
+
+void RequireScalarFrobeniusMatrix(const ComplexContourMatrix& matrix,
+                                  const std::string& context) {
+  if (matrix.size() != 1 || matrix.front().size() != 1) {
+    throw std::runtime_error(context + " requires a scalar 1x1 eta matrix");
+  }
+  if (!IsFinite(matrix.front().front())) {
+    throw std::runtime_error(context + " encountered a nonfinite scalar eta-matrix entry");
+  }
+}
+
+ComplexContourNumber ComplexLogForEndpointBranch(
+    const ComplexContourNumber& value,
+    const EtaContourHalfPlane half_plane) {
+  const ComplexContourFloat radius = ComplexAbs(value);
+  if (radius == 0) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint evaluation requires a nonzero match displacement");
+  }
+  const ComplexContourFloat pi =
+      boost::math::constants::pi<ComplexContourFloat>();
+  ComplexContourFloat argument = atan2(value.imag(), value.real());
+  if (value.imag() == 0 && value.real() < 0) {
+    argument = half_plane == EtaContourHalfPlane::Upper ? pi : -pi;
+  } else if (half_plane == EtaContourHalfPlane::Lower && argument > 0) {
+    argument -= ComplexContourFloat(2) * pi;
+  } else if (half_plane == EtaContourHalfPlane::Upper && argument < 0) {
+    argument += ComplexContourFloat(2) * pi;
+  }
+  return {log(radius), argument};
+}
+
+ComplexContourNumber ComplexPowerForEndpointBranch(
+    const ComplexContourNumber& base,
+    const ComplexContourNumber& exponent,
+    const EtaContourHalfPlane half_plane) {
+  return exp(exponent * ComplexLogForEndpointBranch(base, half_plane));
+}
+
+void ValidateScalarFrobeniusPatch(
+    const ComplexContourScalarFrobeniusSeriesPatch& patch,
+    const std::string& context) {
+  if (patch.series_coefficients.size() != patch.order + 1) {
+    throw std::runtime_error(context +
+                             " requires order+1 Frobenius series coefficients");
+  }
+  if (patch.regular_tail_coefficients.size() != patch.order) {
+    throw std::runtime_error(context +
+                             " requires order regular-tail coefficients");
+  }
+}
+
 }  // namespace
 
 ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
@@ -2524,6 +2613,133 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                          waypoints,
                          options);
   }
+}
+
+ComplexContourScalarFrobeniusSeriesPatch
+GenerateScalarComplexFrobeniusEndpointPatch(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourNumber& endpoint,
+    const ComplexContourFloat& sample_radius,
+    const std::size_t order,
+    std::size_t sample_count) {
+  if (!matrix_evaluator) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint patch generation requires a matrix evaluator");
+  }
+  if (!IsFinite(endpoint)) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint patch generation requires a finite endpoint");
+  }
+  if (!IsFiniteFloat(sample_radius) || sample_radius <= 0) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint patch generation requires a positive finite "
+        "sample radius");
+  }
+  if (sample_count == 0) {
+    sample_count = DefaultFrobeniusSampleCount(order);
+  }
+  if (sample_count < 2 * (order + 2)) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint patch generation requires enough contour "
+        "samples to resolve the requested local order");
+  }
+
+  std::vector<ComplexContourNumber> laurent_coefficients(order + 1);
+  for (std::size_t sample_index = 0; sample_index < sample_count;
+       ++sample_index) {
+    const ComplexContourNumber displacement =
+        sample_radius * UnitComplexAtRootOfUnity(sample_index, sample_count);
+    const ComplexContourMatrix matrix = matrix_evaluator(endpoint + displacement);
+    RequireScalarFrobeniusMatrix(matrix, "scalar Frobenius endpoint patch generation");
+    const ComplexContourNumber value = matrix.front().front();
+    for (std::size_t coefficient_index = 0;
+         coefficient_index < laurent_coefficients.size();
+         ++coefficient_index) {
+      const long long degree =
+          static_cast<long long>(coefficient_index) - 1LL;
+      laurent_coefficients[coefficient_index] +=
+          value * ComplexIntegerPower(displacement, -degree);
+    }
+  }
+  const ComplexContourFloat sample_count_float(sample_count);
+  for (ComplexContourNumber& coefficient : laurent_coefficients) {
+    coefficient /= sample_count_float;
+  }
+
+  ComplexContourScalarFrobeniusSeriesPatch patch;
+  patch.center = endpoint;
+  patch.sample_radius = sample_radius;
+  patch.order = order;
+  patch.sample_count = sample_count;
+  patch.indicial_exponent = laurent_coefficients.front();
+  patch.regular_tail_coefficients.reserve(order);
+  for (std::size_t index = 0; index < order; ++index) {
+    patch.regular_tail_coefficients.push_back(laurent_coefficients[index + 1]);
+  }
+
+  patch.series_coefficients.assign(order + 1, ComplexContourNumber{});
+  patch.series_coefficients.front() = ComplexContourNumber{1, 0};
+  for (std::size_t term = 1; term <= order; ++term) {
+    ComplexContourNumber numerator;
+    for (std::size_t tail_index = 0; tail_index < term; ++tail_index) {
+      numerator += patch.regular_tail_coefficients[tail_index] *
+                   patch.series_coefficients[term - 1 - tail_index];
+    }
+    patch.series_coefficients[term] =
+        numerator / ComplexContourFloat(term);
+  }
+  patch.indicial_equation =
+      "lambda - Res[(eta-eta0) A(eta)] = 0";
+  patch.summary =
+      "Generated scalar b61n-style Frobenius endpoint patch from numeric eta-matrix "
+      "samples; indicial_equation=lambda-residue=0; indicial_exponent=" +
+      CompactComplex(patch.indicial_exponent, 40) +
+      "; order=" + std::to_string(order) +
+      "; sample_radius=" + CompactFloat(sample_radius, 40) +
+      "; sample_count=" + std::to_string(sample_count) +
+      "; endpoint_coefficient_convention=leading-Frobenius-coefficient";
+  return patch;
+}
+
+ComplexContourNumber EvaluateScalarComplexFrobeniusSeries(
+    const ComplexContourScalarFrobeniusSeriesPatch& patch,
+    const ComplexContourNumber& eta,
+    const EtaContourHalfPlane half_plane) {
+  ValidateScalarFrobeniusPatch(patch, "scalar Frobenius endpoint evaluation");
+  const ComplexContourNumber displacement = eta - patch.center;
+  if (ComplexAbs(displacement) == 0) {
+    if (ComplexAbs(patch.indicial_exponent) == 0) {
+      return patch.series_coefficients.front();
+    }
+    throw std::runtime_error(
+        "scalar Frobenius endpoint evaluation at the singular point is "
+        "branch-sensitive; match the leading endpoint coefficient instead");
+  }
+
+  ComplexContourNumber regular_factor;
+  ComplexContourNumber displacement_power{1, 0};
+  for (const ComplexContourNumber& coefficient : patch.series_coefficients) {
+    regular_factor += coefficient * displacement_power;
+    displacement_power *= displacement;
+  }
+  return ComplexPowerForEndpointBranch(displacement,
+                                       patch.indicial_exponent,
+                                       half_plane) *
+         regular_factor;
+}
+
+ComplexContourNumber MatchScalarComplexFrobeniusEndpointCoefficient(
+    const ComplexContourScalarFrobeniusSeriesPatch& patch,
+    const ComplexContourNumber& match_eta,
+    const ComplexContourNumber& match_value,
+    const EtaContourHalfPlane half_plane) {
+  const ComplexContourNumber normalized_basis =
+      EvaluateScalarComplexFrobeniusSeries(patch, match_eta, half_plane);
+  if (ComplexAbs(normalized_basis) == 0) {
+    throw std::runtime_error(
+        "scalar Frobenius endpoint matching encountered a zero normalized basis");
+  }
+  return match_value / normalized_basis;
 }
 
 }  // namespace amflow

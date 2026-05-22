@@ -44,6 +44,18 @@ struct ComplexContourPropagationOptions {
   std::vector<ComplexContourNumber> diagnostic_poles;
 };
 
+struct ComplexContourScalarFrobeniusSeriesPatch {
+  ComplexContourNumber center;
+  ComplexContourFloat sample_radius = 0;
+  std::size_t order = 0;
+  std::size_t sample_count = 0;
+  ComplexContourNumber indicial_exponent;
+  std::vector<ComplexContourNumber> regular_tail_coefficients;
+  std::vector<ComplexContourNumber> series_coefficients;
+  std::string indicial_equation;
+  std::string summary;
+};
+
 struct ComplexContourPropagationDiagnostics {
   bool success = false;
   bool ode_propagation_applied = false;
@@ -189,5 +201,24 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     const ComplexContourPropagationOptions& options = {});
+
+ComplexContourScalarFrobeniusSeriesPatch
+GenerateScalarComplexFrobeniusEndpointPatch(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourNumber& endpoint,
+    const ComplexContourFloat& sample_radius,
+    std::size_t order,
+    std::size_t sample_count = 0);
+
+ComplexContourNumber EvaluateScalarComplexFrobeniusSeries(
+    const ComplexContourScalarFrobeniusSeriesPatch& patch,
+    const ComplexContourNumber& eta,
+    EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower);
+
+ComplexContourNumber MatchScalarComplexFrobeniusEndpointCoefficient(
+    const ComplexContourScalarFrobeniusSeriesPatch& patch,
+    const ComplexContourNumber& match_eta,
+    const ComplexContourNumber& match_value,
+    EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower);
 
 }  // namespace amflow

@@ -52894,6 +52894,8 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
          "b61n publication qualifier self-check should not emit stderr noise on success");
   ExpectContains(result.stdout_json, "\"publication_gate_reviewed\": true",
                  "b61n publication qualifier should accept the reviewed publication sidecar");
+  ExpectContains(result.stdout_json, "\"full_selected5_endpoint_variants\": true",
+                 "b61n publication qualifier should cover the full selected5 endpoint surface");
   ExpectContains(result.stdout_json, "\"new_lane5_endpoint_variant\": true",
                  "b61n publication qualifier should cover the new endpoint variant");
   ExpectContains(result.stdout_json, "\"multi_numeric_negim_gate_regressed\": true",
@@ -52924,6 +52926,15 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
                  "b61n publication qualifier should reject retained Numeric source drift");
   ExpectContains(result.stdout_json, "\"m6_qualifier_hook_prepositioned\": true",
                  "b61n publication qualifier should pre-position the M6 hook");
+  ExpectContains(result.stdout_json, "\"m6_auto_promote_accepts_future_packet\": true",
+                 "b61n publication qualifier should compute future M6 promotion from contour "
+                 "and digit evidence");
+  ExpectContains(result.stdout_json, "\"m6_scalar_digit_summary_rejected\": true",
+                 "b61n publication qualifier should require per-endpoint promotion digits");
+  ExpectContains(result.stdout_json,
+                 "\"m6_metadata_contour_false_positive_rejected\": true",
+                 "b61n publication qualifier should read full-contour promotion only from the "
+                 "runtime continuation object");
   ExpectContains(result.stdout_json, "\"m6_overclaim_rejected\": true",
                  "b61n publication qualifier should reject self-certified M6 promotion");
   ExpectContains(result.stdout_json, "\"m6_promoted_sidecar_rejected\": true",
@@ -52957,8 +52968,16 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
          "b61n publication qualifier repo sidecar should write the requested summary");
   ExpectContains(result.stdout_json, "\"reviewed_endpoint_integrals\": [",
                  "b61n publication qualifier should publish reviewed endpoint integrals");
+  ExpectContains(result.stdout_json, "\"variant_count\": 5",
+                 "b61n publication qualifier should cover all five selected endpoint variants");
+  ExpectContains(result.stdout_json, "\"box[0,0,0,1]\"",
+                 "b61n publication qualifier should include the retained tadpole endpoint");
   ExpectContains(result.stdout_json, "\"box[0,0,1,1]\"",
                  "b61n publication qualifier should include the lane5-next7 endpoint variant");
+  ExpectContains(result.stdout_json, "\"box[1,0,0,1]\"",
+                 "b61n publication qualifier should include the one-mass endpoint variant");
+  ExpectContains(result.stdout_json, "\"box[0,1,0,1]\"",
+                 "b61n publication qualifier should include the crossed one-mass endpoint variant");
   ExpectContains(result.stdout_json,
                  "\"source_contour_fingerprint\": \"fnv1a64:a8dd3d0427fbf52b\"",
                  "b61n publication qualifier should report the reviewed source contour "
@@ -52972,9 +52991,13 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
                  "b61n publication qualifier should publish the pre-positioned M6 packet id");
   ExpectContains(result.stdout_json, "\"m6_qualifier_hook_currently_promoted\": false",
                  "b61n publication qualifier should keep the current M6 hook blocked");
+  ExpectContains(result.stdout_json, "\"m6_minimum_digit_agreement_required\": 50",
+                 "b61n publication qualifier should preserve the promotion digit floor");
   ExpectContains(result.stdout_json,
                  "\"m7_single_row_path\": \"b61n-complex-contour-propagator-harness\"",
                  "b61n publication qualifier should hook the b61n single-row path for M7");
+  ExpectContains(result.stdout_json, "\"m7_required_m6_signal_endpoint_count\": 5",
+                 "b61n publication qualifier should expose the selected5 M6 signal to M7");
   ExpectContains(result.stdout_json,
                  "\"This summary does not claim full eta=0 contour execution.\"",
                  "b61n publication qualifier should preserve the full-contour non-claim");
@@ -55137,6 +55160,9 @@ void ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest() {
   ExpectContains(result.stdout_json, "\"b61n_single_row_publication_hook_reviewed\": true",
                  "release parity-signoff review self-check should validate the b61n publication "
                  "hook sidecar");
+  ExpectContains(result.stdout_json, "\"b61n_selected5_m6_signal_preserved\": true",
+                 "release parity-signoff review self-check should preserve the selected5 M6 "
+                 "signal scaffold");
   ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
                  "release parity-signoff review self-check should keep its sidecar compatible "
                  "with release_signoff_readiness.py");
@@ -55152,6 +55178,9 @@ void ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest() {
   ExpectContains(result.stdout_json, "\"malformed_b61n_publication_hook_blocked\": true",
                  "release parity-signoff review self-check should reject malformed b61n hook "
                  "metadata");
+  ExpectContains(result.stdout_json, "\"malformed_selected5_m6_signal_blocked\": true",
+                 "release parity-signoff review self-check should block malformed selected5 "
+                 "M6 signal metadata without throwing");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "release parity-signoff review self-check should write the synthetic summary");
 }

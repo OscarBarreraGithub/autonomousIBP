@@ -14,10 +14,33 @@ from typing import Any
 from freeze_phase0_goldens import load_json
 
 
-REVIEWED_VARIANT_ENDPOINTS: dict[str, str] = {
-    "lane142-primitive-bubble-box1010": "box[1,0,1,0]",
-    "lane5-next7-primitive-bubble-box0011": "box[0,0,1,1]",
+REVIEWED_VARIANT_SPECS: dict[str, dict[str, str]] = {
+    "lane142-selected5-tadpole-box0001": {
+        "endpoint_integral_id": "box[0,0,0,1]",
+        "endpoint_local_model_kind": "b61n-tadpole-regular-taylor-r0",
+    },
+    "lane142-primitive-bubble-box1010": {
+        "endpoint_integral_id": "box[1,0,1,0]",
+        "endpoint_local_model_kind": "b61n-primitive-bubble-regular-taylor-r0",
+    },
+    "lane142-selected5-one-mass-bubble-box1001": {
+        "endpoint_integral_id": "box[1,0,0,1]",
+        "endpoint_local_model_kind": "b61n-one-mass-bubble-regular-taylor-r0",
+    },
+    "lane142-selected5-one-mass-bubble-box0101": {
+        "endpoint_integral_id": "box[0,1,0,1]",
+        "endpoint_local_model_kind": "b61n-one-mass-bubble-regular-taylor-r0",
+    },
+    "lane5-next7-primitive-bubble-box0011": {
+        "endpoint_integral_id": "box[0,0,1,1]",
+        "endpoint_local_model_kind": "b61n-primitive-bubble-regular-taylor-r0",
+    },
 }
+REVIEWED_VARIANT_ENDPOINTS: dict[str, str] = {
+    variant_id: spec["endpoint_integral_id"]
+    for variant_id, spec in REVIEWED_VARIANT_SPECS.items()
+}
+REVIEWED_ENDPOINT_INTEGRALS: tuple[str, ...] = tuple(REVIEWED_VARIANT_ENDPOINTS.values())
 
 REQUIRED_NUMERIC_SYMBOLS: tuple[str, ...] = ("s", "t", "p3sq", "p4sq", "m3sq")
 RETAINED_NUMERIC_CASE_ID = "retained-complex-kinematics"
@@ -37,6 +60,15 @@ REQUIRED_SOURCE_EVIDENCE: tuple[str, ...] = (
     "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.stripped-result.json",
     RETAINED_SOURCE_NUMERIC_EVIDENCE,
 )
+REQUIRED_SOURCE_BINDING: dict[str, str] = {
+    "coefficient_evidence": REQUIRED_SOURCE_EVIDENCE[0],
+    "compare_summary": REQUIRED_SOURCE_EVIDENCE[1],
+    "stripped_result": REQUIRED_SOURCE_EVIDENCE[2],
+    "retained_numeric_source": RETAINED_SOURCE_NUMERIC_EVIDENCE,
+    "source_numeric_case_id": RETAINED_NUMERIC_CASE_ID,
+    "source_contour_fingerprint": REVIEWED_SOURCE_CONTOUR_FINGERPRINT,
+}
+MINIMUM_PROMOTION_DIGITS = 50
 WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not claim Milestone M6 closure.",
     "This summary does not claim Milestone M7 closure.",
@@ -153,6 +185,69 @@ def normalize_string_list(raw: Any, label: str) -> list[str]:
         values.append(normalized_string(item, f"{label} entry"))
     expect(len(set(values)) == len(values), f"{label} must not contain duplicates")
     return values
+
+
+def normalize_int(raw: Any, label: str) -> int:
+    if not isinstance(raw, int) or isinstance(raw, bool):
+        raise TypeError(f"{label} must be an int")
+    return raw
+
+
+def normalize_optional_path_text(raw: Any, label: str) -> str:
+    if raw in (None, ""):
+        return ""
+    return normalized_string(raw, label)
+
+
+def find_nested_bool(raw: Any, key: str) -> bool | None:
+    if isinstance(raw, dict):
+        value = raw.get(key)
+        if isinstance(value, bool):
+            return value
+        for child in raw.values():
+            nested = find_nested_bool(child, key)
+            if nested is not None:
+                return nested
+    elif isinstance(raw, list):
+        for child in raw:
+            nested = find_nested_bool(child, key)
+            if nested is not None:
+                return nested
+    return None
+
+
+def find_nested_string_list(raw: Any, key: str) -> list[str] | None:
+    if isinstance(raw, dict):
+        value = raw.get(key)
+        if isinstance(value, list) and all(isinstance(item, str) for item in value):
+            return [item.strip() for item in value if item.strip()]
+        for child in raw.values():
+            nested = find_nested_string_list(child, key)
+            if nested is not None:
+                return nested
+    elif isinstance(raw, list):
+        for child in raw:
+            nested = find_nested_string_list(child, key)
+            if nested is not None:
+                return nested
+    return None
+
+
+def find_nested_int(raw: Any, key: str) -> int | None:
+    if isinstance(raw, dict):
+        value = raw.get(key)
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        for child in raw.values():
+            nested = find_nested_int(child, key)
+            if nested is not None:
+                return nested
+    elif isinstance(raw, list):
+        for child in raw:
+            nested = find_nested_int(child, key)
+            if nested is not None:
+                return nested
+    return None
 
 
 def numeric_case_fingerprint(numeric_substitutions: dict[str, Any]) -> str:
@@ -294,6 +389,54 @@ def validate_numeric_case(case: dict[str, Any], label: str) -> dict[str, Any]:
     }
 
 
+def validate_source_binding(
+    binding: Any,
+    *,
+    label: str,
+    endpoint_integral: str,
+    source_evidence: dict[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(binding, dict):
+        raise TypeError(f"{label} source_evidence_binding must be an object")
+    for key, expected_value in REQUIRED_SOURCE_BINDING.items():
+        expect(
+            normalized_string(binding.get(key), f"{label} source_evidence_binding {key}")
+            == expected_value,
+            f"{label} source_evidence_binding {key} drifted from reviewed source evidence",
+        )
+    expect(
+        normalized_string(
+            binding.get("endpoint_integral_id"),
+            f"{label} source_evidence_binding endpoint_integral_id",
+        )
+        == endpoint_integral,
+        f"{label} source_evidence_binding endpoint_integral_id must match the variant endpoint",
+    )
+    per_endpoint_digits = source_evidence["per_endpoint_digit_agreement"]
+    expected_digits = per_endpoint_digits.get(endpoint_integral)
+    expect(
+        isinstance(expected_digits, int),
+        f"{label} source evidence is missing digit coverage for {endpoint_integral}",
+    )
+    published_digits = normalize_int(
+        binding.get("minimum_digit_agreement_from_compare30"),
+        f"{label} source_evidence_binding minimum_digit_agreement_from_compare30",
+    )
+    expect(
+        published_digits == expected_digits,
+        f"{label} source_evidence_binding digit agreement must match compare30 evidence",
+    )
+    expect(
+        published_digits >= 30,
+        f"{label} source_evidence_binding must retain compare30 coverage",
+    )
+    return {
+        "source_bound_endpoint_integral": endpoint_integral,
+        "source_bound_minimum_digit_agreement": published_digits,
+        "source_contour_fingerprint": binding["source_contour_fingerprint"],
+    }
+
+
 def validate_variant(
     variant: dict[str, Any],
     index: int,
@@ -301,8 +444,9 @@ def validate_variant(
 ) -> tuple[str, set[str]]:
     label = f"publication_variants[{index}]"
     variant_id = normalized_string(variant.get("id"), f"{label} id")
-    expected_endpoint = REVIEWED_VARIANT_ENDPOINTS.get(variant_id)
-    expect(expected_endpoint is not None, f"{label} is not a reviewed b61n variant")
+    variant_spec = REVIEWED_VARIANT_SPECS.get(variant_id)
+    expect(variant_spec is not None, f"{label} is not a reviewed b61n variant")
+    expected_endpoint = variant_spec["endpoint_integral_id"]
     endpoint_integral = normalized_string(
         variant.get("endpoint_integral_id"), f"{label} endpoint_integral_id"
     )
@@ -320,8 +464,14 @@ def validate_variant(
             variant.get("endpoint_local_model_kind"),
             f"{label} endpoint_local_model_kind",
         )
-        == "b61n-primitive-bubble-regular-taylor-r0",
-        f"{label} must use the reviewed primitive-bubble local model",
+        == variant_spec["endpoint_local_model_kind"],
+        f"{label} must use the reviewed local model",
+    )
+    source_binding = validate_source_binding(
+        variant.get("source_evidence_binding"),
+        label=label,
+        endpoint_integral=endpoint_integral,
+        source_evidence=source_evidence,
     )
     expect(
         normalized_string(variant.get("transport_scope"), f"{label} transport_scope")
@@ -392,6 +542,10 @@ def validate_variant(
         f"{label} retained Numeric case must match the reviewed source contour fingerprint",
     )
     expect(
+        retained["contour_fingerprint"] == source_binding["source_contour_fingerprint"],
+        f"{label} retained Numeric contour fingerprint must match its source binding",
+    )
+    expect(
         retained["contour_waypoints"] == source_evidence["contour_waypoints"],
         f"{label} retained Numeric case must match the reviewed source contour waypoints",
     )
@@ -409,7 +563,58 @@ def validate_variant(
     return endpoint_integral, numeric_fingerprints
 
 
-def validate_m6_hook(hook: dict[str, Any]) -> dict[str, Any]:
+def validate_promotion_digit_summary(
+    summary: dict[str, Any],
+    *,
+    required_endpoints: list[str],
+    minimum_required_digits: int,
+) -> int:
+    passed = summary.get("passed")
+    if not isinstance(passed, bool):
+        passed = find_nested_bool(summary, "passed")
+    expect(passed is True, "M6 promotion digit summary must pass")
+
+    per_endpoint_digits = summary.get("per_integral_minimum_digit_agreement")
+    if not isinstance(per_endpoint_digits, dict):
+        raise TypeError(
+            "M6 promotion digit summary must publish per_integral_minimum_digit_agreement"
+        )
+    endpoint_minima: list[int] = []
+    for endpoint in required_endpoints:
+        digits = per_endpoint_digits.get(endpoint)
+        expect(
+            isinstance(digits, int) and not isinstance(digits, bool),
+            f"M6 promotion digit summary missing {endpoint}",
+        )
+        endpoint_minima.append(digits)
+    minimum_digit_agreement = min(endpoint_minima)
+    published_minimum = summary.get("minimum_digit_agreement")
+    if published_minimum is not None:
+        expect(
+            isinstance(published_minimum, int) and not isinstance(published_minimum, bool),
+            "M6 promotion digit summary minimum_digit_agreement must be an int",
+        )
+        expect(
+            published_minimum == minimum_digit_agreement,
+            "M6 promotion digit summary scalar minimum must match per-endpoint evidence",
+        )
+    expect(
+        isinstance(minimum_digit_agreement, int),
+        "M6 promotion digit summary must publish minimum_digit_agreement",
+    )
+    expect(
+        minimum_digit_agreement >= minimum_required_digits,
+        "M6 promotion digit summary does not meet the required digit floor",
+    )
+    return minimum_digit_agreement
+
+
+def validate_m6_hook(
+    hook: dict[str, Any],
+    *,
+    sidecar_path: Path,
+    reviewed_endpoint_integrals: list[str],
+) -> dict[str, Any]:
     if not isinstance(hook, dict):
         raise TypeError("m6_qualifier_hook must be an object")
     phase0_id = normalized_string(hook.get("phase0_id"), "m6_qualifier_hook phase0_id")
@@ -427,30 +632,106 @@ def validate_m6_hook(hook: dict[str, Any]) -> dict[str, Any]:
         ),
         "M6 hook must require full eta=0 contour application before promotion",
     )
+    minimum_required_digits = normalize_int(
+        hook.get("minimum_digit_agreement_required", MINIMUM_PROMOTION_DIGITS),
+        "m6_qualifier_hook minimum_digit_agreement_required",
+    )
+    expect(
+        minimum_required_digits >= MINIMUM_PROMOTION_DIGITS,
+        "M6 hook must preserve the 50-digit promotion floor",
+    )
+    required_endpoints = normalize_string_list(
+        hook.get("reviewed_endpoint_integrals"),
+        "m6_qualifier_hook reviewed_endpoint_integrals",
+    )
+    expect(
+        sorted(required_endpoints) == sorted(reviewed_endpoint_integrals),
+        "M6 hook reviewed endpoints must match the publication variants",
+    )
     full_eta_zero_contour_applied_observed = normalize_bool(
         hook.get("full_eta_zero_contour_applied_observed"),
         "m6_qualifier_hook full_eta_zero_contour_applied_observed",
     )
-    currently_promoted = normalize_bool(
+    sidecar_promoted = normalize_bool(
         hook.get("currently_promoted"), "m6_qualifier_hook currently_promoted"
     )
-    expect(
-        not full_eta_zero_contour_applied_observed,
-        "M6 hook must remain pre-positioned until retained runtime capture observes full eta=0",
+    accepted_runtime_result = normalize_optional_path_text(
+        hook.get("accepted_runtime_result"),
+        "m6_qualifier_hook accepted_runtime_result",
     )
-    expect(not currently_promoted, "M6 hook must not self-certify promotion")
+    digit_agreement_summary = normalize_optional_path_text(
+        hook.get("digit_agreement_summary"),
+        "m6_qualifier_hook digit_agreement_summary",
+    )
+
+    computed_currently_promoted = False
+    observed_minimum_digit_agreement: int | None = None
+    if full_eta_zero_contour_applied_observed:
+        expect(
+            accepted_runtime_result and digit_agreement_summary,
+            "M6 hook cannot promote without accepted runtime and digit summary evidence",
+        )
+        runtime_path = resolve_sidecar_path(accepted_runtime_result, sidecar_path)
+        digit_path = resolve_sidecar_path(digit_agreement_summary, sidecar_path)
+        expect(runtime_path.exists(), "M6 hook accepted runtime result path is missing")
+        expect(digit_path.exists(), "M6 hook digit agreement summary path is missing")
+        runtime_result = load_json(runtime_path)
+        continuation = runtime_result.get("continuation")
+        if not isinstance(continuation, dict):
+            raise TypeError("M6 hook accepted runtime result continuation must be an object")
+        full_contour_flag = continuation.get("full_eta_zero_contour_applied")
+        expect(
+            full_contour_flag is True,
+            "M6 hook accepted runtime continuation must report full_eta_zero_contour_applied=true",
+        )
+        expect(
+            continuation.get("target_location") in ("eta=0", None),
+            "M6 hook accepted runtime continuation must target eta=0",
+        )
+        runtime_endpoints = continuation.get("eta_zero_endpoint_transported_integrals")
+        if not isinstance(runtime_endpoints, list):
+            raise TypeError(
+                "M6 hook accepted runtime continuation must publish endpoint integrals"
+            )
+        runtime_endpoints = normalize_string_list(
+            runtime_endpoints,
+            "M6 hook accepted runtime continuation eta_zero_endpoint_transported_integrals",
+        )
+        expect(
+            set(required_endpoints).issubset(set(runtime_endpoints)),
+            "M6 hook accepted runtime continuation must cover every reviewed endpoint",
+        )
+        observed_minimum_digit_agreement = validate_promotion_digit_summary(
+            load_json(digit_path),
+            required_endpoints=required_endpoints,
+            minimum_required_digits=minimum_required_digits,
+        )
+        computed_currently_promoted = True
+    else:
+        expect(
+            not accepted_runtime_result and not digit_agreement_summary,
+            "M6 hook must not attach promotion evidence before observing full eta=0",
+        )
+
     expect(
-        hook.get("accepted_runtime_result") in (None, ""),
-        "M6 hook must not attach accepted_runtime_result before retained runtime capture",
+        not sidecar_promoted or computed_currently_promoted,
+        "M6 hook must not self-certify promotion without validated contour and digit evidence",
     )
     return {
+        "computed_currently_promoted": computed_currently_promoted,
         "full_eta_zero_contour_applied_observed": full_eta_zero_contour_applied_observed,
+        "minimum_digit_agreement_required": minimum_required_digits,
+        "observed_minimum_digit_agreement": observed_minimum_digit_agreement,
         "optional_capture_packet": optional_packet,
         "phase0_id": phase0_id,
     }
 
 
-def validate_m7_hook(hook: dict[str, Any]) -> dict[str, Any]:
+def validate_m7_hook(
+    hook: dict[str, Any],
+    *,
+    reviewed_endpoint_integrals: list[str],
+) -> dict[str, Any]:
     if not isinstance(hook, dict):
         raise TypeError("m7_parity_signoff_hook must be an object")
     expect(
@@ -474,7 +755,64 @@ def validate_m7_hook(hook: dict[str, Any]) -> dict[str, Any]:
         == "blocked-on-m6",
         "M7 hook must remain blocked until M6 closes",
     )
-    return {"single_row_path": single_row_path}
+    required_signal = hook.get("required_m6_signal")
+    if not isinstance(required_signal, dict):
+        raise TypeError("m7_parity_signoff_hook required_m6_signal must be an object")
+    expect(
+        normalized_string(
+            required_signal.get("phase0_id"),
+            "m7_parity_signoff_hook required_m6_signal phase0_id",
+        )
+        == "complex_kinematics",
+        "M7 hook M6 signal must target complex_kinematics",
+    )
+    expect(
+        normalized_string(
+            required_signal.get("optional_capture_packet"),
+            "m7_parity_signoff_hook required_m6_signal optional_capture_packet",
+        )
+        == "b61n-complex-eta-zero-single-row",
+        "M7 hook M6 signal must name the b61n optional packet",
+    )
+    expect(
+        normalize_bool(
+            required_signal.get("full_eta_zero_contour_applied"),
+            "m7_parity_signoff_hook required_m6_signal full_eta_zero_contour_applied",
+        ),
+        "M7 hook M6 signal must require full contour evidence",
+    )
+    expect(
+        normalize_int(
+            required_signal.get("minimum_digit_agreement"),
+            "m7_parity_signoff_hook required_m6_signal minimum_digit_agreement",
+        )
+        >= MINIMUM_PROMOTION_DIGITS,
+        "M7 hook M6 signal must preserve the 50-digit floor",
+    )
+    required_signal_endpoints = normalize_string_list(
+        required_signal.get("reviewed_endpoint_integrals"),
+        "m7_parity_signoff_hook required_m6_signal reviewed_endpoint_integrals",
+    )
+    expect(
+        sorted(required_signal_endpoints) == sorted(reviewed_endpoint_integrals),
+        "M7 hook M6 signal endpoints must match the reviewed publication variants",
+    )
+    blockers = normalize_string_list(
+        hook.get("blocked_release_prerequisites"),
+        "m7_parity_signoff_hook blocked_release_prerequisites",
+    )
+    for blocker in (
+        "m6 qualification closure",
+        "release qualification-corpus review",
+        "release performance review",
+        "release diagnostic review",
+        "release docs-completion review",
+    ):
+        expect(blocker in blockers, f"M7 hook blocked prerequisites missing {blocker}")
+    return {
+        "single_row_path": single_row_path,
+        "required_m6_signal_endpoint_count": len(required_signal_endpoints),
+    }
 
 
 def validate_reviewed_endpoint_compare_evidence(
@@ -546,6 +884,9 @@ def validate_source_evidence(sidecar: dict[str, Any], sidecar_path: Path) -> dic
     if not isinstance(compared, dict):
         raise TypeError("b61n evidence compare30 must be an object")
     expect(compared.get("passed") is True, "b61n evidence compare30 must pass")
+    per_endpoint_digit_agreement = compared.get("per_integral_minimum_digit_agreement")
+    if not isinstance(per_endpoint_digit_agreement, dict):
+        raise TypeError("b61n evidence per-integral digit agreement must be an object")
     transported_integrals = normalize_string_list(
         evidence.get("eta_zero_endpoint_transported_integrals"),
         "b61n evidence eta_zero_endpoint_transported_integrals",
@@ -595,6 +936,7 @@ def validate_source_evidence(sidecar: dict[str, Any], sidecar_path: Path) -> dic
             source_numeric_text,
             "b61n source Numeric",
         ),
+        "per_endpoint_digit_agreement": per_endpoint_digit_agreement,
         "reviewed_endpoint_compare_evidence_matched": True,
     }
 
@@ -615,7 +957,10 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
     raw_variants = sidecar.get("publication_variants")
     if not isinstance(raw_variants, list):
         raise TypeError("publication_variants must be a list")
-    expect(len(raw_variants) >= 2, "publication sidecar must cover at least two variants")
+    expect(
+        len(raw_variants) >= len(REVIEWED_ENDPOINT_INTEGRALS),
+        "publication sidecar must cover every reviewed selected5 endpoint variant",
+    )
 
     endpoint_integrals: list[str] = []
     variant_ids: list[str] = []
@@ -637,12 +982,23 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "publication coverage must include the lane5-next7 reviewed box[0,0,1,1] variant",
     )
     expect(
+        sorted(endpoint_integrals) == sorted(REVIEWED_ENDPOINT_INTEGRALS),
+        "publication coverage must match the reviewed selected5 endpoint set",
+    )
+    expect(
         len(numeric_fingerprints) >= 2,
         "publication sidecar must exercise multiple distinct Numeric substitutions",
     )
 
-    m6_hook = validate_m6_hook(sidecar.get("m6_qualifier_hook"))
-    m7_hook = validate_m7_hook(sidecar.get("m7_parity_signoff_hook"))
+    m6_hook = validate_m6_hook(
+        sidecar.get("m6_qualifier_hook"),
+        sidecar_path=sidecar_path,
+        reviewed_endpoint_integrals=endpoint_integrals,
+    )
+    m7_hook = validate_m7_hook(
+        sidecar.get("m7_parity_signoff_hook"),
+        reviewed_endpoint_integrals=endpoint_integrals,
+    )
     withheld_claims = normalize_string_list(sidecar.get("withheld_claims"), "withheld_claims")
     for claim in WITHHELD_CLAIMS:
         expect(claim in withheld_claims, f"withheld_claims missing {claim!r}")
@@ -655,6 +1011,8 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "publication_gate_reviewed": True,
         "variant_count": len(raw_variants),
         "reviewed_endpoint_integrals": sorted(endpoint_integrals),
+        "full_selected5_endpoint_variants": sorted(endpoint_integrals)
+        == sorted(REVIEWED_ENDPOINT_INTEGRALS),
         "new_lane5_endpoint_variant": "box[0,0,1,1]" in endpoint_integrals,
         "multi_numeric_negim_gate_regressed": len(numeric_fingerprints) >= 2,
         "smoke_numeric_cases_shape_only": True,
@@ -667,13 +1025,16 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "source_minimum_pole_distance_to_contour": str(
             source_evidence["minimum_pole_distance_to_contour"]
         ),
-        "m6_qualifier_hook_prepositioned": True,
-        "m6_qualifier_hook_currently_promoted": m6_hook[
-            "full_eta_zero_contour_applied_observed"
-        ],
+        "m6_qualifier_hook_prepositioned": not m6_hook["computed_currently_promoted"],
+        "m6_qualifier_hook_currently_promoted": m6_hook["computed_currently_promoted"],
         "m6_optional_capture_packet": m6_hook["optional_capture_packet"],
+        "m6_minimum_digit_agreement_required": m6_hook["minimum_digit_agreement_required"],
+        "m6_observed_minimum_digit_agreement": m6_hook["observed_minimum_digit_agreement"],
         "m7_parity_single_row_hook_prepositioned": True,
         "m7_single_row_path": m7_hook["single_row_path"],
+        "m7_required_m6_signal_endpoint_count": m7_hook[
+            "required_m6_signal_endpoint_count"
+        ],
         "withheld_claims": withheld_claims,
     }
 
@@ -722,33 +1083,51 @@ def synthetic_sidecar() -> dict[str, Any]:
             {"real": "0", "imag": "0"},
         ],
     }
-    base_variant = {
-        "id": "lane142-primitive-bubble-box1010",
-        "endpoint_integral_id": "box[1,0,1,0]",
-        "matrix_fingerprint": "lane142-b61n-selected5-primitive-bubble-v1",
-        "endpoint_local_model_kind": "b61n-primitive-bubble-regular-taylor-r0",
-        "transport_scope": "eta-zero-selected-endpoint-coefficients",
-        "coefficient_publication": True,
-        "endpoint_extraction_applied": True,
-        "full_eta_zero_contour_applied": False,
-        "final_solution_samples_used_as_input": False,
-        "numeric_substitution_cases": [case_a, case_b],
+    endpoint_digits = {
+        "box[0,0,0,1]": 54,
+        "box[1,0,1,0]": 59,
+        "box[1,0,0,1]": 59,
+        "box[0,1,0,1]": 59,
+        "box[0,0,1,1]": 59,
     }
-    new_variant = {
-        **base_variant,
-        "id": "lane5-next7-primitive-bubble-box0011",
-        "endpoint_integral_id": "box[0,0,1,1]",
-    }
+
+    def source_binding(endpoint_integral: str) -> dict[str, Any]:
+        return {
+            **REQUIRED_SOURCE_BINDING,
+            "endpoint_integral_id": endpoint_integral,
+            "minimum_digit_agreement_from_compare30": endpoint_digits[endpoint_integral],
+        }
+
+    def variant(variant_id: str) -> dict[str, Any]:
+        spec = REVIEWED_VARIANT_SPECS[variant_id]
+        endpoint_integral = spec["endpoint_integral_id"]
+        return {
+            "id": variant_id,
+            "endpoint_integral_id": endpoint_integral,
+            "matrix_fingerprint": "lane142-b61n-selected5-primitive-bubble-v1",
+            "endpoint_local_model_kind": spec["endpoint_local_model_kind"],
+            "source_evidence_binding": source_binding(endpoint_integral),
+            "transport_scope": "eta-zero-selected-endpoint-coefficients",
+            "coefficient_publication": True,
+            "endpoint_extraction_applied": True,
+            "full_eta_zero_contour_applied": False,
+            "final_solution_samples_used_as_input": False,
+            "numeric_substitution_cases": [case_a, case_b],
+        }
+
+    variants = [variant(variant_id) for variant_id in REVIEWED_VARIANT_SPECS]
     return {
         "schema_version": 1,
         "lane": "lane5-next7",
         "benchmark_id": "complex_kinematics",
         "source_evidence": list(REQUIRED_SOURCE_EVIDENCE),
-        "publication_variants": [base_variant, new_variant],
+        "publication_variants": variants,
         "m6_qualifier_hook": {
             "phase0_id": "complex_kinematics",
             "optional_capture_packet": "b61n-complex-eta-zero-single-row",
             "requires_full_eta_zero_contour_applied": True,
+            "reviewed_endpoint_integrals": list(REVIEWED_ENDPOINT_INTEGRALS),
+            "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
             "full_eta_zero_contour_applied_observed": False,
             "currently_promoted": False,
         },
@@ -756,6 +1135,20 @@ def synthetic_sidecar() -> dict[str, Any]:
             "release_checklist_section": "parity-signoff",
             "single_row_path": "b61n-complex-contour-propagator-harness",
             "current_state": "blocked-on-m6",
+            "required_m6_signal": {
+                "phase0_id": "complex_kinematics",
+                "optional_capture_packet": "b61n-complex-eta-zero-single-row",
+                "full_eta_zero_contour_applied": True,
+                "minimum_digit_agreement": MINIMUM_PROMOTION_DIGITS,
+                "reviewed_endpoint_integrals": list(REVIEWED_ENDPOINT_INTEGRALS),
+            },
+            "blocked_release_prerequisites": [
+                "m6 qualification closure",
+                "release qualification-corpus review",
+                "release performance review",
+                "release diagnostic review",
+                "release docs-completion review",
+            ],
         },
         "withheld_claims": list(WITHHELD_CLAIMS),
     }
@@ -805,6 +1198,115 @@ def run_self_check() -> dict[str, Any]:
         except RuntimeError as error:
             m6_overclaim_rejected = "self-certify promotion" in str(error)
 
+        m6_auto_promote_accepts_future_packet = False
+        try:
+            promoted = synthetic_sidecar()
+            promoted["m6_qualifier_hook"]["full_eta_zero_contour_applied_observed"] = True
+            promoted["m6_qualifier_hook"]["accepted_runtime_result"] = "accepted-runtime.json"
+            promoted["m6_qualifier_hook"]["digit_agreement_summary"] = "compare50.json"
+            runtime_path = root / "accepted-runtime.json"
+            write_json(
+                runtime_path,
+                {
+                    "continuation": {
+                        "target_location": "eta=0",
+                        "full_eta_zero_contour_applied": True,
+                        "eta_zero_endpoint_transported_integrals": list(
+                            REVIEWED_ENDPOINT_INTEGRALS
+                        ),
+                    }
+                },
+            )
+            write_json(
+                root / "compare50.json",
+                {
+                    "passed": True,
+                    "minimum_digit_agreement": 54,
+                    "per_integral_minimum_digit_agreement": {
+                        endpoint: 54 for endpoint in REVIEWED_ENDPOINT_INTEGRALS
+                    },
+                },
+            )
+            promoted_path = root / "m6-auto-promoted.json"
+            write_json(promoted_path, promoted)
+            promoted_summary = audit_sidecar(promoted_path)
+            m6_auto_promote_accepts_future_packet = (
+                promoted_summary["m6_qualifier_hook_currently_promoted"] is True
+                and promoted_summary["m6_observed_minimum_digit_agreement"] == 54
+            )
+        except RuntimeError:
+            m6_auto_promote_accepts_future_packet = False
+
+        m6_scalar_digit_summary_rejected = False
+        try:
+            promoted = synthetic_sidecar()
+            promoted["m6_qualifier_hook"]["full_eta_zero_contour_applied_observed"] = True
+            promoted["m6_qualifier_hook"]["accepted_runtime_result"] = "scalar-runtime.json"
+            promoted["m6_qualifier_hook"]["digit_agreement_summary"] = "scalar-compare50.json"
+            write_json(
+                root / "scalar-runtime.json",
+                {
+                    "continuation": {
+                        "target_location": "eta=0",
+                        "full_eta_zero_contour_applied": True,
+                        "eta_zero_endpoint_transported_integrals": list(
+                            REVIEWED_ENDPOINT_INTEGRALS
+                        ),
+                    }
+                },
+            )
+            write_json(
+                root / "scalar-compare50.json",
+                {
+                    "passed": True,
+                    "minimum_digit_agreement": 54,
+                },
+            )
+            promoted_path = root / "m6-scalar-digit-summary.json"
+            write_json(promoted_path, promoted)
+            audit_sidecar(promoted_path)
+        except TypeError as error:
+            m6_scalar_digit_summary_rejected = (
+                "per_integral_minimum_digit_agreement" in str(error)
+            )
+
+        m6_metadata_contour_false_positive_rejected = False
+        try:
+            promoted = synthetic_sidecar()
+            promoted["m6_qualifier_hook"]["full_eta_zero_contour_applied_observed"] = True
+            promoted["m6_qualifier_hook"]["accepted_runtime_result"] = "metadata-runtime.json"
+            promoted["m6_qualifier_hook"]["digit_agreement_summary"] = "metadata-compare50.json"
+            write_json(
+                root / "metadata-runtime.json",
+                {
+                    "continuation": {
+                        "target_location": "eta=0",
+                        "full_eta_zero_contour_applied": False,
+                        "eta_zero_endpoint_transported_integrals": list(
+                            REVIEWED_ENDPOINT_INTEGRALS
+                        ),
+                    },
+                    "metadata": {"full_eta_zero_contour_applied": True},
+                },
+            )
+            write_json(
+                root / "metadata-compare50.json",
+                {
+                    "passed": True,
+                    "minimum_digit_agreement": 54,
+                    "per_integral_minimum_digit_agreement": {
+                        endpoint: 54 for endpoint in REVIEWED_ENDPOINT_INTEGRALS
+                    },
+                },
+            )
+            promoted_path = root / "m6-metadata-contour-false-positive.json"
+            write_json(promoted_path, promoted)
+            audit_sidecar(promoted_path)
+        except RuntimeError as error:
+            m6_metadata_contour_false_positive_rejected = (
+                "accepted runtime continuation" in str(error)
+            )
+
         m6_promoted_sidecar_rejected = False
         try:
             promoted = synthetic_sidecar()
@@ -817,12 +1319,13 @@ def run_self_check() -> dict[str, Any]:
         except RuntimeError as error:
             m6_promoted_sidecar_rejected = (
                 "pre-positioned" in str(error) or "self-certify promotion" in str(error)
+                or "cannot promote without accepted runtime" in str(error)
             )
 
         swapped_variant_rejected = False
         try:
             bad = synthetic_sidecar()
-            bad["publication_variants"][1]["endpoint_integral_id"] = "box[1,0,1,0]"
+            bad["publication_variants"][2]["endpoint_integral_id"] = "box[1,0,1,0]"
             bad_path = root / "swapped-variant.json"
             write_json(bad_path, bad)
             audit_sidecar(bad_path)
@@ -878,6 +1381,7 @@ def run_self_check() -> dict[str, Any]:
 
     return {
         "publication_gate_reviewed": summary["publication_gate_reviewed"],
+        "full_selected5_endpoint_variants": summary["full_selected5_endpoint_variants"],
         "new_lane5_endpoint_variant": summary["new_lane5_endpoint_variant"],
         "multi_numeric_negim_gate_regressed": summary[
             "multi_numeric_negim_gate_regressed"
@@ -889,6 +1393,11 @@ def run_self_check() -> dict[str, Any]:
             "reviewed_endpoint_compare_evidence_matched"
         ],
         "m6_qualifier_hook_prepositioned": summary["m6_qualifier_hook_prepositioned"],
+        "m6_auto_promote_accepts_future_packet": m6_auto_promote_accepts_future_packet,
+        "m6_scalar_digit_summary_rejected": m6_scalar_digit_summary_rejected,
+        "m6_metadata_contour_false_positive_rejected": (
+            m6_metadata_contour_false_positive_rejected
+        ),
         "m7_parity_single_row_hook_prepositioned": summary[
             "m7_parity_single_row_hook_prepositioned"
         ],

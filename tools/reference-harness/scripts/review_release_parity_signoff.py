@@ -46,6 +46,14 @@ REQUIRED_NON_CLAIM_MARKERS: tuple[str, ...] = (
     "release readiness",
     "runtime",
 )
+B61N_SELECTED5_ENDPOINTS: tuple[str, ...] = (
+    "box[0,0,0,1]",
+    "box[1,0,1,0]",
+    "box[1,0,0,1]",
+    "box[0,1,0,1]",
+    "box[0,0,1,1]",
+)
+MINIMUM_PROMOTION_DIGITS = 50
 
 
 def expect(condition: bool, message: str) -> None:
@@ -168,16 +176,57 @@ def explicit_non_claims_cover_release_blockers(non_claims: list[str]) -> bool:
     return all(marker in combined for marker in REQUIRED_NON_CLAIM_MARKERS)
 
 
-def b61n_publication_hook_reviewed(checklist: dict[str, Any], root: Path) -> bool:
+def load_b61n_publication_hook_sidecar(
+    checklist: dict[str, Any],
+    root: Path,
+) -> dict[str, Any] | None:
     relative_path = checklist["sources"].get("b61n_single_row_publication_hook", "")
     if not relative_path:
-        return False
+        return None
     hook_path = root / relative_path
     try:
         expect_path_within_root(hook_path, root, "b61n single-row publication hook")
-        sidecar = load_json(hook_path)
+        return load_json(hook_path)
     except Exception:
+        return None
+
+
+def b61n_selected5_m6_signal_preserved(sidecar: dict[str, Any]) -> bool:
+    m7_hook = sidecar.get("m7_parity_signoff_hook")
+    if not isinstance(m7_hook, dict):
         return False
+    required_m6_signal = m7_hook.get("required_m6_signal")
+    if not isinstance(required_m6_signal, dict):
+        return False
+    reviewed_endpoint_integrals = required_m6_signal.get("reviewed_endpoint_integrals")
+    if not isinstance(reviewed_endpoint_integrals, list) or not all(
+        isinstance(endpoint, str) and endpoint.strip()
+        for endpoint in reviewed_endpoint_integrals
+    ):
+        return False
+    minimum_digit_agreement = required_m6_signal.get("minimum_digit_agreement")
+    if not isinstance(minimum_digit_agreement, int) or isinstance(
+        minimum_digit_agreement, bool
+    ):
+        return False
+    blocked_release_prerequisites = m7_hook.get("blocked_release_prerequisites")
+    if not isinstance(blocked_release_prerequisites, list) or not all(
+        isinstance(blocker, str) and blocker.strip() for blocker in blocked_release_prerequisites
+    ):
+        return False
+    return (
+        required_m6_signal.get("phase0_id") == "complex_kinematics"
+        and required_m6_signal.get("optional_capture_packet")
+        == "b61n-complex-eta-zero-single-row"
+        and required_m6_signal.get("full_eta_zero_contour_applied") is True
+        and minimum_digit_agreement >= MINIMUM_PROMOTION_DIGITS
+        and sorted(reviewed_endpoint_integrals) == sorted(B61N_SELECTED5_ENDPOINTS)
+        and "m6 qualification closure" in blocked_release_prerequisites
+        and "release docs-completion review" in blocked_release_prerequisites
+    )
+
+
+def b61n_publication_hook_base_reviewed(sidecar: dict[str, Any]) -> bool:
     if sidecar.get("benchmark_id") != "complex_kinematics":
         return False
     m7_hook = sidecar.get("m7_parity_signoff_hook")
@@ -223,8 +272,20 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
     withheld_claims_reviewed = explicit_non_claims_cover_release_blockers(
         checklist["explicit_non_claims"]
     )
-    b61n_single_row_publication_hook_reviewed = b61n_publication_hook_reviewed(
-        checklist, root
+    b61n_hook_sidecar = load_b61n_publication_hook_sidecar(checklist, root)
+    b61n_publication_hook_found = b61n_hook_sidecar is not None
+    b61n_hook_base_is_reviewed = (
+        b61n_hook_sidecar is not None
+        and b61n_publication_hook_base_reviewed(b61n_hook_sidecar)
+    )
+    b61n_selected5_m6_signal_is_preserved = (
+        b61n_hook_sidecar is not None
+        and b61n_selected5_m6_signal_preserved(b61n_hook_sidecar)
+    )
+    b61n_single_row_publication_hook_reviewed = (
+        b61n_publication_hook_found
+        and b61n_hook_base_is_reviewed
+        and b61n_selected5_m6_signal_is_preserved
     )
 
     qualification_closure_reviewed = False
@@ -305,6 +366,7 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
         "b61n_single_row_publication_hook_reviewed": (
             b61n_single_row_publication_hook_reviewed
         ),
+        "b61n_selected5_m6_signal_preserved": b61n_selected5_m6_signal_is_preserved,
         "parity_signoff_required_inputs_preserved": parity_signoff_required_inputs_preserved,
         "parity_signoff_required_outputs_preserved": parity_signoff_required_outputs_preserved,
         "prerequisite_review_sections_preserved": prerequisite_sections_present,
@@ -388,6 +450,20 @@ def write_synthetic_release_parity_root(
                         "release_checklist_section": "parity-signoff",
                         "single_row_path": "b61n-complex-contour-propagator-harness",
                         "current_state": "blocked-on-m6",
+                        "required_m6_signal": {
+                            "phase0_id": "complex_kinematics",
+                            "optional_capture_packet": "b61n-complex-eta-zero-single-row",
+                            "full_eta_zero_contour_applied": True,
+                            "minimum_digit_agreement": MINIMUM_PROMOTION_DIGITS,
+                            "reviewed_endpoint_integrals": list(B61N_SELECTED5_ENDPOINTS),
+                        },
+                        "blocked_release_prerequisites": [
+                            "m6 qualification closure",
+                            "release qualification-corpus review",
+                            "release performance review",
+                            "release diagnostic review",
+                            "release docs-completion review",
+                        ],
                     },
                 },
             )
@@ -463,6 +539,44 @@ def run_self_check() -> dict[str, Any]:
             root=bad_hook_root,
         )
 
+    with tempfile.TemporaryDirectory(
+        prefix="amflow-release-parity-b61n-selected5-self-check-"
+    ) as tmp:
+        bad_signal_root = Path(tmp)
+        bad_signal_checklist_path = write_synthetic_release_parity_root(bad_signal_root)
+        bad_signal_path = (
+            bad_signal_root
+            / "tools/reference-harness/specs/m6/lane5-next7/"
+            "b61n-publication-qualifier-hook.json"
+        )
+        write_json(
+            bad_signal_path,
+            {
+                "schema_version": 1,
+                "benchmark_id": "complex_kinematics",
+                "m7_parity_signoff_hook": {
+                    "release_checklist_section": "parity-signoff",
+                    "single_row_path": "b61n-complex-contour-propagator-harness",
+                    "current_state": "blocked-on-m6",
+                    "required_m6_signal": {
+                        "phase0_id": "complex_kinematics",
+                        "optional_capture_packet": "b61n-complex-eta-zero-single-row",
+                        "full_eta_zero_contour_applied": True,
+                        "minimum_digit_agreement": MINIMUM_PROMOTION_DIGITS,
+                        "reviewed_endpoint_integrals": [None],
+                    },
+                    "blocked_release_prerequisites": [
+                        "m6 qualification closure",
+                        "release docs-completion review",
+                    ],
+                },
+            },
+        )
+        bad_signal_summary = summarize_parity_signoff(
+            checklist_path=bad_signal_checklist_path,
+            root=bad_signal_root,
+        )
+
     return {
         "parity_signoff_complete": summary["parity_signoff_complete"],
         "parity_signoff_required_inputs_preserved": (
@@ -497,10 +611,18 @@ def run_self_check() -> dict[str, Any]:
         "b61n_single_row_publication_hook_reviewed": (
             summary["b61n_single_row_publication_hook_reviewed"]
         ),
+        "b61n_selected5_m6_signal_preserved": summary[
+            "b61n_selected5_m6_signal_preserved"
+        ],
         "malformed_b61n_publication_hook_blocked": (
             not bad_hook_summary["b61n_single_row_publication_hook_reviewed"]
             and "b61n-single-row-publication-hook"
             in bad_hook_summary["missing_or_blocked_parity_paths"]
+        ),
+        "malformed_selected5_m6_signal_blocked": (
+            not bad_signal_summary["b61n_selected5_m6_signal_preserved"]
+            and "b61n-single-row-publication-hook"
+            in bad_signal_summary["missing_or_blocked_parity_paths"]
         ),
         "summary_written": summary_written,
     }

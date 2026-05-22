@@ -86,6 +86,13 @@
       "required_capture": false,
       "current_evidence_state": "cataloged-pending-capture",
       "next_runtime_lane": "b61n",
+      "runtime_capture_promotion_hook": {
+        "hook_id": "b61n-eta-zero-single-row-publication",
+        "audit_sidecar": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json",
+        "optional_capture_packet": "b61n-complex-eta-zero-single-row",
+        "requires_full_eta_zero_contour_applied": true,
+        "notes": "Pre-positioned only: complex_kinematics remains pending until a retained optional packet and its runtime publication sidecar truthfully report full eta=0 contour application."
+      },
       "digit_threshold_profile": "core-package-family-default",
       "failure_code_profile": "default-required-failure-codes",
       "regression_profile": "current-reviewed-regressions",

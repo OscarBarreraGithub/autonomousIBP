@@ -52843,6 +52843,102 @@ void MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest() {
                  "Milestone M6 retained qualification summary should keep M7/release non-claims");
 }
 
+void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-b61n-publication-qualifier-self-check",
+      "tools/reference-harness/scripts/audit_b61n_publication_qualifier.py",
+      {"--self-check"},
+      "b61n publication qualifier self-check");
+  Expect(result.stderr_log.empty(),
+         "b61n publication qualifier self-check should not emit stderr noise on success");
+  ExpectContains(result.stdout_json, "\"publication_gate_reviewed\": true",
+                 "b61n publication qualifier should accept the reviewed publication sidecar");
+  ExpectContains(result.stdout_json, "\"new_lane5_endpoint_variant\": true",
+                 "b61n publication qualifier should cover the new endpoint variant");
+  ExpectContains(result.stdout_json, "\"multi_numeric_negim_gate_regressed\": true",
+                 "b61n publication qualifier should exercise multiple Numeric substitutions");
+  ExpectContains(result.stdout_json, "\"smoke_numeric_cases_shape_only\": true",
+                 "b61n publication qualifier should frame non-retained Numeric substitutions as "
+                 "publication-side shape checks");
+  ExpectContains(result.stdout_json, "\"retained_contour_evidence_matched\": true",
+                 "b61n publication qualifier should bind retained contour metadata to source "
+                 "evidence");
+  ExpectContains(result.stdout_json, "\"retained_numeric_evidence_matched\": true",
+                 "b61n publication qualifier should bind retained Numeric values to source "
+                 "evidence");
+  ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
+                 "b61n publication qualifier should bind reviewed endpoint variants to compare "
+                 "evidence");
+  ExpectContains(result.stdout_json, "\"off_axis_contour_rejected\": true",
+                 "b61n publication qualifier should reject off-axis publication contours");
+  ExpectContains(result.stdout_json, "\"single_numeric_case_rejected\": true",
+                 "b61n publication qualifier should reject single-Numeric regressions");
+  ExpectContains(result.stdout_json, "\"source_evidence_rejected\": true",
+                 "b61n publication qualifier should reject missing source evidence");
+  ExpectContains(result.stdout_json, "\"swapped_variant_rejected\": true",
+                 "b61n publication qualifier should bind variant ids to endpoint integrals");
+  ExpectContains(result.stdout_json, "\"invalid_numeric_rejected\": true",
+                 "b61n publication qualifier should reject malformed Numeric substitutions");
+  ExpectContains(result.stdout_json, "\"retained_numeric_drift_rejected\": true",
+                 "b61n publication qualifier should reject retained Numeric source drift");
+  ExpectContains(result.stdout_json, "\"m6_qualifier_hook_prepositioned\": true",
+                 "b61n publication qualifier should pre-position the M6 hook");
+  ExpectContains(result.stdout_json, "\"m6_overclaim_rejected\": true",
+                 "b61n publication qualifier should reject self-certified M6 promotion");
+  ExpectContains(result.stdout_json, "\"m6_promoted_sidecar_rejected\": true",
+                 "b61n publication qualifier should reject sidecar-local M6 promotion");
+  ExpectContains(result.stdout_json, "\"m7_hook_rejected\": true",
+                 "b61n publication qualifier should reject malformed M7 hook metadata");
+  ExpectContains(result.stdout_json, "\"m7_parity_single_row_hook_prepositioned\": true",
+                 "b61n publication qualifier should pre-position the M7 single-row hook");
+  ExpectContains(result.stdout_json, "\"summary_written\": true",
+                 "b61n publication qualifier self-check should write the synthetic summary");
+}
+
+void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
+  const std::filesystem::path summary_path =
+      FreshTempDir("amflow-b61n-publication-qualifier-summary") /
+      "b61n-publication-qualifier.json";
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-b61n-publication-qualifier-repo-sidecar",
+      "tools/reference-harness/scripts/audit_b61n_publication_qualifier.py",
+      {"--sidecar-path",
+       (std::filesystem::path(AMFLOW_SOURCE_DIR) /
+        "tools/reference-harness/specs/m6/lane5-next7/"
+        "b61n-publication-qualifier-hook.json")
+           .string(),
+       "--summary-path",
+       summary_path.string()},
+      "b61n publication qualifier repo sidecar");
+  Expect(result.stderr_log.empty(),
+         "b61n publication qualifier repo sidecar should not emit stderr noise on success");
+  Expect(std::filesystem::exists(summary_path),
+         "b61n publication qualifier repo sidecar should write the requested summary");
+  ExpectContains(result.stdout_json, "\"reviewed_endpoint_integrals\": [",
+                 "b61n publication qualifier should publish reviewed endpoint integrals");
+  ExpectContains(result.stdout_json, "\"box[0,0,1,1]\"",
+                 "b61n publication qualifier should include the lane5-next7 endpoint variant");
+  ExpectContains(result.stdout_json,
+                 "\"source_contour_fingerprint\": \"fnv1a64:a8dd3d0427fbf52b\"",
+                 "b61n publication qualifier should report the reviewed source contour "
+                 "fingerprint");
+  ExpectContains(result.stdout_json, "\"retained_numeric_evidence_matched\": true",
+                 "b61n publication qualifier should preserve retained Numeric source binding");
+  ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
+                 "b61n publication qualifier should preserve reviewed endpoint compare binding");
+  ExpectContains(result.stdout_json,
+                 "\"m6_optional_capture_packet\": \"b61n-complex-eta-zero-single-row\"",
+                 "b61n publication qualifier should publish the pre-positioned M6 packet id");
+  ExpectContains(result.stdout_json, "\"m6_qualifier_hook_currently_promoted\": false",
+                 "b61n publication qualifier should keep the current M6 hook blocked");
+  ExpectContains(result.stdout_json,
+                 "\"m7_single_row_path\": \"b61n-complex-contour-propagator-harness\"",
+                 "b61n publication qualifier should hook the b61n single-row path for M7");
+  ExpectContains(result.stdout_json,
+                 "\"This summary does not claim full eta=0 contour execution.\"",
+                 "b61n publication qualifier should preserve the full-contour non-claim");
+}
+
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
   const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
       "amflow-release-signoff-readiness-self-check",
@@ -54997,6 +55093,9 @@ void ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest() {
   ExpectContains(result.stdout_json, "\"prerequisite_review_sections_preserved\": true",
                  "release parity-signoff review self-check should preserve prerequisite release "
                  "review sections");
+  ExpectContains(result.stdout_json, "\"b61n_single_row_publication_hook_reviewed\": true",
+                 "release parity-signoff review self-check should validate the b61n publication "
+                 "hook sidecar");
   ExpectContains(result.stdout_json, "\"release_readiness_schema_compatible\": true",
                  "release parity-signoff review self-check should keep its sidecar compatible "
                  "with release_signoff_readiness.py");
@@ -55009,6 +55108,9 @@ void ReleaseParitySignoffReviewSelfCheckProducesCompatibleSidecarTest() {
   ExpectContains(result.stdout_json, "\"incomplete_non_claims_blocked\": true",
                  "release parity-signoff review self-check should block incomplete release "
                  "non-claims");
+  ExpectContains(result.stdout_json, "\"malformed_b61n_publication_hook_blocked\": true",
+                 "release parity-signoff review self-check should reject malformed b61n hook "
+                 "metadata");
   ExpectContains(result.stdout_json, "\"summary_written\": true",
                  "release parity-signoff review self-check should write the synthetic summary");
 }
@@ -56507,6 +56609,8 @@ int main() {
     CaseStudyQualificationFamiliesRetainedReportKeepsNumericBlockersVisibleTest();
     MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest();
     MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest();
+    B61nPublicationQualifierHookSelfCheckCoversNegImGateTest();
+    B61nPublicationQualifierHookMatchesRepoSidecarTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();

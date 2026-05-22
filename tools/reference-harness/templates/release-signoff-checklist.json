@@ -10,6 +10,7 @@
     "diagnostic_review_helper": "tools/reference-harness/scripts/review_release_diagnostic.py",
     "docs_completion_review_helper": "tools/reference-harness/scripts/review_release_docs_completion.py",
     "parity_signoff_review_helper": "tools/reference-harness/scripts/review_release_parity_signoff.py",
+    "b61n_single_row_publication_hook": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json",
     "parity_matrix": "specs/parity-matrix.yaml",
     "verification_strategy": "docs/verification-strategy.md",
     "roadmap": "docs/full-amflow-completion-roadmap.md",
@@ -92,6 +93,7 @@
       "id": "parity-signoff",
       "required_inputs": [
         "qualification closure note",
+        "b61n single-row publication hook",
         "performance review summary",
         "diagnostic review summary",
         "docs completion note"

@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "lane": "lane5-next7",
+  "benchmark_id": "complex_kinematics",
+  "source_evidence": [
+    "tools/reference-harness/specs/m6/lane142/b61n-selected5-real-coefficients-evidence.json",
+    "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.compare30.json",
+    "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.stripped-result.json",
+    "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json"
+  ],
+  "publication_variants": [
+    {
+      "id": "lane142-primitive-bubble-box1010",
+      "endpoint_integral_id": "box[1,0,1,0]",
+      "matrix_fingerprint": "lane142-b61n-selected5-primitive-bubble-v1",
+      "endpoint_local_model_kind": "b61n-primitive-bubble-regular-taylor-r0",
+      "transport_scope": "eta-zero-selected-endpoint-coefficients",
+      "coefficient_publication": true,
+      "endpoint_extraction_applied": true,
+      "full_eta_zero_contour_applied": false,
+      "final_solution_samples_used_as_input": false,
+      "numeric_substitution_cases": [
+        {
+          "id": "retained-complex-kinematics",
+          "direction": "NegIm",
+          "target_location": "eta=0",
+          "evidence_scope": "source-backed-retained-contour-evidence",
+          "contour_fingerprint": "fnv1a64:a8dd3d0427fbf52b",
+          "numeric_substitutions": {
+            "s": "496",
+            "t": "-39",
+            "p3sq": "7/2",
+            "p4sq": "8",
+            "m3sq": "2-I"
+          },
+          "contour_waypoints": [
+            {
+              "real": "0",
+              "imag": "-988.886458875053403341688"
+            },
+            {
+              "real": "0",
+              "imag": "-247.221614718763350835422"
+            },
+            {
+              "real": "0",
+              "imag": "-1"
+            },
+            {
+              "real": "0",
+              "imag": "-0.0625"
+            },
+            {
+              "real": "0",
+              "imag": "0"
+            }
+          ]
+        },
+        {
+          "id": "scaled-complex-mass-publication-smoke",
+          "direction": "NegIm",
+          "target_location": "eta=0",
+          "evidence_scope": "publication-side-shape-only-regression",
+          "contour_fingerprint": "publication-smoke:scaled-complex-mass-v1",
+          "numeric_substitutions": {
+            "s": "125",
+            "t": "-17",
+            "p3sq": "0",
+            "p4sq": "0",
+            "m3sq": "3/2+1/5*I"
+          },
+          "contour_waypoints": [
+            {
+              "real": "0",
+              "imag": "-256"
+            },
+            {
+              "real": "0",
+              "imag": "-16"
+            },
+            {
+              "real": "0",
+              "imag": "-0.25"
+            },
+            {
+              "real": "0",
+              "imag": "0"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lane5-next7-primitive-bubble-box0011",
+      "endpoint_integral_id": "box[0,0,1,1]",
+      "matrix_fingerprint": "lane142-b61n-selected5-primitive-bubble-v1",
+      "endpoint_local_model_kind": "b61n-primitive-bubble-regular-taylor-r0",
+      "transport_scope": "eta-zero-selected-endpoint-coefficients",
+      "coefficient_publication": true,
+      "endpoint_extraction_applied": true,
+      "full_eta_zero_contour_applied": false,
+      "final_solution_samples_used_as_input": false,
+      "numeric_substitution_cases": [
+        {
+          "id": "retained-complex-kinematics",
+          "direction": "NegIm",
+          "target_location": "eta=0",
+          "evidence_scope": "source-backed-retained-contour-evidence",
+          "contour_fingerprint": "fnv1a64:a8dd3d0427fbf52b",
+          "numeric_substitutions": {
+            "s": "496",
+            "t": "-39",
+            "p3sq": "7/2",
+            "p4sq": "8",
+            "m3sq": "2-I"
+          },
+          "contour_waypoints": [
+            {
+              "real": "0",
+              "imag": "-988.886458875053403341688"
+            },
+            {
+              "real": "0",
+              "imag": "-247.221614718763350835422"
+            },
+            {
+              "real": "0",
+              "imag": "-1"
+            },
+            {
+              "real": "0",
+              "imag": "-0.0625"
+            },
+            {
+              "real": "0",
+              "imag": "0"
+            }
+          ]
+        },
+        {
+          "id": "scaled-complex-mass-publication-smoke",
+          "direction": "NegIm",
+          "target_location": "eta=0",
+          "evidence_scope": "publication-side-shape-only-regression",
+          "contour_fingerprint": "publication-smoke:scaled-complex-mass-v1",
+          "numeric_substitutions": {
+            "s": "125",
+            "t": "-17",
+            "p3sq": "0",
+            "p4sq": "0",
+            "m3sq": "3/2+1/5*I"
+          },
+          "contour_waypoints": [
+            {
+              "real": "0",
+              "imag": "-256"
+            },
+            {
+              "real": "0",
+              "imag": "-16"
+            },
+            {
+              "real": "0",
+              "imag": "-0.25"
+            },
+            {
+              "real": "0",
+              "imag": "0"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "m6_qualifier_hook": {
+    "phase0_id": "complex_kinematics",
+    "optional_capture_packet": "b61n-complex-eta-zero-single-row",
+    "requires_full_eta_zero_contour_applied": true,
+    "full_eta_zero_contour_applied_observed": false,
+    "promotion_summary": "Pre-positioned only: when a future retained optional packet and accepted runtime result truthfully report full_eta_zero_contour_applied=true, qualification_readiness.py can expose complex_kinematics to the downstream M6 packet-set gates. M6 still requires separate packet comparison, correct-digit, and failure-code summaries before closure.",
+    "currently_promoted": false
+  },
+  "m7_parity_signoff_hook": {
+    "release_checklist_section": "parity-signoff",
+    "single_row_path": "b61n-complex-contour-propagator-harness",
+    "current_state": "blocked-on-m6",
+    "unblocks_when": "Milestone M6 is truthfully ready and the parity-signoff prerequisites have reviewed the b61n single-row publication packet."
+  },
+  "withheld_claims": [
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim full eta=0 contour execution.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

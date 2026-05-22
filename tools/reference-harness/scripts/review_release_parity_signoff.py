@@ -14,6 +14,7 @@ from freeze_phase0_goldens import load_json
 
 PARITY_SIGNOFF_REQUIRED_INPUTS: tuple[str, ...] = (
     "qualification closure note",
+    "b61n single-row publication hook",
     "performance review summary",
     "diagnostic review summary",
     "docs completion note",
@@ -167,6 +168,28 @@ def explicit_non_claims_cover_release_blockers(non_claims: list[str]) -> bool:
     return all(marker in combined for marker in REQUIRED_NON_CLAIM_MARKERS)
 
 
+def b61n_publication_hook_reviewed(checklist: dict[str, Any], root: Path) -> bool:
+    relative_path = checklist["sources"].get("b61n_single_row_publication_hook", "")
+    if not relative_path:
+        return False
+    hook_path = root / relative_path
+    try:
+        expect_path_within_root(hook_path, root, "b61n single-row publication hook")
+        sidecar = load_json(hook_path)
+    except Exception:
+        return False
+    if sidecar.get("benchmark_id") != "complex_kinematics":
+        return False
+    m7_hook = sidecar.get("m7_parity_signoff_hook")
+    if not isinstance(m7_hook, dict):
+        return False
+    return (
+        m7_hook.get("release_checklist_section") == "parity-signoff"
+        and m7_hook.get("single_row_path") == "b61n-complex-contour-propagator-harness"
+        and m7_hook.get("current_state") == "blocked-on-m6"
+    )
+
+
 def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, Any]:
     root = root.resolve(strict=False)
     checklist_path = checklist_path.resolve(strict=False)
@@ -200,6 +223,9 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
     withheld_claims_reviewed = explicit_non_claims_cover_release_blockers(
         checklist["explicit_non_claims"]
     )
+    b61n_single_row_publication_hook_reviewed = b61n_publication_hook_reviewed(
+        checklist, root
+    )
 
     qualification_closure_reviewed = False
     performance_review_summary_reviewed = False
@@ -231,6 +257,9 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
     if not withheld_claims_reviewed:
         missing_or_blocked_parity_paths.append("release-checklist:explicit-non-claims")
         blocking_reasons.append("release checklist explicit non-claims are incomplete")
+    if not b61n_single_row_publication_hook_reviewed:
+        missing_or_blocked_parity_paths.append("b61n-single-row-publication-hook")
+        blocking_reasons.append("b61n single-row publication hook has not been reviewed")
     if not qualification_closure_reviewed:
         missing_or_blocked_parity_paths.append("qualification-closure-note")
         blocking_reasons.append("qualification closure note has not been reviewed")
@@ -250,6 +279,7 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
         and diagnostic_review_summary_reviewed
         and docs_completion_note_reviewed
         and withheld_claims_reviewed
+        and b61n_single_row_publication_hook_reviewed
         and parity_signoff_required_inputs_preserved
         and parity_signoff_required_outputs_preserved
         and prerequisite_sections_present
@@ -272,6 +302,9 @@ def summarize_parity_signoff(*, checklist_path: Path, root: Path) -> dict[str, A
         "diagnostic_review_summary_reviewed": diagnostic_review_summary_reviewed,
         "docs_completion_note_reviewed": docs_completion_note_reviewed,
         "withheld_claims_reviewed": withheld_claims_reviewed,
+        "b61n_single_row_publication_hook_reviewed": (
+            b61n_single_row_publication_hook_reviewed
+        ),
         "parity_signoff_required_inputs_preserved": parity_signoff_required_inputs_preserved,
         "parity_signoff_required_outputs_preserved": parity_signoff_required_outputs_preserved,
         "prerequisite_review_sections_preserved": prerequisite_sections_present,
@@ -297,6 +330,10 @@ def write_synthetic_release_parity_root(
         "diagnostic_review_helper": "tools/reference-harness/scripts/review_release_diagnostic.py",
         "docs_completion_review_helper": "tools/reference-harness/scripts/review_release_docs_completion.py",
         "parity_signoff_review_helper": "tools/reference-harness/scripts/review_release_parity_signoff.py",
+        "b61n_single_row_publication_hook": (
+            "tools/reference-harness/specs/m6/lane5-next7/"
+            "b61n-publication-qualifier-hook.json"
+        ),
         "parity_matrix": "specs/parity-matrix.yaml",
         "verification_strategy": "docs/verification-strategy.md",
     }
@@ -340,7 +377,21 @@ def write_synthetic_release_parity_root(
             "explicit_non_claims": explicit_non_claims,
         },
     )
-    for relative_path in sources.values():
+    for source_id, relative_path in sources.items():
+        if source_id == "b61n_single_row_publication_hook":
+            write_json(
+                root / relative_path,
+                {
+                    "schema_version": 1,
+                    "benchmark_id": "complex_kinematics",
+                    "m7_parity_signoff_hook": {
+                        "release_checklist_section": "parity-signoff",
+                        "single_row_path": "b61n-complex-contour-propagator-harness",
+                        "current_state": "blocked-on-m6",
+                    },
+                },
+            )
+            continue
         write_text(
             root / relative_path,
             "Synthetic release parity signoff source\n"
@@ -387,6 +438,31 @@ def run_self_check() -> dict[str, Any]:
             root=nonclaim_root,
         )
 
+    with tempfile.TemporaryDirectory(prefix="amflow-release-parity-b61n-hook-self-check-") as tmp:
+        bad_hook_root = Path(tmp)
+        bad_hook_checklist_path = write_synthetic_release_parity_root(bad_hook_root)
+        bad_hook_path = (
+            bad_hook_root
+            / "tools/reference-harness/specs/m6/lane5-next7/"
+            "b61n-publication-qualifier-hook.json"
+        )
+        write_json(
+            bad_hook_path,
+            {
+                "schema_version": 1,
+                "benchmark_id": "complex_kinematics",
+                "m7_parity_signoff_hook": {
+                    "release_checklist_section": "wrong-section",
+                    "single_row_path": "wrong-path",
+                    "current_state": "blocked-on-m6",
+                },
+            },
+        )
+        bad_hook_summary = summarize_parity_signoff(
+            checklist_path=bad_hook_checklist_path,
+            root=bad_hook_root,
+        )
+
     return {
         "parity_signoff_complete": summary["parity_signoff_complete"],
         "parity_signoff_required_inputs_preserved": (
@@ -417,6 +493,14 @@ def run_self_check() -> dict[str, Any]:
             not nonclaim_summary["withheld_claims_reviewed"]
             and "release-checklist:explicit-non-claims"
             in nonclaim_summary["missing_or_blocked_parity_paths"]
+        ),
+        "b61n_single_row_publication_hook_reviewed": (
+            summary["b61n_single_row_publication_hook_reviewed"]
+        ),
+        "malformed_b61n_publication_hook_blocked": (
+            not bad_hook_summary["b61n_single_row_publication_hook_reviewed"]
+            and "b61n-single-row-publication-hook"
+            in bad_hook_summary["missing_or_blocked_parity_paths"]
         ),
         "summary_written": summary_written,
     }

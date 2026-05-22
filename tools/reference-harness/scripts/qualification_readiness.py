@@ -46,6 +46,34 @@ def expect_unique(values: list[str], label: str) -> None:
     expect(len(set(values)) == len(values), f"{label} must not contain duplicates")
 
 
+def normalize_runtime_capture_promotion_hook(raw: Any, label: str) -> dict[str, Any]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise TypeError(f"{label} must be an object")
+    hook_id = str(raw.get("hook_id", "")).strip()
+    audit_sidecar = str(raw.get("audit_sidecar", "")).strip()
+    optional_capture_packet = str(raw.get("optional_capture_packet", "")).strip()
+    requires_full_eta_zero_contour_applied = raw.get(
+        "requires_full_eta_zero_contour_applied"
+    )
+    expect(hook_id, f"{label} hook_id must not be empty")
+    expect(audit_sidecar, f"{label} audit_sidecar must not be empty")
+    expect(optional_capture_packet, f"{label} optional_capture_packet must not be empty")
+    if not isinstance(requires_full_eta_zero_contour_applied, bool):
+        raise TypeError(f"{label} requires_full_eta_zero_contour_applied must be a bool")
+    expect(
+        requires_full_eta_zero_contour_applied,
+        f"{label} must require full eta=0 contour application",
+    )
+    return {
+        "hook_id": hook_id,
+        "audit_sidecar": audit_sidecar,
+        "optional_capture_packet": optional_capture_packet,
+        "requires_full_eta_zero_contour_applied": requires_full_eta_zero_contour_applied,
+    }
+
+
 def expect_path_within_root(path: Path, root: Path, label: str) -> None:
     resolved_path = path.resolve(strict=False)
     resolved_root = root.resolve(strict=False)
@@ -53,6 +81,61 @@ def expect_path_within_root(path: Path, root: Path, label: str) -> None:
         resolved_path.relative_to(resolved_root)
     except ValueError as error:
         raise RuntimeError(f"{label} must stay under {root}: {path}") from error
+
+
+def runtime_capture_hook_sidecar_path(hook: dict[str, Any]) -> Path:
+    return repo_root() / hook["audit_sidecar"]
+
+
+def runtime_capture_hook_runtime_result_promotes(
+    sidecar_path: Path,
+    m6_hook: dict[str, Any],
+) -> bool:
+    runtime_result = str(m6_hook.get("accepted_runtime_result", "")).strip()
+    if not runtime_result:
+        return False
+    runtime_result_path = Path(runtime_result)
+    if not runtime_result_path.is_absolute():
+        runtime_result_path = sidecar_path.parent / runtime_result_path
+    if not runtime_result_path.exists():
+        return False
+    runtime_payload = load_json(runtime_result_path)
+    continuation = runtime_payload.get("continuation", {})
+    if not isinstance(continuation, dict):
+        return False
+    return (
+        runtime_payload.get("benchmark_id") == "complex_kinematics"
+        and continuation.get("target_location") == "eta=0"
+        and bool(continuation.get("full_eta_zero_contour_applied", False))
+    )
+
+
+def runtime_capture_hook_promotes(
+    *,
+    phase0_id: str,
+    hook: dict[str, Any],
+    observed: dict[str, Any] | None,
+) -> bool:
+    if not hook or observed is None:
+        return False
+    if observed["effective_optional_capture_packet"] != hook["optional_capture_packet"]:
+        return False
+    sidecar_path = runtime_capture_hook_sidecar_path(hook)
+    if not sidecar_path.exists():
+        return False
+    sidecar = load_json(sidecar_path)
+    m6_hook = sidecar.get("m6_qualifier_hook", {})
+    if not isinstance(m6_hook, dict):
+        return False
+    return (
+        str(m6_hook.get("phase0_id", "")).strip() == phase0_id
+        and str(m6_hook.get("optional_capture_packet", "")).strip()
+        == hook["optional_capture_packet"]
+        and bool(m6_hook.get("requires_full_eta_zero_contour_applied", False))
+        and bool(m6_hook.get("full_eta_zero_contour_applied_observed", False))
+        and bool(m6_hook.get("currently_promoted", False))
+        and runtime_capture_hook_runtime_result_promotes(sidecar_path, m6_hook)
+    )
 
 
 def scaffold_phase0_examples(qualification: dict[str, Any]) -> list[dict[str, Any]]:
@@ -77,6 +160,10 @@ def scaffold_phase0_examples(qualification: dict[str, Any]) -> list[dict[str, An
                 "current_evidence_state": str(raw.get("current_evidence_state", "")).strip(),
                 "optional_capture_packet": str(raw.get("optional_capture_packet", "")).strip(),
                 "next_runtime_lane": str(raw.get("next_runtime_lane", "")).strip(),
+                "runtime_capture_promotion_hook": normalize_runtime_capture_promotion_hook(
+                    raw.get("runtime_capture_promotion_hook"),
+                    f"qualification phase0 example {benchmark_id} runtime_capture_promotion_hook",
+                ),
             }
         )
     return examples
@@ -327,15 +414,10 @@ def summarize_readiness(
     required_capture_ids = sorted(
         entry["id"] for entry in phase0_examples if entry["required_capture"]
     )
-    scaffold_reference_captured_ids = sorted(
+    base_reference_captured_ids = sorted(
         entry["id"]
         for entry in phase0_examples
         if entry["current_evidence_state"] == "reference-captured"
-    )
-    scaffold_pending_ids = sorted(
-        entry["id"]
-        for entry in phase0_examples
-        if entry["current_evidence_state"] != "reference-captured"
     )
 
     packet_roots: list[dict[str, Any]] = [
@@ -362,13 +444,38 @@ def summarize_readiness(
             }
 
     observed_reference_captured_ids = sorted(observed_by_id, key=lambda item: phase0_position[item])
+    runtime_hook_promoted_ids = sorted(
+        (
+            entry["id"]
+            for entry in phase0_examples
+            if runtime_capture_hook_promotes(
+                phase0_id=entry["id"],
+                hook=entry["runtime_capture_promotion_hook"],
+                observed=observed_by_id.get(entry["id"]),
+            )
+        ),
+        key=lambda item: phase0_position[item],
+    )
+    effective_reference_captured_ids = sorted(
+        set(base_reference_captured_ids).union(runtime_hook_promoted_ids),
+        key=lambda item: phase0_position[item],
+    )
+    scaffold_pending_ids = sorted(
+        (
+            entry["id"]
+            for entry in phase0_examples
+            if entry["id"] not in set(effective_reference_captured_ids)
+        ),
+        key=lambda item: phase0_position[item],
+    )
     blocked_phase0_examples = [
         {
             "id": entry["id"],
             "next_runtime_lane": entry["next_runtime_lane"],
         }
         for entry in phase0_examples
-        if entry["current_evidence_state"] != "reference-captured" and entry["next_runtime_lane"]
+        if entry["id"] not in set(effective_reference_captured_ids)
+        and entry["next_runtime_lane"]
     ]
     blocked_case_study_families = [
         {
@@ -378,12 +485,24 @@ def summarize_readiness(
         for entry in case_studies
         if entry["next_runtime_lane"]
     ]
+    runtime_capture_promotion_hooks = [
+        {
+            "id": entry["id"],
+            **entry["runtime_capture_promotion_hook"],
+        }
+        for entry in phase0_examples
+        if entry["runtime_capture_promotion_hook"]
+    ]
     ready_optional_capture_packets: dict[str, list[str]] = {}
     for entry in phase0_examples:
         packet_id = entry["optional_capture_packet"]
         if not packet_id:
             continue
         ready_optional_capture_packets.setdefault(packet_id, []).append(entry["id"])
+    for entry in phase0_examples:
+        if entry["id"] in runtime_hook_promoted_ids:
+            packet_id = entry["runtime_capture_promotion_hook"]["optional_capture_packet"]
+            ready_optional_capture_packets.setdefault(packet_id, []).append(entry["id"])
 
     required_root_reference_captured = packet_roots[0]["capture_state"] == "reference-captured"
     required_root_captures_required_set = set(required_capture_ids).issubset(
@@ -436,7 +555,7 @@ def summarize_readiness(
         for captured in observed_by_id.values()
     )
     observed_reference_captured_matches_scaffold = (
-        set(observed_reference_captured_ids) == set(scaffold_reference_captured_ids)
+        set(observed_reference_captured_ids) == set(effective_reference_captured_ids)
     )
     pending_examples_preserve_runtime_lane_hints = all(
         entry["next_runtime_lane"] for entry in blocked_phase0_examples
@@ -471,6 +590,9 @@ def summarize_readiness(
                     observed["inferred_optional_capture_packet"] if observed else ""
                 ),
                 "next_runtime_lane": scaffold_entry["next_runtime_lane"],
+                "runtime_capture_promotion_hook": scaffold_entry[
+                    "runtime_capture_promotion_hook"
+                ],
             }
         )
 
@@ -483,6 +605,8 @@ def summarize_readiness(
         "phase0_examples": phase0_example_summaries,
         "case_study_family_ids": [entry["id"] for entry in case_studies],
         "blocked_case_study_families": blocked_case_study_families,
+        "runtime_capture_promotion_hooks": runtime_capture_promotion_hooks,
+        "runtime_capture_hook_promoted_ids": runtime_hook_promoted_ids,
         "phase0_reference_captured_ids": observed_reference_captured_ids,
         "phase0_pending_ids": scaffold_pending_ids,
         "blocked_phase0_examples": blocked_phase0_examples,

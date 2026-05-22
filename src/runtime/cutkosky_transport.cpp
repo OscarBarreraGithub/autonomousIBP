@@ -2255,4 +2255,142 @@ std::string SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
   return out.str();
 }
 
+CutkoskyWeightedResidueMomentSeed
+BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
+    const ProblemSpec& spec,
+    const std::size_t uncut_denominator_index,
+    const int max_eps_order,
+    const int requested_precision_digits) {
+  if (max_eps_order < 0) {
+    throw std::invalid_argument(
+        "b63n automatic phase-space weighted residue moment seed requires "
+        "max_eps_order >= 0");
+  }
+
+  const CutkoskySymbolicIntegrand integrand =
+      BuildAutomaticPhaseSpaceSymbolicIntegrand(spec);
+  const CutkoskySymbolicIntegrandFactor* selected_factor = nullptr;
+  for (const CutkoskySymbolicIntegrandFactor& factor : integrand.factors) {
+    if (factor.denominator_index == uncut_denominator_index) {
+      selected_factor = &factor;
+      break;
+    }
+  }
+  if (selected_factor == nullptr) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic phase-space weighted residue moment seed requires a single "
+        "reviewed uncut weight from D2,D4,D6,D7");
+  }
+
+  CutkoskyResidueSeries raw_seed;
+  raw_seed.series_label =
+      "automatic_phasespace::weighted-moment-seed::" +
+      selected_factor->denominator_id;
+  raw_seed.min_eps_order = 0;
+  raw_seed.max_eps_order = 0;
+  raw_seed.requested_precision_digits = requested_precision_digits;
+  raw_seed.working_precision_digits =
+      std::numeric_limits<CutkoskyPrefactorFloat>::digits10;
+  raw_seed.precision_diagnostics =
+      "b63n automatic_phasespace single weighted moment seed before K_2 "
+      "normalization; no endpoint Laurent coefficient evaluated";
+
+  CutkoskyResidueSeriesTerm term;
+  term.eps_order = 0;
+  term.eta_power = 0;
+  term.log_power = 0;
+  term.region_key = "integer";
+  term.coefficient_label =
+      "automatic_phasespace_" + selected_factor->denominator_id +
+      "_weighted_moment_seed";
+  term.coefficient = {"1", "0"};
+  term.precision.requested_precision_digits = requested_precision_digits;
+  term.precision.working_precision_digits =
+      std::numeric_limits<CutkoskyPrefactorFloat>::digits10;
+  term.precision.arithmetic_backend = "cpp_dec_float_100";
+  term.precision.summary =
+      "b63n automatic_phasespace " + selected_factor->denominator_id +
+      " weighted moment seed carrier before endpoint Laurent evaluation";
+  term.provenance.source =
+      "reviewed automatic_phasespace symbolic integrand; not AMFlow final solution "
+      "samples";
+  term.provenance.derivation =
+      selected_factor->denominator_id +
+      " weighted moment seed from the reviewed b63n automatic_phasespace surface; "
+      "moment reduction and endpoint Laurent coefficients remain deferred";
+  term.provenance.fixture_id =
+      "lane3-next2-automatic-phasespace-" + selected_factor->denominator_id +
+      "-weighted-moment-seed";
+  term.provenance.synthetic_fixture = true;
+  term.provenance.retained_solution_samples_used = false;
+  term.provenance.coefficient_published = false;
+  raw_seed.terms.push_back(term);
+
+  const CutkoskyPrefactorSeries prefactor =
+      BuildCutkoskyPrefactorEpsilonSeries(2, 0, max_eps_order,
+                                          requested_precision_digits);
+  CutkoskyWeightedResidueMomentSeed seed;
+  seed.reviewed_surface = true;
+  seed.live_coefficients_available = false;
+  seed.retained_solution_samples_used = false;
+  seed.full_eta_zero_contour_applied = false;
+  seed.surface_label = integrand.surface_label;
+  seed.residue_model_kind = integrand.model_kind;
+  seed.selected_weight_denominator = selected_factor->denominator_id;
+  seed.selected_weight_denominator_index = selected_factor->denominator_index;
+  seed.selected_weight_power = selected_factor->propagator_power;
+  seed.selected_weight_role = selected_factor->role;
+  seed.selected_weight_structural_form = selected_factor->structural_form;
+  seed.coefficient_policy =
+      "non-publishing weighted moment seed; numeric K_2 prefactor normalization only, "
+      "no endpoint Laurent coefficient evaluated or published";
+  seed.residue_series = MultiplyCutkoskyPrefactorIntoResidueSeries(
+      prefactor, raw_seed, 0, max_eps_order);
+  seed.eta_zero_selection = PickCutkoskyEtaZeroTerm(
+      ProjectCutkoskyResidueSeriesToEtaZeroTerms(seed.residue_series, 0));
+
+  try {
+    ValidateCutkoskyResiduePublicationGate(seed.residue_series);
+    seed.publication_gate_status =
+        "unexpected-pass: non-publishing weighted moment seed passed publication gate";
+  } catch (const std::invalid_argument& error) {
+    seed.publication_gate_status =
+        std::string("blocked-by-publication-gate: ") + error.what();
+  }
+  return seed;
+}
+
+std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
+    const CutkoskyWeightedResidueMomentSeed& seed) {
+  std::ostringstream out;
+  out << "kind=b63n-automatic-phasespace-weighted-residue-moment-seed\n";
+  out << "reviewed_surface=" << (seed.reviewed_surface ? "true" : "false")
+      << "\n";
+  out << "surface=" << seed.surface_label << "\n";
+  out << "residue_model_kind=" << seed.residue_model_kind << "\n";
+  out << "selected_weight=" << seed.selected_weight_denominator << "\n";
+  out << "selected_weight_index=" << seed.selected_weight_denominator_index
+      << "\n";
+  out << "selected_weight_power=" << seed.selected_weight_power << "\n";
+  out << "selected_weight_role=" << seed.selected_weight_role << "\n";
+  out << "selected_weight_form=" << seed.selected_weight_structural_form << "\n";
+  out << "coefficient_policy=" << seed.coefficient_policy << "\n";
+  out << "live_coefficients_available="
+      << (seed.live_coefficients_available ? "true" : "false") << "\n";
+  out << "retained_solution_samples_used="
+      << (seed.retained_solution_samples_used ? "true" : "false") << "\n";
+  out << "full_eta_zero_contour_applied="
+      << (seed.full_eta_zero_contour_applied ? "true" : "false") << "\n";
+  out << "series_label=" << seed.residue_series.series_label << "\n";
+  out << "series_terms=" << seed.residue_series.terms.size() << "\n";
+  out << "eta_zero_selection="
+      << (seed.eta_zero_selection.success ? "selected" : "blocked") << "\n";
+  if (!seed.eta_zero_selection.selected_coefficient_label.empty()) {
+    out << "eta_zero_label="
+        << seed.eta_zero_selection.selected_coefficient_label << "\n";
+  }
+  out << "publication_gate=" << seed.publication_gate_status << "\n";
+  return out.str();
+}
+
 }  // namespace amflow

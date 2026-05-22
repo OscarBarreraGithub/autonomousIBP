@@ -263,6 +263,24 @@ struct CutkoskyWeightedResidueEvaluationPlan {
   std::string coefficient_policy;
 };
 
+struct CutkoskyWeightedResidueMomentSeed {
+  bool reviewed_surface = false;
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  std::string surface_label;
+  std::string residue_model_kind;
+  std::string selected_weight_denominator;
+  std::size_t selected_weight_denominator_index = 0;
+  int selected_weight_power = 0;
+  std::string selected_weight_role;
+  std::string selected_weight_structural_form;
+  std::string coefficient_policy;
+  std::string publication_gate_status;
+  CutkoskyResidueSeries residue_series;
+  CutkoskyEtaZeroSelectionResult eta_zero_selection;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -315,5 +333,13 @@ CutkoskyWeightedResidueEvaluationPlan
 BuildCutkoskyWeightedResidueEvaluationPlan(const ProblemSpec& spec);
 std::string SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
     const CutkoskyWeightedResidueEvaluationPlan& plan);
+CutkoskyWeightedResidueMomentSeed
+BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
+    const ProblemSpec& spec,
+    std::size_t uncut_denominator_index,
+    int max_eps_order,
+    int requested_precision_digits = 80);
+std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
+    const CutkoskyWeightedResidueMomentSeed& seed);
 
 }  // namespace amflow

@@ -2017,6 +2017,108 @@ void B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest() {
       "b63n weighted residue plan should reject a mutated feynman surface");
 }
 
+void B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest() {
+  const auto seed = amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
+      MakeB63nAutomaticPhaseSpaceSpec(),
+      1,
+      1,
+      70);
+
+  Expect(seed.reviewed_surface,
+         "b63n automatic weighted moment seed should recognize the reviewed surface");
+  Expect(seed.surface_label == "phase[1,2,1,1,1,1,1]",
+         "b63n automatic weighted moment seed should bind the weighted target");
+  Expect(seed.residue_model_kind ==
+             "automatic_phasespace::one-mass-three-body-residue",
+         "b63n automatic weighted moment seed should use the weighted residue model");
+  Expect(seed.selected_weight_denominator == "D2" &&
+             seed.selected_weight_denominator_index == 1 &&
+             seed.selected_weight_power == 2,
+         "b63n automatic weighted moment seed should target the reviewed D2^2 weight");
+  Expect(!seed.live_coefficients_available,
+         "b63n automatic weighted moment seed must not claim live coefficients");
+  Expect(!seed.retained_solution_samples_used,
+         "b63n automatic weighted moment seed must not read retained final samples");
+  Expect(!seed.full_eta_zero_contour_applied,
+         "b63n automatic weighted moment seed must keep the full contour flag false");
+  ExpectContains(seed.coefficient_policy,
+                 "non-publishing",
+                 "b63n automatic weighted moment seed should be explicitly non-publishing");
+  ExpectContains(seed.publication_gate_status,
+                 "blocked-by-publication-gate",
+                 "b63n automatic weighted moment seed should record the publication gate");
+  ExpectContains(seed.publication_gate_status,
+                 "synthetic",
+                 "b63n automatic weighted moment seed should be rejected as synthetic");
+
+  Expect(seed.residue_series.terms.size() == 2,
+         "b63n automatic weighted moment seed should multiply the D2 seed by K_2 "
+         "through eps^1");
+  const amflow::CutkoskyResidueSeriesTerm& eps0 =
+      CutkoskyResidueTermAt(seed.residue_series, 0, 0, 0, "integer");
+  Expect(eps0.coefficient_label == "automatic_phasespace_D2_weighted_moment_seed",
+         "b63n automatic weighted moment seed should preserve the selector label");
+  ExpectContains(eps0.coefficient.real,
+                 "-8.020298636472136866525611927436479798",
+                 "b63n automatic weighted moment seed should carry the reviewed K_2 "
+                 "normalization only");
+  Expect(eps0.provenance.synthetic_fixture,
+         "b63n automatic weighted moment seed should remain synthetic until reviewed");
+  Expect(!eps0.provenance.retained_solution_samples_used,
+         "b63n automatic weighted moment seed must not consume retained final samples");
+  Expect(!eps0.provenance.coefficient_published,
+         "b63n automatic weighted moment seed must not publish coefficients");
+  ExpectContains(eps0.provenance.derivation,
+                 "D2 weighted moment seed",
+                 "b63n automatic weighted moment seed should identify the scoped "
+                 "weighted denominator");
+  Expect(seed.eta_zero_selection.success,
+         "b63n automatic weighted moment seed should feed the eta-zero selector for "
+         "the explicit seed term");
+  Expect(seed.eta_zero_selection.selected_coefficient_label ==
+             "automatic_phasespace_D2_weighted_moment_seed",
+         "b63n automatic weighted moment seed should keep the selected seed label");
+
+  ExpectInvalidArgumentContains(
+      [&seed]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(seed.residue_series);
+      },
+      "synthetic",
+      "b63n automatic weighted moment seed should be publication-gated");
+
+  const std::string audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit(seed);
+  ExpectContains(audit,
+                 "kind=b63n-automatic-phasespace-weighted-residue-moment-seed",
+                 "b63n automatic weighted moment seed audit should identify the step");
+  ExpectContains(audit,
+                 "selected_weight=D2",
+                 "b63n automatic weighted moment seed audit should name the selected "
+                 "weight");
+  ExpectContains(audit,
+                 "live_coefficients_available=false",
+                 "b63n automatic weighted moment seed audit should not claim live "
+                 "coefficients");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 "b63n automatic weighted moment seed audit should not promote M6");
+  ExpectContains(audit,
+                 "publication_gate=blocked-by-publication-gate",
+                 "b63n automatic weighted moment seed audit should include the gate");
+
+  ExpectRuntimeErrorContains(
+      []() {
+        static_cast<void>(
+            amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeed(
+                MakeB63nAutomaticPhaseSpaceSpec(),
+                0,
+                1,
+                70));
+      },
+      "single reviewed uncut weight",
+      "b63n automatic weighted moment seed should reject cut denominators");
+}
+
 void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
   const amflow::CutkoskyEtaZeroSelectionResult selected =
       amflow::PickCutkoskyEtaZeroTerm({
@@ -4106,6 +4208,7 @@ int main() {
     B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest();
     B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest();
     B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
+    B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();

@@ -49153,6 +49153,88 @@ void SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest() 
          "synthetic controlled initializer must not read AMFlow final solution samples");
 }
 
+void SolveSeriesCliEtaInfinityInitialDataAcceptsCompatibleFreeRecurrenceTest() {
+  const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
+  const std::filesystem::path run_root =
+      FreshTempDir("amflow-solve-series-cli-eta-infinity-free-recurrence");
+  const std::filesystem::path state_path = run_root / "compatible-free.json";
+  const std::filesystem::path output_path = run_root / "cpp-result.json";
+  const std::filesystem::path stdout_path = run_root / "stdout.log";
+  const std::filesystem::path stderr_path = run_root / "stderr.log";
+
+  OverwriteTextFile(
+      state_path,
+      R"JSON({
+  "kind": "amflow_solve_series_state",
+  "schema_version": 1,
+  "benchmark_id": "lane2_compatible_free_eta_infinity",
+  "family": "toy",
+  "integral_kind": "loop",
+  "variable": "eta",
+  "start_location": "infinity",
+  "target_location": "eta=0",
+  "masters": [
+    {"family": "toy", "indices": [1]},
+    {"family": "toy", "indices": [2]}
+  ],
+  "coefficient_matrices": {
+    "eta": [
+      ["0", "0"],
+      ["1/eta^2", "0"]
+    ]
+  },
+  "boundary_state": {
+    "kind": "amflow_eta_infinity_asymptotic_with_subsystem_samples",
+    "direction": "NegIm",
+    "epsilon_samples": ["1/101"],
+    "files": {
+      "boundary": {"raw": "{{{0, 0}, {}, {j[toy, 1]}, {{{1}}, {}}}}"},
+      "boundarymi": {"raw": "{{j[toy, 1] -> {1}}}"}
+    }
+  },
+  "reduction": {
+    "targets": [
+      {"family": "toy", "indices": [1]},
+      {"family": "toy", "indices": [2]}
+    ]
+  }
+})JSON");
+
+  const std::string command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(state_path.string()) + " --eps-order 0 --digits 40 "
+      "--eta-infinity-truncation-order 2 --out " +
+      ShellSingleQuote(output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+
+  Expect(RunShellCommand(command) == 0,
+         "compatible eta-infinity recurrence with an unseeded homogeneous slot "
+         "should certify; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string json = ReadFile(output_path);
+  ExpectContains(json,
+                 "Validated eta-infinity controlled initial data for 2/2 retained "
+                 "master(s)",
+                 "compatible free recurrence should still validate every retained master");
+  ExpectContains(json,
+                 "truncation_order=2; overcheck_order=4",
+                 "compatible free recurrence should use the requested overcheck order");
+  ExpectContains(json,
+                 "residual_bound_abs=0",
+                 "compatible free recurrence should satisfy the checked recurrence residual");
+  ExpectContains(json,
+                 "initial_data_fingerprint=fnv1a64:5e1c408a0e6fd3ba",
+                 "compatible free recurrence should lock the zero-homogeneous branch");
+  ExpectContains(json,
+                 "\"integral\": \"toy[2]\"",
+                 "compatible free recurrence should keep the unseeded homogeneous master "
+                 "publishable as an explicit zero target");
+  ExpectContains(json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "compatible free recurrence must not promote eta-zero contour closure");
+}
+
 void SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest() {
   const std::filesystem::path cli_path = CurrentBuildBinaryPath("amflow-cli");
   const std::filesystem::path run_root =
@@ -56379,6 +56461,7 @@ int main() {
     SolveSeriesCliEpsilonExpansionKeepsGuardTermsForPoleTransportTest();
     SolveSeriesCliEvaluatesAutomaticLoopAmflowStateBoundaryTest();
     SolveSeriesCliEtaInfinityInitialDataValidatesCoupledSyntheticMastersTest();
+    SolveSeriesCliEtaInfinityInitialDataAcceptsCompatibleFreeRecurrenceTest();
     SolveSeriesCliComplexKinematicsStrippedStateRunsPartialContourScaffoldTest();
     SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsFirstCutkoskyResidueTest();
     SolveSeriesCliAutomaticPhaseSpaceStrippedStateRunsSelected4CutkoskyResiduesTest();

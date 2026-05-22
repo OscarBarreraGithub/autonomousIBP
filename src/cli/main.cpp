@@ -4177,44 +4177,101 @@ std::optional<int> TryNearestInteger(const BigFloat& value) {
   return rounded.convert_to<int>();
 }
 
-std::optional<std::vector<BigComplex>> SolveComplexLinearSystem(
+std::optional<std::vector<BigComplex>> SolveOverdeterminedComplexLinearSystem(
     std::vector<std::vector<BigComplex>> matrix,
     std::vector<BigComplex> rhs) {
-  const std::size_t size = rhs.size();
-  for (std::size_t pivot = 0; pivot < size; ++pivot) {
-    std::size_t best_row = pivot;
-    BigFloat best_abs = BigAbs(matrix[pivot][pivot]);
-    for (std::size_t row = pivot + 1; row < size; ++row) {
-      const BigFloat candidate_abs = BigAbs(matrix[row][pivot]);
+  const std::size_t equation_count = rhs.size();
+  if (matrix.size() != equation_count) {
+    throw std::runtime_error("complex linear system row count mismatch");
+  }
+  if (equation_count == 0) {
+    return std::vector<BigComplex>{};
+  }
+  const std::size_t unknown_count = matrix.front().size();
+  for (const std::vector<BigComplex>& row : matrix) {
+    if (row.size() != unknown_count) {
+      throw std::runtime_error("complex linear system column count mismatch");
+    }
+  }
+  if (unknown_count == 0) {
+    for (const BigComplex& value : rhs) {
+      if (!IsTiny(value)) {
+        return std::nullopt;
+      }
+    }
+    return std::vector<BigComplex>{};
+  }
+
+  std::vector<std::optional<std::size_t>> pivot_row_for_column(unknown_count);
+  std::size_t pivot_row = 0;
+  for (std::size_t column = 0; column < unknown_count; ++column) {
+    std::size_t best_row = pivot_row;
+    BigFloat best_abs = 0;
+    for (std::size_t row = pivot_row; row < equation_count; ++row) {
+      const BigFloat candidate_abs = BigAbs(matrix[row][column]);
       if (candidate_abs > best_abs) {
         best_abs = candidate_abs;
         best_row = row;
       }
     }
     if (IsTiny(best_abs)) {
-      return std::nullopt;
+      continue;
     }
-    if (best_row != pivot) {
-      std::swap(matrix[pivot], matrix[best_row]);
-      std::swap(rhs[pivot], rhs[best_row]);
+    if (best_row != pivot_row) {
+      std::swap(matrix[pivot_row], matrix[best_row]);
+      std::swap(rhs[pivot_row], rhs[best_row]);
     }
-    const BigComplex pivot_value = matrix[pivot][pivot];
-    for (std::size_t column = pivot; column < size; ++column) {
-      matrix[pivot][column] = matrix[pivot][column] / pivot_value;
+
+    const BigComplex pivot_value = matrix[pivot_row][column];
+    for (std::size_t normal_column = column; normal_column < unknown_count;
+         ++normal_column) {
+      matrix[pivot_row][normal_column] =
+          matrix[pivot_row][normal_column] / pivot_value;
     }
-    rhs[pivot] = rhs[pivot] / pivot_value;
-    for (std::size_t row = 0; row < size; ++row) {
-      if (row == pivot || IsTiny(matrix[row][pivot])) {
+    rhs[pivot_row] = rhs[pivot_row] / pivot_value;
+
+    for (std::size_t row = 0; row < equation_count; ++row) {
+      if (row == pivot_row || IsTiny(matrix[row][column])) {
         continue;
       }
-      const BigComplex factor = matrix[row][pivot];
-      for (std::size_t column = pivot; column < size; ++column) {
-        matrix[row][column] = matrix[row][column] - factor * matrix[pivot][column];
+      const BigComplex factor = matrix[row][column];
+      for (std::size_t eliminate_column = column;
+           eliminate_column < unknown_count;
+           ++eliminate_column) {
+        matrix[row][eliminate_column] =
+            matrix[row][eliminate_column] -
+            factor * matrix[pivot_row][eliminate_column];
       }
-      rhs[row] = rhs[row] - factor * rhs[pivot];
+      rhs[row] = rhs[row] - factor * rhs[pivot_row];
+    }
+
+    pivot_row_for_column[column] = pivot_row;
+    ++pivot_row;
+    if (pivot_row == equation_count) {
+      break;
     }
   }
-  return rhs;
+
+  std::vector<BigComplex> solution(unknown_count);
+  for (std::size_t column = 0; column < unknown_count; ++column) {
+    if (pivot_row_for_column[column].has_value()) {
+      solution[column] = rhs[*pivot_row_for_column[column]];
+    }
+  }
+
+  for (std::size_t row = 0; row < equation_count; ++row) {
+    bool all_zero = true;
+    for (std::size_t column = 0; column < unknown_count; ++column) {
+      if (!IsTiny(matrix[row][column])) {
+        all_zero = false;
+        break;
+      }
+    }
+    if (all_zero && !IsTiny(rhs[row])) {
+      return std::nullopt;
+    }
+  }
+  return solution;
 }
 
 struct EtaInfinityInitialDataAudit {
@@ -4452,20 +4509,8 @@ std::vector<std::vector<std::vector<BigComplex>>> SolveEtaInfinityRegionSeries(
   }
 
   if (!unknown_slots.empty()) {
-    std::vector<std::vector<BigComplex>> square_lhs(
-        unknown_slots.size(),
-        std::vector<BigComplex>(unknown_slots.size()));
-    std::vector<BigComplex> square_rhs(unknown_slots.size());
-    for (std::size_t row_index = 0; row_index < unknown_slots.size(); ++row_index) {
-      const SeriesSlot& slot = unknown_slots[row_index];
-      const std::size_t equation =
-          slot.master * static_cast<std::size_t>(max_order + 1) +
-          static_cast<std::size_t>(slot.order);
-      square_lhs[row_index] = lhs[equation];
-      square_rhs[row_index] = rhs[equation];
-    }
     const std::optional<std::vector<BigComplex>> solved =
-        SolveComplexLinearSystem(square_lhs, square_rhs);
+        SolveOverdeterminedComplexLinearSystem(lhs, rhs);
     if (!solved.has_value()) {
       throw std::runtime_error(
           "eta-infinity initializer could not solve a finite infinity recurrence "

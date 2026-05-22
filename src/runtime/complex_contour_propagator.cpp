@@ -184,6 +184,7 @@ std::string SerializePropagationForFingerprint(
     const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourPropagationOptions& options,
     const std::size_t refined_steps_per_segment,
+    const bool coefficient_publication,
     const bool endpoint_extraction_applied) {
   std::ostringstream out;
   out << "kind=b61n-complex-contour-propagator\n";
@@ -199,6 +200,8 @@ std::string SerializePropagationForFingerprint(
   out << "steps_per_segment=" << options.steps_per_segment << "\n";
   out << "refined_steps_per_segment=" << refined_steps_per_segment << "\n";
   out << "retained_solution_samples_used=false\n";
+  out << "coefficient_publication="
+      << (coefficient_publication ? "true" : "false") << "\n";
   out << "endpoint_extraction_applied="
       << (endpoint_extraction_applied ? "true" : "false") << "\n";
   out << "full_eta_zero_contour_applied=false\n";
@@ -413,9 +416,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.endpoint_values = refined;
     const bool endpoint_extraction_applied =
         AppliesRegularTaylorR0EndpointExtraction(result.endpoint_values, options);
+    const bool coefficient_publication = endpoint_extraction_applied;
     result.diagnostics.success = true;
     result.diagnostics.ode_propagation_applied = true;
-    result.diagnostics.coefficient_publication = false;
+    result.diagnostics.coefficient_publication = coefficient_publication;
     result.diagnostics.retained_solution_samples_used = false;
     result.diagnostics.full_eta_zero_contour_applied = false;
     result.diagnostics.endpoint_extraction_applied = endpoint_extraction_applied;
@@ -446,13 +450,17 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                            waypoints,
                                            options,
                                            refined_steps_per_segment,
+                                           coefficient_publication,
                                            endpoint_extraction_applied));
     result.diagnostics.summary =
         "Propagated a b61n complex ODE vector over " +
         std::to_string(result.diagnostics.segment_count) +
         " lower-half-plane contour segment(s) with dimension " +
         std::to_string(result.diagnostics.dimension) +
-        "; ode_propagation_applied=true; coefficient_publication=false; "
+        "; ode_propagation_applied=true; coefficient_publication=" +
+        (result.diagnostics.coefficient_publication ? std::string("true")
+                                                    : std::string("false")) +
+        "; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
         "endpoint_target=eta=0; eta_zero_endpoint_reached=true; "
         "endpoint_local_model_kind=" + result.diagnostics.endpoint_local_model_kind +

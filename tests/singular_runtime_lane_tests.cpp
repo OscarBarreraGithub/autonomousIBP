@@ -4028,12 +4028,16 @@ void B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest() 
                          initial_value,
                          B61nContourFloat("1e-80"),
                          "b61n regular Taylor r0 extraction should select eta^0 at eta=0");
-  Expect(!result.diagnostics.coefficient_publication,
-         "b61n regular Taylor r0 extraction must not publish coefficients yet");
+  Expect(result.diagnostics.coefficient_publication,
+         "b61n regular Taylor r0 extraction should publish the single endpoint coefficient");
   Expect(!result.diagnostics.full_eta_zero_contour_applied,
          "b61n regular Taylor r0 extraction must not promote the full M6 contour flag");
   Expect(result.diagnostics.endpoint_extraction_applied,
          "b61n regular Taylor r0 single-row path should mark live endpoint extraction");
+  ExpectContains(result.diagnostics.summary,
+                 "coefficient_publication=true",
+                 "b61n regular Taylor r0 single-row path should publish the extracted "
+                 "endpoint coefficient");
   ExpectContains(result.diagnostics.summary,
                  "endpoint_extraction_applied=true",
                  "b61n regular Taylor r0 single-row path should mark live endpoint "

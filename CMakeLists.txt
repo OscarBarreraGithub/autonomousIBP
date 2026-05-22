@@ -83,6 +83,16 @@ if(BUILD_TESTING)
   add_test(NAME amflow-tests COMMAND amflow-tests)
   set_tests_properties(amflow-tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+  add_test(
+    NAME b64ag-golden-recapture-readiness-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_b64ag_golden_recapture_readiness.py
+      --self-check
+  )
+  set_tests_properties(b64ag-golden-recapture-readiness-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
   add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
   target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
   target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)

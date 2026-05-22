@@ -2678,9 +2678,8 @@ std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm>
 B64agTwoMasterReductionRows(const std::vector<amflow::TargetIntegral>& targets) {
   std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
   for (const amflow::TargetIntegral& target : targets) {
-    const int affected_power_sum = target.indices[3] + target.indices[4];
     const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> row =
-        B64agTwoMasterReductionRow(target, affected_power_sum);
+        B64agTwoMasterReductionRow(target, 0);
     reduction_terms.insert(reduction_terms.end(), row.begin(), row.end());
   }
   return reduction_terms;
@@ -2696,12 +2695,11 @@ B64agSixMasterReductionRows(const std::vector<amflow::TargetIntegral>& targets) 
   const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
   std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
   for (const amflow::TargetIntegral& target : targets) {
-    const int affected_power_sum = target.indices[3] + target.indices[4];
     for (std::size_t master_index = 0; master_index < masters.size(); ++master_index) {
       reduction_terms.push_back(B64agReductionFixtureTerm(
           target,
           masters[master_index],
-          affected_power_sum - B64agSixMasterFiniteSourcePower(master_index),
+          -B64agSixMasterFiniteSourcePower(master_index),
           "R" + std::to_string(master_index) + "_full"));
     }
   }
@@ -3591,7 +3589,7 @@ void B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest() {
           endpoint_terms,
           {B64agReductionFixtureTerm(target.Label(),
                                      endpoint_terms.front().master_label,
-                                     1,
+                                     0,
                                      "R0")});
 
   Expect(!result.success,
@@ -3631,11 +3629,11 @@ void B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest() {
           endpoint_terms,
           {B64agReductionFixtureTerm(target.Label(),
                                      endpoint_terms[2].master_label,
-                                     target.indices[3] + target.indices[4],
+                                     0,
                                      "R2"),
            B64agReductionFixtureTerm(target.Label(),
                                      endpoint_terms[5].master_label,
-                                     target.indices[3] + target.indices[4],
+                                     0,
                                      "R5")});
 
   Expect(result.success,
@@ -3668,7 +3666,7 @@ void B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest() {
       amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
           {target},
           B64agSixMasterEndpointFixture(),
-          B64agTwoMasterReductionRow(target, 1));
+          B64agTwoMasterReductionRow(target, 0));
 
   Expect(result.success,
          "b64ag reduced finite-part functional should accept the selected endpoint prefix");
@@ -4266,7 +4264,6 @@ void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
 
   const amflow::TargetIntegral target = B64agReviewedTargets()[3];
   const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
-  const int affected_power_sum = target.indices[3] + target.indices[4];
   const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
   for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
     const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
@@ -4275,7 +4272,7 @@ void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
             transport.epsilon_endpoint_terms[index].endpoint_terms,
             {B64agReductionFixtureTerm(target,
                                        masters[2],
-                                       affected_power_sum,
+                                       0,
                                        "1")});
 
     Expect(reduced.success,

@@ -1222,6 +1222,16 @@ std::optional<int> GaugeLinkRegionFinitePartBase(
   }
 }
 
+bool IsReviewedFirstBlockFrobeniusRegion(const std::string& raw_region_key) {
+  const std::string region_key = CanonicalGaugeLinkRegionKey(raw_region_key);
+  if (region_key.rfind("frobenius:", 0) != 0) {
+    return false;
+  }
+  const std::optional<int> finite_part_base =
+      GaugeLinkRegionFinitePartBase(region_key);
+  return finite_part_base.has_value() && *finite_part_base == -6;
+}
+
 RuntimeComplex RequireGaugeLinkRegionExponent(
     const std::string& raw_region_key) {
   const std::optional<RuntimeComplex> exponent =
@@ -2812,9 +2822,22 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
           row_failed = true;
           break;
         }
-        const int reduced_power = endpoint_term.power +
-                                  reduction_term.gaugex_power_shift -
-                                  normalization.affected_power_sum;
+        const bool first_block_master =
+            reduction_term.master_label == ReviewedReductionMasterLabels()[0] ||
+            reduction_term.master_label == ReviewedReductionMasterLabels()[1];
+        if (first_block_master &&
+            IsReviewedFirstBlockFrobeniusRegion(endpoint_term.region_key)) {
+          // Keep the branch in endpoint transport for boundary reconstruction,
+          // but AMFlow's retained target finite parts use the regular first-block
+          // solution branch.
+          continue;
+        }
+        // The retained target-reduction rows already carry the gaugex powers from
+        // AMFlow's D4,D5 GenerateSquare normalization. Applying the affected-power
+        // audit again shifts the finite-part order and breaks the selected b64ag
+        // AMFlow comparison.
+        const int reduced_power =
+            endpoint_term.power + reduction_term.gaugex_power_shift;
         const int reduced_log_power =
             endpoint_term.log_power + reduction_term.log_power;
         const GaugeLinkEndpointTermKey key{
@@ -2872,7 +2895,7 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
     target_result.dropped_singular_terms =
         finite_part.dropped_singular_terms;
     target_result.summary =
-        "Applied retained target reduction and D4,D5 normalization before "
+        "Applied retained target reduction with embedded D4,D5 normalization before "
         "PickZeroRuleS-compatible finite-part extraction for " +
         normalization.target_label + "; normalization_factor=" +
         normalization.normalization_factor + ".";

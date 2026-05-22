@@ -49939,8 +49939,9 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"compared_coefficient_count\": 39",
                  "full stripped b64ag comparison should compare the eps^2 golden envelope");
   ExpectContains(full_compare_json,
-                 "\"passed_coefficient_count\": 0",
-                 "full stripped b64ag comparison should honestly preserve the digit gap");
+                 "\"passed_coefficient_count\": 8",
+                 "full stripped b64ag comparison should pass the regular first-block "
+                 "coefficients while preserving the remaining digit gap");
   ExpectContains(full_compare_json,
                  "\"minimum_digit_agreement\": 0",
                  "full stripped b64ag comparison should expose the current AMFlow mismatch");

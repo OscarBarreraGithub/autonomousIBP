@@ -41,6 +41,7 @@ struct ComplexContourPropagationOptions {
   std::size_t max_adaptive_steps_per_segment = 65536;
   ComplexContourFloat pole_step_safety_factor = ComplexContourFloat("0.25");
   std::vector<ComplexContourNumber> contour_poles;
+  std::vector<ComplexContourNumber> diagnostic_poles;
 };
 
 struct ComplexContourPropagationDiagnostics {
@@ -72,6 +73,17 @@ struct ComplexContourPropagationDiagnostics {
   std::string refinement_error_tolerance_abs;
   std::string refinement_error_tolerance_rel;
   std::string refinement_effective_tolerance_abs;
+  std::size_t refinement_error_peak_segment_index = 0;
+  std::string refinement_error_peak_eta;
+  std::string refinement_error_peak_waypoint_error_abs;
+  std::string refinement_error_peak_state_norm_abs;
+  std::string refinement_error_peak_rhs_norm_abs;
+  std::string refinement_error_peak_matrix_max_entry_abs;
+  std::string refinement_error_peak_matrix_max_row_l1_abs;
+  std::string refinement_error_peak_matrix_min_lu_pivot_abs;
+  std::string refinement_error_peak_matrix_pivot_ratio_abs;
+  std::string refinement_error_peak_nearest_pole;
+  std::string refinement_error_peak_nearest_pole_distance_abs;
   std::string failure_code;
   std::string summary;
   std::size_t adaptive_step_count = 0;
@@ -79,6 +91,16 @@ struct ComplexContourPropagationDiagnostics {
   std::size_t pole_pinch_step_count = 0;
   std::string integrator;
   std::string max_embedded_error_abs;
+  std::size_t max_embedded_error_segment_index = 0;
+  std::string max_embedded_error_eta;
+  std::string max_embedded_error_state_norm_abs;
+  std::string max_embedded_error_rhs_norm_abs;
+  std::string max_embedded_error_matrix_max_entry_abs;
+  std::string max_embedded_error_matrix_max_row_l1_abs;
+  std::string max_embedded_error_matrix_min_lu_pivot_abs;
+  std::string max_embedded_error_matrix_pivot_ratio_abs;
+  std::string max_embedded_error_nearest_pole;
+  std::string max_embedded_error_nearest_pole_distance_abs;
 };
 
 struct ComplexContourPropagationResult {

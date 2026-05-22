@@ -6424,6 +6424,22 @@ ApplyB61nCoupledRowContourTransport(
             "; contour_pole_count=" +
             std::to_string(audit.contour_pole_count) +
             "; contour_poles_forwarded_to_propagator=true" +
+            "; refinement_error_peak_eta=" +
+            result.diagnostics.refinement_error_peak_eta +
+            "; refinement_error_peak_rhs_norm_abs=" +
+            result.diagnostics.refinement_error_peak_rhs_norm_abs +
+            "; refinement_error_peak_matrix_min_lu_pivot_abs=" +
+            result.diagnostics.refinement_error_peak_matrix_min_lu_pivot_abs +
+            "; refinement_error_peak_matrix_pivot_ratio_abs=" +
+            result.diagnostics.refinement_error_peak_matrix_pivot_ratio_abs +
+            "; refinement_error_peak_nearest_pole=" +
+            result.diagnostics.refinement_error_peak_nearest_pole +
+            "; refinement_error_peak_nearest_pole_distance_abs=" +
+            result.diagnostics.refinement_error_peak_nearest_pole_distance_abs +
+            "; max_embedded_error_eta=" +
+            result.diagnostics.max_embedded_error_eta +
+            "; max_embedded_error_rhs_norm_abs=" +
+            result.diagnostics.max_embedded_error_rhs_norm_abs +
             "; propagator_summary=" + result.diagnostics.summary);
       }
       audit.segment_count_max =
@@ -6472,7 +6488,8 @@ ApplyB61nCoupledRowContourTransport(
             " and relative error " +
             BigFloatCompactString(selected_relative_error, 40) +
             " exceeded the scoped endpoint budget for epsilon sample " +
-            std::to_string(sample_index));
+            std::to_string(sample_index) +
+            "; propagator_summary=" + result.diagnostics.summary);
       }
       for (std::size_t row = 0; row < coupled_row_indices.size(); ++row) {
         transported_samples[row][sample_index] =

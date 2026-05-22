@@ -4853,6 +4853,7 @@ void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {
   options.matrix_fingerprint = "synthetic-b61n-relative-refinement-budget-v1";
   options.endpoint_local_model_kind =
       "regular-taylor-r0-synthetic-b61n-relative-budget";
+  options.diagnostic_poles = {{0, B61nContourFloat("-0.5")}};
 
   const amflow::ComplexContourPropagationResult result =
       amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
@@ -4869,6 +4870,73 @@ void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {
          "b61n relative-budget diagnostics should publish endpoint vector norm");
   Expect(!result.diagnostics.refinement_effective_tolerance_abs.empty(),
          "b61n relative-budget diagnostics should publish effective tolerance");
+  Expect(!result.diagnostics.refinement_error_peak_eta.empty(),
+         "b61n relative-budget diagnostics should identify the waypoint where "
+         "step-doubling disagreement peaks");
+  Expect(result.diagnostics.refinement_error_peak_segment_index == 0,
+         "b61n relative-budget diagnostics should identify the peak segment");
+  Expect(!result.diagnostics.refinement_error_peak_waypoint_error_abs.empty(),
+         "b61n relative-budget diagnostics should publish waypoint disagreement "
+         "at the refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_state_norm_abs.empty(),
+         "b61n relative-budget diagnostics should publish state norm at the "
+         "refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_rhs_norm_abs.empty(),
+         "b61n relative-budget diagnostics should publish the ODE RHS norm at "
+         "the refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_matrix_max_entry_abs.empty(),
+         "b61n relative-budget diagnostics should publish matrix entry scale at "
+         "the refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_matrix_max_row_l1_abs.empty(),
+         "b61n relative-budget diagnostics should publish matrix row scale at the "
+         "refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_matrix_min_lu_pivot_abs.empty(),
+         "b61n relative-budget diagnostics should publish the matrix pivot scale "
+         "at the refinement peak");
+  Expect(!result.diagnostics.refinement_error_peak_matrix_pivot_ratio_abs.empty(),
+         "b61n relative-budget diagnostics should publish the matrix pivot spread "
+         "at the refinement peak");
+  Expect(result.diagnostics.refinement_error_peak_nearest_pole == "0 - 0.5*I",
+         "b61n relative-budget diagnostics should report the diagnostic-only "
+         "nearest pole identity");
+  Expect(result.diagnostics.refinement_error_peak_nearest_pole_distance_abs ==
+             "0.5",
+         "b61n relative-budget diagnostics should report the diagnostic-only "
+         "nearest pole distance");
+  Expect(result.diagnostics.pole_pinch_step_count == 0,
+         "b61n diagnostic-only pole locations must not activate pole-step limiting");
+  Expect(result.diagnostics.max_embedded_error_segment_index == 0,
+         "b61n relative-budget diagnostics should identify the embedded-error "
+         "segment");
+  Expect(!result.diagnostics.max_embedded_error_eta.empty(),
+         "b61n relative-budget diagnostics should identify where the embedded RK "
+         "estimate peaks");
+  Expect(!result.diagnostics.max_embedded_error_state_norm_abs.empty(),
+         "b61n relative-budget diagnostics should publish state norm at the "
+         "embedded-error peak");
+  Expect(!result.diagnostics.max_embedded_error_rhs_norm_abs.empty(),
+         "b61n relative-budget diagnostics should publish the ODE RHS norm at the "
+         "embedded-error peak");
+  Expect(!result.diagnostics.max_embedded_error_matrix_max_entry_abs.empty(),
+         "b61n relative-budget diagnostics should publish matrix entry scale at "
+         "the embedded-error peak");
+  Expect(!result.diagnostics.max_embedded_error_matrix_max_row_l1_abs.empty(),
+         "b61n relative-budget diagnostics should publish matrix row scale at the "
+         "embedded-error peak");
+  Expect(!result.diagnostics.max_embedded_error_matrix_min_lu_pivot_abs.empty(),
+         "b61n relative-budget diagnostics should publish pivot scale at the "
+         "embedded-error peak");
+  Expect(!result.diagnostics.max_embedded_error_matrix_pivot_ratio_abs.empty(),
+         "b61n relative-budget diagnostics should publish pivot spread at the "
+         "embedded-error peak");
+  Expect(result.diagnostics.max_embedded_error_nearest_pole == "0 - 0.5*I",
+         "b61n relative-budget diagnostics should use diagnostic-only poles for "
+         "embedded-error nearest-pole reporting");
+  Expect(result.diagnostics.max_embedded_error_nearest_pole_distance_abs ==
+             "0",
+         "b61n relative-budget diagnostics should publish the exact "
+         "embedded-error nearest pole distance; got " +
+             result.diagnostics.max_embedded_error_nearest_pole_distance_abs);
   ExpectContains(result.diagnostics.summary,
                  "refinement_error_tolerance_rel=",
                  "b61n relative-budget summary should publish relative floor");
@@ -4878,6 +4946,12 @@ void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {
   ExpectContains(result.diagnostics.summary,
                  "refinement_effective_tolerance_abs=",
                  "b61n relative-budget summary should publish effective tolerance");
+  ExpectContains(result.diagnostics.summary,
+                 "refinement_error_peak_eta=",
+                 "b61n relative-budget summary should publish peak eta");
+  ExpectContains(result.diagnostics.summary,
+                 "max_embedded_error_eta=",
+                 "b61n relative-budget summary should publish embedded-error eta");
 }
 
 void B61nComplexContourPropagatorAdaptsRk45RelativeToleranceTest() {
@@ -4967,6 +5041,7 @@ void B61nComplexContourPropagatorSupportsFehlbergRk78OrderUpliftTest() {
   amflow::ComplexContourPropagationOptions rk78_options = rk45_options;
   rk78_options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
   rk78_options.matrix_fingerprint = "synthetic-b61n-rk78-order-uplift-v1";
+  rk78_options.diagnostic_poles = {{0, 0}};
 
   const amflow::ComplexContourPropagationResult rk45 =
       amflow::PropagateComplexContourVector(
@@ -4980,6 +5055,63 @@ void B61nComplexContourPropagatorSupportsFehlbergRk78OrderUpliftTest() {
              rk78.diagnostics.summary);
   Expect(rk78.diagnostics.integrator == "fehlberg-rk78-adaptive",
          "b61n RK78 diagnostics should name the high-order embedded integrator");
+  Expect(!rk78.diagnostics.refinement_error_peak_eta.empty(),
+         "b61n RK78 diagnostics should identify the step-doubling peak eta");
+  Expect(rk78.diagnostics.refinement_error_peak_segment_index == 0,
+         "b61n RK78 diagnostics should identify the step-doubling peak segment");
+  Expect(!rk78.diagnostics.refinement_error_peak_waypoint_error_abs.empty(),
+         "b61n RK78 diagnostics should publish the waypoint disagreement at the "
+         "refinement peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_state_norm_abs.empty(),
+         "b61n RK78 diagnostics should publish state norm at the refinement peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_rhs_norm_abs.empty(),
+         "b61n RK78 diagnostics should publish RHS norm at the refinement peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_matrix_max_entry_abs.empty(),
+         "b61n RK78 diagnostics should publish matrix entry scale at the "
+         "refinement peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_matrix_max_row_l1_abs.empty(),
+         "b61n RK78 diagnostics should publish matrix row scale at the "
+         "refinement peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_matrix_min_lu_pivot_abs.empty(),
+         "b61n RK78 diagnostics should publish LU pivot scale at the refinement "
+         "peak");
+  Expect(!rk78.diagnostics.refinement_error_peak_matrix_pivot_ratio_abs.empty(),
+         "b61n RK78 diagnostics should publish LU pivot spread at the refinement "
+         "peak");
+  Expect(rk78.diagnostics.refinement_error_peak_nearest_pole == "0 + 0*I",
+         "b61n RK78 diagnostics should report the diagnostic-only nearest pole");
+  Expect(rk78.diagnostics.refinement_error_peak_nearest_pole_distance_abs == "0",
+         "b61n RK78 diagnostics should report exact diagnostic-pole distance at "
+         "the endpoint");
+  Expect(!rk78.diagnostics.max_embedded_error_eta.empty(),
+         "b61n RK78 diagnostics should identify the embedded-error peak eta");
+  Expect(rk78.diagnostics.max_embedded_error_segment_index == 0,
+         "b61n RK78 diagnostics should identify the embedded-error segment");
+  Expect(!rk78.diagnostics.max_embedded_error_state_norm_abs.empty(),
+         "b61n RK78 diagnostics should publish state norm at the embedded-error "
+         "peak");
+  Expect(!rk78.diagnostics.max_embedded_error_rhs_norm_abs.empty(),
+         "b61n RK78 diagnostics should publish RHS norm at the embedded-error "
+         "peak");
+  Expect(!rk78.diagnostics.max_embedded_error_matrix_max_entry_abs.empty(),
+         "b61n RK78 diagnostics should publish matrix entry scale at the "
+         "embedded-error peak");
+  Expect(!rk78.diagnostics.max_embedded_error_matrix_max_row_l1_abs.empty(),
+         "b61n RK78 diagnostics should publish matrix row scale at the "
+         "embedded-error peak");
+  Expect(!rk78.diagnostics.max_embedded_error_matrix_min_lu_pivot_abs.empty(),
+         "b61n RK78 diagnostics should publish LU pivot scale at the "
+         "embedded-error peak");
+  Expect(!rk78.diagnostics.max_embedded_error_matrix_pivot_ratio_abs.empty(),
+         "b61n RK78 diagnostics should publish LU pivot spread at the "
+         "embedded-error peak");
+  Expect(rk78.diagnostics.max_embedded_error_nearest_pole == "0 + 0*I",
+         "b61n RK78 diagnostics should use diagnostic-only poles for embedded "
+         "nearest-pole reporting");
+  Expect(!rk78.diagnostics.max_embedded_error_nearest_pole_distance_abs.empty(),
+         "b61n RK78 diagnostics should publish embedded nearest-pole distance");
+  Expect(rk78.diagnostics.pole_pinch_step_count == 0,
+         "b61n RK78 diagnostic-only poles must not activate pole-step limiting");
   if (rk45.success) {
     Expect(rk78.diagnostics.adaptive_step_count <
                rk45.diagnostics.adaptive_step_count,

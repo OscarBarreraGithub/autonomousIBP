@@ -49494,6 +49494,24 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "transported_endpoint_norm_abs=",
                  "b61n coupled-row runtime should report the high-order endpoint scale");
   ExpectContains(stripped_json,
+                 "refinement_error_peak_eta=",
+                 "b61n coupled-row runtime should locate the refinement-error peak");
+  ExpectContains(stripped_json,
+                 "refinement_error_peak_rhs_norm_abs=",
+                 "b61n coupled-row runtime should compare ODE RHS scale at the "
+                 "refinement-error peak");
+  ExpectContains(stripped_json,
+                 "refinement_error_peak_matrix_min_lu_pivot_abs=",
+                 "b61n coupled-row runtime should expose matrix pivot scale at the "
+                 "refinement-error peak");
+  ExpectContains(stripped_json,
+                 "max_embedded_error_eta=",
+                 "b61n coupled-row runtime should locate the embedded RK error peak");
+  ExpectContains(stripped_json,
+                 "endpoint_vector_norm_abs=",
+                 "b61n coupled-row propagator summary should report the endpoint vector "
+                 "scale");
+  ExpectContains(stripped_json,
                  "contour_pole_count=6",
                  "b61n coupled-row runtime should forward the extracted eta-matrix pole "
                  "list into the contour propagator");

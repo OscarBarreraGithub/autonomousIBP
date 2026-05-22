@@ -104,21 +104,61 @@ ComplexContourFloat EffectiveRefinementTolerance(
     const ComplexContourPropagationOptions& options,
     const ComplexContourFloat& endpoint_vector_norm);
 
+struct MatrixPivotDiagnostics {
+  std::size_t rank = 0;
+  ComplexContourFloat min_pivot_abs = 0;
+  ComplexContourFloat max_pivot_abs = 0;
+  ComplexContourFloat pivot_ratio_abs = 0;
+};
+
+struct NearestPoleDiagnostics {
+  bool has_pole = false;
+  ComplexContourNumber pole;
+  ComplexContourFloat distance_abs = 0;
+};
+
+struct ContourScaleDiagnostics {
+  std::size_t segment_index = 0;
+  ComplexContourNumber eta;
+  ComplexContourFloat state_norm_abs = 0;
+  ComplexContourFloat rhs_norm_abs = 0;
+  ComplexContourFloat matrix_max_entry_abs = 0;
+  ComplexContourFloat matrix_max_row_l1_abs = 0;
+  MatrixPivotDiagnostics matrix_pivots;
+  NearestPoleDiagnostics nearest_pole;
+};
+
+struct ContourLocationDiagnostics {
+  std::size_t segment_index = 0;
+  ComplexContourNumber eta;
+  ComplexContourVector state;
+};
+
 struct AdaptiveRk45Stats {
   std::size_t accepted_steps = 0;
   std::size_t rejected_steps = 0;
   std::size_t pole_pinched_steps = 0;
   ComplexContourFloat max_embedded_error_abs = 0;
+  ContourLocationDiagnostics max_embedded_error_location;
 };
 
 struct AdaptiveRk45Result {
   ComplexContourVector values;
+  std::vector<ComplexContourVector> waypoint_values;
   AdaptiveRk45Stats stats;
 };
 
 struct EmbeddedStepEstimate {
   ComplexContourVector high_order;
   ComplexContourFloat embedded_error_abs = 0;
+};
+
+struct RefinementPeakDiagnostics {
+  bool available = false;
+  std::size_t segment_index = 0;
+  ComplexContourNumber eta;
+  ComplexContourVector state;
+  ComplexContourFloat waypoint_error_abs = 0;
 };
 
 std::string AdaptiveRk45FailureMessage(const std::string& reason,
@@ -158,6 +198,153 @@ std::size_t ExtractSizeDiagnosticValue(const std::string& message,
   } catch (const std::exception&) {
     return 0;
   }
+}
+
+void RequireMatrixShape(const ComplexContourMatrix& matrix,
+                        const std::size_t dimension) {
+  if (matrix.size() != dimension) {
+    throw std::runtime_error("matrix-dimension-mismatch");
+  }
+  for (const auto& row : matrix) {
+    if (row.size() != dimension) {
+      throw std::runtime_error("matrix-dimension-mismatch");
+    }
+  }
+}
+
+ComplexContourFloat MaxMatrixEntryNorm(const ComplexContourMatrix& matrix) {
+  ComplexContourFloat norm = 0;
+  for (const auto& row : matrix) {
+    for (const ComplexContourNumber& value : row) {
+      norm = std::max(norm, ComplexAbs(value));
+    }
+  }
+  return norm;
+}
+
+ComplexContourFloat MaxMatrixRowL1Norm(const ComplexContourMatrix& matrix) {
+  ComplexContourFloat norm = 0;
+  for (const auto& row : matrix) {
+    ComplexContourFloat row_norm = 0;
+    for (const ComplexContourNumber& value : row) {
+      row_norm += ComplexAbs(value);
+    }
+    norm = std::max(norm, row_norm);
+  }
+  return norm;
+}
+
+MatrixPivotDiagnostics ComputeMatrixPivotDiagnostics(
+    ComplexContourMatrix matrix) {
+  MatrixPivotDiagnostics diagnostics;
+  const std::size_t rows = matrix.size();
+  if (rows == 0) {
+    return diagnostics;
+  }
+  const std::size_t columns = matrix.front().size();
+  if (columns == 0) {
+    return diagnostics;
+  }
+  for (const auto& row : matrix) {
+    if (row.size() != columns) {
+      throw std::runtime_error("matrix-dimension-mismatch");
+    }
+  }
+  ComplexContourFloat min_pivot =
+      std::numeric_limits<ComplexContourFloat>::infinity();
+  ComplexContourFloat max_pivot = 0;
+  const std::size_t pivot_count = std::min(rows, columns);
+  for (std::size_t pivot = 0; pivot < pivot_count; ++pivot) {
+    std::size_t best_row = pivot;
+    ComplexContourFloat best_abs = ComplexAbs(matrix[pivot][pivot]);
+    for (std::size_t row = pivot + 1; row < rows; ++row) {
+      const ComplexContourFloat candidate_abs =
+          ComplexAbs(matrix[row][pivot]);
+      if (candidate_abs > best_abs) {
+        best_abs = candidate_abs;
+        best_row = row;
+      }
+    }
+    if (best_abs == 0) {
+      diagnostics.rank = pivot;
+      diagnostics.min_pivot_abs = 0;
+      diagnostics.max_pivot_abs = max_pivot;
+      diagnostics.pivot_ratio_abs =
+          max_pivot == 0 ? ComplexContourFloat(0)
+                         : std::numeric_limits<ComplexContourFloat>::infinity();
+      return diagnostics;
+    }
+    if (best_row != pivot) {
+      std::swap(matrix[best_row], matrix[pivot]);
+    }
+    min_pivot = std::min(min_pivot, best_abs);
+    max_pivot = std::max(max_pivot, best_abs);
+    for (std::size_t row = pivot + 1; row < rows; ++row) {
+      const ComplexContourNumber factor = matrix[row][pivot] / matrix[pivot][pivot];
+      for (std::size_t column = pivot; column < columns; ++column) {
+        matrix[row][column] -= factor * matrix[pivot][column];
+      }
+    }
+  }
+  diagnostics.rank = pivot_count;
+  diagnostics.min_pivot_abs =
+      IsFiniteFloat(min_pivot) ? min_pivot : ComplexContourFloat(0);
+  diagnostics.max_pivot_abs = max_pivot;
+  diagnostics.pivot_ratio_abs =
+      diagnostics.min_pivot_abs == 0
+          ? std::numeric_limits<ComplexContourFloat>::infinity()
+          : diagnostics.max_pivot_abs / diagnostics.min_pivot_abs;
+  return diagnostics;
+}
+
+NearestPoleDiagnostics FindNearestPole(
+    const ComplexContourNumber& eta,
+    const std::vector<ComplexContourNumber>& poles) {
+  NearestPoleDiagnostics diagnostics;
+  if (poles.empty()) {
+    return diagnostics;
+  }
+  diagnostics.has_pole = true;
+  diagnostics.pole = poles.front();
+  diagnostics.distance_abs = ComplexAbs(eta - poles.front());
+  for (std::size_t index = 1; index < poles.size(); ++index) {
+    const ComplexContourFloat distance = ComplexAbs(eta - poles[index]);
+    if (distance < diagnostics.distance_abs) {
+      diagnostics.distance_abs = distance;
+      diagnostics.pole = poles[index];
+    }
+  }
+  return diagnostics;
+}
+
+ContourScaleDiagnostics EvaluateContourScaleDiagnostics(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourPropagationOptions& options,
+    const std::size_t segment_index,
+    const ComplexContourNumber& eta,
+    const ComplexContourVector& state) {
+  ContourScaleDiagnostics diagnostics;
+  diagnostics.segment_index = segment_index;
+  diagnostics.eta = eta;
+  diagnostics.state_norm_abs = MaxVectorNorm(state);
+  const ComplexContourMatrix matrix = matrix_evaluator(eta);
+  RequireMatrixShape(matrix, state.size());
+  diagnostics.matrix_max_entry_abs = MaxMatrixEntryNorm(matrix);
+  diagnostics.matrix_max_row_l1_abs = MaxMatrixRowL1Norm(matrix);
+  diagnostics.matrix_pivots = ComputeMatrixPivotDiagnostics(matrix);
+  diagnostics.rhs_norm_abs = MaxVectorNorm(MatrixVectorProduct(matrix, state));
+  const std::vector<ComplexContourNumber>& poles =
+      options.diagnostic_poles.empty() ? options.contour_poles
+                                       : options.diagnostic_poles;
+  diagnostics.nearest_pole = FindNearestPole(eta, poles);
+  return diagnostics;
+}
+
+std::string CompactNearestPole(const NearestPoleDiagnostics& diagnostics) {
+  if (!diagnostics.has_pole) {
+    return "none";
+  }
+  return CompactComplex(diagnostics.pole, 40);
 }
 
 ComplexContourVector AddScaledSum(
@@ -669,7 +856,8 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
     const ComplexContourNumber& eta_end,
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     const ComplexContourPropagationOptions& options,
-    const std::size_t initial_steps) {
+    const std::size_t initial_steps,
+    const std::size_t segment_index) {
   if (initial_steps == 0) {
     throw std::runtime_error("invalid-step-count");
   }
@@ -735,8 +923,16 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
                                options.integrator);
     const ComplexContourFloat tolerance =
         AdaptiveStepTolerance(options, estimate.high_order);
-    result.stats.max_embedded_error_abs = std::max(
-        result.stats.max_embedded_error_abs, estimate.embedded_error_abs);
+    if (estimate.embedded_error_abs >=
+        result.stats.max_embedded_error_abs) {
+      result.stats.max_embedded_error_abs = estimate.embedded_error_abs;
+      const ComplexContourFloat error_t = t + requested_h;
+      const ComplexContourNumber error_eta =
+          eta_start + segment * error_t;
+      result.stats.max_embedded_error_location.segment_index = segment_index;
+      result.stats.max_embedded_error_location.eta = error_eta;
+      result.stats.max_embedded_error_location.state = estimate.high_order;
+    }
     if (estimate.embedded_error_abs <= tolerance) {
       result.values = estimate.high_order;
       t += requested_h;
@@ -774,6 +970,7 @@ AdaptiveRk45Result PropagateWaypointsWithAdaptiveRk45(
     const std::size_t initial_steps_per_segment) {
   AdaptiveRk45Result result;
   result.values = initial_values;
+  result.waypoint_values.push_back(initial_values);
   for (std::size_t index = 1; index < waypoints.size(); ++index) {
     AdaptiveRk45Result segment_result =
         PropagateSegmentWithAdaptiveRk45(result.values,
@@ -781,14 +978,20 @@ AdaptiveRk45Result PropagateWaypointsWithAdaptiveRk45(
                                          waypoints[index],
                                          matrix_evaluator,
                                          options,
-                                         initial_steps_per_segment);
+                                         initial_steps_per_segment,
+                                         index - 1);
     result.values = std::move(segment_result.values);
+    result.waypoint_values.push_back(result.values);
     result.stats.accepted_steps += segment_result.stats.accepted_steps;
     result.stats.rejected_steps += segment_result.stats.rejected_steps;
     result.stats.pole_pinched_steps += segment_result.stats.pole_pinched_steps;
-    result.stats.max_embedded_error_abs =
-        std::max(result.stats.max_embedded_error_abs,
-                 segment_result.stats.max_embedded_error_abs);
+    if (segment_result.stats.max_embedded_error_abs >=
+        result.stats.max_embedded_error_abs) {
+      result.stats.max_embedded_error_abs =
+          segment_result.stats.max_embedded_error_abs;
+      result.stats.max_embedded_error_location =
+          segment_result.stats.max_embedded_error_location;
+    }
   }
   return result;
 }
@@ -821,6 +1024,168 @@ ComplexContourFloat EffectiveRefinementTolerance(
   const ComplexContourFloat relative_tolerance =
       options.refinement_relative_error_tolerance * relative_scale;
   return std::max(options.refinement_error_tolerance, relative_tolerance);
+}
+
+RefinementPeakDiagnostics FindRefinementPeakDiagnostics(
+    const AdaptiveRk45Result& previous,
+    const AdaptiveRk45Result& refined,
+    const std::vector<ComplexContourNumber>& waypoints) {
+  RefinementPeakDiagnostics diagnostics;
+  const std::size_t waypoint_count =
+      std::min({previous.waypoint_values.size(),
+                refined.waypoint_values.size(),
+                waypoints.size()});
+  for (std::size_t waypoint_index = 1; waypoint_index < waypoint_count;
+       ++waypoint_index) {
+    const ComplexContourFloat difference =
+        MaxVectorDifference(previous.waypoint_values[waypoint_index],
+                            refined.waypoint_values[waypoint_index]);
+    if (!diagnostics.available ||
+        difference >= diagnostics.waypoint_error_abs) {
+      diagnostics.available = true;
+      diagnostics.segment_index = waypoint_index - 1;
+      diagnostics.eta = waypoints[waypoint_index];
+      diagnostics.state = refined.waypoint_values[waypoint_index];
+      diagnostics.waypoint_error_abs = difference;
+    }
+  }
+  return diagnostics;
+}
+
+void PopulateScaleDiagnostics(
+    ComplexContourPropagationDiagnostics& diagnostics,
+    const ContourScaleDiagnostics& scale,
+    const std::string& prefix) {
+  const std::string segment_key = prefix + "_segment_index";
+  if (segment_key == "refinement_error_peak_segment_index") {
+    diagnostics.refinement_error_peak_segment_index = scale.segment_index;
+    diagnostics.refinement_error_peak_eta = CompactComplex(scale.eta, 40);
+    diagnostics.refinement_error_peak_state_norm_abs =
+        CompactFloat(scale.state_norm_abs, 40);
+    diagnostics.refinement_error_peak_rhs_norm_abs =
+        CompactFloat(scale.rhs_norm_abs, 40);
+    diagnostics.refinement_error_peak_matrix_max_entry_abs =
+        CompactFloat(scale.matrix_max_entry_abs, 40);
+    diagnostics.refinement_error_peak_matrix_max_row_l1_abs =
+        CompactFloat(scale.matrix_max_row_l1_abs, 40);
+    diagnostics.refinement_error_peak_matrix_min_lu_pivot_abs =
+        CompactFloat(scale.matrix_pivots.min_pivot_abs, 40);
+    diagnostics.refinement_error_peak_matrix_pivot_ratio_abs =
+        CompactFloat(scale.matrix_pivots.pivot_ratio_abs, 40);
+    diagnostics.refinement_error_peak_nearest_pole =
+        CompactNearestPole(scale.nearest_pole);
+    diagnostics.refinement_error_peak_nearest_pole_distance_abs =
+        scale.nearest_pole.has_pole
+            ? CompactFloat(scale.nearest_pole.distance_abs, 40)
+            : std::string("none");
+    return;
+  }
+  if (segment_key == "max_embedded_error_segment_index") {
+    diagnostics.max_embedded_error_segment_index = scale.segment_index;
+    diagnostics.max_embedded_error_eta = CompactComplex(scale.eta, 40);
+    diagnostics.max_embedded_error_state_norm_abs =
+        CompactFloat(scale.state_norm_abs, 40);
+    diagnostics.max_embedded_error_rhs_norm_abs =
+        CompactFloat(scale.rhs_norm_abs, 40);
+    diagnostics.max_embedded_error_matrix_max_entry_abs =
+        CompactFloat(scale.matrix_max_entry_abs, 40);
+    diagnostics.max_embedded_error_matrix_max_row_l1_abs =
+        CompactFloat(scale.matrix_max_row_l1_abs, 40);
+    diagnostics.max_embedded_error_matrix_min_lu_pivot_abs =
+        CompactFloat(scale.matrix_pivots.min_pivot_abs, 40);
+    diagnostics.max_embedded_error_matrix_pivot_ratio_abs =
+        CompactFloat(scale.matrix_pivots.pivot_ratio_abs, 40);
+    diagnostics.max_embedded_error_nearest_pole =
+        CompactNearestPole(scale.nearest_pole);
+    diagnostics.max_embedded_error_nearest_pole_distance_abs =
+        scale.nearest_pole.has_pole
+            ? CompactFloat(scale.nearest_pole.distance_abs, 40)
+            : std::string("none");
+  }
+}
+
+void PopulateRefinementPeakDiagnostics(
+    ComplexContourPropagationDiagnostics& diagnostics,
+    const RefinementPeakDiagnostics& peak,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourPropagationOptions& options) {
+  if (!peak.available || peak.state.empty()) {
+    return;
+  }
+  const ContourScaleDiagnostics scale =
+      EvaluateContourScaleDiagnostics(matrix_evaluator,
+                                      options,
+                                      peak.segment_index,
+                                      peak.eta,
+                                      peak.state);
+  PopulateScaleDiagnostics(diagnostics, scale, "refinement_error_peak");
+  diagnostics.refinement_error_peak_waypoint_error_abs =
+      CompactFloat(peak.waypoint_error_abs, 40);
+}
+
+void PopulateEmbeddedErrorPeakDiagnostics(
+    ComplexContourPropagationDiagnostics& diagnostics,
+    const AdaptiveRk45Stats& stats,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourPropagationOptions& options) {
+  if (stats.max_embedded_error_location.state.empty()) {
+    return;
+  }
+  const ContourScaleDiagnostics scale =
+      EvaluateContourScaleDiagnostics(matrix_evaluator,
+                                      options,
+                                      stats.max_embedded_error_location.segment_index,
+                                      stats.max_embedded_error_location.eta,
+                                      stats.max_embedded_error_location.state);
+  PopulateScaleDiagnostics(diagnostics, scale, "max_embedded_error");
+}
+
+std::string ScaleDiagnosticSummary(
+    const ComplexContourPropagationDiagnostics& diagnostics) {
+  std::ostringstream out;
+  if (!diagnostics.refinement_error_peak_eta.empty()) {
+    out << "; refinement_error_peak_segment_index="
+        << diagnostics.refinement_error_peak_segment_index
+        << "; refinement_error_peak_eta="
+        << diagnostics.refinement_error_peak_eta
+        << "; refinement_error_peak_waypoint_error_abs="
+        << diagnostics.refinement_error_peak_waypoint_error_abs
+        << "; refinement_error_peak_rhs_norm_abs="
+        << diagnostics.refinement_error_peak_rhs_norm_abs
+        << "; refinement_error_peak_matrix_max_entry_abs="
+        << diagnostics.refinement_error_peak_matrix_max_entry_abs
+        << "; refinement_error_peak_matrix_max_row_l1_abs="
+        << diagnostics.refinement_error_peak_matrix_max_row_l1_abs
+        << "; refinement_error_peak_matrix_min_lu_pivot_abs="
+        << diagnostics.refinement_error_peak_matrix_min_lu_pivot_abs
+        << "; refinement_error_peak_matrix_pivot_ratio_abs="
+        << diagnostics.refinement_error_peak_matrix_pivot_ratio_abs
+        << "; refinement_error_peak_nearest_pole="
+        << diagnostics.refinement_error_peak_nearest_pole
+        << "; refinement_error_peak_nearest_pole_distance_abs="
+        << diagnostics.refinement_error_peak_nearest_pole_distance_abs;
+  }
+  if (!diagnostics.max_embedded_error_eta.empty()) {
+    out << "; max_embedded_error_segment_index="
+        << diagnostics.max_embedded_error_segment_index
+        << "; max_embedded_error_eta="
+        << diagnostics.max_embedded_error_eta
+        << "; max_embedded_error_rhs_norm_abs="
+        << diagnostics.max_embedded_error_rhs_norm_abs
+        << "; max_embedded_error_matrix_max_entry_abs="
+        << diagnostics.max_embedded_error_matrix_max_entry_abs
+        << "; max_embedded_error_matrix_max_row_l1_abs="
+        << diagnostics.max_embedded_error_matrix_max_row_l1_abs
+        << "; max_embedded_error_matrix_min_lu_pivot_abs="
+        << diagnostics.max_embedded_error_matrix_min_lu_pivot_abs
+        << "; max_embedded_error_matrix_pivot_ratio_abs="
+        << diagnostics.max_embedded_error_matrix_pivot_ratio_abs
+        << "; max_embedded_error_nearest_pole="
+        << diagnostics.max_embedded_error_nearest_pole
+        << "; max_embedded_error_nearest_pole_distance_abs="
+        << diagnostics.max_embedded_error_nearest_pole_distance_abs;
+  }
+  return out.str();
 }
 
 std::string SerializePropagationForFingerprint(
@@ -1135,6 +1500,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     std::size_t refined_steps_per_segment = options.steps_per_segment;
     std::size_t refinement_doublings_used = 0;
     bool refinement_passed = false;
+    RefinementPeakDiagnostics refinement_peak;
     for (std::size_t doubling = 1; doubling <= options.max_refinement_doublings;
          ++doubling) {
       refined_steps_per_segment = options.steps_per_segment;
@@ -1148,6 +1514,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                                    refined_steps_per_segment);
       RequireFiniteVector(refined.values, "refined");
       refinement_error = MaxVectorDifference(previous.values, refined.values);
+      refinement_peak =
+          FindRefinementPeakDiagnostics(previous, refined, waypoints);
       endpoint_vector_norm = MaxVectorNorm(refined.values);
       effective_refinement_tolerance =
           EffectiveRefinementTolerance(options, endpoint_vector_norm);
@@ -1194,6 +1562,11 @@ ComplexContourPropagationResult PropagateComplexContourVector(
           CompactFloat(effective_refinement_tolerance, 40);
       failure.diagnostics.max_embedded_error_abs =
           CompactFloat(refined.stats.max_embedded_error_abs, 40);
+      PopulateRefinementPeakDiagnostics(
+          failure.diagnostics, refinement_peak, matrix_evaluator, options);
+      PopulateEmbeddedErrorPeakDiagnostics(
+          failure.diagnostics, refined.stats, matrix_evaluator, options);
+      failure.diagnostics.summary += ScaleDiagnosticSummary(failure.diagnostics);
       return failure;
     }
 
@@ -1248,6 +1621,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         CompactFloat(effective_refinement_tolerance, 40);
     result.diagnostics.max_embedded_error_abs =
         CompactFloat(refined.stats.max_embedded_error_abs, 40);
+    PopulateRefinementPeakDiagnostics(
+        result.diagnostics, refinement_peak, matrix_evaluator, options);
+    PopulateEmbeddedErrorPeakDiagnostics(
+        result.diagnostics, refined.stats, matrix_evaluator, options);
     result.diagnostics.contour_fingerprint = ComputeArtifactFingerprint(
         SerializePropagationForFingerprint(initial_values,
                                            waypoints,
@@ -1298,6 +1675,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         result.diagnostics.refinement_effective_tolerance_abs +
         "; max_embedded_error_abs=" +
         result.diagnostics.max_embedded_error_abs +
+        ScaleDiagnosticSummary(result.diagnostics) +
         "; "
         "refinement_error_abs=" + result.diagnostics.refinement_error_abs +
         "; contour_fingerprint=" + result.diagnostics.contour_fingerprint + ".";

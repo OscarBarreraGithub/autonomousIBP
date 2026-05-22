@@ -3538,6 +3538,63 @@ void B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest() {
                  "b64ag reduced finite-part chain should preserve reducer ordering");
 }
 
+void B64agGaugeLinkRetainedReductionConsumesShiftedHighEndpointPowersTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"101/208000"};
+  std::vector<std::string> boundary_values =
+      B64agRegularFirstBlockBoundaryValues(
+          state.epsilon_samples.front(),
+          {B64agTestBigFloat(
+               "1.2345678901234567890123456789012345678901234567890123456789"),
+           B64agTestBigFloat(
+               "-0.1234567890123456789012345678901234567890123456789012345678")},
+          {"11", "13", "17", "19"});
+  boundary_values[1] = "(" + boundary_values[1] + ")+1";
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
+      boundary_samples = {{state.epsilon_samples.front(), boundary_values}};
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag retained-reduction transport should publish six-master endpoint terms: " +
+             transport.summary);
+  Expect(transport.epsilon_endpoint_terms.size() == 1,
+         "b64ag retained-reduction transport should preserve the epsilon packet");
+  const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms =
+      transport.epsilon_endpoint_terms.front();
+  static_cast<void>(
+      B64agFindEndpointTerm(sample_terms.endpoint_terms[5], "frobenius:", 12, 0));
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          B64agReviewedTargets(),
+          sample_terms.endpoint_terms,
+          amflow::ParseLightlikeGaugeLinkRetainedTargetReduction(state));
+
+  Expect(reduced.success,
+         "b64ag retained reduction should consume shifted high endpoint powers: " +
+             reduced.summary +
+             (reduced.failures.empty() ? "" : " first_failure=" +
+                                                 reduced.failures.front().summary));
+  Expect(reduced.failures.empty(),
+         "b64ag retained reduction high-power chain should not record failures");
+  Expect(reduced.targets.size() == B64agReviewedTargets().size(),
+         "b64ag retained reduction should publish the full reviewed target packet");
+  Expect(!reduced.retained_solution_samples_used,
+         "b64ag retained reduction high-power chain must not read retained solutions");
+  Expect(!reduced.full_eta_zero_contour_applied,
+         "b64ag retained reduction high-power chain must not promote full contour");
+  ExpectContains(reduced.targets.front().selected_region_key,
+                 ";base:-6",
+                 "b64ag retained reduction should keep the shifted first-block Frobenius "
+                 "finite part");
+  ExpectContains(reduced.summary,
+                 "evaluated 9 retained target",
+                 "b64ag retained reduction should evaluate the full target packet");
+}
+
 void B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest() {
   amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
   state.epsilon_samples = {"1", "2/2"};
@@ -4475,6 +4532,7 @@ int main() {
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();
+    B64agGaugeLinkRetainedReductionConsumesShiftedHighEndpointPowersTest();
     B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
     B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest();
     B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest();

@@ -49707,21 +49707,30 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
       ShellSingleQuote(full_stripped_output_path.string()) + " >" +
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
-  Expect(RunShellCommand(full_stripped_command) != 0,
-         "full stripped b64ag packet should fail closed at the next post-transport "
-         "finite-part reconstruction blocker before publishing target coefficients");
+  Expect(RunShellCommand(full_stripped_command) == 0,
+         "full stripped b64ag packet should evaluate post-transport finite parts; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
   const std::string full_stripped_json = ReadFile(full_stripped_output_path);
-  ExpectContains(full_stripped_json,
-                 "\"failure_code\": \"continuation_budget_exhausted\"",
-                 "full stripped b64ag packet should surface the live finite-part blocker");
-  ExpectContains(full_stripped_json,
-                 "b64ag finite-part extraction did not find finite-part power 6",
-                 "full stripped b64ag packet should advance past the multiple-region "
-                 "selector and report the next finite-part reconstruction blocker");
+  Expect(full_stripped_json.find("\"failure_code\"") == std::string::npos,
+         "full stripped b64ag packet should no longer publish a finite-part failure");
+  Expect(full_stripped_json.find(
+             "b64ag finite-part extraction did not find finite-part power 6") ==
+             std::string::npos,
+         "full stripped b64ag packet should advance past the shifted finite-power "
+         "reconstruction blocker");
   Expect(full_stripped_json.find(
              "b64ag finite-part extraction rejects multiple endpoint regions") ==
              std::string::npos,
          "full stripped b64ag packet should no longer stop at the multi-region selector");
+  ExpectContains(full_stripped_json,
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-finite-gauge-link-boundary+gaugex-zero-full-packet-finite-"
+                 "part-transport\"",
+                 "full stripped b64ag packet should use the non-solution full-packet "
+                 "provider");
+  ExpectContains(full_stripped_json,
+                 "\"status\": \"success\"",
+                 "full stripped b64ag packet should finish solve-series successfully");
   ExpectContains(full_stripped_json,
                  "\"eta_zero_endpoint_transported_master_count\": 6",
                  "full stripped b64ag packet should retain six-master endpoint transport");
@@ -49738,6 +49747,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
              std::string::npos,
          "full stripped b64ag packet should reach the live endpoint transport blocker rather "
          "than the old metadata-only scaffold");
+  ExpectContains(full_stripped_json,
+                 "PickZeroRuleS-compatible finite-part extraction, and post-endpoint Laurent "
+                 "fitting for 9 retained b64ag target",
+                 "full stripped b64ag packet should publish the full target finite-part chain");
 
   OverwriteTextFile(
       strip_script_path,

@@ -3137,7 +3137,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
 
       std::vector<RuntimeSeries> endpoint_series(
           ReviewedReductionMasterLabels().size());
-      constexpr int kFrobeniusFinitePartTransportMaxPower = 8;
+      // Retained target-reduction rows include gaugex^-3 shifts after D4,D5
+      // normalization, so the reviewed Frobenius finite parts can require
+      // endpoint powers up to 12 before PickZeroRuleS.
+      constexpr int kFrobeniusFinitePartTransportMaxPower = 12;
       const GaugeLinkFirstBlockEndpointSeries regular_first_block =
           BuildGaugeLinkFirstBlockEndpointSeries(
               epsilon_value,

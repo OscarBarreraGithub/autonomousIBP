@@ -109,6 +109,34 @@ struct ComplexContourPropagationResult {
   ComplexContourPropagationDiagnostics diagnostics;
 };
 
+struct ComplexContourIndicialEquation {
+  bool success = false;
+  bool indicial_roots_available = false;
+  std::size_t dimension = 0;
+  ComplexContourNumber residue_probe_eta = {0, 0};
+  ComplexContourFloat residue_tolerance = 0;
+  std::string failure_code;
+  std::string triangular_form;
+  std::string characteristic_polynomial_convention =
+      "det(rho*I - sampled_eta_times_A_eta)=0";
+  std::string sampled_residue_stability_abs;
+  std::string sampled_residue_effective_tolerance_abs;
+  ComplexContourMatrix residue_matrix;
+  std::vector<ComplexContourNumber> characteristic_polynomial_coefficients_descending;
+  std::vector<ComplexContourNumber> indicial_roots;
+  std::string summary;
+};
+
+ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    std::size_t dimension);
+
+ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    std::size_t dimension,
+    ComplexContourNumber residue_probe_eta,
+    ComplexContourFloat residue_tolerance);
+
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,

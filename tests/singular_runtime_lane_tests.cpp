@@ -4691,6 +4691,152 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
                          "b61n contour row 2 should integrate coupled row 1");
 }
 
+void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
+  const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
+  const B61nContourFloat residue_tolerance("1e-14");
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    amflow::ComplexContourMatrix matrix(
+        3, std::vector<B61nContourNumber>(3, B61nContourNumber{}));
+    matrix[0][0] = B61nContourNumber{2, 0} / eta + B61nContourNumber{7, 0};
+    matrix[1][0] = B61nContourNumber{3, 4} / eta + B61nContourNumber{1, 0};
+    matrix[1][1] = B61nContourNumber{B61nContourFloat("-0.5"), 0} / eta;
+    matrix[2][0] = B61nContourNumber{-5, 0} / eta;
+    matrix[2][1] = B61nContourNumber{6, 0} / eta;
+    return matrix;
+  };
+
+  const amflow::ComplexContourIndicialEquation equation =
+      amflow::ComputeComplexContourEtaZeroIndicialEquation(
+          evaluator, 3, probe_eta, residue_tolerance);
+
+  Expect(equation.success,
+         "b61n indicial equation should compute a stable eta=0 residue probe: " +
+             equation.summary);
+  Expect(equation.dimension == 3,
+         "b61n indicial equation should preserve matrix dimension");
+  Expect(equation.triangular_form == "lower",
+         "b61n indicial equation should classify the reviewed lower-triangular "
+         "residue form");
+  Expect(equation.indicial_roots_available,
+         "b61n lower-triangular residue should expose diagonal indicial roots");
+  Expect(equation.indicial_roots.size() == 3,
+         "b61n indicial equation should publish one root per matrix row");
+  ExpectB61nContourClose(equation.indicial_roots[0],
+                         {2, 0},
+                         B61nContourFloat("1e-18"),
+                         "b61n indicial root 0 should be the first residue diagonal");
+  ExpectB61nContourClose(equation.indicial_roots[1],
+                         {B61nContourFloat("-0.5"), 0},
+                         B61nContourFloat("1e-18"),
+                         "b61n indicial root 1 should be the second residue diagonal");
+  ExpectB61nContourClose(equation.indicial_roots[2],
+                         {0, 0},
+                         B61nContourFloat("1e-18"),
+                         "b61n indicial root 2 should capture the regular row exponent");
+  Expect(equation.characteristic_polynomial_coefficients_descending.size() == 4,
+         "b61n indicial equation should publish the cubic characteristic polynomial");
+  const std::vector<B61nContourNumber> expected_polynomial = {
+      {1, 0},
+      {B61nContourFloat("-1.5"), 0},
+      {-1, 0},
+      {0, 0},
+  };
+  for (std::size_t index = 0; index < expected_polynomial.size(); ++index) {
+    ExpectB61nContourClose(
+        equation.characteristic_polynomial_coefficients_descending[index],
+        expected_polynomial[index],
+        B61nContourFloat("1e-18"),
+        "b61n indicial polynomial coefficient " + std::to_string(index) +
+            " should match det(rho*I - residue)");
+  }
+  ExpectContains(equation.summary,
+                 "det(rho*I - sampled_eta_times_A_eta)=0",
+                 "b61n indicial summary should record the probed Frobenius "
+                 "convention");
+  ExpectContains(equation.summary,
+                 "sampled_residue_stability_abs=",
+                 "b61n indicial summary should expose the simple-pole stability "
+                 "check");
+  ExpectContains(equation.summary,
+                 "indicial_roots_available=true",
+                 "b61n indicial summary should expose root availability");
+}
+
+void B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest() {
+  const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
+  const B61nContourFloat residue_tolerance("1e-14");
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{1, 0} / (eta * eta)},
+    };
+  };
+
+  const amflow::ComplexContourIndicialEquation equation =
+      amflow::ComputeComplexContourEtaZeroIndicialEquation(
+          evaluator, 1, probe_eta, residue_tolerance);
+
+  Expect(!equation.success,
+         "b61n indicial equation should fail closed on higher-order pole probes");
+  Expect(equation.failure_code == "non-fuchsian-residue-probe",
+         "b61n indicial equation should reject unstable residue probes with a "
+         "stable failure code");
+  Expect(equation.indicial_roots.empty(),
+         "b61n higher-order pole rejection must not publish indicial roots");
+  Expect(!equation.sampled_residue_stability_abs.empty(),
+         "b61n higher-order pole rejection should publish residue stability scale");
+  ExpectContains(equation.summary,
+                 "higher-order or non-Fuchsian",
+                 "b61n higher-order pole rejection should explain why no "
+                 "indicial equation was published");
+}
+
+void B61nEtaZeroIndicialEquationKeepsDensePolynomialWithoutRootsTest() {
+  const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
+  const B61nContourFloat residue_tolerance("1e-14");
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{1, 0} / eta, B61nContourNumber{2, 0} / eta},
+        {B61nContourNumber{3, 0} / eta, B61nContourNumber{4, 0} / eta},
+    };
+  };
+
+  const amflow::ComplexContourIndicialEquation equation =
+      amflow::ComputeComplexContourEtaZeroIndicialEquation(
+          evaluator, 2, probe_eta, residue_tolerance);
+
+  Expect(equation.success,
+         "b61n dense indicial equation should still compute the characteristic "
+         "polynomial: " +
+             equation.summary);
+  Expect(equation.triangular_form == "dense",
+         "b61n dense residue should not be misclassified as triangular");
+  Expect(!equation.indicial_roots_available,
+         "b61n dense residue should not publish unsupported numeric roots");
+  Expect(equation.indicial_roots.empty(),
+         "b61n dense residue should leave root extraction to a later reviewed "
+         "solver step");
+  const std::vector<B61nContourNumber> expected_polynomial = {
+      {1, 0},
+      {-5, 0},
+      {-2, 0},
+  };
+  Expect(equation.characteristic_polynomial_coefficients_descending.size() ==
+             expected_polynomial.size(),
+         "b61n dense indicial equation should publish a quadratic polynomial");
+  for (std::size_t index = 0; index < expected_polynomial.size(); ++index) {
+    ExpectB61nContourClose(
+        equation.characteristic_polynomial_coefficients_descending[index],
+        expected_polynomial[index],
+        B61nContourFloat("1e-18"),
+        "b61n dense indicial polynomial coefficient " + std::to_string(index) +
+            " should match det(rho*I - residue)");
+  }
+  ExpectContains(equation.summary,
+                 "indicial_roots_available=false",
+                 "b61n dense indicial summary should avoid overclaiming root "
+                 "availability");
+}
+
 void B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest() {
   const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
   const amflow::ComplexContourVector initial = {{1, 0}, {2, 0}};
@@ -5377,6 +5523,9 @@ int main() {
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
+    B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
+    B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest();
+    B61nEtaZeroIndicialEquationKeepsDensePolynomialWithoutRootsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();
     B61nComplexContourPropagatorRequiresMatrixFingerprintTest();
     B61nComplexContourPropagatorRejectsInvalidInputsTest();

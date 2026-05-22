@@ -1328,7 +1328,322 @@ bool AppliesReviewedB61nEndpointExtraction(
   return IsReviewedLane142PrimitiveBubbleEndpoint(options);
 }
 
+ComplexContourMatrix MakeIdentityMatrix(const std::size_t dimension) {
+  ComplexContourMatrix matrix(
+      dimension, std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
+  for (std::size_t index = 0; index < dimension; ++index) {
+    matrix[index][index] = ComplexContourNumber{1, 0};
+  }
+  return matrix;
+}
+
+ComplexContourMatrix MatrixMatrixProduct(const ComplexContourMatrix& lhs,
+                                         const ComplexContourMatrix& rhs) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("matrix-dimension-mismatch");
+  }
+  const std::size_t dimension = lhs.size();
+  RequireMatrixShape(lhs, dimension);
+  RequireMatrixShape(rhs, dimension);
+  ComplexContourMatrix product(
+      dimension, std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
+  for (std::size_t row = 0; row < dimension; ++row) {
+    for (std::size_t inner = 0; inner < dimension; ++inner) {
+      for (std::size_t column = 0; column < dimension; ++column) {
+        product[row][column] += lhs[row][inner] * rhs[inner][column];
+      }
+    }
+  }
+  return product;
+}
+
+ComplexContourNumber MatrixTrace(const ComplexContourMatrix& matrix) {
+  ComplexContourNumber trace;
+  for (std::size_t index = 0; index < matrix.size(); ++index) {
+    trace += matrix[index][index];
+  }
+  return trace;
+}
+
+std::vector<ComplexContourNumber> ComputeCharacteristicPolynomialCoefficients(
+    const ComplexContourMatrix& matrix) {
+  const std::size_t dimension = matrix.size();
+  std::vector<ComplexContourNumber> coefficients;
+  coefficients.reserve(dimension + 1);
+  coefficients.push_back({1, 0});
+
+  ComplexContourMatrix leverrier_matrix = MakeIdentityMatrix(dimension);
+  for (std::size_t degree = 1; degree <= dimension; ++degree) {
+    ComplexContourMatrix product =
+        MatrixMatrixProduct(matrix, leverrier_matrix);
+    const ComplexContourNumber coefficient =
+        -MatrixTrace(product) / ComplexContourFloat(std::to_string(degree));
+    coefficients.push_back(coefficient);
+    for (std::size_t index = 0; index < dimension; ++index) {
+      product[index][index] += coefficient;
+    }
+    leverrier_matrix = std::move(product);
+  }
+  return coefficients;
+}
+
+std::string ClassifyTriangularResidue(const ComplexContourMatrix& residue_matrix,
+                                      const ComplexContourFloat& tolerance) {
+  bool has_upper_entry = false;
+  bool has_lower_entry = false;
+  for (std::size_t row = 0; row < residue_matrix.size(); ++row) {
+    for (std::size_t column = 0; column < residue_matrix[row].size(); ++column) {
+      if (row == column || ComplexAbs(residue_matrix[row][column]) <= tolerance) {
+        continue;
+      }
+      if (row < column) {
+        has_upper_entry = true;
+      } else {
+        has_lower_entry = true;
+      }
+    }
+  }
+  if (!has_upper_entry && !has_lower_entry) {
+    return "diagonal";
+  }
+  if (!has_upper_entry) {
+    return "lower";
+  }
+  if (!has_lower_entry) {
+    return "upper";
+  }
+  return "dense";
+}
+
+bool HasTriangularIndicialRoots(const std::string& triangular_form) {
+  return triangular_form == "diagonal" || triangular_form == "lower" ||
+         triangular_form == "upper";
+}
+
+std::string CompactComplexVector(const std::vector<ComplexContourNumber>& values) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << CompactComplex(values[index], 40);
+  }
+  out << "]";
+  return out.str();
+}
+
+ComplexContourMatrix SampleEtaTimesMatrix(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const std::size_t dimension,
+    const ComplexContourNumber& eta) {
+  ComplexContourMatrix residue_matrix = matrix_evaluator(eta);
+  RequireMatrixShape(residue_matrix, dimension);
+  for (std::vector<ComplexContourNumber>& row : residue_matrix) {
+    for (ComplexContourNumber& entry : row) {
+      entry *= eta;
+      if (!IsFinite(entry)) {
+        throw std::runtime_error("nonfinite-residue-entry");
+      }
+    }
+  }
+  return residue_matrix;
+}
+
+ComplexContourFloat MaxMatrixDifference(const ComplexContourMatrix& lhs,
+                                        const ComplexContourMatrix& rhs) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("matrix-dimension-mismatch");
+  }
+  ComplexContourFloat difference = 0;
+  for (std::size_t row = 0; row < lhs.size(); ++row) {
+    if (lhs[row].size() != rhs[row].size()) {
+      throw std::runtime_error("matrix-dimension-mismatch");
+    }
+    for (std::size_t column = 0; column < lhs[row].size(); ++column) {
+      difference =
+          std::max(difference, ComplexAbs(lhs[row][column] - rhs[row][column]));
+    }
+  }
+  return difference;
+}
+
+ComplexContourIndicialEquation IndicialFailure(
+    const std::string& failure_code,
+    const std::string& summary,
+    const std::size_t dimension,
+    const ComplexContourNumber& residue_probe_eta,
+    const ComplexContourFloat& residue_tolerance) {
+  ComplexContourIndicialEquation equation;
+  equation.success = false;
+  equation.dimension = dimension;
+  equation.residue_probe_eta = residue_probe_eta;
+  equation.residue_tolerance = residue_tolerance;
+  equation.failure_code = failure_code;
+  equation.summary = summary;
+  return equation;
+}
+
 }  // namespace
+
+ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const std::size_t dimension) {
+  return ComputeComplexContourEtaZeroIndicialEquation(
+      matrix_evaluator,
+      dimension,
+      ComplexContourNumber{0, ComplexContourFloat("-1e-40")},
+      ComplexContourFloat("1e-28"));
+}
+
+ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const std::size_t dimension,
+    const ComplexContourNumber residue_probe_eta,
+    const ComplexContourFloat residue_tolerance) {
+  if (dimension == 0) {
+    return IndicialFailure(
+        "empty-indicial-dimension",
+        "b61n eta=0 indicial equation requires at least one eta-matrix row",
+        dimension,
+        residue_probe_eta,
+        residue_tolerance);
+  }
+  if (!matrix_evaluator) {
+    return IndicialFailure(
+        "missing-matrix-evaluator",
+        "b61n eta=0 indicial equation requires a matrix evaluator",
+        dimension,
+        residue_probe_eta,
+        residue_tolerance);
+  }
+  if (!IsFinite(residue_probe_eta) || ComplexAbs(residue_probe_eta) == 0) {
+    return IndicialFailure(
+        "invalid-residue-probe",
+        "b61n eta=0 indicial equation requires a finite nonzero residue probe eta",
+        dimension,
+        residue_probe_eta,
+        residue_tolerance);
+  }
+  if (!IsFiniteFloat(residue_tolerance) || residue_tolerance < 0) {
+    return IndicialFailure(
+        "invalid-residue-tolerance",
+        "b61n eta=0 indicial equation requires a finite nonnegative residue tolerance",
+        dimension,
+        residue_probe_eta,
+        residue_tolerance);
+  }
+
+  try {
+    ComplexContourIndicialEquation equation;
+    equation.success = true;
+    equation.dimension = dimension;
+    equation.residue_probe_eta = residue_probe_eta;
+    equation.residue_tolerance = residue_tolerance;
+    equation.residue_matrix =
+        SampleEtaTimesMatrix(matrix_evaluator, dimension, residue_probe_eta);
+    const ComplexContourNumber refined_probe_eta =
+        residue_probe_eta / ComplexContourFloat(2);
+    const ComplexContourMatrix refined_residue_matrix =
+        SampleEtaTimesMatrix(matrix_evaluator, dimension, refined_probe_eta);
+    const ComplexContourFloat residue_stability =
+        MaxMatrixDifference(equation.residue_matrix, refined_residue_matrix);
+    ComplexContourFloat residue_scale = 1;
+    residue_scale =
+        std::max(residue_scale, MaxMatrixEntryNorm(equation.residue_matrix));
+    residue_scale =
+        std::max(residue_scale, MaxMatrixEntryNorm(refined_residue_matrix));
+    const ComplexContourFloat scaled_residue_tolerance =
+        residue_tolerance * residue_scale;
+    const ComplexContourFloat effective_residue_tolerance =
+        std::max(residue_tolerance, scaled_residue_tolerance);
+    equation.sampled_residue_stability_abs =
+        CompactFloat(residue_stability, 40);
+    equation.sampled_residue_effective_tolerance_abs =
+        CompactFloat(effective_residue_tolerance, 40);
+    if (residue_stability > effective_residue_tolerance) {
+      ComplexContourIndicialEquation failure = IndicialFailure(
+          "non-fuchsian-residue-probe",
+          "b61n eta=0 indicial equation refused to treat the sampled eta*A(eta) "
+          "matrix as a simple-pole residue because the eta/2 probe changed it by " +
+              CompactFloat(residue_stability, 40) +
+              ", exceeding effective tolerance " +
+              CompactFloat(effective_residue_tolerance, 40) +
+              "; higher-order or non-Fuchsian endpoint behavior remains deferred",
+          dimension,
+          residue_probe_eta,
+          residue_tolerance);
+      failure.sampled_residue_stability_abs =
+          equation.sampled_residue_stability_abs;
+      failure.sampled_residue_effective_tolerance_abs =
+          equation.sampled_residue_effective_tolerance_abs;
+      return failure;
+    }
+
+    equation.characteristic_polynomial_coefficients_descending =
+        ComputeCharacteristicPolynomialCoefficients(equation.residue_matrix);
+    equation.triangular_form =
+        ClassifyTriangularResidue(equation.residue_matrix, residue_tolerance);
+    equation.indicial_roots_available =
+        HasTriangularIndicialRoots(equation.triangular_form);
+    if (equation.indicial_roots_available) {
+      equation.indicial_roots.reserve(dimension);
+      for (std::size_t index = 0; index < dimension; ++index) {
+        equation.indicial_roots.push_back(equation.residue_matrix[index][index]);
+      }
+    }
+
+    equation.summary =
+        "Computed b61n probed eta=0 indicial equation "
+        "det(rho*I - sampled_eta_times_A_eta)=0; "
+        "dimension=" +
+        std::to_string(equation.dimension) +
+        "; residue_probe_eta=" + CompactComplex(equation.residue_probe_eta, 40) +
+        "; residue_tolerance=" + CompactFloat(equation.residue_tolerance, 40) +
+        "; sampled_residue_stability_abs=" +
+        equation.sampled_residue_stability_abs +
+        "; sampled_residue_effective_tolerance_abs=" +
+        equation.sampled_residue_effective_tolerance_abs +
+        "; triangular_form=" + equation.triangular_form +
+        "; polynomial_degree=" + std::to_string(equation.dimension) +
+        "; coefficient_count=" +
+        std::to_string(
+            equation.characteristic_polynomial_coefficients_descending.size()) +
+        "; indicial_roots_available=" +
+        (equation.indicial_roots_available ? std::string("true")
+                                           : std::string("false"));
+    if (equation.indicial_roots_available) {
+      equation.summary += "; indicial_roots=" +
+                          CompactComplexVector(equation.indicial_roots);
+    }
+    return equation;
+  } catch (const std::exception& error) {
+    const std::string error_message = error.what();
+    if (error_message.find("matrix-dimension-mismatch") != std::string::npos) {
+      return IndicialFailure(
+          "matrix-dimension-mismatch",
+          "b61n eta=0 indicial equation requires the sampled eta matrix to be square "
+          "and dimension-matched",
+          dimension,
+          residue_probe_eta,
+          residue_tolerance);
+    }
+    if (error_message.find("nonfinite-residue-entry") != std::string::npos) {
+      return IndicialFailure(
+          "nonfinite-residue-entry",
+          "b61n eta=0 indicial equation found a nonfinite sampled eta*A(eta) entry",
+          dimension,
+          residue_probe_eta,
+          residue_tolerance);
+    }
+    return IndicialFailure(
+        "indicial-equation-failed",
+        std::string("b61n eta=0 indicial equation failed closed: ") + error_message,
+        dimension,
+        residue_probe_eta,
+        residue_tolerance);
+  }
+}
 
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,

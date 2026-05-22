@@ -49437,6 +49437,14 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row RK45 test should report the last rejected "
                  "closer-start candidate");
   ExpectContains(stripped_json,
+                 "closer_start_failures=[eta=",
+                 "b61n coupled-row runtime should publish the full closer-start "
+                 "failure ledger");
+  ExpectContains(stripped_json,
+                 " | eta=",
+                 "b61n coupled-row runtime should preserve intermediate closer-start "
+                 "failures in the ledger");
+  ExpectContains(stripped_json,
                  "eta-infinity initializer could not solve a finite infinity recurrence "
                  "system",
                  "b61n coupled-row RK45 test should keep the closer-start recurrence "

@@ -5878,6 +5878,7 @@ struct B61nCoupledRowContourTransportAudit {
   std::size_t closer_start_candidate_count = 0;
   bool closer_start_certified = false;
   std::vector<std::string> transported_master_labels;
+  std::vector<std::string> closer_start_failures;
   std::string closer_start_first_failure;
   std::string closer_start_last_failure;
   std::string matrix_fingerprint;
@@ -6070,6 +6071,9 @@ ApplyB61nCoupledRowContourTransport(
           "; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
           "; contour_fingerprint=" + audit.contour_fingerprint +
+          "; closer_start_failures=[" +
+          JoinTextList(audit.closer_start_failures, " | ") +
+          "]" +
           "; requested_transport_order=[" +
           JoinTextList(audit.transported_master_labels, " -> ") +
           "].";
@@ -6097,6 +6101,9 @@ ApplyB61nCoupledRowContourTransport(
           (audit.closer_start_last_failure.empty()
                ? std::string("none")
                : audit.closer_start_last_failure) +
+          "; closer_start_failures=[" +
+          JoinTextList(audit.closer_start_failures, " | ") +
+          "]" +
           "; endpoint_refinement_integrator=" +
           audit.endpoint_refinement_integrator +
           "; initial_error_bound_abs=" +
@@ -6157,6 +6164,7 @@ ApplyB61nCoupledRowContourTransport(
         const std::string failure =
             "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
             " returned no certified finite-start data";
+        audit.closer_start_failures.push_back(failure);
         if (audit.closer_start_first_failure.empty()) {
           audit.closer_start_first_failure = failure;
         }
@@ -6165,6 +6173,7 @@ ApplyB61nCoupledRowContourTransport(
         const std::string failure =
             "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
             " failed: " + error.what();
+        audit.closer_start_failures.push_back(failure);
         if (audit.closer_start_first_failure.empty()) {
           audit.closer_start_first_failure = failure;
         }
@@ -6361,6 +6370,9 @@ ApplyB61nCoupledRowContourTransport(
         std::to_string(audit.closer_start_candidate_count) +
         "; closer_start_certified=" +
         std::string(audit.closer_start_certified ? "true" : "false") +
+        "; closer_start_failures=[" +
+        JoinTextList(audit.closer_start_failures, " | ") +
+        "]" +
         "; initial_error_bound_abs=" +
         BigFloatCompactString(audit.initial_error_bound_abs, 24) +
         "; endpoint_refinement_integrator=" +

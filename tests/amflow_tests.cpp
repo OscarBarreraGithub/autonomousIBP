@@ -52940,6 +52940,38 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
   ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
                  "b61n publication qualifier should bind reviewed endpoint variants to compare "
                  "evidence");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_publication_gate_required\": true",
+                 "b61n publication qualifier should require AMFlow comparator agreement before "
+                 "coefficient publication");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_publication_gate_blocks_current\": true",
+                 "b61n publication qualifier should block current publication without a passing "
+                 "AMFlow comparator");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 2",
+                 "b61n publication qualifier should record the current systematic comparator "
+                 "mismatch");
+  ExpectContains(result.stdout_json,
+                 "\"publication_gate_accepts_future_comparator\": true",
+                 "b61n publication qualifier should allow future publication only after the "
+                 "AMFlow comparator passes");
+  ExpectContains(result.stdout_json,
+                 "\"publication_gate_rejects_digit_mismatch\": true",
+                 "b61n publication qualifier should reject coefficient publication when AMFlow "
+                 "agreement stays below the digit floor");
+  ExpectContains(result.stdout_json,
+                 "\"publication_gate_rejects_low_digit_false_pass\": true",
+                 "b61n publication qualifier should reject false passing summaries below the "
+                 "digit floor");
+  ExpectContains(result.stdout_json,
+                 "\"publication_gate_rejects_truncated_comparator\": true",
+                 "b61n publication qualifier should reject comparator summaries without all "
+                 "reviewed endpoints");
+  ExpectContains(result.stdout_json,
+                 "\"publication_gate_rejects_bad_matched_count\": true",
+                 "b61n publication qualifier should reject inconsistent comparator matched "
+                 "counts");
   ExpectContains(result.stdout_json, "\"off_axis_contour_rejected\": true",
                  "b61n publication qualifier should reject off-axis publication contours");
   ExpectContains(result.stdout_json, "\"single_numeric_case_rejected\": true",
@@ -53014,6 +53046,19 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
                  "b61n publication qualifier should preserve retained Numeric source binding");
   ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
                  "b61n publication qualifier should preserve reviewed endpoint compare binding");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_publication_gate_required\": true",
+                 "b61n publication qualifier should preserve the publication comparator gate");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_publication_gate_passed\": false",
+                 "b61n publication qualifier should keep publication blocked before comparator "
+                 "agreement");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_blocked_publication_variant_count\": 5",
+                 "b61n publication qualifier should block all selected endpoint variants");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_minimum_digit_agreement_observed\": 2",
+                 "b61n publication qualifier should expose the current AMFlow mismatch");
   ExpectContains(result.stdout_json,
                  "\"m6_optional_capture_packet\": \"b61n-complex-eta-zero-single-row\"",
                  "b61n publication qualifier should publish the pre-positioned M6 packet id");

@@ -25,7 +25,18 @@
         "minimum_digit_agreement_from_compare30": 54
       },
       "transport_scope": "eta-zero-selected-endpoint-coefficients",
-      "coefficient_publication": true,
+      "coefficient_publication": false,
+      "amflow_cross_comparator_publication_gate": {
+        "required_before_coefficient_publication": true,
+        "comparison_kind": "cpp-vs-amflow",
+        "minimum_digit_agreement_required": 50,
+        "minimum_digit_agreement_observed": 2,
+        "comparison_summary": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+        "comparison_summary_sha256": "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3",
+        "diagnostic_evidence": "tools/reference-harness/specs/m6/lane176/b61n-owner-pivot-closer-start-rk78-diagnostic.md",
+        "status": "blocked-by-amflow-cross-comparator: no current b61n contour result reaches the 50-digit C++ vs AMFlow floor",
+        "currently_allows_publication": false
+      },
       "endpoint_extraction_applied": true,
       "full_eta_zero_contour_applied": false,
       "final_solution_samples_used_as_input": false,
@@ -116,7 +127,18 @@
         "minimum_digit_agreement_from_compare30": 59
       },
       "transport_scope": "eta-zero-selected-endpoint-coefficients",
-      "coefficient_publication": true,
+      "coefficient_publication": false,
+      "amflow_cross_comparator_publication_gate": {
+        "required_before_coefficient_publication": true,
+        "comparison_kind": "cpp-vs-amflow",
+        "minimum_digit_agreement_required": 50,
+        "minimum_digit_agreement_observed": 2,
+        "comparison_summary": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+        "comparison_summary_sha256": "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3",
+        "diagnostic_evidence": "tools/reference-harness/specs/m6/lane176/b61n-owner-pivot-closer-start-rk78-diagnostic.md",
+        "status": "blocked-by-amflow-cross-comparator: no current b61n contour result reaches the 50-digit C++ vs AMFlow floor",
+        "currently_allows_publication": false
+      },
       "endpoint_extraction_applied": true,
       "full_eta_zero_contour_applied": false,
       "final_solution_samples_used_as_input": false,
@@ -207,7 +229,18 @@
         "minimum_digit_agreement_from_compare30": 59
       },
       "transport_scope": "eta-zero-selected-endpoint-coefficients",
-      "coefficient_publication": true,
+      "coefficient_publication": false,
+      "amflow_cross_comparator_publication_gate": {
+        "required_before_coefficient_publication": true,
+        "comparison_kind": "cpp-vs-amflow",
+        "minimum_digit_agreement_required": 50,
+        "minimum_digit_agreement_observed": 2,
+        "comparison_summary": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+        "comparison_summary_sha256": "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3",
+        "diagnostic_evidence": "tools/reference-harness/specs/m6/lane176/b61n-owner-pivot-closer-start-rk78-diagnostic.md",
+        "status": "blocked-by-amflow-cross-comparator: no current b61n contour result reaches the 50-digit C++ vs AMFlow floor",
+        "currently_allows_publication": false
+      },
       "endpoint_extraction_applied": true,
       "full_eta_zero_contour_applied": false,
       "final_solution_samples_used_as_input": false,
@@ -298,7 +331,18 @@
         "minimum_digit_agreement_from_compare30": 59
       },
       "transport_scope": "eta-zero-selected-endpoint-coefficients",
-      "coefficient_publication": true,
+      "coefficient_publication": false,
+      "amflow_cross_comparator_publication_gate": {
+        "required_before_coefficient_publication": true,
+        "comparison_kind": "cpp-vs-amflow",
+        "minimum_digit_agreement_required": 50,
+        "minimum_digit_agreement_observed": 2,
+        "comparison_summary": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+        "comparison_summary_sha256": "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3",
+        "diagnostic_evidence": "tools/reference-harness/specs/m6/lane176/b61n-owner-pivot-closer-start-rk78-diagnostic.md",
+        "status": "blocked-by-amflow-cross-comparator: no current b61n contour result reaches the 50-digit C++ vs AMFlow floor",
+        "currently_allows_publication": false
+      },
       "endpoint_extraction_applied": true,
       "full_eta_zero_contour_applied": false,
       "final_solution_samples_used_as_input": false,
@@ -389,7 +433,18 @@
         "minimum_digit_agreement_from_compare30": 59
       },
       "transport_scope": "eta-zero-selected-endpoint-coefficients",
-      "coefficient_publication": true,
+      "coefficient_publication": false,
+      "amflow_cross_comparator_publication_gate": {
+        "required_before_coefficient_publication": true,
+        "comparison_kind": "cpp-vs-amflow",
+        "minimum_digit_agreement_required": 50,
+        "minimum_digit_agreement_observed": 2,
+        "comparison_summary": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+        "comparison_summary_sha256": "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3",
+        "diagnostic_evidence": "tools/reference-harness/specs/m6/lane176/b61n-owner-pivot-closer-start-rk78-diagnostic.md",
+        "status": "blocked-by-amflow-cross-comparator: no current b61n contour result reaches the 50-digit C++ vs AMFlow floor",
+        "currently_allows_publication": false
+      },
       "endpoint_extraction_applied": true,
       "full_eta_zero_contour_applied": false,
       "final_solution_samples_used_as_input": false,
@@ -480,7 +535,7 @@
     "full_eta_zero_contour_applied_observed": false,
     "accepted_runtime_result": "",
     "digit_agreement_summary": "",
-    "promotion_summary": "Pre-positioned only: audit_b61n_publication_qualifier.py now computes promotion from an accepted runtime result that reports full_eta_zero_contour_applied=true plus a digit-agreement summary meeting the 50-digit floor for every reviewed selected5 endpoint. M6 still requires separate packet comparison, correct-digit, and failure-code summaries before closure.",
+    "promotion_summary": "Pre-positioned only: audit_b61n_publication_qualifier.py now computes promotion from an accepted runtime result that reports full_eta_zero_contour_applied=true plus an AMFlow cross-comparator digit-agreement summary meeting the 50-digit floor for every reviewed selected5 endpoint. Coefficient publication remains blocked until the same cpp-vs-amflow publication gate passes. M6 still requires separate packet comparison, correct-digit, and failure-code summaries before closure.",
     "currently_promoted": false
   },
   "m7_parity_signoff_hook": {

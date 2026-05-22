@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import tempfile
@@ -69,6 +70,17 @@ REQUIRED_SOURCE_BINDING: dict[str, str] = {
     "source_contour_fingerprint": REVIEWED_SOURCE_CONTOUR_FINGERPRINT,
 }
 MINIMUM_PROMOTION_DIGITS = 50
+SYSTEMATIC_MISMATCH_DIAGNOSTIC = (
+    "tools/reference-harness/specs/m6/lane176/"
+    "b61n-owner-pivot-closer-start-rk78-diagnostic.md"
+)
+B61N_PUBLICATION_BLOCKED_COMPARATOR = (
+    "tools/reference-harness/specs/m6/lane5-next7/"
+    "b61n-publication-amflow-cross-comparator.blocked.json"
+)
+B61N_PUBLICATION_BLOCKED_COMPARATOR_SHA256 = (
+    "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3"
+)
 WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not claim Milestone M6 closure.",
     "This summary does not claim Milestone M7 closure.",
@@ -197,6 +209,14 @@ def normalize_optional_path_text(raw: Any, label: str) -> str:
     if raw in (None, ""):
         return ""
     return normalized_string(raw, label)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def find_nested_bool(raw: Any, key: str) -> bool | None:
@@ -478,9 +498,16 @@ def validate_variant(
         == "eta-zero-selected-endpoint-coefficients",
         f"{label} must stay scoped to selected endpoint coefficients",
     )
-    expect(
-        normalize_bool(variant.get("coefficient_publication"), f"{label} coefficient_publication"),
-        f"{label} must publish the selected endpoint coefficient",
+    coefficient_publication = normalize_bool(
+        variant.get("coefficient_publication"),
+        f"{label} coefficient_publication",
+    )
+    publication_gate = validate_amflow_cross_comparator_publication_gate(
+        variant.get("amflow_cross_comparator_publication_gate"),
+        sidecar_path=source_evidence["sidecar_path"],
+        label=label,
+        coefficient_publication=coefficient_publication,
+        required_endpoint_integrals=list(REVIEWED_ENDPOINT_INTEGRALS),
     )
     expect(
         normalize_bool(
@@ -560,7 +587,7 @@ def validate_variant(
             str(case["contour_fingerprint"]).startswith("publication-smoke:"),
             f"{label} non-retained Numeric cases must be marked as publication smoke",
         )
-    return endpoint_integral, numeric_fingerprints
+    return endpoint_integral, numeric_fingerprints, publication_gate
 
 
 def validate_promotion_digit_summary(
@@ -607,6 +634,350 @@ def validate_promotion_digit_summary(
         "M6 promotion digit summary does not meet the required digit floor",
     )
     return minimum_digit_agreement
+
+
+def validate_amflow_cross_comparator_publication_gate(
+    gate: Any,
+    *,
+    sidecar_path: Path,
+    label: str,
+    coefficient_publication: bool,
+    required_endpoint_integrals: list[str],
+) -> dict[str, Any]:
+    if not isinstance(gate, dict):
+        raise TypeError(f"{label} amflow_cross_comparator_publication_gate must be an object")
+    expect(
+        normalize_bool(
+            gate.get("required_before_coefficient_publication"),
+            f"{label} AMFlow comparator publication gate requirement",
+        ),
+        f"{label} must require AMFlow cross-comparator evidence before publication",
+    )
+    comparison_kind = normalized_string(
+        gate.get("comparison_kind"),
+        f"{label} AMFlow comparator publication gate comparison_kind",
+    )
+    expect(
+        comparison_kind == "cpp-vs-amflow",
+        f"{label} publication gate must use the cpp-vs-amflow comparator",
+    )
+    required_digits = normalize_int(
+        gate.get("minimum_digit_agreement_required", MINIMUM_PROMOTION_DIGITS),
+        f"{label} AMFlow comparator publication gate minimum_digit_agreement_required",
+    )
+    expect(
+        required_digits >= MINIMUM_PROMOTION_DIGITS,
+        f"{label} publication gate must preserve the 50-digit floor",
+    )
+    status = normalized_string(
+        gate.get("status"),
+        f"{label} AMFlow comparator publication gate status",
+    )
+    currently_allows_publication = normalize_bool(
+        gate.get("currently_allows_publication"),
+        f"{label} AMFlow comparator publication gate currently_allows_publication",
+    )
+    comparison_summary = normalize_optional_path_text(
+        gate.get("comparison_summary"),
+        f"{label} AMFlow comparator publication gate comparison_summary",
+    )
+    comparison_summary_sha256 = normalize_optional_path_text(
+        gate.get("comparison_summary_sha256"),
+        f"{label} AMFlow comparator publication gate comparison_summary_sha256",
+    )
+    diagnostic_evidence = normalize_optional_path_text(
+        gate.get("diagnostic_evidence"),
+        f"{label} AMFlow comparator publication gate diagnostic_evidence",
+    )
+    if diagnostic_evidence:
+        expect(
+            resolve_sidecar_path(diagnostic_evidence, sidecar_path).exists(),
+            f"{label} AMFlow comparator publication gate diagnostic evidence is missing",
+        )
+
+    observed_digits_raw = gate.get("minimum_digit_agreement_observed")
+    observed_digits = (
+        None
+        if observed_digits_raw in (None, "")
+        else normalize_int(
+            observed_digits_raw,
+            f"{label} AMFlow comparator publication gate minimum_digit_agreement_observed",
+        )
+    )
+    gate_passed = False
+    if comparison_summary:
+        comparison_path = resolve_sidecar_path(comparison_summary, sidecar_path)
+        expect(
+            comparison_path.exists(),
+            f"{label} AMFlow comparator publication gate summary path is missing",
+        )
+        expect(
+            comparison_summary_sha256,
+            f"{label} AMFlow comparator publication gate summary sha256 is required",
+        )
+        expect(
+            sha256_file(comparison_path) == comparison_summary_sha256,
+            f"{label} AMFlow comparator publication gate summary sha256 drifted",
+        )
+        comparison = load_json(comparison_path)
+        expect(
+            comparison.get("schema_version") == 1,
+            f"{label} AMFlow comparator publication gate summary schema_version drifted",
+        )
+        expect(
+            comparison.get("comparison") == "cpp-vs-amflow",
+            f"{label} AMFlow comparator publication gate summary kind drifted",
+        )
+        expect(
+            comparison.get("benchmark_id") == "complex_kinematics",
+            f"{label} AMFlow comparator publication gate benchmark drifted",
+        )
+        cpp_result_path_text = normalized_string(
+            comparison.get("cpp_result"),
+            f"{label} AMFlow comparator publication gate cpp_result",
+        )
+        amflow_golden_path_text = normalized_string(
+            comparison.get("amflow_golden"),
+            f"{label} AMFlow comparator publication gate amflow_golden",
+        )
+        expect(
+            amflow_golden_path_text
+            == "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+            f"{label} AMFlow comparator publication gate golden manifest drifted",
+        )
+        tolerance_digits = normalize_int(
+            comparison.get("tolerance_digits"),
+            f"{label} AMFlow comparator publication gate summary tolerance_digits",
+        )
+        summary_minimum = normalize_int(
+            comparison.get("minimum_digit_agreement"),
+            f"{label} AMFlow comparator publication gate summary minimum_digit_agreement",
+        )
+        expect(
+            tolerance_digits >= required_digits,
+            f"{label} AMFlow comparator publication gate summary tolerance is below floor",
+        )
+        failures = comparison.get("failures")
+        if not isinstance(failures, list):
+            raise TypeError(
+                f"{label} AMFlow comparator publication gate summary failures must be a list"
+            )
+        no_failures = failures == []
+        compared_count = comparison.get("compared_coefficient_count")
+        expect(
+            isinstance(compared_count, int)
+            and not isinstance(compared_count, bool)
+            and compared_count > 0,
+            f"{label} AMFlow comparator publication gate needs compared coefficients",
+        )
+        passed_count = comparison.get("passed_coefficient_count")
+        expect(
+            isinstance(passed_count, int)
+            and not isinstance(passed_count, bool)
+            and 0 <= passed_count <= compared_count,
+            f"{label} AMFlow comparator publication gate needs passed coefficient counts",
+        )
+        raw_integrals = comparison.get("integrals")
+        if not isinstance(raw_integrals, list):
+            raise TypeError(
+                f"{label} AMFlow comparator publication gate summary integrals must be a list"
+            )
+        coefficient_count = 0
+        passed_coefficient_count = 0
+        compared_integrals = 0
+        min_from_rows: int | None = None
+        integrals_by_id: dict[str, dict[str, Any]] = {}
+        for raw_integral in raw_integrals:
+            if not isinstance(raw_integral, dict):
+                raise TypeError(
+                    f"{label} AMFlow comparator publication gate integral rows must be objects"
+                )
+            integral_id = normalized_string(
+                raw_integral.get("integral"),
+                f"{label} AMFlow comparator publication gate integral id",
+            )
+            expect(
+                integral_id not in integrals_by_id,
+                f"{label} AMFlow comparator publication gate duplicates {integral_id}",
+            )
+            integrals_by_id[integral_id] = raw_integral
+            if raw_integral.get("status") != "compared":
+                continue
+            compared_integrals += 1
+            coefficients = raw_integral.get("coefficients")
+            if not isinstance(coefficients, list):
+                raise TypeError(
+                    f"{label} AMFlow comparator publication gate coefficients must be a list"
+                )
+            expect(
+                coefficients,
+                f"{label} AMFlow comparator publication gate compared integral has no coefficients",
+            )
+            for coefficient in coefficients:
+                if not isinstance(coefficient, dict):
+                    raise TypeError(
+                        f"{label} AMFlow comparator publication gate coefficients must be objects"
+                    )
+                for value_key in ("cpp_real", "cpp_imag", "amflow_real", "amflow_imag"):
+                    normalized_string(
+                        coefficient.get(value_key),
+                        f"{label} AMFlow comparator publication gate {value_key}",
+                    )
+                real_digits = normalize_int(
+                    coefficient.get("real_agreement_digits"),
+                    f"{label} AMFlow comparator publication gate real agreement digits",
+                )
+                imag_digits = normalize_int(
+                    coefficient.get("imag_agreement_digits"),
+                    f"{label} AMFlow comparator publication gate imag agreement digits",
+                )
+                min_from_rows = (
+                    min(real_digits, imag_digits)
+                    if min_from_rows is None
+                    else min(min_from_rows, real_digits, imag_digits)
+                )
+                coefficient_count += 1
+                if coefficient.get("passed") is True:
+                    passed_coefficient_count += 1
+        expect(
+            coefficient_count == compared_count,
+            f"{label} AMFlow comparator publication gate compared count is inconsistent",
+        )
+        expect(
+            passed_coefficient_count == passed_count,
+            f"{label} AMFlow comparator publication gate passed count is inconsistent",
+        )
+        matched_count = comparison.get("matched_integral_count")
+        expect(
+            isinstance(matched_count, int)
+            and not isinstance(matched_count, bool)
+            and matched_count == compared_integrals,
+            f"{label} AMFlow comparator publication gate matched count is inconsistent",
+        )
+        expect(
+            min_from_rows == summary_minimum,
+            f"{label} AMFlow comparator publication gate scalar minimum does not match rows",
+        )
+        for endpoint in required_endpoint_integrals:
+            record = integrals_by_id.get(endpoint)
+            expect(
+                record is not None,
+                f"{label} AMFlow comparator publication gate missing reviewed endpoint {endpoint}",
+            )
+            expect(
+                record.get("status") == "compared",
+                f"{label} AMFlow comparator publication gate endpoint {endpoint} is not compared",
+            )
+            coefficients = record.get("coefficients")
+            if not isinstance(coefficients, list):
+                raise TypeError(
+                    f"{label} AMFlow comparator publication gate endpoint coefficients must be a list"
+                )
+            expect(
+                coefficients,
+                f"{label} AMFlow comparator publication gate endpoint {endpoint} has no coefficients",
+            )
+            for coefficient in coefficients:
+                if not isinstance(coefficient, dict):
+                    raise TypeError(
+                        f"{label} AMFlow comparator publication gate endpoint coefficients must be objects"
+                    )
+                for value_key in ("cpp_real", "cpp_imag", "amflow_real", "amflow_imag"):
+                    normalized_string(
+                        coefficient.get(value_key),
+                        f"{label} AMFlow comparator publication gate endpoint {value_key}",
+                    )
+                expect(
+                    coefficient.get("amflow_present") is True
+                    and coefficient.get("cpp_present") is True,
+                    f"{label} AMFlow comparator publication gate endpoint {endpoint} lacks C++/AMFlow values",
+                )
+                expect(
+                    coefficient.get("passed") is True,
+                    f"{label} AMFlow comparator publication gate endpoint {endpoint} coefficient failed",
+                )
+                real_digits = normalize_int(
+                    coefficient.get("real_agreement_digits"),
+                    f"{label} AMFlow comparator publication gate endpoint real digits",
+                )
+                imag_digits = normalize_int(
+                    coefficient.get("imag_agreement_digits"),
+                    f"{label} AMFlow comparator publication gate endpoint imag digits",
+                )
+                expect(
+                    real_digits >= required_digits and imag_digits >= required_digits,
+                    f"{label} AMFlow comparator publication gate endpoint {endpoint} is below digit floor",
+                )
+        if observed_digits is not None:
+            expect(
+                observed_digits == summary_minimum,
+                f"{label} AMFlow comparator publication gate observed digits drifted",
+            )
+        observed_digits = summary_minimum
+        gate_passed = (
+            comparison.get("passed") is True
+            and no_failures
+            and passed_count == compared_count
+            and summary_minimum >= required_digits
+        )
+        if gate_passed:
+            cpp_result_path = resolve_sidecar_path(cpp_result_path_text, sidecar_path)
+            amflow_golden_path = resolve_sidecar_path(amflow_golden_path_text, sidecar_path)
+            cpp_result_sha256 = normalize_optional_path_text(
+                gate.get("cpp_result_sha256"),
+                f"{label} AMFlow comparator publication gate cpp_result_sha256",
+            )
+            amflow_golden_sha256 = normalize_optional_path_text(
+                gate.get("amflow_golden_sha256"),
+                f"{label} AMFlow comparator publication gate amflow_golden_sha256",
+            )
+            expect(
+                cpp_result_path.exists(),
+                f"{label} AMFlow comparator publication gate cpp_result path is missing",
+            )
+            expect(
+                amflow_golden_path.exists(),
+                f"{label} AMFlow comparator publication gate amflow golden path is missing",
+            )
+            expect(
+                cpp_result_sha256,
+                f"{label} AMFlow comparator publication gate cpp_result sha256 is required",
+            )
+            expect(
+                amflow_golden_sha256,
+                f"{label} AMFlow comparator publication gate amflow golden sha256 is required",
+            )
+            expect(
+                sha256_file(cpp_result_path) == cpp_result_sha256,
+                f"{label} AMFlow comparator publication gate cpp_result sha256 drifted",
+            )
+            expect(
+                sha256_file(amflow_golden_path) == amflow_golden_sha256,
+                f"{label} AMFlow comparator publication gate amflow golden sha256 drifted",
+            )
+    expect(
+        currently_allows_publication == gate_passed,
+        f"{label} AMFlow comparator publication gate allowance does not match evidence",
+    )
+    if gate_passed:
+        expect(status == "passed", f"{label} passing publication gate must use status=passed")
+    else:
+        expect(
+            status.startswith("blocked-"),
+            f"{label} blocked publication gate must publish a blocked status",
+        )
+    expect(
+        not coefficient_publication or gate_passed,
+        f"{label} cannot publish before AMFlow cross-comparator digit agreement passes",
+    )
+    return {
+        "allows_publication": gate_passed,
+        "comparison_summary": comparison_summary,
+        "diagnostic_evidence": diagnostic_evidence,
+        "minimum_digit_agreement_observed": observed_digits,
+        "minimum_digit_agreement_required": required_digits,
+        "status": status,
+    }
 
 
 def validate_m6_hook(
@@ -932,6 +1303,7 @@ def validate_source_evidence(sidecar: dict[str, Any], sidecar_path: Path) -> dic
     )
     return {
         **source_contour,
+        "sidecar_path": sidecar_path,
         "retained_numeric_substitutions": normalize_numeric_substitutions(
             source_numeric_text,
             "b61n source Numeric",
@@ -965,13 +1337,19 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
     endpoint_integrals: list[str] = []
     variant_ids: list[str] = []
     numeric_fingerprints: set[str] = set()
+    publication_gates: list[dict[str, Any]] = []
     for index, variant in enumerate(raw_variants):
         if not isinstance(variant, dict):
             raise TypeError("publication_variants entries must be objects")
         variant_ids.append(normalized_string(variant.get("id"), f"publication_variants[{index}] id"))
-        endpoint_integral, variant_numeric = validate_variant(variant, index, source_evidence)
+        endpoint_integral, variant_numeric, publication_gate = validate_variant(
+            variant,
+            index,
+            source_evidence,
+        )
         endpoint_integrals.append(endpoint_integral)
         numeric_fingerprints.update(variant_numeric)
+        publication_gates.append(publication_gate)
     expect(len(set(variant_ids)) == len(variant_ids), "publication variant ids must be unique")
     expect(
         len(set(endpoint_integrals)) == len(endpoint_integrals),
@@ -999,6 +1377,11 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         sidecar.get("m7_parity_signoff_hook"),
         reviewed_endpoint_integrals=endpoint_integrals,
     )
+    observed_gate_digits = [
+        gate["minimum_digit_agreement_observed"]
+        for gate in publication_gates
+        if gate["minimum_digit_agreement_observed"] is not None
+    ]
     withheld_claims = normalize_string_list(sidecar.get("withheld_claims"), "withheld_claims")
     for claim in WITHHELD_CLAIMS:
         expect(claim in withheld_claims, f"withheld_claims missing {claim!r}")
@@ -1021,6 +1404,19 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "reviewed_endpoint_compare_evidence_matched": source_evidence[
             "reviewed_endpoint_compare_evidence_matched"
         ],
+        "amflow_cross_comparator_publication_gate_required": True,
+        "amflow_cross_comparator_publication_gate_passed": all(
+            gate["allows_publication"] for gate in publication_gates
+        ),
+        "amflow_cross_comparator_blocked_publication_variant_count": sum(
+            1 for gate in publication_gates if not gate["allows_publication"]
+        ),
+        "amflow_cross_comparator_minimum_digit_agreement_required": min(
+            gate["minimum_digit_agreement_required"] for gate in publication_gates
+        ),
+        "amflow_cross_comparator_minimum_digit_agreement_observed": (
+            min(observed_gate_digits) if observed_gate_digits else None
+        ),
         "source_contour_fingerprint": source_evidence["contour_fingerprint"],
         "source_minimum_pole_distance_to_contour": str(
             source_evidence["minimum_pole_distance_to_contour"]
@@ -1098,6 +1494,22 @@ def synthetic_sidecar() -> dict[str, Any]:
             "minimum_digit_agreement_from_compare30": endpoint_digits[endpoint_integral],
         }
 
+    def blocked_publication_gate() -> dict[str, Any]:
+        return {
+            "required_before_coefficient_publication": True,
+            "comparison_kind": "cpp-vs-amflow",
+            "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+            "minimum_digit_agreement_observed": 2,
+            "comparison_summary": B61N_PUBLICATION_BLOCKED_COMPARATOR,
+            "comparison_summary_sha256": B61N_PUBLICATION_BLOCKED_COMPARATOR_SHA256,
+            "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+            "status": (
+                "blocked-by-amflow-cross-comparator: no current b61n contour "
+                "result reaches the 50-digit C++ vs AMFlow floor"
+            ),
+            "currently_allows_publication": False,
+        }
+
     def variant(variant_id: str) -> dict[str, Any]:
         spec = REVIEWED_VARIANT_SPECS[variant_id]
         endpoint_integral = spec["endpoint_integral_id"]
@@ -1108,7 +1520,8 @@ def synthetic_sidecar() -> dict[str, Any]:
             "endpoint_local_model_kind": spec["endpoint_local_model_kind"],
             "source_evidence_binding": source_binding(endpoint_integral),
             "transport_scope": "eta-zero-selected-endpoint-coefficients",
-            "coefficient_publication": True,
+            "coefficient_publication": False,
+            "amflow_cross_comparator_publication_gate": blocked_publication_gate(),
             "endpoint_extraction_applied": True,
             "full_eta_zero_contour_applied": False,
             "final_solution_samples_used_as_input": False,
@@ -1307,6 +1720,356 @@ def run_self_check() -> dict[str, Any]:
                 "accepted runtime continuation" in str(error)
             )
 
+        publication_cpp_result_path = root / "publication-cpp-result.json"
+        write_json(
+            publication_cpp_result_path,
+            {
+                "schema_version": 1,
+                "status": "success",
+                "summary": "synthetic comparator provenance fixture",
+            },
+        )
+        publication_cpp_result_sha256 = sha256_file(publication_cpp_result_path)
+        publication_amflow_golden = (
+            "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json"
+        )
+        publication_amflow_golden_sha256 = sha256_file(repo_root() / publication_amflow_golden)
+
+        publication_gate_accepts_future_comparator = False
+        try:
+            future = synthetic_sidecar()
+            write_json(
+                root / "publication-compare50.json",
+                {
+                    "schema_version": 1,
+                    "comparison": "cpp-vs-amflow",
+                    "benchmark_id": "complex_kinematics",
+                    "cpp_result": "publication-cpp-result.json",
+                    "amflow_golden": publication_amflow_golden,
+                    "passed": True,
+                    "tolerance_digits": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement": 54,
+                    "matched_integral_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "compared_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "passed_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "integrals": [
+                        {
+                            "integral": endpoint,
+                            "status": "compared",
+                            "coefficients": [
+                                {
+                                    "order": 0,
+                                    "real_agreement_digits": 54,
+                                    "imag_agreement_digits": 54,
+                                    "passed": True,
+                                    "cpp_present": True,
+                                    "amflow_present": True,
+                                    "cpp_real": "1",
+                                    "cpp_imag": "0",
+                                    "amflow_real": "1",
+                                    "amflow_imag": "0",
+                                }
+                            ],
+                        }
+                        for endpoint in REVIEWED_ENDPOINT_INTEGRALS
+                    ],
+                    "failures": [],
+                },
+            )
+            for future_variant in future["publication_variants"]:
+                future_variant["coefficient_publication"] = True
+                future_variant["amflow_cross_comparator_publication_gate"] = {
+                    "required_before_coefficient_publication": True,
+                    "comparison_kind": "cpp-vs-amflow",
+                    "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement_observed": 54,
+                    "comparison_summary": "publication-compare50.json",
+                    "comparison_summary_sha256": sha256_file(
+                        root / "publication-compare50.json"
+                    ),
+                    "cpp_result_sha256": publication_cpp_result_sha256,
+                    "amflow_golden_sha256": publication_amflow_golden_sha256,
+                    "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                    "status": "passed",
+                    "currently_allows_publication": True,
+                }
+            future_path = root / "future-publication.json"
+            write_json(future_path, future)
+            future_summary = audit_sidecar(future_path)
+            publication_gate_accepts_future_comparator = (
+                future_summary["amflow_cross_comparator_publication_gate_passed"] is True
+                and future_summary[
+                    "amflow_cross_comparator_minimum_digit_agreement_observed"
+                ]
+                == 54
+            )
+        except RuntimeError:
+            publication_gate_accepts_future_comparator = False
+
+        publication_gate_rejects_digit_mismatch = False
+        try:
+            bad = synthetic_sidecar()
+            write_json(
+                root / "publication-mismatch-compare50.json",
+                {
+                    "schema_version": 1,
+                    "comparison": "cpp-vs-amflow",
+                    "benchmark_id": "complex_kinematics",
+                    "cpp_result": "publication-cpp-result.json",
+                    "amflow_golden": publication_amflow_golden,
+                    "passed": False,
+                    "tolerance_digits": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement": 2,
+                    "matched_integral_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "compared_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "passed_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS) - 1,
+                    "integrals": [
+                        {
+                            "integral": endpoint,
+                            "status": "compared",
+                            "coefficients": [
+                                {
+                                    "order": 0,
+                                    "real_agreement_digits": (
+                                        2 if index == 0 else 54
+                                    ),
+                                    "imag_agreement_digits": (
+                                        2 if index == 0 else 54
+                                    ),
+                                    "passed": index != 0,
+                                    "cpp_present": True,
+                                    "amflow_present": True,
+                                    "cpp_real": "1",
+                                    "cpp_imag": "0",
+                                    "amflow_real": "1",
+                                    "amflow_imag": "0",
+                                }
+                            ],
+                        }
+                        for index, endpoint in enumerate(REVIEWED_ENDPOINT_INTEGRALS)
+                    ],
+                    "failures": [{"integral": "box[1,0,1,1]", "reason": "2 digits"}],
+                },
+            )
+            bad["publication_variants"][0]["coefficient_publication"] = True
+            bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"] = {
+                "required_before_coefficient_publication": True,
+                "comparison_kind": "cpp-vs-amflow",
+                "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                "minimum_digit_agreement_observed": 2,
+                "comparison_summary": "publication-mismatch-compare50.json",
+                "comparison_summary_sha256": sha256_file(
+                    root / "publication-mismatch-compare50.json"
+                ),
+                "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                "status": "blocked-by-amflow-cross-comparator: only 2 digits",
+                "currently_allows_publication": False,
+            }
+            bad_path = root / "publication-mismatch.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_digit_mismatch = (
+                "cannot publish before" in str(error)
+                or "coefficient failed" in str(error)
+                or "below digit floor" in str(error)
+            )
+
+        publication_gate_rejects_low_digit_false_pass = False
+        try:
+            bad = synthetic_sidecar()
+            write_json(
+                root / "publication-low-digit-false-pass.json",
+                {
+                    "schema_version": 1,
+                    "comparison": "cpp-vs-amflow",
+                    "benchmark_id": "complex_kinematics",
+                    "cpp_result": "publication-cpp-result.json",
+                    "amflow_golden": publication_amflow_golden,
+                    "passed": True,
+                    "tolerance_digits": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement": 2,
+                    "matched_integral_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "compared_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "passed_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "integrals": [
+                        {
+                            "integral": endpoint,
+                            "status": "compared",
+                            "coefficients": [
+                                {
+                                    "order": 0,
+                                    "real_agreement_digits": (
+                                        2 if index == 0 else 54
+                                    ),
+                                    "imag_agreement_digits": (
+                                        2 if index == 0 else 54
+                                    ),
+                                    "passed": True,
+                                    "cpp_present": True,
+                                    "amflow_present": True,
+                                    "cpp_real": "1",
+                                    "cpp_imag": "0",
+                                    "amflow_real": "1",
+                                    "amflow_imag": "0",
+                                }
+                            ],
+                        }
+                        for index, endpoint in enumerate(REVIEWED_ENDPOINT_INTEGRALS)
+                    ],
+                    "failures": [],
+                },
+            )
+            bad["publication_variants"][0]["coefficient_publication"] = True
+            bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"] = {
+                "required_before_coefficient_publication": True,
+                "comparison_kind": "cpp-vs-amflow",
+                "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                "minimum_digit_agreement_observed": 2,
+                "comparison_summary": "publication-low-digit-false-pass.json",
+                "comparison_summary_sha256": sha256_file(
+                    root / "publication-low-digit-false-pass.json"
+                ),
+                "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                "status": "passed",
+                "currently_allows_publication": True,
+            }
+            bad_path = root / "publication-low-digit-false-pass-sidecar.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_low_digit_false_pass = (
+                "below digit floor" in str(error)
+                or "allowance does not match evidence" in str(error)
+            )
+
+        publication_gate_rejects_truncated_comparator = False
+        try:
+            bad = synthetic_sidecar()
+            write_json(
+                root / "publication-truncated-compare50.json",
+                {
+                    "schema_version": 1,
+                    "comparison": "cpp-vs-amflow",
+                    "benchmark_id": "complex_kinematics",
+                    "cpp_result": "publication-cpp-result.json",
+                    "amflow_golden": publication_amflow_golden,
+                    "passed": True,
+                    "tolerance_digits": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement": 54,
+                    "matched_integral_count": 1,
+                    "compared_coefficient_count": 1,
+                    "passed_coefficient_count": 1,
+                    "integrals": [
+                        {
+                            "integral": REVIEWED_ENDPOINT_INTEGRALS[0],
+                            "status": "compared",
+                            "coefficients": [
+                                {
+                                    "order": 0,
+                                    "real_agreement_digits": 54,
+                                    "imag_agreement_digits": 54,
+                                    "passed": True,
+                                    "cpp_present": True,
+                                    "amflow_present": True,
+                                    "cpp_real": "1",
+                                    "cpp_imag": "0",
+                                    "amflow_real": "1",
+                                    "amflow_imag": "0",
+                                }
+                            ],
+                        }
+                    ],
+                    "failures": [],
+                },
+            )
+            bad["publication_variants"][0]["coefficient_publication"] = True
+            bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"] = {
+                "required_before_coefficient_publication": True,
+                "comparison_kind": "cpp-vs-amflow",
+                "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                "minimum_digit_agreement_observed": 54,
+                "comparison_summary": "publication-truncated-compare50.json",
+                "comparison_summary_sha256": sha256_file(
+                    root / "publication-truncated-compare50.json"
+                ),
+                "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                "status": "passed",
+                "currently_allows_publication": True,
+            }
+            bad_path = root / "publication-truncated-sidecar.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_truncated_comparator = (
+                "missing reviewed endpoint" in str(error)
+            )
+
+        publication_gate_rejects_bad_matched_count = False
+        try:
+            bad = synthetic_sidecar()
+            write_json(
+                root / "publication-bad-matched-count.json",
+                {
+                    "schema_version": 1,
+                    "comparison": "cpp-vs-amflow",
+                    "benchmark_id": "complex_kinematics",
+                    "cpp_result": "publication-cpp-result.json",
+                    "amflow_golden": publication_amflow_golden,
+                    "passed": True,
+                    "tolerance_digits": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement": 54,
+                    "matched_integral_count": 999,
+                    "compared_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "passed_coefficient_count": len(REVIEWED_ENDPOINT_INTEGRALS),
+                    "integrals": [
+                        {
+                            "integral": endpoint,
+                            "status": "compared",
+                            "coefficients": [
+                                {
+                                    "order": 0,
+                                    "real_agreement_digits": 54,
+                                    "imag_agreement_digits": 54,
+                                    "passed": True,
+                                    "cpp_present": True,
+                                    "amflow_present": True,
+                                    "cpp_real": "1",
+                                    "cpp_imag": "0",
+                                    "amflow_real": "1",
+                                    "amflow_imag": "0",
+                                }
+                            ],
+                        }
+                        for endpoint in REVIEWED_ENDPOINT_INTEGRALS
+                    ],
+                    "failures": [],
+                },
+            )
+            bad["publication_variants"][0]["coefficient_publication"] = True
+            bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"] = {
+                "required_before_coefficient_publication": True,
+                "comparison_kind": "cpp-vs-amflow",
+                "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                "minimum_digit_agreement_observed": 54,
+                "comparison_summary": "publication-bad-matched-count.json",
+                "comparison_summary_sha256": sha256_file(
+                    root / "publication-bad-matched-count.json"
+                ),
+                "cpp_result_sha256": publication_cpp_result_sha256,
+                "amflow_golden_sha256": publication_amflow_golden_sha256,
+                "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                "status": "passed",
+                "currently_allows_publication": True,
+            }
+            bad_path = root / "publication-bad-matched-count-sidecar.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_bad_matched_count = (
+                "matched count is inconsistent" in str(error)
+            )
+
         m6_promoted_sidecar_rejected = False
         try:
             promoted = synthetic_sidecar()
@@ -1392,6 +2155,28 @@ def run_self_check() -> dict[str, Any]:
         "reviewed_endpoint_compare_evidence_matched": summary[
             "reviewed_endpoint_compare_evidence_matched"
         ],
+        "amflow_cross_comparator_publication_gate_required": summary[
+            "amflow_cross_comparator_publication_gate_required"
+        ],
+        "amflow_cross_comparator_publication_gate_blocks_current": (
+            summary["amflow_cross_comparator_publication_gate_passed"] is False
+            and summary["amflow_cross_comparator_blocked_publication_variant_count"]
+            == summary["variant_count"]
+        ),
+        "amflow_cross_comparator_minimum_digit_agreement_observed": summary[
+            "amflow_cross_comparator_minimum_digit_agreement_observed"
+        ],
+        "publication_gate_accepts_future_comparator": publication_gate_accepts_future_comparator,
+        "publication_gate_rejects_digit_mismatch": publication_gate_rejects_digit_mismatch,
+        "publication_gate_rejects_low_digit_false_pass": (
+            publication_gate_rejects_low_digit_false_pass
+        ),
+        "publication_gate_rejects_truncated_comparator": (
+            publication_gate_rejects_truncated_comparator
+        ),
+        "publication_gate_rejects_bad_matched_count": (
+            publication_gate_rejects_bad_matched_count
+        ),
         "m6_qualifier_hook_prepositioned": summary["m6_qualifier_hook_prepositioned"],
         "m6_auto_promote_accepts_future_packet": m6_auto_promote_accepts_future_packet,
         "m6_scalar_digit_summary_rejected": m6_scalar_digit_summary_rejected,

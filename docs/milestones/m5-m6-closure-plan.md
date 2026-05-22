@@ -231,7 +231,8 @@ M6 overall status remains open: `blocked-on-phase0-runtime-lanes`.
 3. Reuse the passing case-study-family qualification unless its labels need a
    synchronized refresh.
 4. Rerun `qualify_milestone_m6.py` and treat M6 as closeable only if that
-   composer reports no blockers.
+   composer reports no blockers. Use `docs/milestones/m6-closure-runbook.md`
+   for the fail-closed evidence chain and stop conditions.
 5. Refresh M7 qualification-corpus and parity-signoff sidecars only after M6 is
    truthfully closed.
 

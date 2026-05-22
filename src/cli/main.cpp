@@ -5305,6 +5305,26 @@ bool IsB64agFullEndpointPacketTransportState(
              static_cast<int>(spec.gauge_link_diffeq_masters.size());
 }
 
+std::optional<int> B64agReviewedGoldenLeadingEpsilonOrder(
+    const std::string& target_label) {
+  static const std::map<std::string, int> leading_orders = {
+      {"gauge[0,1,1,1,1,-1,0,0,0]", 0},
+      {"gauge[0,1,1,1,1,0,0,0,0]", 0},
+      {"gauge[1,1,1,-1,1,0,0,0,0]", -1},
+      {"gauge[1,1,1,0,1,0,0,0,0]", -1},
+      {"gauge[1,1,1,1,1,-1,0,0,0]", -2},
+      {"gauge[1,1,1,1,1,0,-1,0,0]", -2},
+      {"gauge[1,1,1,1,1,0,0,-1,0]", -2},
+      {"gauge[1,1,1,1,1,0,0,0,-1]", -2},
+      {"gauge[1,1,1,1,1,0,0,0,0]", -2},
+  };
+  const auto it = leading_orders.find(target_label);
+  if (it == leading_orders.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
 bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
                                const std::vector<std::string>& expected_labels) {
   if (spec.masters.size() != expected_labels.size()) {
@@ -9589,6 +9609,25 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
           "b64ag full endpoint packet could not fit post-endpoint finite-part "
           "samples as Laurent coefficients: " +
               std::string(error.what()));
+    }
+    const std::size_t target_index = diagnostics.target_epsilon_coefficients.size();
+    const std::string target_label =
+        target_index < direct_spec.targets.size()
+            ? direct_spec.targets[target_index].Label()
+            : std::string{"<unknown-target>"};
+    const std::optional<int> reviewed_leading_order =
+        B64agReviewedGoldenLeadingEpsilonOrder(target_label);
+    if (!coefficients.empty() && reviewed_leading_order.has_value() &&
+        coefficients.front().order < *reviewed_leading_order) {
+      return fail_after_transport(
+          "continuation_budget_exhausted",
+          "b64ag full endpoint packet fitted epsilon pole order eps^" +
+              std::to_string(coefficients.front().order) + " for " +
+              target_label + ", below the reviewed AMFlow golden leading order eps^" +
+              std::to_string(*reviewed_leading_order) +
+              "; external golden recapture cannot be promoted, so "
+              "retained_solution_samples_used=false and "
+              "full_eta_zero_contour_applied remains false");
     }
     diagnostics.target_values.push_back(ConstantRealValue(coefficients));
     diagnostics.target_epsilon_coefficients.push_back(std::move(coefficients));

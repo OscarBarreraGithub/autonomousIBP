@@ -5650,6 +5650,134 @@ ApplyB61nFirstScalarContourEndpointTransport(
   return audit;
 }
 
+struct B61nCoupledRowReadinessAudit {
+  std::size_t coupled_row_count = 0;
+  std::size_t inhomogeneous_source_edge_count = 0;
+  bool lower_triangular_dependency_order = false;
+  bool controlled_eta_infinity_initial_data_certified = false;
+  std::string transport_order_summary;
+  std::string dependency_summary;
+  std::string summary;
+};
+
+std::string JoinTextList(const std::vector<std::string>& values,
+                         const std::string& delimiter) {
+  std::string joined;
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index > 0) {
+      joined += delimiter;
+    }
+    joined += values[index];
+  }
+  return joined;
+}
+
+B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
+    const DirectSolveSeriesSpec& spec,
+    const EtaInfinityInitialDataAudit& initial_data_audit) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    throw std::runtime_error(
+        "b61n coupled-row readiness audit was invoked for a non-b61n state");
+  }
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("b61n coupled-row readiness audit requires an eta matrix");
+  }
+
+  const std::vector<std::string> coupled_row_labels = {
+      "box[1,0,1,1]",
+      "box[1,1,1,1]",
+  };
+  std::vector<std::size_t> coupled_row_indices;
+  coupled_row_indices.reserve(coupled_row_labels.size());
+  for (const std::string& label : coupled_row_labels) {
+    const std::optional<std::size_t> index = FindMasterIndexByLabel(spec, label);
+    if (!index.has_value()) {
+      throw std::runtime_error(
+          "b61n coupled-row readiness audit missing retained master " + label);
+    }
+    coupled_row_indices.push_back(*index);
+  }
+
+  std::map<std::string, BigComplex> bindings =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  bindings["eta"] = BigComplex{};
+  bindings["eps"] =
+      RealBigComplex(ParseBigFloatRational(spec.boundary_epsilon_samples.front()));
+
+  B61nCoupledRowReadinessAudit audit;
+  audit.coupled_row_count = coupled_row_indices.size();
+  audit.transport_order_summary = JoinTextList(coupled_row_labels, " -> ");
+  audit.controlled_eta_infinity_initial_data_certified =
+      initial_data_audit.retained_master_count == spec.masters.size() &&
+      initial_data_audit.validated_master_count == spec.masters.size() &&
+      !initial_data_audit.initial_data_fingerprint.empty();
+
+  std::vector<std::string> row_summaries;
+  bool lower_triangular = true;
+  for (std::size_t coupled_index = 0; coupled_index < coupled_row_indices.size();
+       ++coupled_index) {
+    const std::size_t row_index = coupled_row_indices[coupled_index];
+    if (row_index >= matrix_it->second.size() ||
+        matrix_it->second[row_index].size() != spec.masters.size()) {
+      throw std::runtime_error(
+          "b61n coupled-row readiness audit encountered malformed eta row");
+    }
+
+    std::vector<std::string> sources;
+    bool has_diagonal = false;
+    for (std::size_t column_index = 0; column_index < spec.masters.size();
+         ++column_index) {
+      const ComplexEtaRationalPolynomial rational =
+          ParseComplexRationalEtaExpression(matrix_it->second[row_index][column_index],
+                                            bindings);
+      if (ComplexEtaPolynomialDegree(rational.numerator) < 0) {
+        continue;
+      }
+      if (column_index == row_index) {
+        has_diagonal = true;
+        continue;
+      }
+      if (column_index > row_index) {
+        lower_triangular = false;
+      }
+      sources.push_back(MasterIntegralLabel(spec.masters[column_index]));
+    }
+
+    if (!has_diagonal || sources.empty()) {
+      throw std::runtime_error(
+          "b61n coupled-row readiness audit requires diagonal and inhomogeneous terms for " +
+          coupled_row_labels[coupled_index]);
+    }
+    audit.inhomogeneous_source_edge_count += sources.size();
+    row_summaries.push_back(coupled_row_labels[coupled_index] + "<-[" +
+                            JoinTextList(sources, ", ") + "]");
+  }
+
+  audit.lower_triangular_dependency_order = lower_triangular;
+  audit.dependency_summary = JoinTextList(row_summaries, "; ");
+  audit.summary =
+      " b61n coupled-row transport readiness audit found " +
+      std::to_string(audit.coupled_row_count) +
+      " deferred inhomogeneous coupled row(s) after lane171 eta-infinity "
+      "finite-start certification; controlled_initial_data_certified=" +
+      std::string(audit.controlled_eta_infinity_initial_data_certified ? "true" : "false") +
+      "; controlled_initial_data_fingerprint=" +
+      (initial_data_audit.initial_data_fingerprint.empty()
+           ? std::string("none")
+           : initial_data_audit.initial_data_fingerprint) +
+      "; transport_order=[" + audit.transport_order_summary +
+      "]; coupled_row_dependencies={" + audit.dependency_summary +
+      "}; inhomogeneous_source_edge_count=" +
+      std::to_string(audit.inhomogeneous_source_edge_count) +
+      "; lower_triangular_dependency_order=" +
+      std::string(audit.lower_triangular_dependency_order ? "true" : "false") +
+      "; ode_propagation_applied=false; coefficient_publication=false; "
+      "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
+      "stays false.";
+  return audit;
+}
+
 std::optional<std::size_t> FindEpsilonCoefficientOrder(
     const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>& coefficients,
     const int order) {
@@ -9228,6 +9356,13 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         "one-mass bubbles use reviewed Feynman-parameter log-moment constants "
         "guarded to the retained Numeric substitutions without reading final "
         "solution samples.";
+  }
+  if (complex_contour_scaffold_audit.has_value() &&
+      !eta_infinity_initial_data_audit.summary.empty()) {
+    const B61nCoupledRowReadinessAudit coupled_row_audit =
+        BuildB61nCoupledRowReadinessAudit(direct_spec,
+                                          eta_infinity_initial_data_audit);
+    diagnostics.summary += coupled_row_audit.summary;
   }
   diagnostics.summary +=
       " Full singular eta->0 complex contour execution and non-selected endpoint extraction "

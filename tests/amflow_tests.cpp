@@ -49303,6 +49303,35 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "Applied b61n primitive bubble endpoint coefficient transport through eps^2 "
                  "to 4 additional master",
                  "b61n primitive bubble transport should document the selected extension");
+  ExpectContains(stripped_json,
+                 "b61n coupled-row transport readiness audit found 2 deferred "
+                 "inhomogeneous coupled row",
+                 "b61n coupled-row audit should identify the two nonprimitive rows");
+  ExpectContains(stripped_json,
+                 "controlled_initial_data_certified=true",
+                 "b61n coupled-row audit should require the lane171 eta-infinity initial data");
+  ExpectContains(stripped_json,
+                 "transport_order=[box[1,0,1,1] -> box[1,1,1,1]]",
+                 "b61n coupled-row audit should publish the lower-triangular transport order");
+  ExpectContains(stripped_json,
+                 "box[1,0,1,1]<-[box[0,0,0,1], box[1,0,1,0], "
+                 "box[1,0,0,1], box[0,0,1,1]]",
+                 "b61n coupled-row audit should list the triangle source dependencies");
+  ExpectContains(stripped_json,
+                 "box[1,1,1,1]<-[box[0,0,0,1], box[1,0,1,0], "
+                 "box[1,0,0,1], box[0,0,1,1], box[1,0,1,1]]",
+                 "b61n coupled-row audit should list the box source dependencies");
+  ExpectContains(stripped_json,
+                 "inhomogeneous_source_edge_count=9",
+                 "b61n coupled-row audit should count the retained coupled-row sources");
+  ExpectContains(stripped_json,
+                 "lower_triangular_dependency_order=true",
+                 "b61n coupled-row audit should verify row 6 can depend on row 5 only after "
+                 "row 5 transport");
+  ExpectContains(stripped_json,
+                 "ode_propagation_applied=false; coefficient_publication=false; "
+                 "final_solution_samples_used_as_input=false",
+                 "b61n coupled-row audit must remain non-publishing before live ODE propagation");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =

@@ -31,6 +31,9 @@ struct ComplexContourPropagationOptions {
   std::string endpoint_integral_id;
   std::string endpoint_local_model_kind = "regular-taylor-r0-pending-laurent-fit";
   std::string branch_policy = "NegIm lower-half-plane contour supplied by caller";
+  std::size_t max_adaptive_steps_per_segment = 65536;
+  ComplexContourFloat pole_step_safety_factor = ComplexContourFloat("0.25");
+  std::vector<ComplexContourNumber> contour_poles;
 };
 
 struct ComplexContourPropagationDiagnostics {
@@ -64,6 +67,11 @@ struct ComplexContourPropagationDiagnostics {
   std::string refinement_effective_tolerance_abs;
   std::string failure_code;
   std::string summary;
+  std::size_t adaptive_step_count = 0;
+  std::size_t adaptive_rejected_step_count = 0;
+  std::size_t pole_pinch_step_count = 0;
+  std::string integrator;
+  std::string max_embedded_error_abs;
 };
 
 struct ComplexContourPropagationResult {

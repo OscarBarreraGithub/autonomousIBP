@@ -6,6 +6,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 #include "amflow/runtime/artifact_store.hpp"
 
@@ -54,19 +55,6 @@ std::string CompactComplex(const ComplexContourNumber& value,
   return out.str();
 }
 
-ComplexContourVector AddScaled(const ComplexContourVector& base,
-                               const ComplexContourVector& direction,
-                               const ComplexContourFloat& scale) {
-  if (base.size() != direction.size()) {
-    throw std::runtime_error("complex contour propagator vector size mismatch");
-  }
-  ComplexContourVector result(base.size());
-  for (std::size_t index = 0; index < base.size(); ++index) {
-    result[index] = base[index] + direction[index] * scale;
-  }
-  return result;
-}
-
 ComplexContourVector MatrixVectorProduct(const ComplexContourMatrix& matrix,
                                          const ComplexContourVector& vector) {
   if (matrix.size() != vector.size()) {
@@ -97,13 +85,258 @@ ComplexContourVector EvaluateContourDerivative(
   return derivative;
 }
 
-ComplexContourVector PropagateSegmentWithRk4(
+ComplexContourFloat MaxVectorDifference(const ComplexContourVector& lhs,
+                                        const ComplexContourVector& rhs);
+
+ComplexContourFloat MaxVectorNorm(const ComplexContourVector& values);
+
+ComplexContourFloat EffectiveRefinementTolerance(
+    const ComplexContourPropagationOptions& options,
+    const ComplexContourFloat& endpoint_vector_norm);
+
+struct AdaptiveRk45Stats {
+  std::size_t accepted_steps = 0;
+  std::size_t rejected_steps = 0;
+  std::size_t pole_pinched_steps = 0;
+  ComplexContourFloat max_embedded_error_abs = 0;
+};
+
+struct AdaptiveRk45Result {
+  ComplexContourVector values;
+  AdaptiveRk45Stats stats;
+};
+
+struct Rk45StepEstimate {
+  ComplexContourVector fifth_order;
+  ComplexContourFloat embedded_error_abs = 0;
+};
+
+ComplexContourVector AddScaledSum(
+    const ComplexContourVector& base,
+    const std::vector<const ComplexContourVector*>& directions,
+    const std::vector<ComplexContourFloat>& coefficients,
+    const ComplexContourFloat& step_size) {
+  if (directions.size() != coefficients.size()) {
+    throw std::runtime_error("complex contour propagator coefficient size mismatch");
+  }
+  ComplexContourVector result = base;
+  for (std::size_t direction_index = 0; direction_index < directions.size();
+       ++direction_index) {
+    const ComplexContourVector& direction = *directions[direction_index];
+    if (direction.size() != base.size()) {
+      throw std::runtime_error("complex contour propagator vector size mismatch");
+    }
+    const ComplexContourFloat scale = coefficients[direction_index] * step_size;
+    for (std::size_t index = 0; index < result.size(); ++index) {
+      result[index] += direction[index] * scale;
+    }
+  }
+  return result;
+}
+
+Rk45StepEstimate DormandPrinceRk45Step(
+    const ComplexContourVector& state,
+    const ComplexContourNumber& eta_start,
+    const ComplexContourNumber& segment,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourFloat& t,
+    const ComplexContourFloat& h) {
+  const ComplexContourFloat c2 = ComplexContourFloat(1) / ComplexContourFloat(5);
+  const ComplexContourFloat c3 =
+      ComplexContourFloat(3) / ComplexContourFloat(10);
+  const ComplexContourFloat c4 =
+      ComplexContourFloat(4) / ComplexContourFloat(5);
+  const ComplexContourFloat c5 =
+      ComplexContourFloat(8) / ComplexContourFloat(9);
+
+  const ComplexContourVector k1 = EvaluateContourDerivative(
+      matrix_evaluator, eta_start + segment * t, state, segment);
+  const ComplexContourFloat t2 = t + h * c2;
+  const ComplexContourVector k2 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t2,
+                                AddScaledSum(state,
+                                             {&k1},
+                                             {ComplexContourFloat(1) /
+                                              ComplexContourFloat(5)},
+                                             h),
+                                segment);
+  const ComplexContourFloat t3 = t + h * c3;
+  const ComplexContourVector k3 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t3,
+                                AddScaledSum(state,
+                                             {&k1, &k2},
+                                             {ComplexContourFloat(3) /
+                                                  ComplexContourFloat(40),
+                                              ComplexContourFloat(9) /
+                                                  ComplexContourFloat(40)},
+                                             h),
+                                segment);
+  const ComplexContourFloat t4 = t + h * c4;
+  const ComplexContourVector k4 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t4,
+                                AddScaledSum(state,
+                                             {&k1, &k2, &k3},
+                                             {ComplexContourFloat(44) /
+                                                  ComplexContourFloat(45),
+                                              -ComplexContourFloat(56) /
+                                                  ComplexContourFloat(15),
+                                              ComplexContourFloat(32) /
+                                                  ComplexContourFloat(9)},
+                                             h),
+                                segment);
+  const ComplexContourFloat t5 = t + h * c5;
+  const ComplexContourVector k5 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t5,
+                                AddScaledSum(state,
+                                             {&k1, &k2, &k3, &k4},
+                                             {ComplexContourFloat(19372) /
+                                                  ComplexContourFloat(6561),
+                                              -ComplexContourFloat(25360) /
+                                                  ComplexContourFloat(2187),
+                                              ComplexContourFloat(64448) /
+                                                  ComplexContourFloat(6561),
+                                              -ComplexContourFloat(212) /
+                                                  ComplexContourFloat(729)},
+                                             h),
+                                segment);
+  const ComplexContourFloat t6 = t + h;
+  const ComplexContourVector k6 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t6,
+                                AddScaledSum(state,
+                                             {&k1, &k2, &k3, &k4, &k5},
+                                             {ComplexContourFloat(9017) /
+                                                  ComplexContourFloat(3168),
+                                              -ComplexContourFloat(355) /
+                                                  ComplexContourFloat(33),
+                                              ComplexContourFloat(46732) /
+                                                  ComplexContourFloat(5247),
+                                              ComplexContourFloat(49) /
+                                                  ComplexContourFloat(176),
+                                              -ComplexContourFloat(5103) /
+                                                  ComplexContourFloat(18656)},
+                                             h),
+                                segment);
+  ComplexContourVector fifth_order =
+      AddScaledSum(state,
+                   {&k1, &k3, &k4, &k5, &k6},
+                   {ComplexContourFloat(35) / ComplexContourFloat(384),
+                    ComplexContourFloat(500) / ComplexContourFloat(1113),
+                    ComplexContourFloat(125) / ComplexContourFloat(192),
+                    -ComplexContourFloat(2187) / ComplexContourFloat(6784),
+                    ComplexContourFloat(11) / ComplexContourFloat(84)},
+                   h);
+  const ComplexContourVector k7 = EvaluateContourDerivative(
+      matrix_evaluator, eta_start + segment * t6, fifth_order, segment);
+  const ComplexContourVector fourth_order =
+      AddScaledSum(state,
+                   {&k1, &k3, &k4, &k5, &k6, &k7},
+                   {ComplexContourFloat(5179) / ComplexContourFloat(57600),
+                    ComplexContourFloat(7571) / ComplexContourFloat(16695),
+                    ComplexContourFloat(393) / ComplexContourFloat(640),
+                    -ComplexContourFloat(92097) / ComplexContourFloat(339200),
+                    ComplexContourFloat(187) / ComplexContourFloat(2100),
+                    ComplexContourFloat(1) / ComplexContourFloat(40)},
+                   h);
+
+  Rk45StepEstimate estimate;
+  estimate.embedded_error_abs =
+      MaxVectorDifference(fifth_order, fourth_order);
+  estimate.fifth_order = std::move(fifth_order);
+  return estimate;
+}
+
+ComplexContourFloat AdaptiveStepTolerance(
+    const ComplexContourPropagationOptions& options,
+    const ComplexContourVector& state) {
+  const ComplexContourFloat state_norm =
+      std::max(ComplexContourFloat(1), MaxVectorNorm(state));
+  return EffectiveRefinementTolerance(options, state_norm) /
+         ComplexContourFloat(4);
+}
+
+ComplexContourFloat AdaptiveStepFactor(const ComplexContourFloat& error,
+                                       const ComplexContourFloat& tolerance,
+                                       const bool accepted_step) {
+  if (error <= 0 || tolerance <= 0) {
+    return accepted_step ? ComplexContourFloat(2) : ComplexContourFloat("0.5");
+  }
+  const ComplexContourFloat ratio = tolerance / error;
+  if (accepted_step) {
+    if (ratio >= ComplexContourFloat(1024)) {
+      return ComplexContourFloat(2);
+    }
+    if (ratio >= ComplexContourFloat(32)) {
+      return ComplexContourFloat("1.5");
+    }
+    if (ratio >= ComplexContourFloat(2)) {
+      return ComplexContourFloat("1.125");
+    }
+    return ComplexContourFloat(1);
+  }
+  if (ratio <= ComplexContourFloat("1e-8")) {
+    return ComplexContourFloat("0.1");
+  }
+  if (ratio <= ComplexContourFloat("1e-4")) {
+    return ComplexContourFloat("0.25");
+  }
+  return ComplexContourFloat("0.5");
+}
+
+ComplexContourFloat ApplyPoleStepLimit(
+    const ComplexContourFloat& t,
+    const ComplexContourFloat& requested_h,
+    const ComplexContourNumber& eta_start,
+    const ComplexContourNumber& eta_end,
+    const ComplexContourNumber& segment,
+    const ComplexContourPropagationOptions& options,
+    bool& pinched) {
+  pinched = false;
+  if (options.contour_poles.empty()) {
+    return requested_h;
+  }
+  const ComplexContourFloat segment_abs = ComplexAbs(segment);
+  if (segment_abs == 0) {
+    return requested_h;
+  }
+  const ComplexContourNumber eta = eta_start + segment * t;
+  ComplexContourFloat nearest_distance =
+      std::numeric_limits<ComplexContourFloat>::infinity();
+  const ComplexContourFloat scaled_endpoint_exclusion =
+      segment_abs * ComplexContourFloat("1e-60");
+  const ComplexContourFloat endpoint_exclusion =
+      std::max(ComplexContourFloat("1e-70"),
+               scaled_endpoint_exclusion);
+  for (const ComplexContourNumber& pole : options.contour_poles) {
+    if (ComplexAbs(pole - eta_end) <= endpoint_exclusion) {
+      continue;
+    }
+    nearest_distance = std::min(nearest_distance, ComplexAbs(eta - pole));
+  }
+  if (!IsFiniteFloat(nearest_distance)) {
+    return requested_h;
+  }
+  const ComplexContourFloat pinched_h =
+      options.pole_step_safety_factor * nearest_distance / segment_abs;
+  if (pinched_h > 0 && pinched_h < requested_h) {
+    pinched = true;
+    return pinched_h;
+  }
+  return requested_h;
+}
+
+AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
     const ComplexContourVector& initial_values,
     const ComplexContourNumber& eta_start,
     const ComplexContourNumber& eta_end,
     const ComplexContourMatrixEvaluator& matrix_evaluator,
-    const std::size_t steps) {
-  if (steps == 0) {
+    const ComplexContourPropagationOptions& options,
+    const std::size_t initial_steps) {
+  if (initial_steps == 0) {
     throw std::runtime_error("invalid-step-count");
   }
   const ComplexContourNumber segment = eta_end - eta_start;
@@ -111,60 +344,103 @@ ComplexContourVector PropagateSegmentWithRk4(
     throw std::runtime_error("zero-length-contour-segment");
   }
 
-  ComplexContourVector state = initial_values;
-  const ComplexContourFloat h = ComplexContourFloat(1) / ComplexContourFloat(steps);
-  const ComplexContourFloat h_over_two = h / ComplexContourFloat(2);
-  const ComplexContourFloat h_over_six = h / ComplexContourFloat(6);
-  const ComplexContourFloat two = 2;
-  for (std::size_t step = 0; step < steps; ++step) {
-    const ComplexContourFloat t0 = ComplexContourFloat(step) * h;
-    const ComplexContourFloat t_mid = t0 + h_over_two;
-    const ComplexContourFloat t1 = t0 + h;
-    const ComplexContourNumber eta0 = eta_start + segment * t0;
-    const ComplexContourNumber eta_mid = eta_start + segment * t_mid;
-    const ComplexContourNumber eta1 = eta_start + segment * t1;
+  AdaptiveRk45Result result;
+  result.values = initial_values;
+  ComplexContourFloat t = 0;
+  ComplexContourFloat h =
+      ComplexContourFloat(1) / ComplexContourFloat(initial_steps);
+  const ComplexContourFloat h_max = h;
+  const ComplexContourFloat h_min =
+      ComplexContourFloat(1) /
+      (ComplexContourFloat(options.max_adaptive_steps_per_segment) *
+       ComplexContourFloat(1024));
+  while (t < ComplexContourFloat(1)) {
+    if (result.stats.accepted_steps >=
+        options.max_adaptive_steps_per_segment) {
+      throw std::runtime_error("adaptive-step-limit-exceeded");
+    }
+    if (result.stats.rejected_steps >
+        options.max_adaptive_steps_per_segment * 4) {
+      throw std::runtime_error("adaptive-rejection-limit-exceeded");
+    }
 
-    const ComplexContourVector k1 =
-        EvaluateContourDerivative(matrix_evaluator, eta0, state, segment);
-    const ComplexContourVector k2 =
-        EvaluateContourDerivative(matrix_evaluator,
-                                  eta_mid,
-                                  AddScaled(state, k1, h_over_two),
-                                  segment);
-    const ComplexContourVector k3 =
-        EvaluateContourDerivative(matrix_evaluator,
-                                  eta_mid,
-                                  AddScaled(state, k2, h_over_two),
-                                  segment);
-    const ComplexContourVector k4 =
-        EvaluateContourDerivative(matrix_evaluator,
-                                  eta1,
-                                  AddScaled(state, k3, h),
-                                  segment);
+    const ComplexContourFloat remaining = ComplexContourFloat(1) - t;
+    ComplexContourFloat requested_h = std::min(h, remaining);
+    bool pole_pinched = false;
+    requested_h = ApplyPoleStepLimit(t,
+                                     requested_h,
+                                     eta_start,
+                                     eta_end,
+                                     segment,
+                                     options,
+                                     pole_pinched);
+    if (requested_h <= 0) {
+      throw std::runtime_error("adaptive-nonpositive-step");
+    }
+    if (pole_pinched && requested_h < h_min) {
+      throw std::runtime_error("pole-pinch-step-underflow");
+    }
+    requested_h = std::max(requested_h, h_min);
+    requested_h = std::min(requested_h, remaining);
 
-    for (std::size_t index = 0; index < state.size(); ++index) {
-      const ComplexContourNumber weighted =
-          k1[index] + k2[index] * two + k3[index] * two + k4[index];
-      state[index] += weighted * h_over_six;
+    const Rk45StepEstimate estimate = DormandPrinceRk45Step(
+        result.values, eta_start, segment, matrix_evaluator, t, requested_h);
+    const ComplexContourFloat tolerance =
+        AdaptiveStepTolerance(options, estimate.fifth_order);
+    result.stats.max_embedded_error_abs = std::max(
+        result.stats.max_embedded_error_abs, estimate.embedded_error_abs);
+    if (estimate.embedded_error_abs <= tolerance) {
+      result.values = estimate.fifth_order;
+      t += requested_h;
+      ++result.stats.accepted_steps;
+      if (pole_pinched) {
+        ++result.stats.pole_pinched_steps;
+      }
+      const ComplexContourFloat next_h =
+          requested_h * AdaptiveStepFactor(estimate.embedded_error_abs,
+                                           tolerance,
+                                           true);
+      h = std::min(h_max, next_h);
+    } else {
+      if (requested_h <= h_min) {
+        throw std::runtime_error("adaptive-step-underflow");
+      }
+      ++result.stats.rejected_steps;
+      const ComplexContourFloat next_h =
+          requested_h * AdaptiveStepFactor(estimate.embedded_error_abs,
+                                           tolerance,
+                                           false);
+      h = std::max(h_min, next_h);
     }
   }
-  return state;
+  return result;
 }
 
-ComplexContourVector PropagateWaypointsWithRk4(
+AdaptiveRk45Result PropagateWaypointsWithAdaptiveRk45(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourMatrixEvaluator& matrix_evaluator,
-    const std::size_t steps_per_segment) {
-  ComplexContourVector state = initial_values;
+    const ComplexContourPropagationOptions& options,
+    const std::size_t initial_steps_per_segment) {
+  AdaptiveRk45Result result;
+  result.values = initial_values;
   for (std::size_t index = 1; index < waypoints.size(); ++index) {
-    state = PropagateSegmentWithRk4(state,
-                                    waypoints[index - 1],
-                                    waypoints[index],
-                                    matrix_evaluator,
-                                    steps_per_segment);
+    AdaptiveRk45Result segment_result =
+        PropagateSegmentWithAdaptiveRk45(result.values,
+                                         waypoints[index - 1],
+                                         waypoints[index],
+                                         matrix_evaluator,
+                                         options,
+                                         initial_steps_per_segment);
+    result.values = std::move(segment_result.values);
+    result.stats.accepted_steps += segment_result.stats.accepted_steps;
+    result.stats.rejected_steps += segment_result.stats.rejected_steps;
+    result.stats.pole_pinched_steps += segment_result.stats.pole_pinched_steps;
+    result.stats.max_embedded_error_abs =
+        std::max(result.stats.max_embedded_error_abs,
+                 segment_result.stats.max_embedded_error_abs);
   }
-  return state;
+  return result;
 }
 
 ComplexContourFloat MaxVectorDifference(const ComplexContourVector& lhs,
@@ -211,6 +487,7 @@ std::string SerializePropagationForFingerprint(
   out << "branch_policy=" << options.branch_policy << "\n";
   out << "matrix_fingerprint=" << options.matrix_fingerprint << "\n";
   out << "endpoint_target=eta=0\n";
+  out << "integrator=dormand-prince-rk45-adaptive\n";
   if (!options.endpoint_integral_id.empty()) {
     out << "endpoint_integral_id=" << options.endpoint_integral_id << "\n";
   }
@@ -222,6 +499,10 @@ std::string SerializePropagationForFingerprint(
       << CompactFloat(options.refinement_relative_error_tolerance) << "\n";
   out << "steps_per_segment=" << options.steps_per_segment << "\n";
   out << "refined_steps_per_segment=" << refined_steps_per_segment << "\n";
+  out << "max_adaptive_steps_per_segment="
+      << options.max_adaptive_steps_per_segment << "\n";
+  out << "pole_step_safety_factor="
+      << CompactFloat(options.pole_step_safety_factor) << "\n";
   out << "retained_solution_samples_used=false\n";
   out << "coefficient_publication="
       << (coefficient_publication ? "true" : "false") << "\n";
@@ -230,6 +511,10 @@ std::string SerializePropagationForFingerprint(
   out << "full_eta_zero_contour_applied=false\n";
   for (std::size_t index = 0; index < waypoints.size(); ++index) {
     out << "waypoint[" << index << "]=" << CompactComplex(waypoints[index]) << "\n";
+  }
+  for (std::size_t index = 0; index < options.contour_poles.size(); ++index) {
+    out << "contour_pole[" << index
+        << "]=" << CompactComplex(options.contour_poles[index]) << "\n";
   }
   for (std::size_t index = 0; index < initial_values.size(); ++index) {
     out << "initial[" << index << "]=" << CompactComplex(initial_values[index]) << "\n";
@@ -256,6 +541,7 @@ ComplexContourPropagationResult FailureResult(
       "b61n-complex-contour-propagator-harness";
   result.diagnostics.transport_scope =
       "lower-half-plane-complex-ode-vector-propagation";
+  result.diagnostics.integrator = "dormand-prince-rk45-adaptive";
   result.diagnostics.branch_policy = options.branch_policy;
   result.diagnostics.endpoint_target = "eta=0";
   result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
@@ -362,6 +648,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                          waypoints,
                          options);
   }
+  if (options.max_adaptive_steps_per_segment == 0) {
+    return FailureResult(
+        "invalid-adaptive-step-limit",
+        "b61n complex contour propagator requires a positive adaptive RK45 step limit",
+        initial_values,
+        waypoints,
+        options);
+  }
   if (options.max_refinement_doublings < options.refinement_doublings) {
     return FailureResult(
         "invalid-refinement-budget",
@@ -391,6 +685,16 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         waypoints,
         options);
   }
+  if (!IsFiniteFloat(options.pole_step_safety_factor) ||
+      options.pole_step_safety_factor <= 0) {
+    return FailureResult(
+        "invalid-pole-step-safety-factor",
+        "b61n complex contour propagator requires a positive finite pole step safety "
+        "factor",
+        initial_values,
+        waypoints,
+        options);
+  }
   if (options.half_plane != EtaContourHalfPlane::Lower) {
     return FailureResult(
         "unsupported-contour-half-plane",
@@ -416,6 +720,16 @@ ComplexContourPropagationResult PropagateComplexContourVector(
           "non-lower-half-plane-waypoint",
           "b61n complex contour propagator requires every non-final waypoint to stay "
           "strictly below the real axis for the reviewed NegIm branch",
+          initial_values,
+          waypoints,
+          options);
+    }
+  }
+  for (const ComplexContourNumber& pole : options.contour_poles) {
+    if (!IsFinite(pole)) {
+      return FailureResult(
+          "nonfinite-contour-pole",
+          "b61n complex contour propagator requires finite contour pole coordinates",
           initial_values,
           waypoints,
           options);
@@ -451,16 +765,18 @@ ComplexContourPropagationResult PropagateComplexContourVector(
 
   try {
     RequireFiniteVector(initial_values, "initial");
-    ComplexContourVector previous =
-        PropagateWaypointsWithRk4(initial_values,
-                                  waypoints,
-                                  matrix_evaluator,
-                                  options.steps_per_segment);
-    RequireFiniteVector(previous, "coarse");
+    AdaptiveRk45Result coarse =
+        PropagateWaypointsWithAdaptiveRk45(initial_values,
+                                           waypoints,
+                                           matrix_evaluator,
+                                           options,
+                                           options.steps_per_segment);
+    RequireFiniteVector(coarse.values, "coarse");
 
     const std::size_t first_required_refinement =
         std::max<std::size_t>(1, options.refinement_doublings);
-    ComplexContourVector refined = previous;
+    AdaptiveRk45Result previous = coarse;
+    AdaptiveRk45Result refined = previous;
     ComplexContourFloat refinement_error =
         std::numeric_limits<ComplexContourFloat>::infinity();
     ComplexContourFloat endpoint_vector_norm = 0;
@@ -475,13 +791,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
       for (std::size_t level = 0; level < doubling; ++level) {
         refined_steps_per_segment *= 2;
       }
-      refined = PropagateWaypointsWithRk4(initial_values,
-                                          waypoints,
-                                          matrix_evaluator,
-                                          refined_steps_per_segment);
-      RequireFiniteVector(refined, "refined");
-      refinement_error = MaxVectorDifference(previous, refined);
-      endpoint_vector_norm = MaxVectorNorm(refined);
+      refined = PropagateWaypointsWithAdaptiveRk45(initial_values,
+                                                   waypoints,
+                                                   matrix_evaluator,
+                                                   options,
+                                                   refined_steps_per_segment);
+      RequireFiniteVector(refined.values, "refined");
+      refinement_error = MaxVectorDifference(previous.values, refined.values);
+      endpoint_vector_norm = MaxVectorNorm(refined.values);
       effective_refinement_tolerance =
           EffectiveRefinementTolerance(options, endpoint_vector_norm);
       previous = refined;
@@ -495,7 +812,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     if (!refinement_passed) {
       return FailureResult(
           "refinement-tolerance-failed",
-          "b61n complex contour propagation failed closed because RK4 refinement error " +
+          "b61n complex contour propagation failed closed because RK45 refinement error " +
               CompactFloat(refinement_error, 40) + " exceeded effective tolerance " +
               CompactFloat(effective_refinement_tolerance, 40) +
               " from abs_floor=" +
@@ -511,7 +828,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
 
     ComplexContourPropagationResult result;
     result.success = true;
-    result.endpoint_values = refined;
+    result.endpoint_values = refined.values;
     const bool endpoint_extraction_applied =
         AppliesReviewedB61nEndpointExtraction(result.endpoint_values,
                                              waypoints,
@@ -531,6 +848,11 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.diagnostics.refined_step_count =
         refined_steps_per_segment * result.diagnostics.segment_count;
     result.diagnostics.refinement_doublings_used = refinement_doublings_used;
+    result.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
+    result.diagnostics.adaptive_rejected_step_count =
+        refined.stats.rejected_steps;
+    result.diagnostics.pole_pinch_step_count =
+        refined.stats.pole_pinched_steps;
     result.diagnostics.working_precision_digits = options.working_precision_digits;
     result.diagnostics.half_plane = options.half_plane;
     result.diagnostics.eta_zero_endpoint_reached = true;
@@ -538,6 +860,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         "b61n-complex-contour-propagator-harness";
     result.diagnostics.transport_scope =
         "lower-half-plane-complex-ode-vector-propagation";
+    result.diagnostics.integrator = "dormand-prince-rk45-adaptive";
     result.diagnostics.branch_policy = options.branch_policy;
     result.diagnostics.endpoint_target = "eta=0";
     result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
@@ -552,6 +875,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         CompactFloat(options.refinement_relative_error_tolerance, 40);
     result.diagnostics.refinement_effective_tolerance_abs =
         CompactFloat(effective_refinement_tolerance, 40);
+    result.diagnostics.max_embedded_error_abs =
+        CompactFloat(refined.stats.max_embedded_error_abs, 40);
     result.diagnostics.contour_fingerprint = ComputeArtifactFingerprint(
         SerializePropagationForFingerprint(initial_values,
                                            waypoints,
@@ -581,10 +906,17 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                                         : std::string("false")) +
         "; "
         "matrix_fingerprint=" + result.diagnostics.matrix_fingerprint +
+        "; integrator=" + result.diagnostics.integrator +
         "; working_precision_digits=" +
         std::to_string(result.diagnostics.working_precision_digits) +
         "; refinement_doublings_used=" +
         std::to_string(result.diagnostics.refinement_doublings_used) +
+        "; adaptive_step_count=" +
+        std::to_string(result.diagnostics.adaptive_step_count) +
+        "; adaptive_rejected_step_count=" +
+        std::to_string(result.diagnostics.adaptive_rejected_step_count) +
+        "; pole_pinch_step_count=" +
+        std::to_string(result.diagnostics.pole_pinch_step_count) +
         "; refinement_error_tolerance_abs=" +
         result.diagnostics.refinement_error_tolerance_abs +
         "; refinement_error_tolerance_rel=" +
@@ -593,14 +925,29 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         result.diagnostics.endpoint_vector_norm_abs +
         "; refinement_effective_tolerance_abs=" +
         result.diagnostics.refinement_effective_tolerance_abs +
+        "; max_embedded_error_abs=" +
+        result.diagnostics.max_embedded_error_abs +
         "; "
         "refinement_error_abs=" + result.diagnostics.refinement_error_abs +
         "; contour_fingerprint=" + result.diagnostics.contour_fingerprint + ".";
     return result;
   } catch (const std::exception& error) {
+    const std::string error_message = error.what();
+    if (error_message.find("adaptive-step") != std::string::npos ||
+        error_message.find("adaptive-rejection") != std::string::npos ||
+        error_message.find("pole-pinch-step") != std::string::npos) {
+      return FailureResult(
+          "refinement-tolerance-failed",
+          "b61n complex contour propagation failed closed because adaptive RK45 "
+          "refinement could not satisfy the effective tolerance: " +
+              error_message,
+          initial_values,
+          waypoints,
+          options);
+    }
     return FailureResult("propagation-failed",
                          std::string("b61n complex contour propagation failed closed: ") +
-                             error.what(),
+                             error_message,
                          initial_values,
                          waypoints,
                          options);

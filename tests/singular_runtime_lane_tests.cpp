@@ -4744,9 +4744,9 @@ void B61nComplexContourPropagatorRejectsInvalidInputsTest() {
 void B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest() {
   const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
   const amflow::ComplexContourVector initial = {{1, 0}};
-  const auto evaluator = [](const B61nContourNumber& eta) {
+  const auto evaluator = [](const B61nContourNumber&) {
     return amflow::ComplexContourMatrix{
-        {eta * eta * eta * eta},
+        {B61nContourNumber{1, 0}},
     };
   };
   amflow::ComplexContourPropagationOptions options;
@@ -4809,6 +4809,123 @@ void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {
   ExpectContains(result.diagnostics.summary,
                  "refinement_effective_tolerance_abs=",
                  "b61n relative-budget summary should publish effective tolerance");
+}
+
+void B61nComplexContourPropagatorAdaptsRk45RelativeToleranceTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {eta * eta * eta * eta},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions loose_options;
+  loose_options.steps_per_segment = 1;
+  loose_options.refinement_doublings = 1;
+  loose_options.max_refinement_doublings = 1;
+  loose_options.max_adaptive_steps_per_segment = 4096;
+  loose_options.refinement_error_tolerance = B61nContourFloat("1e-90");
+  loose_options.refinement_relative_error_tolerance = B61nContourFloat("1e-2");
+  loose_options.matrix_fingerprint = "synthetic-b61n-rk45-relative-loose-v1";
+  loose_options.endpoint_local_model_kind =
+      "regular-taylor-r0-synthetic-b61n-rk45-relative";
+
+  amflow::ComplexContourPropagationOptions tight_options = loose_options;
+  tight_options.refinement_relative_error_tolerance = B61nContourFloat("1e-8");
+  tight_options.matrix_fingerprint = "synthetic-b61n-rk45-relative-tight-v1";
+
+  const amflow::ComplexContourPropagationResult loose =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, loose_options);
+  const amflow::ComplexContourPropagationResult tight =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, tight_options);
+
+  Expect(loose.success,
+         "b61n RK45 loose relative tolerance propagation should succeed: " +
+             loose.diagnostics.summary);
+  Expect(tight.success,
+         "b61n RK45 tight relative tolerance propagation should succeed: " +
+             tight.diagnostics.summary);
+  Expect(tight.diagnostics.refinement_doublings_used ==
+             loose.diagnostics.refinement_doublings_used,
+         "b61n RK45 relative-tolerance test should isolate adaptive substeps from "
+         "outer refinement depth");
+  Expect(tight.diagnostics.adaptive_step_count >
+             loose.diagnostics.adaptive_step_count,
+         "b61n RK45 adaptive integrator should take more substeps under a tighter "
+         "relative tolerance");
+  const B61nContourNumber expected_endpoint =
+      std::exp(B61nContourNumber{0, B61nContourFloat("0.2")});
+  ExpectB61nContourClose(tight.endpoint_values.front(),
+                         expected_endpoint,
+                         B61nContourFloat("1e-6"),
+                         "b61n RK45 eta^4 scalar ODE should match exp(i/5)");
+  Expect(tight.diagnostics.integrator == "dormand-prince-rk45-adaptive",
+         "b61n RK45 diagnostics should name the embedded adaptive integrator");
+  Expect(!tight.diagnostics.max_embedded_error_abs.empty(),
+         "b61n RK45 diagnostics should publish the embedded error estimate");
+  ExpectContains(tight.diagnostics.summary,
+                 "integrator=dormand-prince-rk45-adaptive",
+                 "b61n RK45 summary should publish the integrator");
+  Expect(!tight.diagnostics.full_eta_zero_contour_applied,
+         "b61n RK45 adaptive path must not promote the full M6 contour flag");
+}
+
+void B61nComplexContourPropagatorPinchesRk45StepsNearContourPolesTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{7, -3}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 2;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 1;
+  options.max_adaptive_steps_per_segment = 4096;
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-8");
+  options.matrix_fingerprint = "synthetic-b61n-rk45-pole-pinch-v1";
+  options.endpoint_local_model_kind =
+      "regular-taylor-r0-synthetic-b61n-rk45-pole-pinch";
+  options.contour_poles = {
+      {B61nContourFloat("0.02"), B61nContourFloat("-0.25")},
+  };
+  amflow::ComplexContourPropagationOptions no_pole_options = options;
+  no_pole_options.contour_poles.clear();
+  no_pole_options.matrix_fingerprint = "synthetic-b61n-rk45-no-pole-control-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+  const amflow::ComplexContourPropagationResult control =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, no_pole_options);
+
+  Expect(result.success,
+         "b61n RK45 pole-pinch propagation should succeed: " +
+             result.diagnostics.summary);
+  Expect(control.success,
+         "b61n RK45 no-pole control propagation should succeed: " +
+             control.diagnostics.summary);
+  Expect(control.diagnostics.pole_pinch_step_count == 0,
+         "b61n RK45 no-pole control should not report pole pinches");
+  Expect(result.diagnostics.pole_pinch_step_count > 0,
+         "b61n RK45 integrator should pinch substeps near supplied contour poles");
+  Expect(result.diagnostics.adaptive_step_count >
+             control.diagnostics.adaptive_step_count,
+         "b61n RK45 pole pinch should increase the accepted substep count");
+  ExpectB61nContourClose(result.endpoint_values.front(),
+                         initial.front(),
+                         B61nContourFloat("1e-80"),
+                         "b61n RK45 pole-pinch path should preserve a zero-flow endpoint");
+  ExpectContains(result.diagnostics.summary,
+                 "pole_pinch_step_count=",
+                 "b61n RK45 summary should publish pole-pinch diagnostics");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n RK45 pole-pinch path must not promote the full M6 contour flag");
 }
 
 void B61nComplexContourPropagatorRejectsInfiniteToleranceTest() {
@@ -4999,6 +5116,8 @@ int main() {
     B61nComplexContourPropagatorRejectsInvalidInputsTest();
     B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest();
     B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest();
+    B61nComplexContourPropagatorAdaptsRk45RelativeToleranceTest();
+    B61nComplexContourPropagatorPinchesRk45StepsNearContourPolesTest();
     B61nComplexContourPropagatorRejectsInfiniteToleranceTest();
     B61nComplexContourPropagatorRejectsInvalidRelativeToleranceTest();
     B61nComplexContourPropagatorRejectsUnreviewedHalfPlaneTest();

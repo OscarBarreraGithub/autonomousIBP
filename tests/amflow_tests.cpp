@@ -49708,16 +49708,20 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
   Expect(RunShellCommand(full_stripped_command) != 0,
-         "full stripped b64ag packet should fail closed at the next finite-part "
-         "reduction blocker before publishing target coefficients");
+         "full stripped b64ag packet should fail closed at the next post-transport "
+         "finite-part reconstruction blocker before publishing target coefficients");
   const std::string full_stripped_json = ReadFile(full_stripped_output_path);
   ExpectContains(full_stripped_json,
                  "\"failure_code\": \"continuation_budget_exhausted\"",
                  "full stripped b64ag packet should surface the live finite-part blocker");
   ExpectContains(full_stripped_json,
-                 "b64ag finite-part extraction rejects multiple endpoint regions",
-                 "full stripped b64ag packet should advance past the first-block branch "
-                 "and report the next finite-part reduction blocker");
+                 "b64ag finite-part extraction did not find finite-part power 6",
+                 "full stripped b64ag packet should advance past the multiple-region "
+                 "selector and report the next finite-part reconstruction blocker");
+  Expect(full_stripped_json.find(
+             "b64ag finite-part extraction rejects multiple endpoint regions") ==
+             std::string::npos,
+         "full stripped b64ag packet should no longer stop at the multi-region selector");
   ExpectContains(full_stripped_json,
                  "\"eta_zero_endpoint_transported_master_count\": 6",
                  "full stripped b64ag packet should retain six-master endpoint transport");

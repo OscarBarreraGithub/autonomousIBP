@@ -3035,6 +3035,51 @@ void B64agGaugeLinkFinitePartSelectsNonIntegerFrobeniusFinitePowerTest() {
                  "b64ag Frobenius selector summary should record the exponent-aware power");
 }
 
+void B64agGaugeLinkFinitePartSumsReviewedMultipleEndpointRegionsTest() {
+  const std::string second_block_region =
+      "frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+      "base:-7";
+  const std::string downstream_region =
+      "frobenius:-1.9980576923076923076923076923076923076923076923076923077;"
+      "base:-2";
+  const amflow::LightlikeGaugeLinkFinitePartResult result =
+      amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
+          {"integer", -1, 0, "integer_singular"},
+          {"integer", 0, 0, "integer_finite"},
+          {second_block_region, 6, 0, "second_block_singular"},
+          {second_block_region, 7, 0, "second_block_finite"},
+          {downstream_region, 2, 0, "downstream_finite"},
+      });
+
+  Expect(result.success,
+         "b64ag finite-part helper should sum reviewed multiple endpoint regions");
+  Expect(result.ir_subtraction_applied,
+         "b64ag multi-region finite-part helper should apply finite-part subtraction");
+  ExpectContains(result.selected_region_key,
+                 "integer",
+                 "b64ag multi-region selector should audit the integer region");
+  ExpectContains(result.selected_region_key,
+                 second_block_region,
+                 "b64ag multi-region selector should audit the second-block region");
+  ExpectContains(result.selected_region_key,
+                 downstream_region,
+                 "b64ag multi-region selector should audit the downstream region");
+  ExpectContains(result.finite_part_coefficient,
+                 "integer_finite",
+                 "b64ag multi-region finite part should include the integer finite term");
+  ExpectContains(result.finite_part_coefficient,
+                 "second_block_finite",
+                 "b64ag multi-region finite part should include the second-block finite term");
+  ExpectContains(result.finite_part_coefficient,
+                 "downstream_finite",
+                 "b64ag multi-region finite part should include the downstream finite term");
+  Expect(result.dropped_singular_terms.size() == 2,
+         "b64ag multi-region finite part should audit dropped singular powers per region");
+  ExpectContains(result.summary,
+                 "reviewed endpoint region(s)",
+                 "b64ag multi-region selector should document reviewed region composition");
+}
+
 void B64agGaugeLinkFinitePartRejectsMultipleRegionsTest() {
   const amflow::LightlikeGaugeLinkFinitePartResult result =
       amflow::ExtractLightlikeGaugeLinkEndpointFinitePart({
@@ -3243,6 +3288,61 @@ void B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest() {
                  "b64ag multiple-region rejection should come from the PickZeroRuleS selector");
   Expect(!result.full_eta_zero_contour_applied,
          "b64ag failed reduced finite-part result must not set the full contour flag");
+}
+
+void B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest() {
+  const amflow::TargetIntegral target = B64agReviewedTargets()[3];
+  const std::string second_block_region =
+      "frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+      "base:-7";
+  const std::string downstream_region =
+      "frobenius:-1.9980576923076923076923076923076923076923076923076923077;"
+      "base:-2";
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms[2].endpoint_terms = {
+      {second_block_region, 6, 0, "second_block_singular"},
+      {second_block_region, 7, 0, "second_block_finite"},
+  };
+  endpoint_terms[5].endpoint_terms = {
+      {downstream_region, 2, 0, "downstream_finite"},
+  };
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          {target},
+          endpoint_terms,
+          {B64agReductionFixtureTerm(target.Label(),
+                                     endpoint_terms[2].master_label,
+                                     target.indices[3] + target.indices[4],
+                                     "R2"),
+           B64agReductionFixtureTerm(target.Label(),
+                                     endpoint_terms[5].master_label,
+                                     target.indices[3] + target.indices[4],
+                                     "R5")});
+
+  Expect(result.success,
+         "b64ag reduced finite-part functional should sum reviewed endpoint regions");
+  Expect(result.targets.size() == 1 && result.targets.front().success,
+         "b64ag multi-region reduced functional should publish one target");
+  Expect(result.failures.empty(),
+         "b64ag multi-region reduced functional should not keep the old blocker");
+  Expect(!result.retained_solution_samples_used,
+         "b64ag multi-region reduced functional must not read retained solution samples");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag multi-region reduced functional still does not promote full contour");
+  ExpectContains(result.targets.front().finite_part_coefficient,
+                 "second_block_finite",
+                 "b64ag multi-region reduced finite part should include the second-block term");
+  ExpectContains(result.targets.front().finite_part_coefficient,
+                 "downstream_finite",
+                 "b64ag multi-region reduced finite part should include the downstream term");
+  ExpectContains(result.targets.front().selected_region_key,
+                 second_block_region,
+                 "b64ag multi-region reduced target should audit the second-block region");
+  ExpectContains(result.targets.front().selected_region_key,
+                 downstream_region,
+                 "b64ag multi-region reduced target should audit the downstream region");
 }
 
 void B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest() {
@@ -4361,11 +4461,13 @@ int main() {
     B64agGaugeLinkRetainedReductionParserCoversInlineStateTableTest();
     B64agGaugeLinkFinitePartSelectsPowerZeroAndDropsSingularTermsTest();
     B64agGaugeLinkFinitePartSelectsNonIntegerFrobeniusFinitePowerTest();
+    B64agGaugeLinkFinitePartSumsReviewedMultipleEndpointRegionsTest();
     B64agGaugeLinkFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest();
     B64agGaugeLinkReducedFinitePartAppliesTargetReductionBeforePickZeroRuleSTest();
     B64agGaugeLinkReducedFinitePartRejectsMissingTermsTest();
     B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest();
+    B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest();
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();

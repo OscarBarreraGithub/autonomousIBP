@@ -2506,104 +2506,148 @@ LightlikeGaugeLinkFinitePartResult ExtractLightlikeGaugeLinkEndpointFinitePart(
         "publish an implicit zero coefficient";
     return result;
   }
-  std::set<std::string> region_keys;
+  std::map<std::string, std::vector<LightlikeGaugeLinkFinitePartTerm>>
+      terms_by_region;
   for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
-    region_keys.insert(CanonicalGaugeLinkRegionKey(term.region_key));
+    terms_by_region[CanonicalGaugeLinkRegionKey(term.region_key)].push_back(term);
   }
-  if (region_keys.size() > 1) {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction rejects multiple endpoint regions";
-    return result;
-  }
-  const std::string selected_region =
-      region_keys.empty() ? "integer" : *region_keys.begin();
-  const std::optional<RuntimeComplex> selected_region_exponent =
-      GaugeLinkRegionExponent(selected_region);
-  if (!selected_region_exponent.has_value()) {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction rejects unknown endpoint region " +
-        selected_region;
-    return result;
-  }
-  const std::optional<int> finite_part_power =
-      GaugeLinkFinitePartPowerForRegion(selected_region,
-                                        *selected_region_exponent);
-  if (!finite_part_power.has_value()) {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction rejects endpoint region " +
-        selected_region +
-        " because its Frobenius exponent has no reviewed finite-part base";
-    return result;
-  }
-  for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
-    if (term.log_power != 0 && term.power <= *finite_part_power) {
+  std::vector<std::string> selected_regions;
+  std::vector<std::string> finite_part_audits;
+  for (const auto& [selected_region, region_terms] : terms_by_region) {
+    const std::optional<RuntimeComplex> selected_region_exponent =
+        GaugeLinkRegionExponent(selected_region);
+    if (!selected_region_exponent.has_value()) {
       result.failure_code = "continuation_budget_exhausted";
       result.summary =
-          "b64ag finite-part extraction rejects unresolved non-vanishing "
-          "logarithmic endpoint structure at power " +
-          std::to_string(term.power) + " with coefficient " + term.coefficient;
+          terms_by_region.size() > 1
+              ? "b64ag finite-part extraction rejects multiple endpoint regions "
+                "because endpoint region " +
+                    selected_region + " is unsupported"
+              : "b64ag finite-part extraction rejects unknown endpoint region " +
+                    selected_region;
       return result;
     }
-  }
-  const auto min_power_it =
-      std::min_element(terms.begin(),
-                       terms.end(),
-                       [](const LightlikeGaugeLinkFinitePartTerm& lhs,
-                          const LightlikeGaugeLinkFinitePartTerm& rhs) {
+    const std::optional<int> finite_part_power =
+        GaugeLinkFinitePartPowerForRegion(selected_region,
+                                          *selected_region_exponent);
+    if (!finite_part_power.has_value()) {
+      result.failure_code = "continuation_budget_exhausted";
+      result.summary =
+          terms_by_region.size() > 1
+              ? "b64ag finite-part extraction rejects multiple endpoint regions "
+                "because endpoint region " +
+                    selected_region +
+                    " has no reviewed finite-part base"
+              : "b64ag finite-part extraction rejects endpoint region " +
+                    selected_region +
+                    " because its Frobenius exponent has no reviewed finite-part base";
+      return result;
+    }
+    for (const LightlikeGaugeLinkFinitePartTerm& term : region_terms) {
+      if (term.log_power != 0 && term.power <= *finite_part_power) {
+        result.failure_code = "continuation_budget_exhausted";
+        result.summary =
+            "b64ag finite-part extraction rejects unresolved non-vanishing "
+            "logarithmic endpoint structure at power " +
+            std::to_string(term.power) + " with coefficient " + term.coefficient;
+        return result;
+      }
+    }
+    const auto min_power_it =
+        std::min_element(region_terms.begin(),
+                         region_terms.end(),
+                         [](const LightlikeGaugeLinkFinitePartTerm& lhs,
+                            const LightlikeGaugeLinkFinitePartTerm& rhs) {
                            return lhs.power < rhs.power;
                          });
-  if (min_power_it != terms.end() && min_power_it->power > *finite_part_power) {
-    result.failure_code = "continuation_budget_exhausted";
-    result.summary =
-        "b64ag finite-part extraction found no term at or below finite-part power " +
-        std::to_string(*finite_part_power) +
-        "; this partial scaffold does not publish an implicit zero coefficient";
-    return result;
-  }
-
-  const auto finite_it =
-      std::find_if(terms.begin(),
-                   terms.end(),
-                   [finite_part_power](const LightlikeGaugeLinkFinitePartTerm& term) {
-                     return term.power == *finite_part_power;
-                   });
-  for (const LightlikeGaugeLinkFinitePartTerm& term : terms) {
-    if (term.power < *finite_part_power) {
-      result.dropped_singular_terms.push_back(term.coefficient);
+    if (min_power_it != region_terms.end() &&
+        min_power_it->power > *finite_part_power) {
+      result.failure_code = "continuation_budget_exhausted";
+      result.summary =
+          "b64ag finite-part extraction found no term at or below finite-part power " +
+          std::to_string(*finite_part_power) +
+          "; this partial scaffold does not publish an implicit zero coefficient";
+      return result;
     }
+
+    std::string region_finite_coefficient;
+    bool found_finite_power = false;
+    for (const LightlikeGaugeLinkFinitePartTerm& term : region_terms) {
+      if (term.power < *finite_part_power) {
+        result.dropped_singular_terms.push_back(term.coefficient);
+      }
+      if (term.power == *finite_part_power && term.log_power == 0) {
+        found_finite_power = true;
+        region_finite_coefficient =
+            AddGaugeLinkCoefficients(region_finite_coefficient, term.coefficient);
+      }
+    }
+    if (!found_finite_power) {
+      result.failure_code = "continuation_budget_exhausted";
+      result.summary =
+          "b64ag finite-part extraction did not find finite-part power " +
+          std::to_string(*finite_part_power) +
+          "; this partial scaffold does not publish an implicit zero coefficient";
+      return result;
+    }
+    selected_regions.push_back(selected_region);
+    result.finite_part_coefficient =
+        AddGaugeLinkCoefficients(result.finite_part_coefficient,
+                                 region_finite_coefficient);
+    const std::string region_audit =
+        selected_region == "integer"
+            ? std::string{}
+            : " in non-integer Frobenius region " + selected_region;
+    const std::string selected_power_audit =
+        *finite_part_power == 0
+            ? "power-zero coefficient"
+            : "finite-part power " + std::to_string(*finite_part_power) +
+                  " coefficient";
+    finite_part_audits.push_back(selected_power_audit + region_audit);
   }
-  if (finite_it == terms.end()) {
+  if (selected_regions.empty()) {
     result.failure_code = "continuation_budget_exhausted";
     result.summary =
-        "b64ag finite-part extraction did not find finite-part power " +
-        std::to_string(*finite_part_power) +
-        "; this partial scaffold does not publish an implicit zero coefficient";
+        "b64ag finite-part extraction found no reviewed finite-part endpoint "
+        "region; this partial scaffold does not publish an implicit zero coefficient";
     return result;
+  }
+  std::ostringstream selected_region_summary;
+  for (std::size_t index = 0; index < selected_regions.size(); ++index) {
+    if (index != 0) {
+      selected_region_summary << ", ";
+    }
+    selected_region_summary << selected_regions[index];
+  }
+  std::ostringstream finite_part_summary;
+  for (std::size_t index = 0; index < finite_part_audits.size(); ++index) {
+    if (index != 0) {
+      finite_part_summary << "; ";
+    }
+    finite_part_summary << finite_part_audits[index];
   }
   result.success = true;
   result.ir_subtraction_applied = true;
-  result.selected_region_key = selected_region;
-  result.finite_part_coefficient = finite_it->coefficient;
-  const std::string region_audit =
-      selected_region == "integer"
-          ? std::string{}
-          : " in non-integer Frobenius region " + selected_region;
-  const std::string selected_power_audit =
-      *finite_part_power == 0
-          ? "power-zero coefficient"
-          : "finite-part power " + std::to_string(*finite_part_power) +
-                " coefficient";
-  result.summary =
-      result.dropped_singular_terms.empty()
-          ? "b64ag finite-part extraction selected the endpoint " +
-                selected_power_audit +
-                region_audit
-          : "b64ag finite-part extraction dropped singular endpoint powers and selected the " +
-                selected_power_audit +
-                region_audit;
+  result.selected_region_key = selected_region_summary.str();
+  if (selected_regions.size() == 1) {
+    result.summary =
+        result.dropped_singular_terms.empty()
+            ? "b64ag finite-part extraction selected the endpoint " +
+                  finite_part_audits.front()
+            : "b64ag finite-part extraction dropped singular endpoint powers and "
+                  "selected the " +
+                  finite_part_audits.front();
+  } else {
+    result.summary =
+        result.dropped_singular_terms.empty()
+            ? "b64ag finite-part extraction selected endpoint finite parts across " +
+                  std::to_string(selected_regions.size()) +
+                  " reviewed endpoint region(s): " + finite_part_summary.str()
+            : "b64ag finite-part extraction dropped singular endpoint powers and selected "
+                  "endpoint finite parts across " +
+                  std::to_string(selected_regions.size()) +
+                  " reviewed endpoint region(s): " + finite_part_summary.str();
+  }
   return result;
 }
 

@@ -49343,8 +49343,31 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row runtime should fall back to the certified eta-infinity "
                  "start when closer starts are not certified");
   ExpectContains(stripped_json,
+                 "closer_start_candidate_count=11",
+                 "b61n coupled-row runtime should count the rejected closer finite-start "
+                 "candidates");
+  ExpectContains(stripped_json,
+                 "closer_start_certified=false",
+                 "b61n coupled-row runtime should expose that no closer finite start "
+                 "certified");
+  ExpectContains(stripped_json,
+                 "closer_start_first_failure=eta=",
+                 "b61n coupled-row runtime should publish the first closer-start failure");
+  ExpectContains(stripped_json,
+                 "closer_start_last_failure=eta=",
+                 "b61n coupled-row runtime should publish the last closer-start failure");
+  ExpectContains(stripped_json,
+                 "eta-infinity initializer could not solve a finite infinity recurrence "
+                 "system",
+                 "b61n coupled-row runtime should identify the closer-start recurrence "
+                 "solve as the handoff bottleneck");
+  ExpectContains(stripped_json,
                  "selected coupled-row refinement error",
                  "b61n coupled-row runtime should publish the failed endpoint budget");
+  ExpectContains(stripped_json,
+                 "endpoint_refinement_bottleneck=selected-coupled-row-rk4-refinement",
+                 "b61n coupled-row runtime should label the selected-row refinement "
+                 "bottleneck");
   ExpectContains(stripped_json,
                  "max_relative_error_abs=",
                  "b61n coupled-row runtime should report the relative endpoint error budget");

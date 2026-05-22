@@ -4703,7 +4703,17 @@ std::optional<EtaInfinityInitialDataAudit> TryBuildControlledEtaInfinityInitialD
                                 audit.vector_norm_abs);
   if (audit.min_certified_digits < BigFloat(70)) {
     throw std::runtime_error(
-        "eta-infinity initializer did not certify the 70-digit finite-start guard");
+        "eta-infinity initializer did not certify the 70-digit finite-start guard; "
+        "finite_start_eta=" + BigComplexCompactString(audit.eta_start, 24) +
+        "; truncation_order=" + std::to_string(audit.truncation_order) +
+        "; overcheck_order=" + std::to_string(audit.overcheck_order) +
+        "; tail_geometric_ratio=" +
+        BigFloatCompactString(audit.tail_geometric_ratio, 24) +
+        "; total_initial_error_bound_abs=" +
+        BigFloatCompactString(audit.total_initial_error_bound_abs, 24) +
+        "; vector_norm_abs=" + BigFloatCompactString(audit.vector_norm_abs, 24) +
+        "; min_certified_digits=" +
+        BigFloatCompactString(audit.min_certified_digits, 12));
   }
   audit.initial_data_fingerprint = amflow::ComputeArtifactFingerprint(
       SerializeEtaInfinityInitialDataForFingerprint(spec, audit, finite_start_samples));
@@ -5816,7 +5826,11 @@ struct B61nCoupledRowContourTransportAudit {
   BigFloat max_relative_error_abs = 0;
   BigFloat transported_endpoint_norm_abs = 0;
   BigFloat initial_error_bound_abs = 0;
+  std::size_t closer_start_candidate_count = 0;
+  bool closer_start_certified = false;
   std::vector<std::string> transported_master_labels;
+  std::string closer_start_first_failure;
+  std::string closer_start_last_failure;
   std::string matrix_fingerprint;
   std::string contour_fingerprint;
   std::string endpoint_fingerprint;
@@ -5990,6 +6004,19 @@ ApplyB61nCoupledRowContourTransport(
           "nonpublishing: " +
           reason +
           "; finite_start_selection=" + audit.finite_start_selection +
+          "; closer_start_candidate_count=" +
+          std::to_string(audit.closer_start_candidate_count) +
+          "; closer_start_certified=" +
+          std::string(audit.closer_start_certified ? "true" : "false") +
+          "; closer_start_first_failure=" +
+          (audit.closer_start_first_failure.empty()
+               ? std::string("none")
+               : audit.closer_start_first_failure) +
+          "; closer_start_last_failure=" +
+          (audit.closer_start_last_failure.empty()
+               ? std::string("none")
+               : audit.closer_start_last_failure) +
+          "; endpoint_refinement_bottleneck=selected-coupled-row-rk4-refinement" +
           "; initial_error_bound_abs=" +
           BigFloatCompactString(audit.initial_error_bound_abs, 24) +
           "; max_refinement_error_abs=" +
@@ -6025,6 +6052,7 @@ ApplyB61nCoupledRowContourTransport(
       if (candidate_radius >= BigAbs(initial_data_audit.eta_start)) {
         continue;
       }
+      ++audit.closer_start_candidate_count;
       try {
         propagation_initial_data = TryBuildControlledEtaInfinityInitialData(
             spec,
@@ -6033,9 +6061,24 @@ ApplyB61nCoupledRowContourTransport(
             propagation_truncation_order,
             BigComplex{0, -candidate_radius});
         if (propagation_initial_data.has_value()) {
+          audit.closer_start_certified = true;
           break;
         }
-      } catch (const std::exception&) {
+        const std::string failure =
+            "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
+            " returned no certified finite-start data";
+        if (audit.closer_start_first_failure.empty()) {
+          audit.closer_start_first_failure = failure;
+        }
+        audit.closer_start_last_failure = failure;
+      } catch (const std::exception& error) {
+        const std::string failure =
+            "eta=" + BigComplexCompactString(BigComplex{0, -candidate_radius}, 18) +
+            " failed: " + error.what();
+        if (audit.closer_start_first_failure.empty()) {
+          audit.closer_start_first_failure = failure;
+        }
+        audit.closer_start_last_failure = failure;
       }
     }
     if (!propagation_initial_data.has_value() ||
@@ -6212,6 +6255,10 @@ ApplyB61nCoupledRowContourTransport(
         " coupled master coefficient sample set(s): [" +
         JoinTextList(audit.transported_master_labels, ", ") +
         "]; finite_start_selection=" + audit.finite_start_selection +
+        "; closer_start_candidate_count=" +
+        std::to_string(audit.closer_start_candidate_count) +
+        "; closer_start_certified=" +
+        std::string(audit.closer_start_certified ? "true" : "false") +
         "; initial_error_bound_abs=" +
         BigFloatCompactString(audit.initial_error_bound_abs, 24) +
         "; max_refinement_error_abs=" +

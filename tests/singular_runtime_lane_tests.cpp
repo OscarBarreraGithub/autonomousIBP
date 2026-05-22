@@ -3888,6 +3888,8 @@ void ExpectB61nContourPropagationFailure(
          message + "; failed propagation must not consume retained solution samples");
   Expect(!result.diagnostics.full_eta_zero_contour_applied,
          message + "; failed propagation must keep full contour false");
+  Expect(!result.diagnostics.endpoint_extraction_applied,
+         message + "; failed propagation must not mark endpoint extraction");
   Expect(!result.diagnostics.eta_zero_endpoint_reached,
          message + "; failed propagation must not mark eta=0 endpoint arrival");
   Expect(result.diagnostics.endpoint_target == "eta=0",
@@ -3895,6 +3897,47 @@ void ExpectB61nContourPropagationFailure(
   Expect(result.diagnostics.failure_code == failure_code,
          message + "; expected failure_code=" + failure_code + ", got " +
              result.diagnostics.failure_code);
+}
+
+void B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
+  const B61nContourNumber initial_value{5, -2};
+  const amflow::ComplexContourVector initial = {initial_value};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 4;
+  options.refinement_doublings = 1;
+  options.matrix_fingerprint = "synthetic-b61n-regular-taylor-r0-single-row-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0";
+  options.branch_policy = "NegIm lower-half-plane b61n single-row test contour";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  Expect(result.success,
+         "b61n regular Taylor r0 single-row endpoint extraction should succeed: " +
+             result.diagnostics.summary);
+  Expect(result.endpoint_values.size() == 1,
+         "b61n regular Taylor r0 extraction should preserve the single endpoint value");
+  ExpectB61nContourClose(result.endpoint_values.front(),
+                         initial_value,
+                         B61nContourFloat("1e-80"),
+                         "b61n regular Taylor r0 extraction should select eta^0 at eta=0");
+  Expect(!result.diagnostics.coefficient_publication,
+         "b61n regular Taylor r0 extraction must not publish coefficients yet");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n regular Taylor r0 extraction must not promote the full M6 contour flag");
+  Expect(result.diagnostics.endpoint_extraction_applied,
+         "b61n regular Taylor r0 single-row path should mark live endpoint extraction");
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_extraction_applied=true",
+                 "b61n regular Taylor r0 single-row path should mark live endpoint "
+                 "extraction");
 }
 
 void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
@@ -3948,6 +3991,8 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
          "b61n contour harness must not read final AMFlow solution samples");
   Expect(!result.diagnostics.full_eta_zero_contour_applied,
          "b61n contour harness must not promote the full M6 contour flag");
+  Expect(!result.diagnostics.endpoint_extraction_applied,
+         "b61n coupled contour harness must keep endpoint extraction scoped off");
   Expect(result.diagnostics.eta_zero_endpoint_reached,
          "b61n contour harness should record exact eta=0 endpoint arrival");
   Expect(result.diagnostics.endpoint_target == "eta=0",
@@ -4270,6 +4315,7 @@ int main() {
     EndpointExtractionRejectsBranchLedgerFingerprintMismatchTest();
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
+    B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();
     B61nComplexContourPropagatorRequiresMatrixFingerprintTest();

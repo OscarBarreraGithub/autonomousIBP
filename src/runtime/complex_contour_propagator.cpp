@@ -183,7 +183,8 @@ std::string SerializePropagationForFingerprint(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourPropagationOptions& options,
-    const std::size_t refined_steps_per_segment) {
+    const std::size_t refined_steps_per_segment,
+    const bool endpoint_extraction_applied) {
   std::ostringstream out;
   out << "kind=b61n-complex-contour-propagator\n";
   out << "dimension=" << initial_values.size() << "\n";
@@ -198,6 +199,8 @@ std::string SerializePropagationForFingerprint(
   out << "steps_per_segment=" << options.steps_per_segment << "\n";
   out << "refined_steps_per_segment=" << refined_steps_per_segment << "\n";
   out << "retained_solution_samples_used=false\n";
+  out << "endpoint_extraction_applied="
+      << (endpoint_extraction_applied ? "true" : "false") << "\n";
   out << "full_eta_zero_contour_applied=false\n";
   for (std::size_t index = 0; index < waypoints.size(); ++index) {
     out << "waypoint[" << index << "]=" << CompactComplex(waypoints[index]) << "\n";
@@ -236,6 +239,13 @@ ComplexContourPropagationResult FailureResult(
   result.diagnostics.failure_code = failure_code;
   result.diagnostics.summary = summary;
   return result;
+}
+
+bool AppliesRegularTaylorR0EndpointExtraction(
+    const ComplexContourVector& endpoint_values,
+    const ComplexContourPropagationOptions& options) {
+  return endpoint_values.size() == 1 &&
+         options.endpoint_local_model_kind == "regular-taylor-r0";
 }
 
 }  // namespace
@@ -401,11 +411,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     ComplexContourPropagationResult result;
     result.success = true;
     result.endpoint_values = refined;
+    const bool endpoint_extraction_applied =
+        AppliesRegularTaylorR0EndpointExtraction(result.endpoint_values, options);
     result.diagnostics.success = true;
     result.diagnostics.ode_propagation_applied = true;
     result.diagnostics.coefficient_publication = false;
     result.diagnostics.retained_solution_samples_used = false;
     result.diagnostics.full_eta_zero_contour_applied = false;
+    result.diagnostics.endpoint_extraction_applied = endpoint_extraction_applied;
     result.diagnostics.dimension = initial_values.size();
     result.diagnostics.waypoint_count = waypoints.size();
     result.diagnostics.segment_count = waypoints.size() - 1;
@@ -432,7 +445,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         SerializePropagationForFingerprint(initial_values,
                                            waypoints,
                                            options,
-                                           refined_steps_per_segment));
+                                           refined_steps_per_segment,
+                                           endpoint_extraction_applied));
     result.diagnostics.summary =
         "Propagated a b61n complex ODE vector over " +
         std::to_string(result.diagnostics.segment_count) +
@@ -442,7 +456,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
         "endpoint_target=eta=0; eta_zero_endpoint_reached=true; "
         "endpoint_local_model_kind=" + result.diagnostics.endpoint_local_model_kind +
-        "; endpoint_extraction_applied=false; "
+        "; endpoint_extraction_applied=" +
+        (result.diagnostics.endpoint_extraction_applied ? std::string("true")
+                                                        : std::string("false")) +
+        "; "
         "matrix_fingerprint=" + result.diagnostics.matrix_fingerprint +
         "; working_precision_digits=" +
         std::to_string(result.diagnostics.working_precision_digits) +

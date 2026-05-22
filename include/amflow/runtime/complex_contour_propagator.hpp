@@ -37,6 +37,7 @@ struct ComplexContourPropagationDiagnostics {
   bool coefficient_publication = false;
   bool retained_solution_samples_used = false;
   bool full_eta_zero_contour_applied = false;
+  bool endpoint_extraction_applied = false;
   std::size_t dimension = 0;
   std::size_t waypoint_count = 0;
   std::size_t segment_count = 0;

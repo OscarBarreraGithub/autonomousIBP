@@ -49331,19 +49331,29 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(stripped_json,
                  "ode_propagation_applied=false; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false",
-                 "b61n coupled-row audit must remain non-publishing before live ODE propagation");
+                 "b61n coupled-row readiness audit should remain non-publishing before the "
+                 "runtime transport pass");
   ExpectContains(stripped_json,
-                 "b61n coupled-row live contour propagation gate blocked",
-                 "b61n coupled-row runtime should expose the live transport gate");
+                 "b61n coupled-row live contour propagation executed but remained "
+                 "nonpublishing",
+                 "b61n coupled-row runtime should execute the live transport before "
+                 "failing closed");
   ExpectContains(stripped_json,
-                 "no closer eta-infinity finite-start point certified the lane171 70-digit "
-                 "guard",
-                 "b61n coupled-row runtime should fail closed on uncertified start data");
+                 "finite_start_selection=original-certified-eta-infinity-start",
+                 "b61n coupled-row runtime should fall back to the certified eta-infinity "
+                 "start when closer starts are not certified");
   ExpectContains(stripped_json,
-                 "ode_propagation_applied=false; coefficient_publication=false; "
+                 "selected coupled-row refinement error",
+                 "b61n coupled-row runtime should publish the failed endpoint budget");
+  ExpectContains(stripped_json,
+                 "max_relative_error_abs=",
+                 "b61n coupled-row runtime should report the relative endpoint error budget");
+  ExpectContains(stripped_json,
+                 "ode_propagation_applied=true; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false; "
                  "full_eta_zero_contour_applied=false",
-                 "b61n coupled-row gate must keep the scoped non-publication contract");
+                 "b61n coupled-row live propagation must keep the scoped non-publication "
+                 "contract after budget failure");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =

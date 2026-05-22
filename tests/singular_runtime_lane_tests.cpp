@@ -2784,14 +2784,6 @@ B64agTestBigFloat B64agLog(const B64agTestBigFloat& value) {
   return log(value);
 }
 
-B64agTestBigFloat B64agFactorial(const int value) {
-  B64agTestBigFloat result = 1;
-  for (int factor = 2; factor <= value; ++factor) {
-    result *= B64agTestBigFloat(factor);
-  }
-  return result;
-}
-
 B64agTestBigFloat B64agParseRational(const std::string& raw_value) {
   const std::size_t slash = raw_value.find('/');
   if (slash != std::string::npos) {
@@ -3333,21 +3325,24 @@ void B64agGaugeLinkFinitePartSelectsNonIntegerFrobeniusFinitePowerTest() {
       });
 
   Expect(result.success,
-         "b64ag finite-part helper should accept a single Frobenius endpoint region");
-  Expect(result.selected_region_key == region,
-         "b64ag finite-part helper should audit the selected Frobenius region");
-  Expect(result.ir_subtraction_applied,
-         "b64ag Frobenius finite-part helper should record finite-part subtraction");
-  Expect(result.finite_part_coefficient == "frobenius_finite",
-         "b64ag Frobenius finite-part helper should select the exponent-aware finite power");
-  Expect(result.dropped_singular_terms.size() == 1,
-         "b64ag Frobenius finite-part helper should audit dropped singular powers");
+         "b64ag finite-part helper should accept a reviewed no-integer-key "
+         "Frobenius endpoint region");
+  Expect(result.selected_region_key == "amflow-no-integer-key",
+         "b64ag finite-part helper should audit the AMFlow no-integer-key branch");
+  Expect(!result.ir_subtraction_applied,
+         "b64ag no-integer-key Frobenius projection should not publish a finite-part "
+         "subtraction");
+  Expect(result.finite_part_coefficient == "0",
+         "b64ag no-integer-key Frobenius projection should publish audited zero");
+  Expect(result.dropped_singular_terms.empty(),
+         "b64ag no-integer-key Frobenius projection should not treat non-integer "
+         "terms as singular integer powers");
   ExpectContains(result.summary,
-                 "non-integer Frobenius region",
-                 "b64ag Frobenius selector summary should record the non-integer branch");
+                 "no-integer-key zero",
+                 "b64ag Frobenius selector summary should record AMFlow no-integer-key zero");
   ExpectContains(result.summary,
-                 "finite-part power 7",
-                 "b64ag Frobenius selector summary should record the exponent-aware power");
+                 region,
+                 "b64ag Frobenius selector summary should audit the ignored non-integer branch");
 }
 
 void B64agGaugeLinkFinitePartSumsReviewedMultipleEndpointRegionsTest() {
@@ -3367,32 +3362,28 @@ void B64agGaugeLinkFinitePartSumsReviewedMultipleEndpointRegionsTest() {
       });
 
   Expect(result.success,
-         "b64ag finite-part helper should sum reviewed multiple endpoint regions");
+         "b64ag finite-part helper should ignore reviewed non-integer endpoint regions "
+         "when an integer finite part is present");
   Expect(result.ir_subtraction_applied,
          "b64ag multi-region finite-part helper should apply finite-part subtraction");
-  ExpectContains(result.selected_region_key,
-                 "integer",
-                 "b64ag multi-region selector should audit the integer region");
-  ExpectContains(result.selected_region_key,
-                 second_block_region,
-                 "b64ag multi-region selector should audit the second-block region");
-  ExpectContains(result.selected_region_key,
-                 downstream_region,
-                 "b64ag multi-region selector should audit the downstream region");
+  Expect(result.selected_region_key == "integer",
+         "b64ag multi-region selector should publish only the AMFlow integer key");
   ExpectContains(result.finite_part_coefficient,
                  "integer_finite",
                  "b64ag multi-region finite part should include the integer finite term");
-  ExpectContains(result.finite_part_coefficient,
-                 "second_block_finite",
-                 "b64ag multi-region finite part should include the second-block finite term");
-  ExpectContains(result.finite_part_coefficient,
-                 "downstream_finite",
-                 "b64ag multi-region finite part should include the downstream finite term");
-  Expect(result.dropped_singular_terms.size() == 2,
-         "b64ag multi-region finite part should audit dropped singular powers per region");
+  ExpectNotContains(result.finite_part_coefficient,
+                    "second_block_finite",
+                    "b64ag multi-region finite part must not publish second-block "
+                    "non-integer Frobenius terms");
+  ExpectNotContains(result.finite_part_coefficient,
+                    "downstream_finite",
+                    "b64ag multi-region finite part must not publish downstream "
+                    "non-integer Frobenius terms");
+  Expect(result.dropped_singular_terms.size() == 1,
+         "b64ag multi-region finite part should audit only dropped integer singular powers");
   ExpectContains(result.summary,
-                 "reviewed endpoint region(s)",
-                 "b64ag multi-region selector should document reviewed region composition");
+                 "ignoring 2 non-integer Frobenius endpoint region",
+                 "b64ag multi-region selector should document ignored non-integer branches");
 }
 
 void B64agGaugeLinkFinitePartRejectsMultipleRegionsTest() {
@@ -3444,21 +3435,22 @@ void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
       });
 
   Expect(!empty.success && !positive_only.success && !missing_zero.success &&
-             !missing_frobenius_power.success &&
+             missing_frobenius_power.success &&
              !unsupported_fractional_region.success &&
              !log_without_finite_part.success,
          "b64ag finite-part helper should reject implicit or unresolved coefficients");
+  Expect(missing_frobenius_power.selected_region_key == "amflow-no-integer-key" &&
+             missing_frobenius_power.finite_part_coefficient == "0",
+         "b64ag missing Frobenius finite power should publish AMFlow no-integer-key zero");
   Expect(empty.failure_code == "continuation_budget_exhausted" &&
              positive_only.failure_code == "continuation_budget_exhausted" &&
              missing_zero.failure_code == "continuation_budget_exhausted" &&
-             missing_frobenius_power.failure_code == "continuation_budget_exhausted" &&
              unsupported_fractional_region.failure_code ==
                  "continuation_budget_exhausted" &&
              log_without_finite_part.failure_code == "continuation_budget_exhausted",
          "b64ag implicit-zero cases should fail with the reviewed continuation code");
   Expect(positive_only.finite_part_coefficient.empty() &&
              missing_zero.finite_part_coefficient.empty() &&
-             missing_frobenius_power.finite_part_coefficient.empty() &&
              unsupported_fractional_region.finite_part_coefficient.empty() &&
              log_without_finite_part.finite_part_coefficient.empty(),
          "b64ag implicit-zero cases should not populate coefficient strings");
@@ -3469,8 +3461,8 @@ void B64agGaugeLinkFinitePartDoesNotPublishImplicitZeroTest() {
                  "logarithmic endpoint structure",
                  "b64ag log-only Frobenius selector should fail closed");
   ExpectContains(missing_frobenius_power.summary,
-                 "finite-part power 7",
-                 "b64ag missing Frobenius finite power should fail closed");
+                 "no-integer-key zero",
+                 "b64ag missing Frobenius finite power should take AMFlow no-integer-key zero");
   ExpectContains(unsupported_fractional_region.summary,
                  "no reviewed finite-part base",
                  "b64ag unsupported fractional Frobenius region should fail closed");
@@ -3637,7 +3629,8 @@ void B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest() {
                                      "R5")});
 
   Expect(result.success,
-         "b64ag reduced finite-part functional should sum reviewed endpoint regions");
+         "b64ag reduced finite-part functional should accept reviewed non-integer "
+         "Frobenius endpoint regions");
   Expect(result.targets.size() == 1 && result.targets.front().success,
          "b64ag multi-region reduced functional should publish one target");
   Expect(result.failures.empty(),
@@ -3646,18 +3639,84 @@ void B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest() {
          "b64ag multi-region reduced functional must not read retained solution samples");
   Expect(!result.full_eta_zero_contour_applied,
          "b64ag multi-region reduced functional still does not promote full contour");
-  ExpectContains(result.targets.front().finite_part_coefficient,
-                 "second_block_finite",
-                 "b64ag multi-region reduced finite part should include the second-block term");
-  ExpectContains(result.targets.front().finite_part_coefficient,
-                 "downstream_finite",
-                 "b64ag multi-region reduced finite part should include the downstream term");
+  Expect(result.targets.front().finite_part_coefficient == "0",
+         "b64ag multi-region reduced finite part should publish AMFlow no-integer-key zero");
+  Expect(result.targets.front().selected_region_key == "amflow-no-integer-key",
+         "b64ag multi-region reduced target should audit the AMFlow no-integer-key branch");
+  ExpectNotContains(result.targets.front().finite_part_coefficient,
+                    "second_block_finite",
+                    "b64ag multi-region reduced finite part must not publish the "
+                    "second-block non-integer term");
+  ExpectNotContains(result.targets.front().finite_part_coefficient,
+                    "downstream_finite",
+                    "b64ag multi-region reduced finite part must not publish the "
+                    "downstream non-integer term");
+  ExpectContains(result.targets.front().summary,
+                 "PickZeroRuleS-compatible",
+                 "b64ag multi-region reduced target should preserve reducer ordering");
   ExpectContains(result.targets.front().selected_region_key,
-                 second_block_region,
-                 "b64ag multi-region reduced target should audit the second-block region");
-  ExpectContains(result.targets.front().selected_region_key,
-                 downstream_region,
-                 "b64ag multi-region reduced target should audit the downstream region");
+                 "no-integer-key",
+                 "b64ag multi-region reduced target should report no integer AMFlow key");
+}
+
+void B64agGaugeLinkReducedFinitePartProjectsSecondBlockFrobeniusToZeroTest() {
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const std::size_t second_block_target_index = 5;
+  const amflow::TargetIntegral& target = targets[second_block_target_index];
+  const std::vector<amflow::MasterIntegral> masters =
+      B64agReviewedReductionMasters();
+  const std::string second_block_region =
+      "frobenius:-6.996115384615384615384615384615384615384615384615384615;"
+      "base:-7";
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms[2].endpoint_terms = {
+      {second_block_region, 6, 0, "second_block_singular"},
+      {second_block_region, 7, 0, "second_block_old_finite_slot"},
+  };
+  std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
+  for (const amflow::TargetIntegral& packet_target : targets) {
+    reduction_terms.push_back(
+        B64agReductionFixtureTerm(packet_target, masters[2], 0, "R2_exact_zero"));
+  }
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          targets,
+          endpoint_terms,
+          reduction_terms);
+
+  Expect(result.success,
+         "b64ag second-block non-integer Frobenius reduction should succeed as an "
+         "audited AMFlow zero: " + result.summary);
+  Expect(result.failures.empty(),
+         "b64ag second-block Frobenius projection should not record failures");
+  Expect(result.targets.size() == targets.size() &&
+             result.targets[second_block_target_index].success,
+         "b64ag second-block Frobenius projection should publish the reviewed packet");
+  const amflow::LightlikeGaugeLinkReducedFinitePartTarget& projected =
+      result.targets[second_block_target_index];
+  Expect(projected.target_label == target.Label(),
+         "b64ag second-block Frobenius projection should inspect the canonical "
+         "second-block target");
+  Expect(projected.selected_region_key == "amflow-no-integer-key",
+         "b64ag second-block Frobenius projection should report no AMFlow integer key");
+  Expect(projected.finite_part_coefficient == "0",
+         "b64ag second-block Frobenius projection should publish exact zero");
+  Expect(!result.retained_solution_samples_used,
+         "b64ag second-block Frobenius projection must not read retained solutions");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag second-block Frobenius projection must not promote full contour");
+  Expect(!projected.ir_subtraction_applied,
+         "b64ag second-block no-integer-key zero should not claim integer finite-part "
+         "subtraction");
+  ExpectNotContains(projected.finite_part_coefficient,
+                    "second_block_old_finite_slot",
+                    "b64ag second-block projection must not publish the old Frobenius "
+                    "finite-power slot");
+  ExpectContains(projected.summary,
+                 "PickZeroRuleS-compatible",
+                 "b64ag second-block projection should preserve AMFlow-order reducer audit");
 }
 
 void B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest() {
@@ -3901,10 +3960,12 @@ void B64agGaugeLinkRetainedReductionConsumesShiftedHighEndpointPowersTest() {
          "b64ag retained reduction high-power chain must not read retained solutions");
   Expect(!reduced.full_eta_zero_contour_applied,
          "b64ag retained reduction high-power chain must not promote full contour");
-  ExpectContains(reduced.targets.front().selected_region_key,
-                 ";base:-6",
-                 "b64ag retained reduction should keep the shifted first-block Frobenius "
-                 "finite part");
+  Expect(reduced.targets.front().selected_region_key == "integer",
+         "b64ag retained reduction should publish the integer AMFlow key after "
+         "projecting non-integer Frobenius regions");
+  ExpectContains(reduced.targets.front().summary,
+                 "PickZeroRuleS-compatible",
+                 "b64ag retained reduction should keep AMFlow finite-part ordering");
   ExpectContains(reduced.summary,
                  "evaluated 9 retained target",
                  "b64ag retained reduction should evaluate the full target packet");
@@ -4264,7 +4325,6 @@ void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
 
   const amflow::TargetIntegral target = B64agReviewedTargets()[3];
   const std::vector<amflow::MasterIntegral> masters = B64agReviewedReductionMasters();
-  const B64agTestBigFloat x = B64agTestBigFloat(1) / B64agTestBigFloat(40);
   for (std::size_t index = 0; index < state.epsilon_samples.size(); ++index) {
     const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
         amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
@@ -4286,40 +4346,25 @@ void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
            "b64ag Frobenius reduced finite-part chain must not read retained solutions");
     Expect(!reduced.full_eta_zero_contour_applied,
            "b64ag Frobenius reduced finite-part chain must keep full contour false");
-    Expect(reduced.ir_subtraction_applied,
-           "b64ag Frobenius reduced finite-part chain should apply finite-part selection");
+    Expect(!reduced.ir_subtraction_applied,
+           "b64ag no-integer-key Frobenius projection should not publish a finite-part "
+           "subtraction");
 
     const amflow::LightlikeGaugeLinkReducedFinitePartTarget& reduced_target =
         reduced.targets.front();
-    Expect(reduced_target.selected_region_key.rfind("frobenius:", 0) == 0,
-           "b64ag Frobenius reduced finite-part chain should select a Frobenius region");
-    const B64agTestBigFloat epsilon_value =
-        B64agParseRational(state.epsilon_samples[index]);
-    const B64agTestBigFloat exponent =
-        B64agFrobeniusExponent(reduced_target.selected_region_key);
-    ExpectB64agRelativeClose(exponent,
-                             B64agTestBigFloat(-7) +
-                                 B64agTestBigFloat(8) * epsilon_value,
-                             B64agTestBigFloat("1e-65"),
-                             "b64ag finite-part selector should keep the eps-dependent region");
-    const B64agTestBigComplex expected_coefficient =
-        second_boundaries[index] *
-        B64agExp(-exponent * B64agLog(x) - x) / B64agFactorial(7);
-    const B64agTestBigComplex selected_coefficient =
-        B64agEndpointCoefficient(reduced_target.finite_part_coefficient);
-    ExpectB64agRelativeClose(
-        selected_coefficient,
-        expected_coefficient,
-        B64agTestBigFloat("1e-55"),
-        "b64ag reduced finite part should match the independent Frobenius boundary formula");
-    ExpectContains(
+    Expect(reduced_target.selected_region_key == "amflow-no-integer-key",
+           "b64ag Frobenius reduced finite-part chain should publish the AMFlow "
+           "no-integer-key branch");
+    Expect(reduced_target.finite_part_coefficient == "0",
+           "b64ag Frobenius reduced finite-part chain should project non-integer "
+           "Frobenius finite parts to audited zero");
+    ExpectNotContains(
         reduced_target.finite_part_coefficient,
-        B64agBigFloatText(expected_coefficient.real()).substr(0, 56),
-        "b64ag reduced finite part should preserve >=50 real digits");
-    ExpectContains(
-        reduced_target.finite_part_coefficient,
-        B64agBigFloatText(B64agAbs(expected_coefficient.imag())).substr(0, 56),
-        "b64ag reduced finite part should preserve >=50 imaginary digits");
+        B64agBigFloatText(second_boundaries[index].real()).substr(0, 20),
+        "b64ag reduced finite part must not publish the Frobenius boundary coefficient");
+    ExpectContains(reduced_target.summary,
+                   "PickZeroRuleS-compatible",
+                   "b64ag reduced finite part should preserve AMFlow-order reduction");
   }
 }
 
@@ -5257,6 +5302,7 @@ int main() {
     B64agGaugeLinkReducedFinitePartRejectsMissingTermsTest();
     B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest();
+    B64agGaugeLinkReducedFinitePartProjectsSecondBlockFrobeniusToZeroTest();
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();

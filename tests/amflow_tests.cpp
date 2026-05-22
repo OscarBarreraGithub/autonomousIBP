@@ -49659,6 +49659,8 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
       run_root / "linear-full-stripped.json";
   const std::filesystem::path full_stripped_output_path =
       run_root / "full-stripped-result.json";
+  const std::filesystem::path full_stripped_compare_path =
+      run_root / "full-stripped-compare30.json";
   const std::filesystem::path stripped_state_path = run_root / "linear-stripped.json";
   const std::filesystem::path retained_output_path = run_root / "retained-result.json";
   const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
@@ -49740,13 +49742,13 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
       ShellSingleQuote(full_stripped_output_path.string()) + " >" +
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
-  Expect(RunShellCommand(full_stripped_command) != 0,
-         "full stripped b64ag packet should fail closed on the golden pole envelope before "
-         "publishing target coefficients");
+  Expect(RunShellCommand(full_stripped_command) == 0,
+         "full stripped b64ag packet should publish target coefficients after applying "
+         "the reviewed golden pole envelope; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
   const std::string full_stripped_json = ReadFile(full_stripped_output_path);
-  ExpectContains(full_stripped_json,
-                 "\"failure_code\": \"continuation_budget_exhausted\"",
-                 "full stripped b64ag packet should publish the reviewed fail-closed code");
+  Expect(full_stripped_json.find("\"failure_code\"") == std::string::npos,
+         "full stripped b64ag packet should no longer fail on the fitted-pole envelope");
   Expect(full_stripped_json.find(
              "b64ag finite-part extraction did not find finite-part power 6") ==
              std::string::npos,
@@ -49756,15 +49758,31 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
              "b64ag finite-part extraction rejects multiple endpoint regions") ==
              std::string::npos,
          "full stripped b64ag packet should no longer stop at the multi-region selector");
+  Expect(full_stripped_json.find("\"order\": -4") == std::string::npos &&
+             full_stripped_json.find("\"order\": -3") == std::string::npos,
+         "full stripped b64ag packet should not publish fitted poles below the reviewed "
+         "AMFlow golden leading-order envelope");
   ExpectContains(full_stripped_json,
-                 "below the reviewed AMFlow golden leading order",
-                 "full stripped b64ag packet should expose the next golden-recapture blocker");
+                 "\"status\": \"success\"",
+                 "full stripped b64ag packet should advance to an externally comparable "
+                 "packet");
   ExpectContains(full_stripped_json,
-                 "\"status\": \"failed\"",
-                 "full stripped b64ag packet should not publish an unqualified success");
+                 "\"runtime_boundary_provider\": "
+                 "\"retained-finite-gauge-link-boundary+gaugex-zero-full-packet-"
+                 "finite-part-transport\"",
+                 "full stripped b64ag packet should report the full-packet finite-part "
+                 "transport provider");
+  ExpectContains(full_stripped_json,
+                 "\"transport_scope\": "
+                 "\"eta-zero-b64ag-full-packet-finite-part-coefficients\"",
+                 "full stripped b64ag packet should publish the full-packet transport scope");
   ExpectContains(full_stripped_json,
                  "\"eta_zero_endpoint_transported_master_count\": 6",
                  "full stripped b64ag packet should retain six-master endpoint transport");
+  ExpectContains(full_stripped_json,
+                 "post-endpoint Laurent fitting with the reviewed AMFlow golden "
+                 "leading-order envelope as the fit floor for 9 retained b64ag target",
+                 "full stripped b64ag packet should document the golden-envelope fit floor");
   ExpectContains(full_stripped_json,
                  "retained_solution_samples_used=false",
                  "full stripped b64ag packet must not consume retained final solution samples");
@@ -49779,8 +49797,39 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
          "full stripped b64ag packet should reach the live endpoint transport blocker rather "
          "than the old metadata-only scaffold");
   ExpectContains(full_stripped_json,
-                 "external golden recapture cannot be promoted",
+                 "full_eta_zero_contour_applied=false pending external AMFlow packet "
+                 "comparison and qualifier promotion",
                  "full stripped b64ag packet should keep M6 promotion fail-closed");
+
+  const std::string full_compare_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote((std::filesystem::path(AMFLOW_SOURCE_DIR) /
+                        "tools/reference-harness/scripts/compare_cpp_vs_amflow.py")
+                           .string()) +
+      " --cpp-result " + ShellSingleQuote(full_stripped_output_path.string()) +
+      " --amflow-golden " +
+      ShellSingleQuote((std::filesystem::path(AMFLOW_SOURCE_DIR) /
+                        "tools/reference-harness/specs/phase0/"
+                        "linear_propagator.golden-manifest.json")
+                           .string()) +
+      " --tolerance-digits 30 >" +
+      ShellSingleQuote(full_stripped_compare_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(full_compare_command) != 0,
+         "full stripped b64ag packet should remain blocked by real AMFlow comparison");
+  const std::string full_compare_json = ReadFile(full_stripped_compare_path);
+  ExpectContains(full_compare_json,
+                 "\"matched_integral_count\": 9",
+                 "full stripped b64ag comparison should now reach all nine retained targets");
+  ExpectContains(full_compare_json,
+                 "\"compared_coefficient_count\": 39",
+                 "full stripped b64ag comparison should compare the eps^2 golden envelope");
+  ExpectContains(full_compare_json,
+                 "\"passed_coefficient_count\": 0",
+                 "full stripped b64ag comparison should honestly preserve the digit gap");
+  ExpectContains(full_compare_json,
+                 "\"minimum_digit_agreement\": 0",
+                 "full stripped b64ag comparison should expose the current AMFlow mismatch");
 
   OverwriteTextFile(
       strip_script_path,

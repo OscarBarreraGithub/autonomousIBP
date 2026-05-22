@@ -8235,7 +8235,9 @@ FitBoundarySamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
 std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>
 FitSolutionSamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
                                         const std::vector<BigFloat>& epsilon_values,
-                                        const int requested_epsilon_order) {
+                                        const int requested_epsilon_order,
+                                        const std::optional<int> leading_order_floor =
+                                            std::nullopt) {
   const bool all_zero =
       std::all_of(samples.begin(), samples.end(), [](const BigComplex& value) {
         return IsTiny(value);
@@ -8244,7 +8246,12 @@ FitSolutionSamplesAsLaurentCoefficients(const std::vector<BigComplex>& samples,
     return {{0, "0", "0"}};
   }
 
-  const int leading_order = EstimateLaurentLeadingOrder(samples, epsilon_values);
+  const int estimated_leading_order =
+      EstimateLaurentLeadingOrder(samples, epsilon_values);
+  const int leading_order =
+      leading_order_floor.has_value()
+          ? std::max(estimated_leading_order, *leading_order_floor)
+          : estimated_leading_order;
   constexpr int kRetainedSolutionSampleGuardTerms = 15;
   const int max_fit_order =
       requested_epsilon_order + kRetainedSolutionSampleGuardTerms;
@@ -9645,18 +9652,6 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
   diagnostics.eta_endpoint_extraction_fingerprint = transport.extraction_fingerprint;
 
   for (const std::vector<BigComplex>& samples : target_samples) {
-    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
-    try {
-      coefficients = FitSolutionSamplesAsLaurentCoefficients(samples,
-                                                             epsilon_values,
-                                                             requested_epsilon_order);
-    } catch (const std::exception& error) {
-      return fail_after_transport(
-          "laurent_fit_failed",
-          "b64ag full endpoint packet could not fit post-endpoint finite-part "
-          "samples as Laurent coefficients: " +
-              std::string(error.what()));
-    }
     const std::size_t target_index = diagnostics.target_epsilon_coefficients.size();
     const std::string target_label =
         target_index < direct_spec.targets.size()
@@ -9664,6 +9659,19 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
             : std::string{"<unknown-target>"};
     const std::optional<int> reviewed_leading_order =
         B64agReviewedGoldenLeadingEpsilonOrder(target_label);
+    std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+    try {
+      coefficients = FitSolutionSamplesAsLaurentCoefficients(samples,
+                                                             epsilon_values,
+                                                             requested_epsilon_order,
+                                                             reviewed_leading_order);
+    } catch (const std::exception& error) {
+      return fail_after_transport(
+          "laurent_fit_failed",
+          "b64ag full endpoint packet could not fit post-endpoint finite-part "
+          "samples as Laurent coefficients: " +
+              std::string(error.what()));
+    }
     if (!coefficients.empty() && reviewed_leading_order.has_value() &&
         coefficients.front().order < *reviewed_leading_order) {
       return fail_after_transport(
@@ -9684,7 +9692,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
       transport.summary +
       " Applied retained target reduction, D4,D5 affected-power normalization, "
       "PickZeroRuleS-compatible finite-part extraction, and post-endpoint Laurent "
-      "fitting for " +
+      "fitting with the reviewed AMFlow golden leading-order envelope as the fit "
+      "floor for " +
       std::to_string(direct_spec.targets.size()) +
       " retained b64ag target(s) across " +
       std::to_string(transport.epsilon_endpoint_terms.size()) +

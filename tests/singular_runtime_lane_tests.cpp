@@ -5188,6 +5188,82 @@ void B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest() {
                  "contour closure");
 }
 
+void B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest() {
+  const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
+  const B61nContourFloat residue_tolerance("1e-14");
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    amflow::ComplexContourMatrix matrix(
+        3, std::vector<B61nContourNumber>(3, B61nContourNumber{}));
+    matrix[0][0] = B61nContourNumber{2, 0} / eta + B61nContourNumber{1, 0};
+    matrix[1][0] = B61nContourNumber{3, 0} / eta;
+    matrix[1][1] =
+        B61nContourNumber{B61nContourFloat("-0.5"), 0} / eta +
+        B61nContourNumber{2, 0};
+    matrix[2][0] = B61nContourNumber{-5, 0} / eta;
+    matrix[2][1] = B61nContourNumber{6, 0} / eta;
+    matrix[2][2] = B61nContourNumber{3, 0};
+    return matrix;
+  };
+
+  amflow::ComplexContourFrobeniusRecurrenceOptions root0_options;
+  root0_options.selected_root_index = 0;
+  root0_options.order = 1;
+  root0_options.residue_probe_eta = probe_eta;
+  root0_options.residue_tolerance = residue_tolerance;
+  root0_options.tail_fit_tolerance = B61nContourFloat("1e-30");
+  const amflow::ComplexContourFrobeniusRecurrence root0_recurrence =
+      amflow::ComputeComplexContourEtaZeroFrobeniusRecurrence(
+          evaluator, 3, root0_options);
+
+  Expect(root0_recurrence.success,
+         "b61n coupled lower-triangular Frobenius recurrence should derive a "
+         "canonical c0 null vector for the first indicial root: " +
+             root0_recurrence.summary);
+  Expect(root0_recurrence.coefficients.size() == 2,
+         "b61n coupled recurrence should publish c0 and c1");
+  const std::vector<B61nContourNumber> expected_root0_c0 = {
+      {1, 0},
+      {B61nContourFloat(6) / B61nContourFloat(5), 0},
+      {B61nContourFloat(11) / B61nContourFloat(10), 0},
+  };
+  for (std::size_t index = 0; index < expected_root0_c0.size(); ++index) {
+    ExpectB61nContourClose(root0_recurrence.coefficients[0][index],
+                           expected_root0_c0[index],
+                           B61nContourFloat("1e-12"),
+                           "b61n coupled recurrence c0 component " +
+                               std::to_string(index) +
+                               " should solve the indicial nullspace");
+  }
+  ExpectContains(root0_recurrence.summary,
+                 "leading_coefficient_source=canonical-triangular-indicial-null-vector",
+                 "b61n coupled recurrence should document that c0 came from the "
+                 "matrix indicial nullspace");
+
+  amflow::ComplexContourFrobeniusRecurrenceOptions root1_options =
+      root0_options;
+  root1_options.selected_root_index = 1;
+  const amflow::ComplexContourFrobeniusRecurrence root1_recurrence =
+      amflow::ComputeComplexContourEtaZeroFrobeniusRecurrence(
+          evaluator, 3, root1_options);
+  Expect(root1_recurrence.success,
+         "b61n coupled lower-triangular Frobenius recurrence should derive a "
+         "canonical c0 null vector for the second indicial root: " +
+             root1_recurrence.summary);
+  const std::vector<B61nContourNumber> expected_root1_c0 = {
+      {0, 0},
+      {1, 0},
+      {-12, 0},
+  };
+  for (std::size_t index = 0; index < expected_root1_c0.size(); ++index) {
+    ExpectB61nContourClose(root1_recurrence.coefficients[0][index],
+                           expected_root1_c0[index],
+                           B61nContourFloat("1e-12"),
+                           "b61n coupled recurrence second-root c0 component " +
+                               std::to_string(index) +
+                               " should solve the indicial nullspace");
+  }
+}
+
 void B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourNumber small_eta{0, B61nContourFloat("-1e-8")};
@@ -6019,6 +6095,7 @@ int main() {
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
+    B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();
     B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest();
     B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest();
     B61nEtaZeroIndicialEquationKeepsDensePolynomialWithoutRootsTest();

@@ -1562,14 +1562,6 @@ ComplexContourVector MakeZeroVector(const std::size_t dimension) {
   return ComplexContourVector(dimension, ComplexContourNumber{});
 }
 
-ComplexContourVector DefaultFrobeniusLeadingCoefficients(
-    const std::size_t dimension,
-    const std::size_t selected_root_index) {
-  ComplexContourVector coefficients = MakeZeroVector(dimension);
-  coefficients[selected_root_index] = ComplexContourNumber{1, 0};
-  return coefficients;
-}
-
 ComplexContourMatrix AddScaledMatrix(ComplexContourMatrix matrix,
                                      const ComplexContourMatrix& addend,
                                      const ComplexContourNumber& scale) {
@@ -1738,6 +1730,112 @@ ComplexContourVector SolveComplexLinearSystem(ComplexContourMatrix matrix,
     solution[row] = remainder / matrix[row][row];
   }
   return solution;
+}
+
+ComplexContourVector ComputeTriangularFrobeniusLeadingCoefficients(
+    const ComplexContourMatrix& residue_matrix,
+    const ComplexContourNumber& indicial_root,
+    const std::size_t selected_root_index,
+    const ComplexContourFloat& tolerance) {
+  const std::size_t dimension = residue_matrix.size();
+  if (selected_root_index >= dimension) {
+    throw std::runtime_error("frobenius-leading-root-index-out-of-range");
+  }
+  ComplexContourMatrix matrix =
+      MakeFrobeniusRecurrenceMatrix(residue_matrix, indicial_root, 0);
+  ComplexContourFloat scale =
+      std::max<ComplexContourFloat>(ComplexContourFloat(1),
+                                    MaxMatrixEntryNorm(matrix));
+  const ComplexContourFloat scaled_tolerance = tolerance * scale;
+  const ComplexContourFloat pivot_tolerance =
+      std::max(tolerance, scaled_tolerance);
+
+  std::size_t pivot_row = 0;
+  std::vector<std::size_t> pivot_columns;
+  for (std::size_t column = 0; column < dimension && pivot_row < dimension;
+       ++column) {
+    std::size_t best_row = pivot_row;
+    ComplexContourFloat best_abs = ComplexAbs(matrix[pivot_row][column]);
+    for (std::size_t row = pivot_row + 1; row < dimension; ++row) {
+      const ComplexContourFloat candidate_abs = ComplexAbs(matrix[row][column]);
+      if (candidate_abs > best_abs) {
+        best_abs = candidate_abs;
+        best_row = row;
+      }
+    }
+    if (best_abs <= pivot_tolerance) {
+      continue;
+    }
+    if (best_row != pivot_row) {
+      std::swap(matrix[best_row], matrix[pivot_row]);
+    }
+    const ComplexContourNumber pivot_value = matrix[pivot_row][column];
+    for (std::size_t col = column; col < dimension; ++col) {
+      matrix[pivot_row][col] /= pivot_value;
+    }
+    for (std::size_t row = 0; row < dimension; ++row) {
+      if (row == pivot_row) {
+        continue;
+      }
+      const ComplexContourNumber factor = matrix[row][column];
+      if (ComplexAbs(factor) <= pivot_tolerance) {
+        continue;
+      }
+      for (std::size_t col = column; col < dimension; ++col) {
+        matrix[row][col] -= factor * matrix[pivot_row][col];
+      }
+    }
+    pivot_columns.push_back(column);
+    ++pivot_row;
+  }
+
+  std::vector<bool> pivot_column_mask(dimension, false);
+  for (const std::size_t column : pivot_columns) {
+    pivot_column_mask[column] = true;
+  }
+  std::vector<std::size_t> free_columns;
+  free_columns.reserve(dimension - pivot_columns.size());
+  if (!pivot_column_mask[selected_root_index]) {
+    free_columns.push_back(selected_root_index);
+  }
+  for (std::size_t column = 0; column < dimension; ++column) {
+    if (!pivot_column_mask[column] && column != selected_root_index) {
+      free_columns.push_back(column);
+    }
+  }
+  if (free_columns.empty()) {
+    throw std::runtime_error("frobenius-leading-nullspace-empty");
+  }
+
+  for (const std::size_t free_column : free_columns) {
+    ComplexContourVector leading = MakeZeroVector(dimension);
+    leading[free_column] = ComplexContourNumber{1, 0};
+    for (std::size_t row = 0; row < pivot_columns.size(); ++row) {
+      const std::size_t pivot_column = pivot_columns[row];
+      ComplexContourNumber value;
+      for (std::size_t column = 0; column < dimension; ++column) {
+        if (!pivot_column_mask[column]) {
+          value -= matrix[row][column] * leading[column];
+        }
+      }
+      leading[pivot_column] = value;
+    }
+    if (ComplexAbs(leading[selected_root_index]) <= pivot_tolerance) {
+      continue;
+    }
+    const ComplexContourNumber normalization =
+        leading[selected_root_index];
+    for (ComplexContourNumber& entry : leading) {
+      entry /= normalization;
+    }
+    const ComplexContourVector residual = MatrixVectorProduct(
+        MakeFrobeniusRecurrenceMatrix(residue_matrix, indicial_root, 0),
+        leading);
+    if (MaxVectorNorm(residual) <= pivot_tolerance) {
+      return leading;
+    }
+  }
+  throw std::runtime_error("frobenius-leading-nullspace-normalization-failed");
 }
 
 std::size_t DefaultFrobeniusSampleCount(const std::size_t order) {
@@ -2121,11 +2219,19 @@ ComputeComplexContourEtaZeroFrobeniusRecurrence(
     }
 
     recurrence.coefficients.reserve(options.order + 1);
+    std::string leading_coefficient_source;
     ComplexContourVector leading_coefficients =
         options.leading_coefficients.empty()
-            ? DefaultFrobeniusLeadingCoefficients(dimension,
-                                                  options.selected_root_index)
+            ? ComputeTriangularFrobeniusLeadingCoefficients(
+                  recurrence.residue_matrix,
+                  recurrence.indicial_root,
+                  options.selected_root_index,
+                  options.residue_tolerance)
             : options.leading_coefficients;
+    leading_coefficient_source =
+        options.leading_coefficients.empty()
+            ? "canonical-triangular-indicial-null-vector"
+            : "caller-supplied";
     RequireFiniteVector(leading_coefficients, "frobenius-leading");
     const ComplexContourVector indicial_residual = MatrixVectorProduct(
         MakeFrobeniusRecurrenceMatrix(recurrence.residue_matrix,
@@ -2183,6 +2289,7 @@ ComputeComplexContourEtaZeroFrobeniusRecurrence(
         "; order=" + std::to_string(recurrence.order) +
         "; coefficient_count=" +
         std::to_string(recurrence.coefficients.size()) +
+        "; leading_coefficient_source=" + leading_coefficient_source +
         "; regular_tail_coefficient_count=" +
         std::to_string(recurrence.regular_tail_matrices.size()) +
         "; recurrence_convention=" + recurrence.recurrence_convention +

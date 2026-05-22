@@ -5466,6 +5466,7 @@ struct ComplexKinematicsContourScaffoldAudit {
   std::size_t contour_waypoint_count = 0;
   bool final_solution_samples_used_as_input = false;
   std::vector<BigComplex> contour_waypoints;
+  std::vector<BigComplex> contour_poles;
   std::string complex_mass_symbol;
   std::string half_plane;
   std::string contour_fingerprint;
@@ -5585,6 +5586,10 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
   audit.contour_waypoint_count = contour_plan.waypoints.size();
   audit.final_solution_samples_used_as_input = false;
   audit.contour_waypoints = contour_plan.waypoints;
+  audit.contour_poles.reserve(contour_plan.poles.size());
+  for (const ComplexEtaPoleAudit& pole : contour_plan.poles) {
+    audit.contour_poles.push_back(pole.value);
+  }
   audit.complex_mass_symbol = "m3sq";
   audit.half_plane = contour_plan.half_plane;
   audit.contour_fingerprint = contour_plan.contour_fingerprint;
@@ -5907,6 +5912,7 @@ struct B61nCoupledRowContourTransportAudit {
   std::size_t transported_count = 0;
   std::size_t epsilon_sample_count = 0;
   std::size_t waypoint_count = 0;
+  std::size_t contour_pole_count = 0;
   std::size_t segment_count_max = 0;
   std::size_t adaptive_step_count_max = 0;
   std::size_t adaptive_rejected_step_count_max = 0;
@@ -6144,6 +6150,16 @@ amflow::ComplexContourMatrixEvaluator BuildB61nCoupledRowMatrixEvaluator(
   };
 }
 
+std::vector<amflow::ComplexContourNumber> BuildB61nCoupledRowContourPoles(
+    const std::vector<BigComplex>& contour_poles) {
+  std::vector<amflow::ComplexContourNumber> poles;
+  poles.reserve(contour_poles.size());
+  for (const BigComplex& pole : contour_poles) {
+    poles.push_back(ToComplexContourNumber(pole));
+  }
+  return poles;
+}
+
 std::optional<B61nCoupledRowContourTransportAudit>
 ApplyB61nCoupledRowContourTransport(
     const DirectSolveSeriesSpec& spec,
@@ -6185,6 +6201,7 @@ ApplyB61nCoupledRowContourTransport(
     audit.epsilon_sample_count = spec.boundary_epsilon_samples.size();
     audit.matrix_fingerprint = ComputeB61nEtaMatrixFingerprint(spec);
     audit.contour_fingerprint = contour_scaffold_audit.contour_fingerprint;
+    audit.contour_pole_count = contour_scaffold_audit.contour_poles.size();
     audit.initial_data_fingerprint = initial_data_audit.initial_data_fingerprint;
     if (audit.matrix_fingerprint.empty()) {
       return std::nullopt;
@@ -6273,6 +6290,9 @@ ApplyB61nCoupledRowContourTransport(
           std::to_string(audit.adaptive_rejected_step_count_max) +
           "; pole_pinch_step_count_max=" +
           std::to_string(audit.pole_pinch_step_count_max) +
+          "; contour_pole_count=" +
+          std::to_string(audit.contour_pole_count) +
+          "; contour_poles_forwarded_to_propagator=true" +
           "; ode_propagation_applied=true; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
@@ -6374,6 +6394,8 @@ ApplyB61nCoupledRowContourTransport(
       options.endpoint_local_model_kind =
           contour_scaffold_audit.endpoint_local_model_kind;
       options.matrix_fingerprint = audit.matrix_fingerprint;
+      options.contour_poles =
+          BuildB61nCoupledRowContourPoles(contour_scaffold_audit.contour_poles);
       options.branch_policy =
           "NegIm lower-half-plane b61n coupled-row contour from lane171 "
           "eta-infinity finite-start data";
@@ -6399,6 +6421,9 @@ ApplyB61nCoupledRowContourTransport(
             result.diagnostics.refinement_effective_tolerance_abs +
             "; max_embedded_error_abs=" +
             result.diagnostics.max_embedded_error_abs +
+            "; contour_pole_count=" +
+            std::to_string(audit.contour_pole_count) +
+            "; contour_poles_forwarded_to_propagator=true" +
             "; propagator_summary=" + result.diagnostics.summary);
       }
       audit.segment_count_max =
@@ -6537,6 +6562,9 @@ ApplyB61nCoupledRowContourTransport(
         std::to_string(audit.adaptive_rejected_step_count_max) +
         "; pole_pinch_step_count_max=" +
         std::to_string(audit.pole_pinch_step_count_max) +
+        "; contour_pole_count=" +
+        std::to_string(audit.contour_pole_count) +
+        "; contour_poles_forwarded_to_propagator=true" +
         "; matrix_fingerprint=" + audit.matrix_fingerprint +
         "; contour_fingerprint=" + audit.contour_fingerprint +
         "; initial_data_fingerprint=" + audit.initial_data_fingerprint +

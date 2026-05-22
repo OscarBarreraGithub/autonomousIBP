@@ -49416,9 +49416,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row readiness audit should remain non-publishing before the "
                  "runtime transport pass");
   ExpectContains(stripped_json,
-                 "b61n coupled-row live contour propagation gate blocked",
-                 "b61n coupled-row runtime should fail closed at the high-order "
-                 "integrator gate");
+                 "b61n coupled-row live contour propagation executed but remained "
+                 "nonpublishing",
+                 "b61n coupled-row runtime should fail closed after the high-order "
+                 "integrator diagnostics");
   ExpectContains(stripped_json,
                  "finite_start_selection=closer-certified-eta-infinity-start",
                  "b61n coupled-row endpoint refinement should use the closer certified "
@@ -49475,8 +49476,8 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row closer-start ledger should name the next blocker after "
                  "slot-pattern expansion");
   ExpectContains(stripped_json,
-                 "complex contour propagator failed closed for epsilon sample 0",
-                 "b61n coupled-row runtime should publish the failed high-order endpoint "
+                 "selected coupled-row refinement error",
+                 "b61n coupled-row runtime should publish the nonpublishing high-order endpoint "
                  "sample");
   ExpectContains(stripped_json,
                  "refinement error",
@@ -49490,13 +49491,21 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "max_embedded_error_abs=",
                  "b61n coupled-row runtime should report embedded-error diagnostics");
   ExpectContains(stripped_json,
-                 "endpoint_vector_norm_abs=",
+                 "transported_endpoint_norm_abs=",
                  "b61n coupled-row runtime should report the high-order endpoint scale");
   ExpectContains(stripped_json,
-                 "ode_propagation_applied=false; coefficient_publication=false; "
+                 "contour_pole_count=6",
+                 "b61n coupled-row runtime should forward the extracted eta-matrix pole "
+                 "list into the contour propagator");
+  ExpectContains(stripped_json,
+                 "contour_poles_forwarded_to_propagator=true",
+                 "b61n coupled-row runtime should not leave RK78 pole diagnostics blind to "
+                 "the retained AMFlow matrix pole list");
+  ExpectContains(stripped_json,
+                 "ode_propagation_applied=true; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false; "
                  "full_eta_zero_contour_applied=false",
-                 "b61n coupled-row endpoint refinement failure must keep the scoped "
+                 "b61n coupled-row endpoint refinement nonpublication must keep the scoped "
                  "non-publication "
                  "contract");
   const std::filesystem::path bubble_audit_script_path =

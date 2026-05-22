@@ -5867,7 +5867,11 @@ struct B61nCoupledRowContourTransportAudit {
   std::size_t epsilon_sample_count = 0;
   std::size_t waypoint_count = 0;
   std::size_t segment_count_max = 0;
+  std::size_t adaptive_step_count_max = 0;
+  std::size_t adaptive_rejected_step_count_max = 0;
+  std::size_t pole_pinch_step_count_max = 0;
   BigFloat max_refinement_error_abs = 0;
+  BigFloat max_embedded_error_abs = 0;
   BigFloat max_relative_error_abs = 0;
   BigFloat transported_endpoint_norm_abs = 0;
   BigFloat initial_error_bound_abs = 0;
@@ -5881,6 +5885,8 @@ struct B61nCoupledRowContourTransportAudit {
   std::string endpoint_fingerprint;
   std::string initial_data_fingerprint;
   std::string finite_start_selection;
+  std::string endpoint_refinement_integrator =
+      "dormand-prince-rk45-adaptive";
   std::string summary;
 };
 
@@ -5895,6 +5901,17 @@ amflow::ComplexContourNumber ToComplexContourNumber(const BigComplex& value) {
 
 BigComplex FromComplexContourNumber(const amflow::ComplexContourNumber& value) {
   return {BigFloat(value.real()), BigFloat(value.imag())};
+}
+
+BigFloat BigFloatFromDiagnosticString(const std::string& value) {
+  if (value.empty()) {
+    return BigFloat(0);
+  }
+  try {
+    return BigFloat(value);
+  } catch (const std::exception&) {
+    return BigFloat(0);
+  }
 }
 
 std::string ComputeB61nEtaMatrixFingerprint(const DirectSolveSeriesSpec& spec) {
@@ -6030,8 +6047,27 @@ ApplyB61nCoupledRowContourTransport(
       audit.summary =
           " b61n coupled-row live contour propagation gate blocked: " +
           reason +
+          "; finite_start_selection=" +
+          (audit.finite_start_selection.empty()
+               ? std::string("none")
+               : audit.finite_start_selection) +
+          "; closer_start_candidate_count=" +
+          std::to_string(audit.closer_start_candidate_count) +
+          "; closer_start_certified=" +
+          std::string(audit.closer_start_certified ? "true" : "false") +
+          "; closer_start_first_failure=" +
+          (audit.closer_start_first_failure.empty()
+               ? std::string("none")
+               : audit.closer_start_first_failure) +
+          "; closer_start_last_failure=" +
+          (audit.closer_start_last_failure.empty()
+               ? std::string("none")
+               : audit.closer_start_last_failure) +
           "; ode_propagation_applied=false; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
+          "endpoint_refinement_integrator=" +
+          audit.endpoint_refinement_integrator +
+          "; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
           "; contour_fingerprint=" + audit.contour_fingerprint +
           "; requested_transport_order=[" +
@@ -6061,15 +6097,24 @@ ApplyB61nCoupledRowContourTransport(
           (audit.closer_start_last_failure.empty()
                ? std::string("none")
                : audit.closer_start_last_failure) +
-          "; endpoint_refinement_bottleneck=selected-coupled-row-rk4-refinement" +
+          "; endpoint_refinement_integrator=" +
+          audit.endpoint_refinement_integrator +
           "; initial_error_bound_abs=" +
           BigFloatCompactString(audit.initial_error_bound_abs, 24) +
           "; max_refinement_error_abs=" +
           BigFloatCompactString(audit.max_refinement_error_abs, 24) +
+          "; max_embedded_error_abs=" +
+          BigFloatCompactString(audit.max_embedded_error_abs, 24) +
           "; max_relative_error_abs=" +
           BigFloatCompactString(audit.max_relative_error_abs, 24) +
           "; transported_endpoint_norm_abs=" +
           BigFloatCompactString(audit.transported_endpoint_norm_abs, 24) +
+          "; adaptive_step_count_max=" +
+          std::to_string(audit.adaptive_step_count_max) +
+          "; adaptive_rejected_step_count_max=" +
+          std::to_string(audit.adaptive_rejected_step_count_max) +
+          "; pole_pinch_step_count_max=" +
+          std::to_string(audit.pole_pinch_step_count_max) +
           "; ode_propagation_applied=true; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
@@ -6165,11 +6210,16 @@ ApplyB61nCoupledRowContourTransport(
       }
 
       amflow::ComplexContourPropagationOptions options;
-      options.steps_per_segment = 64;
+      options.steps_per_segment = 8;
       options.refinement_doublings = 1;
       options.max_refinement_doublings = 4;
       options.refinement_error_tolerance =
-          amflow::ComplexContourFloat("1e100");
+          amflow::ComplexContourFloat("1e-24");
+      options.refinement_relative_error_tolerance =
+          amflow::ComplexContourFloat("1e-20");
+      options.max_adaptive_steps_per_segment = 2048;
+      options.endpoint_local_model_kind =
+          contour_scaffold_audit.endpoint_local_model_kind;
       options.matrix_fingerprint = audit.matrix_fingerprint;
       options.branch_policy =
           "NegIm lower-half-plane b61n coupled-row contour from lane171 "
@@ -6183,50 +6233,51 @@ ApplyB61nCoupledRowContourTransport(
                   ParseBigFloatRational(
                       spec.boundary_epsilon_samples[sample_index])),
               options);
-      amflow::ComplexContourPropagationOptions fine_options = options;
-      fine_options.steps_per_segment = options.steps_per_segment * 2;
-      const amflow::ComplexContourPropagationResult fine_result =
-          amflow::PropagateComplexContourVector(
-              initial_values,
-              waypoints,
-              BuildB61nCoupledRowMatrixEvaluator(
-                  spec,
-                  ParseBigFloatRational(
-                      spec.boundary_epsilon_samples[sample_index])),
-              fine_options);
       if (!result.success ||
-          result.endpoint_values.size() != spec.masters.size() ||
-          !fine_result.success ||
-          fine_result.endpoint_values.size() != spec.masters.size()) {
+          result.endpoint_values.size() != spec.masters.size()) {
         return blocked_audit(
             "complex contour propagator failed closed for epsilon sample " +
             std::to_string(sample_index) + " with failure_code=" +
-            (result.diagnostics.failure_code.empty()
-                 ? fine_result.diagnostics.failure_code
-                 : result.diagnostics.failure_code));
+            result.diagnostics.failure_code + "; integrator=" +
+            result.diagnostics.integrator + "; refinement_error_abs=" +
+            result.diagnostics.refinement_error_abs +
+            "; refinement_effective_tolerance_abs=" +
+            result.diagnostics.refinement_effective_tolerance_abs +
+            "; max_embedded_error_abs=" +
+            result.diagnostics.max_embedded_error_abs +
+            "; propagator_summary=" + result.diagnostics.summary);
       }
       audit.segment_count_max =
           std::max(audit.segment_count_max,
                    result.diagnostics.segment_count);
-      BigFloat selected_refinement_error = 0;
+      audit.adaptive_step_count_max =
+          std::max(audit.adaptive_step_count_max,
+                   result.diagnostics.adaptive_step_count);
+      audit.adaptive_rejected_step_count_max =
+          std::max(audit.adaptive_rejected_step_count_max,
+                   result.diagnostics.adaptive_rejected_step_count);
+      audit.pole_pinch_step_count_max =
+          std::max(audit.pole_pinch_step_count_max,
+                   result.diagnostics.pole_pinch_step_count);
+      const BigFloat selected_refinement_error =
+          BigFloatFromDiagnosticString(result.diagnostics.refinement_error_abs);
+      audit.max_embedded_error_abs =
+          std::max(audit.max_embedded_error_abs,
+                   BigFloatFromDiagnosticString(
+                       result.diagnostics.max_embedded_error_abs));
       BigFloat selected_relative_error = 0;
       for (const std::size_t row_index : coupled_row_indices) {
-        const BigComplex coarse_endpoint =
+        const BigComplex endpoint =
             FromComplexContourNumber(result.endpoint_values[row_index]);
-        const BigComplex fine_endpoint =
-            FromComplexContourNumber(fine_result.endpoint_values[row_index]);
-        const BigFloat row_error = BigAbs(coarse_endpoint - fine_endpoint);
         const BigFloat row_scale =
-            std::max(BigFloat(1),
-                     std::max(BigAbs(coarse_endpoint), BigAbs(fine_endpoint)));
-        const BigFloat row_relative_error = row_error / row_scale;
-        selected_refinement_error =
-            std::max(selected_refinement_error, row_error);
+            std::max(BigFloat(1), BigAbs(endpoint));
+        const BigFloat row_relative_error =
+            selected_refinement_error / row_scale;
         selected_relative_error =
             std::max(selected_relative_error, row_relative_error);
         audit.transported_endpoint_norm_abs =
             std::max(audit.transported_endpoint_norm_abs,
-                     BigAbs(fine_endpoint));
+                     BigAbs(endpoint));
       }
       audit.max_refinement_error_abs =
           std::max(audit.max_refinement_error_abs,
@@ -6247,7 +6298,7 @@ ApplyB61nCoupledRowContourTransport(
       for (std::size_t row = 0; row < coupled_row_indices.size(); ++row) {
         transported_samples[row][sample_index] =
             FromComplexContourNumber(
-                fine_result.endpoint_values[coupled_row_indices[row]]);
+                result.endpoint_values[coupled_row_indices[row]]);
       }
     }
 
@@ -6266,9 +6317,15 @@ ApplyB61nCoupledRowContourTransport(
                                  << audit.initial_data_fingerprint << "\n";
     endpoint_fingerprint_payload << "finite_start_selection="
                                  << audit.finite_start_selection << "\n";
+    endpoint_fingerprint_payload << "endpoint_refinement_integrator="
+                                 << audit.endpoint_refinement_integrator << "\n";
     endpoint_fingerprint_payload << "max_refinement_error_abs="
                                  << BigFloatCompactString(
                                         audit.max_refinement_error_abs, 70)
+                                 << "\n";
+    endpoint_fingerprint_payload << "max_embedded_error_abs="
+                                 << BigFloatCompactString(
+                                        audit.max_embedded_error_abs, 70)
                                  << "\n";
     endpoint_fingerprint_payload << "max_relative_error_abs="
                                  << BigFloatCompactString(
@@ -6306,12 +6363,22 @@ ApplyB61nCoupledRowContourTransport(
         std::string(audit.closer_start_certified ? "true" : "false") +
         "; initial_error_bound_abs=" +
         BigFloatCompactString(audit.initial_error_bound_abs, 24) +
+        "; endpoint_refinement_integrator=" +
+        audit.endpoint_refinement_integrator +
         "; max_refinement_error_abs=" +
         BigFloatCompactString(audit.max_refinement_error_abs, 24) +
+        "; max_embedded_error_abs=" +
+        BigFloatCompactString(audit.max_embedded_error_abs, 24) +
         "; max_relative_error_abs=" +
         BigFloatCompactString(audit.max_relative_error_abs, 24) +
         "; transported_endpoint_norm_abs=" +
         BigFloatCompactString(audit.transported_endpoint_norm_abs, 24) +
+        "; adaptive_step_count_max=" +
+        std::to_string(audit.adaptive_step_count_max) +
+        "; adaptive_rejected_step_count_max=" +
+        std::to_string(audit.adaptive_rejected_step_count_max) +
+        "; pole_pinch_step_count_max=" +
+        std::to_string(audit.pole_pinch_step_count_max) +
         "; matrix_fingerprint=" + audit.matrix_fingerprint +
         "; contour_fingerprint=" + audit.contour_fingerprint +
         "; initial_data_fingerprint=" + audit.initial_data_fingerprint +

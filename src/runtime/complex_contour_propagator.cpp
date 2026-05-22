@@ -111,6 +111,45 @@ struct Rk45StepEstimate {
   ComplexContourFloat embedded_error_abs = 0;
 };
 
+std::string AdaptiveRk45FailureMessage(const std::string& reason,
+                                       const AdaptiveRk45Stats& stats) {
+  std::ostringstream out;
+  out << reason << "; accepted_steps=" << stats.accepted_steps
+      << "; rejected_steps=" << stats.rejected_steps
+      << "; pole_pinch_step_count=" << stats.pole_pinched_steps
+      << "; max_embedded_error_abs="
+      << CompactFloat(stats.max_embedded_error_abs, 40);
+  return out.str();
+}
+
+std::string ExtractSemicolonDiagnosticValue(const std::string& message,
+                                            const std::string& key) {
+  const std::string needle = key + "=";
+  const std::size_t start = message.find(needle);
+  if (start == std::string::npos) {
+    return {};
+  }
+  const std::size_t value_start = start + needle.size();
+  const std::size_t value_end = message.find(';', value_start);
+  return message.substr(value_start,
+                        value_end == std::string::npos
+                            ? std::string::npos
+                            : value_end - value_start);
+}
+
+std::size_t ExtractSizeDiagnosticValue(const std::string& message,
+                                       const std::string& key) {
+  const std::string value = ExtractSemicolonDiagnosticValue(message, key);
+  if (value.empty()) {
+    return 0;
+  }
+  try {
+    return static_cast<std::size_t>(std::stoull(value));
+  } catch (const std::exception&) {
+    return 0;
+  }
+}
+
 ComplexContourVector AddScaledSum(
     const ComplexContourVector& base,
     const std::vector<const ComplexContourVector*>& directions,
@@ -357,11 +396,15 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
   while (t < ComplexContourFloat(1)) {
     if (result.stats.accepted_steps >=
         options.max_adaptive_steps_per_segment) {
-      throw std::runtime_error("adaptive-step-limit-exceeded");
+      throw std::runtime_error(
+          AdaptiveRk45FailureMessage("adaptive-step-limit-exceeded",
+                                     result.stats));
     }
     if (result.stats.rejected_steps >
         options.max_adaptive_steps_per_segment * 4) {
-      throw std::runtime_error("adaptive-rejection-limit-exceeded");
+      throw std::runtime_error(
+          AdaptiveRk45FailureMessage("adaptive-rejection-limit-exceeded",
+                                     result.stats));
     }
 
     const ComplexContourFloat remaining = ComplexContourFloat(1) - t;
@@ -375,10 +418,14 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
                                      options,
                                      pole_pinched);
     if (requested_h <= 0) {
-      throw std::runtime_error("adaptive-nonpositive-step");
+      throw std::runtime_error(
+          AdaptiveRk45FailureMessage("adaptive-nonpositive-step",
+                                     result.stats));
     }
     if (pole_pinched && requested_h < h_min) {
-      throw std::runtime_error("pole-pinch-step-underflow");
+      throw std::runtime_error(
+          AdaptiveRk45FailureMessage("pole-pinch-step-underflow",
+                                     result.stats));
     }
     requested_h = std::max(requested_h, h_min);
     requested_h = std::min(requested_h, remaining);
@@ -403,7 +450,9 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
       h = std::min(h_max, next_h);
     } else {
       if (requested_h <= h_min) {
-        throw std::runtime_error("adaptive-step-underflow");
+        throw std::runtime_error(
+            AdaptiveRk45FailureMessage("adaptive-step-underflow",
+                                       result.stats));
       }
       ++result.stats.rejected_steps;
       const ComplexContourFloat next_h =
@@ -936,7 +985,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     if (error_message.find("adaptive-step") != std::string::npos ||
         error_message.find("adaptive-rejection") != std::string::npos ||
         error_message.find("pole-pinch-step") != std::string::npos) {
-      return FailureResult(
+      ComplexContourPropagationResult failure = FailureResult(
           "refinement-tolerance-failed",
           "b61n complex contour propagation failed closed because adaptive RK45 "
           "refinement could not satisfy the effective tolerance: " +
@@ -944,6 +993,20 @@ ComplexContourPropagationResult PropagateComplexContourVector(
           initial_values,
           waypoints,
           options);
+      failure.diagnostics.adaptive_step_count =
+          ExtractSizeDiagnosticValue(error_message, "accepted_steps");
+      failure.diagnostics.adaptive_rejected_step_count =
+          ExtractSizeDiagnosticValue(error_message, "rejected_steps");
+      failure.diagnostics.pole_pinch_step_count =
+          ExtractSizeDiagnosticValue(error_message, "pole_pinch_step_count");
+      failure.diagnostics.max_embedded_error_abs =
+          ExtractSemicolonDiagnosticValue(error_message,
+                                          "max_embedded_error_abs");
+      failure.diagnostics.refinement_error_abs =
+          "not_available_before_endpoint";
+      failure.diagnostics.refinement_effective_tolerance_abs =
+          "not_available_before_endpoint";
+      return failure;
     }
     return FailureResult("propagation-failed",
                          std::string("b61n complex contour propagation failed closed: ") +

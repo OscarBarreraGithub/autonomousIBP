@@ -49416,49 +49416,55 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row readiness audit should remain non-publishing before the "
                  "runtime transport pass");
   ExpectContains(stripped_json,
-                 "b61n coupled-row live contour propagation executed but remained "
-                 "nonpublishing",
-                 "b61n coupled-row runtime should execute the live transport before "
-                 "failing closed");
+                 "b61n coupled-row live contour propagation gate blocked",
+                 "b61n coupled-row runtime should fail closed at the RK45 gate");
   ExpectContains(stripped_json,
                  "finite_start_selection=original-certified-eta-infinity-start",
-                 "b61n coupled-row runtime should fall back to the certified eta-infinity "
-                 "start when closer starts are not certified");
+                 "b61n coupled-row RK45 test should use the certified eta-infinity start");
   ExpectContains(stripped_json,
                  "closer_start_candidate_count=11",
-                 "b61n coupled-row runtime should count the rejected closer finite-start "
+                 "b61n coupled-row RK45 test should count the rejected closer finite-start "
                  "candidates");
   ExpectContains(stripped_json,
                  "closer_start_certified=false",
-                 "b61n coupled-row runtime should expose that no closer finite start "
-                 "certified");
+                 "b61n coupled-row RK45 test should not certify a closer finite start");
   ExpectContains(stripped_json,
                  "closer_start_first_failure=eta=",
-                 "b61n coupled-row runtime should publish the first closer-start failure");
+                 "b61n coupled-row RK45 test should report the first rejected "
+                 "closer-start candidate");
   ExpectContains(stripped_json,
                  "closer_start_last_failure=eta=",
-                 "b61n coupled-row runtime should publish the last closer-start failure");
+                 "b61n coupled-row RK45 test should report the last rejected "
+                 "closer-start candidate");
   ExpectContains(stripped_json,
                  "eta-infinity initializer could not solve a finite infinity recurrence "
                  "system",
-                 "b61n coupled-row runtime should identify the closer-start recurrence "
-                 "solve as the handoff bottleneck");
+                 "b61n coupled-row RK45 test should keep the closer-start recurrence "
+                 "bottleneck visible");
   ExpectContains(stripped_json,
-                 "selected coupled-row refinement error",
-                 "b61n coupled-row runtime should publish the failed endpoint budget");
+                 "complex contour propagator failed closed for epsilon sample 0",
+                 "b61n coupled-row runtime should publish the failed RK45 endpoint "
+                 "sample");
   ExpectContains(stripped_json,
-                 "endpoint_refinement_bottleneck=selected-coupled-row-rk4-refinement",
-                 "b61n coupled-row runtime should label the selected-row refinement "
-                 "bottleneck");
+                 "adaptive-step-limit-exceeded",
+                 "b61n coupled-row runtime should expose the bounded RK45 step-budget "
+                 "failure");
   ExpectContains(stripped_json,
-                 "max_relative_error_abs=",
-                 "b61n coupled-row runtime should report the relative endpoint error budget");
+                 "endpoint_refinement_integrator=dormand-prince-rk45-adaptive",
+                 "b61n coupled-row runtime should label the RK45 endpoint refinement "
+                 "integrator");
   ExpectContains(stripped_json,
-                 "ode_propagation_applied=true; coefficient_publication=false; "
+                 "max_embedded_error_abs=",
+                 "b61n coupled-row runtime should report RK45 embedded-error diagnostics");
+  ExpectContains(stripped_json,
+                 "accepted_steps=2048",
+                 "b61n coupled-row runtime should report the bounded RK45 step count");
+  ExpectContains(stripped_json,
+                 "ode_propagation_applied=false; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false; "
                  "full_eta_zero_contour_applied=false",
-                 "b61n coupled-row live propagation must keep the scoped non-publication "
-                 "contract after budget failure");
+                 "b61n coupled-row RK45 failure must keep the scoped non-publication "
+                 "contract");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =

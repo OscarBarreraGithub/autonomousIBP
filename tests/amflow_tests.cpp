@@ -49256,7 +49256,7 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(stripped_json,
                  "\"eta_zero_endpoint_transported_master_count\": 5",
                  "b61n selected endpoint transport should count the reviewed primitive "
-                 "masters");
+                 "masters while the coupled rows remain gated");
   ExpectContains(stripped_json,
                  "\"eta_zero_endpoint_transported_integrals\": [\"box[0,0,0,1]\", "
                  "\"box[1,0,1,0]\", \"box[1,0,0,1]\", \"box[0,1,0,1]\", "
@@ -49332,6 +49332,18 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "ode_propagation_applied=false; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false",
                  "b61n coupled-row audit must remain non-publishing before live ODE propagation");
+  ExpectContains(stripped_json,
+                 "b61n coupled-row live contour propagation gate blocked",
+                 "b61n coupled-row runtime should expose the live transport gate");
+  ExpectContains(stripped_json,
+                 "no closer eta-infinity finite-start point certified the lane171 70-digit "
+                 "guard",
+                 "b61n coupled-row runtime should fail closed on uncertified start data");
+  ExpectContains(stripped_json,
+                 "ode_propagation_applied=false; coefficient_publication=false; "
+                 "final_solution_samples_used_as_input=false; "
+                 "full_eta_zero_contour_applied=false",
+                 "b61n coupled-row gate must keep the scoped non-publication contract");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =

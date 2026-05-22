@@ -32,6 +32,7 @@
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
 #include "amflow/runtime/eta_mode.hpp"
@@ -4233,6 +4234,7 @@ struct EtaInfinityInitialDataAudit {
   BigFloat vector_norm_abs = 0;
   BigFloat tail_geometric_ratio = 0;
   BigFloat min_certified_digits = 0;
+  std::vector<std::vector<BigComplex>> finite_start_samples;
   std::string initial_data_fingerprint;
   std::string summary;
 };
@@ -4560,7 +4562,8 @@ std::optional<EtaInfinityInitialDataAudit> TryBuildControlledEtaInfinityInitialD
     const DirectSolveSeriesSpec& spec,
     const std::vector<ParsedAmflowBoundaryRegion>& regions,
     const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
-    const int requested_truncation_order) {
+    const int requested_truncation_order,
+    const std::optional<BigComplex>& requested_eta_start = std::nullopt) {
   if (requested_truncation_order <= 0 || regions.empty() ||
       spec.boundary_epsilon_samples.empty()) {
     return std::nullopt;
@@ -4577,7 +4580,9 @@ std::optional<EtaInfinityInitialDataAudit> TryBuildControlledEtaInfinityInitialD
       ParseBigFloatRational(spec.boundary_epsilon_samples.front());
   const BigFloat eta_start_radius =
       ControlledEtaStartRadius(spec, first_epsilon, &audit.nearest_x_singularity_radius);
-  audit.eta_start = {0, -eta_start_radius};
+  audit.eta_start =
+      requested_eta_start.has_value() ? *requested_eta_start
+                                      : BigComplex{0, -eta_start_radius};
   audit.x_start = BigComplex{1, 0} / audit.eta_start;
 
   std::vector<std::vector<BigComplex>> finite_start_samples(
@@ -4681,6 +4686,7 @@ std::optional<EtaInfinityInitialDataAudit> TryBuildControlledEtaInfinityInitialD
       ++audit.coupled_missing_master_count;
     }
   }
+  audit.finite_start_samples = finite_start_samples;
   const int backend_digits = std::numeric_limits<BigFloat>::digits10;
   const int roundoff_digits = std::max(80, backend_digits - 200);
   const BigFloat roundoff_unit("1e-" + std::to_string(roundoff_digits));
@@ -5343,6 +5349,7 @@ struct ComplexKinematicsContourScaffoldAudit {
   std::size_t complex_pole_count = 0;
   std::size_t contour_waypoint_count = 0;
   bool final_solution_samples_used_as_input = false;
+  std::vector<BigComplex> contour_waypoints;
   std::string complex_mass_symbol;
   std::string half_plane;
   std::string contour_fingerprint;
@@ -5461,6 +5468,7 @@ ComplexKinematicsContourScaffoldAudit BuildComplexKinematicsContourScaffoldAudit
   audit.complex_pole_count = contour_plan.poles.size();
   audit.contour_waypoint_count = contour_plan.waypoints.size();
   audit.final_solution_samples_used_as_input = false;
+  audit.contour_waypoints = contour_plan.waypoints;
   audit.complex_mass_symbol = "m3sq";
   audit.half_plane = contour_plan.half_plane;
   audit.contour_fingerprint = contour_plan.contour_fingerprint;
@@ -5776,6 +5784,316 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
       "stays false.";
   return audit;
+}
+
+struct B61nCoupledRowContourTransportAudit {
+  bool success = false;
+  std::size_t transported_count = 0;
+  std::size_t epsilon_sample_count = 0;
+  std::size_t waypoint_count = 0;
+  std::size_t segment_count_max = 0;
+  BigFloat max_refinement_error_abs = 0;
+  std::vector<std::string> transported_master_labels;
+  std::string matrix_fingerprint;
+  std::string contour_fingerprint;
+  std::string endpoint_fingerprint;
+  std::string initial_data_fingerprint;
+  std::string summary;
+};
+
+amflow::ComplexContourFloat ToComplexContourFloat(const BigFloat& value) {
+  return value.convert_to<amflow::ComplexContourFloat>();
+}
+
+amflow::ComplexContourNumber ToComplexContourNumber(const BigComplex& value) {
+  return {ToComplexContourFloat(value.real),
+          ToComplexContourFloat(value.imaginary)};
+}
+
+BigComplex FromComplexContourNumber(const amflow::ComplexContourNumber& value) {
+  return {BigFloat(value.real()), BigFloat(value.imag())};
+}
+
+std::string ComputeB61nEtaMatrixFingerprint(const DirectSolveSeriesSpec& spec) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    return {};
+  }
+  std::ostringstream out;
+  out << "kind=b61n-live-coupled-row-eta-matrix\n";
+  out << "benchmark_id=" << spec.benchmark_id << "\n";
+  out << "family=" << spec.family << "\n";
+  out << "variable=" << spec.variable << "\n";
+  out << "masters=" << spec.masters.size() << "\n";
+  out << "amflow_config_raw=" << spec.amflow_config_raw << "\n";
+  for (std::size_t row = 0; row < matrix_it->second.size(); ++row) {
+    for (std::size_t column = 0; column < matrix_it->second[row].size();
+         ++column) {
+      out << "matrix[" << row << "," << column << "]="
+          << matrix_it->second[row][column] << "\n";
+    }
+  }
+  return amflow::ComputeArtifactFingerprint(out.str());
+}
+
+std::vector<amflow::ComplexContourNumber> BuildB61nCoupledRowContourWaypoints(
+    const BigComplex& eta_start,
+    const std::vector<BigComplex>& contour_waypoints) {
+  std::vector<amflow::ComplexContourNumber> waypoints;
+  const auto append_distinct = [&waypoints](const BigComplex& waypoint) {
+    if (!waypoints.empty() &&
+        BigAbs(FromComplexContourNumber(waypoints.back()) - waypoint) <
+            BigFloat("1e-80")) {
+      return;
+    }
+    waypoints.push_back(ToComplexContourNumber(waypoint));
+  };
+
+  append_distinct(eta_start);
+  if (!contour_waypoints.empty()) {
+    const BigComplex first_contour_waypoint = contour_waypoints.front();
+    BigFloat current_radius = BigAbs(eta_start);
+    const BigFloat target_radius =
+        std::max(BigAbs(first_contour_waypoint), BigFloat("1e-30"));
+    while (current_radius > target_radius * BigFloat(8)) {
+      current_radius /= BigFloat(8);
+      append_distinct(BigComplex{0, -current_radius});
+    }
+  }
+  for (const BigComplex& waypoint : contour_waypoints) {
+    append_distinct(waypoint);
+  }
+  return waypoints;
+}
+
+amflow::ComplexContourMatrixEvaluator BuildB61nCoupledRowMatrixEvaluator(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& epsilon_value) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("b61n coupled-row contour transport requires an eta matrix");
+  }
+  const std::vector<std::vector<std::string>> matrix = matrix_it->second;
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  return [matrix, numeric_substitutions, epsilon_value, variable = spec.variable](
+             const amflow::ComplexContourNumber& eta) {
+    std::map<std::string, BigComplex> bindings = numeric_substitutions;
+    bindings[variable] = FromComplexContourNumber(eta);
+    bindings["eps"] = RealBigComplex(epsilon_value);
+
+    amflow::ComplexContourMatrix evaluated(matrix.size());
+    for (std::size_t row = 0; row < matrix.size(); ++row) {
+      evaluated[row].reserve(matrix[row].size());
+      for (const std::string& cell : matrix[row]) {
+        evaluated[row].push_back(
+            ToComplexContourNumber(ParseAmflowComplexExpression(cell, bindings)));
+      }
+    }
+    return evaluated;
+  };
+}
+
+std::optional<B61nCoupledRowContourTransportAudit>
+ApplyB61nCoupledRowContourTransport(
+    const DirectSolveSeriesSpec& spec,
+    const std::vector<ParsedAmflowBoundaryRegion>& regions,
+    const std::vector<std::vector<std::vector<BigComplex>>>& region_contributions,
+    const ComplexKinematicsContourScaffoldAudit& contour_scaffold_audit,
+    const EtaInfinityInitialDataAudit& initial_data_audit,
+    const std::vector<std::vector<BigComplex>>& master_samples) {
+  try {
+    if (!IsComplexKinematicsFullEtaZeroContourState(spec) ||
+        initial_data_audit.initial_data_fingerprint.empty() ||
+        initial_data_audit.finite_start_samples.size() != spec.masters.size() ||
+        contour_scaffold_audit.contour_waypoints.size() < 2 ||
+        spec.boundary_epsilon_samples.empty()) {
+      return std::nullopt;
+    }
+    const std::vector<std::string> coupled_row_labels = {
+        "box[1,0,1,1]",
+        "box[1,1,1,1]",
+    };
+    std::vector<std::size_t> coupled_row_indices;
+    coupled_row_indices.reserve(coupled_row_labels.size());
+    for (const std::string& label : coupled_row_labels) {
+      const std::optional<std::size_t> index = FindMasterIndexByLabel(spec, label);
+      if (!index.has_value() || *index >= master_samples.size()) {
+        return std::nullopt;
+      }
+      coupled_row_indices.push_back(*index);
+    }
+    for (const std::vector<BigComplex>& samples :
+         initial_data_audit.finite_start_samples) {
+      if (samples.size() != spec.boundary_epsilon_samples.size()) {
+        return std::nullopt;
+      }
+    }
+
+    B61nCoupledRowContourTransportAudit audit;
+    audit.transported_master_labels = coupled_row_labels;
+    audit.epsilon_sample_count = spec.boundary_epsilon_samples.size();
+    audit.matrix_fingerprint = ComputeB61nEtaMatrixFingerprint(spec);
+    audit.contour_fingerprint = contour_scaffold_audit.contour_fingerprint;
+    audit.initial_data_fingerprint = initial_data_audit.initial_data_fingerprint;
+    if (audit.matrix_fingerprint.empty()) {
+      return std::nullopt;
+    }
+    const auto blocked_audit =
+        [&audit](const std::string& reason)
+            -> std::optional<B61nCoupledRowContourTransportAudit> {
+      audit.success = false;
+      audit.transported_count = 0;
+      audit.summary =
+          " b61n coupled-row live contour propagation gate blocked: " +
+          reason +
+          "; ode_propagation_applied=false; coefficient_publication=false; "
+          "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
+          "matrix_fingerprint=" + audit.matrix_fingerprint +
+          "; contour_fingerprint=" + audit.contour_fingerprint +
+          "; requested_transport_order=[" +
+          JoinTextList(audit.transported_master_labels, " -> ") +
+          "].";
+      return audit;
+    };
+
+    std::optional<EtaInfinityInitialDataAudit> propagation_initial_data;
+    const BigFloat contour_start_radius =
+        std::max(BigAbs(contour_scaffold_audit.contour_waypoints.front()),
+                 BigFloat(1));
+    const int propagation_truncation_order =
+        std::max(initial_data_audit.truncation_order, 24);
+    for (const BigFloat factor :
+         {BigFloat(16), BigFloat(64), BigFloat(256), BigFloat(1024),
+          BigFloat(4096), BigFloat(16384), BigFloat(65536),
+          BigFloat(262144), BigFloat(1048576), BigFloat(4194304),
+          BigFloat(16777216)}) {
+      const BigFloat candidate_radius = contour_start_radius * factor;
+      if (candidate_radius >= BigAbs(initial_data_audit.eta_start)) {
+        continue;
+      }
+      try {
+        propagation_initial_data = TryBuildControlledEtaInfinityInitialData(
+            spec,
+            regions,
+            region_contributions,
+            propagation_truncation_order,
+            BigComplex{0, -candidate_radius});
+        if (propagation_initial_data.has_value()) {
+          break;
+        }
+      } catch (const std::exception&) {
+      }
+    }
+    if (!propagation_initial_data.has_value() ||
+        propagation_initial_data->finite_start_samples.size() != spec.masters.size()) {
+      return blocked_audit(
+          "no closer eta-infinity finite-start point certified the lane171 70-digit "
+          "guard for the coupled-row contour start");
+    }
+    audit.initial_data_fingerprint =
+        propagation_initial_data->initial_data_fingerprint;
+
+    const std::vector<amflow::ComplexContourNumber> waypoints =
+        BuildB61nCoupledRowContourWaypoints(
+            propagation_initial_data->eta_start,
+            contour_scaffold_audit.contour_waypoints);
+    audit.waypoint_count = waypoints.size();
+    if (waypoints.size() < 2) {
+      return std::nullopt;
+    }
+
+    std::vector<std::vector<BigComplex>> transported_samples(
+        coupled_row_indices.size(),
+        std::vector<BigComplex>(spec.boundary_epsilon_samples.size()));
+    for (std::size_t sample_index = 0;
+         sample_index < spec.boundary_epsilon_samples.size();
+         ++sample_index) {
+      amflow::ComplexContourVector initial_values;
+      initial_values.reserve(spec.masters.size());
+      for (std::size_t master = 0; master < spec.masters.size(); ++master) {
+        initial_values.push_back(ToComplexContourNumber(
+            propagation_initial_data->finite_start_samples[master][sample_index]));
+      }
+
+      amflow::ComplexContourPropagationOptions options;
+      options.steps_per_segment = 64;
+      options.refinement_doublings = 1;
+      options.max_refinement_doublings = 4;
+      options.refinement_error_tolerance =
+          amflow::ComplexContourFloat("1e100");
+      options.matrix_fingerprint = audit.matrix_fingerprint;
+      options.branch_policy =
+          "NegIm lower-half-plane b61n coupled-row contour from lane171 "
+          "eta-infinity finite-start data";
+      const amflow::ComplexContourPropagationResult result =
+          amflow::PropagateComplexContourVector(
+              initial_values,
+              waypoints,
+              BuildB61nCoupledRowMatrixEvaluator(
+                  spec,
+                  ParseBigFloatRational(
+                      spec.boundary_epsilon_samples[sample_index])),
+              options);
+      amflow::ComplexContourPropagationOptions fine_options = options;
+      fine_options.steps_per_segment = options.steps_per_segment * 2;
+      const amflow::ComplexContourPropagationResult fine_result =
+          amflow::PropagateComplexContourVector(
+              initial_values,
+              waypoints,
+              BuildB61nCoupledRowMatrixEvaluator(
+                  spec,
+                  ParseBigFloatRational(
+                      spec.boundary_epsilon_samples[sample_index])),
+              fine_options);
+      if (!result.success ||
+          result.endpoint_values.size() != spec.masters.size() ||
+          !fine_result.success ||
+          fine_result.endpoint_values.size() != spec.masters.size()) {
+        return blocked_audit(
+            "complex contour propagator failed closed for epsilon sample " +
+            std::to_string(sample_index) + " with failure_code=" +
+            (result.diagnostics.failure_code.empty()
+                 ? fine_result.diagnostics.failure_code
+                 : result.diagnostics.failure_code));
+      }
+      audit.segment_count_max =
+          std::max(audit.segment_count_max,
+                   result.diagnostics.segment_count);
+      BigFloat selected_refinement_error = 0;
+      for (const std::size_t row_index : coupled_row_indices) {
+        selected_refinement_error =
+            std::max(selected_refinement_error,
+                     BigAbs(FromComplexContourNumber(
+                         result.endpoint_values[row_index] -
+                         fine_result.endpoint_values[row_index])));
+      }
+      if (selected_refinement_error > BigFloat("1e-28")) {
+        return blocked_audit(
+            "selected coupled-row refinement error " +
+            BigFloatCompactString(selected_refinement_error, 40) +
+            " exceeded 1e-28 for epsilon sample " +
+            std::to_string(sample_index));
+      }
+      if (!fine_result.diagnostics.refinement_error_abs.empty()) {
+        audit.max_refinement_error_abs =
+            std::max(audit.max_refinement_error_abs,
+                     selected_refinement_error);
+      }
+      for (std::size_t row = 0; row < coupled_row_indices.size(); ++row) {
+        transported_samples[row][sample_index] =
+            FromComplexContourNumber(
+                fine_result.endpoint_values[coupled_row_indices[row]]);
+      }
+    }
+
+    (void)transported_samples;
+    return blocked_audit(
+        "trial coupled-row propagation remained nonpublishing pending a relative endpoint "
+        "error budget and independent AMFlow parity review");
+  } catch (const std::exception&) {
+    return std::nullopt;
+  }
 }
 
 std::optional<std::size_t> FindEpsilonCoefficientOrder(
@@ -9236,6 +9554,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
                                                      *complex_contour_scaffold_audit,
                                                      master_samples);
   }
+  std::optional<B61nCoupledRowContourTransportAudit>
+      b61n_coupled_row_transport_audit;
+  if (complex_contour_scaffold_audit.has_value()) {
+    b61n_coupled_row_transport_audit =
+        ApplyB61nCoupledRowContourTransport(direct_spec,
+                                            regions,
+                                            region_contributions,
+                                            *complex_contour_scaffold_audit,
+                                            eta_infinity_initial_data_audit,
+                                            master_samples);
+  }
 
   amflow::SolverDiagnostics diagnostics;
   diagnostics.success = true;
@@ -9356,6 +9685,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
         "one-mass bubbles use reviewed Feynman-parameter log-moment constants "
         "guarded to the retained Numeric substitutions without reading final "
         "solution samples.";
+  }
+  if (b61n_coupled_row_transport_audit.has_value()) {
+    if (b61n_coupled_row_transport_audit->success) {
+      diagnostics.eta_endpoint_transport_count +=
+          static_cast<int>(b61n_coupled_row_transport_audit->transported_count);
+      for (const std::string& label :
+           b61n_coupled_row_transport_audit->transported_master_labels) {
+        AppendEtaEndpointTransportedIntegralOnce(diagnostics, label);
+      }
+    }
+    diagnostics.summary += b61n_coupled_row_transport_audit->summary;
   }
   if (complex_contour_scaffold_audit.has_value() &&
       !eta_infinity_initial_data_audit.summary.empty()) {

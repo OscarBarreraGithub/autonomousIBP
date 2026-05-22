@@ -4179,7 +4179,9 @@ std::optional<int> TryNearestInteger(const BigFloat& value) {
 
 std::optional<std::vector<BigComplex>> SolveOverdeterminedComplexLinearSystem(
     std::vector<std::vector<BigComplex>> matrix,
-    std::vector<BigComplex> rhs) {
+    std::vector<BigComplex> rhs,
+    const std::vector<std::optional<std::size_t>>* preferred_pivot_rows_for_column =
+        nullptr) {
   const std::size_t equation_count = rhs.size();
   if (matrix.size() != equation_count) {
     throw std::runtime_error("complex linear system row count mismatch");
@@ -4203,15 +4205,39 @@ std::optional<std::vector<BigComplex>> SolveOverdeterminedComplexLinearSystem(
   }
 
   std::vector<std::optional<std::size_t>> pivot_row_for_column(unknown_count);
+  std::vector<std::size_t> original_row_at_position(equation_count);
+  std::vector<std::size_t> position_for_original_row(equation_count);
+  for (std::size_t row = 0; row < equation_count; ++row) {
+    original_row_at_position[row] = row;
+    position_for_original_row[row] = row;
+  }
   std::size_t pivot_row = 0;
   for (std::size_t column = 0; column < unknown_count; ++column) {
     std::size_t best_row = pivot_row;
     BigFloat best_abs = 0;
-    for (std::size_t row = pivot_row; row < equation_count; ++row) {
-      const BigFloat candidate_abs = BigAbs(matrix[row][column]);
-      if (candidate_abs > best_abs) {
-        best_abs = candidate_abs;
-        best_row = row;
+    // Keep a slot's own recurrence row as its primary pivot when available;
+    // lower-tail compatibility rows can otherwise displace causal slot rows.
+    if (preferred_pivot_rows_for_column != nullptr &&
+        column < preferred_pivot_rows_for_column->size() &&
+        (*preferred_pivot_rows_for_column)[column].has_value()) {
+      const std::size_t preferred_row =
+          *(*preferred_pivot_rows_for_column)[column];
+      if (preferred_row < equation_count) {
+        const std::size_t preferred_position =
+            position_for_original_row[preferred_row];
+        if (preferred_position >= pivot_row) {
+          best_abs = BigAbs(matrix[preferred_position][column]);
+          best_row = preferred_position;
+        }
+      }
+    }
+    if (IsTiny(best_abs)) {
+      for (std::size_t row = pivot_row; row < equation_count; ++row) {
+        const BigFloat candidate_abs = BigAbs(matrix[row][column]);
+        if (candidate_abs > best_abs) {
+          best_abs = candidate_abs;
+          best_row = row;
+        }
       }
     }
     if (IsTiny(best_abs)) {
@@ -4220,6 +4246,12 @@ std::optional<std::vector<BigComplex>> SolveOverdeterminedComplexLinearSystem(
     if (best_row != pivot_row) {
       std::swap(matrix[pivot_row], matrix[best_row]);
       std::swap(rhs[pivot_row], rhs[best_row]);
+      std::swap(original_row_at_position[pivot_row],
+                original_row_at_position[best_row]);
+      position_for_original_row[original_row_at_position[pivot_row]] =
+          pivot_row;
+      position_for_original_row[original_row_at_position[best_row]] =
+          best_row;
     }
 
     const BigComplex pivot_value = matrix[pivot_row][column];
@@ -4446,6 +4478,14 @@ std::vector<std::vector<std::vector<BigComplex>>> SolveEtaInfinityRegionSeries(
   std::vector<std::vector<BigComplex>> lhs(
       equation_count, std::vector<BigComplex>(unknown_slots.size()));
   std::vector<BigComplex> rhs(equation_count);
+  std::vector<std::optional<std::size_t>> preferred_pivot_rows_for_column(
+      unknown_slots.size());
+  for (std::size_t index = 0; index < unknown_slots.size(); ++index) {
+    const SeriesSlot& slot = unknown_slots[index];
+    preferred_pivot_rows_for_column[index] =
+        slot.master * static_cast<std::size_t>(max_order + 1) +
+        static_cast<std::size_t>(slot.order);
+  }
 
   const auto slot_index = [&](const std::size_t master,
                               const int order) -> std::optional<std::size_t> {
@@ -4510,7 +4550,8 @@ std::vector<std::vector<std::vector<BigComplex>>> SolveEtaInfinityRegionSeries(
 
   if (!unknown_slots.empty()) {
     const std::optional<std::vector<BigComplex>> solved =
-        SolveOverdeterminedComplexLinearSystem(lhs, rhs);
+        SolveOverdeterminedComplexLinearSystem(
+            lhs, rhs, &preferred_pivot_rows_for_column);
     if (!solved.has_value()) {
       throw std::runtime_error(
           "eta-infinity initializer could not solve a finite infinity recurrence "

@@ -49420,17 +49420,17 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row runtime should fail closed at the high-order "
                  "integrator gate");
   ExpectContains(stripped_json,
-                 "finite_start_selection=original-certified-eta-infinity-start",
-                 "b61n coupled-row endpoint refinement should use the certified "
-                 "eta-infinity start");
+                 "finite_start_selection=closer-certified-eta-infinity-start",
+                 "b61n coupled-row endpoint refinement should use the closer certified "
+                 "eta-infinity start after owner-pivot recurrence solving");
   ExpectContains(stripped_json,
-                 "closer_start_candidate_count=11",
-                 "b61n coupled-row endpoint refinement should count the rejected "
-                 "closer finite-start candidates");
+                 "closer_start_candidate_count=3",
+                 "b61n coupled-row endpoint refinement should stop after the first certified "
+                 "closer finite-start candidate");
   ExpectContains(stripped_json,
-                 "closer_start_certified=false",
-                 "b61n coupled-row endpoint refinement should not certify a closer "
-                 "finite start");
+                 "closer_start_certified=true",
+                 "b61n coupled-row endpoint refinement should certify a closer finite start once "
+                 "slot owner pivots are preferred");
   ExpectContains(stripped_json,
                  "closer_start_first_failure=eta=",
                  "b61n coupled-row endpoint refinement should report the first rejected "
@@ -49448,29 +49448,32 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row runtime should preserve intermediate closer-start "
                  "failures in the ledger");
   ExpectContains(stripped_json,
-                 "eta-infinity initializer could not solve a finite infinity recurrence "
-                 "system",
-                 "b61n coupled-row endpoint refinement should keep the closer-start "
-                 "recurrence "
-                 "bottleneck visible");
+                 "eta-infinity initializer did not certify the 70-digit finite-start guard",
+                 "b61n coupled-row endpoint refinement should move past the recurrence slot "
+                 "bottleneck to the finite-start precision guard");
+  Expect(stripped_json.find(
+             "eta-infinity initializer could not solve a finite infinity recurrence "
+             "system") == std::string::npos,
+         "b61n coupled-row closer starts should no longer fail from recurrence slot "
+         "incompatibility");
   ExpectContains(stripped_json,
-                 "root_cause=slot-incompatibility",
-                 "b61n coupled-row closer-start ledger should classify each failed "
-                 "candidate");
+                 "root_cause=precision",
+                 "b61n coupled-row closer-start ledger should classify the remaining "
+                 "failed candidates");
   ExpectContains(stripped_json,
-                 "closer_start_root_causes={slot-incompatibility:11, divisibility:0, "
-                 "recurrence-depth:0, precision:0}",
-                 "b61n coupled-row closer-start ledger should count the 11 failures by "
-                 "root cause");
+                 "closer_start_root_causes={slot-incompatibility:0, divisibility:0, "
+                 "recurrence-depth:0, precision:2}",
+                 "b61n coupled-row closer-start ledger should show that slot "
+                 "incompatibility no longer blocks the closer candidates");
   ExpectContains(stripped_json,
-                 "closer_start_largest_root_cause=slot-incompatibility",
-                 "b61n coupled-row closer-start ledger should identify the largest "
+                 "closer_start_largest_root_cause=precision",
+                 "b61n coupled-row closer-start ledger should identify the remaining "
                  "failure category");
   ExpectContains(stripped_json,
-                 "closer_start_next_fix_target=expand finite-infinity recurrence "
-                 "slot-pattern coverage",
-                 "b61n coupled-row closer-start ledger should name the atomic next fix "
-                 "surface");
+                 "closer_start_next_fix_target=improve finite-start precision guard "
+                 "evidence",
+                 "b61n coupled-row closer-start ledger should name the next blocker after "
+                 "slot-pattern expansion");
   ExpectContains(stripped_json,
                  "complex contour propagator failed closed for epsilon sample 0",
                  "b61n coupled-row runtime should publish the failed high-order endpoint "

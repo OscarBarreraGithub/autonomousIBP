@@ -4177,6 +4177,98 @@ void B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest() 
                  "extraction");
 }
 
+amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions() {
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 4;
+  options.refinement_doublings = 1;
+  options.matrix_fingerprint = "lane142-b61n-selected5-primitive-bubble-v1";
+  options.endpoint_integral_id = "box[1,0,1,0]";
+  options.endpoint_local_model_kind = "b61n-primitive-bubble-regular-taylor-r0";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n lane142 primitive-bubble endpoint";
+  return options;
+}
+
+amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubble(
+    const amflow::ComplexContourPropagationOptions& options) {
+  const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{3, -1}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  return amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+}
+
+void B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest() {
+  const amflow::ComplexContourPropagationResult result =
+      PropagateB61nLane142PrimitiveBubble(B61nLane142PrimitiveBubbleOptions());
+
+  Expect(result.success,
+         "b61n lane142 primitive-bubble endpoint propagation should succeed: " +
+             result.diagnostics.summary);
+  Expect(result.endpoint_values.size() == 1,
+         "b61n lane142 primitive-bubble endpoint should remain single-row");
+  ExpectB61nContourClose(result.endpoint_values.front(),
+                         {3, -1},
+                         B61nContourFloat("1e-80"),
+                         "b61n lane142 primitive-bubble endpoint should preserve eta^0");
+  Expect(result.diagnostics.ode_propagation_applied,
+         "b61n lane142 primitive-bubble endpoint should record live propagation");
+  Expect(result.diagnostics.coefficient_publication,
+         "b61n lane142 primitive-bubble endpoint should publish coefficient");
+  Expect(result.diagnostics.endpoint_extraction_applied,
+         "b61n lane142 primitive-bubble endpoint should mark endpoint extraction");
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         "b61n lane142 primitive-bubble endpoint must not use final samples");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n lane142 primitive-bubble endpoint must not promote M6 closure");
+  Expect(result.diagnostics.endpoint_integral_id == "box[1,0,1,0]",
+         "b61n lane142 primitive-bubble endpoint should preserve integral provenance");
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_integral_id=box[1,0,1,0]",
+                 "b61n lane142 primitive-bubble summary should publish integral id");
+  ExpectContains(result.diagnostics.summary,
+                 "coefficient_publication=true",
+                 "b61n lane142 primitive-bubble summary should publish coefficient gate");
+  ExpectContains(result.diagnostics.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b61n lane142 primitive-bubble summary should keep M6 flag false");
+}
+
+void B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest() {
+  amflow::ComplexContourPropagationOptions missing_integral =
+      B61nLane142PrimitiveBubbleOptions();
+  missing_integral.endpoint_integral_id.clear();
+  const amflow::ComplexContourPropagationResult no_integral =
+      PropagateB61nLane142PrimitiveBubble(missing_integral);
+  Expect(no_integral.success,
+         "b61n primitive-bubble endpoint propagation should still succeed without "
+         "publication provenance");
+  Expect(!no_integral.diagnostics.coefficient_publication,
+         "b61n primitive-bubble endpoint must not publish without integral provenance");
+  Expect(!no_integral.diagnostics.endpoint_extraction_applied,
+         "b61n primitive-bubble endpoint must not extract without integral provenance");
+  Expect(!no_integral.diagnostics.full_eta_zero_contour_applied,
+         "b61n primitive-bubble unreviewed provenance must keep M6 flag false");
+
+  amflow::ComplexContourPropagationOptions wrong_fingerprint =
+      B61nLane142PrimitiveBubbleOptions();
+  wrong_fingerprint.matrix_fingerprint = "synthetic-b61n-primitive-bubble-v1";
+  const amflow::ComplexContourPropagationResult no_fingerprint =
+      PropagateB61nLane142PrimitiveBubble(wrong_fingerprint);
+  Expect(no_fingerprint.success,
+         "b61n primitive-bubble endpoint propagation should still succeed with a "
+         "non-reviewed fingerprint");
+  Expect(!no_fingerprint.diagnostics.coefficient_publication,
+         "b61n primitive-bubble endpoint must not publish without lane142 fingerprint");
+  Expect(!no_fingerprint.diagnostics.endpoint_extraction_applied,
+         "b61n primitive-bubble endpoint must not extract without lane142 fingerprint");
+  Expect(!no_fingerprint.diagnostics.full_eta_zero_contour_applied,
+         "b61n primitive-bubble bad fingerprint must keep M6 flag false");
+}
+
 void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
   const B61nContourNumber eta_start{0, -3};
   const B61nContourNumber eta_mid{0, -1};
@@ -4553,6 +4645,8 @@ int main() {
     EndpointExtractionRejectsStaleContourFingerprintTest();
     Srl5CaseStudyEvidenceMatchesLiveEndpointExtractionTest();
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
+    B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
+    B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();
     B61nComplexContourPropagatorRequiresMatrixFingerprintTest();

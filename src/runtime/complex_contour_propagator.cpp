@@ -193,6 +193,9 @@ std::string SerializePropagationForFingerprint(
   out << "branch_policy=" << options.branch_policy << "\n";
   out << "matrix_fingerprint=" << options.matrix_fingerprint << "\n";
   out << "endpoint_target=eta=0\n";
+  if (!options.endpoint_integral_id.empty()) {
+    out << "endpoint_integral_id=" << options.endpoint_integral_id << "\n";
+  }
   out << "endpoint_local_model_kind=" << options.endpoint_local_model_kind << "\n";
   out << "working_precision_digits=" << options.working_precision_digits << "\n";
   out << "refinement_error_tolerance_abs="
@@ -235,6 +238,7 @@ ComplexContourPropagationResult FailureResult(
       "lower-half-plane-complex-ode-vector-propagation";
   result.diagnostics.branch_policy = options.branch_policy;
   result.diagnostics.endpoint_target = "eta=0";
+  result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
   result.diagnostics.endpoint_local_model_kind = options.endpoint_local_model_kind;
   result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
   result.diagnostics.refinement_error_tolerance_abs =
@@ -244,11 +248,32 @@ ComplexContourPropagationResult FailureResult(
   return result;
 }
 
-bool AppliesRegularTaylorR0EndpointExtraction(
+bool IsReviewedLane142PrimitiveBubbleEndpoint(
+    const ComplexContourPropagationOptions& options) {
+  if (options.endpoint_local_model_kind !=
+      "b61n-primitive-bubble-regular-taylor-r0") {
+    return false;
+  }
+  if (options.matrix_fingerprint !=
+      "lane142-b61n-selected5-primitive-bubble-v1") {
+    return false;
+  }
+  return options.endpoint_integral_id == "box[1,0,1,0]" ||
+         options.endpoint_integral_id == "box[1,0,0,1]" ||
+         options.endpoint_integral_id == "box[0,1,0,1]" ||
+         options.endpoint_integral_id == "box[0,0,1,1]";
+}
+
+bool AppliesReviewedB61nEndpointExtraction(
     const ComplexContourVector& endpoint_values,
     const ComplexContourPropagationOptions& options) {
-  return endpoint_values.size() == 1 &&
-         options.endpoint_local_model_kind == "regular-taylor-r0";
+  if (endpoint_values.size() != 1) {
+    return false;
+  }
+  if (options.endpoint_local_model_kind == "regular-taylor-r0") {
+    return true;
+  }
+  return IsReviewedLane142PrimitiveBubbleEndpoint(options);
 }
 
 }  // namespace
@@ -415,7 +440,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.success = true;
     result.endpoint_values = refined;
     const bool endpoint_extraction_applied =
-        AppliesRegularTaylorR0EndpointExtraction(result.endpoint_values, options);
+        AppliesReviewedB61nEndpointExtraction(result.endpoint_values, options);
     const bool coefficient_publication = endpoint_extraction_applied;
     result.diagnostics.success = true;
     result.diagnostics.ode_propagation_applied = true;
@@ -440,6 +465,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         "lower-half-plane-complex-ode-vector-propagation";
     result.diagnostics.branch_policy = options.branch_policy;
     result.diagnostics.endpoint_target = "eta=0";
+    result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
     result.diagnostics.endpoint_local_model_kind = options.endpoint_local_model_kind;
     result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
     result.diagnostics.refinement_error_abs = CompactFloat(refinement_error, 40);
@@ -452,6 +478,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                            refined_steps_per_segment,
                                            coefficient_publication,
                                            endpoint_extraction_applied));
+    const std::string endpoint_integral_summary =
+        result.diagnostics.endpoint_integral_id.empty()
+            ? std::string()
+            : "endpoint_integral_id=" + result.diagnostics.endpoint_integral_id + "; ";
     result.diagnostics.summary =
         "Propagated a b61n complex ODE vector over " +
         std::to_string(result.diagnostics.segment_count) +
@@ -463,6 +493,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         "; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
         "endpoint_target=eta=0; eta_zero_endpoint_reached=true; "
+        + endpoint_integral_summary +
         "endpoint_local_model_kind=" + result.diagnostics.endpoint_local_model_kind +
         "; endpoint_extraction_applied=" +
         (result.diagnostics.endpoint_extraction_applied ? std::string("true")

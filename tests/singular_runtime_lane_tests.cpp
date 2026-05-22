@@ -4719,6 +4719,76 @@ void B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest() 
                  "endpoint_extraction_applied=true",
                  "b61n regular Taylor r0 single-row path should mark live endpoint "
                  "extraction");
+  Expect(result.diagnostics.scalar_frobenius_endpoint_patch_applied,
+         "b61n regular Taylor r0 single-row path should use the scalar Frobenius "
+         "endpoint patch after ODE propagation");
+  ExpectContains(result.diagnostics.summary,
+                 "scalar_frobenius_endpoint_patch_applied=true",
+                 "b61n regular Taylor r0 single-row path should publish the "
+                 "Frobenius endpoint handoff");
+}
+
+void B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -2}, {0, -1}, {0, 0}};
+  const B61nContourNumber initial_value{B61nContourFloat("0.75"),
+                                        B61nContourFloat("-0.125")};
+  const amflow::ComplexContourVector initial = {initial_value};
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{2, 0} + eta},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  options.steps_per_segment = 32;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 3;
+  options.refinement_error_tolerance = B61nContourFloat("1e-24");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-24");
+  options.matrix_fingerprint = "synthetic-b61n-regular-taylor-r0-frobenius-wire-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n single-row Frobenius endpoint wire test";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  Expect(result.success,
+         "b61n scalar Frobenius endpoint wire should succeed after live ODE "
+         "propagation: " +
+             result.diagnostics.summary);
+  Expect(result.diagnostics.ode_propagation_applied,
+         "b61n scalar Frobenius endpoint wire should still execute ODE propagation "
+         "before the endpoint patch");
+  Expect(result.diagnostics.scalar_frobenius_endpoint_patch_applied,
+         "b61n scalar Frobenius endpoint wire should mark the patch handoff");
+  Expect(result.diagnostics.endpoint_extraction_applied,
+         "b61n scalar Frobenius endpoint wire should still publish scoped endpoint "
+         "extraction for the reviewed single-row path");
+  Expect(result.endpoint_values.size() == 1,
+         "b61n scalar Frobenius endpoint wire should remain single-row");
+  const B61nContourNumber expected =
+      initial_value * std::exp(B61nContourNumber{2, 4});
+  ExpectB61nContourClose(result.endpoint_values.front(),
+                         expected,
+                         B61nContourFloat("1e-12"),
+                         "b61n scalar Frobenius endpoint wire should recover the "
+                         "analytic eta=0 coefficient after RK propagation to the "
+                         "last nonzero waypoint");
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         "b61n scalar Frobenius endpoint wire must not consume AMFlow solution "
+         "samples");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n scalar Frobenius endpoint wire must not flip M6 by itself");
+  ExpectContains(result.diagnostics.transport_scope,
+                 "scalar-frobenius-endpoint-patch",
+                 "b61n scalar Frobenius endpoint wire should label the runtime "
+                 "endpoint refinement method");
+  ExpectContains(result.diagnostics.summary,
+                 "scalar_frobenius_endpoint_patch_applied=true",
+                 "b61n scalar Frobenius endpoint wire should document the "
+                 "runtime handoff in diagnostics");
 }
 
 amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions() {
@@ -5878,6 +5948,7 @@ int main() {
     B61nScalarFrobeniusEndpointCoefficientMatchesLowerBranchTest();
     B61nScalarFrobeniusPatchRejectsNonScalarMatrixTest();
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
+    B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();

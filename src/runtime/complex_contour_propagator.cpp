@@ -20,6 +20,9 @@ ComplexContourFloat ComplexAbs(const ComplexContourNumber& value) {
   return sqrt(value.real() * value.real() + value.imag() * value.imag());
 }
 
+constexpr std::size_t kScalarFrobeniusRuntimeEndpointOrder = 32;
+constexpr std::size_t kScalarFrobeniusRuntimeSampleCount = 160;
+
 std::string IntegratorLabel(const ComplexContourIntegrator integrator) {
   switch (integrator) {
     case ComplexContourIntegrator::DormandPrinceRk45:
@@ -1196,7 +1199,8 @@ std::string SerializePropagationForFingerprint(
     const ComplexContourPropagationOptions& options,
     const std::size_t refined_steps_per_segment,
     const bool coefficient_publication,
-    const bool endpoint_extraction_applied) {
+    const bool endpoint_extraction_applied,
+    const bool scalar_frobenius_endpoint_patch_applied) {
   std::ostringstream out;
   out << "kind=b61n-complex-contour-propagator\n";
   out << "dimension=" << initial_values.size() << "\n";
@@ -1225,6 +1229,9 @@ std::string SerializePropagationForFingerprint(
       << (coefficient_publication ? "true" : "false") << "\n";
   out << "endpoint_extraction_applied="
       << (endpoint_extraction_applied ? "true" : "false") << "\n";
+  out << "scalar_frobenius_endpoint_patch_applied="
+      << (scalar_frobenius_endpoint_patch_applied ? "true" : "false")
+      << "\n";
   out << "full_eta_zero_contour_applied=false\n";
   for (std::size_t index = 0; index < waypoints.size(); ++index) {
     out << "waypoint[" << index << "]=" << CompactComplex(waypoints[index]) << "\n";
@@ -1328,6 +1335,35 @@ bool AppliesReviewedB61nEndpointExtraction(
     return true;
   }
   return IsReviewedLane142PrimitiveBubbleEndpoint(options);
+}
+
+bool AppliesReviewedScalarFrobeniusRuntimeEndpointPatch(
+    const ComplexContourVector& initial_values,
+    const std::vector<ComplexContourNumber>& waypoints,
+    const ComplexContourPropagationOptions& options) {
+  return initial_values.size() == 1 && waypoints.size() > 2 &&
+         options.endpoint_local_model_kind == "regular-taylor-r0" &&
+         IsReviewedB61nPublicationContour(waypoints);
+}
+
+ComplexContourFloat ScalarFrobeniusEndpointPatchRadius(
+    const std::vector<ComplexContourNumber>& waypoints,
+    const ComplexContourPropagationOptions& options) {
+  const ComplexContourNumber endpoint = waypoints.back();
+  const ComplexContourNumber match_eta = waypoints[waypoints.size() - 2];
+  const ComplexContourFloat match_radius =
+      ComplexAbs(match_eta - endpoint) / ComplexContourFloat(4);
+  ComplexContourFloat radius =
+      std::max(match_radius, ComplexContourFloat("1e-40"));
+  for (const ComplexContourNumber& pole : options.contour_poles) {
+    const ComplexContourFloat distance = ComplexAbs(pole - endpoint);
+    if (distance > 0) {
+      const ComplexContourFloat pole_radius =
+          distance / ComplexContourFloat(4);
+      radius = std::min(radius, pole_radius);
+    }
+  }
+  return std::max(radius, ComplexContourFloat("1e-40"));
 }
 
 ComplexContourMatrix MakeIdentityMatrix(const std::size_t dimension) {
@@ -2377,9 +2413,19 @@ ComplexContourPropagationResult PropagateComplexContourVector(
 
   try {
     RequireFiniteVector(initial_values, "initial");
+    const bool scalar_frobenius_endpoint_patch_applied =
+        AppliesReviewedScalarFrobeniusRuntimeEndpointPatch(
+            initial_values, waypoints, options);
+    std::vector<ComplexContourNumber> propagation_waypoints = waypoints;
+    if (scalar_frobenius_endpoint_patch_applied) {
+      propagation_waypoints.pop_back();
+    }
+    const std::size_t integrated_segment_count =
+        propagation_waypoints.empty() ? 0 : propagation_waypoints.size() - 1;
+
     AdaptiveRk45Result coarse =
         PropagateWaypointsWithAdaptiveRk45(initial_values,
-                                           waypoints,
+                                           propagation_waypoints,
                                            matrix_evaluator,
                                            options,
                                            options.steps_per_segment);
@@ -2405,14 +2451,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         refined_steps_per_segment *= 2;
       }
       refined = PropagateWaypointsWithAdaptiveRk45(initial_values,
-                                                   waypoints,
+                                                   propagation_waypoints,
                                                    matrix_evaluator,
                                                    options,
                                                    refined_steps_per_segment);
       RequireFiniteVector(refined.values, "refined");
       refinement_error = MaxVectorDifference(previous.values, refined.values);
       refinement_peak =
-          FindRefinementPeakDiagnostics(previous, refined, waypoints);
+          FindRefinementPeakDiagnostics(previous, refined, propagation_waypoints);
       endpoint_vector_norm = MaxVectorNorm(refined.values);
       effective_refinement_tolerance =
           EffectiveRefinementTolerance(options, endpoint_vector_norm);
@@ -2441,9 +2487,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
           waypoints,
           options);
       failure.diagnostics.coarse_step_count =
-          options.steps_per_segment * failure.diagnostics.segment_count;
+          options.steps_per_segment * integrated_segment_count;
       failure.diagnostics.refined_step_count =
-          refined_steps_per_segment * failure.diagnostics.segment_count;
+          refined_steps_per_segment * integrated_segment_count;
       failure.diagnostics.refinement_doublings_used =
           refinement_doublings_used;
       failure.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
@@ -2470,6 +2516,48 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     ComplexContourPropagationResult result;
     result.success = true;
     result.endpoint_values = refined.values;
+    std::string scalar_frobenius_endpoint_patch_summary;
+    if (scalar_frobenius_endpoint_patch_applied) {
+      const ComplexContourNumber endpoint = waypoints.back();
+      const ComplexContourNumber match_eta = propagation_waypoints.back();
+      const ComplexContourScalarFrobeniusSeriesPatch patch =
+          GenerateScalarComplexFrobeniusEndpointPatch(
+              matrix_evaluator,
+              endpoint,
+              ScalarFrobeniusEndpointPatchRadius(waypoints, options),
+              kScalarFrobeniusRuntimeEndpointOrder,
+              kScalarFrobeniusRuntimeSampleCount);
+      const ComplexContourFloat indicial_tolerance =
+          ComplexContourFloat("1e-24");
+      if (ComplexAbs(patch.indicial_exponent) > indicial_tolerance) {
+        throw std::runtime_error(
+            "scalar-frobenius-endpoint-patch-nonregular-indicial-exponent");
+      }
+      const ComplexContourNumber endpoint_value =
+          MatchScalarComplexFrobeniusEndpointCoefficient(
+              patch,
+              match_eta,
+              refined.values.front(),
+              options.half_plane);
+      if (!IsFinite(endpoint_value)) {
+        throw std::runtime_error(
+            "scalar-frobenius-endpoint-patch-nonfinite-endpoint-value");
+      }
+      result.endpoint_values = {endpoint_value};
+      endpoint_vector_norm = MaxVectorNorm(result.endpoint_values);
+      scalar_frobenius_endpoint_patch_summary =
+          "; scalar_frobenius_endpoint_patch_applied=true; "
+          "scalar_frobenius_endpoint_order=" +
+          std::to_string(patch.order) +
+          "; scalar_frobenius_sample_count=" +
+          std::to_string(patch.sample_count) +
+          "; scalar_frobenius_indicial_exponent=" +
+          CompactComplex(patch.indicial_exponent, 40) +
+          "; scalar_frobenius_match_eta=" +
+          CompactComplex(match_eta, 40) +
+          "; scalar_frobenius_endpoint_coefficient=" +
+          CompactComplex(endpoint_value, 40);
+    }
     const bool endpoint_extraction_applied =
         AppliesReviewedB61nEndpointExtraction(result.endpoint_values,
                                              waypoints,
@@ -2481,13 +2569,15 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.diagnostics.retained_solution_samples_used = false;
     result.diagnostics.full_eta_zero_contour_applied = false;
     result.diagnostics.endpoint_extraction_applied = endpoint_extraction_applied;
+    result.diagnostics.scalar_frobenius_endpoint_patch_applied =
+        scalar_frobenius_endpoint_patch_applied;
     result.diagnostics.dimension = initial_values.size();
     result.diagnostics.waypoint_count = waypoints.size();
     result.diagnostics.segment_count = waypoints.size() - 1;
     result.diagnostics.coarse_step_count =
-        options.steps_per_segment * result.diagnostics.segment_count;
+        options.steps_per_segment * integrated_segment_count;
     result.diagnostics.refined_step_count =
-        refined_steps_per_segment * result.diagnostics.segment_count;
+        refined_steps_per_segment * integrated_segment_count;
     result.diagnostics.refinement_doublings_used = refinement_doublings_used;
     result.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
     result.diagnostics.adaptive_rejected_step_count =
@@ -2500,7 +2590,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.diagnostics.runtime_application =
         "b61n-complex-contour-propagator-harness";
     result.diagnostics.transport_scope =
-        "lower-half-plane-complex-ode-vector-propagation";
+        scalar_frobenius_endpoint_patch_applied
+            ? "lower-half-plane-complex-ode-vector-propagation+"
+              "scalar-frobenius-endpoint-patch"
+            : "lower-half-plane-complex-ode-vector-propagation";
     result.diagnostics.integrator = IntegratorLabel(options.integrator);
     result.diagnostics.branch_policy = options.branch_policy;
     result.diagnostics.endpoint_target = "eta=0";
@@ -2528,7 +2621,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                            options,
                                            refined_steps_per_segment,
                                            coefficient_publication,
-                                           endpoint_extraction_applied));
+                                           endpoint_extraction_applied,
+                                           scalar_frobenius_endpoint_patch_applied));
     const std::string endpoint_integral_summary =
         result.diagnostics.endpoint_integral_id.empty()
             ? std::string()
@@ -2572,6 +2666,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         result.diagnostics.refinement_effective_tolerance_abs +
         "; max_embedded_error_abs=" +
         result.diagnostics.max_embedded_error_abs +
+        scalar_frobenius_endpoint_patch_summary +
         ScaleDiagnosticSummary(result.diagnostics) +
         "; "
         "refinement_error_abs=" + result.diagnostics.refinement_error_abs +

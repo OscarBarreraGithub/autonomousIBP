@@ -127,6 +127,43 @@ struct ComplexContourIndicialEquation {
   std::string summary;
 };
 
+struct ComplexContourFrobeniusRecurrenceOptions {
+  std::size_t selected_root_index = 0;
+  std::size_t order = 0;
+  ComplexContourVector leading_coefficients;
+  ComplexContourNumber residue_probe_eta = {0, ComplexContourFloat("-1e-40")};
+  ComplexContourFloat residue_tolerance = ComplexContourFloat("1e-28");
+  ComplexContourFloat tail_fit_tolerance = ComplexContourFloat("1e-24");
+};
+
+struct ComplexContourFrobeniusRecurrence {
+  bool success = false;
+  std::size_t dimension = 0;
+  std::size_t selected_root_index = 0;
+  std::size_t order = 0;
+  ComplexContourNumber indicial_root = {0, 0};
+  ComplexContourNumber residue_probe_eta = {0, 0};
+  ComplexContourFloat residue_tolerance = 0;
+  ComplexContourFloat tail_fit_tolerance = 0;
+  std::string failure_code;
+  std::string recurrence_convention =
+      "((rho+n)I - R)c_n = sum_{k=0}^{n-1} A_k*c_{n-1-k}";
+  std::string tail_fit_residual_abs;
+  ComplexContourMatrix residue_matrix;
+  std::vector<ComplexContourMatrix> regular_tail_matrices;
+  std::vector<ComplexContourVector> coefficients;
+  std::string summary;
+};
+
+struct ComplexContourFrobeniusEndpointEvaluation {
+  bool success = false;
+  bool endpoint_value_available = false;
+  std::string failure_code;
+  std::string limit_classification;
+  ComplexContourVector endpoint_value;
+  std::string summary;
+};
+
 ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     std::size_t dimension);
@@ -136,6 +173,16 @@ ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
     std::size_t dimension,
     ComplexContourNumber residue_probe_eta,
     ComplexContourFloat residue_tolerance);
+
+ComplexContourFrobeniusRecurrence
+ComputeComplexContourEtaZeroFrobeniusRecurrence(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    std::size_t dimension,
+    const ComplexContourFrobeniusRecurrenceOptions& options);
+
+ComplexContourFrobeniusEndpointEvaluation
+EvaluateComplexContourFrobeniusEtaZeroEndpoint(
+    const ComplexContourFrobeniusRecurrence& recurrence);
 
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,

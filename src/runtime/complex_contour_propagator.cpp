@@ -1484,6 +1484,224 @@ ComplexContourIndicialEquation IndicialFailure(
   return equation;
 }
 
+ComplexContourFrobeniusRecurrence FrobeniusFailure(
+    const std::string& failure_code,
+    const std::string& summary,
+    const std::size_t dimension,
+    const ComplexContourFrobeniusRecurrenceOptions& options) {
+  ComplexContourFrobeniusRecurrence recurrence;
+  recurrence.success = false;
+  recurrence.dimension = dimension;
+  recurrence.selected_root_index = options.selected_root_index;
+  recurrence.order = options.order;
+  recurrence.residue_probe_eta = options.residue_probe_eta;
+  recurrence.residue_tolerance = options.residue_tolerance;
+  recurrence.tail_fit_tolerance = options.tail_fit_tolerance;
+  recurrence.failure_code = failure_code;
+  recurrence.summary = summary;
+  return recurrence;
+}
+
+ComplexContourFrobeniusEndpointEvaluation FrobeniusEndpointFailure(
+    const std::string& failure_code,
+    const std::string& summary,
+    const std::string& limit_classification = {}) {
+  ComplexContourFrobeniusEndpointEvaluation evaluation;
+  evaluation.success = false;
+  evaluation.endpoint_value_available = false;
+  evaluation.failure_code = failure_code;
+  evaluation.limit_classification = limit_classification;
+  evaluation.summary = summary;
+  return evaluation;
+}
+
+ComplexContourMatrix MakeZeroMatrix(const std::size_t dimension) {
+  return ComplexContourMatrix(
+      dimension, std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
+}
+
+ComplexContourVector MakeZeroVector(const std::size_t dimension) {
+  return ComplexContourVector(dimension, ComplexContourNumber{});
+}
+
+ComplexContourVector DefaultFrobeniusLeadingCoefficients(
+    const std::size_t dimension,
+    const std::size_t selected_root_index) {
+  ComplexContourVector coefficients = MakeZeroVector(dimension);
+  coefficients[selected_root_index] = ComplexContourNumber{1, 0};
+  return coefficients;
+}
+
+ComplexContourMatrix AddScaledMatrix(ComplexContourMatrix matrix,
+                                     const ComplexContourMatrix& addend,
+                                     const ComplexContourNumber& scale) {
+  RequireMatrixShape(matrix, addend.size());
+  RequireMatrixShape(addend, matrix.size());
+  for (std::size_t row = 0; row < matrix.size(); ++row) {
+    for (std::size_t column = 0; column < matrix[row].size(); ++column) {
+      matrix[row][column] += addend[row][column] * scale;
+    }
+  }
+  return matrix;
+}
+
+std::vector<ComplexContourNumber> LagrangeBasisPolynomial(
+    const std::vector<ComplexContourNumber>& sample_points,
+    const std::size_t basis_index) {
+  std::vector<ComplexContourNumber> coefficients = {{1, 0}};
+  ComplexContourNumber denominator{1, 0};
+  for (std::size_t point_index = 0; point_index < sample_points.size();
+       ++point_index) {
+    if (point_index == basis_index) {
+      continue;
+    }
+    std::vector<ComplexContourNumber> next(coefficients.size() + 1,
+                                           ComplexContourNumber{});
+    for (std::size_t power = 0; power < coefficients.size(); ++power) {
+      next[power] -= coefficients[power] * sample_points[point_index];
+      next[power + 1] += coefficients[power];
+    }
+    coefficients = std::move(next);
+    denominator *= sample_points[basis_index] - sample_points[point_index];
+  }
+  for (ComplexContourNumber& coefficient : coefficients) {
+    coefficient /= denominator;
+  }
+  return coefficients;
+}
+
+std::vector<ComplexContourMatrix> FitEtaTimesMatrixCoefficients(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const std::size_t dimension,
+    const ComplexContourNumber& probe_eta,
+    const std::size_t coefficient_count) {
+  std::vector<ComplexContourNumber> sample_points;
+  std::vector<ComplexContourMatrix> sample_values;
+  sample_points.reserve(coefficient_count);
+  sample_values.reserve(coefficient_count);
+  for (std::size_t index = 0; index < coefficient_count; ++index) {
+    const ComplexContourNumber sample_eta =
+        probe_eta / ComplexContourFloat(std::to_string(index + 1));
+    sample_points.push_back(sample_eta);
+    sample_values.push_back(
+        SampleEtaTimesMatrix(matrix_evaluator, dimension, sample_eta));
+  }
+
+  std::vector<ComplexContourMatrix> coefficients(coefficient_count,
+                                                 MakeZeroMatrix(dimension));
+  for (std::size_t basis_index = 0; basis_index < coefficient_count;
+       ++basis_index) {
+    const std::vector<ComplexContourNumber> basis =
+        LagrangeBasisPolynomial(sample_points, basis_index);
+    for (std::size_t power = 0; power < coefficient_count; ++power) {
+      coefficients[power] =
+          AddScaledMatrix(std::move(coefficients[power]),
+                          sample_values[basis_index],
+                          basis[power]);
+    }
+  }
+  return coefficients;
+}
+
+ComplexContourMatrix EvaluateTailPolynomial(
+    const std::vector<ComplexContourMatrix>& coefficients,
+    const ComplexContourNumber& eta) {
+  if (coefficients.empty()) {
+    return {};
+  }
+  const std::size_t dimension = coefficients.front().size();
+  ComplexContourMatrix value = MakeZeroMatrix(dimension);
+  ComplexContourNumber eta_power{1, 0};
+  for (const ComplexContourMatrix& coefficient : coefficients) {
+    value = AddScaledMatrix(std::move(value), coefficient, eta_power);
+    eta_power *= eta;
+  }
+  return value;
+}
+
+ComplexContourMatrix MakeFrobeniusRecurrenceMatrix(
+    const ComplexContourMatrix& residue_matrix,
+    const ComplexContourNumber& indicial_root,
+    const std::size_t power) {
+  const std::size_t dimension = residue_matrix.size();
+  ComplexContourMatrix matrix = MakeZeroMatrix(dimension);
+  const ComplexContourNumber diagonal_shift =
+      indicial_root + ComplexContourFloat(std::to_string(power));
+  for (std::size_t row = 0; row < dimension; ++row) {
+    for (std::size_t column = 0; column < dimension; ++column) {
+      matrix[row][column] = -residue_matrix[row][column];
+    }
+    matrix[row][row] += diagonal_shift;
+  }
+  return matrix;
+}
+
+ComplexContourVector AddVectors(ComplexContourVector lhs,
+                                const ComplexContourVector& rhs) {
+  if (lhs.size() != rhs.size()) {
+    throw std::runtime_error("vector-dimension-mismatch");
+  }
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    lhs[index] += rhs[index];
+  }
+  return lhs;
+}
+
+ComplexContourVector SolveComplexLinearSystem(ComplexContourMatrix matrix,
+                                              ComplexContourVector rhs,
+                                              ComplexContourFloat tolerance) {
+  const std::size_t dimension = matrix.size();
+  RequireMatrixShape(matrix, dimension);
+  if (rhs.size() != dimension) {
+    throw std::runtime_error("vector-dimension-mismatch");
+  }
+  ComplexContourFloat scale = std::max<ComplexContourFloat>(
+      ComplexContourFloat(1), MaxMatrixEntryNorm(matrix));
+  for (const ComplexContourNumber& value : rhs) {
+    scale = std::max(scale, ComplexAbs(value));
+  }
+  const ComplexContourFloat scaled_tolerance = tolerance * scale;
+  const ComplexContourFloat effective_tolerance =
+      std::max(tolerance, scaled_tolerance);
+
+  for (std::size_t pivot = 0; pivot < dimension; ++pivot) {
+    std::size_t best_row = pivot;
+    ComplexContourFloat best_abs = ComplexAbs(matrix[pivot][pivot]);
+    for (std::size_t row = pivot + 1; row < dimension; ++row) {
+      const ComplexContourFloat candidate_abs = ComplexAbs(matrix[row][pivot]);
+      if (candidate_abs > best_abs) {
+        best_abs = candidate_abs;
+        best_row = row;
+      }
+    }
+    if (best_abs <= effective_tolerance) {
+      throw std::runtime_error("frobenius-recurrence-singular-pivot");
+    }
+    if (best_row != pivot) {
+      std::swap(matrix[best_row], matrix[pivot]);
+      std::swap(rhs[best_row], rhs[pivot]);
+    }
+    for (std::size_t row = pivot + 1; row < dimension; ++row) {
+      const ComplexContourNumber factor = matrix[row][pivot] / matrix[pivot][pivot];
+      for (std::size_t column = pivot; column < dimension; ++column) {
+        matrix[row][column] -= factor * matrix[pivot][column];
+      }
+      rhs[row] -= factor * rhs[pivot];
+    }
+  }
+
+  ComplexContourVector solution(dimension, ComplexContourNumber{});
+  for (std::size_t reverse_index = 0; reverse_index < dimension; ++reverse_index) {
+    const std::size_t row = dimension - 1 - reverse_index;
+    ComplexContourNumber remainder = rhs[row];
+    for (std::size_t column = row + 1; column < dimension; ++column) {
+      remainder -= matrix[row][column] * solution[column];
+    }
+    solution[row] = remainder / matrix[row][row];
+  }
+  return solution;
+}
+
 }  // namespace
 
 ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
@@ -1643,6 +1861,281 @@ ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
         residue_probe_eta,
         residue_tolerance);
   }
+}
+
+ComplexContourFrobeniusRecurrence
+ComputeComplexContourEtaZeroFrobeniusRecurrence(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const std::size_t dimension,
+    const ComplexContourFrobeniusRecurrenceOptions& options) {
+  if (dimension == 0) {
+    return FrobeniusFailure(
+        "empty-frobenius-dimension",
+        "b61n eta=0 Frobenius recurrence requires at least one eta-matrix row",
+        dimension,
+        options);
+  }
+  if (!matrix_evaluator) {
+    return FrobeniusFailure(
+        "missing-matrix-evaluator",
+        "b61n eta=0 Frobenius recurrence requires a matrix evaluator",
+        dimension,
+        options);
+  }
+  if (options.selected_root_index >= dimension) {
+    return FrobeniusFailure(
+        "selected-root-index-out-of-range",
+        "b61n eta=0 Frobenius recurrence selected root index is outside the "
+        "matrix dimension",
+        dimension,
+        options);
+  }
+  if (!options.leading_coefficients.empty() &&
+      options.leading_coefficients.size() != dimension) {
+    return FrobeniusFailure(
+        "leading-coefficient-dimension-mismatch",
+        "b61n eta=0 Frobenius recurrence leading coefficient vector does not "
+        "match the matrix dimension",
+        dimension,
+        options);
+  }
+  if (!IsFinite(options.residue_probe_eta) ||
+      ComplexAbs(options.residue_probe_eta) == 0) {
+    return FrobeniusFailure(
+        "invalid-residue-probe",
+        "b61n eta=0 Frobenius recurrence requires a finite nonzero residue "
+        "probe eta",
+        dimension,
+        options);
+  }
+  if (!IsFiniteFloat(options.tail_fit_tolerance) ||
+      options.tail_fit_tolerance < 0) {
+    return FrobeniusFailure(
+        "invalid-tail-fit-tolerance",
+        "b61n eta=0 Frobenius recurrence requires a finite nonnegative tail-fit "
+        "tolerance",
+        dimension,
+        options);
+  }
+
+  const ComplexContourIndicialEquation indicial =
+      ComputeComplexContourEtaZeroIndicialEquation(matrix_evaluator,
+                                                   dimension,
+                                                   options.residue_probe_eta,
+                                                   options.residue_tolerance);
+  if (!indicial.success) {
+    return FrobeniusFailure(
+        "indicial-" + indicial.failure_code,
+        "b61n eta=0 Frobenius recurrence could not start because the indicial "
+        "probe failed: " +
+            indicial.summary,
+        dimension,
+        options);
+  }
+  if (!indicial.indicial_roots_available ||
+      indicial.indicial_roots.size() != dimension) {
+    return FrobeniusFailure(
+        "indicial-roots-unavailable",
+        "b61n eta=0 Frobenius recurrence requires triangular indicial roots "
+        "before extracting branch coefficients",
+        dimension,
+        options);
+  }
+
+  try {
+    ComplexContourFrobeniusRecurrence recurrence;
+    recurrence.success = true;
+    recurrence.dimension = dimension;
+    recurrence.selected_root_index = options.selected_root_index;
+    recurrence.order = options.order;
+    recurrence.indicial_root =
+        indicial.indicial_roots[options.selected_root_index];
+    recurrence.residue_probe_eta = options.residue_probe_eta;
+    recurrence.residue_tolerance = options.residue_tolerance;
+    recurrence.tail_fit_tolerance = options.tail_fit_tolerance;
+    const std::vector<ComplexContourMatrix> eta_times_coefficients =
+        FitEtaTimesMatrixCoefficients(matrix_evaluator,
+                                      dimension,
+                                      options.residue_probe_eta,
+                                      options.order + 1);
+    recurrence.residue_matrix = eta_times_coefficients.front();
+    recurrence.regular_tail_matrices.assign(eta_times_coefficients.begin() + 1,
+                                            eta_times_coefficients.end());
+
+    if (!eta_times_coefficients.empty()) {
+      const ComplexContourNumber check_eta =
+          options.residue_probe_eta /
+          ComplexContourFloat(std::to_string(options.order + 2));
+      const ComplexContourMatrix sampled_eta_times_matrix =
+          SampleEtaTimesMatrix(matrix_evaluator, dimension, check_eta);
+      const ComplexContourMatrix fitted_eta_times_matrix =
+          EvaluateTailPolynomial(eta_times_coefficients, check_eta);
+      const ComplexContourFloat tail_residual =
+          MaxMatrixDifference(sampled_eta_times_matrix, fitted_eta_times_matrix);
+      recurrence.tail_fit_residual_abs = CompactFloat(tail_residual, 40);
+      ComplexContourFloat tail_scale = std::max<ComplexContourFloat>(
+          ComplexContourFloat(1), MaxMatrixEntryNorm(sampled_eta_times_matrix));
+      tail_scale = std::max(tail_scale, MaxMatrixEntryNorm(fitted_eta_times_matrix));
+      const ComplexContourFloat scaled_tail_tolerance =
+          options.tail_fit_tolerance * tail_scale;
+      const ComplexContourFloat effective_tail_tolerance =
+          std::max(options.tail_fit_tolerance, scaled_tail_tolerance);
+      if (tail_residual > effective_tail_tolerance) {
+        return FrobeniusFailure(
+            "regular-tail-fit-residual-too-large",
+            "b61n eta=0 Frobenius recurrence refused to publish tail "
+            "coefficients because the polynomial tail fit residual " +
+                CompactFloat(tail_residual, 40) +
+                " exceeded effective tolerance " +
+                CompactFloat(effective_tail_tolerance, 40),
+            dimension,
+            options);
+      }
+    } else {
+      recurrence.tail_fit_residual_abs = "0";
+    }
+
+    recurrence.coefficients.reserve(options.order + 1);
+    ComplexContourVector leading_coefficients =
+        options.leading_coefficients.empty()
+            ? DefaultFrobeniusLeadingCoefficients(dimension,
+                                                  options.selected_root_index)
+            : options.leading_coefficients;
+    RequireFiniteVector(leading_coefficients, "frobenius-leading");
+    const ComplexContourVector indicial_residual = MatrixVectorProduct(
+        MakeFrobeniusRecurrenceMatrix(recurrence.residue_matrix,
+                                      recurrence.indicial_root,
+                                      0),
+        leading_coefficients);
+    const ComplexContourFloat indicial_residual_norm =
+        MaxVectorNorm(indicial_residual);
+    ComplexContourFloat leading_scale = std::max<ComplexContourFloat>(
+        ComplexContourFloat(1), MaxVectorNorm(leading_coefficients));
+    leading_scale = std::max(leading_scale,
+                             MaxMatrixEntryNorm(recurrence.residue_matrix));
+    const ComplexContourFloat scaled_indicial_tolerance =
+        options.residue_tolerance * leading_scale;
+    const ComplexContourFloat effective_indicial_tolerance =
+        std::max(options.residue_tolerance, scaled_indicial_tolerance);
+    if (indicial_residual_norm > effective_indicial_tolerance) {
+      return FrobeniusFailure(
+          "leading-coefficients-fail-indicial-system",
+          "b61n eta=0 Frobenius recurrence requires c_0 to satisfy "
+          "(rho*I - R)c_0=0; residual " +
+              CompactFloat(indicial_residual_norm, 40) +
+              " exceeded effective tolerance " +
+              CompactFloat(effective_indicial_tolerance, 40),
+          dimension,
+          options);
+    }
+    recurrence.coefficients.push_back(std::move(leading_coefficients));
+
+    const ComplexContourFloat pivot_tolerance =
+        std::max(options.residue_tolerance, ComplexContourFloat("1e-70"));
+    for (std::size_t power = 1; power <= options.order; ++power) {
+      ComplexContourVector rhs = MakeZeroVector(dimension);
+      for (std::size_t tail_power = 0; tail_power < power; ++tail_power) {
+        rhs = AddVectors(
+            std::move(rhs),
+            MatrixVectorProduct(
+                recurrence.regular_tail_matrices[tail_power],
+                recurrence.coefficients[power - 1 - tail_power]));
+      }
+      recurrence.coefficients.push_back(SolveComplexLinearSystem(
+          MakeFrobeniusRecurrenceMatrix(recurrence.residue_matrix,
+                                        recurrence.indicial_root,
+                                        power),
+          rhs,
+          pivot_tolerance));
+    }
+
+    recurrence.summary =
+        "Computed b61n eta=0 Frobenius recurrence coefficients; dimension=" +
+        std::to_string(recurrence.dimension) +
+        "; selected_root_index=" +
+        std::to_string(recurrence.selected_root_index) +
+        "; indicial_root=" + CompactComplex(recurrence.indicial_root, 40) +
+        "; order=" + std::to_string(recurrence.order) +
+        "; coefficient_count=" +
+        std::to_string(recurrence.coefficients.size()) +
+        "; regular_tail_coefficient_count=" +
+        std::to_string(recurrence.regular_tail_matrices.size()) +
+        "; recurrence_convention=" + recurrence.recurrence_convention +
+        "; tail_fit_residual_abs=" + recurrence.tail_fit_residual_abs +
+        "; m7_prep=recurrence-ready-for-endpoint-handler";
+    return recurrence;
+  } catch (const std::exception& error) {
+    return FrobeniusFailure(
+        "frobenius-recurrence-failed",
+        std::string("b61n eta=0 Frobenius recurrence failed closed: ") +
+            error.what(),
+        dimension,
+        options);
+  }
+}
+
+ComplexContourFrobeniusEndpointEvaluation
+EvaluateComplexContourFrobeniusEtaZeroEndpoint(
+    const ComplexContourFrobeniusRecurrence& recurrence) {
+  if (!recurrence.success) {
+    return FrobeniusEndpointFailure(
+        "recurrence-unsuccessful",
+        "b61n eta=0 Frobenius endpoint evaluation requires a successful "
+        "recurrence");
+  }
+  if (recurrence.coefficients.empty()) {
+    return FrobeniusEndpointFailure(
+        "missing-frobenius-coefficients",
+        "b61n eta=0 Frobenius endpoint evaluation requires at least c_0");
+  }
+  if (recurrence.dimension == 0 ||
+      recurrence.coefficients.front().size() != recurrence.dimension) {
+    return FrobeniusEndpointFailure(
+        "frobenius-coefficient-dimension-mismatch",
+        "b61n eta=0 Frobenius endpoint evaluation requires c_0 to match the "
+        "recurrence dimension");
+  }
+  if (!IsFinite(recurrence.indicial_root)) {
+    return FrobeniusEndpointFailure(
+        "nonfinite-indicial-root",
+        "b61n eta=0 Frobenius endpoint evaluation requires a finite indicial "
+        "root");
+  }
+  const ComplexContourFloat tolerance =
+      std::max(recurrence.residue_tolerance, ComplexContourFloat("1e-70"));
+  const ComplexContourFloat real_abs = abs(recurrence.indicial_root.real());
+  const ComplexContourFloat imag_abs = abs(recurrence.indicial_root.imag());
+
+  ComplexContourFrobeniusEndpointEvaluation evaluation;
+  evaluation.success = true;
+  evaluation.endpoint_value_available = true;
+  if (real_abs <= tolerance && imag_abs <= tolerance) {
+    evaluation.limit_classification = "finite-rho-zero";
+    evaluation.endpoint_value = recurrence.coefficients.front();
+  } else if (recurrence.indicial_root.real() > tolerance) {
+    evaluation.limit_classification = "vanishing-positive-real-exponent";
+    evaluation.endpoint_value = MakeZeroVector(recurrence.dimension);
+  } else if (recurrence.indicial_root.real() < -tolerance) {
+    return FrobeniusEndpointFailure(
+        "singular-negative-real-exponent",
+        "b61n eta=0 Frobenius endpoint evaluation found a negative-real "
+        "indicial exponent, so the analytic eta=0 limit is singular",
+        "singular-negative-real-exponent");
+  } else {
+    return FrobeniusEndpointFailure(
+        "branch-dependent-zero-real-exponent",
+        "b61n eta=0 Frobenius endpoint evaluation found a zero-real nonzero "
+        "imaginary indicial exponent, so the eta=0 limit is branch dependent",
+        "branch-dependent-zero-real-exponent");
+  }
+
+  evaluation.summary =
+      "Evaluated b61n eta=0 Frobenius analytic endpoint; "
+      "limit_classification=" +
+      evaluation.limit_classification +
+      "; endpoint_value_available=true; coefficient_source=c_0; "
+      "full_eta_zero_contour_applied=false";
+  return evaluation;
 }
 
 ComplexContourPropagationResult PropagateComplexContourVector(

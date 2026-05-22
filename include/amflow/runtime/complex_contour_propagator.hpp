@@ -19,8 +19,15 @@ using ComplexContourMatrix = std::vector<std::vector<ComplexContourNumber>>;
 using ComplexContourMatrixEvaluator =
     std::function<ComplexContourMatrix(const ComplexContourNumber& eta)>;
 
+enum class ComplexContourIntegrator {
+  DormandPrinceRk45,
+  FehlbergRk78,
+};
+
 struct ComplexContourPropagationOptions {
   EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower;
+  ComplexContourIntegrator integrator =
+      ComplexContourIntegrator::DormandPrinceRk45;
   std::size_t steps_per_segment = 32;
   std::size_t refinement_doublings = 1;
   std::size_t max_refinement_doublings = 4;

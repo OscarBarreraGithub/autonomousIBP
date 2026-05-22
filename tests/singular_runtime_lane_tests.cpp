@@ -4870,6 +4870,71 @@ void B61nComplexContourPropagatorAdaptsRk45RelativeToleranceTest() {
          "b61n RK45 adaptive path must not promote the full M6 contour flag");
 }
 
+void B61nComplexContourPropagatorSupportsFehlbergRk78OrderUpliftTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    const B61nContourNumber eta2 = eta * eta;
+    const B61nContourNumber eta4 = eta2 * eta2;
+    return amflow::ComplexContourMatrix{
+        {eta4 * eta4},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions rk45_options;
+  rk45_options.steps_per_segment = 1;
+  rk45_options.refinement_doublings = 1;
+  rk45_options.max_refinement_doublings = 2;
+  rk45_options.max_adaptive_steps_per_segment = 4096;
+  rk45_options.refinement_error_tolerance = B61nContourFloat("1e-60");
+  rk45_options.refinement_relative_error_tolerance = B61nContourFloat("1e-24");
+  rk45_options.matrix_fingerprint = "synthetic-b61n-rk45-order-control-v1";
+  rk45_options.endpoint_local_model_kind =
+      "regular-taylor-r0-synthetic-b61n-rk78-order-uplift";
+
+  amflow::ComplexContourPropagationOptions rk78_options = rk45_options;
+  rk78_options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  rk78_options.matrix_fingerprint = "synthetic-b61n-rk78-order-uplift-v1";
+
+  const amflow::ComplexContourPropagationResult rk45 =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, rk45_options);
+  const amflow::ComplexContourPropagationResult rk78 =
+      amflow::PropagateComplexContourVector(
+          initial, waypoints, evaluator, rk78_options);
+
+  Expect(rk78.success,
+         "b61n RK78 order-uplift propagation should satisfy the same tight budget: " +
+             rk78.diagnostics.summary);
+  Expect(rk78.diagnostics.integrator == "fehlberg-rk78-adaptive",
+         "b61n RK78 diagnostics should name the high-order embedded integrator");
+  if (rk45.success) {
+    Expect(rk78.diagnostics.adaptive_step_count <
+               rk45.diagnostics.adaptive_step_count,
+           "b61n RK78 should need fewer accepted substeps than RK45 under the "
+           "same tight scalar budget");
+  } else {
+    Expect(rk45.diagnostics.failure_code == "refinement-tolerance-failed",
+           "b61n RK45 control should fail closed only at the refinement gate");
+    Expect(rk78.diagnostics.adaptive_step_count <
+               rk45_options.max_adaptive_steps_per_segment,
+           "b61n RK78 should fit below the RK45 control step budget");
+  }
+  const B61nContourNumber expected_endpoint =
+      std::exp(B61nContourNumber{0, B61nContourFloat(1) /
+                                        B61nContourFloat(9)});
+  ExpectB61nContourClose(rk78.endpoint_values.front(),
+                         expected_endpoint,
+                         B61nContourFloat("1e-16"),
+                         "b61n RK78 eta^8 scalar ODE should match exp(i/9); " +
+                             rk78.diagnostics.summary);
+  ExpectContains(rk78.diagnostics.summary,
+                 "integrator=fehlberg-rk78-adaptive",
+                 "b61n RK78 summary should publish the selected integrator");
+  Expect(!rk78.diagnostics.full_eta_zero_contour_applied,
+         "b61n RK78 adaptive path must not promote the full M6 contour flag");
+}
+
 void B61nComplexContourPropagatorPinchesRk45StepsNearContourPolesTest() {
   const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
   const amflow::ComplexContourVector initial = {{7, -3}};
@@ -5114,6 +5179,7 @@ int main() {
     B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest();
     B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest();
     B61nComplexContourPropagatorAdaptsRk45RelativeToleranceTest();
+    B61nComplexContourPropagatorSupportsFehlbergRk78OrderUpliftTest();
     B61nComplexContourPropagatorPinchesRk45StepsNearContourPolesTest();
     B61nComplexContourPropagatorRejectsInfiniteToleranceTest();
     B61nComplexContourPropagatorRejectsInvalidRelativeToleranceTest();

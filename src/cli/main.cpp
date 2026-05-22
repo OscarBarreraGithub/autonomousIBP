@@ -5891,7 +5891,7 @@ struct B61nCoupledRowContourTransportAudit {
   std::string initial_data_fingerprint;
   std::string finite_start_selection;
   std::string endpoint_refinement_integrator =
-      "dormand-prince-rk45-adaptive";
+      "fehlberg-rk78-adaptive";
   std::string summary;
 };
 
@@ -6321,6 +6321,7 @@ ApplyB61nCoupledRowContourTransport(
       }
 
       amflow::ComplexContourPropagationOptions options;
+      options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
       options.steps_per_segment = 8;
       options.refinement_doublings = 1;
       options.max_refinement_doublings = 4;
@@ -6344,6 +6345,7 @@ ApplyB61nCoupledRowContourTransport(
                   ParseBigFloatRational(
                       spec.boundary_epsilon_samples[sample_index])),
               options);
+      audit.endpoint_refinement_integrator = result.diagnostics.integrator;
       if (!result.success ||
           result.endpoint_values.size() != spec.masters.size()) {
         return blocked_audit(

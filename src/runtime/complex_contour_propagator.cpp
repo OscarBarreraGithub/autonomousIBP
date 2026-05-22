@@ -18,6 +18,16 @@ ComplexContourFloat ComplexAbs(const ComplexContourNumber& value) {
   return sqrt(value.real() * value.real() + value.imag() * value.imag());
 }
 
+std::string IntegratorLabel(const ComplexContourIntegrator integrator) {
+  switch (integrator) {
+    case ComplexContourIntegrator::DormandPrinceRk45:
+      return "dormand-prince-rk45-adaptive";
+    case ComplexContourIntegrator::FehlbergRk78:
+      return "fehlberg-rk78-adaptive";
+  }
+  return "unknown-adaptive";
+}
+
 bool IsFinite(const ComplexContourNumber& value) {
   return std::isfinite(static_cast<long double>(value.real())) &&
          std::isfinite(static_cast<long double>(value.imag()));
@@ -106,8 +116,8 @@ struct AdaptiveRk45Result {
   AdaptiveRk45Stats stats;
 };
 
-struct Rk45StepEstimate {
-  ComplexContourVector fifth_order;
+struct EmbeddedStepEstimate {
+  ComplexContourVector high_order;
   ComplexContourFloat embedded_error_abs = 0;
 };
 
@@ -173,7 +183,7 @@ ComplexContourVector AddScaledSum(
   return result;
 }
 
-Rk45StepEstimate DormandPrinceRk45Step(
+EmbeddedStepEstimate DormandPrinceRk45Step(
     const ComplexContourVector& state,
     const ComplexContourNumber& eta_start,
     const ComplexContourNumber& segment,
@@ -282,11 +292,296 @@ Rk45StepEstimate DormandPrinceRk45Step(
                     ComplexContourFloat(1) / ComplexContourFloat(40)},
                    h);
 
-  Rk45StepEstimate estimate;
+  EmbeddedStepEstimate estimate;
   estimate.embedded_error_abs =
       MaxVectorDifference(fifth_order, fourth_order);
-  estimate.fifth_order = std::move(fifth_order);
+  estimate.high_order = std::move(fifth_order);
   return estimate;
+}
+
+EmbeddedStepEstimate FehlbergRk78Step(
+    const ComplexContourVector& state,
+    const ComplexContourNumber& eta_start,
+    const ComplexContourNumber& segment,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourFloat& t,
+    const ComplexContourFloat& h) {
+  const ComplexContourVector k1 = EvaluateContourDerivative(
+      matrix_evaluator, eta_start + segment * t, state, segment);
+
+  const ComplexContourFloat t2 =
+      t + h * (ComplexContourFloat(2) / ComplexContourFloat(27));
+  const ComplexContourVector k2 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t2,
+                                AddScaledSum(state,
+                                             {&k1},
+                                             {ComplexContourFloat(2) /
+                                              ComplexContourFloat(27)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t3 =
+      t + h * (ComplexContourFloat(1) / ComplexContourFloat(9));
+  const ComplexContourVector k3 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t3,
+                                AddScaledSum(state,
+                                             {&k1, &k2},
+                                             {ComplexContourFloat(1) /
+                                                  ComplexContourFloat(36),
+                                              ComplexContourFloat(1) /
+                                                  ComplexContourFloat(12)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t4 =
+      t + h * (ComplexContourFloat(1) / ComplexContourFloat(6));
+  const ComplexContourVector k4 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t4,
+                                AddScaledSum(state,
+                                             {&k1, &k3},
+                                             {ComplexContourFloat(1) /
+                                                  ComplexContourFloat(24),
+                                              ComplexContourFloat(1) /
+                                                  ComplexContourFloat(8)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t5 =
+      t + h * (ComplexContourFloat(5) / ComplexContourFloat(12));
+  const ComplexContourVector k5 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t5,
+                                AddScaledSum(state,
+                                             {&k1, &k3, &k4},
+                                             {ComplexContourFloat(5) /
+                                                  ComplexContourFloat(12),
+                                              -ComplexContourFloat(25) /
+                                                  ComplexContourFloat(16),
+                                              ComplexContourFloat(25) /
+                                                  ComplexContourFloat(16)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t6 =
+      t + h * (ComplexContourFloat(1) / ComplexContourFloat(2));
+  const ComplexContourVector k6 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t6,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5},
+                                             {ComplexContourFloat(1) /
+                                                  ComplexContourFloat(20),
+                                              ComplexContourFloat(1) /
+                                                  ComplexContourFloat(4),
+                                              ComplexContourFloat(1) /
+                                                  ComplexContourFloat(5)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t7 =
+      t + h * (ComplexContourFloat(5) / ComplexContourFloat(6));
+  const ComplexContourVector k7 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t7,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5, &k6},
+                                             {-ComplexContourFloat(25) /
+                                                  ComplexContourFloat(108),
+                                              ComplexContourFloat(125) /
+                                                  ComplexContourFloat(108),
+                                              -ComplexContourFloat(65) /
+                                                  ComplexContourFloat(27),
+                                              ComplexContourFloat(125) /
+                                                  ComplexContourFloat(54)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t8 =
+      t + h * (ComplexContourFloat(1) / ComplexContourFloat(6));
+  const ComplexContourVector k8 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t8,
+                                AddScaledSum(state,
+                                             {&k1, &k5, &k6, &k7},
+                                             {ComplexContourFloat(31) /
+                                                  ComplexContourFloat(300),
+                                              ComplexContourFloat(61) /
+                                                  ComplexContourFloat(225),
+                                              -ComplexContourFloat(2) /
+                                                  ComplexContourFloat(9),
+                                              ComplexContourFloat(13) /
+                                                  ComplexContourFloat(900)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t9 =
+      t + h * (ComplexContourFloat(2) / ComplexContourFloat(3));
+  const ComplexContourVector k9 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t9,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5, &k6, &k7, &k8},
+                                             {ComplexContourFloat(2),
+                                              -ComplexContourFloat(53) /
+                                                  ComplexContourFloat(6),
+                                              ComplexContourFloat(704) /
+                                                  ComplexContourFloat(45),
+                                              -ComplexContourFloat(107) /
+                                                  ComplexContourFloat(9),
+                                              ComplexContourFloat(67) /
+                                                  ComplexContourFloat(90),
+                                              ComplexContourFloat(3)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t10 =
+      t + h * (ComplexContourFloat(1) / ComplexContourFloat(3));
+  const ComplexContourVector k10 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t10,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5, &k6, &k7, &k8,
+                                              &k9},
+                                             {-ComplexContourFloat(91) /
+                                                  ComplexContourFloat(108),
+                                              ComplexContourFloat(23) /
+                                                  ComplexContourFloat(108),
+                                              -ComplexContourFloat(976) /
+                                                  ComplexContourFloat(135),
+                                              ComplexContourFloat(311) /
+                                                  ComplexContourFloat(54),
+                                              -ComplexContourFloat(19) /
+                                                  ComplexContourFloat(60),
+                                              ComplexContourFloat(17) /
+                                                  ComplexContourFloat(6),
+                                              -ComplexContourFloat(1) /
+                                                  ComplexContourFloat(12)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t11 = t + h;
+  const ComplexContourVector k11 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t11,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5, &k6, &k7, &k8,
+                                              &k9, &k10},
+                                             {ComplexContourFloat(2383) /
+                                                  ComplexContourFloat(4100),
+                                              -ComplexContourFloat(341) /
+                                                  ComplexContourFloat(164),
+                                              ComplexContourFloat(4496) /
+                                                  ComplexContourFloat(1025),
+                                              -ComplexContourFloat(301) /
+                                                  ComplexContourFloat(82),
+                                              ComplexContourFloat(2133) /
+                                                  ComplexContourFloat(4100),
+                                              ComplexContourFloat(45) /
+                                                  ComplexContourFloat(82),
+                                              ComplexContourFloat(45) /
+                                                  ComplexContourFloat(164),
+                                              ComplexContourFloat(18) /
+                                                  ComplexContourFloat(41)},
+                                             h),
+                                segment);
+
+  const ComplexContourFloat t12 = t;
+  const ComplexContourVector k12 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t12,
+                                AddScaledSum(state,
+                                             {&k1, &k6, &k7, &k8, &k9, &k10},
+                                             {ComplexContourFloat(3) /
+                                                  ComplexContourFloat(205),
+                                              -ComplexContourFloat(6) /
+                                                  ComplexContourFloat(41),
+                                              -ComplexContourFloat(3) /
+                                                  ComplexContourFloat(205),
+                                              -ComplexContourFloat(3) /
+                                                  ComplexContourFloat(41),
+                                              ComplexContourFloat(3) /
+                                                  ComplexContourFloat(41),
+                                              ComplexContourFloat(6) /
+                                                  ComplexContourFloat(41)},
+                                             h),
+                                segment);
+
+  const ComplexContourVector k13 =
+      EvaluateContourDerivative(matrix_evaluator,
+                                eta_start + segment * t11,
+                                AddScaledSum(state,
+                                             {&k1, &k4, &k5, &k6, &k7, &k8,
+                                              &k9, &k10, &k12},
+                                             {-ComplexContourFloat(1777) /
+                                                  ComplexContourFloat(4100),
+                                              -ComplexContourFloat(341) /
+                                                  ComplexContourFloat(164),
+                                              ComplexContourFloat(4496) /
+                                                  ComplexContourFloat(1025),
+                                              -ComplexContourFloat(289) /
+                                                  ComplexContourFloat(82),
+                                              ComplexContourFloat(2193) /
+                                                  ComplexContourFloat(4100),
+                                              ComplexContourFloat(51) /
+                                                  ComplexContourFloat(82),
+                                              ComplexContourFloat(33) /
+                                                  ComplexContourFloat(164),
+                                              ComplexContourFloat(12) /
+                                                  ComplexContourFloat(41),
+                                              ComplexContourFloat(1)},
+                                             h),
+                                segment);
+
+  ComplexContourVector primary_order =
+      AddScaledSum(state,
+                   {&k1, &k6, &k7, &k8, &k9, &k10, &k11},
+                   {ComplexContourFloat(41) / ComplexContourFloat(840),
+                    ComplexContourFloat(34) / ComplexContourFloat(105),
+                    ComplexContourFloat(9) / ComplexContourFloat(35),
+                    ComplexContourFloat(9) / ComplexContourFloat(35),
+                    ComplexContourFloat(9) / ComplexContourFloat(280),
+                    ComplexContourFloat(9) / ComplexContourFloat(280),
+                    ComplexContourFloat(41) / ComplexContourFloat(840)},
+                   h);
+  const ComplexContourVector embedded_order =
+      AddScaledSum(state,
+                   {&k6, &k7, &k8, &k9, &k10, &k12, &k13},
+                   {ComplexContourFloat(34) / ComplexContourFloat(105),
+                    ComplexContourFloat(9) / ComplexContourFloat(35),
+                    ComplexContourFloat(9) / ComplexContourFloat(35),
+                    ComplexContourFloat(9) / ComplexContourFloat(280),
+                    ComplexContourFloat(9) / ComplexContourFloat(280),
+                    ComplexContourFloat(41) / ComplexContourFloat(840),
+                    ComplexContourFloat(41) / ComplexContourFloat(840)},
+                   h);
+
+  EmbeddedStepEstimate estimate;
+  estimate.embedded_error_abs =
+      MaxVectorDifference(primary_order, embedded_order);
+  estimate.high_order = std::move(primary_order);
+  return estimate;
+}
+
+EmbeddedStepEstimate EmbeddedRungeKuttaStep(
+    const ComplexContourVector& state,
+    const ComplexContourNumber& eta_start,
+    const ComplexContourNumber& segment,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourFloat& t,
+    const ComplexContourFloat& h,
+    const ComplexContourIntegrator integrator) {
+  switch (integrator) {
+    case ComplexContourIntegrator::DormandPrinceRk45:
+      return DormandPrinceRk45Step(
+          state, eta_start, segment, matrix_evaluator, t, h);
+    case ComplexContourIntegrator::FehlbergRk78:
+      return FehlbergRk78Step(
+          state, eta_start, segment, matrix_evaluator, t, h);
+  }
+  throw std::runtime_error("unsupported-complex-contour-integrator");
 }
 
 ComplexContourFloat AdaptiveStepTolerance(
@@ -430,14 +725,20 @@ AdaptiveRk45Result PropagateSegmentWithAdaptiveRk45(
     requested_h = std::max(requested_h, h_min);
     requested_h = std::min(requested_h, remaining);
 
-    const Rk45StepEstimate estimate = DormandPrinceRk45Step(
-        result.values, eta_start, segment, matrix_evaluator, t, requested_h);
+    const EmbeddedStepEstimate estimate =
+        EmbeddedRungeKuttaStep(result.values,
+                               eta_start,
+                               segment,
+                               matrix_evaluator,
+                               t,
+                               requested_h,
+                               options.integrator);
     const ComplexContourFloat tolerance =
-        AdaptiveStepTolerance(options, estimate.fifth_order);
+        AdaptiveStepTolerance(options, estimate.high_order);
     result.stats.max_embedded_error_abs = std::max(
         result.stats.max_embedded_error_abs, estimate.embedded_error_abs);
     if (estimate.embedded_error_abs <= tolerance) {
-      result.values = estimate.fifth_order;
+      result.values = estimate.high_order;
       t += requested_h;
       ++result.stats.accepted_steps;
       if (pole_pinched) {
@@ -536,7 +837,7 @@ std::string SerializePropagationForFingerprint(
   out << "branch_policy=" << options.branch_policy << "\n";
   out << "matrix_fingerprint=" << options.matrix_fingerprint << "\n";
   out << "endpoint_target=eta=0\n";
-  out << "integrator=dormand-prince-rk45-adaptive\n";
+  out << "integrator=" << IntegratorLabel(options.integrator) << "\n";
   if (!options.endpoint_integral_id.empty()) {
     out << "endpoint_integral_id=" << options.endpoint_integral_id << "\n";
   }
@@ -590,7 +891,7 @@ ComplexContourPropagationResult FailureResult(
       "b61n-complex-contour-propagator-harness";
   result.diagnostics.transport_scope =
       "lower-half-plane-complex-ode-vector-propagation";
-  result.diagnostics.integrator = "dormand-prince-rk45-adaptive";
+  result.diagnostics.integrator = IntegratorLabel(options.integrator);
   result.diagnostics.branch_policy = options.branch_policy;
   result.diagnostics.endpoint_target = "eta=0";
   result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
@@ -700,7 +1001,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
   if (options.max_adaptive_steps_per_segment == 0) {
     return FailureResult(
         "invalid-adaptive-step-limit",
-        "b61n complex contour propagator requires a positive adaptive RK45 step limit",
+        "b61n complex contour propagator requires a positive adaptive step limit",
         initial_values,
         waypoints,
         options);
@@ -861,7 +1162,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     if (!refinement_passed) {
       return FailureResult(
           "refinement-tolerance-failed",
-          "b61n complex contour propagation failed closed because RK45 refinement error " +
+          "b61n complex contour propagation failed closed because " +
+              IntegratorLabel(options.integrator) + " refinement error " +
               CompactFloat(refinement_error, 40) + " exceeded effective tolerance " +
               CompactFloat(effective_refinement_tolerance, 40) +
               " from abs_floor=" +
@@ -909,7 +1211,7 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         "b61n-complex-contour-propagator-harness";
     result.diagnostics.transport_scope =
         "lower-half-plane-complex-ode-vector-propagation";
-    result.diagnostics.integrator = "dormand-prince-rk45-adaptive";
+    result.diagnostics.integrator = IntegratorLabel(options.integrator);
     result.diagnostics.branch_policy = options.branch_policy;
     result.diagnostics.endpoint_target = "eta=0";
     result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
@@ -987,8 +1289,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         error_message.find("pole-pinch-step") != std::string::npos) {
       ComplexContourPropagationResult failure = FailureResult(
           "refinement-tolerance-failed",
-          "b61n complex contour propagation failed closed because adaptive RK45 "
-          "refinement could not satisfy the effective tolerance: " +
+          "b61n complex contour propagation failed closed because " +
+              IntegratorLabel(options.integrator) +
+              " refinement could not satisfy the effective tolerance: " +
               error_message,
           initial_values,
           waypoints,

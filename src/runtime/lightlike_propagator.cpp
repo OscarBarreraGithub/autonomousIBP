@@ -1757,6 +1757,27 @@ void RecordReducedFinitePartFailure(
   result.failures.push_back({target_label, failure_code, summary});
 }
 
+bool IsGaugeLinkExactOneCoefficient(const std::string& coefficient) {
+  try {
+    return EvaluateGaugeLinkExactRational(coefficient) == GaugeLinkExactOne();
+  } catch (const std::exception&) {
+    return false;
+  }
+}
+
+bool IsSecondBlockCompanionTargetProjectionRow(
+    const LightlikeGaugeLinkTargetNormalization& normalization,
+    const std::vector<LightlikeGaugeLinkTargetReductionTerm>& reduction_terms) {
+  if (reduction_terms.size() != 1) {
+    return false;
+  }
+  const LightlikeGaugeLinkTargetReductionTerm& term = reduction_terms.front();
+  return term.master_label == ReviewedReductionMasterLabels()[3] &&
+         term.gaugex_power_shift == -normalization.affected_power_sum &&
+         term.log_power == 0 &&
+         IsGaugeLinkExactOneCoefficient(term.coefficient);
+}
+
 RuntimeComplex RuntimePolynomialValue(const RuntimePolynomial& polynomial,
                                       const RuntimeComplex& variable_value) {
   RuntimeComplex value = RuntimeComplex{0.0L, 0.0L};
@@ -2845,8 +2866,36 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
       continue;
     }
 
+    const bool second_block_companion_projection =
+        IsSecondBlockCompanionTargetProjectionRow(normalization,
+                                                 reduction_it->second);
+    if (second_block_companion_projection) {
+      for (auto it = reduced_terms_by_key.begin();
+           it != reduced_terms_by_key.end();) {
+        if (it->first.region_key == "integer") {
+          it = reduced_terms_by_key.erase(it);
+        } else {
+          ++it;
+        }
+      }
+    }
+
     for (const auto& entry : reduced_terms_by_key) {
       target_result.reduced_endpoint_terms.push_back(entry.second);
+    }
+    if (second_block_companion_projection &&
+        target_result.reduced_endpoint_terms.empty()) {
+      target_result.success = true;
+      target_result.selected_region_key = "amflow-no-integer-key";
+      target_result.finite_part_coefficient = "0";
+      target_result.summary =
+          "Applied retained single-row second-block companion target projection "
+          "before PickZeroRuleS-compatible finite-part extraction for " +
+          normalization.target_label + "; normalization_factor=" +
+          normalization.normalization_factor +
+          "; projected analytic homogeneous endpoint branch.";
+      result.targets.push_back(std::move(target_result));
+      continue;
     }
     const LightlikeGaugeLinkFinitePartResult finite_part =
         ExtractLightlikeGaugeLinkEndpointFinitePart(
@@ -2875,7 +2924,11 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
         "Applied retained target reduction with embedded D4,D5 normalization before "
         "PickZeroRuleS-compatible finite-part extraction for " +
         normalization.target_label + "; normalization_factor=" +
-        normalization.normalization_factor + ".";
+        normalization.normalization_factor +
+        (second_block_companion_projection
+             ? "; projected single-row second-block companion analytic homogeneous "
+               "endpoint branch."
+             : ".");
     result.ir_subtraction_applied =
         result.ir_subtraction_applied || target_result.ir_subtraction_applied;
     result.targets.push_back(std::move(target_result));

@@ -3719,6 +3719,74 @@ void B64agGaugeLinkReducedFinitePartProjectsSecondBlockFrobeniusToZeroTest() {
                  "b64ag second-block projection should preserve AMFlow-order reducer audit");
 }
 
+void B64agGaugeLinkReducedFinitePartProjectsSecondBlockCompanionHomogeneousToZeroTest() {
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const std::size_t companion_target_index = 6;
+  const amflow::TargetIntegral& target = targets[companion_target_index];
+  const std::vector<amflow::MasterIntegral> masters =
+      B64agReviewedReductionMasters();
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms =
+      B64agSixMasterEndpointFixture();
+  endpoint_terms[3].endpoint_terms = {
+      B64agEndpointFixtureTerm(1, "second_companion_homogeneous_singular"),
+      B64agEndpointFixtureTerm(2, "second_companion_homogeneous_finite"),
+  };
+
+  std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> reduction_terms;
+  for (std::size_t index = 0; index < targets.size(); ++index) {
+    if (index == companion_target_index) {
+      reduction_terms.push_back(
+          B64agReductionFixtureTerm(target, masters[3], -2, "1"));
+      continue;
+    }
+    const std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> row =
+        B64agTwoMasterReductionRow(targets[index], 0);
+    reduction_terms.insert(reduction_terms.end(), row.begin(), row.end());
+  }
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          targets,
+          endpoint_terms,
+          reduction_terms);
+
+  Expect(result.success,
+         "b64ag second-block companion homogeneous projection should succeed as an "
+         "audited AMFlow target-level zero: " + result.summary);
+  Expect(result.failures.empty(),
+         "b64ag second-block companion projection should not record failures");
+  Expect(result.targets.size() == targets.size() &&
+             result.targets[companion_target_index].success,
+         "b64ag second-block companion projection should publish the reviewed packet");
+  const amflow::LightlikeGaugeLinkReducedFinitePartTarget& projected =
+      result.targets[companion_target_index];
+  Expect(projected.target_label == target.Label(),
+         "b64ag second-block companion projection should inspect the retained "
+         "companion target");
+  Expect(projected.selected_region_key == "amflow-no-integer-key",
+         "b64ag second-block companion projection should report no AMFlow integer key");
+  Expect(projected.finite_part_coefficient == "0",
+         "b64ag second-block companion projection should publish exact zero");
+  Expect(projected.reduced_endpoint_terms.empty(),
+         "b64ag second-block companion projection should remove the analytic "
+         "homogeneous branch before finite-part publication");
+  Expect(!projected.ir_subtraction_applied,
+         "b64ag second-block companion projection should not claim integer finite-part "
+         "subtraction");
+  ExpectNotContains(projected.finite_part_coefficient,
+                    "second_companion_homogeneous_finite",
+                    "b64ag second-block companion projection must not publish the "
+                    "homogeneous finite slot");
+  ExpectContains(projected.summary,
+                 "single-row second-block companion target projection",
+                 "b64ag second-block companion projection should audit the structural "
+                 "target-reduction shape");
+  Expect(!result.retained_solution_samples_used,
+         "b64ag second-block companion projection must not read retained solutions");
+  Expect(!result.full_eta_zero_contour_applied,
+         "b64ag second-block companion projection must not promote full contour");
+}
+
 void B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest() {
   const amflow::TargetIntegral target = B64agReviewedTargets()[3];
   const amflow::LightlikeGaugeLinkReducedFinitePartResult result =
@@ -5584,6 +5652,7 @@ int main() {
     B64agGaugeLinkReducedFinitePartRejectsMultipleRegionsTest();
     B64agGaugeLinkReducedFinitePartSumsReviewedMultipleRegionsTest();
     B64agGaugeLinkReducedFinitePartProjectsSecondBlockFrobeniusToZeroTest();
+    B64agGaugeLinkReducedFinitePartProjectsSecondBlockCompanionHomogeneousToZeroTest();
     B64agGaugeLinkReducedFinitePartSelectedPrefixKeepsFullContourFalseTest();
     B64agGaugeLinkFirstEndpointCoefficientAuditTest();
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();

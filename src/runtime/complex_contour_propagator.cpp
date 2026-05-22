@@ -1553,6 +1553,42 @@ ComplexContourFrobeniusEndpointEvaluation FrobeniusEndpointFailure(
   return evaluation;
 }
 
+ComplexContourScalarReducibleEndpointRows ScalarReducibleEndpointFailure(
+    const std::string& failure_code,
+    const std::string& summary,
+    const std::size_t dimension,
+    const ComplexContourNumber& match_eta,
+    const ComplexContourScalarReducibleEndpointOptions& options) {
+  ComplexContourScalarReducibleEndpointRows rows;
+  rows.success = false;
+  rows.dimension = dimension;
+  rows.endpoint = options.endpoint;
+  rows.match_eta = match_eta;
+  rows.residue_probe_eta = options.residue_probe_eta;
+  rows.residue_tolerance = options.residue_tolerance;
+  rows.tail_fit_tolerance = options.tail_fit_tolerance;
+  rows.coupling_tolerance = options.coupling_tolerance;
+  rows.tail_order = options.tail_order;
+  rows.frobenius_order = options.frobenius_order;
+  rows.sample_count = options.sample_count;
+  rows.failure_code = failure_code;
+  rows.summary = summary;
+  return rows;
+}
+
+std::string CompactIndexVector(const std::vector<std::size_t>& values) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < values.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << values[index];
+  }
+  out << "]";
+  return out.str();
+}
+
 ComplexContourMatrix MakeZeroMatrix(const std::size_t dimension) {
   return ComplexContourMatrix(
       dimension, std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
@@ -2368,6 +2404,261 @@ EvaluateComplexContourFrobeniusEtaZeroEndpoint(
       "; endpoint_value_available=true; coefficient_source=c_0; "
       "full_eta_zero_contour_applied=false";
   return evaluation;
+}
+
+ComplexContourScalarReducibleEndpointRows
+ApplyComplexContourScalarReducibleFrobeniusEndpointRows(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourNumber& match_eta,
+    const ComplexContourVector& match_values,
+    const ComplexContourScalarReducibleEndpointOptions& options) {
+  const std::size_t dimension = match_values.size();
+  if (dimension == 0) {
+    return ScalarReducibleEndpointFailure(
+        "empty-match-vector",
+        "b61n scalar-reducible Frobenius endpoint rows require at least one "
+        "matched master value",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!matrix_evaluator) {
+    return ScalarReducibleEndpointFailure(
+        "missing-matrix-evaluator",
+        "b61n scalar-reducible Frobenius endpoint rows require a matrix evaluator",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFinite(match_eta) || ComplexAbs(match_eta - options.endpoint) == 0) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-match-eta",
+        "b61n scalar-reducible Frobenius endpoint rows require a finite non-endpoint "
+        "match eta",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFinite(options.endpoint)) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-endpoint",
+        "b61n scalar-reducible Frobenius endpoint rows require a finite endpoint",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFiniteFloat(options.residue_tolerance) ||
+      options.residue_tolerance < 0) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-residue-tolerance",
+        "b61n scalar-reducible Frobenius endpoint rows require a finite "
+        "nonnegative residue tolerance",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFiniteFloat(options.tail_fit_tolerance) ||
+      options.tail_fit_tolerance < 0) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-tail-fit-tolerance",
+        "b61n scalar-reducible Frobenius endpoint rows require a finite "
+        "nonnegative tail-fit tolerance",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFiniteFloat(options.coupling_tolerance) ||
+      options.coupling_tolerance < 0) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-coupling-tolerance",
+        "b61n scalar-reducible Frobenius endpoint rows require a finite "
+        "nonnegative coupling tolerance",
+        dimension,
+        match_eta,
+        options);
+  }
+  if (!IsFiniteFloat(options.sample_radius) || options.sample_radius <= 0) {
+    return ScalarReducibleEndpointFailure(
+        "invalid-sample-radius",
+        "b61n scalar-reducible Frobenius endpoint rows require a positive finite "
+        "scalar sample radius",
+        dimension,
+        match_eta,
+        options);
+  }
+  try {
+    RequireFiniteVector(match_values, "scalar-reducible-match-values");
+    const ComplexContourIndicialEquation indicial =
+        ComputeComplexContourEtaZeroIndicialEquation(matrix_evaluator,
+                                                     dimension,
+                                                     options.residue_probe_eta,
+                                                     options.residue_tolerance);
+    if (!indicial.success) {
+      return ScalarReducibleEndpointFailure(
+          "indicial-" + indicial.failure_code,
+          "b61n scalar-reducible Frobenius endpoint rows could not start because "
+          "the indicial probe failed: " +
+              indicial.summary,
+          dimension,
+          match_eta,
+          options);
+    }
+    if (!indicial.indicial_roots_available ||
+        indicial.indicial_roots.size() != dimension) {
+      return ScalarReducibleEndpointFailure(
+          "indicial-roots-unavailable",
+          "b61n scalar-reducible Frobenius endpoint rows require triangular "
+          "indicial roots before row classification",
+          dimension,
+          match_eta,
+          options);
+    }
+
+    const std::vector<ComplexContourMatrix> eta_times_coefficients =
+        FitEtaTimesMatrixCoefficients(matrix_evaluator,
+                                      dimension,
+                                      options.residue_probe_eta,
+                                      options.tail_order + 1);
+    const ComplexContourNumber check_eta =
+        options.residue_probe_eta /
+        ComplexContourFloat(std::to_string(options.tail_order + 2));
+    const ComplexContourMatrix sampled_eta_times_matrix =
+        SampleEtaTimesMatrix(matrix_evaluator, dimension, check_eta);
+    const ComplexContourMatrix fitted_eta_times_matrix =
+        EvaluateTailPolynomial(eta_times_coefficients, check_eta);
+    const ComplexContourFloat tail_residual =
+        MaxMatrixDifference(sampled_eta_times_matrix, fitted_eta_times_matrix);
+    ComplexContourFloat tail_scale = std::max<ComplexContourFloat>(
+        ComplexContourFloat(1), MaxMatrixEntryNorm(sampled_eta_times_matrix));
+    tail_scale = std::max(tail_scale, MaxMatrixEntryNorm(fitted_eta_times_matrix));
+    const ComplexContourFloat scaled_tail_tolerance =
+        options.tail_fit_tolerance * tail_scale;
+    const ComplexContourFloat effective_tail_tolerance =
+        std::max(options.tail_fit_tolerance, scaled_tail_tolerance);
+    if (tail_residual > effective_tail_tolerance) {
+      return ScalarReducibleEndpointFailure(
+          "regular-tail-fit-residual-too-large",
+          "b61n scalar-reducible Frobenius endpoint rows refused to classify rows "
+          "because the eta*A(eta) tail fit residual " +
+              CompactFloat(tail_residual, 40) +
+              " exceeded effective tolerance " +
+              CompactFloat(effective_tail_tolerance, 40),
+          dimension,
+          match_eta,
+          options);
+    }
+
+    ComplexContourScalarReducibleEndpointRows rows;
+    rows.success = true;
+    rows.dimension = dimension;
+    rows.endpoint = options.endpoint;
+    rows.match_eta = match_eta;
+    rows.residue_probe_eta = options.residue_probe_eta;
+    rows.residue_tolerance = options.residue_tolerance;
+    rows.tail_fit_tolerance = options.tail_fit_tolerance;
+    rows.coupling_tolerance = options.coupling_tolerance;
+    rows.tail_order = options.tail_order;
+    rows.frobenius_order = options.frobenius_order;
+    rows.sample_count = options.sample_count;
+    rows.tail_fit_residual_abs = CompactFloat(tail_residual, 40);
+    rows.indicial_roots = indicial.indicial_roots;
+    rows.endpoint_values = MakeZeroVector(dimension);
+    rows.endpoint_value_available.assign(dimension, false);
+
+    const ComplexContourFloat endpoint_tolerance =
+        std::max(std::max(options.residue_tolerance, options.coupling_tolerance),
+                 ComplexContourFloat("1e-70"));
+    for (std::size_t row = 0; row < dimension; ++row) {
+      bool row_is_scalar_reducible = true;
+      for (const ComplexContourMatrix& coefficient_matrix : eta_times_coefficients) {
+        for (std::size_t column = 0; column < dimension; ++column) {
+          if (column == row) {
+            continue;
+          }
+          if (ComplexAbs(coefficient_matrix[row][column]) >
+              options.coupling_tolerance) {
+            row_is_scalar_reducible = false;
+            break;
+          }
+        }
+        if (!row_is_scalar_reducible) {
+          break;
+        }
+      }
+
+      if (!row_is_scalar_reducible) {
+        rows.irreducible_row_indices.push_back(row);
+        rows.deferred_endpoint_row_indices.push_back(row);
+        continue;
+      }
+
+      rows.scalar_reducible_row_indices.push_back(row);
+      const auto scalar_row_evaluator =
+          [matrix_evaluator, dimension, row](const ComplexContourNumber& eta) {
+            const ComplexContourMatrix matrix = matrix_evaluator(eta);
+            RequireMatrixShape(matrix, dimension);
+            return ComplexContourMatrix{{matrix[row][row]}};
+          };
+      const ComplexContourScalarFrobeniusSeriesPatch patch =
+          GenerateScalarComplexFrobeniusEndpointPatch(
+              scalar_row_evaluator,
+              options.endpoint,
+              options.sample_radius,
+              options.frobenius_order,
+              options.sample_count);
+      const ComplexContourNumber endpoint_coefficient =
+          MatchScalarComplexFrobeniusEndpointCoefficient(
+              patch, match_eta, match_values[row], options.half_plane);
+      const ComplexContourNumber indicial_root = patch.indicial_exponent;
+      const ComplexContourFloat real_abs = abs(indicial_root.real());
+      const ComplexContourFloat imag_abs = abs(indicial_root.imag());
+      if (real_abs <= endpoint_tolerance && imag_abs <= endpoint_tolerance) {
+        rows.endpoint_values[row] = endpoint_coefficient;
+        rows.endpoint_value_available[row] = true;
+        rows.endpoint_value_row_indices.push_back(row);
+      } else if (indicial_root.real() > endpoint_tolerance) {
+        rows.endpoint_values[row] = ComplexContourNumber{0, 0};
+        rows.endpoint_value_available[row] = true;
+        rows.endpoint_value_row_indices.push_back(row);
+      } else {
+        rows.deferred_endpoint_row_indices.push_back(row);
+      }
+    }
+
+    rows.summary =
+        "Applied b61n scalar-reducible Frobenius endpoint row classifier; "
+        "dimension=" +
+        std::to_string(rows.dimension) +
+        "; scalar_reducible_row_count=" +
+        std::to_string(rows.scalar_reducible_row_indices.size()) +
+        "; scalar_reducible_rows=" +
+        CompactIndexVector(rows.scalar_reducible_row_indices) +
+        "; irreducible_row_count=" +
+        std::to_string(rows.irreducible_row_indices.size()) +
+        "; irreducible_rows=" +
+        CompactIndexVector(rows.irreducible_row_indices) +
+        "; endpoint_value_row_count=" +
+        std::to_string(rows.endpoint_value_row_indices.size()) +
+        "; endpoint_value_rows=" +
+        CompactIndexVector(rows.endpoint_value_row_indices) +
+        "; deferred_endpoint_rows=" +
+        CompactIndexVector(rows.deferred_endpoint_row_indices) +
+        "; tail_order=" + std::to_string(rows.tail_order) +
+        "; frobenius_order=" + std::to_string(rows.frobenius_order) +
+        "; tail_fit_residual_abs=" + rows.tail_fit_residual_abs +
+        "; indicial_roots=" + CompactComplexVector(rows.indicial_roots) +
+        "; irreducible subsystem remains on RK78/coupled-row path; "
+        "coefficient_publication=false; full_eta_zero_contour_applied=false";
+    return rows;
+  } catch (const std::exception& error) {
+    return ScalarReducibleEndpointFailure(
+        "scalar-reducible-endpoint-row-classification-failed",
+        std::string("b61n scalar-reducible Frobenius endpoint rows failed closed: ") +
+            error.what(),
+        dimension,
+        match_eta,
+        options);
+  }
 }
 
 ComplexContourPropagationResult PropagateComplexContourVector(

@@ -177,6 +177,43 @@ struct ComplexContourFrobeniusEndpointEvaluation {
   std::string summary;
 };
 
+struct ComplexContourScalarReducibleEndpointOptions {
+  ComplexContourNumber endpoint = {0, 0};
+  ComplexContourNumber residue_probe_eta = {0, ComplexContourFloat("-1e-40")};
+  ComplexContourFloat residue_tolerance = ComplexContourFloat("1e-28");
+  ComplexContourFloat tail_fit_tolerance = ComplexContourFloat("1e-24");
+  ComplexContourFloat coupling_tolerance = ComplexContourFloat("1e-24");
+  ComplexContourFloat sample_radius = ComplexContourFloat("0.0625");
+  std::size_t tail_order = 4;
+  std::size_t frobenius_order = 32;
+  std::size_t sample_count = 0;
+  EtaContourHalfPlane half_plane = EtaContourHalfPlane::Lower;
+};
+
+struct ComplexContourScalarReducibleEndpointRows {
+  bool success = false;
+  std::size_t dimension = 0;
+  ComplexContourNumber endpoint = {0, 0};
+  ComplexContourNumber match_eta = {0, 0};
+  ComplexContourNumber residue_probe_eta = {0, 0};
+  ComplexContourFloat residue_tolerance = 0;
+  ComplexContourFloat tail_fit_tolerance = 0;
+  ComplexContourFloat coupling_tolerance = 0;
+  std::size_t tail_order = 0;
+  std::size_t frobenius_order = 0;
+  std::size_t sample_count = 0;
+  std::string failure_code;
+  std::string tail_fit_residual_abs;
+  std::vector<ComplexContourNumber> indicial_roots;
+  std::vector<std::size_t> scalar_reducible_row_indices;
+  std::vector<std::size_t> irreducible_row_indices;
+  std::vector<std::size_t> endpoint_value_row_indices;
+  std::vector<std::size_t> deferred_endpoint_row_indices;
+  std::vector<bool> endpoint_value_available;
+  ComplexContourVector endpoint_values;
+  std::string summary;
+};
+
 ComplexContourIndicialEquation ComputeComplexContourEtaZeroIndicialEquation(
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     std::size_t dimension);
@@ -196,6 +233,13 @@ ComputeComplexContourEtaZeroFrobeniusRecurrence(
 ComplexContourFrobeniusEndpointEvaluation
 EvaluateComplexContourFrobeniusEtaZeroEndpoint(
     const ComplexContourFrobeniusRecurrence& recurrence);
+
+ComplexContourScalarReducibleEndpointRows
+ApplyComplexContourScalarReducibleFrobeniusEndpointRows(
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourNumber& match_eta,
+    const ComplexContourVector& match_values,
+    const ComplexContourScalarReducibleEndpointOptions& options = {});
 
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,

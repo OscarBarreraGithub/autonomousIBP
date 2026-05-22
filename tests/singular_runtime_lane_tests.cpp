@@ -5381,6 +5381,78 @@ void B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest() {
                  "the endpoint from c0");
 }
 
+void B61nEtaZeroScalarReducibleRowsApplyFrobeniusAndDeferCoupledRowsTest() {
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    amflow::ComplexContourMatrix matrix(
+        3, std::vector<B61nContourNumber>(3, B61nContourNumber{}));
+    matrix[0][0] = B61nContourNumber{0, 0};
+    matrix[1][0] = B61nContourNumber{1, 0} / eta;
+    matrix[1][1] = B61nContourNumber{0, 0};
+    matrix[2][2] = B61nContourNumber{1, 0} / eta;
+    return matrix;
+  };
+  const B61nContourNumber match_eta{0, B61nContourFloat("-0.5")};
+  const amflow::ComplexContourVector match_values = {
+      {7, -3},
+      {11, 2},
+      {5, -1},
+  };
+
+  amflow::ComplexContourScalarReducibleEndpointOptions options;
+  options.residue_probe_eta = {0, B61nContourFloat("-1e-6")};
+  options.residue_tolerance = B61nContourFloat("1e-30");
+  options.tail_fit_tolerance = B61nContourFloat("1e-30");
+  options.coupling_tolerance = B61nContourFloat("1e-30");
+  options.sample_radius = B61nContourFloat("0.125");
+  options.tail_order = 2;
+  options.frobenius_order = 4;
+  options.sample_count = 64;
+
+  const amflow::ComplexContourScalarReducibleEndpointRows rows =
+      amflow::ApplyComplexContourScalarReducibleFrobeniusEndpointRows(
+          evaluator, match_eta, match_values, options);
+
+  Expect(rows.success,
+         "b61n scalar-reducible row classifier should accept triangular "
+         "Frobenius residue input: " +
+             rows.summary);
+  Expect(rows.scalar_reducible_row_indices == std::vector<std::size_t>({0, 2}),
+         "b61n scalar-reducible row classifier should identify only rows whose "
+         "equations are locally scalar");
+  Expect(rows.irreducible_row_indices == std::vector<std::size_t>({1}),
+         "b61n scalar-reducible row classifier should leave sourced rows for "
+         "the coupled subsystem");
+  Expect(rows.endpoint_value_row_indices == std::vector<std::size_t>({0, 2}),
+         "b61n scalar-reducible row classifier should publish finite scalar "
+         "endpoint rows only");
+  Expect(rows.deferred_endpoint_row_indices == std::vector<std::size_t>({1}),
+         "b61n scalar-reducible row classifier should defer the irreducible "
+         "coupled row");
+  Expect(rows.endpoint_value_available.size() == 3 &&
+             rows.endpoint_value_available[0] &&
+             !rows.endpoint_value_available[1] &&
+             rows.endpoint_value_available[2],
+         "b61n scalar-reducible row classifier should mark endpoint availability "
+         "per row");
+  ExpectB61nContourClose(rows.endpoint_values[0],
+                         match_values[0],
+                         B61nContourFloat("1e-50"),
+                         "b61n scalar row with rho=0 should recover the matched "
+                         "eta=0 coefficient");
+  ExpectB61nContourClose(rows.endpoint_values[2],
+                         {0, 0},
+                         B61nContourFloat("1e-80"),
+                         "b61n scalar row with positive indicial root should have "
+                         "a zero eta=0 endpoint");
+  ExpectContains(rows.summary,
+                 "irreducible subsystem remains on RK78/coupled-row path",
+                 "b61n scalar-reducible row classifier should avoid claiming the "
+                 "remaining coupled subsystem");
+  ExpectContains(rows.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b61n scalar-reducible row classifier must keep the M6 flag false");
+}
+
 void B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -6150,6 +6222,7 @@ int main() {
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();
     B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest();
+    B61nEtaZeroScalarReducibleRowsApplyFrobeniusAndDeferCoupledRowsTest();
     B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest();
     B61nEtaZeroIndicialEquationKeepsDensePolynomialWithoutRootsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();

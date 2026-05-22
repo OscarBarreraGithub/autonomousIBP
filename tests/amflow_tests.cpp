@@ -49382,6 +49382,11 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "single-master b61n scalar contour transport should document the applied "
                  "runtime path");
   ExpectContains(stripped_json,
+                 "matched small-eta start -1e-40*I through the landed "
+                 "Frobenius recurrence with limit_classification=finite-rho-zero",
+                 "single-master b61n scalar endpoint transport should use the "
+                 "Frobenius recurrence matcher from a small-eta start");
+  ExpectContains(stripped_json,
                  "Applied b61n primitive bubble endpoint coefficient transport through eps^2 "
                  "to 4 additional master",
                  "b61n primitive bubble transport should document the selected extension");

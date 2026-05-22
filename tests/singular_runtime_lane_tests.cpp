@@ -5188,6 +5188,70 @@ void B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest() {
                  "contour closure");
 }
 
+void B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest() {
+  const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
+  const B61nContourNumber small_eta{0, B61nContourFloat("-1e-8")};
+  const B61nContourNumber expected_endpoint{
+      B61nContourFloat("1.25"),
+      B61nContourFloat("-0.75")};
+  const auto evaluator = [](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{2, 0} + B61nContourNumber{3, 0} * eta},
+    };
+  };
+
+  amflow::ComplexContourFrobeniusRecurrenceOptions options;
+  options.selected_root_index = 0;
+  options.order = 4;
+  options.leading_coefficients = {{1, 0}};
+  options.residue_probe_eta = probe_eta;
+  options.residue_tolerance = B61nContourFloat("1e-14");
+  options.tail_fit_tolerance = B61nContourFloat("1e-30");
+
+  const amflow::ComplexContourFrobeniusRecurrence recurrence =
+      amflow::ComputeComplexContourEtaZeroFrobeniusRecurrence(
+          evaluator, 1, options);
+  Expect(recurrence.success,
+         "b61n regular single-row Frobenius recurrence should support a "
+         "small-eta endpoint match: " +
+             recurrence.summary);
+
+  B61nContourNumber normalized_small_eta{0, 0};
+  B61nContourNumber eta_power{1, 0};
+  for (const amflow::ComplexContourVector& coefficient : recurrence.coefficients) {
+    Expect(coefficient.size() == 1,
+           "b61n regular single-row Frobenius recurrence should stay scalar");
+    normalized_small_eta += coefficient.front() * eta_power;
+    eta_power *= small_eta;
+  }
+  const B61nContourNumber small_eta_start =
+      expected_endpoint * normalized_small_eta;
+
+  const amflow::ComplexContourFrobeniusEndpointEvaluation evaluation =
+      amflow::EvaluateComplexContourFrobeniusEtaZeroEndpoint(recurrence);
+  Expect(evaluation.success && evaluation.endpoint_value_available,
+         "b61n regular single-row Frobenius endpoint evaluation should "
+         "produce c0: " +
+             evaluation.summary);
+  Expect(evaluation.limit_classification == "finite-rho-zero",
+         "b61n regular single-row Frobenius endpoint should classify rho=0");
+  const B61nContourNumber matched_endpoint =
+      (small_eta_start / normalized_small_eta) * evaluation.endpoint_value.front();
+  ExpectB61nContourClose(matched_endpoint,
+                         expected_endpoint,
+                         B61nContourFloat("1e-80"),
+                         "b61n regular single-row Frobenius endpoint should "
+                         "recover c0 from a small-eta starting value");
+  ExpectContains(recurrence.summary,
+                 "recurrence-ready-for-endpoint-handler",
+                 "b61n regular single-row small-eta matcher should use the "
+                 "landed recurrence handoff");
+  ExpectContains(evaluation.summary,
+                 "coefficient_source=c_0",
+                 "b61n regular single-row small-eta matcher should evaluate "
+                 "the endpoint from c0");
+}
+
 void B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -5955,6 +6019,7 @@ int main() {
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
+    B61nEtaZeroFrobeniusRecurrenceMatchesSmallEtaStartTest();
     B61nEtaZeroIndicialEquationRejectsHigherOrderPoleProbeTest();
     B61nEtaZeroIndicialEquationKeepsDensePolynomialWithoutRootsTest();
     B61nComplexContourPropagatorFailsClosedOnBadMatrixShapeTest();

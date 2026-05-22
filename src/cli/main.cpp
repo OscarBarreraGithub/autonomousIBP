@@ -5632,12 +5632,16 @@ struct B61nScalarContourEndpointAudit {
   std::size_t epsilon_sample_count = 0;
   BigComplex denominator_shift;
   BigComplex contour_pole;
+  BigComplex first_sample_frobenius_start_eta;
   BigComplex first_sample_exponent;
   BigComplex first_sample_endpoint_factor;
+  BigComplex first_sample_frobenius_delta;
   BigComplex first_sample_endpoint_value;
   std::string contour_fingerprint;
   std::string endpoint_local_model_kind;
   std::string extraction_order;
+  std::string frobenius_limit_classification;
+  std::string frobenius_recurrence_summary;
   std::string extraction_fingerprint;
   std::string summary;
 };
@@ -5652,13 +5656,80 @@ std::string SerializeB61nScalarContourEndpointAuditForFingerprint(
       << BigComplexCompactString(audit.denominator_shift, 50) << "\n";
   out << "contour_pole="
       << BigComplexCompactString(audit.contour_pole, 50) << "\n";
+  out << "frobenius_start_eta="
+      << BigComplexCompactString(audit.first_sample_frobenius_start_eta, 50)
+      << "\n";
   out << "first_sample_exponent="
       << BigComplexCompactString(audit.first_sample_exponent, 50) << "\n";
+  out << "first_sample_frobenius_delta_abs="
+      << BigFloatCompactString(BigAbs(audit.first_sample_frobenius_delta), 50)
+      << "\n";
+  out << "frobenius_limit_classification="
+      << audit.frobenius_limit_classification << "\n";
   out << "contour_fingerprint=" << audit.contour_fingerprint << "\n";
   out << "endpoint_local_model_kind=" << audit.endpoint_local_model_kind << "\n";
   out << "extraction_order=" << audit.extraction_order << "\n";
   out << "final_solution_samples_used_as_input=false\n";
   return out.str();
+}
+
+struct B61nScalarFrobeniusEndpointMatch {
+  BigComplex endpoint_value;
+  std::string limit_classification;
+  std::string recurrence_summary;
+};
+
+B61nScalarFrobeniusEndpointMatch MatchB61nScalarFrobeniusEndpointFromSmallEta(
+    const std::string& diagonal_expression,
+    const std::map<std::string, BigComplex>& numeric_substitutions,
+    const std::string& variable,
+    const BigFloat& epsilon_value,
+    const BigComplex& small_eta,
+    const BigComplex& small_eta_value) {
+  const auto to_contour_number = [](const BigComplex& value) {
+    return amflow::ComplexContourNumber{
+        value.real.convert_to<amflow::ComplexContourFloat>(),
+        value.imaginary.convert_to<amflow::ComplexContourFloat>()};
+  };
+  const auto from_contour_number =
+      [](const amflow::ComplexContourNumber& value) {
+        return BigComplex{BigFloat(value.real()), BigFloat(value.imag())};
+      };
+
+  const amflow::ComplexContourMatrixEvaluator evaluator =
+      [diagonal_expression, numeric_substitutions, variable, epsilon_value,
+       to_contour_number,
+       from_contour_number](const amflow::ComplexContourNumber& eta) {
+        std::map<std::string, BigComplex> bindings = numeric_substitutions;
+        bindings[variable] = from_contour_number(eta);
+        bindings["eps"] = RealBigComplex(epsilon_value);
+        const BigComplex evaluated =
+            ParseAmflowComplexExpression(diagonal_expression, bindings);
+        return amflow::ComplexContourMatrix{{to_contour_number(evaluated)}};
+      };
+
+  const amflow::ComplexContourScalarFrobeniusSeriesPatch patch =
+      amflow::GenerateScalarComplexFrobeniusEndpointPatch(
+          evaluator,
+          amflow::ComplexContourNumber{0, 0},
+          amflow::ComplexContourFloat("1e-20"),
+          4);
+  const amflow::ComplexContourNumber endpoint_coefficient =
+      amflow::MatchScalarComplexFrobeniusEndpointCoefficient(
+          patch,
+          to_contour_number(small_eta),
+          to_contour_number(small_eta_value),
+          amflow::EtaContourHalfPlane::Lower);
+
+  B61nScalarFrobeniusEndpointMatch match;
+  match.endpoint_value = from_contour_number(endpoint_coefficient);
+  match.limit_classification =
+      BigAbs(from_contour_number(patch.indicial_exponent)) <
+              BigFloat("1e-28")
+          ? "finite-rho-zero"
+          : "matched-leading-frobenius-coefficient";
+  match.recurrence_summary = patch.summary;
+  return match;
 }
 
 std::optional<B61nScalarContourEndpointAudit>
@@ -5687,6 +5758,7 @@ ApplyB61nFirstScalarContourEndpointTransport(
 
   const std::map<std::string, BigComplex> numeric_substitutions =
       ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  const BigComplex frobenius_start_eta{0, BigFloat("-1e-40")};
   std::vector<BigComplex> transported_samples(spec.boundary_epsilon_samples.size());
   B61nScalarContourEndpointAudit audit;
   audit.master_index = *master_index;
@@ -5700,10 +5772,12 @@ ApplyB61nFirstScalarContourEndpointTransport(
        sample_index < spec.boundary_epsilon_samples.size();
        ++sample_index) {
     std::map<std::string, BigComplex> bindings = numeric_substitutions;
-    bindings["eps"] =
-        RealBigComplex(ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]));
+    const BigFloat epsilon_value =
+        ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]);
+    bindings["eps"] = RealBigComplex(epsilon_value);
 
     std::optional<ComplexEtaRationalPolynomial> diagonal_rational;
+    std::string diagonal_expression;
     for (std::size_t column_index = 0; column_index < row.size(); ++column_index) {
       const ComplexEtaRationalPolynomial rational =
           ParseComplexRationalEtaExpression(row[column_index], bindings);
@@ -5715,6 +5789,7 @@ ApplyB61nFirstScalarContourEndpointTransport(
         return std::nullopt;
       }
       diagonal_rational = rational;
+      diagonal_expression = row[column_index];
     }
     if (!diagonal_rational.has_value()) {
       return std::nullopt;
@@ -5738,15 +5813,46 @@ ApplyB61nFirstScalarContourEndpointTransport(
     const BigComplex denominator_shift = denominator_constant / denominator_eta;
     const BigComplex endpoint_factor =
         BigComplexPowNegImBranch(denominator_shift, exponent);
-    transported_samples[sample_index] =
+    const BigComplex small_eta_factor =
+        BigComplexPowNegImBranch(denominator_shift + frobenius_start_eta,
+                                 exponent);
+    const BigComplex small_eta_value =
+        master_samples[*master_index][sample_index] * small_eta_factor;
+    const B61nScalarFrobeniusEndpointMatch frobenius_match =
+        MatchB61nScalarFrobeniusEndpointFromSmallEta(
+            diagonal_expression,
+            numeric_substitutions,
+            spec.variable,
+            epsilon_value,
+            frobenius_start_eta,
+            small_eta_value);
+    transported_samples[sample_index] = frobenius_match.endpoint_value;
+
+    const BigComplex closed_form_endpoint =
         master_samples[*master_index][sample_index] * endpoint_factor;
+    const BigComplex frobenius_delta =
+        transported_samples[sample_index] - closed_form_endpoint;
+    const BigFloat endpoint_scale =
+        std::max(BigFloat(1), BigAbs(closed_form_endpoint));
+    if (BigAbs(frobenius_delta) > BigFloat("1e-45") * endpoint_scale) {
+      throw std::runtime_error(
+          "b61n scalar Frobenius endpoint matcher disagreed with the reviewed "
+          "closed-form first-row endpoint by " +
+          BigFloatCompactString(BigAbs(frobenius_delta), 40));
+    }
 
     if (sample_index == 0) {
       audit.denominator_shift = denominator_shift;
       audit.contour_pole = BigComplex{} - denominator_shift;
+      audit.first_sample_frobenius_start_eta = frobenius_start_eta;
       audit.first_sample_exponent = exponent;
       audit.first_sample_endpoint_factor = endpoint_factor;
+      audit.first_sample_frobenius_delta = frobenius_delta;
       audit.first_sample_endpoint_value = transported_samples[sample_index];
+      audit.frobenius_limit_classification =
+          frobenius_match.limit_classification;
+      audit.frobenius_recurrence_summary =
+          frobenius_match.recurrence_summary;
     }
   }
 
@@ -5765,6 +5871,12 @@ ApplyB61nFirstScalarContourEndpointTransport(
       BigComplexCompactString(audit.first_sample_exponent, 24) +
       ", endpoint factor " +
       BigComplexCompactString(audit.first_sample_endpoint_factor, 24) +
+      ", matched small-eta start " +
+      BigComplexCompactString(audit.first_sample_frobenius_start_eta, 24) +
+      " through the landed Frobenius recurrence with limit_classification=" +
+      audit.frobenius_limit_classification +
+      " and first-sample recurrence delta " +
+      BigFloatCompactString(BigAbs(audit.first_sample_frobenius_delta), 24) +
       ", extraction_order=\"" + audit.extraction_order +
       "\", endpoint_local_model_kind=" + audit.endpoint_local_model_kind +
       ", contour_fingerprint=" + audit.contour_fingerprint +

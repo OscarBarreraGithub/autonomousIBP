@@ -1899,13 +1899,6 @@ void AddRuntimeSeriesTerm(RuntimeSeries& series,
   }
 }
 
-void AddRuntimeSeriesTerm(RuntimeSeries& series,
-                          const int power,
-                          const int log_power,
-                          const RuntimeComplex& coefficient) {
-  AddRuntimeSeriesTerm(series, "integer", power, log_power, coefficient);
-}
-
 RuntimeSeries AddRuntimeSeries(RuntimeSeries lhs,
                                const RuntimeSeries& rhs,
                                const RuntimeComplex& rhs_scale =
@@ -2201,26 +2194,26 @@ struct GaugeLinkFirstBlockEndpointBasisValue {
   RuntimeFloat w = 0.0L;
 };
 
-GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
+std::vector<GaugeLinkFirstBlockEndpointBasisValue>
+BuildGaugeLinkFirstBlockEndpointBasisCoefficients(
     const RuntimeFloat epsilon_value,
     const RuntimeFloat rho,
     const GaugeLinkFirstBlockEndpointBasisValue& leading,
-    const RuntimeFloat x) {
-  constexpr int kSeriesOrder = 180;
+    const int series_order) {
   const RuntimeFloat lambda = RuntimeFloat(6) * (epsilon_value - RuntimeFloat(1));
   std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients(
-      static_cast<std::size_t>(kSeriesOrder) + 1);
+      static_cast<std::size_t>(series_order) + 1);
   coefficients[0] = leading;
 
   RuntimeFloat minus_two_power = RuntimeFloat(1);
-  std::vector<RuntimeFloat> regular_scales(static_cast<std::size_t>(kSeriesOrder));
-  for (int index = 0; index < kSeriesOrder; ++index) {
+  std::vector<RuntimeFloat> regular_scales(static_cast<std::size_t>(series_order));
+  for (int index = 0; index < series_order; ++index) {
     regular_scales[static_cast<std::size_t>(index)] =
         (epsilon_value - RuntimeFloat(1)) * minus_two_power;
     minus_two_power *= RuntimeFloat(-2);
   }
 
-  for (int order = 1; order <= kSeriesOrder; ++order) {
+  for (int order = 1; order <= series_order; ++order) {
     RuntimeFloat rhs_y = 0.0L;
     RuntimeFloat rhs_w = 0.0L;
     for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
@@ -2244,6 +2237,20 @@ GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
     coefficients[static_cast<std::size_t>(order)].y = rhs_y / y_denominator;
     coefficients[static_cast<std::size_t>(order)].w = rhs_w / w_denominator;
   }
+  return coefficients;
+}
+
+GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
+    const RuntimeFloat epsilon_value,
+    const RuntimeFloat rho,
+    const GaugeLinkFirstBlockEndpointBasisValue& leading,
+    const RuntimeFloat x) {
+  constexpr int kSeriesOrder = 180;
+  const std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients =
+      BuildGaugeLinkFirstBlockEndpointBasisCoefficients(epsilon_value,
+                                                        rho,
+                                                        leading,
+                                                        kSeriesOrder);
 
   GaugeLinkFirstBlockEndpointBasisValue value;
   RuntimeFloat x_power = RuntimeFloat(1);
@@ -2305,10 +2312,80 @@ EvaluateGaugeLinkFirstBlockEndpointCoefficients(
   return coefficients;
 }
 
-bool IsSmallRelativeToTransportScale(const RuntimeComplex& value,
-                                     const RuntimeComplex& scale) {
-  const RuntimeFloat reference = std::max(RuntimeFloat(1), RuntimeAbs(scale));
-  return RuntimeAbs(value) < reference * RuntimeFloat("1e-50");
+std::optional<int> ReviewedGaugeLinkFirstBlockFrobeniusFinitePartBase(
+    const RuntimeFloat& residue,
+    const RuntimeFloat& epsilon_value) {
+  if (RuntimeAbs(residue -
+                 (RuntimeFloat(-6) + RuntimeFloat(6) * epsilon_value)) <
+      RuntimeFloat("1e-50")) {
+    return -6;
+  }
+  return std::nullopt;
+}
+
+bool ShouldCarryFirstBlockFrobeniusConnection(const RuntimeComplex& value) {
+  return RuntimeAbs(value) >= RuntimeFloat("1e-72");
+}
+
+struct GaugeLinkFirstBlockEndpointSeries {
+  RuntimeSeries first_master;
+  RuntimeSeries companion_master;
+};
+
+GaugeLinkFirstBlockEndpointSeries BuildGaugeLinkFirstBlockEndpointSeries(
+    const RuntimeFloat epsilon_value,
+    const RuntimeFloat rho,
+    const GaugeLinkFirstBlockEndpointBasisValue& leading,
+    const RuntimeComplex& connection,
+    const int max_power) {
+  GaugeLinkFirstBlockEndpointSeries series;
+  if (IsRuntimeTiny(connection)) {
+    return series;
+  }
+  std::string region_key = "integer";
+  if (RuntimeAbs(rho) > RuntimeFloat("1e-50")) {
+    const std::optional<int> finite_part_base =
+        ReviewedGaugeLinkFirstBlockFrobeniusFinitePartBase(rho, epsilon_value);
+    if (!finite_part_base.has_value()) {
+      throw std::runtime_error(
+          "b64ag first-block endpoint transport found a non-integer Frobenius "
+          "residue without a reviewed finite-part base");
+    }
+    region_key = GaugeLinkFrobeniusRegionKey(rho, *finite_part_base);
+  }
+
+  constexpr int kSeriesOrder = 180;
+  const std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients =
+      BuildGaugeLinkFirstBlockEndpointBasisCoefficients(epsilon_value,
+                                                        rho,
+                                                        leading,
+                                                        kSeriesOrder);
+  const RuntimeFloat five_six = RuntimeFloat(5) / RuntimeFloat(6);
+  for (int order = 0; order <= kSeriesOrder; ++order) {
+    const GaugeLinkFirstBlockEndpointBasisValue& coefficient =
+        coefficients[static_cast<std::size_t>(order)];
+    const int first_master_power = order + 1;
+    if (first_master_power <= max_power) {
+      AddRuntimeSeriesTerm(series.first_master,
+                           region_key,
+                           first_master_power,
+                           0,
+                           connection * coefficient.y);
+    }
+    if (order <= max_power) {
+      const RuntimeFloat companion_coefficient =
+          coefficient.w + five_six * coefficient.y;
+      AddRuntimeSeriesTerm(series.companion_master,
+                           region_key,
+                           order,
+                           0,
+                           connection * companion_coefficient);
+    }
+    if (order > max_power) {
+      break;
+    }
+  }
+  return series;
 }
 
 }  // namespace
@@ -2922,14 +2999,6 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
     const std::string downstream_label = ReviewedReductionMasterLabels()[4];
     const std::string downstream_companion_label =
         ReviewedReductionMasterLabels()[5];
-    const auto endpoint_term = [](const int power,
-                                  const RuntimeComplex& coefficient) {
-      return LightlikeGaugeLinkFinitePartTerm{
-          "integer",
-          power,
-          0,
-          FormatRuntimeComplex(coefficient, kEndpointTransportPrecisionDigits)};
-    };
 
     for (std::size_t sample_index = 0; sample_index < boundary_samples.size();
          ++sample_index) {
@@ -3021,26 +3090,33 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
           EvaluateGaugeLinkFirstBlockEndpointCoefficients(epsilon_value,
                                                           first_boundary,
                                                           companion_boundary);
-      if (!IsSmallRelativeToTransportScale(
-              coefficients.unresolved_frobenius_coefficient,
-              coefficients.first_master_regular_coefficient)) {
-        return fail(
-            "continuation_budget_exhausted",
-            "b64ag first-block endpoint transport found an unresolved "
-            "non-integer Frobenius branch; publishing PickZeroRuleS terms "
-            "would overclaim the finite-gaugex transport");
-      }
 
       std::vector<RuntimeSeries> endpoint_series(
           ReviewedReductionMasterLabels().size());
-      AddRuntimeSeriesTerm(endpoint_series[0],
-                           1,
-                           0,
-                           coefficients.first_master_regular_coefficient);
-      AddRuntimeSeriesTerm(endpoint_series[1],
-                           0,
-                           0,
-                           coefficients.companion_regular_coefficient);
+      constexpr int kFrobeniusFinitePartTransportMaxPower = 8;
+      const GaugeLinkFirstBlockEndpointSeries regular_first_block =
+          BuildGaugeLinkFirstBlockEndpointSeries(
+              epsilon_value,
+              RuntimeFloat(0),
+              {RuntimeFloat(1), RuntimeFloat(0)},
+              coefficients.first_master_regular_coefficient,
+              kFrobeniusFinitePartTransportMaxPower);
+      const GaugeLinkFirstBlockEndpointSeries frobenius_first_block =
+          BuildGaugeLinkFirstBlockEndpointSeries(
+              epsilon_value,
+              RuntimeFloat(-6) + RuntimeFloat(6) * epsilon_value,
+              {RuntimeFloat(0), RuntimeFloat(1)},
+              ShouldCarryFirstBlockFrobeniusConnection(
+                  coefficients.unresolved_frobenius_coefficient)
+                  ? coefficients.unresolved_frobenius_coefficient
+                  : RuntimeComplex{0.0L, 0.0L},
+              kFrobeniusFinitePartTransportMaxPower);
+      endpoint_series[0] =
+          AddRuntimeSeries(regular_first_block.first_master,
+                           frobenius_first_block.first_master);
+      endpoint_series[1] =
+          AddRuntimeSeries(regular_first_block.companion_master,
+                           frobenius_first_block.companion_master);
       endpoint_series[2] = BuildGaugeLinkScalarEndpointSeries(
           diffeq_matrix,
           2,
@@ -3072,15 +3148,14 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
 
       LightlikeGaugeLinkEndpointSampleTerms sample_terms;
       sample_terms.epsilon_sample = epsilon_sample;
-      constexpr int kFrobeniusFinitePartTransportMaxPower = 8;
       sample_terms.endpoint_terms.push_back(
           {first_label,
-           {endpoint_term(
-               1, coefficients.first_master_regular_coefficient)}});
+           EndpointTermsFromRuntimeSeries(endpoint_series[0],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       sample_terms.endpoint_terms.push_back(
           {companion_label,
-           {endpoint_term(
-               0, coefficients.companion_regular_coefficient)}});
+           EndpointTermsFromRuntimeSeries(endpoint_series[1],
+                                          kFrobeniusFinitePartTransportMaxPower)});
       sample_terms.endpoint_terms.push_back(
           {second_label,
            EndpointTermsFromRuntimeSeries(endpoint_series[2],
@@ -3123,8 +3198,9 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
         "gaugex=1/40 boundary vector(s) to high-precision live endpoint "
         "terms for all six reviewed gauge-link DE masters across " +
         std::to_string(result.epsilon_endpoint_terms.size()) +
-        " epsilon sample(s) using the parsed first block, second-block, and "
-        "downstream Laurent/Frobenius recurrence without reading retained "
+        " epsilon sample(s) using the parsed first block, including its "
+        "reviewed first-block non-integer Frobenius branch, plus second-block "
+        "and downstream Laurent/Frobenius recurrence without reading retained "
         "final solution samples; "
         "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
     return result;

@@ -49696,15 +49696,19 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
   Expect(RunShellCommand(full_stripped_command) != 0,
-         "full stripped b64ag packet should fail closed on the unresolved first-block "
-         "Frobenius branch before publishing target finite parts");
+         "full stripped b64ag packet should fail closed at the next finite-part "
+         "reduction blocker before publishing target coefficients");
   const std::string full_stripped_json = ReadFile(full_stripped_output_path);
   ExpectContains(full_stripped_json,
                  "\"failure_code\": \"continuation_budget_exhausted\"",
-                 "full stripped b64ag packet should surface the live transport blocker");
+                 "full stripped b64ag packet should surface the live finite-part blocker");
   ExpectContains(full_stripped_json,
-                 "unresolved non-integer Frobenius branch",
-                 "full stripped b64ag packet should report the first-block branch blocker");
+                 "b64ag finite-part extraction rejects multiple endpoint regions",
+                 "full stripped b64ag packet should advance past the first-block branch "
+                 "and report the next finite-part reduction blocker");
+  ExpectContains(full_stripped_json,
+                 "\"eta_zero_endpoint_transported_master_count\": 6",
+                 "full stripped b64ag packet should retain six-master endpoint transport");
   ExpectContains(full_stripped_json,
                  "retained_solution_samples_used=false",
                  "full stripped b64ag packet must not consume retained final solution samples");

@@ -2661,6 +2661,28 @@ B64agTestBigComplex B64agEndpointCoefficient(
           B64agTestBigFloat(without_i.substr(split))};
 }
 
+B64agTestBigFloat B64agEndpointRegionExponent(
+    const std::string& region_key) {
+  return region_key == "integer" ? B64agTestBigFloat(0)
+                                 : B64agFrobeniusExponent(region_key);
+}
+
+B64agTestBigComplex B64agEndpointExpansionValue(
+    const amflow::LightlikeGaugeLinkSixMasterEndpointTerms& master_terms,
+    const B64agTestBigFloat& x) {
+  B64agTestBigComplex value = {B64agTestBigFloat(0), B64agTestBigFloat(0)};
+  for (const amflow::LightlikeGaugeLinkFinitePartTerm& term :
+       master_terms.endpoint_terms) {
+    Expect(term.log_power == 0,
+           "b64ag first-block endpoint reconstruction expects log-free terms");
+    value += B64agEndpointCoefficient(term.coefficient) *
+             B64agExp((B64agEndpointRegionExponent(term.region_key) +
+                       B64agTestBigFloat(term.power)) *
+                      B64agLog(x));
+  }
+  return value;
+}
+
 void ExpectB64agRelativeClose(const B64agTestBigFloat& actual,
                               const B64agTestBigFloat& expected,
                               const B64agTestBigFloat& tolerance,
@@ -3573,6 +3595,74 @@ void B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFroben
   }
 }
 
+void B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"101/208000"};
+  std::vector<std::string> boundary_values =
+      B64agRegularFirstBlockBoundaryValues(
+          state.epsilon_samples.front(),
+          {B64agTestBigFloat(
+               "1.2345678901234567890123456789012345678901234567890123456789"),
+           B64agTestBigFloat(
+               "-0.1234567890123456789012345678901234567890123456789012345678")},
+          {"11", "13", "17", "19"});
+  const B64agTestBigComplex expected_first_boundary =
+      B64agEndpointCoefficient(boundary_values[0]);
+  const B64agTestBigComplex expected_companion_boundary =
+      B64agEndpointCoefficient(boundary_values[1]) +
+      B64agTestBigComplex(B64agTestBigFloat(1), B64agTestBigFloat(0));
+  boundary_values[1] = "(" + boundary_values[1] + ")+1";
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
+      boundary_samples = {{state.epsilon_samples.front(), boundary_values}};
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(transport.success,
+         "b64ag first-block Frobenius transport should publish endpoint terms "
+         "instead of stopping at the old continuation-budget guard: " +
+             transport.summary);
+  Expect(transport.epsilon_endpoint_terms.size() == 1,
+         "b64ag first-block Frobenius transport should publish one epsilon packet");
+  const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms =
+      transport.epsilon_endpoint_terms.front();
+  Expect(sample_terms.endpoint_terms.size() == 6,
+         "b64ag first-block Frobenius transport should keep the six-master packet");
+
+  const amflow::LightlikeGaugeLinkFinitePartTerm& first_block_branch =
+      B64agFindEndpointTerm(sample_terms.endpoint_terms[1], "frobenius:", 0, 0);
+  const amflow::LightlikeGaugeLinkFinitePartTerm& first_block_finite_part =
+      B64agFindEndpointTerm(sample_terms.endpoint_terms[1], "frobenius:", 6, 0);
+  Expect(first_block_finite_part.region_key == first_block_branch.region_key,
+         "b64ag first-block Frobenius finite-part power should stay in the same region");
+  ExpectContains(first_block_branch.region_key,
+                 ";base:-6",
+                 "b64ag first-block Frobenius branch should declare the finite-part base");
+  const B64agTestBigFloat epsilon_value =
+      B64agParseRational(state.epsilon_samples.front());
+  ExpectB64agRelativeClose(B64agFrobeniusExponent(first_block_branch.region_key),
+                           B64agTestBigFloat(-6) +
+                           B64agTestBigFloat(6) * epsilon_value,
+                           B64agTestBigFloat("1e-65"),
+                           "b64ag first-block Frobenius branch should publish -6+6eps");
+  const B64agTestBigFloat boundary_x =
+      B64agTestBigFloat(1) / B64agTestBigFloat(40);
+  ExpectB64agRelativeClose(
+      B64agEndpointExpansionValue(sample_terms.endpoint_terms[0], boundary_x),
+      expected_first_boundary,
+      B64agTestBigFloat("1e-12"),
+      "b64ag first-block endpoint terms should reconstruct the first boundary");
+  ExpectB64agRelativeClose(
+      B64agEndpointExpansionValue(sample_terms.endpoint_terms[1], boundary_x),
+      expected_companion_boundary,
+      B64agTestBigFloat("1e-12"),
+      "b64ag first-block endpoint terms should reconstruct the perturbed companion boundary");
+  ExpectContains(transport.summary,
+                 "first-block non-integer Frobenius branch",
+                 "b64ag transport summary should identify the newly carried branch");
+}
+
 void B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest() {
   amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
   state.boundary_file_raws["diffeq"] = B64agFrobeniusOnlyDiffeqRaw();
@@ -4235,6 +4325,7 @@ int main() {
     B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest();
     B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
     B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest();
+    B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest();
     B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest();
     B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest();
   } catch (const std::exception& error) {

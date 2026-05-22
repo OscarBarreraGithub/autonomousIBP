@@ -4487,6 +4487,52 @@ void B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest() {
       "b61n contour harness should fail closed when refinement exceeds tolerance");
 }
 
+void B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const B61nContourFloat large_scale("1e40");
+  const B61nContourFloat alpha("1e-4");
+  const amflow::ComplexContourVector initial = {{large_scale, 0}};
+  const auto evaluator = [alpha](const B61nContourNumber& eta) {
+    return amflow::ComplexContourMatrix{
+        {alpha * eta * eta * eta * eta},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 1;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 1;
+  options.refinement_error_tolerance = B61nContourFloat("1e-90");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-2");
+  options.matrix_fingerprint = "synthetic-b61n-relative-refinement-budget-v1";
+  options.endpoint_local_model_kind =
+      "regular-taylor-r0-synthetic-b61n-relative-budget";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  Expect(result.success,
+         "b61n contour harness should accept a dimension-aware relative refinement "
+         "budget: " +
+             result.diagnostics.summary);
+  Expect(!result.diagnostics.coefficient_publication,
+         "b61n relative-budget scaffold must not publish coefficients");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n relative-budget scaffold must not promote the full M6 contour flag");
+  Expect(!result.diagnostics.endpoint_vector_norm_abs.empty(),
+         "b61n relative-budget diagnostics should publish endpoint vector norm");
+  Expect(!result.diagnostics.refinement_effective_tolerance_abs.empty(),
+         "b61n relative-budget diagnostics should publish effective tolerance");
+  ExpectContains(result.diagnostics.summary,
+                 "refinement_error_tolerance_rel=",
+                 "b61n relative-budget summary should publish relative floor");
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_vector_norm_abs=",
+                 "b61n relative-budget summary should publish vector norm scale");
+  ExpectContains(result.diagnostics.summary,
+                 "refinement_effective_tolerance_abs=",
+                 "b61n relative-budget summary should publish effective tolerance");
+}
+
 void B61nComplexContourPropagatorRejectsInfiniteToleranceTest() {
   const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
   const amflow::ComplexContourVector initial = {{1, 0}};
@@ -4507,6 +4553,27 @@ void B61nComplexContourPropagatorRejectsInfiniteToleranceTest() {
       result,
       "invalid-refinement-tolerance",
       "b61n contour harness should reject non-finite refinement tolerance");
+}
+
+void B61nComplexContourPropagatorRejectsInvalidRelativeToleranceTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, 0}};
+  const amflow::ComplexContourVector initial = {{1, 0}};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}},
+    };
+  };
+  amflow::ComplexContourPropagationOptions options;
+  options.refinement_relative_error_tolerance = B61nContourFloat("-1");
+  options.matrix_fingerprint = "synthetic-b61n-invalid-relative-tolerance-v1";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  ExpectB61nContourPropagationFailure(
+      result,
+      "invalid-refinement-relative-tolerance",
+      "b61n contour harness should reject negative relative refinement tolerance");
 }
 
 void B61nComplexContourPropagatorRejectsUnreviewedHalfPlaneTest() {
@@ -4652,7 +4719,9 @@ int main() {
     B61nComplexContourPropagatorRequiresMatrixFingerprintTest();
     B61nComplexContourPropagatorRejectsInvalidInputsTest();
     B61nComplexContourPropagatorFailsClosedOnRefinementToleranceTest();
+    B61nComplexContourPropagatorAcceptsRelativeRefinementBudgetTest();
     B61nComplexContourPropagatorRejectsInfiniteToleranceTest();
+    B61nComplexContourPropagatorRejectsInvalidRelativeToleranceTest();
     B61nComplexContourPropagatorRejectsUnreviewedHalfPlaneTest();
     B61nComplexContourPropagatorRejectsPositiveImaginaryWaypointTest();
     B61nComplexContourPropagatorRejectsRealAxisInteriorWaypointTest();

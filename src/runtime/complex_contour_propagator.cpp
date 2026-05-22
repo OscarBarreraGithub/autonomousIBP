@@ -179,6 +179,24 @@ ComplexContourFloat MaxVectorDifference(const ComplexContourVector& lhs,
   return difference;
 }
 
+ComplexContourFloat MaxVectorNorm(const ComplexContourVector& values) {
+  ComplexContourFloat norm = 0;
+  for (const ComplexContourNumber& value : values) {
+    norm = std::max(norm, ComplexAbs(value));
+  }
+  return norm;
+}
+
+ComplexContourFloat EffectiveRefinementTolerance(
+    const ComplexContourPropagationOptions& options,
+    const ComplexContourFloat& endpoint_vector_norm) {
+  const ComplexContourFloat relative_scale =
+      std::max(ComplexContourFloat(1), endpoint_vector_norm);
+  const ComplexContourFloat relative_tolerance =
+      options.refinement_relative_error_tolerance * relative_scale;
+  return std::max(options.refinement_error_tolerance, relative_tolerance);
+}
+
 std::string SerializePropagationForFingerprint(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,
@@ -200,6 +218,8 @@ std::string SerializePropagationForFingerprint(
   out << "working_precision_digits=" << options.working_precision_digits << "\n";
   out << "refinement_error_tolerance_abs="
       << CompactFloat(options.refinement_error_tolerance) << "\n";
+  out << "refinement_error_tolerance_rel="
+      << CompactFloat(options.refinement_relative_error_tolerance) << "\n";
   out << "steps_per_segment=" << options.steps_per_segment << "\n";
   out << "refined_steps_per_segment=" << refined_steps_per_segment << "\n";
   out << "retained_solution_samples_used=false\n";
@@ -243,6 +263,8 @@ ComplexContourPropagationResult FailureResult(
   result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
   result.diagnostics.refinement_error_tolerance_abs =
       CompactFloat(options.refinement_error_tolerance, 40);
+  result.diagnostics.refinement_error_tolerance_rel =
+      CompactFloat(options.refinement_relative_error_tolerance, 40);
   result.diagnostics.failure_code = failure_code;
   result.diagnostics.summary = summary;
   return result;
@@ -330,6 +352,16 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         waypoints,
         options);
   }
+  if (!IsFiniteFloat(options.refinement_relative_error_tolerance) ||
+      options.refinement_relative_error_tolerance < 0) {
+    return FailureResult(
+        "invalid-refinement-relative-tolerance",
+        "b61n complex contour propagator requires a nonnegative finite relative "
+        "refinement error tolerance",
+        initial_values,
+        waypoints,
+        options);
+  }
   if (options.half_plane != EtaContourHalfPlane::Lower) {
     return FailureResult(
         "unsupported-contour-half-plane",
@@ -402,6 +434,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     ComplexContourVector refined = previous;
     ComplexContourFloat refinement_error =
         std::numeric_limits<ComplexContourFloat>::infinity();
+    ComplexContourFloat endpoint_vector_norm = 0;
+    ComplexContourFloat effective_refinement_tolerance =
+        options.refinement_error_tolerance;
     std::size_t refined_steps_per_segment = options.steps_per_segment;
     std::size_t refinement_doublings_used = 0;
     bool refinement_passed = false;
@@ -417,10 +452,13 @@ ComplexContourPropagationResult PropagateComplexContourVector(
                                           refined_steps_per_segment);
       RequireFiniteVector(refined, "refined");
       refinement_error = MaxVectorDifference(previous, refined);
+      endpoint_vector_norm = MaxVectorNorm(refined);
+      effective_refinement_tolerance =
+          EffectiveRefinementTolerance(options, endpoint_vector_norm);
       previous = refined;
       refinement_doublings_used = doubling;
       if (doubling >= first_required_refinement &&
-          refinement_error <= options.refinement_error_tolerance) {
+          refinement_error <= effective_refinement_tolerance) {
         refinement_passed = true;
         break;
       }
@@ -429,8 +467,14 @@ ComplexContourPropagationResult PropagateComplexContourVector(
       return FailureResult(
           "refinement-tolerance-failed",
           "b61n complex contour propagation failed closed because RK4 refinement error " +
-              CompactFloat(refinement_error, 40) + " exceeded tolerance " +
-              CompactFloat(options.refinement_error_tolerance, 40),
+              CompactFloat(refinement_error, 40) + " exceeded effective tolerance " +
+              CompactFloat(effective_refinement_tolerance, 40) +
+              " from abs_floor=" +
+              CompactFloat(options.refinement_error_tolerance, 40) +
+              ", rel_floor=" +
+              CompactFloat(options.refinement_relative_error_tolerance, 40) +
+              ", endpoint_vector_norm_abs=" +
+              CompactFloat(endpoint_vector_norm, 40),
           initial_values,
           waypoints,
           options);
@@ -468,9 +512,15 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.diagnostics.endpoint_integral_id = options.endpoint_integral_id;
     result.diagnostics.endpoint_local_model_kind = options.endpoint_local_model_kind;
     result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
+    result.diagnostics.endpoint_vector_norm_abs =
+        CompactFloat(endpoint_vector_norm, 40);
     result.diagnostics.refinement_error_abs = CompactFloat(refinement_error, 40);
     result.diagnostics.refinement_error_tolerance_abs =
         CompactFloat(options.refinement_error_tolerance, 40);
+    result.diagnostics.refinement_error_tolerance_rel =
+        CompactFloat(options.refinement_relative_error_tolerance, 40);
+    result.diagnostics.refinement_effective_tolerance_abs =
+        CompactFloat(effective_refinement_tolerance, 40);
     result.diagnostics.contour_fingerprint = ComputeArtifactFingerprint(
         SerializePropagationForFingerprint(initial_values,
                                            waypoints,
@@ -506,6 +556,12 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         std::to_string(result.diagnostics.refinement_doublings_used) +
         "; refinement_error_tolerance_abs=" +
         result.diagnostics.refinement_error_tolerance_abs +
+        "; refinement_error_tolerance_rel=" +
+        result.diagnostics.refinement_error_tolerance_rel +
+        "; endpoint_vector_norm_abs=" +
+        result.diagnostics.endpoint_vector_norm_abs +
+        "; refinement_effective_tolerance_abs=" +
+        result.diagnostics.refinement_effective_tolerance_abs +
         "; "
         "refinement_error_abs=" + result.diagnostics.refinement_error_abs +
         "; contour_fingerprint=" + result.diagnostics.contour_fingerprint + ".";

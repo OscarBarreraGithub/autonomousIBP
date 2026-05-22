@@ -26,6 +26,7 @@ struct ComplexContourPropagationOptions {
   std::size_t max_refinement_doublings = 4;
   std::size_t working_precision_digits = 100;
   ComplexContourFloat refinement_error_tolerance = ComplexContourFloat("1e-60");
+  ComplexContourFloat refinement_relative_error_tolerance = 0;
   std::string matrix_fingerprint;
   std::string endpoint_integral_id;
   std::string endpoint_local_model_kind = "regular-taylor-r0-pending-laurent-fit";
@@ -56,8 +57,11 @@ struct ComplexContourPropagationDiagnostics {
   std::string endpoint_local_model_kind;
   std::string matrix_fingerprint;
   std::string contour_fingerprint;
+  std::string endpoint_vector_norm_abs;
   std::string refinement_error_abs;
   std::string refinement_error_tolerance_abs;
+  std::string refinement_error_tolerance_rel;
+  std::string refinement_effective_tolerance_abs;
   std::string failure_code;
   std::string summary;
 };

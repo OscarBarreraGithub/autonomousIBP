@@ -83,6 +83,7 @@ struct LightlikeGaugeLinkEndpointTransportResult {
   bool retained_solution_samples_used = false;
   bool retained_solution_samples_available = false;
   bool full_eta_zero_contour_applied = false;
+  bool frobenius_recurrence_applied = false;
   std::size_t epsilon_sample_count = 0;
   std::size_t requested_master_count = 0;
   std::size_t transported_master_count = 0;

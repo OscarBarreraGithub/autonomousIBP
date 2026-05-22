@@ -1159,6 +1159,8 @@ std::string SerializeGaugeLinkEndpointTransportForFingerprint(
   out << "transported_masters=" << result.transported_master_count << "\n";
   out << "contour_fingerprint=" << result.contour_fingerprint << "\n";
   out << "endpoint_local_model_kind=" << result.endpoint_local_model_kind << "\n";
+  out << "frobenius_recurrence_applied="
+      << (result.frobenius_recurrence_applied ? "true" : "false") << "\n";
   out << "final_solution_samples_used_as_input=false\n";
   for (const std::string& label : result.transported_master_labels) {
     out << "transported_master=" << label << "\n";
@@ -3101,6 +3103,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
       "eta-zero-six-master-endpoint-terms-finite-gaugex";
   result.contour_fingerprint = scaffold.contour_fingerprint;
   result.endpoint_local_model_kind = scaffold.endpoint_local_model_kind;
+  result.frobenius_recurrence_applied =
+      scaffold.indicial_audit.frobenius_recurrence.success &&
+      scaffold.indicial_audit.frobenius_recurrence
+          .reviewed_triangular_recurrence_available;
 
   const auto fail = [&result](const std::string& failure_code,
                               const std::string& summary) {
@@ -3122,6 +3128,15 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
     return fail("boundary_unsolved",
                 "b64ag finite-boundary endpoint transport requires finite "
                 "gaugex=1/40 boundary samples");
+  }
+  if (!result.frobenius_recurrence_applied) {
+    return fail(
+        "frobenius_recurrence_unavailable",
+        "b64ag finite-boundary endpoint transport requires the reviewed eta=0 "
+        "Frobenius recurrence audit before publishing live endpoint terms; "
+        "recurrence_failure_code=" +
+            scaffold.indicial_audit.frobenius_recurrence.failure_code + "; " +
+            scaffold.indicial_audit.frobenius_recurrence.summary);
   }
 
   try {
@@ -3352,8 +3367,9 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
         std::to_string(result.epsilon_endpoint_terms.size()) +
         " epsilon sample(s) using the parsed first block, including its "
         "reviewed first-block non-integer Frobenius branch, plus second-block "
-        "and downstream Laurent/Frobenius recurrence without reading retained "
-        "final solution samples; "
+        "and downstream Laurent/Frobenius recurrence gated by the reviewed "
+        "b64ag eta=0 Frobenius recurrence audit without reading retained "
+        "final solution samples; frobenius_recurrence_applied=true; "
         "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
     return result;
   } catch (const std::exception& error) {

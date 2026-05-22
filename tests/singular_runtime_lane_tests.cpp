@@ -4221,6 +4221,13 @@ void B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFroben
          "b64ag retained-style Frobenius transport must not read retained solutions");
   Expect(!transport.full_eta_zero_contour_applied,
          "b64ag retained-style Frobenius transport must not promote full contour");
+  Expect(transport.frobenius_recurrence_applied,
+         "b64ag retained-style Frobenius transport must require the reviewed "
+         "recurrence audit before publishing endpoint terms");
+  ExpectContains(transport.summary,
+                 "frobenius_recurrence_applied=true",
+                 "b64ag retained-style Frobenius transport should expose the "
+                 "runtime recurrence handoff");
   Expect(transport.epsilon_sample_count == 3 &&
              transport.epsilon_endpoint_terms.size() == 3,
          "b64ag retained-style Frobenius transport should carry three eps samples");
@@ -4329,6 +4336,49 @@ void B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest
                  "b64ag transport summary should identify the newly carried branch");
 }
 
+void B64agGaugeLinkFiniteBoundaryTransportRequiresReviewedFrobeniusRecurrenceTest() {
+  amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
+  state.epsilon_samples = {"101/208000"};
+  std::string unreviewed_diffeq = B64agFrobeniusOnlyDiffeqRaw();
+  const std::string reviewed_root = "(-7 + 8*eps)/gaugex";
+  const std::size_t root_position = unreviewed_diffeq.find(reviewed_root);
+  Expect(root_position != std::string::npos,
+         "b64ag recurrence guard fixture should find the reviewed second-block root");
+  unreviewed_diffeq.replace(root_position,
+                            reviewed_root.size(),
+                            "(-5 + 8*eps)/gaugex");
+  state.boundary_file_raws["diffeq"] = unreviewed_diffeq;
+  const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
+      boundary_samples = {{
+          state.epsilon_samples.front(),
+          B64agRegularFirstBlockBoundaryValues(
+              state.epsilon_samples.front(),
+              {B64agTestBigFloat("1.25"), B64agTestBigFloat("-0.5")},
+              {"11", "13", "17", "19"}),
+      }};
+
+  const amflow::LightlikeGaugeLinkEndpointTransportResult transport =
+      amflow::TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
+          state, boundary_samples);
+
+  Expect(!transport.success,
+         "b64ag endpoint transport should fail closed before endpoint terms when "
+         "the Frobenius recurrence audit is not reviewed");
+  Expect(!transport.frobenius_recurrence_applied,
+         "b64ag endpoint transport should not mark an unreviewed recurrence handoff");
+  Expect(transport.failure_code == "frobenius_recurrence_unavailable",
+         "b64ag endpoint transport should name the missing recurrence gate");
+  ExpectContains(transport.summary,
+                 "reviewed eta=0 Frobenius recurrence audit",
+                 "b64ag endpoint transport should explain the recurrence precondition");
+  ExpectContains(transport.summary,
+                 "unreviewed non-integer indicial root",
+                 "b64ag endpoint transport should surface the recurrence audit blocker");
+  ExpectContains(transport.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b64ag endpoint transport recurrence failure must not flip M6");
+}
+
 void B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest() {
   amflow::LightlikeGaugeLinkRuntimeState state = MakeB64agGaugeLinkRuntimeState();
   state.boundary_file_raws["diffeq"] = B64agFrobeniusOnlyDiffeqRaw();
@@ -4399,6 +4449,9 @@ void B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest() {
   }
   Expect(!transport.full_eta_zero_contour_applied,
          "b64ag Frobenius roundtrip transport must keep full contour false");
+  Expect(transport.frobenius_recurrence_applied,
+         "b64ag Frobenius roundtrip transport should mark the runtime recurrence "
+         "handoff");
 }
 
 void B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest() {
@@ -6165,6 +6218,7 @@ int main() {
     B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisionTest();
     B64agGaugeLinkFiniteBoundaryTransportAcceptsRetainedStyleSmallEpsilonFrobeniusTest();
     B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest();
+    B64agGaugeLinkFiniteBoundaryTransportRequiresReviewedFrobeniusRecurrenceTest();
     B64agGaugeLinkFrobeniusTransportRoundTripsSmallEpsilonBigComplexTest();
     B64agGaugeLinkFrobeniusTransportFeedsReducedFinitePartChainTest();
   } catch (const std::exception& error) {

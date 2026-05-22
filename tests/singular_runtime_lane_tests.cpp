@@ -2195,6 +2195,247 @@ void B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest() {
       "b63n automatic weighted moment seed should reject cut denominators");
 }
 
+void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
+  const amflow::ProblemSpec automatic_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const auto automatic_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(automatic_spec);
+  const auto seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          automatic_spec,
+          1,
+          70);
+
+  const auto gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, seed_packet);
+  Expect(gate.passed,
+         "b63n residue-vs-moment gate should pass for the reviewed D2,D4,D6,D7 "
+         "seed packet");
+  Expect(gate.reviewed_surface && gate.coefficient_free,
+         "b63n residue-vs-moment gate should preserve the reviewed "
+         "coefficient-free plan state");
+  Expect(!gate.live_coefficients_available &&
+             !gate.retained_solution_samples_used &&
+             !gate.full_eta_zero_contour_applied,
+         "b63n residue-vs-moment gate must remain non-publishing");
+  Expect(gate.surface_label == "phase[1,2,1,1,1,1,1]",
+         "b63n residue-vs-moment gate should bind the weighted phase target");
+  Expect(gate.residue_model_kind ==
+             "automatic_phasespace::one-mass-three-body-residue",
+         "b63n residue-vs-moment gate should bind the automatic weighted model");
+  Expect(gate.validated_weight_denominators ==
+             std::vector<std::string>({"D2", "D4", "D6", "D7"}),
+         "b63n residue-vs-moment gate should validate weights in integrand order");
+  ExpectContains(gate.publication_gate_status,
+                 "blocked-by-publication-gate",
+                 "b63n residue-vs-moment gate should retain the publication block");
+  ExpectContains(gate.summary,
+                 "no live coefficient",
+                 "b63n residue-vs-moment gate should state that it does not publish");
+
+  const auto convenience_gate =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate(
+          automatic_spec,
+          1,
+          70);
+  Expect(convenience_gate.passed,
+         "b63n convenience residue-vs-moment gate should build and validate the "
+         "automatic seed packet");
+
+  const std::string audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(gate);
+  const std::string expected_audit =
+      "kind=b63n-weighted-residue-moment-cross-validation-gate\n"
+      "gate=passed\n"
+      "reviewed_surface=true\n"
+      "coefficient_free=true\n"
+      "surface=phase[1,2,1,1,1,1,1]\n"
+      "residue_model_kind=automatic_phasespace::one-mass-three-body-residue\n"
+      "coefficient_policy=non-publishing residue-vs-moment cross-validation; "
+      "verifies the weighted residue plan against synthetic moment seeds only, "
+      "with no endpoint Laurent coefficient evaluated or published\n"
+      "live_coefficients_available=false\n"
+      "retained_solution_samples_used=false\n"
+      "full_eta_zero_contour_applied=false\n"
+      "moment_weights=D2,D4,D6,D7\n"
+      "publication_gate=blocked-by-publication-gate: all moment seeds remain "
+      "synthetic and non-publishing\n"
+      "failure_count=0\n"
+      "summary=b63n automatic_phasespace weighted residue plan is "
+      "cross-validated against the D2,D4,D6,D7 synthetic moment seed packet; no "
+      "live coefficient, retained final sample, or full eta=0 contour claim is "
+      "made\n";
+  Expect(audit == expected_audit,
+         "b63n residue-vs-moment gate audit serialization should be deterministic");
+  ExpectContains(audit,
+                 "kind=b63n-weighted-residue-moment-cross-validation-gate",
+                 "b63n residue-vs-moment gate audit should identify the step");
+  ExpectContains(audit,
+                 "gate=passed",
+                 "b63n residue-vs-moment gate audit should pass for reviewed seeds");
+  ExpectContains(audit,
+                 "moment_weights=D2,D4,D6,D7",
+                 "b63n residue-vs-moment gate audit should list the seed packet");
+  ExpectContains(audit,
+                 "live_coefficients_available=false",
+                 "b63n residue-vs-moment gate audit must not claim live "
+                 "coefficients");
+  ExpectContains(audit,
+                 "retained_solution_samples_used=false",
+                 "b63n residue-vs-moment gate audit must not consume retained "
+                 "samples");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 "b63n residue-vs-moment gate audit must keep the full contour flag "
+                 "false");
+  ExpectContains(audit,
+                 "publication_gate=blocked-by-publication-gate",
+                 "b63n residue-vs-moment gate audit should preserve publication "
+                 "blocking");
+  ExpectNotContains(audit,
+                    "coefficient_published=true",
+                    "b63n residue-vs-moment gate audit must not publish seed terms");
+
+  auto truncated_plan = automatic_plan;
+  truncated_plan.uncut_denominator_indices.resize(1);
+  truncated_plan.uncut_denominator_roles.resize(1);
+  auto truncated_packet = seed_packet;
+  truncated_packet.resize(1);
+  const auto truncated_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          truncated_plan, truncated_packet);
+  Expect(!truncated_gate.passed,
+         "b63n residue-vs-moment gate should reject truncated packet agreement");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          truncated_gate),
+      "exactly D2,D4,D6,D7",
+      "b63n residue-vs-moment gate should require the full reviewed seed packet");
+
+  auto mutated_order_packet = seed_packet;
+  mutated_order_packet[1].selected_weight_denominator = "D7";
+  const auto mutated_order_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, mutated_order_packet);
+  Expect(!mutated_order_gate.passed,
+         "b63n residue-vs-moment gate should reject weight-order drift");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          mutated_order_gate),
+      "D4 seed weight/order mismatch",
+      "b63n residue-vs-moment gate should report the mismatched seed weight");
+
+  auto mutated_power_packet = seed_packet;
+  mutated_power_packet[0].selected_weight_power = 1;
+  const auto mutated_power_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, mutated_power_packet);
+  Expect(!mutated_power_gate.passed,
+         "b63n residue-vs-moment gate should reject seed power drift");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          mutated_power_gate),
+      "D2 seed power",
+      "b63n residue-vs-moment gate should report the drifted D2 power");
+
+  auto mutated_form_packet = seed_packet;
+  mutated_form_packet[2].selected_weight_structural_form =
+      "inverse_denominator_weight[D6(q2)]";
+  const auto mutated_form_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, mutated_form_packet);
+  Expect(!mutated_form_gate.passed,
+         "b63n residue-vs-moment gate should reject structural-form drift");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          mutated_form_gate),
+      "D6 seed structural form",
+      "b63n residue-vs-moment gate should report the drifted D6 structural form");
+
+  auto stale_selection_packet = seed_packet;
+  stale_selection_packet[0].eta_zero_selection.success = false;
+  const auto stale_selection_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, stale_selection_packet);
+  Expect(!stale_selection_gate.passed,
+         "b63n residue-vs-moment gate should reject stale eta-zero selection");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          stale_selection_gate),
+      "D2 seed eta-zero selection is not successful",
+      "b63n residue-vs-moment gate should report stale eta-zero selection");
+
+  auto malformed_series_packet = seed_packet;
+  malformed_series_packet[0].residue_series.terms[0].coefficient.real = "0";
+  malformed_series_packet[0].residue_series.terms[0].coefficient.imaginary = "0";
+  const auto malformed_series_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, malformed_series_packet);
+  Expect(!malformed_series_gate.passed,
+         "b63n residue-vs-moment gate should reject malformed seed coefficients");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          malformed_series_gate),
+      "D2 seed residue term[0] has a zero coefficient",
+      "b63n residue-vs-moment gate should report malformed seed coefficients");
+
+  auto published_packet = seed_packet;
+  published_packet[0].residue_series.terms[0].provenance.coefficient_published =
+      true;
+  const auto published_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          automatic_plan, published_packet);
+  Expect(!published_gate.passed,
+         "b63n residue-vs-moment gate should reject published seed terms");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          published_gate),
+      "coefficient_published",
+      "b63n residue-vs-moment gate should report accidental publication");
+
+  auto publishing_plan = automatic_plan;
+  publishing_plan.live_coefficients_available = true;
+  publishing_plan.retained_solution_samples_used = true;
+  publishing_plan.full_eta_zero_contour_applied = true;
+  const auto publishing_plan_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          publishing_plan, seed_packet);
+  Expect(!publishing_plan_gate.passed,
+         "b63n residue-vs-moment gate should reject publishing plan flags");
+  const std::string publishing_plan_audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          publishing_plan_gate);
+  ExpectContains(publishing_plan_audit,
+                 "weighted residue plan claims live coefficients",
+                 "b63n residue-vs-moment gate should report live coefficient "
+                 "overclaims");
+  ExpectContains(publishing_plan_audit,
+                 "weighted residue plan uses retained final solution samples",
+                 "b63n residue-vs-moment gate should report retained-sample "
+                 "overclaims");
+  ExpectContains(publishing_plan_audit,
+                 "weighted residue plan promotes full eta=0 contour",
+                 "b63n residue-vs-moment gate should report full-contour "
+                 "overclaims");
+
+  const auto feynman_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                          amflow::FeynmanPrescription::MinusI0));
+  const auto feynman_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          feynman_plan, seed_packet);
+  Expect(!feynman_gate.passed,
+         "b63n residue-vs-moment gate should reject feynman_prescription before "
+         "a reviewed seed packet exists");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          feynman_gate),
+      "feynman_prescription weighted residues do not have a reviewed moment seed "
+      "packet yet",
+      "b63n residue-vs-moment gate should fail closed on feynman seed reuse");
+}
+
 void B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest() {
   const amflow::CutkoskyEtaZeroSelectionResult selected =
       amflow::PickCutkoskyEtaZeroTerm({
@@ -4783,6 +5024,7 @@ int main() {
     B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest();
     B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
     B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest();
+    B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();
     B63nCutkoskyTransportScaffoldRejectsEtaOnCutDenominatorTest();

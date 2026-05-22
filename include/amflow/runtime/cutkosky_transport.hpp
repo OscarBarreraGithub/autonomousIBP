@@ -281,6 +281,22 @@ struct CutkoskyWeightedResidueMomentSeed {
   CutkoskyEtaZeroSelectionResult eta_zero_selection;
 };
 
+struct CutkoskyWeightedResidueMomentCrossValidationGate {
+  bool passed = false;
+  bool reviewed_surface = false;
+  bool coefficient_free = false;
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  std::string surface_label;
+  std::string residue_model_kind;
+  std::string coefficient_policy;
+  std::vector<std::string> validated_weight_denominators;
+  std::vector<std::string> failure_reasons;
+  std::string publication_gate_status;
+  std::string summary;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -348,5 +364,16 @@ std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
     const CutkoskyWeightedResidueMomentSeed& seed);
 std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
     const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds);
+CutkoskyWeightedResidueMomentCrossValidationGate
+CrossValidateCutkoskyWeightedResidueMomentSeeds(
+    const CutkoskyWeightedResidueEvaluationPlan& plan,
+    const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds);
+CutkoskyWeightedResidueMomentCrossValidationGate
+BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate(
+    const ProblemSpec& spec,
+    int max_eps_order,
+    int requested_precision_digits = 80);
+std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+    const CutkoskyWeightedResidueMomentCrossValidationGate& gate);
 
 }  // namespace amflow

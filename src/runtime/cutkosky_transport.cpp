@@ -10,6 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <boost/math/constants/constants.hpp>
@@ -39,6 +40,10 @@ std::string RemoveAsciiSpaces(std::string value) {
 
 bool HasNonWhitespace(const std::string& value) {
   return !RemoveAsciiSpaces(value).empty();
+}
+
+bool StartsWith(const std::string& value, const std::string& prefix) {
+  return value.rfind(prefix, 0) == 0;
 }
 
 std::size_t CountSignificantDecimalDigits(const std::string& value) {
@@ -2435,6 +2440,437 @@ std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
         << (seed.full_eta_zero_contour_applied ? "true" : "false")
         << ";publication_gate=" << seed.publication_gate_status << "\n";
   }
+  return out.str();
+}
+
+void AddCrossValidationFailure(
+    CutkoskyWeightedResidueMomentCrossValidationGate& gate,
+    std::string reason) {
+  gate.failure_reasons.push_back(std::move(reason));
+}
+
+struct ExpectedCutkoskyWeightedMomentSeedSpec {
+  std::string denominator;
+  std::size_t denominator_index = 0;
+  int power = 0;
+  std::string role;
+  std::string structural_form;
+};
+
+std::vector<ExpectedCutkoskyWeightedMomentSeedSpec>
+ExpectedAutomaticPhaseSpaceWeightedMomentSeedSpecs() {
+  return {
+      {"D2",
+       1,
+       2,
+       "D2=(l1+p1)^2 angular weight with power 2",
+       "inverse_denominator_weight[D2(q2,cos_theta_a)]"},
+      {"D4",
+       3,
+       1,
+       "D4=(l1+l2+p1)^2 angular weight",
+       "inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]"},
+      {"D6",
+       5,
+       1,
+       "D6=(l1+l2+p2)^2 angular weight",
+       "inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]"},
+      {"D7",
+       6,
+       1,
+       "D7=(l1+p2)^2 angular weight",
+       "inverse_denominator_weight[D7(q2,cos_theta_a)]"},
+  };
+}
+
+std::vector<std::size_t> ExpectedAutomaticPhaseSpaceWeightedMomentIndices() {
+  std::vector<std::size_t> indices;
+  const std::vector<ExpectedCutkoskyWeightedMomentSeedSpec> specs =
+      ExpectedAutomaticPhaseSpaceWeightedMomentSeedSpecs();
+  indices.reserve(specs.size());
+  for (const ExpectedCutkoskyWeightedMomentSeedSpec& spec : specs) {
+    indices.push_back(spec.denominator_index);
+  }
+  return indices;
+}
+
+std::vector<std::string> ExpectedAutomaticPhaseSpaceWeightedMomentRoles() {
+  std::vector<std::string> roles;
+  const std::vector<ExpectedCutkoskyWeightedMomentSeedSpec> specs =
+      ExpectedAutomaticPhaseSpaceWeightedMomentSeedSpecs();
+  roles.reserve(specs.size());
+  for (const ExpectedCutkoskyWeightedMomentSeedSpec& spec : specs) {
+    roles.push_back(spec.role);
+  }
+  return roles;
+}
+
+const CutkoskyResidueSeriesTerm* FindCutkoskyResidueTerm(
+    const CutkoskyResidueSeries& series,
+    const int eps_order,
+    const int eta_power,
+    const int log_power,
+    const std::string& region_key) {
+  for (const CutkoskyResidueSeriesTerm& term : series.terms) {
+    if (term.eps_order == eps_order && term.eta_power == eta_power &&
+        term.log_power == log_power && term.region_key == region_key) {
+      return &term;
+    }
+  }
+  return nullptr;
+}
+
+const CutkoskyPrefactorSeriesTerm* FindCutkoskyPrefactorTerm(
+    const CutkoskyPrefactorSeries& series,
+    const int eps_order) {
+  for (const CutkoskyPrefactorSeriesTerm& term : series.terms) {
+    if (term.eps_order == eps_order) {
+      return &term;
+    }
+  }
+  return nullptr;
+}
+
+bool CutkoskyResidueSeriesRemainsSyntheticAndUnpublished(
+    const CutkoskyResidueSeries& series,
+    const std::string& selected_weight,
+    const int requested_precision_digits,
+    std::string* failure) {
+  if (series.terms.empty()) {
+    *failure = selected_weight + " seed residue series is empty";
+    return false;
+  }
+  if (series.series_label !=
+      "automatic_phasespace::weighted-moment-seed::" + selected_weight +
+          "::prefactor") {
+    *failure = selected_weight + " seed residue series has unexpected label";
+    return false;
+  }
+  if (series.min_eps_order != 0 || series.max_eps_order < 0) {
+    *failure = selected_weight + " seed residue series has unexpected eps range";
+    return false;
+  }
+  if (series.requested_precision_digits != requested_precision_digits) {
+    *failure =
+        selected_weight + " seed residue series requested precision drifted";
+    return false;
+  }
+  if (requested_precision_digits < 16 || requested_precision_digits > 90) {
+    *failure = selected_weight + " seed residue series precision is out of range";
+    return false;
+  }
+  if (static_cast<int>(series.terms.size()) != series.max_eps_order + 1) {
+    *failure =
+        selected_weight + " seed residue series does not cover contiguous eps terms";
+    return false;
+  }
+
+  const std::string expected_label =
+      "automatic_phasespace_" + selected_weight + "_weighted_moment_seed";
+  const CutkoskyPrefactorSeries expected_prefactor =
+      BuildCutkoskyPrefactorEpsilonSeries(2,
+                                          0,
+                                          series.max_eps_order,
+                                          requested_precision_digits);
+  std::set<int> seen_eps_orders;
+  for (std::size_t index = 0; index < series.terms.size(); ++index) {
+    const CutkoskyResidueSeriesTerm& term = series.terms[index];
+    const std::string term_label =
+        selected_weight + " seed residue term[" + std::to_string(index) + "]";
+    if (term.eta_power != 0 || term.log_power != 0 ||
+        term.region_key != "integer") {
+      *failure = term_label + " has unexpected eta/log/region key";
+      return false;
+    }
+    if (!seen_eps_orders.insert(term.eps_order).second) {
+      *failure = term_label + " duplicates an eps order";
+      return false;
+    }
+    if (term.eps_order < 0 || term.eps_order > series.max_eps_order) {
+      *failure = term_label + " has eps order outside the seed range";
+      return false;
+    }
+    if (!term.provenance.synthetic_fixture) {
+      *failure = term_label + " is not marked synthetic";
+      return false;
+    }
+    if (term.provenance.retained_solution_samples_used) {
+      *failure = term_label + " uses retained final solution samples";
+      return false;
+    }
+    if (term.provenance.coefficient_published) {
+      *failure = term_label + " is marked coefficient_published";
+      return false;
+    }
+    if (term.coefficient_label != expected_label) {
+      *failure = term_label + " has unexpected coefficient label";
+      return false;
+    }
+    if (term.precision.requested_precision_digits != requested_precision_digits) {
+      *failure = term_label + " requested precision drifted";
+      return false;
+    }
+    const CutkoskyPrefactorSeriesTerm* expected_term =
+        FindCutkoskyPrefactorTerm(expected_prefactor, term.eps_order);
+    if (expected_term == nullptr) {
+      *failure = term_label + " is missing an expected K_2 prefactor term";
+      return false;
+    }
+    const CutkoskyComplexCoefficient coefficient =
+        ParseCutkoskyResidueSeriesTermCoefficient(term, term_label);
+    if (IsZeroCutkoskyCoefficient(coefficient)) {
+      *failure = term_label + " has a zero coefficient";
+      return false;
+    }
+    if (term.coefficient.real != expected_term->real ||
+        term.coefficient.imaginary != expected_term->imaginary) {
+      *failure = term_label + " does not match the reviewed K_2 prefactor seed";
+      return false;
+    }
+  }
+  for (int eps_order = 0; eps_order <= series.max_eps_order; ++eps_order) {
+    if (FindCutkoskyResidueTerm(series, eps_order, 0, 0, "integer") == nullptr) {
+      *failure = selected_weight + " seed residue series is missing eps^" +
+                 std::to_string(eps_order);
+      return false;
+    }
+  }
+  return true;
+}
+
+CutkoskyWeightedResidueMomentCrossValidationGate
+CrossValidateCutkoskyWeightedResidueMomentSeeds(
+    const CutkoskyWeightedResidueEvaluationPlan& plan,
+    const std::vector<CutkoskyWeightedResidueMomentSeed>& seeds) {
+  CutkoskyWeightedResidueMomentCrossValidationGate gate;
+  gate.reviewed_surface = plan.reviewed_surface;
+  gate.coefficient_free = plan.coefficient_free;
+  gate.live_coefficients_available = false;
+  gate.retained_solution_samples_used = false;
+  gate.full_eta_zero_contour_applied = false;
+  gate.surface_label = plan.surface_label;
+  gate.residue_model_kind = plan.residue_model_kind;
+  gate.coefficient_policy =
+      "non-publishing residue-vs-moment cross-validation; verifies the weighted "
+      "residue plan against synthetic moment seeds only, with no endpoint Laurent "
+      "coefficient evaluated or published";
+  const std::vector<ExpectedCutkoskyWeightedMomentSeedSpec> expected_specs =
+      ExpectedAutomaticPhaseSpaceWeightedMomentSeedSpecs();
+
+  if (!plan.reviewed_surface) {
+    AddCrossValidationFailure(gate, "weighted residue plan is not reviewed");
+  }
+  if (!plan.coefficient_free) {
+    AddCrossValidationFailure(gate, "weighted residue plan is not coefficient-free");
+  }
+  if (plan.live_coefficients_available) {
+    AddCrossValidationFailure(gate, "weighted residue plan claims live coefficients");
+  }
+  if (plan.retained_solution_samples_used) {
+    AddCrossValidationFailure(
+        gate, "weighted residue plan uses retained final solution samples");
+  }
+  if (plan.full_eta_zero_contour_applied) {
+    AddCrossValidationFailure(gate, "weighted residue plan promotes full eta=0 contour");
+  }
+  if (plan.surface_label != "phase[1,2,1,1,1,1,1]") {
+    AddCrossValidationFailure(
+        gate,
+        "residue-vs-moment seed gate requires the reviewed weighted "
+        "automatic_phasespace target phase[1,2,1,1,1,1,1]");
+  }
+  if (plan.residue_model_kind !=
+      "automatic_phasespace::one-mass-three-body-residue") {
+    AddCrossValidationFailure(
+        gate,
+        "residue-vs-moment seed gate currently accepts only the automatic_phasespace "
+        "weighted residue model");
+  }
+  if (!VectorEquals(plan.cut_denominator_indices,
+                    std::vector<std::size_t>({0, 2, 4}))) {
+    AddCrossValidationFailure(
+        gate,
+        "residue-vs-moment seed gate requires reviewed cut support D1,D3,D5");
+  }
+  if (plan.requires_feynman_conjugate_validation ||
+      !plan.conjugate_residue_model_kind.empty()) {
+    AddCrossValidationFailure(
+        gate,
+        "feynman_prescription weighted residues do not have a reviewed moment seed "
+        "packet yet");
+  }
+  if (!VectorEquals(plan.uncut_denominator_indices,
+                    ExpectedAutomaticPhaseSpaceWeightedMomentIndices())) {
+    AddCrossValidationFailure(
+        gate,
+        "weighted residue plan must require exactly D2,D4,D6,D7 moment weights");
+  }
+  if (!VectorEquals(plan.uncut_denominator_roles,
+                    ExpectedAutomaticPhaseSpaceWeightedMomentRoles())) {
+    AddCrossValidationFailure(
+        gate,
+        "weighted residue plan moment-weight roles drifted from the reviewed "
+        "automatic_phasespace contract");
+  }
+  if (seeds.size() != expected_specs.size()) {
+    AddCrossValidationFailure(
+        gate,
+        "weighted residue moment seed packet must contain exactly D2,D4,D6,D7");
+  }
+  if (plan.uncut_denominator_indices.size() != seeds.size()) {
+    AddCrossValidationFailure(
+        gate,
+        "weighted residue plan and moment seed packet disagree on weight count");
+  }
+  if (plan.uncut_denominator_indices.size() !=
+      plan.uncut_denominator_roles.size()) {
+    AddCrossValidationFailure(
+        gate,
+        "weighted residue plan is missing one role per uncut denominator");
+  }
+
+  const std::size_t paired_count = std::min(expected_specs.size(), seeds.size());
+  for (std::size_t index = 0; index < paired_count; ++index) {
+    const ExpectedCutkoskyWeightedMomentSeedSpec& expected = expected_specs[index];
+    const std::size_t expected_index = expected.denominator_index;
+    const std::string& expected_weight = expected.denominator;
+    const CutkoskyWeightedResidueMomentSeed& seed = seeds[index];
+    gate.validated_weight_denominators.push_back(seed.selected_weight_denominator);
+
+    if (seed.surface_label != plan.surface_label) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed surface does not match weighted plan");
+    }
+    if (seed.residue_model_kind != plan.residue_model_kind) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed residue model does not match weighted plan");
+    }
+    if (seed.selected_weight_denominator_index != expected_index ||
+        seed.selected_weight_denominator != expected_weight) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed weight/order mismatch against weighted plan");
+    }
+    if (seed.selected_weight_power != expected.power) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed power does not match the reviewed target");
+    }
+    if (seed.selected_weight_role != expected.role) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed role does not match weighted plan");
+    }
+    if (seed.selected_weight_structural_form != expected.structural_form) {
+      AddCrossValidationFailure(
+          gate,
+          expected_weight + " seed structural form does not match the reviewed "
+                            "moment model");
+    }
+    if (!seed.reviewed_surface) {
+      AddCrossValidationFailure(gate, expected_weight + " seed is not reviewed");
+    }
+    if (seed.live_coefficients_available) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed claims live coefficients");
+    }
+    if (seed.retained_solution_samples_used) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed uses retained final solution samples");
+    }
+    if (seed.full_eta_zero_contour_applied) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed promotes full eta=0 contour");
+    }
+    if (!StartsWith(seed.publication_gate_status, "blocked-by-publication-gate")) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed is not blocked by the publication gate");
+    }
+    try {
+      ValidateCutkoskyResiduePublicationGate(seed.residue_series);
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed unexpectedly passed the publication gate");
+    } catch (const std::invalid_argument&) {
+      // Expected: moment seeds are synthetic carriers, not published coefficients.
+    }
+    if (!seed.eta_zero_selection.success) {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed eta-zero selection is not successful");
+    } else if (seed.eta_zero_selection.selected_coefficient_label !=
+               "automatic_phasespace_" + expected_weight +
+                   "_weighted_moment_seed") {
+      AddCrossValidationFailure(
+          gate, expected_weight + " seed eta-zero selection label drifted");
+    }
+
+    std::string residue_series_failure;
+    if (!CutkoskyResidueSeriesRemainsSyntheticAndUnpublished(
+            seed.residue_series,
+            expected_weight,
+            seed.residue_series.requested_precision_digits,
+            &residue_series_failure)) {
+      AddCrossValidationFailure(gate, residue_series_failure);
+    }
+  }
+
+  gate.passed = gate.failure_reasons.empty();
+  gate.publication_gate_status =
+      gate.passed ? "blocked-by-publication-gate: all moment seeds remain "
+                    "synthetic and non-publishing"
+                  : "cross-validation-failed-before-publication";
+  gate.summary =
+      gate.passed
+          ? "b63n automatic_phasespace weighted residue plan is cross-validated "
+            "against the D2,D4,D6,D7 synthetic moment seed packet; no live "
+            "coefficient, retained final sample, or full eta=0 contour claim is made"
+          : "b63n weighted residue moment seed packet failed cross-validation and "
+            "must not feed coefficient publication";
+  return gate;
+}
+
+CutkoskyWeightedResidueMomentCrossValidationGate
+BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate(
+    const ProblemSpec& spec,
+    const int max_eps_order,
+    const int requested_precision_digits) {
+  const CutkoskyWeightedResidueEvaluationPlan plan =
+      BuildCutkoskyWeightedResidueEvaluationPlan(spec);
+  const std::vector<CutkoskyWeightedResidueMomentSeed> seeds =
+      BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          spec, max_eps_order, requested_precision_digits);
+  return CrossValidateCutkoskyWeightedResidueMomentSeeds(plan, seeds);
+}
+
+std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+    const CutkoskyWeightedResidueMomentCrossValidationGate& gate) {
+  std::ostringstream out;
+  out << "kind=b63n-weighted-residue-moment-cross-validation-gate\n";
+  out << "gate=" << (gate.passed ? "passed" : "blocked") << "\n";
+  out << "reviewed_surface=" << (gate.reviewed_surface ? "true" : "false")
+      << "\n";
+  out << "coefficient_free=" << (gate.coefficient_free ? "true" : "false")
+      << "\n";
+  out << "surface=" << gate.surface_label << "\n";
+  out << "residue_model_kind=" << gate.residue_model_kind << "\n";
+  out << "coefficient_policy=" << gate.coefficient_policy << "\n";
+  out << "live_coefficients_available="
+      << (gate.live_coefficients_available ? "true" : "false") << "\n";
+  out << "retained_solution_samples_used="
+      << (gate.retained_solution_samples_used ? "true" : "false") << "\n";
+  out << "full_eta_zero_contour_applied="
+      << (gate.full_eta_zero_contour_applied ? "true" : "false") << "\n";
+  out << "moment_weights=";
+  for (std::size_t index = 0; index < gate.validated_weight_denominators.size();
+       ++index) {
+    if (index != 0) {
+      out << ",";
+    }
+    out << gate.validated_weight_denominators[index];
+  }
+  out << "\n";
+  out << "publication_gate=" << gate.publication_gate_status << "\n";
+  out << "failure_count=" << gate.failure_reasons.size() << "\n";
+  for (std::size_t index = 0; index < gate.failure_reasons.size(); ++index) {
+    out << "failure[" << index << "]=" << gate.failure_reasons[index] << "\n";
+  }
+  out << "summary=" << gate.summary << "\n";
   return out.str();
 }
 

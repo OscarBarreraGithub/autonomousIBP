@@ -4844,12 +4844,13 @@ void B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest() 
                  "runtime handoff in diagnostics");
 }
 
-amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions() {
+amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions(
+    const std::string& endpoint_integral_id = "box[1,0,1,0]") {
   amflow::ComplexContourPropagationOptions options;
   options.steps_per_segment = 4;
   options.refinement_doublings = 1;
   options.matrix_fingerprint = "lane142-b61n-selected5-primitive-bubble-v1";
-  options.endpoint_integral_id = "box[1,0,1,0]";
+  options.endpoint_integral_id = endpoint_integral_id;
   options.endpoint_local_model_kind = "b61n-primitive-bubble-regular-taylor-r0";
   options.branch_policy =
       "NegIm lower-half-plane b61n lane142 primitive-bubble endpoint";
@@ -4908,6 +4909,58 @@ void B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest() {
   ExpectContains(result.diagnostics.summary,
                  "full_eta_zero_contour_applied=false",
                  "b61n lane142 primitive-bubble summary should keep M6 flag false");
+}
+
+void B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointVariantTest() {
+  const std::string endpoint_integral_id = "box[0,0,1,1]";
+  const amflow::ComplexContourPropagationResult result =
+      PropagateB61nLane142PrimitiveBubble(
+          B61nLane142PrimitiveBubbleOptions(endpoint_integral_id));
+
+  Expect(result.success,
+         "b61n lane142 primitive-bubble sibling endpoint propagation should "
+         "succeed for " +
+             endpoint_integral_id + ": " + result.diagnostics.summary);
+  Expect(result.endpoint_values.size() == 1,
+         "b61n lane142 primitive-bubble sibling endpoint should remain "
+         "single-row for " +
+             endpoint_integral_id);
+  ExpectB61nContourClose(result.endpoint_values.front(),
+                         {3, -1},
+                         B61nContourFloat("1e-80"),
+                         "b61n lane142 primitive-bubble sibling endpoint "
+                         "should preserve eta^0 for " +
+                             endpoint_integral_id);
+  Expect(result.diagnostics.coefficient_publication,
+         "b61n lane142 primitive-bubble sibling endpoint should publish "
+         "coefficient for " +
+             endpoint_integral_id);
+  Expect(result.diagnostics.endpoint_extraction_applied,
+         "b61n lane142 primitive-bubble sibling endpoint should mark endpoint "
+         "extraction for " +
+             endpoint_integral_id);
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         "b61n lane142 primitive-bubble sibling endpoint must not use final "
+         "samples for " +
+             endpoint_integral_id);
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n lane142 primitive-bubble sibling endpoint must not promote M6 "
+         "closure for " +
+             endpoint_integral_id);
+  Expect(result.diagnostics.endpoint_integral_id == endpoint_integral_id,
+         "b61n lane142 primitive-bubble sibling endpoint should preserve "
+         "integral provenance for " +
+             endpoint_integral_id);
+  ExpectContains(result.diagnostics.summary,
+                 "endpoint_integral_id=" + endpoint_integral_id,
+                 "b61n lane142 primitive-bubble sibling summary should publish "
+                 "integral id for " +
+                     endpoint_integral_id);
+  ExpectContains(result.diagnostics.summary,
+                 "coefficient_publication=true",
+                 "b61n lane142 primitive-bubble sibling summary should publish "
+                 "coefficient gate for " +
+                     endpoint_integral_id);
 }
 
 void B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest() {
@@ -6215,6 +6268,7 @@ int main() {
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
     B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
+    B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointVariantTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();

@@ -81,7 +81,9 @@ if(BUILD_TESTING)
   )
   amflow_apply_default_warnings(amflow-tests)
   add_test(NAME amflow-tests COMMAND amflow-tests)
-  set_tests_properties(amflow-tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  set_tests_properties(amflow-tests PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 2400)
 
   add_test(
     NAME b64ag-golden-recapture-readiness-self-check

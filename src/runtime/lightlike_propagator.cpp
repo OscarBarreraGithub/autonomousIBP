@@ -532,12 +532,12 @@ std::string NormalizeRuntimeExpression(std::string expression) {
   return normalized;
 }
 
-using RuntimeFloat = boost::multiprecision::cpp_dec_float_100;
+using RuntimeFloat = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<200>>;
 using RuntimeComplex = std::complex<RuntimeFloat>;
 
-const RuntimeFloat kRuntimeTiny("1e-80");
-constexpr int kEndpointTransportPrecisionDigits = 70;
-constexpr int kEndpointRegionPrecisionDigits = 95;
+const RuntimeFloat kRuntimeTiny("1e-140");
+constexpr int kEndpointTransportPrecisionDigits = 120;
+constexpr int kEndpointRegionPrecisionDigits = 150;
 
 RuntimeFloat RuntimeAbs(const RuntimeFloat& value) {
   using boost::multiprecision::abs;
@@ -1064,7 +1064,7 @@ std::vector<RuntimeComplex> RuntimePolynomialRootsDurandKerner(
 std::string FormatRuntimeFloat(const RuntimeFloat raw_value,
                                const int precision_digits = 24) {
   RuntimeFloat value = raw_value;
-  if (RuntimeAbs(value) < RuntimeFloat("1e-80")) {
+  if (RuntimeAbs(value) < kRuntimeTiny) {
     value = RuntimeFloat(0);
   }
   std::ostringstream stream;
@@ -1086,18 +1086,16 @@ std::string FormatRuntimeFloat(const RuntimeFloat raw_value,
 std::string FormatRuntimeComplex(const RuntimeComplex& value,
                                  const int precision_digits = 24) {
   const RuntimeFloat real =
-      RuntimeAbs(value.real()) < RuntimeFloat("1e-80") ? RuntimeFloat(0)
-                                                       : value.real();
+      RuntimeAbs(value.real()) < kRuntimeTiny ? RuntimeFloat(0) : value.real();
   const RuntimeFloat imaginary =
-      RuntimeAbs(value.imag()) < RuntimeFloat("1e-80") ? RuntimeFloat(0)
-                                                       : value.imag();
+      RuntimeAbs(value.imag()) < kRuntimeTiny ? RuntimeFloat(0) : value.imag();
   const std::string real_text = FormatRuntimeFloat(real, precision_digits);
   const std::string imaginary_text =
       FormatRuntimeFloat(RuntimeAbs(imaginary), precision_digits);
-  if (RuntimeAbs(imaginary) < RuntimeFloat("1e-80")) {
+  if (RuntimeAbs(imaginary) < kRuntimeTiny) {
     return real_text;
   }
-  if (RuntimeAbs(real) < RuntimeFloat("1e-80")) {
+  if (RuntimeAbs(real) < kRuntimeTiny) {
     return (imaginary < 0 ? "-" : "") + imaginary_text + "*I";
   }
   return real_text + (imaginary < 0 ? " - " : " + ") + imaginary_text + "*I";

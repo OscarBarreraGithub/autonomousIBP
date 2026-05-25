@@ -2153,6 +2153,31 @@ std::vector<std::size_t> UnanchoredRowIndices(
   return rows;
 }
 
+bool RetargetCoupledFrobeniusMatchPointToStableRadius(
+    std::vector<ComplexContourNumber>& propagation_waypoints) {
+  if (propagation_waypoints.size() < 2) {
+    return false;
+  }
+  const ComplexContourFloat minimum_match_radius("0.25");
+  ComplexContourNumber& match_eta = propagation_waypoints.back();
+  const ComplexContourNumber& previous_eta =
+      propagation_waypoints[propagation_waypoints.size() - 2];
+  const ComplexContourFloat match_radius = ComplexAbs(match_eta);
+  if (match_radius == 0 || match_radius >= minimum_match_radius ||
+      ComplexAbs(previous_eta) < minimum_match_radius) {
+    return false;
+  }
+  if (match_eta.real() != 0 || previous_eta.real() != 0 ||
+      match_eta.imag() == 0 ||
+      (match_eta.imag() > 0) != (previous_eta.imag() > 0)) {
+    return false;
+  }
+  match_eta = {0,
+               match_eta.imag() < 0 ? -minimum_match_radius
+                                     : minimum_match_radius};
+  return true;
+}
+
 ComplexContourMatrix BuildSubmatrix(
     const ComplexContourMatrix& matrix,
     const std::vector<std::size_t>& row_indices,
@@ -3375,6 +3400,10 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         coupled_frobenius_endpoint_matcher_applied) {
       propagation_waypoints.pop_back();
     }
+    const bool coupled_frobenius_match_point_retargeted =
+        coupled_frobenius_endpoint_matcher_applied &&
+        RetargetCoupledFrobeniusMatchPointToStableRadius(
+            propagation_waypoints);
     const std::size_t integrated_segment_count =
         propagation_waypoints.empty() ? 0 : propagation_waypoints.size() - 1;
 
@@ -3543,6 +3572,11 @@ ComplexContourPropagationResult PropagateComplexContourVector(
       result.endpoint_values = match.endpoint_values;
       endpoint_vector_norm = MaxVectorNorm(result.endpoint_values);
       coupled_frobenius_endpoint_matcher_summary = "; " + match.summary;
+      if (coupled_frobenius_match_point_retargeted) {
+        coupled_frobenius_endpoint_matcher_summary +=
+            "; coupled_frobenius_match_eta_policy="
+            "retargeted-to-minimum-radius-0.25";
+      }
     }
     const bool endpoint_extraction_applied =
         coupled_frobenius_endpoint_matcher_applied ||

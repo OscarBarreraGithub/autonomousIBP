@@ -5137,6 +5137,88 @@ void B61nCoupledFrobeniusEndpointMatcherKeepsCoupledRowsFreeUnderSourceAnchorsTe
                  "matcher");
 }
 
+void B61nCoupledFrobeniusEndpointMatcherSolvesTwoFreeConstantsFromMatchVectorTest() {
+  const std::vector<B61nContourNumber> waypoints = {
+      {0, -1},
+      {0, B61nContourFloat("-0.25")},
+      {0, 0},
+  };
+  const B61nContourNumber source_endpoint{2, -1};
+  const B61nContourNumber first_free_constant{3, 4};
+  const B61nContourNumber second_free_constant{-5, 7};
+  const auto values_at =
+      [source_endpoint,
+       first_free_constant,
+       second_free_constant](const B61nContourNumber& eta) {
+        const B61nContourNumber half{B61nContourFloat("0.5"), 0};
+        return amflow::ComplexContourVector{
+            source_endpoint,
+            first_free_constant + source_endpoint * eta,
+            second_free_constant + first_free_constant * eta +
+                half * source_endpoint * eta * eta,
+        };
+      };
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}, B61nContourNumber{0, 0},
+         B61nContourNumber{0, 0}},
+        {B61nContourNumber{1, 0}, B61nContourNumber{0, 0},
+         B61nContourNumber{0, 0}},
+        {B61nContourNumber{0, 0}, B61nContourNumber{1, 0},
+         B61nContourNumber{0, 0}},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  options.steps_per_segment = 16;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 3;
+  options.refinement_error_tolerance = B61nContourFloat("1e-34");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-34");
+  options.matrix_fingerprint =
+      "synthetic-b61n-source-anchored-two-free-constant-match-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n two-free-constant match test";
+  options.coupled_frobenius_anchor_row_indices = {0};
+  options.coupled_frobenius_anchor_endpoint_values = {source_endpoint};
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(
+          values_at(waypoints.front()), waypoints, evaluator, options);
+
+  Expect(result.success,
+         "b61n two-free-constant boundary match should propagate: " +
+             result.diagnostics.summary);
+  ExpectB61nContourClose(result.endpoint_values[0],
+                         source_endpoint,
+                         B61nContourFloat("1e-40"),
+                         "b61n two-free-constant match should preserve the "
+                         "reviewed source endpoint");
+  ExpectB61nContourClose(result.endpoint_values[1],
+                         first_free_constant,
+                         B61nContourFloat("1e-30"),
+                         "b61n two-free-constant match should recover the first "
+                         "free endpoint constant from the propagated match vector");
+  ExpectB61nContourClose(result.endpoint_values[2],
+                         second_free_constant,
+                         B61nContourFloat("1e-30"),
+                         "b61n two-free-constant match should recover the second "
+                         "free endpoint constant from the propagated match vector");
+  ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_boundary_condition_solve=2x2-match",
+                 "b61n two-free-constant match should use the dedicated 2x2 "
+                 "boundary-condition solve");
+  ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_free_constant_rows=[1, 2]",
+                 "b61n two-free-constant match should identify the free rows");
+  ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_free_constant_source=upstream-rk-propagated-match-vector",
+                 "b61n two-free-constant match must source constants from the "
+                 "live propagated match vector");
+}
+
 amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions(
     const std::string& endpoint_integral_id = "box[1,0,1,0]") {
   amflow::ComplexContourPropagationOptions options;
@@ -6563,6 +6645,7 @@ int main() {
     B61nComplexContourPropagatorUsesCoupledFrobeniusEndpointMatcherAfterOdeTest();
     B61nCoupledFrobeniusEndpointMatcherAnchorsReviewedSourceRowsTest();
     B61nCoupledFrobeniusEndpointMatcherKeepsCoupledRowsFreeUnderSourceAnchorsTest();
+    B61nCoupledFrobeniusEndpointMatcherSolvesTwoFreeConstantsFromMatchVectorTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointVariantTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();

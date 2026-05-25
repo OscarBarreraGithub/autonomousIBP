@@ -2026,6 +2026,9 @@ struct CoupledFrobeniusEndpointMatch {
   ComplexContourFloat basis_residual_abs = 0;
   std::size_t anchored_source_count = 0;
   ComplexContourFloat anchored_source_residual_abs = 0;
+  bool two_by_two_boundary_condition_solve = false;
+  std::vector<std::size_t> free_constant_rows;
+  ComplexContourFloat boundary_condition_residual_abs = 0;
   std::string summary;
 };
 
@@ -2139,6 +2142,176 @@ ComplexContourFloat MaxVectorNormOnUnanchoredRows(
   return saw_unanchored ? norm : MaxVectorNorm(values);
 }
 
+std::vector<std::size_t> UnanchoredRowIndices(
+    const std::vector<bool>& anchored_rows) {
+  std::vector<std::size_t> rows;
+  for (std::size_t row = 0; row < anchored_rows.size(); ++row) {
+    if (!anchored_rows[row]) {
+      rows.push_back(row);
+    }
+  }
+  return rows;
+}
+
+ComplexContourMatrix BuildSubmatrix(
+    const ComplexContourMatrix& matrix,
+    const std::vector<std::size_t>& row_indices,
+    const std::vector<std::size_t>& column_indices) {
+  ComplexContourMatrix submatrix(
+      row_indices.size(),
+      std::vector<ComplexContourNumber>(column_indices.size(),
+                                        ComplexContourNumber{}));
+  for (std::size_t row = 0; row < row_indices.size(); ++row) {
+    for (std::size_t column = 0; column < column_indices.size(); ++column) {
+      submatrix[row][column] =
+          matrix[row_indices[row]][column_indices[column]];
+    }
+  }
+  return submatrix;
+}
+
+ComplexContourVector BuildAnchoredAmplitudeVector(
+    const std::size_t dimension,
+    const std::vector<std::size_t>& anchor_row_indices,
+    const ComplexContourVector& anchor_amplitudes,
+    const std::vector<std::size_t>& free_rows,
+    const std::size_t active_free_row) {
+  if (anchor_row_indices.size() != anchor_amplitudes.size()) {
+    throw std::runtime_error("coupled-frobenius-anchor-amplitude-count");
+  }
+  ComplexContourVector amplitudes = MakeZeroVector(dimension);
+  for (std::size_t index = 0; index < anchor_row_indices.size(); ++index) {
+    amplitudes[anchor_row_indices[index]] = anchor_amplitudes[index];
+  }
+  if (active_free_row < free_rows.size()) {
+    amplitudes[free_rows[active_free_row]] = ComplexContourNumber{1, 0};
+  }
+  return amplitudes;
+}
+
+CoupledFrobeniusEndpointMatch MatchTwoFreeCoupledFrobeniusConstants(
+    const ComplexContourMatrix& basis_matrix,
+    const ComplexContourMatrix& endpoint_basis_matrix,
+    const ComplexContourVector& match_values,
+    const std::vector<std::size_t>& anchor_row_indices,
+    const ComplexContourVector& anchor_endpoint_values,
+    const std::vector<std::size_t>& free_rows,
+    const std::size_t recurrence_count) {
+  const std::size_t dimension = match_values.size();
+  if (free_rows.size() != 2 || anchor_row_indices.empty()) {
+    throw std::runtime_error("coupled-frobenius-two-free-row-shape");
+  }
+
+  const ComplexContourMatrix anchor_endpoint_matrix =
+      BuildSubmatrix(endpoint_basis_matrix,
+                     anchor_row_indices,
+                     anchor_row_indices);
+  const ComplexContourMatrix anchor_free_endpoint_matrix =
+      BuildSubmatrix(endpoint_basis_matrix,
+                     anchor_row_indices,
+                     free_rows);
+  const ComplexContourVector particular_anchor_amplitudes =
+      SolveComplexLinearSystem(anchor_endpoint_matrix,
+                               anchor_endpoint_values,
+                               ComplexContourFloat("1e-50"));
+  const ComplexContourVector particular_amplitudes =
+      BuildAnchoredAmplitudeVector(dimension,
+                                   anchor_row_indices,
+                                   particular_anchor_amplitudes,
+                                   free_rows,
+                                   free_rows.size());
+  const ComplexContourVector particular_match =
+      MatrixVectorProduct(basis_matrix, particular_amplitudes);
+
+  std::vector<ComplexContourVector> free_basis_amplitudes;
+  free_basis_amplitudes.reserve(free_rows.size());
+  ComplexContourMatrix free_match_matrix(
+      free_rows.size(),
+      std::vector<ComplexContourNumber>(free_rows.size(),
+                                        ComplexContourNumber{}));
+  for (std::size_t free_column = 0; free_column < free_rows.size();
+       ++free_column) {
+    ComplexContourVector compensated_anchor_rhs(
+        anchor_row_indices.size(), ComplexContourNumber{});
+    for (std::size_t anchor_row = 0; anchor_row < anchor_row_indices.size();
+         ++anchor_row) {
+      compensated_anchor_rhs[anchor_row] =
+          -anchor_free_endpoint_matrix[anchor_row][free_column];
+    }
+    const ComplexContourVector compensated_anchor_amplitudes =
+        SolveComplexLinearSystem(anchor_endpoint_matrix,
+                                 compensated_anchor_rhs,
+                                 ComplexContourFloat("1e-50"));
+    ComplexContourVector free_amplitudes =
+        BuildAnchoredAmplitudeVector(dimension,
+                                     anchor_row_indices,
+                                     compensated_anchor_amplitudes,
+                                     free_rows,
+                                     free_column);
+    const ComplexContourVector free_match =
+        MatrixVectorProduct(basis_matrix, free_amplitudes);
+    for (std::size_t free_row = 0; free_row < free_rows.size(); ++free_row) {
+      free_match_matrix[free_row][free_column] =
+          free_match[free_rows[free_row]];
+    }
+    free_basis_amplitudes.push_back(std::move(free_amplitudes));
+  }
+
+  ComplexContourVector rhs(free_rows.size(), ComplexContourNumber{});
+  for (std::size_t row = 0; row < free_rows.size(); ++row) {
+    rhs[row] = match_values[free_rows[row]] -
+               particular_match[free_rows[row]];
+  }
+  const ComplexContourVector free_constants =
+      SolveComplexLinearSystem(free_match_matrix,
+                               rhs,
+                               ComplexContourFloat("1e-50"));
+
+  ComplexContourVector amplitudes = particular_amplitudes;
+  for (std::size_t free_column = 0; free_column < free_rows.size();
+       ++free_column) {
+    for (std::size_t row = 0; row < dimension; ++row) {
+      amplitudes[row] +=
+          free_constants[free_column] *
+          free_basis_amplitudes[free_column][row];
+    }
+  }
+
+  ComplexContourVector endpoint_values =
+      MatrixVectorProduct(endpoint_basis_matrix, amplitudes);
+  for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
+       ++anchor_index) {
+    endpoint_values[anchor_row_indices[anchor_index]] =
+        anchor_endpoint_values[anchor_index];
+  }
+  const ComplexContourVector reconstructed_match =
+      MatrixVectorProduct(basis_matrix, amplitudes);
+
+  CoupledFrobeniusEndpointMatch match;
+  match.success = true;
+  match.endpoint_values = std::move(endpoint_values);
+  match.recurrence_count = recurrence_count;
+  match.anchored_source_count = anchor_row_indices.size();
+  match.two_by_two_boundary_condition_solve = true;
+  match.free_constant_rows = free_rows;
+  for (std::size_t row = 0; row < free_rows.size(); ++row) {
+    match.boundary_condition_residual_abs =
+        std::max(match.boundary_condition_residual_abs,
+                 ComplexAbs(reconstructed_match[free_rows[row]] -
+                            match_values[free_rows[row]]));
+  }
+  match.basis_residual_abs = match.boundary_condition_residual_abs;
+  for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
+       ++anchor_index) {
+    const std::size_t source_row = anchor_row_indices[anchor_index];
+    match.anchored_source_residual_abs =
+        std::max(match.anchored_source_residual_abs,
+                 ComplexAbs(match.endpoint_values[source_row] -
+                            anchor_endpoint_values[anchor_index]));
+  }
+  return match;
+}
+
 CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     const ComplexContourNumber& match_eta,
@@ -2152,6 +2325,8 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
       CoupledFrobeniusAnchorMask(dimension,
                                  anchor_row_indices,
                                  anchor_endpoint_values);
+  const std::vector<std::size_t> free_rows =
+      UnanchoredRowIndices(anchored_rows);
   std::vector<ComplexContourFrobeniusRecurrence> recurrences;
   recurrences.reserve(dimension);
   ComplexContourMatrix basis_matrix(
@@ -2193,59 +2368,72 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
     recurrences.push_back(std::move(recurrence));
   }
 
-  ComplexContourMatrix constraint_matrix(
-      dimension, std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
-  ComplexContourVector constraint_values = MakeZeroVector(dimension);
-  std::size_t constraint_row = 0;
-  for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
-       ++anchor_index) {
-    const std::size_t source_row = anchor_row_indices[anchor_index];
-    constraint_matrix[constraint_row] = endpoint_basis_matrix[source_row];
-    constraint_values[constraint_row] = anchor_endpoint_values[anchor_index];
-    ++constraint_row;
-  }
-  for (std::size_t row = 0; row < dimension; ++row) {
-    if (anchored_rows[row]) {
-      continue;
-    }
-    constraint_matrix[constraint_row] = basis_matrix[row];
-    constraint_values[constraint_row] = match_values[row];
-    ++constraint_row;
-  }
-  if (constraint_row != dimension) {
-    throw std::runtime_error("coupled-frobenius-source-anchor-constraint-count");
-  }
-
-  const ComplexContourVector amplitudes =
-      SolveComplexLinearSystem(constraint_matrix,
-                               constraint_values,
-                               ComplexContourFloat("1e-50"));
-  ComplexContourVector endpoint_values =
-      MatrixVectorProduct(endpoint_basis_matrix, amplitudes);
-  for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
-       ++anchor_index) {
-    endpoint_values[anchor_row_indices[anchor_index]] =
-        anchor_endpoint_values[anchor_index];
-  }
-
-  const ComplexContourVector reconstructed_match =
-      MatrixVectorProduct(constraint_matrix, amplitudes);
-  const ComplexContourVector reconstructed_endpoint =
-      MatrixVectorProduct(endpoint_basis_matrix, amplitudes);
   CoupledFrobeniusEndpointMatch match;
-  match.success = true;
-  match.endpoint_values = std::move(endpoint_values);
-  match.recurrence_count = recurrences.size();
-  match.basis_residual_abs =
-      MaxVectorDifference(reconstructed_match, constraint_values);
-  match.anchored_source_count = anchor_row_indices.size();
-  for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
-       ++anchor_index) {
-    const std::size_t source_row = anchor_row_indices[anchor_index];
-    match.anchored_source_residual_abs =
-        std::max(match.anchored_source_residual_abs,
-                 ComplexAbs(reconstructed_endpoint[source_row] -
-                            anchor_endpoint_values[anchor_index]));
+  if (!anchor_row_indices.empty() && free_rows.size() == 2) {
+    match =
+        MatchTwoFreeCoupledFrobeniusConstants(basis_matrix,
+                                              endpoint_basis_matrix,
+                                              match_values,
+                                              anchor_row_indices,
+                                              anchor_endpoint_values,
+                                              free_rows,
+                                              recurrences.size());
+  } else {
+    ComplexContourMatrix constraint_matrix(
+        dimension,
+        std::vector<ComplexContourNumber>(dimension, ComplexContourNumber{}));
+    ComplexContourVector constraint_values = MakeZeroVector(dimension);
+    std::size_t constraint_row = 0;
+    for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
+         ++anchor_index) {
+      const std::size_t source_row = anchor_row_indices[anchor_index];
+      constraint_matrix[constraint_row] = endpoint_basis_matrix[source_row];
+      constraint_values[constraint_row] = anchor_endpoint_values[anchor_index];
+      ++constraint_row;
+    }
+    for (std::size_t row = 0; row < dimension; ++row) {
+      if (anchored_rows[row]) {
+        continue;
+      }
+      constraint_matrix[constraint_row] = basis_matrix[row];
+      constraint_values[constraint_row] = match_values[row];
+      ++constraint_row;
+    }
+    if (constraint_row != dimension) {
+      throw std::runtime_error(
+          "coupled-frobenius-source-anchor-constraint-count");
+    }
+
+    const ComplexContourVector amplitudes =
+        SolveComplexLinearSystem(constraint_matrix,
+                                 constraint_values,
+                                 ComplexContourFloat("1e-50"));
+    ComplexContourVector endpoint_values =
+        MatrixVectorProduct(endpoint_basis_matrix, amplitudes);
+    for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
+         ++anchor_index) {
+      endpoint_values[anchor_row_indices[anchor_index]] =
+          anchor_endpoint_values[anchor_index];
+    }
+
+    const ComplexContourVector reconstructed_match =
+        MatrixVectorProduct(constraint_matrix, amplitudes);
+    const ComplexContourVector reconstructed_endpoint =
+        MatrixVectorProduct(endpoint_basis_matrix, amplitudes);
+    match.success = true;
+    match.endpoint_values = std::move(endpoint_values);
+    match.recurrence_count = recurrences.size();
+    match.basis_residual_abs =
+        MaxVectorDifference(reconstructed_match, constraint_values);
+    match.anchored_source_count = anchor_row_indices.size();
+    for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
+         ++anchor_index) {
+      const std::size_t source_row = anchor_row_indices[anchor_index];
+      match.anchored_source_residual_abs =
+          std::max(match.anchored_source_residual_abs,
+                   ComplexAbs(reconstructed_endpoint[source_row] -
+                              anchor_endpoint_values[anchor_index]));
+    }
   }
   match.summary =
       "coupled_frobenius_endpoint_matcher_applied=true; "
@@ -2261,6 +2449,16 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
       "; coupled_frobenius_basis_residual_abs=" +
       CompactFloat(match.basis_residual_abs, 40) +
       "; leading_coefficient_source=canonical-triangular-indicial-null-vector";
+  if (match.two_by_two_boundary_condition_solve) {
+    match.summary +=
+        "; coupled_frobenius_boundary_condition_solve=2x2-match"
+        "; coupled_frobenius_free_constant_rows=" +
+        CompactIndexVector(match.free_constant_rows) +
+        "; coupled_frobenius_free_constant_source="
+        "upstream-rk-propagated-match-vector"
+        "; coupled_frobenius_boundary_condition_residual_abs=" +
+        CompactFloat(match.boundary_condition_residual_abs, 40);
+  }
   if (!anchor_row_indices.empty()) {
     match.summary +=
         "; coupled_frobenius_source_anchored=true; "

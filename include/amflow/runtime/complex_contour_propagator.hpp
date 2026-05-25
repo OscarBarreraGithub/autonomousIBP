@@ -64,6 +64,7 @@ struct ComplexContourPropagationDiagnostics {
   bool full_eta_zero_contour_applied = false;
   bool endpoint_extraction_applied = false;
   bool scalar_frobenius_endpoint_patch_applied = false;
+  bool coupled_frobenius_endpoint_matcher_applied = false;
   std::size_t dimension = 0;
   std::size_t waypoint_count = 0;
   std::size_t segment_count = 0;
@@ -147,6 +148,8 @@ struct ComplexContourFrobeniusRecurrenceOptions {
   ComplexContourNumber residue_probe_eta = {0, ComplexContourFloat("-1e-40")};
   ComplexContourFloat residue_tolerance = ComplexContourFloat("1e-28");
   ComplexContourFloat tail_fit_tolerance = ComplexContourFloat("1e-24");
+  ComplexContourFloat tail_sample_radius = 0;
+  std::size_t tail_sample_count = 0;
 };
 
 struct ComplexContourFrobeniusRecurrence {

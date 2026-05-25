@@ -6040,6 +6040,8 @@ struct B61nCoupledRowContourTransportAudit {
   std::size_t closer_start_divisibility_count = 0;
   std::size_t closer_start_recurrence_depth_count = 0;
   std::size_t closer_start_precision_count = 0;
+  bool coupled_frobenius_endpoint_matcher_applied = false;
+  bool full_eta_zero_contour_applied = false;
   std::vector<std::string> transported_master_labels;
   std::vector<std::string> closer_start_failures;
   std::string closer_start_first_failure;
@@ -6554,6 +6556,15 @@ ApplyB61nCoupledRowContourTransport(
             result.diagnostics.max_embedded_error_rhs_norm_abs +
             "; propagator_summary=" + result.diagnostics.summary);
       }
+      if (!result.diagnostics.coupled_frobenius_endpoint_matcher_applied ||
+          !result.diagnostics.endpoint_extraction_applied) {
+        return blocked_after_propagation_audit(
+            "complex contour propagator reached the endpoint but did not apply the "
+            "coupled-row Frobenius endpoint matcher for epsilon sample " +
+            std::to_string(sample_index) +
+            "; propagator_summary=" + result.diagnostics.summary);
+      }
+      audit.coupled_frobenius_endpoint_matcher_applied = true;
       audit.segment_count_max =
           std::max(audit.segment_count_max,
                    result.diagnostics.segment_count);
@@ -6698,8 +6709,13 @@ ApplyB61nCoupledRowContourTransport(
         "; contour_fingerprint=" + audit.contour_fingerprint +
         "; initial_data_fingerprint=" + audit.initial_data_fingerprint +
         "; endpoint_fingerprint=" + audit.endpoint_fingerprint +
+        "; coupled_frobenius_endpoint_matcher_applied=" +
+        std::string(audit.coupled_frobenius_endpoint_matcher_applied ? "true"
+                                                                    : "false") +
         "; ode_propagation_applied=true; coefficient_publication=true; "
-        "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false.";
+        "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=" +
+        std::string(audit.full_eta_zero_contour_applied ? "true" : "false") +
+        ".";
     return audit;
   } catch (const std::exception&) {
     return std::nullopt;
@@ -10332,6 +10348,11 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
            b61n_coupled_row_transport_audit->transported_master_labels) {
         AppendEtaEndpointTransportedIntegralOnce(diagnostics, label);
       }
+      if (b61n_coupled_row_transport_audit->full_eta_zero_contour_applied &&
+          diagnostics.eta_endpoint_transported_integrals.size() ==
+              direct_spec.masters.size()) {
+        diagnostics.full_eta_zero_contour_applied = true;
+      }
     }
     diagnostics.summary += b61n_coupled_row_transport_audit->summary;
   }
@@ -10342,10 +10363,17 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
                                           eta_infinity_initial_data_audit);
     diagnostics.summary += coupled_row_audit.summary;
   }
-  diagnostics.summary +=
-      " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
-      "remain deferred on this path; the solve result records the reviewed Gap B continuation "
-      "audit separately.";
+  if (diagnostics.full_eta_zero_contour_applied) {
+    diagnostics.summary +=
+        " Full seven-master eta-infinity-to-eta=0 contour endpoint extraction "
+        "was applied through the coupled-row Frobenius matcher without retained "
+        "final solution samples; full_eta_zero_contour_applied=true.";
+  } else {
+    diagnostics.summary +=
+        " Full singular eta->0 complex contour execution and non-selected endpoint extraction "
+        "remain deferred on this path; the solve result records the reviewed Gap B continuation "
+        "audit separately.";
+  }
   if (complex_contour_scaffold_audit.has_value()) {
     diagnostics.summary += complex_contour_scaffold_audit->summary;
   }
@@ -11129,6 +11157,14 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                           "full-packet-finite-part-transport"
                                         : "retained-finite-gauge-link-boundary+gaugex-zero-"
                                           "selected-endpoint-transport")
+                             : diagnostics.full_eta_zero_contour_applied
+                                 ? (diagnostics.eta_asymptotic_transport_count > 0
+                                        ? "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-infinity-de-asymptotic-transport+"
+                                          "eta-zero-full-contour-endpoint-transport"
+                                        : "retained-asymptotic-subsystem-sample-boundary-"
+                                          "evaluator+eta-zero-full-contour-endpoint-"
+                                          "transport")
                              : diagnostics.eta_endpoint_transport_count > 0
                                  ? (diagnostics.eta_asymptotic_transport_count > 0
                                         ? "retained-asymptotic-subsystem-sample-boundary-"

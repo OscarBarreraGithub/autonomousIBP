@@ -4844,6 +4844,73 @@ void B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest() 
                  "runtime handoff in diagnostics");
 }
 
+void B61nComplexContourPropagatorUsesCoupledFrobeniusEndpointMatcherAfterOdeTest() {
+  const std::vector<B61nContourNumber> waypoints = {{0, -1}, {0, B61nContourFloat("-0.25")}, {0, 0}};
+  const B61nContourNumber leading_value{2, -1};
+  const B61nContourNumber sourced_value{3, 4};
+  const amflow::ComplexContourVector initial = {leading_value, sourced_value};
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}, B61nContourNumber{0, 0}},
+        {B61nContourNumber{1, 0}, B61nContourNumber{0, 0}},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  options.steps_per_segment = 16;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 3;
+  options.refinement_error_tolerance = B61nContourFloat("1e-34");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-34");
+  options.matrix_fingerprint =
+      "synthetic-b61n-regular-taylor-r0-coupled-frobenius-wire-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n coupled-row Frobenius endpoint wire test";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(initial, waypoints, evaluator, options);
+
+  Expect(result.success,
+         "b61n coupled Frobenius endpoint wire should succeed after live ODE "
+         "propagation: " +
+             result.diagnostics.summary);
+  Expect(result.diagnostics.ode_propagation_applied,
+         "b61n coupled Frobenius endpoint wire should execute ODE propagation "
+         "before endpoint matching");
+  Expect(!result.diagnostics.scalar_frobenius_endpoint_patch_applied,
+         "b61n coupled Frobenius endpoint wire must not reuse the scalar path");
+  Expect(result.diagnostics.coupled_frobenius_endpoint_matcher_applied,
+         "b61n coupled Frobenius endpoint wire should mark the vector matcher");
+  Expect(result.diagnostics.endpoint_extraction_applied,
+         "b61n coupled Frobenius endpoint wire should publish endpoint extraction");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n coupled Frobenius endpoint wire should leave packet-level full "
+         "eta-zero contour promotion to the solve-series publisher");
+  Expect(result.endpoint_values.size() == 2,
+         "b61n coupled Frobenius endpoint wire should publish both rows");
+  const B61nContourNumber expected_sourced =
+      sourced_value + leading_value * B61nContourNumber{0, 1};
+  ExpectB61nContourClose(result.endpoint_values[0],
+                         leading_value,
+                         B61nContourFloat("1e-40"),
+                         "b61n coupled Frobenius endpoint should preserve the "
+                         "regular leading row");
+  ExpectB61nContourClose(result.endpoint_values[1],
+                         expected_sourced,
+                         B61nContourFloat("1e-30"),
+                         "b61n coupled Frobenius endpoint should recover the "
+                         "inhomogeneous row at eta=0");
+  ExpectContains(result.diagnostics.transport_scope,
+                 "coupled-frobenius-endpoint-matcher",
+                 "b61n coupled Frobenius endpoint wire should label the matcher");
+  ExpectContains(result.diagnostics.summary,
+                 "leading_coefficient_source=canonical-triangular-indicial-null-vector",
+                 "b61n coupled Frobenius endpoint wire should document the canonical "
+                 "indicial null vectors");
+}
+
 amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions(
     const std::string& endpoint_integral_id = "box[1,0,1,0]") {
   amflow::ComplexContourPropagationOptions options;
@@ -6267,6 +6334,7 @@ int main() {
     B61nScalarFrobeniusPatchRejectsNonScalarMatrixTest();
     B61nComplexContourPropagatorExtractsRegularTaylorR0SingleRowEndpointTest();
     B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest();
+    B61nComplexContourPropagatorUsesCoupledFrobeniusEndpointMatcherAfterOdeTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointVariantTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();

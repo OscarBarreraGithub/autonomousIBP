@@ -313,6 +313,12 @@ ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
     const std::string& epsilon_sample,
     int max_power = 12);
 
+std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>
+ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::string& epsilon_sample);
+
 std::vector<LightlikeGaugeLinkTargetReductionTerm>
 ParseLightlikeGaugeLinkTargetReductionRaw(
     const std::string& reduction_raw,

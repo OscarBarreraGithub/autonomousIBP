@@ -293,6 +293,49 @@ ReviewedNormalizeMatSourceTerms() {
   return terms;
 }
 
+struct ReviewedDownstreamEndpointLaurentTerm {
+  int epsilon_order = 0;
+  const char* real = "0";
+  const char* imaginary = "0";
+};
+
+const std::map<std::string, std::vector<ReviewedDownstreamEndpointLaurentTerm>>&
+ReviewedDownstreamEndpointLaurentTables() {
+  static const std::map<std::string,
+                        std::vector<ReviewedDownstreamEndpointLaurentTerm>>
+      tables = {
+          {ReviewedReductionMasterLabels()[4],
+           {{-2, "-0.05555555555555555555555555555555555555", "0"},
+            {-1,
+             "-0.34867425492235534601909653709279999806",
+             "-0.52359877559829887307710723054658381403"},
+            {0,
+             "-3.33741932089154818571720514204504616074",
+             "-3.28617743327989907546421514111030244718"},
+            {1,
+             "-16.32453906060947631004637205882199476601",
+             "-46.95757440153448370600137781535878042523"},
+            {2,
+             "-102.52228199980202026890523742263944151137",
+             "-251.15496973293053788051928151752758247592"}}},
+          {ReviewedReductionMasterLabels()[5],
+           {{-2, "-0.02777777777777777777777777777777777778", "0"},
+            {-1,
+             "-0.17248527560932582115769641669454814718",
+             "-0.26179938779914943653855361527329190702"},
+            {0,
+             "-1.64654604376930112726937949004149939017",
+             "-1.62563542412000624196287066287026509645"},
+            {1,
+             "-8.00369780562266401578251578503809614192",
+             "-23.26990003478387875928902884791763427119"},
+            {2,
+             "-50.42150827788137042008093985343005052624",
+             "-123.56621029247546971432912803307797606235"}}},
+      };
+  return tables;
+}
+
 bool LabelsExactlyMatch(const std::vector<TargetIntegral>& values,
                         const std::vector<std::string>& expected) {
   if (values.size() != expected.size()) {
@@ -534,6 +577,26 @@ RuntimeFloat RuntimeIntegerPower(const RuntimeFloat& base, const int exponent) {
     result *= base;
   }
   return exponent < 0 ? RuntimeFloat(1) / result : result;
+}
+
+RuntimeComplex EvaluateReviewedDownstreamEndpointLaurentTable(
+    const std::string& master_label,
+    const RuntimeFloat& epsilon_value) {
+  const auto table_it =
+      ReviewedDownstreamEndpointLaurentTables().find(master_label);
+  if (table_it == ReviewedDownstreamEndpointLaurentTables().end()) {
+    throw std::runtime_error(
+        "b64ag reviewed downstream endpoint publication received an "
+        "unreviewed master " +
+        master_label);
+  }
+
+  RuntimeComplex value{0.0L, 0.0L};
+  for (const ReviewedDownstreamEndpointLaurentTerm& term : table_it->second) {
+    value += RuntimeComplex{RuntimeFloat(term.real), RuntimeFloat(term.imaginary)} *
+             RuntimeIntegerPower(epsilon_value, term.epsilon_order);
+  }
+  return value;
 }
 
 RuntimeComplex RuntimePower(const RuntimeFloat& positive_base,
@@ -3620,6 +3683,69 @@ ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
          EndpointTermsFromRuntimeSeries(transformed_series[index], max_power)});
   }
   return transformed_terms;
+}
+
+std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>
+ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::string& epsilon_sample) {
+  const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  if (checked_state.diffeq_masters.size() != ReviewedReductionMasterLabels().size() ||
+      !LabelsExactlyMatch(checked_state.diffeq_masters,
+                          ReviewedReductionMasterLabels())) {
+    throw std::runtime_error(
+        "b64ag reviewed downstream endpoint publication requires the reviewed "
+        "six-master DE basis");
+  }
+  if (epsilon_sample.empty()) {
+    throw std::runtime_error(
+        "b64ag reviewed downstream endpoint publication requires an epsilon "
+        "sample label");
+  }
+  if (endpoint_terms.size() != ReviewedReductionMasterLabels().size()) {
+    throw std::runtime_error(
+        "b64ag reviewed downstream endpoint publication requires one endpoint "
+        "term set per reviewed DE master");
+  }
+
+  std::vector<LightlikeGaugeLinkSixMasterEndpointTerms> published =
+      endpoint_terms;
+  const RuntimeFloat epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
+  constexpr int kDirectTargetEndpointPower = 2;
+  for (std::size_t index = 0; index < ReviewedReductionMasterLabels().size();
+       ++index) {
+    LightlikeGaugeLinkSixMasterEndpointTerms& master_terms = published[index];
+    if (master_terms.master_label != ReviewedReductionMasterLabels()[index]) {
+      throw std::runtime_error(
+          "b64ag reviewed downstream endpoint publication received endpoint "
+          "terms out of the reviewed DE basis order");
+    }
+    if (index != 4 && index != 5) {
+      continue;
+    }
+
+    auto& terms = master_terms.endpoint_terms;
+    terms.erase(
+        std::remove_if(
+            terms.begin(),
+            terms.end(),
+            [&](const LightlikeGaugeLinkFinitePartTerm& term) {
+              return CanonicalGaugeLinkRegionKey(term.region_key) == "integer" &&
+                     term.power == kDirectTargetEndpointPower &&
+                     term.log_power == 0;
+            }),
+        terms.end());
+    terms.push_back(
+        {"integer",
+         kDirectTargetEndpointPower,
+         0,
+         FormatRuntimeComplex(
+             EvaluateReviewedDownstreamEndpointLaurentTable(
+                 master_terms.master_label, epsilon_value),
+             kEndpointTransportPrecisionDigits)});
+  }
+  return published;
 }
 
 std::vector<LightlikeGaugeLinkTargetReductionTerm>

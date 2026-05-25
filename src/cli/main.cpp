@@ -10366,11 +10366,17 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
               state,
               sample_terms.endpoint_terms,
               sample_terms.epsilon_sample);
+      normalizemat_endpoint_terms =
+          amflow::ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication(
+              state,
+              normalizemat_endpoint_terms,
+              sample_terms.epsilon_sample);
     } catch (const std::exception& error) {
       return fail_after_transport(
           "normalizemat_transform_failed",
           "b64ag full endpoint packet failed DESolver NormalizeMat ToPS[T] "
-          "endpoint basis transform after transport at epsilon " +
+          "endpoint basis transform or reviewed fifth/sixth downstream endpoint "
+          "publication after transport at epsilon " +
               sample_terms.epsilon_sample + ": " + error.what());
     }
 
@@ -10533,10 +10539,11 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
 
   diagnostics.summary =
       transport.summary +
-      " Applied DESolver NormalizeMat ToPS[T] endpoint basis transform, retained "
-      "target reduction, D4,D5 affected-power normalization, PickZeroRuleS-compatible "
-      "finite-part extraction, and post-endpoint Laurent fitting with the reviewed "
-      "AMFlow golden leading-order envelope as the fit floor for " +
+      " Applied DESolver NormalizeMat ToPS[T] endpoint basis transform, reviewed "
+      "fifth/sixth downstream endpoint publication, retained target reduction, "
+      "D4,D5 affected-power normalization, PickZeroRuleS-compatible finite-part "
+      "extraction, and post-endpoint Laurent fitting with the reviewed AMFlow "
+      "golden leading-order envelope as the fit floor for " +
       std::to_string(direct_spec.targets.size()) +
       " retained b64ag target(s) across " +
       std::to_string(transport.epsilon_endpoint_terms.size()) +

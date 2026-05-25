@@ -2856,6 +2856,19 @@ B64agTestBigFloat B64agParseRational(const std::string& raw_value) {
   return B64agTestBigFloat(raw_value);
 }
 
+B64agTestBigFloat B64agIntegerPower(const B64agTestBigFloat& base,
+                                    const int exponent) {
+  if (exponent == 0) {
+    return B64agTestBigFloat(1);
+  }
+  B64agTestBigFloat result = 1;
+  const int magnitude = exponent < 0 ? -exponent : exponent;
+  for (int index = 0; index < magnitude; ++index) {
+    result *= base;
+  }
+  return exponent < 0 ? B64agTestBigFloat(1) / result : result;
+}
+
 struct B64agFirstBlockBasisValue {
   B64agTestBigFloat y = 0;
   B64agTestBigFloat w = 0;
@@ -3029,6 +3042,55 @@ B64agTestBigComplex B64agEndpointCoefficient(
   }
   return {B64agTestBigFloat(without_i.substr(0, split)),
           B64agTestBigFloat(without_i.substr(split))};
+}
+
+B64agTestBigComplex B64agReviewedDownstreamEndpointSampleValue(
+    const std::string& master_label,
+    const std::string& epsilon_sample) {
+  const B64agTestBigFloat epsilon_value = B64agParseRational(epsilon_sample);
+  B64agTestBigComplex value{0, 0};
+  const auto add = [&](const int order,
+                       const std::string& real,
+                       const std::string& imaginary) {
+    value += B64agTestBigComplex{B64agTestBigFloat(real),
+                                 B64agTestBigFloat(imaginary)} *
+             B64agIntegerPower(epsilon_value, order);
+  };
+
+  if (master_label == "gauge[1,1,1,1,1,0,0,0,0]") {
+    add(-2, "-0.05555555555555555555555555555555555555", "0");
+    add(-1,
+        "-0.34867425492235534601909653709279999806",
+        "-0.52359877559829887307710723054658381403");
+    add(0,
+        "-3.33741932089154818571720514204504616074",
+        "-3.28617743327989907546421514111030244718");
+    add(1,
+        "-16.32453906060947631004637205882199476601",
+        "-46.95757440153448370600137781535878042523");
+    add(2,
+        "-102.52228199980202026890523742263944151137",
+        "-251.15496973293053788051928151752758247592");
+    return value;
+  }
+  if (master_label == "gauge[1,1,1,1,1,-1,0,0,0]") {
+    add(-2, "-0.02777777777777777777777777777777777778", "0");
+    add(-1,
+        "-0.17248527560932582115769641669454814718",
+        "-0.26179938779914943653855361527329190702");
+    add(0,
+        "-1.64654604376930112726937949004149939017",
+        "-1.62563542412000624196287066287026509645");
+    add(1,
+        "-8.00369780562266401578251578503809614192",
+        "-23.26990003478387875928902884791763427119");
+    add(2,
+        "-50.42150827788137042008093985343005052624",
+        "-123.56621029247546971432912803307797606235");
+    return value;
+  }
+  throw std::runtime_error(
+      "missing reviewed b64ag downstream endpoint sample table");
 }
 
 const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm&
@@ -3433,6 +3495,109 @@ void B64agGaugeLinkNormalizeMatEndpointTransformAppliesReviewedSourceTermsTest()
              transformed[1].endpoint_terms.empty(),
          "b64ag NormalizeMat endpoint transform should not synthesize rows outside "
          "the reviewed ToPS[T] support for a single third-column source");
+}
+
+void B64agGaugeLinkReviewedDownstreamEndpointPublicationFeedsDirectRowsTest() {
+  const amflow::LightlikeGaugeLinkRuntimeState state =
+      MakeB64agGaugeLinkRuntimeState();
+  const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
+  const std::vector<amflow::MasterIntegral> masters =
+      B64agReviewedReductionMasters();
+  const std::string epsilon_sample = "101/208000";
+
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms;
+  endpoint_terms.reserve(masters.size());
+  for (std::size_t index = 0; index < masters.size(); ++index) {
+    std::vector<amflow::LightlikeGaugeLinkFinitePartTerm> terms;
+    terms.push_back(B64agEndpointFixtureTerm(0, "1"));
+    if (index == 4 || index == 5) {
+      terms.push_back(B64agEndpointFixtureTerm(2, "999999"));
+    }
+    endpoint_terms.push_back({B64agMasterLabel(masters[index]), std::move(terms)});
+  }
+
+  const std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> published =
+      amflow::ApplyLightlikeGaugeLinkReviewedDownstreamEndpointPublication(
+          state, endpoint_terms, epsilon_sample);
+
+  const B64agTestBigComplex fifth_expected =
+      B64agReviewedDownstreamEndpointSampleValue(B64agMasterLabel(masters[4]),
+                                                 epsilon_sample);
+  const B64agTestBigComplex sixth_expected =
+      B64agReviewedDownstreamEndpointSampleValue(B64agMasterLabel(masters[5]),
+                                                 epsilon_sample);
+  const amflow::LightlikeGaugeLinkFinitePartTerm& fifth_direct_term =
+      B64agFindEndpointTerm(published[4], "integer", 2, 0);
+  const amflow::LightlikeGaugeLinkFinitePartTerm& sixth_direct_term =
+      B64agFindEndpointTerm(published[5], "integer", 2, 0);
+  Expect(fifth_direct_term.coefficient.find("999999") == std::string::npos &&
+             sixth_direct_term.coefficient.find("999999") == std::string::npos,
+         "b64ag reviewed downstream endpoint publication should replace stale "
+         "direct fifth/sixth endpoint rows");
+  ExpectB64agRelativeClose(B64agEndpointCoefficient(fifth_direct_term.coefficient),
+                           fifth_expected,
+                           B64agTestBigFloat("1e-55"),
+                           "b64ag reviewed downstream endpoint publication should "
+                           "feed the fifth direct row from selected-master data");
+  ExpectB64agRelativeClose(B64agEndpointCoefficient(sixth_direct_term.coefficient),
+                           sixth_expected,
+                           B64agTestBigFloat("1e-55"),
+                           "b64ag reviewed downstream endpoint publication should "
+                           "feed the sixth direct row from selected-master data");
+
+  std::vector<amflow::LightlikeGaugeLinkTargetReductionTerm> direct_reduction;
+  direct_reduction.reserve(targets.size());
+  for (std::size_t target_index = 0; target_index < targets.size(); ++target_index) {
+    if (target_index == 7) {
+      direct_reduction.push_back(
+          B64agReductionFixtureTerm(targets[target_index], masters[4], -2, "1"));
+    } else if (target_index == 0 || target_index == 8) {
+      direct_reduction.push_back(
+          B64agReductionFixtureTerm(targets[target_index], masters[5], -2, "1"));
+    } else {
+      direct_reduction.push_back(
+          B64agReductionFixtureTerm(targets[target_index], masters[0], 0, "1"));
+    }
+  }
+
+  const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =
+      amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+          targets, published, direct_reduction);
+
+  Expect(reduced.success,
+         "b64ag reviewed downstream endpoint publication should feed direct "
+         "retained rows: " +
+             reduced.summary);
+  Expect(reduced.failures.empty(),
+         "b64ag reviewed downstream endpoint publication should not create "
+         "direct-row reduction failures");
+  Expect(reduced.targets.size() == targets.size(),
+         "b64ag reviewed downstream endpoint publication should evaluate the "
+         "direct fifth/sixth/D7 rows");
+  Expect(!reduced.retained_solution_samples_used,
+         "b64ag reviewed downstream endpoint publication must not read retained "
+         "final solution samples");
+  Expect(!reduced.full_eta_zero_contour_applied,
+         "b64ag reviewed downstream endpoint publication must not promote full "
+         "eta=0 contour");
+  ExpectB64agRelativeClose(
+      B64agEndpointCoefficient(reduced.targets[7].finite_part_coefficient),
+      fifth_expected,
+      B64agTestBigFloat("1e-55"),
+      "b64ag reviewed downstream endpoint publication should publish the fifth "
+      "direct retained row");
+  ExpectB64agRelativeClose(
+      B64agEndpointCoefficient(reduced.targets[8].finite_part_coefficient),
+      sixth_expected,
+      B64agTestBigFloat("1e-55"),
+      "b64ag reviewed downstream endpoint publication should publish the sixth "
+      "direct retained row");
+  ExpectB64agRelativeClose(
+      B64agEndpointCoefficient(reduced.targets[0].finite_part_coefficient),
+      sixth_expected,
+      B64agTestBigFloat("1e-55"),
+      "b64ag reviewed downstream endpoint publication should publish the D7 "
+      "alias from the sixth master");
 }
 
 void B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest() {
@@ -6928,6 +7093,7 @@ int main() {
     B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest();
     B64agGaugeLinkNormalizeMatSourceFormPublishesReviewedSupportTest();
     B64agGaugeLinkNormalizeMatEndpointTransformAppliesReviewedSourceTermsTest();
+    B64agGaugeLinkReviewedDownstreamEndpointPublicationFeedsDirectRowsTest();
     B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest();
     B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest();
     B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();

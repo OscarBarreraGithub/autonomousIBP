@@ -49924,6 +49924,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "full stripped b64ag packet should document the reviewed NormalizeMat "
                  "publication-basis transform");
   ExpectContains(full_stripped_json,
+                 "reviewed fifth/sixth downstream endpoint publication",
+                 "full stripped b64ag packet should document the reviewed downstream "
+                 "master endpoint publication");
+  ExpectContains(full_stripped_json,
                  "frobenius_recurrence_applied=true",
                  "full stripped b64ag packet should expose the reviewed Frobenius "
                  "recurrence runtime handoff");
@@ -49969,10 +49973,9 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"compared_coefficient_count\": 39",
                  "full stripped b64ag comparison should compare the eps^2 golden envelope");
   ExpectContains(full_compare_json,
-                 "\"passed_coefficient_count\": 14",
-                 "full stripped b64ag comparison should pass the regular first-block "
-                 "coefficients plus the exact-zero second-block rows while preserving "
-                 "the remaining downstream digit gap");
+                 "\"passed_coefficient_count\": 26",
+                 "full stripped b64ag comparison should advance the direct fifth/sixth "
+                 "rows while preserving the remaining mixed downstream D8/D9 digit gap");
   ExpectContains(full_compare_json,
                  "\"minimum_digit_agreement\": 0",
                  "full stripped b64ag comparison should expose the current AMFlow mismatch");

@@ -262,6 +262,25 @@ struct LightlikeGaugeLinkSelectedCoefficientAudit {
   std::string summary;
 };
 
+struct LightlikeGaugeLinkNormalizeMatSourceTerm {
+  std::size_t row = 0;
+  std::size_t column = 0;
+  std::size_t coefficient_index = 0;
+  int gaugex_power = 0;
+  std::string coefficient_source;
+};
+
+struct LightlikeGaugeLinkNormalizeMatSourceFormAudit {
+  bool success = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  std::string runtime_application;
+  std::string desolver_operation;
+  std::vector<std::vector<std::size_t>> blocks;
+  std::vector<LightlikeGaugeLinkNormalizeMatSourceTerm> source_terms;
+  std::string summary;
+};
+
 bool IsLightlikeGaugeLinkEtaZeroRuntimeState(
     const LightlikeGaugeLinkRuntimeState& state);
 
@@ -333,5 +352,13 @@ LightlikeGaugeLinkTransportAudit BuildLightlikeGaugeLinkTransportScaffold(
 LightlikeGaugeLinkSelectedCoefficientAudit
 BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
     const LightlikeGaugeLinkRuntimeState& state);
+
+LightlikeGaugeLinkNormalizeMatSourceFormAudit
+BuildLightlikeGaugeLinkNormalizeMatSourceFormAudit(
+    const LightlikeGaugeLinkRuntimeState& state);
+
+std::string EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient(
+    const LightlikeGaugeLinkNormalizeMatSourceTerm& term,
+    const std::string& epsilon_sample);
 
 }  // namespace amflow

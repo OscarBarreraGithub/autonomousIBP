@@ -3031,6 +3031,24 @@ B64agTestBigComplex B64agEndpointCoefficient(
           B64agTestBigFloat(without_i.substr(split))};
 }
 
+const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm&
+B64agFindNormalizeMatSourceTerm(
+    const amflow::LightlikeGaugeLinkNormalizeMatSourceFormAudit& audit,
+    const std::size_t row,
+    const std::size_t column,
+    const std::size_t coefficient_index,
+    const int gaugex_power) {
+  for (const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm& term :
+       audit.source_terms) {
+    if (term.row == row && term.column == column &&
+        term.coefficient_index == coefficient_index &&
+        term.gaugex_power == gaugex_power) {
+      return term;
+    }
+  }
+  throw std::runtime_error("missing b64ag NormalizeMat source term");
+}
+
 B64agTestBigFloat B64agEndpointRegionExponent(
     const std::string& region_key) {
   return region_key == "integer" ? B64agTestBigFloat(0)
@@ -3286,6 +3304,73 @@ void B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest() {
   ExpectContains(audit.coefficient_gap,
                  "Live gauge-link endpoint coefficients are not implemented",
                  "b64ag scaffold should explicitly report the remaining coefficient gap");
+}
+
+void B64agGaugeLinkNormalizeMatSourceFormPublishesReviewedSupportTest() {
+  const amflow::LightlikeGaugeLinkRuntimeState state =
+      MakeB64agGaugeLinkRuntimeState();
+
+  const amflow::LightlikeGaugeLinkNormalizeMatSourceFormAudit audit =
+      amflow::BuildLightlikeGaugeLinkNormalizeMatSourceFormAudit(state);
+
+  Expect(audit.success,
+         "b64ag NormalizeMat source-form audit should succeed on the reviewed state");
+  Expect(!audit.retained_solution_samples_used,
+         "b64ag NormalizeMat source-form audit must not read retained solutions");
+  Expect(!audit.full_eta_zero_contour_applied,
+         "b64ag NormalizeMat source-form audit must not promote full contour");
+  Expect(audit.blocks ==
+             std::vector<std::vector<std::size_t>>({{1, 2}, {3, 4}, {5, 6}}),
+         "b64ag NormalizeMat source-form audit should preserve DESolver blocks");
+  Expect(audit.source_terms.size() == 60,
+         "b64ag NormalizeMat source-form audit should publish the reviewed ToPS[T] "
+         "support");
+
+  const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm& diagonal =
+      B64agFindNormalizeMatSourceTerm(audit, 1, 1, 0, 1);
+  Expect(diagonal.coefficient_source == "6/5",
+         "b64ag NormalizeMat source form should keep exact constant entries");
+  const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm& downstream =
+      B64agFindNormalizeMatSourceTerm(audit, 5, 3, 0, 0);
+  ExpectContains(downstream.coefficient_source,
+                 "eps",
+                 "b64ag NormalizeMat source form should keep epsilon-rational "
+                 "coefficients instead of first-sample numbers");
+  const amflow::LightlikeGaugeLinkNormalizeMatSourceTerm& downstream_companion =
+      B64agFindNormalizeMatSourceTerm(audit, 6, 3, 1, 0);
+
+  const B64agTestBigComplex diagonal_value = B64agEndpointCoefficient(
+      amflow::EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient(
+          diagonal, "101/208000"));
+  ExpectB64agRelativeClose(diagonal_value.real(),
+                           B64agTestBigFloat(6) / B64agTestBigFloat(5),
+                           B64agTestBigFloat("1e-65"),
+                           "b64ag NormalizeMat diagonal source coefficient "
+                           "should evaluate at the retained first epsilon sample");
+  const B64agTestBigComplex downstream_value = B64agEndpointCoefficient(
+      amflow::EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient(
+          downstream, "101/208000"));
+  ExpectB64agRelativeClose(
+      downstream_value.real(),
+      B64agTestBigFloat("623697") / B64agTestBigFloat("155899"),
+      B64agTestBigFloat("1e-65"),
+      "b64ag NormalizeMat downstream source coefficient should reproduce the "
+      "DESolver first-sample source-form value");
+  const B64agTestBigComplex companion_value = B64agEndpointCoefficient(
+      amflow::EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient(
+          downstream_companion, "101/208000"));
+  ExpectB64agRelativeClose(
+      companion_value.real(),
+      B64agTestBigFloat("64843490201") / B64agTestBigFloat("32395500402"),
+      B64agTestBigFloat("1e-65"),
+      "b64ag NormalizeMat companion source coefficient should reproduce the "
+      "DESolver first-sample source-form value");
+  ExpectContains(audit.summary,
+                 "DESolver NormalizeMat source form",
+                 "b64ag NormalizeMat source-form audit should identify its source");
+  ExpectContains(audit.summary,
+                 "full_eta_zero_contour_applied=false",
+                 "b64ag NormalizeMat source-form audit should keep M6 false");
 }
 
 void B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest() {
@@ -6779,6 +6864,7 @@ int main() {
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedDenominatorTest();
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest();
     B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest();
+    B64agGaugeLinkNormalizeMatSourceFormPublishesReviewedSupportTest();
     B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest();
     B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest();
     B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();

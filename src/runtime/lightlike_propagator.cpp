@@ -180,6 +180,119 @@ const std::vector<std::string>& ReviewedReductionMasterLabels() {
   return labels;
 }
 
+const std::vector<LightlikeGaugeLinkNormalizeMatSourceTerm>&
+ReviewedNormalizeMatSourceTerms() {
+  static const std::vector<LightlikeGaugeLinkNormalizeMatSourceTerm> terms = {
+      {1, 1, 0, 1, "6/5"},
+      {1, 2, 0, -4,
+       "-9*(6*eps - 5)^2*(6*eps - 1)/(10*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {1, 2, 1, -4,
+       "9*(6*eps - 5)^2*(6*eps - 1)/(10*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {1, 2, 2, -4,
+       "-3*(6*eps - 5)*(6*eps - 1)*(11*eps - 9)/(5*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {1, 2, 3, -4,
+       "9*(5*eps - 4)*(6*eps - 5)*(6*eps - 1)/(5*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {1, 2, 4, -4,
+       "-6*(394*eps^3 - 701*eps^2 + 361*eps - 42)/(5*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {1, 2, 5, -4, "6/5"},
+      {2, 1, 0, 0, "1"},
+      {2, 2, 0, -6,
+       "-3*(6*eps - 5)^3*(6*eps - 1)/(80*(eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {2, 2, 1, -6,
+       "-3*(6*eps - 5)^2*(6*eps - 1)/(4*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {2, 2, 2, -6,
+       "3*(6*eps - 5)^2*(6*eps - 1)/(4*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {2, 2, 3, -6,
+       "-(6*eps - 5)*(6*eps - 1)*(11*eps - 9)/(2*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {2, 2, 4, -6,
+       "3*(5*eps - 4)*(6*eps - 5)*(6*eps - 1)/(2*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {2, 2, 5, -6,
+       "-(394*eps^3 - 701*eps^2 + 361*eps - 42)/(602*eps^3 - 1057*eps^2 + 535*eps - 60)"},
+      {2, 2, 6, -6, "1"},
+      {3, 3, 0, -1, "-2"},
+      {3, 4, 0, -4,
+       "2*(4*eps - 3)^3*(4*eps - 1)/(9*eps*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {3, 4, 1, -4,
+       "-2*(4*eps - 3)^2*(4*eps - 1)/(3*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {3, 4, 2, -4,
+       "4*(4*eps - 3)*(24*eps^2 - 13*eps + 3)/(9*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {3, 4, 3, -4, "-2"},
+      {4, 3, 0, -3, "1"},
+      {4, 4, 0, -6,
+       "-(2*eps - 3)*(4*eps - 3)^3*(4*eps - 1)/(54*eps*(eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {4, 4, 1, -6,
+       "(4*eps - 3)^2*(4*eps - 1)/(3*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {4, 4, 2, -6,
+       "-2*(4*eps - 3)*(24*eps^2 - 13*eps + 3)/(9*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {4, 4, 3, -6, "1"},
+      {5, 2, 0, -2,
+       "-9*(4*eps - 3)*(6*eps - 5)^2*(6*eps - 1)/(5*(2*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {5, 2, 1, -2,
+       "-6*(6*eps - 5)^2*(6*eps - 1)*(61*eps^2 - 82*eps + 27)/(5*(2*eps - 1)*(4*eps - 3)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {5, 2, 2, -2,
+       "6*(6*eps - 5)*(6*eps - 1)*(104*eps^2 - 101*eps + 12)/(5*(2*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {5, 2, 3, -2,
+       "-6*(6*eps - 5)*(177724*eps^6 - 558604*eps^5 + 689179*eps^4 - 420882*eps^3 + 131951*eps^2 - 19884*eps + 1116)/(5*(2*eps - 1)*(4*eps - 3)^2*(4*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {5, 3, 0, 0, "12*(eps - 1)/(4*eps - 3)"},
+      {5, 3, 1, 0,
+       "4*(eps - 1)*(2*eps - 3)/((2*eps - 1)*(4*eps - 3))"},
+      {5, 4, 0, -2,
+       "-8*(eps - 1)*(4*eps - 3)^3*(4*eps - 1)/(9*eps*(2*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {5, 4, 1, -2,
+       "-8*(176*eps^5 - 758*eps^4 + 1125*eps^3 - 771*eps^2 + 243*eps - 27)/(9*eps*(2*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {5, 4, 2, -2,
+       "-4*(2664*eps^6 - 8662*eps^5 + 12721*eps^4 - 10800*eps^3 + 5499*eps^2 - 1512*eps + 162)/(9*eps*(2*eps - 1)*(4*eps - 3)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {5, 4, 3, -2,
+       "4*(34176*eps^7 - 80380*eps^6 + 61492*eps^5 - 5259*eps^4 - 16980*eps^3 + 9513*eps^2 - 2052*eps + 162)/(9*eps*(2*eps - 1)*(4*eps - 3)*(4*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {5, 5, 0, 2, "2"},
+      {5, 6, 0, -1,
+       "2*(4*eps - 3)*(4*eps - 1)/(33*eps^2 - 14*eps + 3)"},
+      {5, 6, 1, -1,
+       "2*(4*eps - 3)*(4*eps - 1)/(33*eps^2 - 14*eps + 3)"},
+      {5, 6, 2, -1,
+       "2*(3*eps^2 - 14*eps + 3)/(33*eps^2 - 14*eps + 3)"},
+      {5, 6, 3, -1, "2"},
+      {6, 2, 0, -4,
+       "3*(6*eps - 5)^3*(6*eps - 1)/(20*(eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 2, 1, -4,
+       "-3*(6*eps - 5)^2*(6*eps - 1)*(26*eps^2 - 37*eps + 13)/(10*(eps - 1)*(2*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 2, 2, -4,
+       "-9*(4*eps - 3)*(6*eps - 5)^2*(6*eps - 1)/(10*(2*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 2, 3, -4,
+       "-3*(6*eps - 5)^2*(6*eps - 1)*(61*eps^2 - 82*eps + 27)/(5*(2*eps - 1)*(4*eps - 3)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 2, 4, -4,
+       "3*(6*eps - 5)*(6*eps - 1)*(104*eps^2 - 101*eps + 12)/(5*(2*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 2, 5, -4,
+       "-3*(6*eps - 5)*(177724*eps^6 - 558604*eps^5 + 689179*eps^4 - 420882*eps^3 + 131951*eps^2 - 19884*eps + 1116)/(5*(2*eps - 1)*(4*eps - 3)^2*(4*eps - 1)*(602*eps^3 - 1057*eps^2 + 535*eps - 60))"},
+      {6, 3, 0, 0, "6*(eps - 1)/(4*eps - 3)"},
+      {6, 3, 1, 0,
+       "2*(eps - 1)*(2*eps - 3)/((2*eps - 1)*(4*eps - 3))"},
+      {6, 4, 0, -4,
+       "(2*eps - 3)*(4*eps - 3)^3*(4*eps - 1)/(27*eps*(eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 4, 1, -4,
+       "-2*(4*eps - 3)^2*(4*eps - 1)*(34*eps^3 - 87*eps^2 + 69*eps - 18)/(27*eps*(eps - 1)*(2*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 4, 2, -4,
+       "-4*(eps - 1)*(4*eps - 3)^3*(4*eps - 1)/(9*eps*(2*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 4, 3, -4,
+       "-4*(176*eps^5 - 758*eps^4 + 1125*eps^3 - 771*eps^2 + 243*eps - 27)/(9*eps*(2*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 4, 4, -4,
+       "-2*(2664*eps^6 - 8662*eps^5 + 12721*eps^4 - 10800*eps^3 + 5499*eps^2 - 1512*eps + 162)/(9*eps*(2*eps - 1)*(4*eps - 3)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 4, 5, -4,
+       "2*(34176*eps^7 - 80380*eps^6 + 61492*eps^5 - 5259*eps^4 - 16980*eps^3 + 9513*eps^2 - 2052*eps + 162)/(9*eps*(2*eps - 1)*(4*eps - 3)*(4*eps - 1)*(36*eps^3 - 49*eps^2 + 29*eps - 6))"},
+      {6, 5, 0, 2, "1"},
+      {6, 6, 0, -2,
+       "(4*eps - 3)^2*(4*eps - 1)/(3*(eps - 1)*(33*eps^2 - 14*eps + 3))"},
+      {6, 6, 1, -2,
+       "(4*eps - 3)*(4*eps - 1)/(33*eps^2 - 14*eps + 3)"},
+      {6, 6, 2, -2,
+       "(4*eps - 3)*(4*eps - 1)/(33*eps^2 - 14*eps + 3)"},
+      {6, 6, 3, -2,
+       "(3*eps^2 - 14*eps + 3)/(33*eps^2 - 14*eps + 3)"},
+      {6, 6, 4, -2, "1"},
+  };
+  return terms;
+}
+
 bool LabelsExactlyMatch(const std::vector<TargetIntegral>& values,
                         const std::vector<std::string>& expected) {
   if (values.size() != expected.size()) {
@@ -4486,6 +4599,70 @@ BuildLightlikeGaugeLinkFirstEndpointCoefficientAudit(
         scaffold.minimum_nonendpoint_pole_distance_to_contour + ".";
   }
   return audit;
+}
+
+LightlikeGaugeLinkNormalizeMatSourceFormAudit
+BuildLightlikeGaugeLinkNormalizeMatSourceFormAudit(
+    const LightlikeGaugeLinkRuntimeState& state) {
+  const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  if (checked_state.diffeq_masters.size() != ReviewedReductionMasterLabels().size() ||
+      !LabelsExactlyMatch(checked_state.diffeq_masters,
+                          ReviewedReductionMasterLabels())) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat source-form audit requires the reviewed six-master DE basis");
+  }
+  const auto diffeq_raw_it = checked_state.boundary_file_raws.find("diffeq");
+  if (diffeq_raw_it == checked_state.boundary_file_raws.end() ||
+      diffeq_raw_it->second.empty()) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat source-form audit requires the retained diffeq raw input");
+  }
+  const std::vector<std::vector<std::string>> diffeq_matrix =
+      ParseLightlikeGaugeLinkDiffeqMatrixRaw(diffeq_raw_it->second);
+  if (diffeq_matrix.size() != ReviewedReductionMasterLabels().size() ||
+      diffeq_matrix.front().size() != ReviewedReductionMasterLabels().size()) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat source-form audit parsed a DE matrix whose shape "
+        "does not match the reviewed six-master basis");
+  }
+
+  LightlikeGaugeLinkNormalizeMatSourceFormAudit audit;
+  audit.success = true;
+  audit.retained_solution_samples_used = false;
+  audit.full_eta_zero_contour_applied = false;
+  audit.runtime_application =
+      "b64ag-gauge-link-normalizemat-source-form-audit";
+  audit.desolver_operation = "NormalizeMat[de] -> ToPS[T]";
+  audit.blocks = {{1, 2}, {3, 4}, {5, 6}};
+  audit.source_terms = ReviewedNormalizeMatSourceTerms();
+  audit.summary =
+      "Published the reviewed b64ag DESolver NormalizeMat source form for "
+      "ToPS[T] over blocks {{1,2},{3,4},{5,6}} as " +
+      std::to_string(audit.source_terms.size()) +
+      " epsilon-rational gaugex power-series term(s); this is source-form "
+      "metadata only, does not apply the publication transform, does not read "
+      "retained final solution samples, and keeps full_eta_zero_contour_applied=false.";
+  return audit;
+}
+
+std::string EvaluateLightlikeGaugeLinkNormalizeMatSourceCoefficient(
+    const LightlikeGaugeLinkNormalizeMatSourceTerm& term,
+    const std::string& epsilon_sample) {
+  if (term.coefficient_source.empty()) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat source-form coefficient evaluator received an "
+        "empty source expression");
+  }
+  const RuntimeFloat epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
+  const RuntimeRationalPolynomial coefficient =
+      ParseGaugeLinkRationalExpression(term.coefficient_source,
+                                       "gaugex",
+                                       epsilon_value);
+  const RuntimeComplex value =
+      RuntimeRationalValue(coefficient,
+                           RuntimeComplex{0.0L, 0.0L},
+                           term.coefficient_source);
+  return FormatRuntimeComplex(value, kEndpointTransportPrecisionDigits);
 }
 
 }  // namespace amflow

@@ -2874,4 +2874,138 @@ std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
   return out.str();
 }
 
+CutkoskyScopedWeightedResidueEvaluation
+EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+    const ProblemSpec& spec,
+    const std::size_t uncut_denominator_index,
+    const int max_eps_order,
+    const int requested_precision_digits) {
+  CutkoskyScopedWeightedResidueEvaluation evaluation;
+  evaluation.evaluation_attempted = true;
+  evaluation.publication_gate_checked = false;
+  evaluation.live_coefficients_available = false;
+  evaluation.retained_solution_samples_used = false;
+  evaluation.full_eta_zero_contour_applied = false;
+  evaluation.evaluation_scope =
+      "automatic_phasespace single-weight Cutkosky residue candidate";
+  evaluation.coefficient_policy =
+      "publication-gated scoped weighted residue attempt; synthetic moment seeds "
+      "must remain blocked by ValidateCutkoskyResiduePublicationGate";
+
+  const CutkoskyWeightedResidueEvaluationPlan plan =
+      BuildCutkoskyWeightedResidueEvaluationPlan(spec);
+  const std::vector<CutkoskyWeightedResidueMomentSeed> seeds =
+      BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          spec, max_eps_order, requested_precision_digits);
+  evaluation.moment_cross_validation_gate =
+      CrossValidateCutkoskyWeightedResidueMomentSeeds(plan, seeds);
+  evaluation.reviewed_surface =
+      evaluation.moment_cross_validation_gate.reviewed_surface;
+  evaluation.surface_label = plan.surface_label;
+  evaluation.residue_model_kind = plan.residue_model_kind;
+
+  if (!evaluation.moment_cross_validation_gate.passed) {
+    evaluation.failure_code = "master_set_instability";
+    evaluation.publication_gate_status =
+        "blocked-before-publication-gate: moment cross-validation failed";
+    evaluation.summary =
+        "b63n automatic_phasespace scoped weighted residue evaluation stopped before "
+        "publication validation because the weighted residue plan and D2,D4,D6,D7 "
+        "moment seed packet failed cross-validation.";
+    return evaluation;
+  }
+
+  const CutkoskyWeightedResidueMomentSeed* selected_seed = nullptr;
+  for (const CutkoskyWeightedResidueMomentSeed& seed : seeds) {
+    if (seed.selected_weight_denominator_index == uncut_denominator_index) {
+      selected_seed = &seed;
+      break;
+    }
+  }
+  if (selected_seed == nullptr) {
+    throw BoundaryUnsolvedError(
+        "b63n automatic_phasespace scoped weighted residue evaluation requires a "
+        "reviewed uncut weight from D2,D4,D6,D7");
+  }
+
+  evaluation.selected_weight_denominator =
+      selected_seed->selected_weight_denominator;
+  evaluation.selected_weight_denominator_index =
+      selected_seed->selected_weight_denominator_index;
+  evaluation.selected_weight_power = selected_seed->selected_weight_power;
+  evaluation.candidate_series = selected_seed->residue_series;
+  evaluation.eta_zero_selection = selected_seed->eta_zero_selection;
+  evaluation.publication_gate_checked = true;
+
+  try {
+    ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
+    evaluation.publication_gate_passed = true;
+    evaluation.live_coefficients_available = true;
+    evaluation.failure_code.clear();
+    evaluation.publication_gate_status =
+        "passed-publication-gate: scoped weighted residue candidate accepted";
+    evaluation.summary =
+        "b63n automatic_phasespace scoped weighted residue evaluation accepted the " +
+        evaluation.selected_weight_denominator +
+        " candidate through the reviewed publication validator.";
+  } catch (const std::invalid_argument& error) {
+    evaluation.publication_gate_passed = false;
+    evaluation.live_coefficients_available = false;
+    evaluation.failure_code = "boundary_unsolved";
+    evaluation.publication_gate_status =
+        std::string("blocked-by-publication-gate: ") + error.what();
+    evaluation.summary =
+        "b63n automatic_phasespace scoped weighted residue evaluation reached the " +
+        evaluation.selected_weight_denominator +
+        " candidate and the eta-zero selector, then stopped at the publication "
+        "validator. No live coefficient, retained final sample, or full eta=0 "
+        "contour claim is made.";
+  }
+  return evaluation;
+}
+
+std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+    const CutkoskyScopedWeightedResidueEvaluation& evaluation) {
+  std::ostringstream out;
+  out << "kind=b63n-scoped-weighted-residue-evaluation\n";
+  out << "reviewed_surface="
+      << (evaluation.reviewed_surface ? "true" : "false") << "\n";
+  out << "evaluation_attempted="
+      << (evaluation.evaluation_attempted ? "true" : "false") << "\n";
+  out << "surface=" << evaluation.surface_label << "\n";
+  out << "residue_model_kind=" << evaluation.residue_model_kind << "\n";
+  out << "selected_weight=" << evaluation.selected_weight_denominator << "\n";
+  out << "selected_weight_index="
+      << evaluation.selected_weight_denominator_index << "\n";
+  out << "selected_weight_power=" << evaluation.selected_weight_power << "\n";
+  out << "evaluation_scope=" << evaluation.evaluation_scope << "\n";
+  out << "coefficient_policy=" << evaluation.coefficient_policy << "\n";
+  out << "publication_gate_checked="
+      << (evaluation.publication_gate_checked ? "true" : "false") << "\n";
+  out << "publication_gate_passed="
+      << (evaluation.publication_gate_passed ? "true" : "false") << "\n";
+  out << "publication_gate=" << evaluation.publication_gate_status << "\n";
+  out << "failure_code=" << evaluation.failure_code << "\n";
+  out << "live_coefficients_available="
+      << (evaluation.live_coefficients_available ? "true" : "false") << "\n";
+  out << "retained_solution_samples_used="
+      << (evaluation.retained_solution_samples_used ? "true" : "false") << "\n";
+  out << "full_eta_zero_contour_applied="
+      << (evaluation.full_eta_zero_contour_applied ? "true" : "false") << "\n";
+  out << "moment_cross_validation="
+      << (evaluation.moment_cross_validation_gate.passed ? "passed" : "blocked")
+      << "\n";
+  out << "candidate_series_terms=" << evaluation.candidate_series.terms.size()
+      << "\n";
+  out << "eta_zero_selection="
+      << (evaluation.eta_zero_selection.success ? "selected" : "blocked")
+      << "\n";
+  if (!evaluation.eta_zero_selection.selected_coefficient_label.empty()) {
+    out << "eta_zero_label="
+        << evaluation.eta_zero_selection.selected_coefficient_label << "\n";
+  }
+  out << "summary=" << evaluation.summary << "\n";
+  return out.str();
+}
+
 }  // namespace amflow

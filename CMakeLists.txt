@@ -100,5 +100,20 @@ if(BUILD_TESTING)
   add_test(NAME singular-runtime-lane-tests COMMAND singular-runtime-lane-tests)
   set_tests_properties(singular-runtime-lane-tests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  add_dependencies(amflow-tests amflow-cli singular-runtime-lane-tests)
+
+  add_executable(cutkosky-weighted-residue-tests
+    tests/cutkosky_weighted_residue_tests.cpp)
+  target_link_libraries(cutkosky-weighted-residue-tests PRIVATE amflow)
+  target_compile_features(cutkosky-weighted-residue-tests PRIVATE cxx_std_17)
+  amflow_apply_default_warnings(cutkosky-weighted-residue-tests)
+  add_test(
+    NAME cutkosky-weighted-residue-tests
+    COMMAND cutkosky-weighted-residue-tests)
+  set_tests_properties(cutkosky-weighted-residue-tests PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_dependencies(
+    amflow-tests
+    amflow-cli
+    singular-runtime-lane-tests
+    cutkosky-weighted-residue-tests)
 endif()

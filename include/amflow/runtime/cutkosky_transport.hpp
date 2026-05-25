@@ -297,6 +297,29 @@ struct CutkoskyWeightedResidueMomentCrossValidationGate {
   std::string summary;
 };
 
+struct CutkoskyScopedWeightedResidueEvaluation {
+  bool reviewed_surface = false;
+  bool evaluation_attempted = false;
+  bool publication_gate_checked = false;
+  bool publication_gate_passed = false;
+  bool live_coefficients_available = false;
+  bool retained_solution_samples_used = false;
+  bool full_eta_zero_contour_applied = false;
+  std::string surface_label;
+  std::string residue_model_kind;
+  std::string selected_weight_denominator;
+  std::size_t selected_weight_denominator_index = 0;
+  int selected_weight_power = 0;
+  std::string evaluation_scope;
+  std::string coefficient_policy;
+  std::string failure_code;
+  std::string publication_gate_status;
+  std::string summary;
+  CutkoskyResidueSeries candidate_series;
+  CutkoskyEtaZeroSelectionResult eta_zero_selection;
+  CutkoskyWeightedResidueMomentCrossValidationGate moment_cross_validation_gate;
+};
+
 CutkoskyResidueEndpointModel BuildCutkoskyResidueEndpointModel(
     const ProblemSpec& spec);
 std::vector<CutkoskyResidueEndpointPole> ExtractCutkoskyResidueEndpointPoles(
@@ -375,5 +398,13 @@ BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate(
     int requested_precision_digits = 80);
 std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
     const CutkoskyWeightedResidueMomentCrossValidationGate& gate);
+CutkoskyScopedWeightedResidueEvaluation
+EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+    const ProblemSpec& spec,
+    std::size_t uncut_denominator_index,
+    int max_eps_order,
+    int requested_precision_digits = 80);
+std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+    const CutkoskyScopedWeightedResidueEvaluation& evaluation);
 
 }  // namespace amflow

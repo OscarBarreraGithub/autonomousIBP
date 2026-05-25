@@ -18,6 +18,9 @@ using ComplexContourVector = std::vector<ComplexContourNumber>;
 using ComplexContourMatrix = std::vector<std::vector<ComplexContourNumber>>;
 using ComplexContourMatrixEvaluator =
     std::function<ComplexContourMatrix(const ComplexContourNumber& eta)>;
+using ComplexContourLaurentMatrixEvaluator =
+    std::function<std::vector<ComplexContourMatrix>(
+        const ComplexContourNumber& eta)>;
 
 enum class ComplexContourIntegrator {
   DormandPrinceRk45,
@@ -245,6 +248,29 @@ ApplyComplexContourScalarReducibleFrobeniusEndpointRows(
     const ComplexContourNumber& match_eta,
     const ComplexContourVector& match_values,
     const ComplexContourScalarReducibleEndpointOptions& options = {});
+
+ComplexContourVector FlattenComplexContourCoefficientState(
+    const std::vector<ComplexContourVector>& coefficient_vectors);
+
+std::vector<ComplexContourVector> UnflattenComplexContourCoefficientState(
+    const ComplexContourVector& coefficient_state,
+    std::size_t master_dimension,
+    int min_state_eps_order,
+    int max_state_eps_order);
+
+ComplexContourMatrix BuildComplexContourCoefficientStateMatrix(
+    const std::vector<ComplexContourMatrix>& matrix_coefficients,
+    std::size_t master_dimension,
+    int min_matrix_eps_order,
+    int min_state_eps_order,
+    int max_state_eps_order);
+
+ComplexContourMatrixEvaluator MakeComplexContourCoefficientStateMatrixEvaluator(
+    const ComplexContourLaurentMatrixEvaluator& matrix_evaluator,
+    std::size_t master_dimension,
+    int min_matrix_eps_order,
+    int min_state_eps_order,
+    int max_state_eps_order);
 
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,

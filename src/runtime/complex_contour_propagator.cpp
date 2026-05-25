@@ -3232,6 +3232,168 @@ ApplyComplexContourScalarReducibleFrobeniusEndpointRows(
   }
 }
 
+ComplexContourVector FlattenComplexContourCoefficientState(
+    const std::vector<ComplexContourVector>& coefficient_vectors) {
+  if (coefficient_vectors.empty()) {
+    throw std::invalid_argument(
+        "b61n coefficient-state flattening requires at least one epsilon order");
+  }
+  const std::size_t master_dimension = coefficient_vectors.front().size();
+  if (master_dimension == 0) {
+    throw std::invalid_argument(
+        "b61n coefficient-state flattening requires nonempty master vectors");
+  }
+
+  ComplexContourVector flattened;
+  flattened.reserve(coefficient_vectors.size() * master_dimension);
+  for (const ComplexContourVector& coefficient_vector : coefficient_vectors) {
+    if (coefficient_vector.size() != master_dimension) {
+      throw std::invalid_argument(
+          "b61n coefficient-state flattening requires every epsilon-order "
+          "vector to have the same master dimension");
+    }
+    RequireFiniteVector(coefficient_vector, "coefficient-state-flatten");
+    flattened.insert(flattened.end(),
+                     coefficient_vector.begin(),
+                     coefficient_vector.end());
+  }
+  return flattened;
+}
+
+std::vector<ComplexContourVector> UnflattenComplexContourCoefficientState(
+    const ComplexContourVector& coefficient_state,
+    const std::size_t master_dimension,
+    const int min_state_eps_order,
+    const int max_state_eps_order) {
+  if (master_dimension == 0) {
+    throw std::invalid_argument(
+        "b61n coefficient-state unflattening requires a positive master dimension");
+  }
+  if (min_state_eps_order > max_state_eps_order) {
+    throw std::invalid_argument(
+        "b61n coefficient-state unflattening requires min_state_eps_order <= "
+        "max_state_eps_order");
+  }
+  const std::size_t order_count = static_cast<std::size_t>(
+      static_cast<long long>(max_state_eps_order) -
+      static_cast<long long>(min_state_eps_order) + 1LL);
+  if (coefficient_state.size() != order_count * master_dimension) {
+    throw std::invalid_argument(
+        "b61n coefficient-state unflattening received a state vector whose "
+        "dimension does not match the epsilon-order range");
+  }
+  RequireFiniteVector(coefficient_state, "coefficient-state-unflatten");
+
+  std::vector<ComplexContourVector> coefficient_vectors;
+  coefficient_vectors.reserve(order_count);
+  for (std::size_t order_index = 0; order_index < order_count; ++order_index) {
+    const std::size_t offset = order_index * master_dimension;
+    coefficient_vectors.emplace_back(coefficient_state.begin() + offset,
+                                     coefficient_state.begin() + offset +
+                                         master_dimension);
+  }
+  return coefficient_vectors;
+}
+
+ComplexContourMatrix BuildComplexContourCoefficientStateMatrix(
+    const std::vector<ComplexContourMatrix>& matrix_coefficients,
+    const std::size_t master_dimension,
+    const int min_matrix_eps_order,
+    const int min_state_eps_order,
+    const int max_state_eps_order) {
+  if (master_dimension == 0) {
+    throw std::invalid_argument(
+        "b61n coefficient-state matrix requires a positive master dimension");
+  }
+  if (min_state_eps_order > max_state_eps_order) {
+    throw std::invalid_argument(
+        "b61n coefficient-state matrix requires min_state_eps_order <= "
+        "max_state_eps_order");
+  }
+  if (matrix_coefficients.empty()) {
+    throw std::invalid_argument(
+        "b61n coefficient-state matrix requires at least one epsilon matrix "
+        "coefficient");
+  }
+
+  for (const ComplexContourMatrix& coefficient_matrix : matrix_coefficients) {
+    RequireMatrixShape(coefficient_matrix, master_dimension);
+    for (const auto& row : coefficient_matrix) {
+      for (const ComplexContourNumber& entry : row) {
+        if (!IsFinite(entry)) {
+          throw std::invalid_argument(
+              "b61n coefficient-state matrix received a nonfinite coefficient");
+        }
+      }
+    }
+  }
+
+  const std::size_t state_order_count = static_cast<std::size_t>(
+      static_cast<long long>(max_state_eps_order) -
+      static_cast<long long>(min_state_eps_order) + 1LL);
+  const std::size_t augmented_dimension =
+      state_order_count * master_dimension;
+  ComplexContourMatrix augmented(
+      augmented_dimension,
+      std::vector<ComplexContourNumber>(augmented_dimension,
+                                        ComplexContourNumber{}));
+
+  for (std::size_t target_order_index = 0;
+       target_order_index < state_order_count;
+       ++target_order_index) {
+    const int target_eps_order =
+        min_state_eps_order + static_cast<int>(target_order_index);
+    for (std::size_t matrix_order_index = 0;
+         matrix_order_index < matrix_coefficients.size();
+         ++matrix_order_index) {
+      const int matrix_eps_order =
+          min_matrix_eps_order + static_cast<int>(matrix_order_index);
+      const int source_eps_order = target_eps_order - matrix_eps_order;
+      if (source_eps_order < min_state_eps_order ||
+          source_eps_order > max_state_eps_order) {
+        continue;
+      }
+      const std::size_t source_order_index =
+          static_cast<std::size_t>(source_eps_order - min_state_eps_order);
+      const ComplexContourMatrix& coefficient_matrix =
+          matrix_coefficients[matrix_order_index];
+      for (std::size_t row = 0; row < master_dimension; ++row) {
+        for (std::size_t column = 0; column < master_dimension; ++column) {
+          augmented[target_order_index * master_dimension + row]
+                   [source_order_index * master_dimension + column] +=
+              coefficient_matrix[row][column];
+        }
+      }
+    }
+  }
+  return augmented;
+}
+
+ComplexContourMatrixEvaluator MakeComplexContourCoefficientStateMatrixEvaluator(
+    const ComplexContourLaurentMatrixEvaluator& matrix_evaluator,
+    const std::size_t master_dimension,
+    const int min_matrix_eps_order,
+    const int min_state_eps_order,
+    const int max_state_eps_order) {
+  if (!matrix_evaluator) {
+    throw std::invalid_argument(
+        "b61n coefficient-state matrix evaluator requires a Laurent matrix "
+        "evaluator");
+  }
+  return [matrix_evaluator,
+          master_dimension,
+          min_matrix_eps_order,
+          min_state_eps_order,
+          max_state_eps_order](const ComplexContourNumber& eta) {
+    return BuildComplexContourCoefficientStateMatrix(
+        matrix_evaluator(eta),
+        master_dimension,
+        min_matrix_eps_order,
+        min_state_eps_order,
+        max_state_eps_order);
+  };
+}
+
 ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,

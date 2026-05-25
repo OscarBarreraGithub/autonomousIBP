@@ -5893,6 +5893,154 @@ void B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest() {
                          "b61n contour row 2 should integrate coupled row 1");
 }
 
+void B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest() {
+  const int min_state_eps_order = -1;
+  const int max_state_eps_order = 0;
+  const int min_matrix_eps_order = 0;
+  const std::size_t master_dimension = 2;
+  const B61nContourNumber eta_start{0, -2};
+  const B61nContourNumber eta_mid{0, -1};
+  const B61nContourNumber eta_end{0, 0};
+  const std::vector<B61nContourNumber> waypoints = {eta_start, eta_mid, eta_end};
+  const B61nContourNumber a0{
+      B61nContourFloat(1) / B61nContourFloat(3),
+      -B61nContourFloat(1) / B61nContourFloat(7)};
+  const B61nContourNumber a1{
+      B61nContourFloat(2) / B61nContourFloat(5),
+      B61nContourFloat(3) / B61nContourFloat(11)};
+  const std::vector<amflow::ComplexContourVector> initial_coefficients = {
+      {{2, -1}, {-3, 4}},
+      {{5, 0}, {7, -2}},
+  };
+  const amflow::ComplexContourVector initial_state =
+      amflow::FlattenComplexContourCoefficientState(initial_coefficients);
+  const amflow::ComplexContourLaurentMatrixEvaluator laurent_evaluator =
+      [a0, a1](const B61nContourNumber&) {
+        amflow::ComplexContourMatrix eps0(
+            2, std::vector<B61nContourNumber>(2, B61nContourNumber{}));
+        amflow::ComplexContourMatrix eps1(
+            2, std::vector<B61nContourNumber>(2, B61nContourNumber{}));
+        eps0[1][0] = a0;
+        eps1[1][0] = a1;
+        return std::vector<amflow::ComplexContourMatrix>{eps0, eps1};
+      };
+
+  const amflow::ComplexContourMatrix augmented_matrix =
+      amflow::BuildComplexContourCoefficientStateMatrix(
+          laurent_evaluator(eta_start),
+          master_dimension,
+          min_matrix_eps_order,
+          min_state_eps_order,
+          max_state_eps_order);
+  Expect(augmented_matrix.size() == 4 && augmented_matrix.front().size() == 4,
+         "b61n coefficient-state matrix should augment two epsilon orders across "
+         "two masters");
+  ExpectB61nContourClose(augmented_matrix[1][0],
+                         a0,
+                         B61nContourFloat("1e-80"),
+                         "b61n coefficient-state eps^-1 row should receive the "
+                         "eps^0 matrix source");
+  ExpectB61nContourClose(augmented_matrix[3][2],
+                         a0,
+                         B61nContourFloat("1e-80"),
+                         "b61n coefficient-state eps^0 row should retain the "
+                         "same-order matrix source");
+  ExpectB61nContourClose(augmented_matrix[3][0],
+                         a1,
+                         B61nContourFloat("1e-80"),
+                         "b61n coefficient-state eps^0 row should receive the "
+                         "eps^1 matrix source from eps^-1 coefficients");
+
+  const amflow::ComplexContourMatrixEvaluator coefficient_state_evaluator =
+      amflow::MakeComplexContourCoefficientStateMatrixEvaluator(
+          laurent_evaluator,
+          master_dimension,
+          min_matrix_eps_order,
+          min_state_eps_order,
+          max_state_eps_order);
+
+  amflow::ComplexContourPropagationOptions options;
+  options.steps_per_segment = 16;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 3;
+  options.refinement_error_tolerance = B61nContourFloat("1e-60");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-60");
+  options.matrix_fingerprint =
+      "synthetic-b61n-coefficient-state-lower-triangular-v1";
+  options.endpoint_local_model_kind =
+      "coefficient-state-regular-taylor-r0-synthetic-b61n";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n coefficient-state transport test";
+
+  const amflow::ComplexContourPropagationResult result =
+      amflow::PropagateComplexContourVector(
+          initial_state, waypoints, coefficient_state_evaluator, options);
+
+  Expect(result.success,
+         "b61n coefficient-state propagation should succeed before Laurent "
+         "endpoint fitting: " +
+             result.diagnostics.summary);
+  Expect(result.endpoint_values.size() == 4,
+         "b61n coefficient-state propagation should preserve the augmented state");
+  Expect(result.diagnostics.ode_propagation_applied,
+         "b61n coefficient-state transport should execute live ODE propagation");
+  Expect(!result.diagnostics.coefficient_publication,
+         "b61n coefficient-state prototype must not publish endpoint coefficients");
+  Expect(!result.diagnostics.endpoint_extraction_applied,
+         "b61n coefficient-state prototype must not claim endpoint extraction");
+  Expect(!result.diagnostics.retained_solution_samples_used,
+         "b61n coefficient-state transport must not consume AMFlow final samples");
+  Expect(!result.diagnostics.full_eta_zero_contour_applied,
+         "b61n coefficient-state transport must not flip M6 by itself");
+  ExpectContains(result.diagnostics.summary,
+                 "dimension 4",
+                 "b61n coefficient-state diagnostics should expose the augmented "
+                 "ODE dimension");
+  ExpectContains(result.diagnostics.summary,
+                 "matrix_fingerprint=synthetic-b61n-coefficient-state-lower-triangular-v1",
+                 "b61n coefficient-state diagnostics should fingerprint the "
+                 "coefficient-state matrix");
+
+  const std::vector<amflow::ComplexContourVector> endpoint_coefficients =
+      amflow::UnflattenComplexContourCoefficientState(result.endpoint_values,
+                                                      master_dimension,
+                                                      min_state_eps_order,
+                                                      max_state_eps_order);
+  const B61nContourNumber delta = eta_end - eta_start;
+  const B61nContourNumber expected_eps_minus1_source =
+      initial_coefficients[0][0];
+  const B61nContourNumber expected_eps_minus1_coupled =
+      initial_coefficients[0][1] + a0 * initial_coefficients[0][0] * delta;
+  const B61nContourNumber expected_eps0_source = initial_coefficients[1][0];
+  const B61nContourNumber expected_eps0_coupled =
+      initial_coefficients[1][1] +
+      (a0 * initial_coefficients[1][0] +
+       a1 * initial_coefficients[0][0]) *
+          delta;
+  const B61nContourFloat tolerance("1e-55");
+  ExpectB61nContourClose(endpoint_coefficients[0][0],
+                         expected_eps_minus1_source,
+                         tolerance,
+                         "b61n coefficient-state eps^-1 source row should stay "
+                         "constant");
+  ExpectB61nContourClose(endpoint_coefficients[0][1],
+                         expected_eps_minus1_coupled,
+                         tolerance,
+                         "b61n coefficient-state eps^-1 coupled row should "
+                         "transport its lower-triangular source");
+  ExpectB61nContourClose(endpoint_coefficients[1][0],
+                         expected_eps0_source,
+                         tolerance,
+                         "b61n coefficient-state eps^0 source row should stay "
+                         "constant");
+  ExpectB61nContourClose(endpoint_coefficients[1][1],
+                         expected_eps0_coupled,
+                         tolerance,
+                         "b61n coefficient-state eps^0 coupled row should "
+                         "transport same-order and eps-shifted sources before "
+                         "sample fitting");
+}
+
 void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -7042,6 +7190,7 @@ int main() {
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
+    B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();

@@ -1,6 +1,7 @@
 #include "amflow/runtime/lightlike_propagator.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <complex>
@@ -2223,6 +2224,399 @@ RuntimeSeries BuildGaugeLinkScalarEndpointSeries(
   return AddRuntimeSeries(particular, homogeneous, connection);
 }
 
+using RuntimeVector2 = std::array<RuntimeComplex, 2>;
+using RuntimeMatrix2 = std::array<std::array<RuntimeComplex, 2>, 2>;
+using RuntimeVectorSeries2 = std::array<RuntimeSeries, 2>;
+
+struct GaugeLinkDownstreamResidueBasis {
+  RuntimeComplex alpha{0.0L, 0.0L};
+  RuntimeVector2 residues{RuntimeComplex{0.0L, 0.0L},
+                          RuntimeComplex{0.0L, 0.0L}};
+};
+
+bool RuntimeMatrixHasNonzero(const RuntimeMatrix2& matrix) {
+  for (const auto& row : matrix) {
+    for (const RuntimeComplex& value : row) {
+      if (!IsRuntimeTiny(value)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+RuntimeVectorSeries2 AddRuntimeVectorSeries(
+    RuntimeVectorSeries2 lhs,
+    const RuntimeVectorSeries2& rhs,
+    const RuntimeComplex& rhs_scale = RuntimeComplex{1.0L, 0.0L}) {
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    lhs[index] = AddRuntimeSeries(lhs[index], rhs[index], rhs_scale);
+  }
+  return lhs;
+}
+
+std::set<std::string> RuntimeVectorSeriesRegions(
+    const RuntimeVectorSeries2& series) {
+  std::set<std::string> regions;
+  for (const RuntimeSeries& component : series) {
+    const std::set<std::string> component_regions =
+        RuntimeSeriesRegions(component);
+    regions.insert(component_regions.begin(), component_regions.end());
+  }
+  return regions;
+}
+
+RuntimeVector2 RuntimeVectorSeriesValue(const RuntimeVectorSeries2& series,
+                                        const RuntimeFloat x) {
+  return {RuntimeSeriesValue(series[0], x),
+          RuntimeSeriesValue(series[1], x)};
+}
+
+RuntimeMatrix2 GaugeLinkDownstreamTransformedMatrixCoefficient(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const int power,
+    const std::string& variable,
+    const RuntimeFloat epsilon_value,
+    const RuntimeComplex& alpha) {
+  const RuntimeComplex a00 = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 4, 4, power, variable, epsilon_value);
+  const RuntimeComplex a01 = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 4, 5, power, variable, epsilon_value);
+  const RuntimeComplex a10 = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 5, 4, power, variable, epsilon_value);
+  const RuntimeComplex a11 = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 5, 5, power, variable, epsilon_value);
+
+  RuntimeMatrix2 transformed{};
+  transformed[0][0] = a00 + alpha * a01;
+  transformed[0][1] = a01;
+  transformed[1][0] = a10 + alpha * a11 -
+                      alpha * (a00 + alpha * a01);
+  transformed[1][1] = a11 - alpha * a01;
+  return transformed;
+}
+
+GaugeLinkDownstreamResidueBasis BuildGaugeLinkDownstreamResidueBasis(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::string& variable,
+    const RuntimeFloat epsilon_value) {
+  const RuntimeComplex row4_self = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 4, 4, -1, variable, epsilon_value);
+  const RuntimeComplex row4_companion = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 4, 5, -1, variable, epsilon_value);
+  const RuntimeComplex row5_downstream = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 5, 4, -1, variable, epsilon_value);
+  const RuntimeComplex row5_self = GaugeLinkMatrixLaurentCoefficient(
+      diffeq_matrix, 5, 5, -1, variable, epsilon_value);
+  const RuntimeFloat frobenius_residue =
+      RuntimeFloat(-2) + RuntimeFloat(4) * epsilon_value;
+  const RuntimeComplex integer_residue{RuntimeFloat(2), 0.0L};
+  const RuntimeComplex expected_frobenius_residue{frobenius_residue, 0.0L};
+  if (RuntimeAbs(row4_self - integer_residue) > RuntimeFloat("1e-50") ||
+      RuntimeAbs(row4_companion) > RuntimeFloat("1e-50") ||
+      RuntimeAbs(row5_self - expected_frobenius_residue) >
+          RuntimeFloat("1e-50")) {
+    throw std::runtime_error(
+        "b64ag downstream source-anchored endpoint transport rejected the "
+        "reviewed coupled residue basis");
+  }
+
+  GaugeLinkDownstreamResidueBasis basis;
+  basis.residues = {integer_residue, expected_frobenius_residue};
+  const RuntimeComplex residue_gap = integer_residue - expected_frobenius_residue;
+  if (RuntimeAbs(residue_gap) < kRuntimeTiny) {
+    if (RuntimeAbs(row5_downstream) > RuntimeFloat("1e-50")) {
+      throw std::runtime_error(
+          "b64ag downstream source-anchored endpoint transport found a "
+          "non-diagonalizable coupled residue");
+    }
+    basis.alpha = RuntimeComplex{0.0L, 0.0L};
+  } else {
+    basis.alpha = row5_downstream / residue_gap;
+  }
+
+  const RuntimeMatrix2 residue =
+      GaugeLinkDownstreamTransformedMatrixCoefficient(
+          diffeq_matrix, -1, variable, epsilon_value, basis.alpha);
+  const RuntimeMatrix2 expected = {{
+      {basis.residues[0], RuntimeComplex{0.0L, 0.0L}},
+      {RuntimeComplex{0.0L, 0.0L}, basis.residues[1]},
+  }};
+  for (std::size_t row = 0; row < residue.size(); ++row) {
+    for (std::size_t column = 0; column < residue[row].size(); ++column) {
+      if (RuntimeAbs(residue[row][column] - expected[row][column]) >
+          RuntimeFloat("1e-50")) {
+        throw std::runtime_error(
+            "b64ag downstream source-anchored endpoint transport rejected the "
+            "reviewed coupled residue basis");
+      }
+    }
+  }
+  return basis;
+}
+
+RuntimeVectorSeries2 BuildGaugeLinkDownstreamSourceSeries(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<RuntimeSeries>& known_series,
+    const std::string& variable,
+    const RuntimeFloat epsilon_value,
+    const int max_power,
+    const RuntimeComplex& alpha) {
+  RuntimeVectorSeries2 source_y;
+  for (std::size_t local_row = 0; local_row < source_y.size(); ++local_row) {
+    const std::size_t row = 4 + local_row;
+    for (std::size_t column = 0; column < 4; ++column) {
+      if (column >= known_series.size() || known_series[column].empty()) {
+        continue;
+      }
+      const RuntimeRationalPolynomial cell = ParseGaugeLinkRationalExpression(
+          diffeq_matrix[row][column], variable, epsilon_value);
+      if (cell.numerator.coefficients.empty()) {
+        continue;
+      }
+      int min_known_power = max_power;
+      for (const auto& term : known_series[column]) {
+        min_known_power = std::min(min_known_power, term.first.power);
+      }
+      const int lowest_matrix_power = RuntimeRationalLowestPower(cell);
+      const int highest_matrix_power = max_power - min_known_power;
+      for (int matrix_power = lowest_matrix_power;
+           matrix_power <= highest_matrix_power;
+           ++matrix_power) {
+        const RuntimeComplex matrix_coefficient =
+            RuntimeRationalLaurentCoefficient(cell, matrix_power);
+        if (IsRuntimeTiny(matrix_coefficient)) {
+          continue;
+        }
+        for (const auto& term : known_series[column]) {
+          AddRuntimeSeriesTerm(source_y[local_row],
+                               term.first.region_key,
+                               term.first.power + matrix_power,
+                               term.first.log_power,
+                               matrix_coefficient * term.second);
+        }
+      }
+    }
+  }
+
+  RuntimeVectorSeries2 source_z;
+  source_z[0] = source_y[0];
+  source_z[1] = AddRuntimeSeries(source_y[1], source_y[0], -alpha);
+  return source_z;
+}
+
+RuntimeVectorSeries2 GaugeLinkDownstreamToOriginalSeries(
+    const RuntimeVectorSeries2& transformed,
+    const RuntimeComplex& alpha) {
+  RuntimeVectorSeries2 original;
+  original[0] = transformed[0];
+  original[1] = AddRuntimeSeries(transformed[1], transformed[0], alpha);
+  return original;
+}
+
+RuntimeVector2 GaugeLinkDownstreamToOriginalValue(
+    const RuntimeVector2& transformed,
+    const RuntimeComplex& alpha) {
+  return {transformed[0], transformed[1] + alpha * transformed[0]};
+}
+
+RuntimeVectorSeries2 BuildGaugeLinkCoupledDownstreamEndpointSeries(
+    const std::vector<std::vector<std::string>>& diffeq_matrix,
+    const std::vector<RuntimeSeries>& known_series,
+    const RuntimeComplex& downstream_boundary_value,
+    const RuntimeComplex& downstream_companion_boundary_value,
+    const std::string& variable,
+    const RuntimeFloat epsilon_value) {
+  constexpr int kMinPower = -4;
+  constexpr int kMaxPower = 80;
+  const RuntimeFloat kBoundaryPoint = RuntimeFloat(1) / RuntimeFloat(40);
+  const RuntimeFloat frobenius_residue =
+      RuntimeFloat(-2) + RuntimeFloat(4) * epsilon_value;
+  const std::optional<int> frobenius_finite_part_base =
+      ReviewedGaugeLinkFrobeniusFinitePartBase(
+          5, frobenius_residue, epsilon_value);
+  if (!frobenius_finite_part_base.has_value()) {
+    throw std::runtime_error(
+        "b64ag downstream source-anchored endpoint transport found an "
+        "unreviewed downstream Frobenius finite-part base");
+  }
+
+  const GaugeLinkDownstreamResidueBasis residue_basis =
+      BuildGaugeLinkDownstreamResidueBasis(diffeq_matrix,
+                                           variable,
+                                           epsilon_value);
+
+  std::map<int, RuntimeMatrix2> regular_coefficients;
+  for (int power = 0; power <= kMaxPower - kMinPower + 1; ++power) {
+    const RuntimeMatrix2 coefficient =
+        GaugeLinkDownstreamTransformedMatrixCoefficient(
+            diffeq_matrix, power, variable, epsilon_value, residue_basis.alpha);
+    if (RuntimeMatrixHasNonzero(coefficient)) {
+      regular_coefficients[power] = coefficient;
+    }
+  }
+
+  const RuntimeVectorSeries2 source =
+      BuildGaugeLinkDownstreamSourceSeries(diffeq_matrix,
+                                           known_series,
+                                           variable,
+                                           epsilon_value,
+                                           kMaxPower,
+                                           residue_basis.alpha);
+
+  const auto solve_region_with_seed =
+      [&](const RuntimeVectorSeries2& forcing,
+          const std::string& region_key,
+          const RuntimeVector2& resonance_seed) {
+    RuntimeVectorSeries2 series;
+    const RuntimeComplex region_exponent =
+        RequireGaugeLinkRegionExponent(region_key);
+    for (int power = kMinPower; power <= kMaxPower; ++power) {
+      RuntimeVector2 log_coefficient{RuntimeComplex{0.0L, 0.0L},
+                                     RuntimeComplex{0.0L, 0.0L}};
+      for (std::size_t component = 0; component < series.size();
+           ++component) {
+        const RuntimeComplex denominator =
+            region_exponent +
+            RuntimeComplex{static_cast<RuntimeFloat>(power), 0.0L} -
+            residue_basis.residues[component];
+        RuntimeComplex log_rhs =
+            RuntimeSeriesCoefficient(
+                forcing[component], region_key, power - 1, 1);
+        for (const auto& [matrix_power, matrix] : regular_coefficients) {
+          for (std::size_t source_component = 0;
+               source_component < series.size();
+               ++source_component) {
+            log_rhs += matrix[component][source_component] *
+                       RuntimeSeriesCoefficient(
+                           series[source_component],
+                           region_key,
+                           power - 1 - matrix_power,
+                           1);
+          }
+        }
+        if (RuntimeAbs(denominator) < kRuntimeTiny) {
+          if (RuntimeAbs(log_rhs) > RuntimeFloat("1e-50")) {
+            throw std::runtime_error(
+                "b64ag downstream source-anchored endpoint transport "
+                "encountered an unresolved log-squared resonance");
+          }
+        } else {
+          log_coefficient[component] = log_rhs / denominator;
+        }
+      }
+
+      for (std::size_t component = 0; component < series.size();
+           ++component) {
+        const RuntimeComplex denominator =
+            region_exponent +
+            RuntimeComplex{static_cast<RuntimeFloat>(power), 0.0L} -
+            residue_basis.residues[component];
+        RuntimeComplex regular_rhs =
+            RuntimeSeriesCoefficient(
+                forcing[component], region_key, power - 1, 0);
+        for (const auto& [matrix_power, matrix] : regular_coefficients) {
+          for (std::size_t source_component = 0;
+               source_component < series.size();
+               ++source_component) {
+            regular_rhs += matrix[component][source_component] *
+                           RuntimeSeriesCoefficient(
+                               series[source_component],
+                               region_key,
+                               power - 1 - matrix_power,
+                               0);
+          }
+        }
+
+        RuntimeComplex regular_coefficient{0.0L, 0.0L};
+        if (RuntimeAbs(denominator) < kRuntimeTiny) {
+          regular_coefficient = resonance_seed[component];
+          log_coefficient[component] = regular_rhs;
+        } else {
+          regular_coefficient =
+              (regular_rhs - log_coefficient[component]) / denominator;
+        }
+        AddRuntimeSeriesTerm(series[component],
+                             region_key,
+                             power,
+                             1,
+                             log_coefficient[component]);
+        AddRuntimeSeriesTerm(series[component],
+                             region_key,
+                             power,
+                             0,
+                             regular_coefficient);
+      }
+    }
+    return series;
+  };
+
+  RuntimeVectorSeries2 particular;
+  for (const std::string& region_key : RuntimeVectorSeriesRegions(source)) {
+    particular =
+        AddRuntimeVectorSeries(particular,
+                               solve_region_with_seed(
+                                   source,
+                                   region_key,
+                                   {RuntimeComplex{0.0L, 0.0L},
+                                    RuntimeComplex{0.0L, 0.0L}}));
+  }
+
+  const RuntimeVectorSeries2 integer_homogeneous =
+      solve_region_with_seed(RuntimeVectorSeries2{},
+                             "integer",
+                             {RuntimeComplex{1.0L, 0.0L},
+                              RuntimeComplex{0.0L, 0.0L}});
+  const RuntimeVectorSeries2 frobenius_homogeneous =
+      solve_region_with_seed(
+          RuntimeVectorSeries2{},
+          GaugeLinkFrobeniusRegionKey(frobenius_residue,
+                                      *frobenius_finite_part_base),
+          {RuntimeComplex{0.0L, 0.0L}, RuntimeComplex{1.0L, 0.0L}});
+
+  const RuntimeVector2 particular_boundary =
+      GaugeLinkDownstreamToOriginalValue(
+          RuntimeVectorSeriesValue(particular, kBoundaryPoint),
+          residue_basis.alpha);
+  const RuntimeVector2 integer_boundary =
+      GaugeLinkDownstreamToOriginalValue(
+          RuntimeVectorSeriesValue(integer_homogeneous, kBoundaryPoint),
+          residue_basis.alpha);
+  const RuntimeVector2 frobenius_boundary =
+      GaugeLinkDownstreamToOriginalValue(
+          RuntimeVectorSeriesValue(frobenius_homogeneous, kBoundaryPoint),
+          residue_basis.alpha);
+  const RuntimeVector2 boundary = {downstream_boundary_value,
+                                   downstream_companion_boundary_value};
+  const RuntimeVector2 rhs = {boundary[0] - particular_boundary[0],
+                              boundary[1] - particular_boundary[1]};
+  const RuntimeComplex determinant =
+      integer_boundary[0] * frobenius_boundary[1] -
+      frobenius_boundary[0] * integer_boundary[1];
+  if (RuntimeAbs(determinant) < kRuntimeTiny) {
+    throw std::runtime_error(
+        "b64ag downstream source-anchored endpoint transport produced a "
+        "singular coupled finite-boundary connection matrix");
+  }
+  const RuntimeComplex integer_connection =
+      (rhs[0] * frobenius_boundary[1] -
+       frobenius_boundary[0] * rhs[1]) /
+      determinant;
+  const RuntimeComplex frobenius_connection =
+      (integer_boundary[0] * rhs[1] -
+       rhs[0] * integer_boundary[1]) /
+      determinant;
+
+  RuntimeVectorSeries2 transformed =
+      AddRuntimeVectorSeries(particular,
+                             integer_homogeneous,
+                             integer_connection);
+  transformed = AddRuntimeVectorSeries(transformed,
+                                       frobenius_homogeneous,
+                                       frobenius_connection);
+  return GaugeLinkDownstreamToOriginalSeries(transformed, residue_basis.alpha);
+}
+
 std::vector<LightlikeGaugeLinkFinitePartTerm> EndpointTermsFromRuntimeSeries(
     const RuntimeSeries& series,
     const int max_power) {
@@ -3298,20 +3692,16 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
           boundary_values[3],
           checked_state.variable,
           epsilon_value);
-      endpoint_series[4] = BuildGaugeLinkScalarEndpointSeries(
-          diffeq_matrix,
-          4,
-          endpoint_series,
-          boundary_values[4],
-          checked_state.variable,
-          epsilon_value);
-      endpoint_series[5] = BuildGaugeLinkScalarEndpointSeries(
-          diffeq_matrix,
-          5,
-          endpoint_series,
-          boundary_values[5],
-          checked_state.variable,
-          epsilon_value);
+      const RuntimeVectorSeries2 downstream_endpoint_series =
+          BuildGaugeLinkCoupledDownstreamEndpointSeries(
+              diffeq_matrix,
+              endpoint_series,
+              boundary_values[4],
+              boundary_values[5],
+              checked_state.variable,
+              epsilon_value);
+      endpoint_series[4] = downstream_endpoint_series[0];
+      endpoint_series[5] = downstream_endpoint_series[1];
 
       LightlikeGaugeLinkEndpointSampleTerms sample_terms;
       sample_terms.epsilon_sample = epsilon_sample;
@@ -3367,9 +3757,11 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
         std::to_string(result.epsilon_endpoint_terms.size()) +
         " epsilon sample(s) using the parsed first block, including its "
         "reviewed first-block non-integer Frobenius branch, plus second-block "
-        "and downstream Laurent/Frobenius recurrence gated by the reviewed "
-        "b64ag eta=0 Frobenius recurrence audit without reading retained "
-        "final solution samples; frobenius_recurrence_applied=true; "
+        "scalar recurrence and source-anchored coupled downstream "
+        "Laurent/Frobenius recurrence fitted to rows 4 and 5 together; gated "
+        "by the reviewed b64ag eta=0 Frobenius recurrence audit without "
+        "reading retained final solution samples; "
+        "downstream_source_anchored=true; frobenius_recurrence_applied=true; "
         "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
     return result;
   } catch (const std::exception& error) {

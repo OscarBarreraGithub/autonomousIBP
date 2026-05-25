@@ -4045,12 +4045,15 @@ void B64agGaugeLinkFiniteBoundaryTransportFeedsReducedFinitePartChainTest() {
              transport.endpoint_terms[4].endpoint_terms.front().log_power == 0,
          "b64ag finite-boundary transport should publish the downstream regular branch");
   Expect(transport.endpoint_terms[5].endpoint_terms.size() >= 2 &&
-             transport.endpoint_terms[5].endpoint_terms[0].power == 1 &&
-             transport.endpoint_terms[5].endpoint_terms[0].log_power == 0,
-         "b64ag finite-boundary transport should publish downstream companion Laurent terms");
+             B64agFindEndpointTerm(transport.endpoint_terms[5], "integer", 1, 0)
+                     .log_power == 0,
+         "b64ag finite-boundary transport should publish downstream companion source terms");
   ExpectContains(transport.summary,
                  "all six reviewed gauge-link DE masters",
                  "b64ag finite-boundary transport should report full six-master coverage");
+  ExpectContains(transport.summary,
+                 "downstream_source_anchored=true",
+                 "b64ag finite-boundary transport should report coupled downstream source anchoring");
 
   const std::vector<amflow::TargetIntegral> targets = B64agReviewedTargets();
   const amflow::LightlikeGaugeLinkReducedFinitePartResult reduced =

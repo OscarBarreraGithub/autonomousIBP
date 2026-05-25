@@ -5051,6 +5051,92 @@ void B61nCoupledFrobeniusEndpointMatcherAnchorsReviewedSourceRowsTest() {
                  "b61n source-anchored matcher should identify anchored rows");
 }
 
+void B61nCoupledFrobeniusEndpointMatcherKeepsCoupledRowsFreeUnderSourceAnchorsTest() {
+  const std::vector<B61nContourNumber> waypoints = {
+      {0, -1},
+      {0, B61nContourFloat("-0.25")},
+      {0, 0},
+  };
+  const B61nContourNumber reviewed_source_endpoint{2, -1};
+  const B61nContourNumber start_eta = waypoints.front();
+  const B61nContourNumber endpoint_a{3, 4};
+  const B61nContourNumber endpoint_b{-5, 7};
+  const auto initial_for_endpoint =
+      [reviewed_source_endpoint, start_eta](const B61nContourNumber& endpoint) {
+        return amflow::ComplexContourVector{
+            reviewed_source_endpoint,
+            endpoint + reviewed_source_endpoint * start_eta,
+        };
+      };
+  const auto evaluator = [](const B61nContourNumber&) {
+    return amflow::ComplexContourMatrix{
+        {B61nContourNumber{0, 0}, B61nContourNumber{0, 0}},
+        {B61nContourNumber{1, 0}, B61nContourNumber{0, 0}},
+    };
+  };
+
+  amflow::ComplexContourPropagationOptions options;
+  options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  options.steps_per_segment = 16;
+  options.refinement_doublings = 1;
+  options.max_refinement_doublings = 3;
+  options.refinement_error_tolerance = B61nContourFloat("1e-34");
+  options.refinement_relative_error_tolerance = B61nContourFloat("1e-34");
+  options.matrix_fingerprint =
+      "synthetic-b61n-source-anchored-free-coupled-row-v1";
+  options.endpoint_local_model_kind = "regular-taylor-r0";
+  options.branch_policy =
+      "NegIm lower-half-plane b61n source-anchor free-coupled-row test";
+  options.coupled_frobenius_anchor_row_indices = {0};
+  options.coupled_frobenius_anchor_endpoint_values = {
+      reviewed_source_endpoint,
+  };
+
+  const amflow::ComplexContourPropagationResult result_a =
+      amflow::PropagateComplexContourVector(
+          initial_for_endpoint(endpoint_a), waypoints, evaluator, options);
+  const amflow::ComplexContourPropagationResult result_b =
+      amflow::PropagateComplexContourVector(
+          initial_for_endpoint(endpoint_b), waypoints, evaluator, options);
+
+  Expect(result_a.success,
+         "b61n source-anchored free-row control A should propagate: " +
+             result_a.diagnostics.summary);
+  Expect(result_b.success,
+         "b61n source-anchored free-row control B should propagate: " +
+             result_b.diagnostics.summary);
+  ExpectB61nContourClose(result_a.endpoint_values[0],
+                         reviewed_source_endpoint,
+                         B61nContourFloat("1e-40"),
+                         "b61n source anchor should pin the source endpoint "
+                         "for control A");
+  ExpectB61nContourClose(result_b.endpoint_values[0],
+                         reviewed_source_endpoint,
+                         B61nContourFloat("1e-40"),
+                         "b61n source anchor should pin the source endpoint "
+                         "for control B");
+  ExpectB61nContourClose(result_a.endpoint_values[1],
+                         endpoint_a,
+                         B61nContourFloat("1e-30"),
+                         "b61n source anchors do not determine the coupled-row "
+                         "homogeneous endpoint constant for control A");
+  ExpectB61nContourClose(result_b.endpoint_values[1],
+                         endpoint_b,
+                         B61nContourFloat("1e-30"),
+                         "b61n source anchors do not determine the coupled-row "
+                         "homogeneous endpoint constant for control B");
+  ExpectB61nContourClose(result_b.endpoint_values[1] -
+                             result_a.endpoint_values[1],
+                         endpoint_b - endpoint_a,
+                         B61nContourFloat("1e-30"),
+                         "b61n rows 5/6 need their own finite-start or boundary "
+                         "constant; anchored source rows alone cannot fix them");
+  ExpectContains(result_a.diagnostics.summary,
+                 "coupled_frobenius_source_anchored=true",
+                 "b61n free-row control should still use the source-anchor "
+                 "matcher");
+}
+
 amflow::ComplexContourPropagationOptions B61nLane142PrimitiveBubbleOptions(
     const std::string& endpoint_integral_id = "box[1,0,1,0]") {
   amflow::ComplexContourPropagationOptions options;
@@ -6476,6 +6562,7 @@ int main() {
     B61nComplexContourPropagatorUsesScalarFrobeniusEndpointPatchAfterOdeTest();
     B61nComplexContourPropagatorUsesCoupledFrobeniusEndpointMatcherAfterOdeTest();
     B61nCoupledFrobeniusEndpointMatcherAnchorsReviewedSourceRowsTest();
+    B61nCoupledFrobeniusEndpointMatcherKeepsCoupledRowsFreeUnderSourceAnchorsTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest();
     B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointVariantTest();
     B61nComplexContourPropagatorRequiresLane142PrimitiveBubbleProvenanceTest();

@@ -5523,6 +5523,18 @@ void B61nCoupledFrobeniusEndpointMatcherSolvesTwoFreeConstantsFromMatchVectorTes
                  "b61n two-free-constant match should use the dedicated 2x2 "
                  "boundary-condition solve");
   ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_order=48",
+                 "b61n two-free-constant match should use the anchored row 5/6 "
+                 "precision uplift");
+  ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_sample_count=288",
+                 "b61n two-free-constant match should increase the anchored "
+                 "boundary-match sampling budget");
+  ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_precision_policy=anchored-two-free-row-uplift",
+                 "b61n two-free-constant match should document the scoped "
+                 "precision policy");
+  ExpectContains(result.diagnostics.summary,
                  "coupled_frobenius_free_constant_rows=[1, 2]",
                  "b61n two-free-constant match should identify the free rows");
   ExpectContains(result.diagnostics.summary,

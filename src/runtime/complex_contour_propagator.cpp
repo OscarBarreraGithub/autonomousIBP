@@ -24,6 +24,8 @@ constexpr std::size_t kScalarFrobeniusRuntimeEndpointOrder = 32;
 constexpr std::size_t kScalarFrobeniusRuntimeSampleCount = 160;
 constexpr std::size_t kCoupledFrobeniusRuntimeEndpointOrder = 32;
 constexpr std::size_t kCoupledFrobeniusRuntimeSampleCount = 192;
+constexpr std::size_t kAnchoredCoupledFrobeniusRuntimeEndpointOrder = 48;
+constexpr std::size_t kAnchoredCoupledFrobeniusRuntimeSampleCount = 288;
 
 std::string IntegratorLabel(const ComplexContourIntegrator integrator) {
   switch (integrator) {
@@ -2352,6 +2354,16 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
                                  anchor_endpoint_values);
   const std::vector<std::size_t> free_rows =
       UnanchoredRowIndices(anchored_rows);
+  const bool anchored_two_free_row_uplift =
+      !anchor_row_indices.empty() && free_rows.size() == 2;
+  const std::size_t runtime_endpoint_order =
+      anchored_two_free_row_uplift
+          ? kAnchoredCoupledFrobeniusRuntimeEndpointOrder
+          : kCoupledFrobeniusRuntimeEndpointOrder;
+  const std::size_t runtime_sample_count =
+      anchored_two_free_row_uplift
+          ? kAnchoredCoupledFrobeniusRuntimeSampleCount
+          : kCoupledFrobeniusRuntimeSampleCount;
   std::vector<ComplexContourFrobeniusRecurrence> recurrences;
   recurrences.reserve(dimension);
   ComplexContourMatrix basis_matrix(
@@ -2362,12 +2374,12 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
   for (std::size_t root_index = 0; root_index < dimension; ++root_index) {
     ComplexContourFrobeniusRecurrenceOptions options;
     options.selected_root_index = root_index;
-    options.order = kCoupledFrobeniusRuntimeEndpointOrder;
+    options.order = runtime_endpoint_order;
     options.residue_probe_eta = {0, ComplexContourFloat("-1e-40")};
     options.residue_tolerance = ComplexContourFloat("1e-28");
     options.tail_fit_tolerance = ComplexContourFloat("1e-24");
     options.tail_sample_radius = tail_sample_radius;
-    options.tail_sample_count = kCoupledFrobeniusRuntimeSampleCount;
+    options.tail_sample_count = runtime_sample_count;
     ComplexContourFrobeniusRecurrence recurrence =
         ComputeComplexContourEtaZeroFrobeniusRecurrence(
             matrix_evaluator, dimension, options);
@@ -2465,9 +2477,13 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
       "coupled_frobenius_recurrence_count=" +
       std::to_string(match.recurrence_count) +
       "; coupled_frobenius_order=" +
-      std::to_string(kCoupledFrobeniusRuntimeEndpointOrder) +
+      std::to_string(runtime_endpoint_order) +
       "; coupled_frobenius_sample_count=" +
-      std::to_string(kCoupledFrobeniusRuntimeSampleCount) +
+      std::to_string(runtime_sample_count) +
+      "; coupled_frobenius_precision_policy=" +
+      std::string(anchored_two_free_row_uplift
+                      ? "anchored-two-free-row-uplift"
+                      : "default") +
       "; coupled_frobenius_match_eta=" + CompactComplex(match_eta, 40) +
       "; coupled_frobenius_tail_sample_radius=" +
       CompactFloat(tail_sample_radius, 40) +

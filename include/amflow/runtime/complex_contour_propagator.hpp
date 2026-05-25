@@ -42,6 +42,8 @@ struct ComplexContourPropagationOptions {
   ComplexContourFloat pole_step_safety_factor = ComplexContourFloat("0.25");
   std::vector<ComplexContourNumber> contour_poles;
   std::vector<ComplexContourNumber> diagnostic_poles;
+  std::vector<std::size_t> coupled_frobenius_anchor_row_indices;
+  ComplexContourVector coupled_frobenius_anchor_endpoint_values;
 };
 
 struct ComplexContourScalarFrobeniusSeriesPatch {

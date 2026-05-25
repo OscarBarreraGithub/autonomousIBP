@@ -5913,6 +5913,27 @@ std::string JoinTextList(const std::vector<std::string>& values,
   return joined;
 }
 
+std::string ReplaceAllText(std::string value,
+                           const std::string& needle,
+                           const std::string& replacement) {
+  if (needle.empty()) {
+    return value;
+  }
+  std::size_t position = 0;
+  while ((position = value.find(needle, position)) != std::string::npos) {
+    value.replace(position, needle.size(), replacement);
+    position += replacement.size();
+  }
+  return value;
+}
+
+std::string BlockedAuditNestedPropagatorSummary(std::string summary) {
+  summary = ReplaceAllText(std::move(summary),
+                           "coefficient_publication=true",
+                           "inner_propagator_endpoint_publication=true");
+  return summary;
+}
+
 B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
     const DirectSolveSeriesSpec& spec,
     const EtaInfinityInitialDataAudit& initial_data_audit) {
@@ -6041,6 +6062,8 @@ struct B61nCoupledRowContourTransportAudit {
   std::size_t closer_start_recurrence_depth_count = 0;
   std::size_t closer_start_precision_count = 0;
   bool coupled_frobenius_endpoint_matcher_applied = false;
+  std::size_t source_anchor_count = 0;
+  int source_anchor_epsilon_order = -1;
   bool full_eta_zero_contour_applied = false;
   std::vector<std::string> transported_master_labels;
   std::vector<std::string> closer_start_failures;
@@ -6274,6 +6297,15 @@ std::vector<amflow::ComplexContourNumber> BuildB61nCoupledRowContourPoles(
   return poles;
 }
 
+std::map<std::string, std::map<int, BigComplex>>
+BuildB61nReviewedPrimitiveBubbleEndpointSeriesByLabel(
+    const DirectSolveSeriesSpec& spec,
+    int epsilon_order);
+
+BigComplex EvaluateEndpointSeriesAtEpsilon(
+    const std::map<int, BigComplex>& series,
+    const BigFloat& epsilon_value);
+
 std::optional<B61nCoupledRowContourTransportAudit>
 ApplyB61nCoupledRowContourTransport(
     const DirectSolveSeriesSpec& spec,
@@ -6294,6 +6326,13 @@ ApplyB61nCoupledRowContourTransport(
         "box[1,0,1,1]",
         "box[1,1,1,1]",
     };
+    const std::vector<std::string> source_anchor_labels = {
+        "box[0,0,0,1]",
+        "box[1,0,1,0]",
+        "box[1,0,0,1]",
+        "box[0,1,0,1]",
+        "box[0,0,1,1]",
+    };
     std::vector<std::size_t> coupled_row_indices;
     coupled_row_indices.reserve(coupled_row_labels.size());
     for (const std::string& label : coupled_row_labels) {
@@ -6302,6 +6341,15 @@ ApplyB61nCoupledRowContourTransport(
         return std::nullopt;
       }
       coupled_row_indices.push_back(*index);
+    }
+    std::vector<std::size_t> source_anchor_indices;
+    source_anchor_indices.reserve(source_anchor_labels.size());
+    for (const std::string& label : source_anchor_labels) {
+      const std::optional<std::size_t> index = FindMasterIndexByLabel(spec, label);
+      if (!index.has_value() || *index >= master_samples.size()) {
+        return std::nullopt;
+      }
+      source_anchor_indices.push_back(*index);
     }
     for (const std::vector<BigComplex>& samples :
          initial_data_audit.finite_start_samples) {
@@ -6313,6 +6361,8 @@ ApplyB61nCoupledRowContourTransport(
     B61nCoupledRowContourTransportAudit audit;
     audit.transported_master_labels = coupled_row_labels;
     audit.epsilon_sample_count = spec.boundary_epsilon_samples.size();
+    audit.source_anchor_count = source_anchor_indices.size();
+    audit.source_anchor_epsilon_order = 2;
     audit.matrix_fingerprint = ComputeB61nEtaMatrixFingerprint(spec);
     audit.contour_fingerprint = contour_scaffold_audit.contour_fingerprint;
     audit.contour_pole_count = contour_scaffold_audit.contour_poles.size();
@@ -6418,6 +6468,17 @@ ApplyB61nCoupledRowContourTransport(
       return audit;
     };
 
+    std::map<std::string, std::map<int, BigComplex>> source_endpoint_series;
+    try {
+      source_endpoint_series =
+          BuildB61nReviewedPrimitiveBubbleEndpointSeriesByLabel(
+              spec, audit.source_anchor_epsilon_order);
+    } catch (const std::exception& error) {
+      return blocked_audit(
+          "reviewed source endpoint anchors were unavailable: " +
+          std::string(error.what()));
+    }
+
     std::optional<EtaInfinityInitialDataAudit> propagation_initial_data;
     audit.finite_start_selection = "closer-certified-eta-infinity-start";
     const BigFloat contour_start_radius =
@@ -6513,14 +6574,44 @@ ApplyB61nCoupledRowContourTransport(
       options.branch_policy =
           "NegIm lower-half-plane b61n coupled-row contour from lane171 "
           "eta-infinity finite-start data";
+      options.coupled_frobenius_anchor_row_indices = source_anchor_indices;
+      options.coupled_frobenius_anchor_endpoint_values.reserve(
+          source_anchor_indices.size());
+      const BigFloat epsilon_value =
+          ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]);
+      for (std::size_t anchor_index = 0;
+           anchor_index < source_anchor_indices.size();
+           ++anchor_index) {
+        const std::string& label = source_anchor_labels[anchor_index];
+        const std::size_t source_row = source_anchor_indices[anchor_index];
+        BigComplex endpoint_value;
+        if (label == "box[0,0,0,1]") {
+          if (source_row >= master_samples.size() ||
+              master_samples[source_row].size() !=
+                  spec.boundary_epsilon_samples.size()) {
+            return blocked_audit(
+                "reviewed scalar source endpoint samples were unavailable for " +
+                label);
+          }
+          endpoint_value = master_samples[source_row][sample_index];
+        } else {
+          const auto series_it = source_endpoint_series.find(label);
+          if (series_it == source_endpoint_series.end()) {
+            return blocked_audit(
+                "reviewed primitive source endpoint series was unavailable for " +
+                label);
+          }
+          endpoint_value =
+              EvaluateEndpointSeriesAtEpsilon(series_it->second, epsilon_value);
+        }
+        options.coupled_frobenius_anchor_endpoint_values.push_back(
+            ToComplexContourNumber(endpoint_value));
+      }
       const amflow::ComplexContourPropagationResult result =
           amflow::PropagateComplexContourVector(
               initial_values,
               waypoints,
-              BuildB61nCoupledRowMatrixEvaluator(
-                  spec,
-                  ParseBigFloatRational(
-                      spec.boundary_epsilon_samples[sample_index])),
+              BuildB61nCoupledRowMatrixEvaluator(spec, epsilon_value),
               options);
       audit.endpoint_refinement_integrator = result.diagnostics.integrator;
       if (!result.success ||
@@ -6554,7 +6645,8 @@ ApplyB61nCoupledRowContourTransport(
             result.diagnostics.max_embedded_error_eta +
             "; max_embedded_error_rhs_norm_abs=" +
             result.diagnostics.max_embedded_error_rhs_norm_abs +
-            "; propagator_summary=" + result.diagnostics.summary);
+            "; propagator_summary=" +
+            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
       }
       if (!result.diagnostics.coupled_frobenius_endpoint_matcher_applied ||
           !result.diagnostics.endpoint_extraction_applied) {
@@ -6562,7 +6654,8 @@ ApplyB61nCoupledRowContourTransport(
             "complex contour propagator reached the endpoint but did not apply the "
             "coupled-row Frobenius endpoint matcher for epsilon sample " +
             std::to_string(sample_index) +
-            "; propagator_summary=" + result.diagnostics.summary);
+            "; propagator_summary=" +
+            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
       }
       audit.coupled_frobenius_endpoint_matcher_applied = true;
       audit.segment_count_max =
@@ -6612,7 +6705,21 @@ ApplyB61nCoupledRowContourTransport(
             BigFloatCompactString(selected_relative_error, 40) +
             " exceeded the scoped endpoint budget for epsilon sample " +
             std::to_string(sample_index) +
-            "; propagator_summary=" + result.diagnostics.summary);
+            "; propagator_summary=" +
+            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
+      }
+      if (audit.source_anchor_count > 0) {
+        return blocked_after_propagation_audit(
+            "source-anchored endpoint-only coupled matcher remains diagnostic-only "
+            "until row 5/6 source-anchored evolution and AMFlow comparator evidence "
+            "clear the M6 publication gate for epsilon sample " +
+            std::to_string(sample_index) +
+            "; selected_refinement_error_abs=" +
+            BigFloatCompactString(selected_refinement_error, 40) +
+            "; selected_relative_error_abs=" +
+            BigFloatCompactString(selected_relative_error, 40) +
+            "; propagator_summary=" +
+            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
       }
       for (std::size_t row = 0; row < coupled_row_indices.size(); ++row) {
         transported_samples[row][sample_index] =
@@ -6712,6 +6819,10 @@ ApplyB61nCoupledRowContourTransport(
         "; coupled_frobenius_endpoint_matcher_applied=" +
         std::string(audit.coupled_frobenius_endpoint_matcher_applied ? "true"
                                                                     : "false") +
+        "; coupled_frobenius_source_anchored=true; source_anchor_count=" +
+        std::to_string(audit.source_anchor_count) +
+        "; source_anchor_epsilon_order=eps^" +
+        std::to_string(audit.source_anchor_epsilon_order) +
         "; ode_propagation_applied=true; coefficient_publication=true; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=" +
         std::string(audit.full_eta_zero_contour_applied ? "true" : "false") +
@@ -8399,6 +8510,69 @@ bool B61nMatrixRowHasOnlyReviewedColumns(
   return true;
 }
 
+std::map<std::string, std::map<int, BigComplex>>
+BuildB61nReviewedPrimitiveBubbleEndpointSeriesByLabel(
+    const DirectSolveSeriesSpec& spec,
+    const int epsilon_order) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    return {};
+  }
+  RequireReviewedB61nBubbleEndpointEpsilonOrder(epsilon_order);
+
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  const BigComplex mass =
+      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "m3sq");
+  const BigComplex s =
+      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "s");
+
+  std::map<std::string, std::map<int, BigComplex>> series_by_label;
+  B61nMatrixRowHasOnlyReviewedColumns(spec, "box[1,0,1,0]", {}, false);
+  series_by_label.emplace(
+      "box[1,0,1,0]",
+      RetainedBubbleEndpointSeriesThroughEpsOrder(
+          BigComplexLogNegImBranch(BigComplex{} - s),
+          epsilon_order));
+
+  const std::vector<std::pair<std::string, std::string>> one_mass_bubbles = {
+      {"box[1,0,0,1]", "p3sq"},
+      {"box[0,1,0,1]", "t"},
+      {"box[0,0,1,1]", "p4sq"},
+  };
+  for (const auto& [master_label, momentum_symbol] : one_mass_bubbles) {
+    const std::optional<std::size_t> master_index =
+        FindMasterIndexByLabel(spec, master_label);
+    if (!master_index.has_value()) {
+      throw std::runtime_error(
+          "b61n primitive endpoint transport cannot find master " +
+          master_label);
+    }
+    B61nMatrixRowHasOnlyReviewedColumns(
+        spec,
+        master_label,
+        {0, *master_index},
+        true);
+    series_by_label.emplace(
+        master_label,
+        ComplexKinematicsOneMassBubbleEndpointSeriesThroughEpsOrder(
+            mass,
+            RequireComplexKinematicsNumericSubstitution(numeric_substitutions,
+                                                        momentum_symbol),
+            epsilon_order));
+  }
+  return series_by_label;
+}
+
+BigComplex EvaluateEndpointSeriesAtEpsilon(
+    const std::map<int, BigComplex>& series,
+    const BigFloat& epsilon_value) {
+  BigComplex value;
+  for (const auto& [order, coefficient] : series) {
+    value = value + coefficient * PowInteger(epsilon_value, order);
+  }
+  return value;
+}
+
 int ApplyB61nEndpointSeriesToMaster(
     const DirectSolveSeriesSpec& spec,
     amflow::SolverDiagnostics& diagnostics,
@@ -8428,50 +8602,25 @@ int ApplyB61nComplexKinematicsPrimitiveBubbleEndpointTransportThroughEpsOrder(
   }
   RequireReviewedB61nBubbleEndpointEpsilonOrder(epsilon_order);
 
-  const std::map<std::string, BigComplex> numeric_substitutions =
-      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
-  const BigComplex mass =
-      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "m3sq");
-  const BigComplex s =
-      RequireComplexKinematicsNumericSubstitution(numeric_substitutions, "s");
-
   int transported = 0;
-  B61nMatrixRowHasOnlyReviewedColumns(spec, "box[1,0,1,0]", {}, false);
-  transported += ApplyB61nEndpointSeriesToMaster(
-      spec,
-      diagnostics,
+  const std::map<std::string, std::map<int, BigComplex>> series_by_label =
+      BuildB61nReviewedPrimitiveBubbleEndpointSeriesByLabel(spec, epsilon_order);
+  const std::vector<std::string> ordered_labels = {
       "box[1,0,1,0]",
-      RetainedBubbleEndpointSeriesThroughEpsOrder(
-          BigComplexLogNegImBranch(BigComplex{} - s),
-          epsilon_order));
-
-  const std::vector<std::pair<std::string, std::string>> one_mass_bubbles = {
-      {"box[1,0,0,1]", "p3sq"},
-      {"box[0,1,0,1]", "t"},
-      {"box[0,0,1,1]", "p4sq"},
+      "box[1,0,0,1]",
+      "box[0,1,0,1]",
+      "box[0,0,1,1]",
   };
-  for (const auto& [master_label, momentum_symbol] : one_mass_bubbles) {
-    const std::optional<std::size_t> master_index =
-        FindMasterIndexByLabel(spec, master_label);
-    if (!master_index.has_value()) {
-      throw std::runtime_error(
-          "b61n primitive endpoint transport cannot find master " +
-          master_label);
+  for (const std::string& master_label : ordered_labels) {
+    const auto series_it = series_by_label.find(master_label);
+    if (series_it == series_by_label.end()) {
+      continue;
     }
-    B61nMatrixRowHasOnlyReviewedColumns(
-        spec,
-        master_label,
-        {0, *master_index},
-        true);
     transported += ApplyB61nEndpointSeriesToMaster(
         spec,
         diagnostics,
         master_label,
-        ComplexKinematicsOneMassBubbleEndpointSeriesThroughEpsOrder(
-            mass,
-            RequireComplexKinematicsNumericSubstitution(numeric_substitutions,
-                                                        momentum_symbol),
-            epsilon_order));
+        series_it->second);
   }
 
   if (transported > 0) {

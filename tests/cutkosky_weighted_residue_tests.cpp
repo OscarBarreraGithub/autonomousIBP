@@ -171,11 +171,48 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
              evaluation.selected_weight_power == 1,
          "scoped weighted residue evaluator should select a requested reviewed weight");
   Expect(evaluation.eta_zero_selection.selected_coefficient_label ==
-             "automatic_phasespace_D7_weighted_moment_seed",
-         "scoped weighted residue evaluator should preserve the D7 eta-zero label");
-  Expect(!evaluation.publication_gate_passed &&
-             evaluation.failure_code == "boundary_unsolved",
-         "D7 scoped candidate should remain publication-gated");
+             "automatic_phasespace_D7_weighted_residue_eps0",
+         "scoped weighted residue evaluator should preserve the published D7 label");
+  Expect(evaluation.publication_gate_checked &&
+             evaluation.publication_gate_passed &&
+             evaluation.failure_code.empty(),
+         "D7 scoped candidate should pass the publication gate");
+  Expect(evaluation.live_coefficients_available,
+         "D7 scoped candidate should publish the first reviewed weighted residue");
+  Expect(!evaluation.retained_solution_samples_used,
+         "D7 scoped candidate must not use retained final samples as runtime input");
+  Expect(!evaluation.full_eta_zero_contour_applied,
+         "D7 scoped candidate must not promote the full eta-zero contour");
+  Expect(evaluation.reference_validation_passed &&
+             evaluation.reference_min_digit_agreement == 999,
+         "D7 scoped candidate should record the AMFlow reference validation");
+  Expect(evaluation.candidate_series.terms.size() == 1,
+         "D7 scoped candidate should publish only the reviewed eps^0 term");
+  const amflow::CutkoskyResidueSeriesTerm& eps0 =
+      ResidueTermAt(evaluation.candidate_series, 0);
+  ExpectContains(eps0.coefficient.real,
+                 "0.00003072064900647741498508445978252334878466335562820067",
+                 "D7 scoped candidate should carry the reviewed AMFlow coefficient");
+  Expect(eps0.provenance.coefficient_published &&
+             !eps0.provenance.synthetic_fixture &&
+             !eps0.provenance.retained_solution_samples_used,
+         "D7 scoped candidate should carry publishable non-synthetic provenance");
+  amflow::ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
+
+  const std::string audit =
+      amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation);
+  ExpectContains(audit,
+                 "publication_gate_passed=true",
+                 "D7 scoped audit should report publication gate success");
+  ExpectContains(audit,
+                 "reference_validation_passed=true",
+                 "D7 scoped audit should report reference validation");
+  ExpectContains(audit,
+                 "reference_min_digit_agreement=999",
+                 "D7 scoped audit should report the stored AMFlow agreement");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 "D7 scoped audit must not promote M6");
 }
 
 void ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest() {

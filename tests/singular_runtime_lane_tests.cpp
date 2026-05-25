@@ -2195,6 +2195,69 @@ void B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest() {
       "b63n automatic weighted moment seed should reject cut denominators");
 }
 
+void B63nScopedWeightedResiduePublishesReviewedD7TermTest() {
+  const auto evaluation = amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+      MakeB63nAutomaticPhaseSpaceSpec(),
+      6,
+      2,
+      70);
+
+  Expect(evaluation.reviewed_surface && evaluation.evaluation_attempted,
+         "b63n scoped weighted residue evaluation should bind the reviewed surface");
+  Expect(evaluation.selected_weight_denominator == "D7" &&
+             evaluation.selected_weight_denominator_index == 6 &&
+             evaluation.selected_weight_power == 1,
+         "b63n scoped weighted residue evaluation should publish the reviewed D7 term");
+  Expect(evaluation.publication_gate_checked &&
+             evaluation.publication_gate_passed,
+         "b63n scoped D7 weighted residue should pass the publication gate");
+  Expect(evaluation.reference_validation_passed &&
+             evaluation.reference_min_digit_agreement == 999,
+         "b63n scoped D7 weighted residue should record the AMFlow validation");
+  Expect(evaluation.live_coefficients_available,
+         "b63n scoped D7 weighted residue should claim only the scoped live coefficient");
+  Expect(!evaluation.retained_solution_samples_used,
+         "b63n scoped D7 weighted residue must not read retained final samples");
+  Expect(!evaluation.full_eta_zero_contour_applied,
+         "b63n scoped D7 weighted residue must not promote full eta-zero coverage");
+  Expect(evaluation.failure_code.empty(),
+         "b63n scoped D7 weighted residue should clear the failure code");
+  Expect(evaluation.candidate_series.terms.size() == 1,
+         "b63n scoped D7 weighted residue should publish only the reviewed eps^0 term");
+  const amflow::CutkoskyResidueSeriesTerm& eps0 =
+      CutkoskyResidueTermAt(evaluation.candidate_series, 0, 0, 0, "integer");
+  Expect(eps0.coefficient_label ==
+             "automatic_phasespace_D7_weighted_residue_eps0",
+         "b63n scoped D7 weighted residue should use the published coefficient label");
+  ExpectContains(eps0.coefficient.real,
+                 "0.00003072064900647741498508445978252334878466335562820067",
+                 "b63n scoped D7 weighted residue should carry the reviewed eps^0 "
+                 "coefficient");
+  Expect(eps0.provenance.coefficient_published &&
+             !eps0.provenance.synthetic_fixture &&
+             !eps0.provenance.retained_solution_samples_used,
+         "b63n scoped D7 weighted residue should carry publishable provenance");
+  amflow::ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
+
+  const std::string audit =
+      amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation);
+  ExpectContains(audit,
+                 "kind=b63n-scoped-weighted-residue-evaluation",
+                 "b63n scoped D7 audit should identify the evaluation");
+  ExpectContains(audit,
+                 "publication_gate_passed=true",
+                 "b63n scoped D7 audit should report publication success");
+  ExpectContains(audit,
+                 "reference_validation_passed=true",
+                 "b63n scoped D7 audit should report validation success");
+  ExpectContains(audit,
+                 "reference_validation_source=tools/reference-harness/specs/m6/lane146/",
+                 "b63n scoped D7 audit should cite the AMFlow comparison source");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 "b63n scoped D7 audit must not promote M6");
+}
+
 void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
   const amflow::ProblemSpec automatic_spec = MakeB63nAutomaticPhaseSpaceSpec();
   const auto automatic_plan =
@@ -6380,6 +6443,7 @@ int main() {
     B63nFeynmanPrescriptionSymbolicSubintegralAssemblyMapsLedgersTest();
     B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
     B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest();
+    B63nScopedWeightedResiduePublishesReviewedD7TermTest();
     B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();

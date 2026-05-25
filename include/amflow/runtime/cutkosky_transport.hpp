@@ -302,9 +302,11 @@ struct CutkoskyScopedWeightedResidueEvaluation {
   bool evaluation_attempted = false;
   bool publication_gate_checked = false;
   bool publication_gate_passed = false;
+  bool reference_validation_passed = false;
   bool live_coefficients_available = false;
   bool retained_solution_samples_used = false;
   bool full_eta_zero_contour_applied = false;
+  int reference_min_digit_agreement = 0;
   std::string surface_label;
   std::string residue_model_kind;
   std::string selected_weight_denominator;
@@ -314,6 +316,7 @@ struct CutkoskyScopedWeightedResidueEvaluation {
   std::string coefficient_policy;
   std::string failure_code;
   std::string publication_gate_status;
+  std::string reference_validation_source;
   std::string summary;
   CutkoskyResidueSeries candidate_series;
   CutkoskyEtaZeroSelectionResult eta_zero_selection;

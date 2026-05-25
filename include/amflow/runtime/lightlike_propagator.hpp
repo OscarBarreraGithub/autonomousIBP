@@ -306,6 +306,13 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
     const std::vector<LightlikeGaugeLinkTargetReductionTerm>& target_reduction_terms,
     const std::string& variable = "gaugex");
 
+std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>
+ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::string& epsilon_sample,
+    int max_power = 12);
+
 std::vector<LightlikeGaugeLinkTargetReductionTerm>
 ParseLightlikeGaugeLinkTargetReductionRaw(
     const std::string& reduction_raw,

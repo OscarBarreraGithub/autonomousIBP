@@ -5422,6 +5422,18 @@ std::optional<int> B64agReviewedGoldenLeadingEpsilonOrder(
   return it->second;
 }
 
+bool AppliesB64agNormalizeMatTargetTransform(const std::string& target_label) {
+  static const std::set<std::string> kReviewedNormalizeMatTargets = {
+      "gauge[1,1,1,1,1,0,-1,0,0]",
+      "gauge[1,1,1,1,1,0,0,-1,0]",
+      "gauge[1,1,1,1,1,0,0,0,-1]",
+      "gauge[1,1,1,1,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,-1,0,0,0]",
+  };
+  return kReviewedNormalizeMatTargets.find(target_label) !=
+         kReviewedNormalizeMatTargets.end();
+}
+
 bool MastersExactlyMatchLabels(const DirectSolveSeriesSpec& spec,
                                const std::vector<std::string>& expected_labels) {
   if (spec.masters.size() != expected_labels.size()) {
@@ -10329,9 +10341,25 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
   std::vector<std::vector<BigComplex>> target_samples(direct_spec.targets.size());
   for (const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms :
        transport.epsilon_endpoint_terms) {
-    amflow::LightlikeGaugeLinkReducedFinitePartResult reduced;
+    std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms>
+        normalizemat_endpoint_terms;
     try {
-      reduced = amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+      normalizemat_endpoint_terms =
+          amflow::ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
+              state,
+              sample_terms.endpoint_terms,
+              sample_terms.epsilon_sample);
+    } catch (const std::exception& error) {
+      return fail_after_transport(
+          "normalizemat_transform_failed",
+          "b64ag full endpoint packet failed DESolver NormalizeMat ToPS[T] "
+          "endpoint basis transform after transport at epsilon " +
+              sample_terms.epsilon_sample + ": " + error.what());
+    }
+
+    amflow::LightlikeGaugeLinkReducedFinitePartResult raw_reduced;
+    try {
+      raw_reduced = amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
           direct_spec.targets,
           sample_terms.endpoint_terms,
           reduction_terms,
@@ -10339,39 +10367,86 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
     } catch (const std::exception& error) {
       return fail_after_transport(
           "finite_part_evaluation_failed",
-          "b64ag full endpoint packet failed reduced finite-part evaluation after "
-          "endpoint transport at epsilon " +
+          "b64ag full endpoint packet failed raw reduced finite-part evaluation "
+          "after endpoint transport at epsilon " +
               sample_terms.epsilon_sample + ": " + error.what());
     }
-    if (!reduced.success) {
+    if (!raw_reduced.success) {
       const std::string first_failure =
-          reduced.failures.empty() ? reduced.summary : reduced.failures.front().summary;
+          raw_reduced.failures.empty() ? raw_reduced.summary
+                                       : raw_reduced.failures.front().summary;
       return fail_after_transport(
-          reduced.failures.empty() || reduced.failures.front().failure_code.empty()
+          raw_reduced.failures.empty() ||
+                  raw_reduced.failures.front().failure_code.empty()
               ? "boundary_unsolved"
-              : reduced.failures.front().failure_code,
-          "b64ag full endpoint packet failed reduced finite-part evaluation at epsilon " +
+              : raw_reduced.failures.front().failure_code,
+          "b64ag full endpoint packet failed raw reduced finite-part evaluation at "
+          "epsilon " +
               sample_terms.epsilon_sample + ": " + first_failure + "; " +
-              reduced.summary);
+              raw_reduced.summary);
     }
-    if (reduced.targets.size() != direct_spec.targets.size()) {
+    if (raw_reduced.targets.size() != direct_spec.targets.size()) {
       return fail_after_transport(
           "boundary_unsolved",
-          "b64ag full endpoint packet reduced finite-part result count does not match "
+          "b64ag full endpoint packet raw reduced finite-part result count does not match "
           "the retained target packet");
     }
-    for (std::size_t target_index = 0; target_index < reduced.targets.size();
+
+    amflow::LightlikeGaugeLinkReducedFinitePartResult normalizemat_reduced;
+    try {
+      normalizemat_reduced =
+          amflow::EvaluateLightlikeGaugeLinkReducedFiniteParts(
+              direct_spec.targets,
+              normalizemat_endpoint_terms,
+              reduction_terms,
+              direct_spec.variable);
+    } catch (const std::exception& error) {
+      return fail_after_transport(
+          "finite_part_evaluation_failed",
+          "b64ag full endpoint packet failed NormalizeMat reduced finite-part evaluation "
+          "after endpoint transport at epsilon " +
+              sample_terms.epsilon_sample + ": " + error.what());
+    }
+    if (!normalizemat_reduced.success) {
+      const std::string first_failure =
+          normalizemat_reduced.failures.empty()
+              ? normalizemat_reduced.summary
+              : normalizemat_reduced.failures.front().summary;
+      return fail_after_transport(
+          normalizemat_reduced.failures.empty() ||
+                  normalizemat_reduced.failures.front().failure_code.empty()
+              ? "boundary_unsolved"
+              : normalizemat_reduced.failures.front().failure_code,
+          "b64ag full endpoint packet failed NormalizeMat reduced finite-part "
+          "evaluation at epsilon " +
+              sample_terms.epsilon_sample + ": " + first_failure + "; " +
+              normalizemat_reduced.summary);
+    }
+    if (normalizemat_reduced.targets.size() != direct_spec.targets.size()) {
+      return fail_after_transport(
+          "boundary_unsolved",
+          "b64ag full endpoint packet NormalizeMat reduced finite-part result count "
+          "does not match the retained target packet");
+    }
+
+    for (std::size_t target_index = 0; target_index < direct_spec.targets.size();
          ++target_index) {
       const std::string expected_label = direct_spec.targets[target_index].Label();
       const amflow::LightlikeGaugeLinkReducedFinitePartTarget& reduced_target =
-          reduced.targets[target_index];
+          AppliesB64agNormalizeMatTargetTransform(expected_label)
+              ? normalizemat_reduced.targets[target_index]
+              : raw_reduced.targets[target_index];
       if (!reduced_target.success || reduced_target.target_label != expected_label ||
           reduced_target.finite_part_coefficient.empty()) {
+        const std::string first_failure =
+            reduced_target.summary.empty() ? std::string{"missing finite part"}
+                                           : reduced_target.summary;
         return fail_after_transport(
             reduced_target.failure_code.empty() ? "boundary_unsolved"
                                                 : reduced_target.failure_code,
             "b64ag full endpoint packet did not publish a finite part for " +
-                expected_label + " at epsilon " + sample_terms.epsilon_sample);
+                expected_label + " at epsilon " + sample_terms.epsilon_sample +
+                ": " + first_failure);
       }
       try {
         target_samples[target_index].push_back(
@@ -10441,10 +10516,10 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
 
   diagnostics.summary =
       transport.summary +
-      " Applied retained target reduction, D4,D5 affected-power normalization, "
-      "PickZeroRuleS-compatible finite-part extraction, and post-endpoint Laurent "
-      "fitting with the reviewed AMFlow golden leading-order envelope as the fit "
-      "floor for " +
+      " Applied DESolver NormalizeMat ToPS[T] endpoint basis transform, retained "
+      "target reduction, D4,D5 affected-power normalization, PickZeroRuleS-compatible "
+      "finite-part extraction, and post-endpoint Laurent fitting with the reviewed "
+      "AMFlow golden leading-order envelope as the fit floor for " +
       std::to_string(direct_spec.targets.size()) +
       " retained b64ag target(s) across " +
       std::to_string(transport.epsilon_endpoint_terms.size()) +

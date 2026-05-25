@@ -2764,6 +2764,24 @@ RuntimeComplex ParseRuntimeConstantComplexExpression(
   return RuntimeRationalValue(rational, RuntimeComplex{0.0L, 0.0L}, expression);
 }
 
+RuntimeComplex EvaluateNormalizeMatSourceCoefficientValue(
+    const LightlikeGaugeLinkNormalizeMatSourceTerm& term,
+    const std::string& epsilon_sample) {
+  if (term.coefficient_source.empty()) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat source-form coefficient evaluator received an "
+        "empty source expression");
+  }
+  const RuntimeFloat epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
+  const RuntimeRationalPolynomial coefficient =
+      ParseGaugeLinkRationalExpression(term.coefficient_source,
+                                       "gaugex",
+                                       epsilon_value);
+  return RuntimeRationalValue(coefficient,
+                              RuntimeComplex{0.0L, 0.0L},
+                              term.coefficient_source);
+}
+
 struct GaugeLinkFirstBlockEndpointBasisValue {
   RuntimeFloat y = 0.0L;
   RuntimeFloat w = 0.0L;
@@ -3511,6 +3529,97 @@ EvaluateLightlikeGaugeLinkReducedFiniteParts(
         "full_eta_zero_contour_applied=false.";
   }
   return result;
+}
+
+std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>
+ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
+    const LightlikeGaugeLinkRuntimeState& state,
+    const std::vector<LightlikeGaugeLinkSixMasterEndpointTerms>& endpoint_terms,
+    const std::string& epsilon_sample,
+    const int max_power) {
+  const LightlikeGaugeLinkRuntimeState checked_state = RequireRuntimeState(state);
+  if (checked_state.diffeq_masters.size() != ReviewedReductionMasterLabels().size() ||
+      !LabelsExactlyMatch(checked_state.diffeq_masters,
+                          ReviewedReductionMasterLabels())) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat endpoint transform requires the reviewed six-master DE basis");
+  }
+  if (epsilon_sample.empty()) {
+    throw std::runtime_error(
+        "b64ag NormalizeMat endpoint transform requires an epsilon sample label");
+  }
+
+  std::map<std::string, std::size_t> reviewed_index_by_label;
+  for (std::size_t index = 0; index < ReviewedReductionMasterLabels().size(); ++index) {
+    reviewed_index_by_label.emplace(ReviewedReductionMasterLabels()[index], index);
+  }
+
+  const RuntimeFloat epsilon_value = ParseRuntimeRationalNumber(epsilon_sample);
+  std::vector<RuntimeSeries> source_series(ReviewedReductionMasterLabels().size());
+  std::set<std::string> seen_labels;
+  for (const LightlikeGaugeLinkSixMasterEndpointTerms& master_terms : endpoint_terms) {
+    const auto label_it = reviewed_index_by_label.find(master_terms.master_label);
+    if (label_it == reviewed_index_by_label.end()) {
+      throw std::runtime_error(
+          "b64ag NormalizeMat endpoint transform received non-reviewed endpoint master " +
+          master_terms.master_label);
+    }
+    if (!seen_labels.insert(master_terms.master_label).second) {
+      throw std::runtime_error(
+          "b64ag NormalizeMat endpoint transform received duplicate endpoint master " +
+          master_terms.master_label);
+    }
+    RuntimeSeries& series = source_series[label_it->second];
+    for (const LightlikeGaugeLinkFinitePartTerm& term : master_terms.endpoint_terms) {
+      if (term.coefficient.empty()) {
+        throw std::runtime_error(
+            "b64ag NormalizeMat endpoint transform received an empty endpoint "
+            "coefficient for " +
+            master_terms.master_label);
+      }
+      AddRuntimeSeriesTerm(series,
+                           term.region_key,
+                           term.power,
+                           term.log_power,
+                           ParseRuntimeConstantComplexExpression(
+                               term.coefficient,
+                               checked_state.variable,
+                               epsilon_value));
+    }
+  }
+
+  std::vector<RuntimeSeries> transformed_series(ReviewedReductionMasterLabels().size());
+  for (const LightlikeGaugeLinkNormalizeMatSourceTerm& term :
+       ReviewedNormalizeMatSourceTerms()) {
+    if (term.row == 0 || term.column == 0 ||
+        term.row > ReviewedReductionMasterLabels().size() ||
+        term.column > ReviewedReductionMasterLabels().size()) {
+      throw std::runtime_error(
+          "b64ag NormalizeMat endpoint transform found an out-of-range source term");
+    }
+    const RuntimeComplex transform_coefficient =
+        EvaluateNormalizeMatSourceCoefficientValue(term, epsilon_sample);
+    const int power_shift =
+        term.gaugex_power + static_cast<int>(term.coefficient_index);
+    const RuntimeSeries& column_series = source_series[term.column - 1];
+    RuntimeSeries& row_series = transformed_series[term.row - 1];
+    for (const auto& source_entry : column_series) {
+      AddRuntimeSeriesTerm(row_series,
+                           source_entry.first.region_key,
+                           source_entry.first.power + power_shift,
+                           source_entry.first.log_power,
+                           transform_coefficient * source_entry.second);
+    }
+  }
+
+  std::vector<LightlikeGaugeLinkSixMasterEndpointTerms> transformed_terms;
+  transformed_terms.reserve(ReviewedReductionMasterLabels().size());
+  for (std::size_t index = 0; index < ReviewedReductionMasterLabels().size(); ++index) {
+    transformed_terms.push_back(
+        {ReviewedReductionMasterLabels()[index],
+         EndpointTermsFromRuntimeSeries(transformed_series[index], max_power)});
+  }
+  return transformed_terms;
 }
 
 std::vector<LightlikeGaugeLinkTargetReductionTerm>

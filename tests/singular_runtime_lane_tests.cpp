@@ -3373,6 +3373,68 @@ void B64agGaugeLinkNormalizeMatSourceFormPublishesReviewedSupportTest() {
                  "b64ag NormalizeMat source-form audit should keep M6 false");
 }
 
+void B64agGaugeLinkNormalizeMatEndpointTransformAppliesReviewedSourceTermsTest() {
+  const amflow::LightlikeGaugeLinkRuntimeState state =
+      MakeB64agGaugeLinkRuntimeState();
+  const std::vector<amflow::MasterIntegral> masters =
+      B64agReviewedReductionMasters();
+  std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms> endpoint_terms;
+  endpoint_terms.reserve(masters.size());
+  for (std::size_t index = 0; index < masters.size(); ++index) {
+    std::vector<amflow::LightlikeGaugeLinkFinitePartTerm> terms;
+    if (index == 2) {
+      terms.push_back(B64agEndpointFixtureTerm(0, "1"));
+    }
+    endpoint_terms.push_back({B64agMasterLabel(masters[index]), std::move(terms)});
+  }
+
+  const std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms>
+      transformed =
+          amflow::ApplyLightlikeGaugeLinkNormalizeMatEndpointTransform(
+              state, endpoint_terms, "101/208000");
+
+  Expect(transformed.size() == masters.size(),
+         "b64ag NormalizeMat endpoint transform should preserve the reviewed six-row packet");
+  for (std::size_t index = 0; index < masters.size(); ++index) {
+    Expect(transformed[index].master_label == B64agMasterLabel(masters[index]),
+           "b64ag NormalizeMat endpoint transform should preserve reviewed row labels");
+  }
+  const amflow::LightlikeGaugeLinkFinitePartTerm& downstream_constant =
+      B64agFindEndpointTerm(transformed[4], "integer", 0, 0);
+  const B64agTestBigComplex downstream_constant_value =
+      B64agEndpointCoefficient(downstream_constant.coefficient);
+  ExpectB64agRelativeClose(
+      downstream_constant_value.real(),
+      B64agTestBigFloat("623697") / B64agTestBigFloat("155899"),
+      B64agTestBigFloat("1e-55"),
+      "b64ag NormalizeMat endpoint transform should apply Tps[5,3] at "
+      "the first retained epsilon sample");
+  const amflow::LightlikeGaugeLinkFinitePartTerm& downstream_companion_linear =
+      B64agFindEndpointTerm(transformed[5], "integer", 1, 0);
+  const B64agTestBigComplex downstream_companion_linear_value =
+      B64agEndpointCoefficient(downstream_companion_linear.coefficient);
+  ExpectB64agRelativeClose(
+      downstream_companion_linear_value.real(),
+      B64agTestBigFloat("64843490201") / B64agTestBigFloat("32395500402"),
+      B64agTestBigFloat("1e-55"),
+      "b64ag NormalizeMat endpoint transform should apply the reviewed "
+      "Tps[6,3] shifted term");
+  const amflow::LightlikeGaugeLinkFinitePartTerm& second_block_diagonal =
+      B64agFindEndpointTerm(transformed[2], "integer", -1, 0);
+  Expect(B64agEndpointCoefficient(second_block_diagonal.coefficient).real() ==
+             B64agTestBigFloat(-2),
+         "b64ag NormalizeMat endpoint transform should preserve Tps[3,3]");
+  const amflow::LightlikeGaugeLinkFinitePartTerm& second_block_companion =
+      B64agFindEndpointTerm(transformed[3], "integer", -3, 0);
+  Expect(B64agEndpointCoefficient(second_block_companion.coefficient).real() ==
+             B64agTestBigFloat(1),
+         "b64ag NormalizeMat endpoint transform should preserve Tps[4,3]");
+  Expect(transformed[0].endpoint_terms.empty() &&
+             transformed[1].endpoint_terms.empty(),
+         "b64ag NormalizeMat endpoint transform should not synthesize rows outside "
+         "the reviewed ToPS[T] support for a single third-column source");
+}
+
 void B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest() {
   ExpectRuntimeErrorContains(
       []() {
@@ -6865,6 +6927,7 @@ int main() {
     B63nCutkoskyTransportScaffoldRejectsMutatedReviewedMassTest();
     B64agGaugeLinkTransportScaffoldAuditsReviewedSurfaceTest();
     B64agGaugeLinkNormalizeMatSourceFormPublishesReviewedSupportTest();
+    B64agGaugeLinkNormalizeMatEndpointTransformAppliesReviewedSourceTermsTest();
     B64agGaugeLinkDiffeqParserRejectsMalformedMatrixTest();
     B64agGaugeLinkSquareFamilyRejectsStrictLightlikeReplacementTest();
     B64agGaugeLinkSquareFamilyRejectsMutatedDenominatorTest();

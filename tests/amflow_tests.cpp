@@ -49942,6 +49942,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "leading-order envelope as the fit floor for 9 retained b64ag target",
                  "full stripped b64ag packet should document the golden-envelope fit floor");
   ExpectContains(full_stripped_json,
+                 "Applied DESolver NormalizeMat ToPS[T] endpoint basis transform",
+                 "full stripped b64ag packet should document the reviewed NormalizeMat "
+                 "publication-basis transform");
+  ExpectContains(full_stripped_json,
                  "frobenius_recurrence_applied=true",
                  "full stripped b64ag packet should expose the reviewed Frobenius "
                  "recurrence runtime handoff");

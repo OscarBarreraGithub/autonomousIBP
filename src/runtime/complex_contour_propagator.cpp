@@ -2057,11 +2057,10 @@ ComplexContourVector EvaluateFrobeniusBasisVector(
   return series;
 }
 
-ComplexContourFloat CoupledFrobeniusTailSampleRadius(
-    const std::vector<ComplexContourNumber>& waypoints,
+ComplexContourFloat CoupledFrobeniusTailSampleRadiusForMatch(
+    const ComplexContourNumber& endpoint,
+    const ComplexContourNumber& match_eta,
     const ComplexContourPropagationOptions& options) {
-  const ComplexContourNumber endpoint = waypoints.back();
-  const ComplexContourNumber match_eta = waypoints[waypoints.size() - 2];
   ComplexContourFloat radius =
       ComplexAbs(match_eta - endpoint) * ComplexContourFloat(2);
   radius = std::max(radius, ComplexContourFloat("0.0625"));
@@ -3738,7 +3737,8 @@ ComplexContourPropagationResult PropagateComplexContourVector(
               matrix_evaluator,
               match_eta,
               refined.values,
-              CoupledFrobeniusTailSampleRadius(waypoints, options),
+              CoupledFrobeniusTailSampleRadiusForMatch(
+                  waypoints.back(), match_eta, options),
               options.half_plane,
               options.coupled_frobenius_anchor_row_indices,
               options.coupled_frobenius_anchor_endpoint_values);

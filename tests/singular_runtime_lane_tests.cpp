@@ -5617,6 +5617,10 @@ void B61nCoupledFrobeniusEndpointMatcherRetargetsNearZeroMatchPointTest() {
                  "coupled_frobenius_match_eta=0 - 0.25*I",
                  "b61n retargeted match should avoid the near-zero waypoint");
   ExpectContains(result.diagnostics.summary,
+                 "coupled_frobenius_tail_sample_radius=0.5",
+                 "b61n retargeted match should fit the Frobenius tail at a "
+                 "radius covering the actual match point");
+  ExpectContains(result.diagnostics.summary,
                  "coupled_frobenius_match_eta_policy=retargeted-to-minimum-radius-0.25",
                  "b61n retargeted match should document the eta policy");
 }

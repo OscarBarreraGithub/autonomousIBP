@@ -843,6 +843,9 @@ def load_parity_signoff_summary(summary_path: Path) -> dict[str, Any]:
     for field in required_boolean_fields:
         if not isinstance(summary.get(field), bool):
             raise TypeError(f"parity signoff summary {field} must be a bool")
+    qualification_corpus_reviewed = summary.get("qualification_corpus_reviewed", False)
+    if not isinstance(qualification_corpus_reviewed, bool):
+        raise TypeError("parity signoff summary qualification_corpus_reviewed must be a bool")
 
     required_release_review_sections = normalize_string_list(
         summary.get("required_release_review_sections", []),
@@ -882,6 +885,7 @@ def load_parity_signoff_summary(summary_path: Path) -> dict[str, Any]:
     if summary["parity_signoff_complete"]:
         expect(
             summary["qualification_closure_reviewed"]
+            and qualification_corpus_reviewed
             and summary["performance_review_summary_reviewed"]
             and summary["diagnostic_review_summary_reviewed"]
             and summary["docs_completion_note_reviewed"]
@@ -906,6 +910,7 @@ def load_parity_signoff_summary(summary_path: Path) -> dict[str, Any]:
         **summary,
         "current_state": current_state,
         "required_release_review_sections": required_release_review_sections,
+        "qualification_corpus_reviewed": qualification_corpus_reviewed,
         "missing_or_blocked_parity_paths": missing_or_blocked_parity_paths,
         "blocking_reasons": blocking_reasons,
         "withheld_claims": withheld_claims,
@@ -1112,6 +1117,8 @@ def parity_signoff_blockers(parity_summary: dict[str, Any] | None) -> list[str]:
         blockers.append("parity-signoff-incomplete")
     if not parity_summary["qualification_closure_reviewed"]:
         blockers.append("parity-qualification-closure")
+    if not parity_summary.get("qualification_corpus_reviewed", False):
+        blockers.append("parity-qualification-corpus-summary")
     if not parity_summary["performance_review_summary_reviewed"]:
         blockers.append("parity-performance-review-summary")
     if not parity_summary["diagnostic_review_summary_reviewed"]:
@@ -2105,6 +2112,7 @@ def write_synthetic_parity_signoff_summary(path: Path) -> None:
             "current_state": "blocked-on-prerequisite-release-reviews",
             "parity_signoff_complete": False,
             "qualification_closure_reviewed": False,
+            "qualification_corpus_reviewed": False,
             "performance_review_summary_reviewed": False,
             "diagnostic_review_summary_reviewed": False,
             "docs_completion_note_reviewed": False,
@@ -2117,12 +2125,14 @@ def write_synthetic_parity_signoff_summary(path: Path) -> None:
             ),
             "missing_or_blocked_parity_paths": [
                 "qualification-closure-note",
+                "qualification-corpus-summary",
                 "performance-review-summary",
                 "diagnostic-review-summary",
                 "docs-completion-note",
             ],
             "blocking_reasons": [
                 "qualification closure note is not reviewed",
+                "qualification-corpus review summary is not complete",
                 "performance review summary is not complete",
                 "diagnostic review summary is not complete",
                 "docs completion note is not complete",
@@ -2284,6 +2294,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 "current_state": "parity-signoff-reviewed",
                 "parity_signoff_complete": True,
                 "qualification_closure_reviewed": True,
+                "qualification_corpus_reviewed": True,
                 "performance_review_summary_reviewed": True,
                 "diagnostic_review_summary_reviewed": True,
                 "docs_completion_note_reviewed": True,
@@ -2326,6 +2337,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 **parity_signoff_fixture,
                 "parity_signoff_complete": True,
                 "qualification_closure_reviewed": True,
+                "qualification_corpus_reviewed": True,
                 "performance_review_summary_reviewed": True,
                 "diagnostic_review_summary_reviewed": True,
                 "docs_completion_note_reviewed": True,
@@ -2610,10 +2622,12 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             == [
                 "parity-signoff-incomplete",
                 "parity-qualification-closure",
+                "parity-qualification-corpus-summary",
                 "parity-performance-review-summary",
                 "parity-diagnostic-review-summary",
                 "parity-docs-completion-note",
                 "parity-path:qualification-closure-note",
+                "parity-path:qualification-corpus-summary",
                 "parity-path:performance-review-summary",
                 "parity-path:diagnostic-review-summary",
                 "parity-path:docs-completion-note",

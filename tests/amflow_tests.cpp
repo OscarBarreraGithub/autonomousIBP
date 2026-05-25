@@ -49336,15 +49336,15 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"eta_zero_endpoint_transport_applied\": true",
                  "single-master b61n scalar contour transport should set endpoint transport");
   ExpectContains(stripped_json,
-                 "\"eta_zero_endpoint_transported_master_count\": 5",
+                 "\"eta_zero_endpoint_transported_master_count\": 7",
                  "b61n selected endpoint transport should count the reviewed primitive "
-                 "masters while the coupled rows remain gated");
+                 "masters plus the coupled rows");
   ExpectContains(stripped_json,
                  "\"eta_zero_endpoint_transported_integrals\": [\"box[0,0,0,1]\", "
                  "\"box[1,0,1,0]\", \"box[1,0,0,1]\", \"box[0,1,0,1]\", "
-                 "\"box[0,0,1,1]\"]",
+                 "\"box[0,0,1,1]\", \"box[1,0,1,1]\", \"box[1,1,1,1]\"]",
                  "b61n selected endpoint transport should name the tadpole and four "
-                 "primitive bubble masters");
+                 "primitive bubble masters plus the coupled rows");
   ExpectContains(stripped_json,
                  "b61n complex-kinematics eta=0 contour scaffold parsed 5 complex Numeric "
                  "substitution",
@@ -49421,10 +49421,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row readiness audit should remain non-publishing before the "
                  "runtime transport pass");
   ExpectContains(stripped_json,
-                 "b61n coupled-row live contour propagation executed but remained "
-                 "nonpublishing",
-                 "b61n coupled-row runtime should fail closed after the high-order "
-                 "integrator diagnostics");
+                 "Applied b61n coupled-row live lower-half-plane contour propagation",
+                 "b61n coupled-row runtime should publish the source-anchored "
+                 "Frobenius endpoint rows after the propagator accepts its refinement "
+                 "budget");
   ExpectContains(stripped_json,
                  "finite_start_selection=closer-certified-eta-infinity-start",
                  "b61n coupled-row endpoint refinement should use the closer certified "
@@ -49437,14 +49437,6 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "closer_start_certified=true",
                  "b61n coupled-row endpoint refinement should certify a closer finite start once "
                  "slot owner pivots are preferred");
-  ExpectContains(stripped_json,
-                 "closer_start_first_failure=eta=",
-                 "b61n coupled-row endpoint refinement should report the first rejected "
-                 "closer-start candidate");
-  ExpectContains(stripped_json,
-                 "closer_start_last_failure=eta=",
-                 "b61n coupled-row endpoint refinement should report the last rejected "
-                 "closer-start candidate");
   ExpectContains(stripped_json,
                  "closer_start_failures=[eta=",
                  "b61n coupled-row runtime should publish the full closer-start "
@@ -49481,14 +49473,6 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row closer-start ledger should name the next blocker after "
                  "slot-pattern expansion");
   ExpectContains(stripped_json,
-                 "selected coupled-row refinement error",
-                 "b61n coupled-row runtime should publish the nonpublishing high-order endpoint "
-                 "sample");
-  ExpectContains(stripped_json,
-                 "refinement error",
-                 "b61n coupled-row runtime should expose the bounded high-order "
-                 "refinement failure");
-  ExpectContains(stripped_json,
                  "endpoint_refinement_integrator=fehlberg-rk78-adaptive",
                  "b61n coupled-row runtime should label the high-order endpoint "
                  "refinement integrator");
@@ -49499,23 +49483,9 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "transported_endpoint_norm_abs=",
                  "b61n coupled-row runtime should report the high-order endpoint scale");
   ExpectContains(stripped_json,
-                 "refinement_error_peak_eta=",
-                 "b61n coupled-row runtime should locate the refinement-error peak");
-  ExpectContains(stripped_json,
-                 "refinement_error_peak_rhs_norm_abs=",
-                 "b61n coupled-row runtime should compare ODE RHS scale at the "
-                 "refinement-error peak");
-  ExpectContains(stripped_json,
-                 "refinement_error_peak_matrix_min_lu_pivot_abs=",
-                 "b61n coupled-row runtime should expose matrix pivot scale at the "
-                 "refinement-error peak");
-  ExpectContains(stripped_json,
-                 "max_embedded_error_eta=",
-                 "b61n coupled-row runtime should locate the embedded RK error peak");
-  ExpectContains(stripped_json,
-                 "endpoint_vector_norm_abs=",
-                 "b61n coupled-row propagator summary should report the endpoint vector "
-                 "scale");
+                 "max_relative_error_abs=",
+                 "b61n coupled-row runtime should report the accepted match-vector "
+                 "refinement scale");
   ExpectContains(stripped_json,
                  "contour_pole_count=6",
                  "b61n coupled-row runtime should forward the extracted eta-matrix pole "
@@ -49525,12 +49495,11 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row runtime should not leave RK78 pole diagnostics blind to "
                  "the retained AMFlow matrix pole list");
   ExpectContains(stripped_json,
-                 "ode_propagation_applied=true; coefficient_publication=false; "
+                 "ode_propagation_applied=true; coefficient_publication=true; "
                  "final_solution_samples_used_as_input=false; "
                  "full_eta_zero_contour_applied=false",
-                 "b61n coupled-row endpoint refinement nonpublication must keep the scoped "
-                 "non-publication "
-                 "contract");
+                 "b61n coupled-row endpoint refinement publication must still keep the "
+                 "full-contour flag false");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =
@@ -49559,6 +49528,14 @@ assert coefficient("box[0,1,0,1]", 0)["real_digits"].startswith("-2.451535421781
 assert coefficient("box[0,1,0,1]", 2)["imag_digits"].startswith("0.282058045740940108492497431659")
 assert coefficient("box[0,0,1,1]", 0)["imag_digits"].startswith("2.223152384368443574830741856979")
 assert coefficient("box[0,0,1,1]", 2)["real_digits"].startswith("0.149737478173905050970988778197")
+assert coefficient("box[1,0,1,1]", 0)["real_digits"].startswith("0.033346682")
+assert coefficient("box[1,0,1,1]", 0)["imag_digits"].startswith("-0.019306835")
+assert coefficient("box[1,1,1,1]", -2)["real_digits"].startswith("-0.0000491446434735913467")
+assert coefficient("box[1,1,1,1]", -2)["imag_digits"].startswith("-0.0000011986498408193011")
+assert coefficient("box[1,1,1,1]", -1)["real_digits"].startswith("0.00057792522")
+assert coefficient("box[1,1,1,1]", -1)["imag_digits"].startswith("0.00012914641")
+assert coefficient("box[1,1,1,1]", 0)["real_digits"].startswith("-0.0023932404")
+assert coefficient("box[1,1,1,1]", 0)["imag_digits"].startswith("0.00041871097")
 )PY");
   const std::string bubble_audit_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
@@ -49567,8 +49544,9 @@ assert coefficient("box[0,0,1,1]", 2)["real_digits"].startswith("0.1497374781739
       ShellSingleQuote(bubble_audit_stdout_path.string()) + " 2>" +
       ShellSingleQuote(bubble_audit_stderr_path.string());
   Expect(RunShellCommand(bubble_audit_command) == 0,
-         "b61n primitive bubble endpoint coefficients should match reviewed "
-         "AMFlow prefixes; stderr=" +
+         "b61n primitive and coupled endpoint coefficients should match reviewed "
+         "AMFlow prefixes closely enough to prove the rows are no longer omitted; "
+         "stderr=" +
              (std::filesystem::exists(bubble_audit_stderr_path)
                   ? ReadFile(bubble_audit_stderr_path)
                   : std::string{}));

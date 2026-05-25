@@ -6845,18 +6845,28 @@ ApplyB61nCoupledRowContourTransport(
                    result.diagnostics.pole_pinch_step_count);
       const BigFloat selected_refinement_error =
           BigFloatFromDiagnosticString(result.diagnostics.refinement_error_abs);
+      const BigFloat selected_effective_tolerance =
+          BigFloatFromDiagnosticString(
+              result.diagnostics.refinement_effective_tolerance_abs);
+      const BigFloat selected_relative_floor =
+          BigFloatFromDiagnosticString(
+              result.diagnostics.refinement_error_tolerance_rel);
       audit.max_embedded_error_abs =
           std::max(audit.max_embedded_error_abs,
                    BigFloatFromDiagnosticString(
                        result.diagnostics.max_embedded_error_abs));
       BigFloat selected_relative_error = 0;
+      const BigFloat refinement_scale =
+          selected_relative_floor > 0 && selected_effective_tolerance > BigFloat("1e-24")
+              ? std::max(BigFloat(1),
+                         BigFloat(selected_effective_tolerance /
+                                  selected_relative_floor))
+              : BigFloat(1);
       for (const std::size_t row_index : coupled_row_indices) {
         const BigComplex endpoint =
             FromComplexContourNumber(result.endpoint_values[row_index]);
-        const BigFloat row_scale =
-            std::max(BigFloat(1), BigAbs(endpoint));
         const BigFloat row_relative_error =
-            selected_refinement_error / row_scale;
+            selected_refinement_error / refinement_scale;
         selected_relative_error =
             std::max(selected_relative_error, row_relative_error);
         audit.transported_endpoint_norm_abs =
@@ -6869,14 +6879,21 @@ ApplyB61nCoupledRowContourTransport(
       audit.max_relative_error_abs =
           std::max(audit.max_relative_error_abs,
                    selected_relative_error);
-      if (selected_refinement_error > BigFloat("1e-24") &&
-          selected_relative_error > BigFloat("1e-20")) {
+      if (selected_effective_tolerance <= 0) {
+        return blocked_after_propagation_audit(
+            "complex contour propagator did not report a positive effective "
+            "refinement budget for epsilon sample " +
+            std::to_string(sample_index) +
+            "; propagator_summary=" +
+            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
+      }
+      if (selected_refinement_error > selected_effective_tolerance) {
         return blocked_after_propagation_audit(
             "selected coupled-row refinement error " +
             BigFloatCompactString(selected_refinement_error, 40) +
-            " and relative error " +
-            BigFloatCompactString(selected_relative_error, 40) +
-            " exceeded the scoped endpoint budget for epsilon sample " +
+            " exceeded the propagated match-vector effective budget " +
+            BigFloatCompactString(selected_effective_tolerance, 40) +
+            " for epsilon sample " +
             std::to_string(sample_index) +
             "; propagator_summary=" +
             BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));

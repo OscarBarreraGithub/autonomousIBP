@@ -49934,6 +49934,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"eta_zero_endpoint_transported_master_count\": 6",
                  "full stripped b64ag packet should retain six-master endpoint transport");
   ExpectContains(full_stripped_json,
+                 "\"eta_zero_endpoint_frobenius_recurrence_applied\": true",
+                 "full stripped b64ag packet should structurally publish the reviewed "
+                 "Frobenius recurrence handoff");
+  ExpectContains(full_stripped_json,
                  "post-endpoint Laurent fitting with the reviewed AMFlow golden "
                  "leading-order envelope as the fit floor for 9 retained b64ag target",
                  "full stripped b64ag packet should document the golden-envelope fit floor");

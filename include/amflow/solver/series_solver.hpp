@@ -91,6 +91,7 @@ struct SolverDiagnostics {
   int eta_endpoint_transport_count = 0;
   int eta_endpoint_transport_epsilon_order = -1;
   std::vector<std::string> eta_endpoint_transported_integrals;
+  bool eta_endpoint_frobenius_recurrence_applied = false;
   bool full_eta_zero_contour_applied = false;
   std::string eta_endpoint_extraction_fingerprint;
   std::string eta_endpoint_contour_fingerprint;

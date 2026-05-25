@@ -5397,6 +5397,7 @@ bool IsB64agFullEndpointPacketTransportState(
          !IsB64agSelectedEndpointState(spec) &&
          !UsesRetainedSolutionSamples(spec) &&
          spec.gauge_link_diffeq_masters.size() == 6 &&
+         diagnostics.eta_endpoint_frobenius_recurrence_applied &&
          diagnostics.eta_endpoint_transport_count >=
              static_cast<int>(spec.gauge_link_diffeq_masters.size());
 }
@@ -10140,6 +10141,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
         static_cast<int>(transport.transported_master_count);
     diagnostics.eta_endpoint_transport_epsilon_order = requested_epsilon_order;
     diagnostics.eta_endpoint_transported_integrals = transport.transported_master_labels;
+    diagnostics.eta_endpoint_frobenius_recurrence_applied =
+        transport.frobenius_recurrence_applied;
     diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
     diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
     diagnostics.eta_endpoint_extraction_fingerprint =
@@ -10239,6 +10242,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
       static_cast<int>(transport.transported_master_count);
   diagnostics.eta_endpoint_transport_epsilon_order = requested_epsilon_order;
   diagnostics.eta_endpoint_transported_integrals = transport.transported_master_labels;
+  diagnostics.eta_endpoint_frobenius_recurrence_applied =
+      transport.frobenius_recurrence_applied;
   diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
   diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
   diagnostics.eta_endpoint_extraction_fingerprint = transport.extraction_fingerprint;
@@ -11373,6 +11378,10 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
         << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false") << ",\n";
     out << "    \"eta_zero_endpoint_transported_master_count\": "
         << diagnostics.eta_endpoint_transport_count << ",\n";
+    out << "    \"eta_zero_endpoint_frobenius_recurrence_applied\": "
+        << (diagnostics.eta_endpoint_frobenius_recurrence_applied ? "true"
+                                                                  : "false")
+        << ",\n";
     out << "    \"eta_zero_endpoint_transported_integrals\": [";
     for (std::size_t index = 0;
          index < diagnostics.eta_endpoint_transported_integrals.size();
@@ -11886,6 +11895,9 @@ std::string SerializeSolveSeriesBundleJson(
         << (diagnostics.eta_endpoint_transport_count > 0 ? "true" : "false")
         << ", \"eta_zero_endpoint_transported_master_count\": "
         << diagnostics.eta_endpoint_transport_count
+        << ", \"eta_zero_endpoint_frobenius_recurrence_applied\": "
+        << (diagnostics.eta_endpoint_frobenius_recurrence_applied ? "true"
+                                                                  : "false")
         << ", \"eta_zero_endpoint_transported_integrals\": [";
     for (std::size_t transport_index = 0;
          transport_index <

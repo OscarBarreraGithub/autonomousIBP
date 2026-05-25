@@ -51480,6 +51480,9 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
                  "\"selected_cpp_output_rejects_bad_unselected\": true",
                  "C++ vs AMFlow comparator self-check should reject bad unselected named C++ "
                  "outputs instead of hiding them");
+  ExpectContains(result.stdout_json, "\"coefficient_relative_error_reported\": true",
+                 "C++ vs AMFlow comparator self-check should report per-coefficient relative "
+                 "errors");
   ExpectContains(result.stdout_json, "\"passed_coefficient_count_reported\": true",
                  "C++ vs AMFlow comparator self-check should report passing coefficient counts");
 }

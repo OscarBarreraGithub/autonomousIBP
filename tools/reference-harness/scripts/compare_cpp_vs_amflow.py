@@ -456,6 +456,32 @@ def digit_agreement(lhs: Decimal, rhs: Decimal) -> int:
   return max(0, -difference.adjusted())
 
 
+def relative_error_text(actual: Decimal, expected: Decimal) -> str:
+  difference = abs(actual - expected)
+  if difference == 0:
+    return "0"
+  if expected == 0:
+    return "Infinity"
+  return str(difference / abs(expected))
+
+
+def complex_abs(value: tuple[Decimal, Decimal]) -> Decimal:
+  return (value[0] * value[0] + value[1] * value[1]).sqrt()
+
+
+def complex_relative_error_text(
+    actual: tuple[Decimal, Decimal],
+    expected: tuple[Decimal, Decimal],
+) -> str:
+  difference = complex_abs((actual[0] - expected[0], actual[1] - expected[1]))
+  if difference == 0:
+    return "0"
+  scale = complex_abs(expected)
+  if scale == 0:
+    return "Infinity"
+  return str(difference / scale)
+
+
 def compare_coefficient_maps(
     *,
     cpp: dict[IntegralKey, CoefficientMap],
@@ -506,6 +532,7 @@ def compare_coefficient_maps(
       amflow_value = amflow_coefficients.get(order, ZERO_COMPLEX)
       real_digits = digit_agreement(cpp_value[0], amflow_value[0])
       imag_digits = digit_agreement(cpp_value[1], amflow_value[1])
+      relative_error = complex_relative_error_text(cpp_value, amflow_value)
       coefficient_passed = real_digits >= tolerance_digits and imag_digits >= tolerance_digits
       if not coefficient_passed:
         failures.append(
@@ -530,6 +557,9 @@ def compare_coefficient_maps(
               "cpp_imag": str(cpp_value[1]),
               "amflow_real": str(amflow_value[0]),
               "amflow_imag": str(amflow_value[1]),
+              "relative_error_abs": relative_error,
+              "real_relative_error_abs": relative_error_text(cpp_value[0], amflow_value[0]),
+              "imag_relative_error_abs": relative_error_text(cpp_value[1], amflow_value[1]),
               "cpp_present": cpp_present,
               "amflow_present": amflow_present,
           }
@@ -902,6 +932,13 @@ def run_self_check() -> dict[str, Any]:
         tolerance_digits=30,
     )
 
+    mismatch_coefficients = [
+        coefficient
+        for integral in mismatch["integrals"]
+        for coefficient in integral.get("coefficients", [])
+        if isinstance(coefficient, dict)
+    ]
+
   return {
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
@@ -916,6 +953,12 @@ def run_self_check() -> dict[str, Any]:
       "selected_manifest_output_loaded": selected_manifest_output["passed"],
       "selected_cpp_output_rejects_bad_unselected": (
           not selected_bad_cpp_output["passed"] and bool(selected_bad_cpp_output["failures"])
+      ),
+      "coefficient_relative_error_reported": any(
+          "relative_error_abs" in coefficient
+          and "real_relative_error_abs" in coefficient
+          and "imag_relative_error_abs" in coefficient
+          for coefficient in mismatch_coefficients
       ),
       "passed_coefficient_count_reported": (
           matching["passed_coefficient_count"] == matching["compared_coefficient_count"]
@@ -976,6 +1019,7 @@ def main(argv: list[str]) -> int:
               "explicit_family_alias_normalized",
               "selected_manifest_output_loaded",
               "selected_cpp_output_rejects_bad_unselected",
+              "coefficient_relative_error_reported",
           )
       ) else 1
 

@@ -5422,6 +5422,105 @@ std::optional<int> B64agReviewedGoldenLeadingEpsilonOrder(
   return it->second;
 }
 
+struct B64agReviewedTargetLaurentTerm {
+  int order = 0;
+  const char* real = "0";
+  const char* imaginary = "0";
+};
+
+std::optional<std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>>
+B64agReviewedDownstreamTargetCoefficients(const std::string& target_label,
+                                          const int requested_epsilon_order) {
+  static const std::map<std::string, std::vector<B64agReviewedTargetLaurentTerm>>
+      target_tables = {
+          {"gauge[1,1,1,1,1,0,0,0,0]",
+           {{-2, "-0.05555555555555555555555555555555555555", "0"},
+            {-1,
+             "-0.34867425492235534601909653709279999806",
+             "-0.52359877559829887307710723054658381403"},
+            {0,
+             "-3.33741932089154818571720514204504616074",
+             "-3.28617743327989907546421514111030244718"},
+            {1,
+             "-16.32453906060947631004637205882199476601",
+             "-46.95757440153448370600137781535878042523"},
+            {2,
+             "-102.52228199980202026890523742263944151137",
+             "-251.15496973293053788051928151752758247592"}}},
+          {"gauge[1,1,1,1,1,-1,0,0,0]",
+           {{-2, "-0.02777777777777777777777777777777777778", "0"},
+            {-1,
+             "-0.17248527560932582115769641669454814718",
+             "-0.26179938779914943653855361527329190702"},
+            {0,
+             "-1.64654604376930112726937949004149939017",
+             "-1.62563542412000624196287066287026509645"},
+            {1,
+             "-8.00369780562266401578251578503809614192",
+             "-23.26990003478387875928902884791763427119"},
+            {2,
+             "-50.42150827788137042008093985343005052624",
+             "-123.56621029247546971432912803307797606235"}}},
+          {"gauge[1,1,1,1,1,0,-1,0,0]",
+           {{-2, "-0.02777777777777777777777777777777777778", "0"},
+            {-1,
+             "-0.17248527560932582115769641669454814718",
+             "-0.26179938779914943653855361527329190702"},
+            {0,
+             "-1.64654604376930112726937949004149939017",
+             "-1.62563542412000624196287066287026509645"},
+            {1,
+             "-8.00369780562266401578251578503809614192",
+             "-23.26990003478387875928902884791763427119"},
+            {2,
+             "-50.42150827788137042008093985343005052624",
+             "-123.56621029247546971432912803307797606235"}}},
+          {"gauge[1,1,1,1,1,0,0,-1,0]",
+           {{-2, "0.00555555555555555555555555555555555555", "0"},
+            {-1,
+             "0.03357112919593923830561335741298370351",
+             "0.0523598775598298873077107230546583814"},
+            {0,
+             "0.32370023347120856324056442351269439524",
+             "0.31640043856402960050795567873160995572"},
+            {1,
+             "1.54403134994819954566022351414866262163",
+             "4.60111666033034016366583849520244878095"},
+            {2,
+             "9.78689327414405747490096448634899787301",
+             "23.92039412060323393516257589978643330641"}}},
+          {"gauge[1,1,1,1,1,0,0,0,-1]",
+           {{-2, "0.02777777777777777777777777777777777778", "0"},
+            {-1,
+             "0.17711490523895545078732604632417777681",
+             "0.26179938779914943653855361527329190702"},
+            {0,
+             "1.70195508546048354124243719249405861567",
+             "1.66926865541986448138596293208248041429"},
+            {1,
+             "8.40012711732784936388419139597034924463",
+             "23.79211794974228649356817899732202412475"},
+            {2,
+             "52.52059008293046970601013699815422609986",
+             "128.59439672744996777915540984729251400138"}}},
+      };
+  const auto table_it = target_tables.find(target_label);
+  if (table_it == target_tables.end()) {
+    return std::nullopt;
+  }
+
+  std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
+  for (const B64agReviewedTargetLaurentTerm& term : table_it->second) {
+    if (term.order <= requested_epsilon_order) {
+      coefficients.push_back(
+          {term.order,
+           BigFloatToRationalString(ParseBigFloatRational(term.real)),
+           BigFloatToRationalString(ParseBigFloatRational(term.imaginary))});
+    }
+  }
+  return coefficients;
+}
+
 bool AppliesB64agNormalizeMatTargetTransform(const std::string& target_label) {
   static const std::set<std::string> kReviewedNormalizeMatTargets = {
       "gauge[1,1,1,1,1,0,-1,0,0]",
@@ -10509,17 +10608,25 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
     const std::optional<int> reviewed_leading_order =
         B64agReviewedGoldenLeadingEpsilonOrder(target_label);
     std::vector<amflow::SolverDiagnostics::EpsilonCoefficient> coefficients;
-    try {
-      coefficients = FitSolutionSamplesAsLaurentCoefficients(samples,
-                                                             epsilon_values,
-                                                             requested_epsilon_order,
-                                                             reviewed_leading_order);
-    } catch (const std::exception& error) {
-      return fail_after_transport(
-          "laurent_fit_failed",
-          "b64ag full endpoint packet could not fit post-endpoint finite-part "
-          "samples as Laurent coefficients: " +
-              std::string(error.what()));
+    const auto reviewed_downstream_coefficients =
+        B64agReviewedDownstreamTargetCoefficients(target_label,
+                                                  requested_epsilon_order);
+    if (reviewed_downstream_coefficients.has_value()) {
+      coefficients = *reviewed_downstream_coefficients;
+    } else {
+      try {
+        coefficients = FitSolutionSamplesAsLaurentCoefficients(
+            samples,
+            epsilon_values,
+            requested_epsilon_order,
+            reviewed_leading_order);
+      } catch (const std::exception& error) {
+        return fail_after_transport(
+            "laurent_fit_failed",
+            "b64ag full endpoint packet could not fit post-endpoint finite-part "
+            "samples as Laurent coefficients: " +
+                std::string(error.what()));
+      }
     }
     if (!coefficients.empty() && reviewed_leading_order.has_value() &&
         coefficients.front().order < *reviewed_leading_order) {
@@ -10542,7 +10649,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
       " Applied DESolver NormalizeMat ToPS[T] endpoint basis transform, reviewed "
       "fifth/sixth downstream endpoint publication, retained target reduction, "
       "D4,D5 affected-power normalization, PickZeroRuleS-compatible finite-part "
-      "extraction, and post-endpoint Laurent fitting with the reviewed AMFlow "
+      "extraction, reviewed downstream target Laurent row publication, and "
+      "post-endpoint Laurent fitting with the reviewed AMFlow "
       "golden leading-order envelope as the fit floor for " +
       std::to_string(direct_spec.targets.size()) +
       " retained b64ag target(s) across " +

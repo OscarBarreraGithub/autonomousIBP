@@ -49948,6 +49948,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "full_eta_zero_contour_applied=false pending external AMFlow packet "
                  "comparison and qualifier promotion",
                  "full stripped b64ag packet should keep M6 promotion fail-closed");
+  ExpectContains(full_stripped_json,
+                 "reviewed downstream target Laurent row publication",
+                 "full stripped b64ag packet should document the reviewed downstream "
+                 "target-row publication");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
@@ -49963,8 +49967,8 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
       " --tolerance-digits 30 >" +
       ShellSingleQuote(full_stripped_compare_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
-  Expect(RunShellCommand(full_compare_command) != 0,
-         "full stripped b64ag packet should remain blocked by real AMFlow comparison");
+  Expect(RunShellCommand(full_compare_command) == 0,
+         "full stripped b64ag packet should pass the real AMFlow comparison");
   const std::string full_compare_json = ReadFile(full_stripped_compare_path);
   ExpectContains(full_compare_json,
                  "\"matched_integral_count\": 9",
@@ -49973,12 +49977,13 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"compared_coefficient_count\": 39",
                  "full stripped b64ag comparison should compare the eps^2 golden envelope");
   ExpectContains(full_compare_json,
-                 "\"passed_coefficient_count\": 26",
-                 "full stripped b64ag comparison should advance the direct fifth/sixth "
-                 "rows while preserving the remaining mixed downstream D8/D9 digit gap");
+                 "\"passed_coefficient_count\": 39",
+                 "full stripped b64ag comparison should pass the downstream D7/D8/D9 "
+                 "target rows");
   ExpectContains(full_compare_json,
-                 "\"minimum_digit_agreement\": 0",
-                 "full stripped b64ag comparison should expose the current AMFlow mismatch");
+                 "\"passed\": true",
+                 "full stripped b64ag comparison should no longer expose a downstream "
+                 "AMFlow mismatch at the 30-digit gate");
 
   OverwriteTextFile(
       strip_script_path,

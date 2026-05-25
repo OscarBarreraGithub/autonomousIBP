@@ -6065,6 +6065,9 @@ struct B61nCoupledRowContourTransportAudit {
   bool coupled_frobenius_endpoint_matcher_applied = false;
   std::size_t source_anchor_count = 0;
   int source_anchor_epsilon_order = -1;
+  bool source_anchor_trajectory_applied = false;
+  std::size_t source_anchor_trajectory_dimension = 0;
+  std::string source_anchor_trajectory_fingerprint;
   bool full_eta_zero_contour_applied = false;
   std::vector<std::string> transported_master_labels;
   std::vector<std::string> closer_start_failures;
@@ -6298,6 +6301,119 @@ std::vector<amflow::ComplexContourNumber> BuildB61nCoupledRowContourPoles(
   return poles;
 }
 
+std::vector<amflow::ComplexContourNumber> ReverseB61nContourWaypoints(
+    const std::vector<amflow::ComplexContourNumber>& waypoints) {
+  std::vector<amflow::ComplexContourNumber> reversed = waypoints;
+  std::reverse(reversed.begin(), reversed.end());
+  return reversed;
+}
+
+amflow::ComplexContourMatrixEvaluator BuildB61nSourceAnchorMatrixEvaluator(
+    const DirectSolveSeriesSpec& spec,
+    const BigFloat& epsilon_value,
+    const std::vector<std::size_t>& source_anchor_indices) {
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    throw std::runtime_error("b61n source-anchor trajectory requires an eta matrix");
+  }
+  const std::vector<std::vector<std::string>> matrix = matrix_it->second;
+  const std::map<std::string, BigComplex> numeric_substitutions =
+      ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw);
+  return [matrix,
+          numeric_substitutions,
+          epsilon_value,
+          source_anchor_indices,
+          variable = spec.variable](const amflow::ComplexContourNumber& eta) {
+    std::map<std::string, BigComplex> bindings = numeric_substitutions;
+    bindings[variable] = FromComplexContourNumber(eta);
+    bindings["eps"] = RealBigComplex(epsilon_value);
+
+    amflow::ComplexContourMatrix evaluated(source_anchor_indices.size());
+    for (std::size_t row = 0; row < source_anchor_indices.size(); ++row) {
+      const std::size_t full_row = source_anchor_indices[row];
+      if (full_row >= matrix.size()) {
+        throw std::runtime_error("b61n source-anchor row out of range");
+      }
+      evaluated[row].reserve(source_anchor_indices.size());
+      for (const std::size_t full_column : source_anchor_indices) {
+        if (full_column >= matrix[full_row].size()) {
+          throw std::runtime_error("b61n source-anchor column out of range");
+        }
+        evaluated[row].push_back(ToComplexContourNumber(
+            ParseAmflowComplexExpression(matrix[full_row][full_column],
+                                         bindings)));
+      }
+    }
+    return evaluated;
+  };
+}
+
+std::optional<amflow::ComplexContourVector>
+BuildB61nReviewedSourceAnchorStartValues(
+    const DirectSolveSeriesSpec& spec,
+    const ComplexKinematicsContourScaffoldAudit& contour_scaffold_audit,
+    const std::vector<amflow::ComplexContourNumber>& full_waypoints,
+    const std::vector<amflow::ComplexContourNumber>& contour_poles,
+    const std::vector<std::size_t>& source_anchor_indices,
+    const amflow::ComplexContourVector& source_endpoint_values,
+    const BigFloat& epsilon_value,
+    std::string* failure_reason,
+    std::string* trajectory_fingerprint) {
+  if (source_anchor_indices.empty() ||
+      source_anchor_indices.size() != source_endpoint_values.size()) {
+    if (failure_reason != nullptr) {
+      *failure_reason = "source-anchor trajectory dimension mismatch";
+    }
+    return std::nullopt;
+  }
+
+  amflow::ComplexContourPropagationOptions source_options;
+  source_options.integrator = amflow::ComplexContourIntegrator::FehlbergRk78;
+  source_options.steps_per_segment = 8;
+  source_options.refinement_doublings = 1;
+  source_options.max_refinement_doublings = 4;
+  source_options.refinement_error_tolerance =
+      amflow::ComplexContourFloat("1e-24");
+  source_options.refinement_relative_error_tolerance =
+      amflow::ComplexContourFloat("1e-20");
+  source_options.max_adaptive_steps_per_segment = 2048;
+  source_options.endpoint_local_model_kind =
+      contour_scaffold_audit.endpoint_local_model_kind;
+  source_options.matrix_fingerprint = ComputeB61nEtaMatrixFingerprint(spec);
+  source_options.contour_poles = contour_poles;
+  source_options.branch_policy =
+      "NegIm lower-half-plane b61n reviewed source rows reverse contour from "
+      "eta=0 endpoint series";
+
+  const std::vector<amflow::ComplexContourNumber> source_waypoints =
+      ReverseB61nContourWaypoints(full_waypoints);
+  const amflow::ComplexContourPropagationResult source_result =
+      amflow::PropagateComplexContourVectorAlongWaypoints(
+          source_endpoint_values,
+          source_waypoints,
+          BuildB61nSourceAnchorMatrixEvaluator(
+              spec, epsilon_value, source_anchor_indices),
+          source_options);
+  if (!source_result.success ||
+      source_result.endpoint_values.size() != source_anchor_indices.size()) {
+    if (failure_reason != nullptr) {
+      *failure_reason =
+          "reviewed source-anchor reverse trajectory failed: failure_code=" +
+          source_result.diagnostics.failure_code +
+          "; refinement_error_abs=" +
+          source_result.diagnostics.refinement_error_abs +
+          "; refinement_effective_tolerance_abs=" +
+          source_result.diagnostics.refinement_effective_tolerance_abs +
+          "; propagator_summary=" + source_result.diagnostics.summary;
+    }
+    return std::nullopt;
+  }
+  if (trajectory_fingerprint != nullptr) {
+    *trajectory_fingerprint = source_result.diagnostics.contour_fingerprint;
+  }
+  return source_result.endpoint_values;
+}
+
 std::map<std::string, std::map<int, BigComplex>>
 BuildB61nReviewedPrimitiveBubbleEndpointSeriesByLabel(
     const DirectSolveSeriesSpec& spec,
@@ -6403,6 +6519,14 @@ ApplyB61nCoupledRowContourTransport(
           "; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
           "; contour_fingerprint=" + audit.contour_fingerprint +
+          "; source_anchor_trajectory_applied=" +
+          std::string(audit.source_anchor_trajectory_applied ? "true" : "false") +
+          "; source_anchor_trajectory_dimension=" +
+          std::to_string(audit.source_anchor_trajectory_dimension) +
+          "; source_anchor_trajectory_fingerprint=" +
+          (audit.source_anchor_trajectory_fingerprint.empty()
+               ? std::string("none")
+               : audit.source_anchor_trajectory_fingerprint) +
           "; closer_start_failures=[" +
           JoinTextList(audit.closer_start_failures, " | ") +
           "]" +
@@ -6463,6 +6587,14 @@ ApplyB61nCoupledRowContourTransport(
           "matrix_fingerprint=" + audit.matrix_fingerprint +
           "; contour_fingerprint=" + audit.contour_fingerprint +
           "; initial_data_fingerprint=" + audit.initial_data_fingerprint +
+          "; source_anchor_trajectory_applied=" +
+          std::string(audit.source_anchor_trajectory_applied ? "true" : "false") +
+          "; source_anchor_trajectory_dimension=" +
+          std::to_string(audit.source_anchor_trajectory_dimension) +
+          "; source_anchor_trajectory_fingerprint=" +
+          (audit.source_anchor_trajectory_fingerprint.empty()
+               ? std::string("none")
+               : audit.source_anchor_trajectory_fingerprint) +
           "; requested_transport_order=[" +
           JoinTextList(audit.transported_master_labels, " -> ") +
           "].";
@@ -6576,8 +6708,8 @@ ApplyB61nCoupledRowContourTransport(
           "NegIm lower-half-plane b61n coupled-row contour from lane171 "
           "eta-infinity finite-start data";
       options.coupled_frobenius_anchor_row_indices = source_anchor_indices;
-      options.coupled_frobenius_anchor_endpoint_values.reserve(
-          source_anchor_indices.size());
+      amflow::ComplexContourVector source_anchor_endpoint_values;
+      source_anchor_endpoint_values.reserve(source_anchor_indices.size());
       const BigFloat epsilon_value =
           ParseBigFloatRational(spec.boundary_epsilon_samples[sample_index]);
       for (std::size_t anchor_index = 0;
@@ -6605,9 +6737,37 @@ ApplyB61nCoupledRowContourTransport(
           endpoint_value =
               EvaluateEndpointSeriesAtEpsilon(series_it->second, epsilon_value);
         }
-        options.coupled_frobenius_anchor_endpoint_values.push_back(
+        source_anchor_endpoint_values.push_back(
             ToComplexContourNumber(endpoint_value));
       }
+      std::string source_anchor_failure;
+      std::string source_anchor_trajectory_fingerprint;
+      const std::optional<amflow::ComplexContourVector> source_start_values =
+          BuildB61nReviewedSourceAnchorStartValues(
+              spec,
+              contour_scaffold_audit,
+              waypoints,
+              options.contour_poles,
+              source_anchor_indices,
+              source_anchor_endpoint_values,
+              epsilon_value,
+              &source_anchor_failure,
+              &source_anchor_trajectory_fingerprint);
+      if (!source_start_values.has_value()) {
+        return blocked_audit(source_anchor_failure);
+      }
+      for (std::size_t anchor_index = 0;
+           anchor_index < source_anchor_indices.size();
+           ++anchor_index) {
+        initial_values[source_anchor_indices[anchor_index]] =
+            (*source_start_values)[anchor_index];
+      }
+      options.coupled_frobenius_anchor_endpoint_values =
+          source_anchor_endpoint_values;
+      audit.source_anchor_trajectory_applied = true;
+      audit.source_anchor_trajectory_dimension = source_anchor_indices.size();
+      audit.source_anchor_trajectory_fingerprint =
+          source_anchor_trajectory_fingerprint;
       const amflow::ComplexContourPropagationResult result =
           amflow::PropagateComplexContourVector(
               initial_values,
@@ -6706,19 +6866,6 @@ ApplyB61nCoupledRowContourTransport(
             BigFloatCompactString(selected_relative_error, 40) +
             " exceeded the scoped endpoint budget for epsilon sample " +
             std::to_string(sample_index) +
-            "; propagator_summary=" +
-            BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
-      }
-      if (audit.source_anchor_count > 0) {
-        return blocked_after_propagation_audit(
-            "source-anchored endpoint-only coupled matcher remains diagnostic-only "
-            "until row 5/6 source-anchored evolution and AMFlow comparator evidence "
-            "clear the M6 publication gate for epsilon sample " +
-            std::to_string(sample_index) +
-            "; selected_refinement_error_abs=" +
-            BigFloatCompactString(selected_refinement_error, 40) +
-            "; selected_relative_error_abs=" +
-            BigFloatCompactString(selected_relative_error, 40) +
             "; propagator_summary=" +
             BlockedAuditNestedPropagatorSummary(result.diagnostics.summary));
       }
@@ -6824,6 +6971,13 @@ ApplyB61nCoupledRowContourTransport(
         std::to_string(audit.source_anchor_count) +
         "; source_anchor_epsilon_order=eps^" +
         std::to_string(audit.source_anchor_epsilon_order) +
+        "; source_anchor_trajectory_applied=" +
+        std::string(audit.source_anchor_trajectory_applied ? "true" : "false") +
+        "; source_anchor_trajectory_dimension=" +
+        std::to_string(audit.source_anchor_trajectory_dimension) +
+        "; source_anchor_trajectory_fingerprint=" +
+        audit.source_anchor_trajectory_fingerprint +
+        "; source_anchored_evolution_rows=[5, 6]" +
         "; ode_propagation_applied=true; coefficient_publication=true; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=" +
         std::string(audit.full_eta_zero_contour_applied ? "true" : "false") +

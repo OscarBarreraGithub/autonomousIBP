@@ -252,6 +252,12 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     const ComplexContourMatrixEvaluator& matrix_evaluator,
     const ComplexContourPropagationOptions& options = {});
 
+ComplexContourPropagationResult PropagateComplexContourVectorAlongWaypoints(
+    const ComplexContourVector& initial_values,
+    const std::vector<ComplexContourNumber>& waypoints,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourPropagationOptions& options = {});
+
 ComplexContourScalarFrobeniusSeriesPatch
 GenerateScalarComplexFrobeniusEndpointPatch(
     const ComplexContourMatrixEvaluator& matrix_evaluator,

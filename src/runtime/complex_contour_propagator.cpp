@@ -3512,6 +3512,285 @@ ComplexContourPropagationResult PropagateComplexContourVector(
   }
 }
 
+ComplexContourPropagationResult PropagateComplexContourVectorAlongWaypoints(
+    const ComplexContourVector& initial_values,
+    const std::vector<ComplexContourNumber>& waypoints,
+    const ComplexContourMatrixEvaluator& matrix_evaluator,
+    const ComplexContourPropagationOptions& options) {
+  const auto failure_result =
+      [&](const std::string& failure_code,
+          const std::string& summary) -> ComplexContourPropagationResult {
+    ComplexContourPropagationResult failure =
+        FailureResult(failure_code, summary, initial_values, waypoints, options);
+    failure.diagnostics.runtime_application =
+        "complex-contour-waypoint-propagator";
+    failure.diagnostics.endpoint_target =
+        waypoints.empty() ? std::string()
+                          : CompactComplex(waypoints.back(), 40);
+    return failure;
+  };
+
+  if (initial_values.empty()) {
+    return failure_result(
+        "empty-initial-vector",
+        "complex contour waypoint propagation requires at least one value");
+  }
+  if (waypoints.size() < 2) {
+    return failure_result(
+        "insufficient-contour-waypoints",
+        "complex contour waypoint propagation requires at least two waypoints");
+  }
+  if (!matrix_evaluator) {
+    return failure_result(
+        "missing-matrix-evaluator",
+        "complex contour waypoint propagation requires a matrix evaluator");
+  }
+  if (options.steps_per_segment == 0) {
+    return failure_result(
+        "invalid-step-count",
+        "complex contour waypoint propagation requires a positive step count");
+  }
+  if (options.max_adaptive_steps_per_segment == 0) {
+    return failure_result(
+        "invalid-adaptive-step-limit",
+        "complex contour waypoint propagation requires a positive adaptive step limit");
+  }
+  if (options.max_refinement_doublings < options.refinement_doublings) {
+    return failure_result(
+        "invalid-refinement-budget",
+        "complex contour waypoint propagation requires max_refinement_doublings to "
+        "cover the requested refinement_doublings");
+  }
+  if (!IsFiniteFloat(options.refinement_error_tolerance) ||
+      options.refinement_error_tolerance <= 0) {
+    return failure_result(
+        "invalid-refinement-tolerance",
+        "complex contour waypoint propagation requires a positive finite refinement "
+        "error tolerance");
+  }
+  if (!IsFiniteFloat(options.refinement_relative_error_tolerance) ||
+      options.refinement_relative_error_tolerance < 0) {
+    return failure_result(
+        "invalid-refinement-relative-tolerance",
+        "complex contour waypoint propagation requires a nonnegative finite relative "
+        "refinement error tolerance");
+  }
+  if (!IsFiniteFloat(options.pole_step_safety_factor) ||
+      options.pole_step_safety_factor <= 0) {
+    return failure_result(
+        "invalid-pole-step-safety-factor",
+        "complex contour waypoint propagation requires a positive finite pole step "
+        "safety factor");
+  }
+  if (options.half_plane != EtaContourHalfPlane::Lower) {
+    return failure_result(
+        "unsupported-contour-half-plane",
+        "complex contour waypoint propagation is currently reviewed only for the "
+        "NegIm lower-half-plane branch; requested half_plane=" +
+            ToString(options.half_plane));
+  }
+  for (const ComplexContourNumber& waypoint : waypoints) {
+    if (!IsFinite(waypoint)) {
+      return failure_result(
+          "nonfinite-contour-waypoint",
+          "complex contour waypoint propagation requires finite waypoint coordinates");
+    }
+  }
+  for (const ComplexContourNumber& pole : options.contour_poles) {
+    if (!IsFinite(pole)) {
+      return failure_result(
+          "nonfinite-contour-pole",
+          "complex contour waypoint propagation requires finite pole coordinates");
+    }
+  }
+  if (options.matrix_fingerprint.empty()) {
+    return failure_result(
+        "missing-matrix-fingerprint",
+        "complex contour waypoint propagation requires caller-supplied matrix "
+        "provenance");
+  }
+
+  try {
+    RequireFiniteVector(initial_values, "initial");
+    AdaptiveRk45Result coarse =
+        PropagateWaypointsWithAdaptiveRk45(initial_values,
+                                           waypoints,
+                                           matrix_evaluator,
+                                           options,
+                                           options.steps_per_segment);
+    RequireFiniteVector(coarse.values, "coarse");
+
+    const std::size_t first_required_refinement =
+        std::max<std::size_t>(1, options.refinement_doublings);
+    AdaptiveRk45Result previous = coarse;
+    AdaptiveRk45Result refined = previous;
+    ComplexContourFloat refinement_error =
+        std::numeric_limits<ComplexContourFloat>::infinity();
+    ComplexContourFloat endpoint_vector_norm = MaxVectorNorm(coarse.values);
+    ComplexContourFloat effective_refinement_tolerance =
+        options.refinement_error_tolerance;
+    std::size_t refined_steps_per_segment = options.steps_per_segment;
+    std::size_t refinement_doublings_used = 0;
+    bool refinement_passed = false;
+    RefinementPeakDiagnostics refinement_peak;
+    for (std::size_t doubling = 1; doubling <= options.max_refinement_doublings;
+         ++doubling) {
+      refined_steps_per_segment = options.steps_per_segment;
+      for (std::size_t level = 0; level < doubling; ++level) {
+        refined_steps_per_segment *= 2;
+      }
+      refined = PropagateWaypointsWithAdaptiveRk45(initial_values,
+                                                   waypoints,
+                                                   matrix_evaluator,
+                                                   options,
+                                                   refined_steps_per_segment);
+      RequireFiniteVector(refined.values, "refined");
+      refinement_error = MaxVectorDifference(previous.values, refined.values);
+      refinement_peak =
+          FindRefinementPeakDiagnostics(previous, refined, waypoints);
+      endpoint_vector_norm = MaxVectorNorm(refined.values);
+      effective_refinement_tolerance =
+          EffectiveRefinementTolerance(options, endpoint_vector_norm);
+      previous = refined;
+      refinement_doublings_used = doubling;
+      if (doubling >= first_required_refinement &&
+          refinement_error <= effective_refinement_tolerance) {
+        refinement_passed = true;
+        break;
+      }
+    }
+
+    if (!refinement_passed) {
+      ComplexContourPropagationResult failure = failure_result(
+          "refinement-tolerance-failed",
+          "complex contour waypoint propagation failed closed because " +
+              IntegratorLabel(options.integrator) + " refinement error " +
+              CompactFloat(refinement_error, 40) +
+              " exceeded effective tolerance " +
+              CompactFloat(effective_refinement_tolerance, 40));
+      failure.diagnostics.coarse_step_count =
+          options.steps_per_segment * (waypoints.size() - 1);
+      failure.diagnostics.refined_step_count =
+          refined_steps_per_segment * (waypoints.size() - 1);
+      failure.diagnostics.refinement_doublings_used =
+          refinement_doublings_used;
+      failure.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
+      failure.diagnostics.adaptive_rejected_step_count =
+          refined.stats.rejected_steps;
+      failure.diagnostics.pole_pinch_step_count =
+          refined.stats.pole_pinched_steps;
+      failure.diagnostics.endpoint_vector_norm_abs =
+          CompactFloat(endpoint_vector_norm, 40);
+      failure.diagnostics.refinement_error_abs =
+          CompactFloat(refinement_error, 40);
+      failure.diagnostics.refinement_effective_tolerance_abs =
+          CompactFloat(effective_refinement_tolerance, 40);
+      failure.diagnostics.max_embedded_error_abs =
+          CompactFloat(refined.stats.max_embedded_error_abs, 40);
+      PopulateRefinementPeakDiagnostics(
+          failure.diagnostics, refinement_peak, matrix_evaluator, options);
+      PopulateEmbeddedErrorPeakDiagnostics(
+          failure.diagnostics, refined.stats, matrix_evaluator, options);
+      failure.diagnostics.summary += ScaleDiagnosticSummary(failure.diagnostics);
+      return failure;
+    }
+
+    ComplexContourPropagationResult result;
+    result.success = true;
+    result.endpoint_values = refined.values;
+    result.diagnostics.success = true;
+    result.diagnostics.ode_propagation_applied = true;
+    result.diagnostics.coefficient_publication = false;
+    result.diagnostics.retained_solution_samples_used = false;
+    result.diagnostics.full_eta_zero_contour_applied = false;
+    result.diagnostics.endpoint_extraction_applied = false;
+    result.diagnostics.dimension = initial_values.size();
+    result.diagnostics.waypoint_count = waypoints.size();
+    result.diagnostics.segment_count = waypoints.size() - 1;
+    result.diagnostics.coarse_step_count =
+        options.steps_per_segment * result.diagnostics.segment_count;
+    result.diagnostics.refined_step_count =
+        refined_steps_per_segment * result.diagnostics.segment_count;
+    result.diagnostics.refinement_doublings_used = refinement_doublings_used;
+    result.diagnostics.adaptive_step_count = refined.stats.accepted_steps;
+    result.diagnostics.adaptive_rejected_step_count =
+        refined.stats.rejected_steps;
+    result.diagnostics.pole_pinch_step_count =
+        refined.stats.pole_pinched_steps;
+    result.diagnostics.working_precision_digits =
+        options.working_precision_digits;
+    result.diagnostics.half_plane = options.half_plane;
+    result.diagnostics.runtime_application =
+        "complex-contour-waypoint-propagator";
+    result.diagnostics.transport_scope =
+        "lower-half-plane-complex-ode-vector-propagation";
+    result.diagnostics.integrator = IntegratorLabel(options.integrator);
+    result.diagnostics.branch_policy = options.branch_policy;
+    result.diagnostics.endpoint_target = CompactComplex(waypoints.back(), 40);
+    result.diagnostics.endpoint_local_model_kind =
+        options.endpoint_local_model_kind;
+    result.diagnostics.matrix_fingerprint = options.matrix_fingerprint;
+    result.diagnostics.endpoint_vector_norm_abs =
+        CompactFloat(endpoint_vector_norm, 40);
+    result.diagnostics.refinement_error_abs =
+        CompactFloat(refinement_error, 40);
+    result.diagnostics.refinement_error_tolerance_abs =
+        CompactFloat(options.refinement_error_tolerance, 40);
+    result.diagnostics.refinement_error_tolerance_rel =
+        CompactFloat(options.refinement_relative_error_tolerance, 40);
+    result.diagnostics.refinement_effective_tolerance_abs =
+        CompactFloat(effective_refinement_tolerance, 40);
+    result.diagnostics.max_embedded_error_abs =
+        CompactFloat(refined.stats.max_embedded_error_abs, 40);
+    PopulateRefinementPeakDiagnostics(
+        result.diagnostics, refinement_peak, matrix_evaluator, options);
+    PopulateEmbeddedErrorPeakDiagnostics(
+        result.diagnostics, refined.stats, matrix_evaluator, options);
+    result.diagnostics.contour_fingerprint = ComputeArtifactFingerprint(
+        SerializePropagationForFingerprint(initial_values,
+                                           waypoints,
+                                           options,
+                                           refined_steps_per_segment,
+                                           false,
+                                           false,
+                                           false,
+                                           false,
+                                           false));
+    result.diagnostics.summary =
+        "Propagated a complex ODE vector over " +
+        std::to_string(result.diagnostics.segment_count) +
+        " lower-half-plane waypoint segment(s) with dimension " +
+        std::to_string(result.diagnostics.dimension) +
+        "; ode_propagation_applied=true; coefficient_publication=false; "
+        "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
+        "endpoint_target=" + result.diagnostics.endpoint_target +
+        "; endpoint_extraction_applied=false; matrix_fingerprint=" +
+        result.diagnostics.matrix_fingerprint +
+        "; integrator=" + result.diagnostics.integrator +
+        "; refinement_doublings_used=" +
+        std::to_string(result.diagnostics.refinement_doublings_used) +
+        "; adaptive_step_count=" +
+        std::to_string(result.diagnostics.adaptive_step_count) +
+        "; adaptive_rejected_step_count=" +
+        std::to_string(result.diagnostics.adaptive_rejected_step_count) +
+        "; pole_pinch_step_count=" +
+        std::to_string(result.diagnostics.pole_pinch_step_count) +
+        "; refinement_error_abs=" + result.diagnostics.refinement_error_abs +
+        "; refinement_effective_tolerance_abs=" +
+        result.diagnostics.refinement_effective_tolerance_abs +
+        "; max_embedded_error_abs=" +
+        result.diagnostics.max_embedded_error_abs +
+        "; contour_fingerprint=" + result.diagnostics.contour_fingerprint +
+        ".";
+    return result;
+  } catch (const std::exception& error) {
+    return failure_result(
+        "propagation-failed",
+        std::string("complex contour waypoint propagation failed closed: ") +
+            error.what());
+  }
+}
+
 ComplexContourScalarFrobeniusSeriesPatch
 GenerateScalarComplexFrobeniusEndpointPatch(
     const ComplexContourMatrixEvaluator& matrix_evaluator,

@@ -1,0 +1,233 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+  "benchmark_id": "complex_kinematics",
+  "compared_coefficient_count": 14,
+  "comparison": "cpp-vs-amflow",
+  "cpp_result": "/tmp/autoibp_orch/exec/lane1_next8/complex_kinematics.two-constant-long-timeout.eps0.cpp-result.json",
+  "default_family_suffix_normalization": "_amflow -> stripped",
+  "failures": [
+    "box[1,0,1,1] eps^0 has real/imag agreement 2/2, below tolerance 50",
+    "box[1,1,1,1] eps^-2 has real/imag agreement 5/6, below tolerance 50",
+    "box[1,1,1,1] eps^-1 has real/imag agreement 4/4, below tolerance 50",
+    "box[1,1,1,1] eps^0 has real/imag agreement 3/4, below tolerance 50"
+  ],
+  "family_aliases": {},
+  "integrals": [
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "-1.0",
+          "amflow_present": true,
+          "amflow_real": "2.0",
+          "cpp_imag": "-0.99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+          "cpp_present": true,
+          "cpp_real": "1.99999999999999999999999999999999999999999999999999999999999999999999999999999999",
+          "imag_agreement_digits": 80,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 80
+        },
+        {
+          "amflow_imag": "1.3092298391201952803354042196179250548620341216464229873839",
+          "amflow_present": true,
+          "amflow_real": "-0.3002216332363599795995272819297780995813829718622446557132",
+          "cpp_imag": "1.30922983912019528033540421961792505486203412164642298738395735806235294896297696",
+          "cpp_present": true,
+          "cpp_real": "-0.30022163323635997959952728192977809958138297186224465571324927252371657709724540",
+          "imag_agreement_digits": 59,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 59
+        }
+      ],
+      "integral": "box[0,0,0,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.0",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "2.2231523843684435748307418569791444528828165531978936648122",
+          "amflow_present": true,
+          "amflow_real": "-0.44658916709417460956580024114426170096666931098934659268",
+          "cpp_imag": "2.22315238436844357483074185697914445288281655319789366481214934454512685166606936",
+          "cpp_present": true,
+          "cpp_real": "-0.44658916709417460956580024114426170096666931098934659267993761096357036535509006",
+          "imag_agreement_digits": 59,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 59
+        }
+      ],
+      "integral": "box[0,0,1,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.0",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "0.0764527441571601097310482426593555707678488722827420077215",
+          "amflow_present": true,
+          "amflow_real": "-2.4515354217814893006622152619482232700491141308811484118076",
+          "cpp_imag": "0.07645274415716010973104824265935557076784887228274200772153695573801725621519936",
+          "cpp_present": true,
+          "cpp_real": "-2.45153542178148930066221526194822327004911413088114841180755146323835611056164480",
+          "imag_agreement_digits": 59,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 59
+        }
+      ],
+      "integral": "box[0,1,0,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.0",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "1.4208776431746222548414082811979045926816954793329780815321",
+          "amflow_present": true,
+          "amflow_real": "0.1132495920322515583884013946587076273626328896796902921988",
+          "cpp_imag": "1.42087764317462225484140828119790459268169547933297808153219812972771169215204363",
+          "cpp_present": true,
+          "cpp_real": "0.11324959203225155838840139465870762736263288967969029219883953483416499728702614",
+          "imag_agreement_digits": 59,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 59
+        }
+      ],
+      "integral": "box[1,0,0,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "0",
+          "amflow_present": true,
+          "amflow_real": "1.0",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "1.00000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "imag_agreement_digits": 999,
+          "order": -1,
+          "passed": true,
+          "real_agreement_digits": 999
+        },
+        {
+          "amflow_imag": "3.1415926535897932384626433832795028841971693993751058209749",
+          "amflow_present": true,
+          "amflow_real": "-4.7837915916264603442046049004574659137940988038615365870452",
+          "cpp_imag": "3.14159265358979323846264338327950288419716939937510582097494459230781640628620899",
+          "cpp_present": true,
+          "cpp_real": "-4.78379159162646034420460490045746591379409880386153658704520534533342360447633009",
+          "imag_agreement_digits": 59,
+          "order": 0,
+          "passed": true,
+          "real_agreement_digits": 60
+        }
+      ],
+      "integral": "box[1,0,1,0]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "-0.0193068358175546708506659645771451919832479750420661842973",
+          "amflow_present": true,
+          "amflow_real": "0.0333466826716029732631471786625881976810537819931807553542",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0E-80",
+          "imag_agreement_digits": 2,
+          "order": 0,
+          "passed": false,
+          "real_agreement_digits": 2
+        }
+      ],
+      "integral": "box[1,0,1,1]",
+      "status": "compared"
+    },
+    {
+      "coefficients": [
+        {
+          "amflow_imag": "-0.0000011986498408193011391968087146638026926470024164780791",
+          "amflow_present": true,
+          "amflow_real": "-0.0000491446434735913467070691573012159103985270990756012428",
+          "cpp_imag": "0",
+          "cpp_present": false,
+          "cpp_real": "0",
+          "imag_agreement_digits": 6,
+          "order": -2,
+          "passed": false,
+          "real_agreement_digits": 5
+        },
+        {
+          "amflow_imag": "0.0001291464135236889781737288500452009818076048479323563313",
+          "amflow_present": true,
+          "amflow_real": "0.0005779252240636638814919675522313552168373760882124884379",
+          "cpp_imag": "0",
+          "cpp_present": false,
+          "cpp_real": "0",
+          "imag_agreement_digits": 4,
+          "order": -1,
+          "passed": false,
+          "real_agreement_digits": 4
+        },
+        {
+          "amflow_imag": "0.0004187109773346087695456928300466781575012039894687889349",
+          "amflow_present": true,
+          "amflow_real": "-0.0023932404599206230006337233056978502621507523814154688139",
+          "cpp_imag": "0E-80",
+          "cpp_present": true,
+          "cpp_real": "0E-80",
+          "imag_agreement_digits": 4,
+          "order": 0,
+          "passed": false,
+          "real_agreement_digits": 3
+        }
+      ],
+      "integral": "box[1,1,1,1]",
+      "status": "compared"
+    }
+  ],
+  "matched_integral_count": 7,
+  "minimum_digit_agreement": 2,
+  "passed": false,
+  "passed_coefficient_count": 10,
+  "schema_version": 1,
+  "tolerance_digits": 50
+}

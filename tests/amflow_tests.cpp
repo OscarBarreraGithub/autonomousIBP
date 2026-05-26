@@ -50014,12 +50014,20 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                         "tools/reference-harness/specs/phase0/"
                         "linear_propagator.golden-manifest.json")
                            .string()) +
+      " --amflow-state " + ShellSingleQuote(source_state_path.string()) +
       " --tolerance-digits 50 >" +
       ShellSingleQuote(full_stripped_compare_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
   Expect(RunShellCommand(full_compare_command) == 0,
          "full stripped b64ag packet should pass the real AMFlow comparison");
   const std::string full_compare_json = ReadFile(full_stripped_compare_path);
+  ExpectContains(full_compare_json,
+                 "\"amflow_state\":",
+                 "full stripped b64ag comparison should bind the retained AMFlow state");
+  ExpectContains(full_compare_json,
+                 "linear_propagator.amflow-state.json",
+                 "full stripped b64ag comparison should name the retained linear_propagator "
+                 "state input");
   ExpectContains(full_compare_json,
                  "\"matched_integral_count\": 9",
                  "full stripped b64ag comparison should now reach all nine retained targets");

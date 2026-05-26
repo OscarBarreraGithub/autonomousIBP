@@ -645,6 +645,7 @@ def compare_cpp_vs_amflow(
     *,
     cpp_result_path: Path,
     amflow_golden_path: Path,
+    amflow_state_path: Path | None = None,
     tolerance_digits: int,
     family_aliases: FamilyAliasMap | None = None,
 ) -> dict[str, Any]:
@@ -685,7 +686,7 @@ def compare_cpp_vs_amflow(
 
   failures = comparison["failures"] + named_output_failures
   passed = not failures and comparison["compared_coefficient_count"] > 0
-  return {
+  payload: dict[str, Any] = {
       "schema_version": 1,
       "comparison": "cpp-vs-amflow",
       "cpp_result": str(cpp_result_path),
@@ -702,6 +703,9 @@ def compare_cpp_vs_amflow(
       "integrals": comparison["integrals"],
       "failures": failures,
   }
+  if amflow_state_path is not None:
+    payload["amflow_state"] = str(amflow_state_path)
+  return payload
 
 
 def write_synthetic_inputs(root: Path, *, mismatch: bool = False, missing: bool = False) -> tuple[Path, Path]:
@@ -761,6 +765,14 @@ def run_self_check() -> dict[str, Any]:
     matching = compare_cpp_vs_amflow(
         cpp_result_path=matching_cpp,
         amflow_golden_path=matching_amflow,
+        tolerance_digits=30,
+    )
+    matching_state_path = matching_cpp.parent / "amflow-state.json"
+    matching_state_path.write_text("{}\n", encoding="utf-8")
+    matching_with_state = compare_cpp_vs_amflow(
+        cpp_result_path=matching_cpp,
+        amflow_golden_path=matching_amflow,
+        amflow_state_path=matching_state_path,
         tolerance_digits=30,
     )
 
@@ -996,6 +1008,10 @@ def run_self_check() -> dict[str, Any]:
       "schema_version": 1,
       "self_check": "compare_cpp_vs_amflow",
       "matching_synthetic_passed": matching["passed"],
+      "amflow_state_binding_reported": (
+          matching_with_state["passed"]
+          and matching_with_state.get("amflow_state") == str(matching_state_path)
+      ),
       "mismatch_synthetic_rejected": not mismatch["passed"] and bool(mismatch["failures"]),
       "missing_integral_rejected": not missing["passed"] and bool(missing["failures"]),
       "failed_cpp_status_rejected": failed_status_rejected,
@@ -1025,6 +1041,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("--cpp-result", type=Path)
   parser.add_argument("--amflow-golden", type=Path)
+  parser.add_argument(
+      "--amflow-state",
+      type=Path,
+      help="Optional retained AMFlow state JSON path to bind into the comparison summary.",
+  )
   parser.add_argument("--tolerance-digits", type=int, default=30)
   parser.add_argument(
       "--family-alias",
@@ -1064,6 +1085,7 @@ def main(argv: list[str]) -> int:
           payload[key]
           for key in (
               "matching_synthetic_passed",
+              "amflow_state_binding_reported",
               "mismatch_synthetic_rejected",
               "missing_integral_rejected",
               "failed_cpp_status_rejected",
@@ -1082,6 +1104,7 @@ def main(argv: list[str]) -> int:
     payload = compare_cpp_vs_amflow(
         cpp_result_path=args.cpp_result,
         amflow_golden_path=args.amflow_golden,
+        amflow_state_path=args.amflow_state,
         tolerance_digits=args.tolerance_digits,
         family_aliases=parse_family_aliases(args.family_alias),
     )

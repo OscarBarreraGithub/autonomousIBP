@@ -10110,35 +10110,31 @@ struct B64agEndpointBasisValue {
   BigFloat w = 0;
 };
 
+constexpr int kB64agFirstBlockBoundaryMatchSeriesOrder = 640;
+
 B64agEndpointBasisValue EvaluateB64agEndpointFrobeniusBasis(
     const BigFloat& epsilon_value,
     const BigFloat& rho,
     const B64agEndpointBasisValue& leading,
     const BigFloat& x) {
-  constexpr int kSeriesOrder = 180;
   const BigFloat lambda = BigFloat(6) * (epsilon_value - BigFloat(1));
   std::vector<B64agEndpointBasisValue> coefficients(
-      static_cast<std::size_t>(kSeriesOrder) + 1);
+      static_cast<std::size_t>(kB64agFirstBlockBoundaryMatchSeriesOrder) + 1);
   coefficients[0] = leading;
 
-  BigFloat minus_two_power = 1;
-  std::vector<BigFloat> regular_scales(static_cast<std::size_t>(kSeriesOrder));
-  for (int index = 0; index < kSeriesOrder; ++index) {
-    regular_scales[static_cast<std::size_t>(index)] =
-        (epsilon_value - BigFloat(1)) * minus_two_power;
-    minus_two_power *= BigFloat(-2);
-  }
-
-  for (int order = 1; order <= kSeriesOrder; ++order) {
-    BigFloat rhs_y = 0;
-    BigFloat rhs_w = 0;
-    for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
-      const B64agEndpointBasisValue& previous =
-          coefficients[static_cast<std::size_t>(order - 1 - matrix_order)];
-      const BigFloat scale = regular_scales[static_cast<std::size_t>(matrix_order)];
-      rhs_y += scale * (BigFloat(2) * previous.y + BigFloat(24) * previous.w);
-      rhs_w += scale * (-previous.y / BigFloat(3) - BigFloat(4) * previous.w);
-    }
+  BigFloat y_convolution = 0;
+  BigFloat w_convolution = 0;
+  for (int order = 1; order <= kB64agFirstBlockBoundaryMatchSeriesOrder; ++order) {
+    const B64agEndpointBasisValue& previous =
+        coefficients[static_cast<std::size_t>(order - 1)];
+    y_convolution =
+        BigFloat(2) * previous.y + BigFloat(24) * previous.w -
+        BigFloat(2) * y_convolution;
+    w_convolution =
+        -previous.y / BigFloat(3) - BigFloat(4) * previous.w -
+        BigFloat(2) * w_convolution;
+    const BigFloat rhs_y = (epsilon_value - BigFloat(1)) * y_convolution;
+    const BigFloat rhs_w = (epsilon_value - BigFloat(1)) * w_convolution;
     const BigFloat y_denominator = rho + BigFloat(order);
     const BigFloat w_denominator = rho + BigFloat(order) - lambda;
     if (IsTiny(y_denominator) || IsTiny(w_denominator)) {
@@ -10391,7 +10387,9 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFirstEndpointCoefficient(
       " Matched the regular endpoint Frobenius solution against the retained finite "
       "boundary vector at gaugex=1/40 for " +
       std::to_string(direct_spec.boundary_epsilon_samples.size()) +
-      " epsilon sample(s), using the companion master gauge[1,1,1,-1,1,0,0,0,0] "
+      " epsilon sample(s) with first_block_boundary_match_series_order=" +
+      std::to_string(kB64agFirstBlockBoundaryMatchSeriesOrder) +
+      ", using the companion master gauge[1,1,1,-1,1,0,0,0,0] "
       "as the reviewed first-block connection variable and as its finite companion "
       "coefficient; the final two selected DE-basis masters use reviewed b64ag endpoint "
       "series constants guarded to the canonical lightlike-propagator state; "

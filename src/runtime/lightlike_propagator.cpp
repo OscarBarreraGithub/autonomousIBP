@@ -538,6 +538,7 @@ using RuntimeComplex = std::complex<RuntimeFloat>;
 const RuntimeFloat kRuntimeTiny("1e-140");
 constexpr int kEndpointTransportPrecisionDigits = 120;
 constexpr int kEndpointRegionPrecisionDigits = 150;
+constexpr int kFirstBlockBoundaryMatchSeriesOrder = 640;
 
 RuntimeFloat RuntimeAbs(const RuntimeFloat& value) {
   using boost::multiprecision::abs;
@@ -2859,27 +2860,21 @@ BuildGaugeLinkFirstBlockEndpointBasisCoefficients(
       static_cast<std::size_t>(series_order) + 1);
   coefficients[0] = leading;
 
-  RuntimeFloat minus_two_power = RuntimeFloat(1);
-  std::vector<RuntimeFloat> regular_scales(static_cast<std::size_t>(series_order));
-  for (int index = 0; index < series_order; ++index) {
-    regular_scales[static_cast<std::size_t>(index)] =
-        (epsilon_value - RuntimeFloat(1)) * minus_two_power;
-    minus_two_power *= RuntimeFloat(-2);
-  }
-
+  RuntimeFloat y_convolution = 0.0L;
+  RuntimeFloat w_convolution = 0.0L;
   for (int order = 1; order <= series_order; ++order) {
-    RuntimeFloat rhs_y = 0.0L;
-    RuntimeFloat rhs_w = 0.0L;
-    for (int matrix_order = 0; matrix_order < order; ++matrix_order) {
-      const GaugeLinkFirstBlockEndpointBasisValue& previous =
-          coefficients[static_cast<std::size_t>(order - 1 - matrix_order)];
-      const RuntimeFloat scale =
-          regular_scales[static_cast<std::size_t>(matrix_order)];
-      rhs_y += scale * (RuntimeFloat(2) * previous.y +
-                         RuntimeFloat(24) * previous.w);
-      rhs_w += scale * (-previous.y / RuntimeFloat(3) -
-                         RuntimeFloat(4) * previous.w);
-    }
+    const GaugeLinkFirstBlockEndpointBasisValue& previous =
+        coefficients[static_cast<std::size_t>(order - 1)];
+    y_convolution = RuntimeFloat(2) * previous.y +
+                    RuntimeFloat(24) * previous.w -
+                    RuntimeFloat(2) * y_convolution;
+    w_convolution = -previous.y / RuntimeFloat(3) -
+                    RuntimeFloat(4) * previous.w -
+                    RuntimeFloat(2) * w_convolution;
+    const RuntimeFloat rhs_y =
+        (epsilon_value - RuntimeFloat(1)) * y_convolution;
+    const RuntimeFloat rhs_w =
+        (epsilon_value - RuntimeFloat(1)) * w_convolution;
     const RuntimeFloat y_denominator = rho + static_cast<RuntimeFloat>(order);
     const RuntimeFloat w_denominator =
         rho + static_cast<RuntimeFloat>(order) - lambda;
@@ -2899,12 +2894,11 @@ GaugeLinkFirstBlockEndpointBasisValue EvaluateGaugeLinkFirstBlockEndpointBasis(
     const RuntimeFloat rho,
     const GaugeLinkFirstBlockEndpointBasisValue& leading,
     const RuntimeFloat x) {
-  constexpr int kSeriesOrder = 180;
   const std::vector<GaugeLinkFirstBlockEndpointBasisValue> coefficients =
       BuildGaugeLinkFirstBlockEndpointBasisCoefficients(epsilon_value,
                                                         rho,
                                                         leading,
-                                                        kSeriesOrder);
+                                                        kFirstBlockBoundaryMatchSeriesOrder);
 
   GaugeLinkFirstBlockEndpointBasisValue value;
   RuntimeFloat x_power = RuntimeFloat(1);
@@ -4101,7 +4095,10 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
         "gaugex=1/40 boundary vector(s) to high-precision live endpoint "
         "terms for all six reviewed gauge-link DE masters across " +
         std::to_string(result.epsilon_endpoint_terms.size()) +
-        " epsilon sample(s) using the parsed first block, including its "
+        " epsilon sample(s) using the parsed first block with "
+        "first_block_boundary_match_series_order=" +
+        std::to_string(kFirstBlockBoundaryMatchSeriesOrder) +
+        ", including its "
         "reviewed first-block non-integer Frobenius branch, plus second-block "
         "scalar recurrence and source-anchored coupled downstream "
         "Laurent/Frobenius recurrence fitted to rows 4 and 5 together; gated "

@@ -4712,6 +4712,10 @@ void B64agGaugeLinkFiniteBoundaryTransportPublishesFirstBlockFrobeniusBranchTest
   ExpectContains(transport.summary,
                  "first-block non-integer Frobenius branch",
                  "b64ag transport summary should identify the newly carried branch");
+  ExpectContains(transport.summary,
+                 "first_block_boundary_match_series_order=640",
+                 "b64ag first-block boundary match should publish the higher-order "
+                 "Frobenius basis budget");
 }
 
 void B64agGaugeLinkFiniteBoundaryTransportRequiresReviewedFrobeniusRecurrenceTest() {

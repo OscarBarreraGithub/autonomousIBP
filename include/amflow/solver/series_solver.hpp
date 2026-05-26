@@ -93,10 +93,15 @@ struct SolverDiagnostics {
   std::vector<std::string> eta_endpoint_transported_integrals;
   bool eta_endpoint_frobenius_recurrence_applied = false;
   bool full_eta_zero_contour_applied = false;
+  bool eta_endpoint_ir_subtraction_applied = false;
   std::string eta_endpoint_extraction_fingerprint;
   std::string eta_endpoint_contour_fingerprint;
   std::string eta_endpoint_local_model_kind;
   std::string eta_endpoint_branch_ledger_fingerprint;
+  std::string eta_endpoint_target_reduction_fingerprint;
+  std::vector<std::string> eta_endpoint_contour_waypoints;
+  std::vector<std::string> eta_endpoint_nonzero_poles;
+  std::vector<std::string> eta_endpoint_dropped_singular_powers;
   struct EpsilonCoefficient {
     int order = 0;
     std::string real;

@@ -5374,6 +5374,109 @@ const std::vector<std::string>& B64agSelectedEndpointMasterLabels() {
   return labels;
 }
 
+const std::vector<std::string>& B64agFullContourRequiredPacketLabels() {
+  static const std::vector<std::string> labels = {
+      "gauge[0,1,1,1,1,-1,0,0,0]",
+      "gauge[0,1,1,1,1,0,0,0,0]",
+      "gauge[1,1,1,-1,1,0,0,0,0]",
+      "gauge[1,1,1,0,1,0,0,0,0]",
+      "gauge[1,1,1,1,1,-1,0,0,0]",
+      "gauge[1,1,1,1,1,0,-1,0,0]",
+      "gauge[1,1,1,1,1,0,0,-1,0]",
+      "gauge[1,1,1,1,1,0,0,0,-1]",
+      "gauge[1,1,1,1,1,0,0,0,0]",
+  };
+  return labels;
+}
+
+std::string B64agRetainedStateFingerprint(const DirectSolveSeriesSpec& spec) {
+  std::ostringstream out;
+  out << "benchmark_id=" << spec.benchmark_id << "\n";
+  out << "family=" << spec.family << "\n";
+  out << "variable=" << spec.variable << "\n";
+  out << "start_location=" << spec.start_location << "\n";
+  out << "target_location=" << spec.target_location << "\n";
+  out << "boundary_point=" << spec.gauge_link_boundary_point << "\n";
+  out << "diffeq_variables=";
+  for (std::size_t index = 0; index < spec.gauge_link_diffeq_variables.size();
+       ++index) {
+    if (index > 0) {
+      out << ",";
+    }
+    out << spec.gauge_link_diffeq_variables[index];
+  }
+  out << "\n";
+  for (const amflow::MasterIntegral& master : spec.gauge_link_diffeq_masters) {
+    out << "diffeq_master=" << MasterIntegralLabel(master) << "\n";
+  }
+  for (const std::string& singular_point : spec.singular_points) {
+    out << "singular_point=" << singular_point << "\n";
+  }
+  for (const std::string& target : TargetLabels(spec)) {
+    out << "target=" << target << "\n";
+  }
+  for (const auto& [name, raw] : spec.boundary_state_raw_files) {
+    out << "boundary_file=" << name << "\n";
+    out << raw << "\n";
+  }
+  return amflow::ComputeArtifactFingerprint(out.str());
+}
+
+std::string B64agTargetReductionFingerprint(const DirectSolveSeriesSpec& spec) {
+  std::ostringstream out;
+  out << "target_reduction_path=" << spec.target_reduction_path << "\n";
+  const auto reduction_it = spec.boundary_state_raw_files.find("reduction");
+  if (reduction_it != spec.boundary_state_raw_files.end()) {
+    out << reduction_it->second << "\n";
+  }
+  return amflow::ComputeArtifactFingerprint(out.str());
+}
+
+std::string B64agRuntimeCandidateFingerprint(
+    const DirectSolveSeriesSpec& spec,
+    const amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order,
+    const int digits,
+    const std::string& status) {
+  std::ostringstream out;
+  out << "status=" << status << "\n";
+  out << "epsilon_order=" << epsilon_order << "\n";
+  out << "digits=" << digits << "\n";
+  out << "contour_fingerprint="
+      << diagnostics.eta_endpoint_contour_fingerprint << "\n";
+  out << "extraction_fingerprint="
+      << diagnostics.eta_endpoint_extraction_fingerprint << "\n";
+  out << "target_reduction_fingerprint="
+      << diagnostics.eta_endpoint_target_reduction_fingerprint << "\n";
+  out << "full_eta_zero_contour_applied="
+      << (diagnostics.full_eta_zero_contour_applied ? "true" : "false")
+      << "\n";
+  for (const std::string& target : TargetLabels(spec)) {
+    out << "target=" << target << "\n";
+  }
+  for (const std::vector<amflow::SolverDiagnostics::EpsilonCoefficient>&
+           coefficients : diagnostics.target_epsilon_coefficients) {
+    out << "coefficients\n";
+    for (const amflow::SolverDiagnostics::EpsilonCoefficient& coefficient :
+         coefficients) {
+      out << coefficient.order << ":" << coefficient.real << ":"
+          << coefficient.imaginary << "\n";
+    }
+  }
+  return amflow::ComputeArtifactFingerprint(out.str());
+}
+
+std::string B64agGoldenManifestFingerprint() {
+  const std::filesystem::path golden_path =
+      std::filesystem::path("tools/reference-harness/specs/phase0/"
+                            "linear_propagator.golden-manifest.json");
+  if (std::filesystem::exists(golden_path)) {
+    return amflow::ComputeArtifactFingerprint(ReadTextFile(golden_path));
+  }
+  return amflow::ComputeArtifactFingerprint(
+      "phase0-linear-propagator-golden-manifest-unavailable-to-runtime");
+}
+
 bool IsB64agSelectedEndpointState(const DirectSolveSeriesSpec& spec) {
   if (!IsB64agLightlikeGaugeLinkRuntimeState(spec) ||
       spec.masters.empty() || spec.masters.size() != spec.targets.size() ||
@@ -10420,6 +10523,16 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
 
   const amflow::LightlikeGaugeLinkRuntimeState state =
       MakeLightlikeGaugeLinkRuntimeState(direct_spec);
+  const amflow::LightlikeGaugeLinkTransportAudit scaffold =
+      amflow::BuildLightlikeGaugeLinkRetainedStateScaffold(state);
+  std::vector<std::string> nonzero_poles;
+  for (const amflow::LightlikeGaugeLinkPoleAudit& pole : scaffold.diffeq_poles) {
+    const std::string compact = RemoveAsciiSpaces(pole.value);
+    if (compact == "0" || compact == "0.0") {
+      continue;
+    }
+    nonzero_poles.push_back("gaugex=" + pole.value);
+  }
   const std::vector<amflow::LightlikeGaugeLinkFiniteBoundarySample>
       boundary_samples =
           ParseB64agFiniteBoundarySampleTerms(
@@ -10453,6 +10566,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
     diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
     diagnostics.eta_endpoint_extraction_fingerprint =
         transport.extraction_fingerprint;
+    diagnostics.eta_endpoint_contour_waypoints = scaffold.contour_waypoints;
+    diagnostics.eta_endpoint_nonzero_poles = nonzero_poles;
     return diagnostics;
   };
   if (transport.epsilon_endpoint_terms.size() != boundary_samples.size()) {
@@ -10472,6 +10587,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
         "endpoint transport: " +
             std::string(error.what()));
   }
+  const std::string target_reduction_fingerprint =
+      B64agTargetReductionFingerprint(direct_spec);
   std::vector<BigFloat> epsilon_values;
   epsilon_values.reserve(direct_spec.boundary_epsilon_samples.size());
   for (const std::string& epsilon_sample : direct_spec.boundary_epsilon_samples) {
@@ -10479,6 +10596,8 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
   }
 
   std::vector<std::vector<BigComplex>> target_samples(direct_spec.targets.size());
+  bool endpoint_ir_subtraction_applied = false;
+  std::set<std::string> dropped_singular_terms;
   for (const amflow::LightlikeGaugeLinkEndpointSampleTerms& sample_terms :
        transport.epsilon_endpoint_terms) {
     std::vector<amflow::LightlikeGaugeLinkSixMasterEndpointTerms>
@@ -10594,6 +10713,15 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
                 expected_label + " at epsilon " + sample_terms.epsilon_sample +
                 ": " + first_failure);
       }
+      endpoint_ir_subtraction_applied =
+          endpoint_ir_subtraction_applied ||
+          reduced_target.ir_subtraction_applied;
+      for (const std::string& dropped_term :
+           reduced_target.dropped_singular_terms) {
+        if (!dropped_term.empty()) {
+          dropped_singular_terms.insert(dropped_term);
+        }
+      }
       try {
         target_samples[target_index].push_back(
             ParseAmflowComplexExpression(reduced_target.finite_part_coefficient));
@@ -10622,6 +10750,15 @@ amflow::SolverDiagnostics EvaluateLightlikeGaugeLinkFullEndpointPacket(
   diagnostics.eta_endpoint_contour_fingerprint = transport.contour_fingerprint;
   diagnostics.eta_endpoint_local_model_kind = transport.endpoint_local_model_kind;
   diagnostics.eta_endpoint_extraction_fingerprint = transport.extraction_fingerprint;
+  diagnostics.eta_endpoint_ir_subtraction_applied =
+      endpoint_ir_subtraction_applied;
+  diagnostics.eta_endpoint_target_reduction_fingerprint =
+      target_reduction_fingerprint;
+  diagnostics.eta_endpoint_contour_waypoints = scaffold.contour_waypoints;
+  diagnostics.eta_endpoint_nonzero_poles = nonzero_poles;
+  diagnostics.eta_endpoint_dropped_singular_powers.assign(
+      dropped_singular_terms.begin(),
+      dropped_singular_terms.end());
 
   for (const std::vector<BigComplex>& samples : target_samples) {
     const std::size_t target_index = diagnostics.target_epsilon_coefficients.size();
@@ -11270,6 +11407,59 @@ struct SolveSeriesOutputIntegral {
   std::optional<std::size_t> retained_master_index;
 };
 
+std::vector<SolveSeriesOutputIntegral> BuildSolveSeriesOutputIntegrals(
+    const amflow::ProblemSpec& problem_spec,
+    const DirectSolveSeriesSpec& direct_spec,
+    const amflow::SolverDiagnostics& diagnostics,
+    const amflow::SolverDiagnostics* retained_master_diagnostics) {
+  std::map<std::string, std::size_t> master_index_by_label;
+  for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
+    const auto& master = direct_spec.masters[index];
+    master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
+  }
+  std::map<std::string, std::size_t> target_index_by_label;
+  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+    target_index_by_label.emplace(problem_spec.targets[index].Label(), index);
+  }
+
+  std::vector<SolveSeriesOutputIntegral> output_integrals;
+  output_integrals.reserve(problem_spec.targets.size() +
+                           direct_spec.retained_reduction_masters.size());
+  std::set<std::string> output_labels;
+  const bool b64ag_full_endpoint_packet_transport =
+      IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
+  if (b64ag_full_endpoint_packet_transport) {
+    for (const std::string& label : B64agFullContourRequiredPacketLabels()) {
+      const auto target_it = target_index_by_label.find(label);
+      if (target_it == target_index_by_label.end()) {
+        continue;
+      }
+      output_integrals.push_back({label, target_it->second, std::nullopt});
+      output_labels.insert(label);
+    }
+  } else {
+    for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
+      const std::string label = problem_spec.targets[index].Label();
+      output_integrals.push_back({label, index, std::nullopt});
+      output_labels.insert(label);
+    }
+  }
+  if (retained_master_diagnostics != nullptr) {
+    for (const amflow::MasterIntegral& master :
+         direct_spec.retained_reduction_masters) {
+      const std::string label = IntegralLabel(master.family, master.indices);
+      const auto master_it = master_index_by_label.find(label);
+      if (master_it == master_index_by_label.end() ||
+          output_labels.find(label) != output_labels.end()) {
+        continue;
+      }
+      output_integrals.push_back({label, std::nullopt, master_it->second});
+      output_labels.insert(label);
+    }
+  }
+  return output_integrals;
+}
+
 void AppendSolveSeriesResultEntries(
     std::ostream& out,
     const amflow::ProblemSpec& problem_spec,
@@ -11284,27 +11474,11 @@ void AppendSolveSeriesResultEntries(
     const auto& master = direct_spec.masters[index];
     master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
   }
-  std::vector<SolveSeriesOutputIntegral> output_integrals;
-  output_integrals.reserve(problem_spec.targets.size() +
-                           direct_spec.retained_reduction_masters.size());
-  std::set<std::string> output_labels;
-  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
-    const std::string label = problem_spec.targets[index].Label();
-    output_integrals.push_back({label, index, std::nullopt});
-    output_labels.insert(label);
-  }
-  if (retained_master_diagnostics != nullptr) {
-    for (const amflow::MasterIntegral& master : direct_spec.retained_reduction_masters) {
-      const std::string label = IntegralLabel(master.family, master.indices);
-      const auto master_it = master_index_by_label.find(label);
-      if (master_it == master_index_by_label.end() ||
-          output_labels.find(label) != output_labels.end()) {
-        continue;
-      }
-      output_integrals.push_back({label, std::nullopt, master_it->second});
-      output_labels.insert(label);
-    }
-  }
+  const std::vector<SolveSeriesOutputIntegral> output_integrals =
+      BuildSolveSeriesOutputIntegrals(problem_spec,
+                                      direct_spec,
+                                      diagnostics,
+                                      retained_master_diagnostics);
 
   for (std::size_t index = 0; index < output_integrals.size(); ++index) {
     const SolveSeriesOutputIntegral& output_integral = output_integrals[index];
@@ -11503,6 +11677,90 @@ void WriteJsonStringArray(std::ostream& out, const std::vector<std::string>& val
   out << "]";
 }
 
+void AppendB64agRuntimeProvenanceJson(
+    std::ostream& out,
+    const DirectSolveSeriesSpec& direct_spec,
+    const amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order,
+    const int digits,
+    const std::string& status) {
+  out << "  \"runtime_lane\": \"b64ag\",\n";
+  if (UsesRetainedSolutionSamples(direct_spec)) {
+    return;
+  }
+  out << "  \"runtime_provenance\": {\n";
+  out << "    \"final_solution_samples_used_as_input\": false,\n";
+  out << "    \"candidate_result_fingerprint\": "
+      << JsonString(B64agRuntimeCandidateFingerprint(
+             direct_spec, diagnostics, epsilon_order, digits, status))
+      << ",\n";
+  out << "    \"amflow_state_fingerprint\": "
+      << JsonString(B64agRetainedStateFingerprint(direct_spec)) << ",\n";
+  out << "    \"amflow_golden_fingerprint\": "
+      << JsonString(B64agGoldenManifestFingerprint()) << ",\n";
+  out << "    \"epsilon_order\": " << epsilon_order << ",\n";
+  out << "    \"epsilon_sample_count\": "
+      << direct_spec.boundary_epsilon_samples.size() << ",\n";
+  out << "    \"precision_digits\": " << digits << "\n";
+  out << "  },\n";
+}
+
+void AppendB64agFullContourDiagnosticsJson(
+    std::ostream& out,
+    const DirectSolveSeriesSpec& direct_spec,
+    const amflow::SolverDiagnostics& diagnostics,
+    const int epsilon_order,
+    const int digits,
+    const std::string& status) {
+  out << "  \"full_contour_diagnostics\": {\n";
+  out << "    \"contour\": {\n";
+  out << "      \"fingerprint\": "
+      << JsonString(diagnostics.eta_endpoint_contour_fingerprint) << ",\n";
+  out << "      \"waypoints\": ";
+  WriteJsonStringArray(out, diagnostics.eta_endpoint_contour_waypoints);
+  out << "\n";
+  out << "    },\n";
+  out << "    \"poles\": {\n";
+  out << "      \"nonzero_poles\": ";
+  WriteJsonStringArray(out, diagnostics.eta_endpoint_nonzero_poles);
+  out << "\n";
+  out << "    },\n";
+  out << "    \"finite_part_extraction\": {\n";
+  out << "      \"rule\": \"PickZeroRuleS-compatible finite-part extraction\",\n";
+  out << "      \"ir_subtraction_applied\": "
+      << (diagnostics.eta_endpoint_ir_subtraction_applied ? "true" : "false")
+      << ",\n";
+  out << "      \"finite_part_order\": 0,\n";
+  out << "      \"dropped_singular_powers\": ";
+  WriteJsonStringArray(out, diagnostics.eta_endpoint_dropped_singular_powers);
+  out << "\n";
+  out << "    },\n";
+  out << "    \"target_reduction\": {\n";
+  out << "      \"fingerprint\": "
+      << JsonString(diagnostics.eta_endpoint_target_reduction_fingerprint)
+      << ",\n";
+  out << "      \"target_row_count\": " << direct_spec.targets.size() << "\n";
+  out << "    },\n";
+  out << "    \"precision\": {\n";
+  out << "      \"working_digits\": " << digits << ",\n";
+  out << "      \"epsilon_order\": " << epsilon_order << ",\n";
+  out << "      \"epsilon_sample_count\": "
+      << direct_spec.boundary_epsilon_samples.size() << "\n";
+  out << "    },\n";
+  out << "    \"provenance\": {\n";
+  out << "      \"final_solution_samples_used_as_input\": false,\n";
+  out << "      \"candidate_result_fingerprint\": "
+      << JsonString(B64agRuntimeCandidateFingerprint(
+             direct_spec, diagnostics, epsilon_order, digits, status))
+      << ",\n";
+  out << "      \"amflow_state_fingerprint\": "
+      << JsonString(B64agRetainedStateFingerprint(direct_spec)) << ",\n";
+  out << "      \"amflow_golden_fingerprint\": "
+      << JsonString(B64agGoldenManifestFingerprint()) << "\n";
+  out << "    }\n";
+  out << "  },\n";
+}
+
 void WriteJsonSizeArray(std::ostream& out, const std::vector<std::size_t>& values) {
   out << "[";
   for (std::size_t index = 0; index < values.size(); ++index) {
@@ -11600,36 +11858,20 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                                          eta_mode_decision,
                                      const std::optional<amflow::EndingDecision>&
                                          ending_decision) {
-  std::map<std::string, std::size_t> master_index_by_label;
-  for (std::size_t index = 0; index < direct_spec.masters.size(); ++index) {
-    const auto& master = direct_spec.masters[index];
-    master_index_by_label.emplace(IntegralLabel(master.family, master.indices), index);
-  }
-  std::vector<SolveSeriesOutputIntegral> output_integrals;
-  output_integrals.reserve(problem_spec.targets.size() +
-                           direct_spec.retained_reduction_masters.size());
-  std::set<std::string> output_labels;
-  for (std::size_t index = 0; index < problem_spec.targets.size(); ++index) {
-    const std::string label = problem_spec.targets[index].Label();
-    output_integrals.push_back({label, index, std::nullopt});
-    output_labels.insert(label);
-  }
-  if (retained_master_diagnostics != nullptr) {
-    for (const amflow::MasterIntegral& master : direct_spec.retained_reduction_masters) {
-      const std::string label = IntegralLabel(master.family, master.indices);
-      const auto master_it = master_index_by_label.find(label);
-      if (master_it == master_index_by_label.end() ||
-          output_labels.find(label) != output_labels.end()) {
-        continue;
-      }
-      output_integrals.push_back({label, std::nullopt, master_it->second});
-      output_labels.insert(label);
-    }
-  }
+  const std::vector<SolveSeriesOutputIntegral> output_integrals =
+      BuildSolveSeriesOutputIntegrals(problem_spec,
+                                      direct_spec,
+                                      diagnostics,
+                                      retained_master_diagnostics);
 
   std::ostringstream out;
   out.setf(std::ios::fixed);
   out.precision(6);
+  const bool top_level_b64ag_gauge_link_state =
+      direct_spec.amflow_state_input && IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
+  const bool top_level_b64ag_full_endpoint_packet_transport =
+      top_level_b64ag_gauge_link_state &&
+      IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
   out << "{\n";
   out << "  \"schema_version\": 1,\n";
   if (!direct_spec.benchmark_id.empty()) {
@@ -11644,6 +11886,14 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     out << JsonString(output_integrals[index].label);
   }
   out << "],\n";
+  if (top_level_b64ag_gauge_link_state) {
+    AppendB64agRuntimeProvenanceJson(out,
+                                     direct_spec,
+                                     diagnostics,
+                                     epsilon_order,
+                                     digits,
+                                     status);
+  }
   out << "  \"solver\": {\n";
   out << "    \"precision_digits\": " << digits << ",\n";
   out << "    \"epsilon_order\": " << epsilon_order << "\n";
@@ -11867,6 +12117,14 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
                           : "deferred-until-master-values")
         << "\n";
     out << "  },\n";
+  }
+  if (top_level_b64ag_full_endpoint_packet_transport && status == "success") {
+    AppendB64agFullContourDiagnosticsJson(out,
+                                          direct_spec,
+                                          diagnostics,
+                                          epsilon_order,
+                                          digits,
+                                          status);
   }
   out << "  \"results\": [\n";
   bool wrote_result = false;

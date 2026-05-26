@@ -49898,6 +49898,43 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"status\": \"success\"",
                  "full stripped b64ag packet should advance to an externally comparable "
                  "packet");
+  ExpectContains(
+      full_stripped_json,
+      "\"targets\": [\"gauge[0,1,1,1,1,-1,0,0,0]\", "
+      "\"gauge[0,1,1,1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,-1,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,0,1,0,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,-1,0,0,0]\", "
+      "\"gauge[1,1,1,1,1,0,-1,0,0]\", "
+      "\"gauge[1,1,1,1,1,0,0,-1,0]\", "
+      "\"gauge[1,1,1,1,1,0,0,0,-1]\", "
+      "\"gauge[1,1,1,1,1,0,0,0,0]\"]",
+      "full stripped b64ag packet should publish the qualifier canonical "
+      "nine-target order");
+  ExpectContains(full_stripped_json,
+                 "\"runtime_lane\": \"b64ag\"",
+                 "full stripped b64ag packet should publish runtime lane provenance");
+  ExpectContains(full_stripped_json,
+                 "\"runtime_provenance\": {",
+                 "full stripped b64ag packet should emit runtime provenance");
+  ExpectContains(full_stripped_json,
+                 "\"final_solution_samples_used_as_input\": false",
+                 "full stripped b64ag packet should explicitly reject final solution samples");
+  ExpectContains(full_stripped_json,
+                 "\"full_contour_diagnostics\": {",
+                 "full stripped b64ag packet should emit full-contour diagnostics");
+  ExpectContains(full_stripped_json,
+                 "\"nonzero_poles\": [\"gaugex=-0.5\", \"gaugex=-0.25\"]",
+                 "full stripped b64ag diagnostics should publish nonzero contour poles");
+  ExpectContains(full_stripped_json,
+                 "\"rule\": \"PickZeroRuleS-compatible finite-part extraction\"",
+                 "full stripped b64ag diagnostics should publish the finite-part rule");
+  ExpectContains(full_stripped_json,
+                 "\"target_row_count\": 9",
+                 "full stripped b64ag diagnostics should publish target reduction size");
+  ExpectContains(full_stripped_json,
+                 "\"epsilon_sample_count\": 31",
+                 "full stripped b64ag diagnostics should publish retained epsilon sample count");
   ExpectContains(full_stripped_json,
                  "\"runtime_boundary_provider\": "
                  "\"retained-finite-gauge-link-boundary+gaugex-zero-full-packet-"

@@ -5,7 +5,8 @@
   "golden_output_dir": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured",
   "notes": [
     "Tracked pointer for the retained upstream AMFlow phase-0 linear_propagator capture.",
-    "The captured Mathematica output comes from SolveIntegralsGaugeLink on the pinned lightlike gauge-link example and retains the real AMFlow rule list, including nonzero complex coefficients and the example's zero-valued entries."
+    "The captured Mathematica output comes from SolveIntegralsGaugeLink on the pinned lightlike gauge-link example and retains the real AMFlow rule list, including nonzero complex coefficients and the example's zero-valued entries.",
+    "compare_cpp_vs_amflow_coefficient_overlays publishes a scoped high-precision AMFlow cache-fit replacement for the two b64ag direct first-block rows whose retained canonical capture only carried about 20 marked digits."
   ],
   "outputs": [
     {
@@ -13,6 +14,13 @@
       "canonical_text": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured/canonical/sol.canonical.txt",
       "name": "sol",
       "path": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/work/goldens/phase0/linear_propagator/captured/sol"
+    }
+  ],
+  "compare_cpp_vs_amflow_coefficient_overlays": [
+    {
+      "canonical_text": "../m6/lane3-next20/linear_propagator.first-block-cache-fit.amflow-golden.txt",
+      "name": "b64ag_first_block_cache_fit",
+      "provenance": "Reviewed AMFlow DESolver cache fit from generated-config/phase0/linear_propagator/primary/cache/gauge_solveint_gauge_asyexp/solution at WorkingPre 246; fit used all 31 epsilon samples with Laurent orders -1..29 and zero residual at about 217 digits. This is comparator golden publication only; runtime remains prohibited from consuming retained final solution samples."
     }
   ],
   "schema_version": 1

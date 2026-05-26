@@ -303,6 +303,56 @@ def selected_outputs_for_manifest(path: Path,
   return effective_selected_outputs
 
 
+def resolve_manifest_relative_path(raw_path: str, manifest_path: Path) -> Path:
+  candidate = Path(raw_path)
+  if candidate.is_absolute():
+    return candidate
+  manifest_relative = manifest_path.parent / candidate
+  if manifest_relative.exists():
+    return manifest_relative
+  return candidate
+
+
+def apply_manifest_coefficient_overlays(
+    combined: dict[IntegralKey, CoefficientMap],
+    payload: dict[str, Any],
+    path: Path,
+) -> None:
+  raw_overlays = payload.get("compare_cpp_vs_amflow_coefficient_overlays")
+  if raw_overlays is None:
+    return
+  expect(
+      isinstance(raw_overlays, list),
+      f"{path} compare_cpp_vs_amflow_coefficient_overlays must be a list",
+  )
+  observed_overlay_keys: set[IntegralKey] = set()
+  for overlay_index, raw_overlay in enumerate(raw_overlays):
+    expect(
+        isinstance(raw_overlay, dict),
+        f"{path} compare_cpp_vs_amflow_coefficient_overlays[{overlay_index}] must be an object",
+    )
+    overlay_path = resolve_manifest_relative_path(
+        str(raw_overlay.get("canonical_text") or raw_overlay.get("path") or ""),
+        path,
+    )
+    expect(
+        overlay_path.exists(),
+        f"AMFlow coefficient overlay path does not exist: {overlay_path}",
+    )
+    overlay_rules = parse_amflow_rule_list_text(
+        overlay_path.read_text(encoding="utf-8")
+    )
+    for key, coefficients in overlay_rules.items():
+      label = integral_label(*key)
+      expect(key in combined, f"{path} overlay references unknown AMFlow integral: {label}")
+      expect(
+          key not in observed_overlay_keys,
+          f"{path} duplicate coefficient overlay for AMFlow integral: {label}",
+      )
+      combined[key] = coefficients
+      observed_overlay_keys.add(key)
+
+
 def load_amflow_golden(
     path: Path,
     *,
@@ -315,10 +365,12 @@ def load_amflow_golden(
         local_selected_outputs if local_selected_outputs is not None else selected_outputs
     )
     if "golden_manifest" in payload:
-      return load_amflow_golden(
+      combined = load_amflow_golden(
           Path(str(payload["golden_manifest"])),
           selected_outputs=effective_selected_outputs,
       )
+      apply_manifest_coefficient_overlays(combined, payload, path)
+      return combined
     outputs = payload.get("outputs")
     if isinstance(outputs, list):
       combined: dict[IntegralKey, CoefficientMap] = {}
@@ -342,6 +394,7 @@ def load_amflow_golden(
             f"{path} missing compare_cpp_vs_amflow outputs: {', '.join(missing_selected_outputs)}",
         )
       expect(combined, f"{path} did not reference any AMFlow outputs")
+      apply_manifest_coefficient_overlays(combined, payload, path)
       return combined
   return parse_amflow_rule_list_text(path.read_text(encoding="utf-8"))
 

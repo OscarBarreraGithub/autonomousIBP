@@ -49952,6 +49952,10 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "reviewed downstream target Laurent row publication",
                  "full stripped b64ag packet should document the reviewed downstream "
                  "target-row publication");
+  ExpectContains(full_stripped_json,
+                 "reviewed first-block cache-fit Laurent row publication",
+                 "full stripped b64ag packet should document the reviewed first-block "
+                 "target-row publication");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
@@ -49964,7 +49968,7 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                         "tools/reference-harness/specs/phase0/"
                         "linear_propagator.golden-manifest.json")
                            .string()) +
-      " --tolerance-digits 30 >" +
+      " --tolerance-digits 50 >" +
       ShellSingleQuote(full_stripped_compare_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
   Expect(RunShellCommand(full_compare_command) == 0,
@@ -49983,7 +49987,7 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(full_compare_json,
                  "\"passed\": true",
                  "full stripped b64ag comparison should no longer expose a downstream "
-                 "AMFlow mismatch at the 30-digit gate");
+                 "AMFlow mismatch at the 50-digit gate");
 
   OverwriteTextFile(
       strip_script_path,

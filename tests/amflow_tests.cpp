@@ -53053,6 +53053,48 @@ void B64agFirstBlockPrecisionGapAuditSelfCheckCoversRetainedGoldenEnvelopeTest()
                  "b64ag first-block precision-gap audit should not promote M6");
 }
 
+void B64agFirstBlockStructureAuditSelfCheckCoversIndicialSurfaceTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-b64ag-first-block-structure-audit-self-check",
+      "tools/reference-harness/scripts/audit_b64ag_first_block_structure.py",
+      {"--self-check"},
+      "b64ag first-block structure audit self-check");
+  Expect(result.stderr_log.empty(),
+         "b64ag first-block structure audit self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"self_check\": true",
+                 "b64ag first-block structure audit should report self-check mode");
+  ExpectContains(result.stdout_json,
+                 "\"diffeq_first_block_entries_present\": true",
+                 "b64ag first-block structure audit should verify the retained matrix "
+                 "entries");
+  ExpectContains(result.stdout_json,
+                 "\"reduction_first_block_rows_present\": true",
+                 "b64ag first-block structure audit should verify the direct target rows");
+  ExpectContains(result.stdout_json,
+                 "\"original_basis_first_block_has_double_pole\": true",
+                 "b64ag first-block structure audit should report the original-basis "
+                 "double pole");
+  ExpectContains(result.stdout_json, "\"regular_singular_after_shear\": true",
+                 "b64ag first-block structure audit should report the reviewed shear");
+  ExpectContains(result.stdout_json, "\"indicial_roots\": [",
+                 "b64ag first-block structure audit should publish indicial roots");
+  ExpectContains(result.stdout_json, "\"-6+6*eps\"",
+                 "b64ag first-block structure audit should identify the shifted root");
+  ExpectContains(result.stdout_json, "\"integer_shifted_root_at_eps0\": true",
+                 "b64ag first-block structure audit should flag eps=0 resonance risk");
+  ExpectContains(result.stdout_json,
+                 "\"epsilon_laurent_log_surface_unresolved\": true",
+                 "b64ag first-block structure audit should flag the eps-Laurent log "
+                 "surface");
+  ExpectContains(result.stdout_json,
+                 "\"contains_log_or_polylog_tokens\": false",
+                 "b64ag first-block structure audit should distinguish final AMFlow "
+                 "numeric output from an explicit local log series");
+  ExpectContains(result.stdout_json, "\"m6_promotion_blocked\": true",
+                 "b64ag first-block structure audit should not promote M6");
+}
+
 void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
   const std::filesystem::path summary_path =
       FreshTempDir("amflow-b61n-publication-qualifier-summary") /
@@ -56800,6 +56842,7 @@ int main() {
     MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest();
     B61nPublicationQualifierHookSelfCheckCoversNegImGateTest();
     B64agFirstBlockPrecisionGapAuditSelfCheckCoversRetainedGoldenEnvelopeTest();
+    B64agFirstBlockStructureAuditSelfCheckCoversIndicialSurfaceTest();
     B61nPublicationQualifierHookMatchesRepoSidecarTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();

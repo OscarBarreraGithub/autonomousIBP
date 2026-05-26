@@ -49819,6 +49819,12 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
                  "\"full_eta_zero_contour_applied\": false",
                  "b64ag retained run must not claim full gauge-link endpoint transport");
   ExpectContains(retained_json,
+                 "\"runtime_provenance\": {\n"
+                 "    \"final_solution_samples_used_as_input\": true\n"
+                 "  }",
+                 "b64ag retained run should publish that retained final solution samples "
+                 "were used");
+  ExpectContains(retained_json,
                  "b64ag gauge-link scaffold recognized the retained linear_propagator gaugex=0 "
                  "state metadata",
                  "b64ag retained run should append the partial scaffold audit");

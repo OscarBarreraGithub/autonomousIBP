@@ -11958,6 +11958,11 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
     const bool b64ag_full_endpoint_packet_transport =
         IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
+    if (b64ag_gauge_link_state && solution_sample_state) {
+      out << "  \"runtime_provenance\": {\n";
+      out << "    \"final_solution_samples_used_as_input\": true\n";
+      out << "  },\n";
+    }
     out << "  \"boundary_state\": {\n";
     out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";

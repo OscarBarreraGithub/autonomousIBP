@@ -6,7 +6,7 @@
   "notes": [
     "Tracked pointer for the retained upstream AMFlow phase-0 linear_propagator capture.",
     "The captured Mathematica output comes from SolveIntegralsGaugeLink on the pinned lightlike gauge-link example and retains the real AMFlow rule list, including nonzero complex coefficients and the example's zero-valued entries.",
-    "compare_cpp_vs_amflow_coefficient_overlays publishes a scoped high-precision AMFlow cache-fit replacement for the two b64ag direct first-block rows whose retained canonical capture only carried about 20 marked digits."
+    "compare_cpp_vs_amflow_coefficient_overlays publishes a scoped high-precision AMFlow cache-fit replacement for the two b64ag direct first-block rows whose retained canonical capture only carried about 20 marked digits, plus explicit reviewed zero coefficients needed to keep the eps4 comparison presence audit from treating structural zeros as missing AMFlow evidence."
   ],
   "outputs": [
     {
@@ -20,7 +20,7 @@
     {
       "canonical_text": "../m6/lane3-next20/linear_propagator.first-block-cache-fit.amflow-golden.txt",
       "name": "b64ag_first_block_cache_fit",
-      "provenance": "Reviewed AMFlow DESolver cache fit from generated-config/phase0/linear_propagator/primary/cache/gauge_solveint_gauge_asyexp/solution at WorkingPre 246; fit used all 31 epsilon samples with Laurent orders -1..29 and zero residual at about 217 digits. This is comparator golden publication only; runtime remains prohibited from consuming retained final solution samples."
+      "provenance": "Reviewed AMFlow DESolver cache fit from generated-config/phase0/linear_propagator/primary/cache/gauge_solveint_gauge_asyexp/solution at WorkingPre 246; fit used all 31 epsilon samples with Laurent orders -1..29 and zero residual at about 217 digits. The overlay also publishes exact zero eps^1..eps^4 entries for the two canonical zero rows and the reviewed nonzero eps^3..eps^4 selected4 AMFlow coefficients for the two first-block cache-fit rows so eps4 presence checks can distinguish structural zeros from absent AMFlow coefficients. This is comparator golden publication only; runtime remains prohibited from consuming retained final solution samples."
     }
   ],
   "schema_version": 1

@@ -50002,6 +50002,14 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(full_stripped_json,
                  "\"order\": 4",
                  "full stripped b64ag packet should publish the eps^4 row surface");
+  ExpectContains(full_stripped_json,
+                 "\"real_digits\": \"-21.532946481923112889076967851679354570",
+                 "full stripped b64ag first master eps^4 row should use reviewed nonzero "
+                 "selected4 AMFlow evidence");
+  ExpectContains(full_stripped_json,
+                 "\"imag_digits\": \"-121.910064884421794793450405043176294",
+                 "full stripped b64ag companion first-block eps^4 row should use reviewed "
+                 "nonzero selected4 AMFlow evidence");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
@@ -50042,6 +50050,12 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"passed\": true",
                  "full stripped b64ag comparison should no longer expose a downstream "
                  "AMFlow mismatch at the 50-digit gate");
+  Expect(full_compare_json.find("\"amflow_present\": false") == std::string::npos,
+         "full stripped b64ag eps4 comparison should publish AMFlow presence for every "
+         "reviewed structural-zero coefficient");
+  Expect(full_compare_json.find("\"cpp_present\": false") == std::string::npos,
+         "full stripped b64ag eps4 comparison should publish C++ presence for every "
+         "reviewed structural-zero coefficient");
 
   OverwriteTextFile(
       strip_script_path,

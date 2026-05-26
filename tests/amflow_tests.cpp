@@ -49870,7 +49870,7 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   const std::string full_stripped_command =
       ShellSingleQuote(cli_path.string()) + " solve-series " +
       ShellSingleQuote(full_stripped_state_path.string()) +
-      " --eps-order 2 --digits 50 --out " +
+      " --eps-order 4 --digits 50 --out " +
       ShellSingleQuote(full_stripped_output_path.string()) + " >" +
       ShellSingleQuote(stdout_path.string()) + " 2>" +
       ShellSingleQuote(stderr_path.string());
@@ -49993,6 +49993,9 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "reviewed first-block cache-fit Laurent row publication",
                  "full stripped b64ag packet should document the reviewed first-block "
                  "target-row publication");
+  ExpectContains(full_stripped_json,
+                 "\"order\": 4",
+                 "full stripped b64ag packet should publish the eps^4 row surface");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
@@ -50015,11 +50018,11 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"matched_integral_count\": 9",
                  "full stripped b64ag comparison should now reach all nine retained targets");
   ExpectContains(full_compare_json,
-                 "\"compared_coefficient_count\": 39",
-                 "full stripped b64ag comparison should compare the eps^2 golden envelope");
+                 "\"compared_coefficient_count\": 57",
+                 "full stripped b64ag comparison should compare the eps^4 golden envelope");
   ExpectContains(full_compare_json,
-                 "\"passed_coefficient_count\": 39",
-                 "full stripped b64ag comparison should pass the downstream D7/D8/D9 "
+                 "\"passed_coefficient_count\": 57",
+                 "full stripped b64ag comparison should pass the eps^4 downstream D7/D8/D9 "
                  "target rows");
   ExpectContains(full_compare_json,
                  "\"passed\": true",

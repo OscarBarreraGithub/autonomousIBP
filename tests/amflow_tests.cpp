@@ -53013,6 +53013,46 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
                  "b61n publication qualifier self-check should write the synthetic summary");
 }
 
+void B64agFirstBlockPrecisionGapAuditSelfCheckCoversRetainedGoldenEnvelopeTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-b64ag-first-block-precision-gap-audit-self-check",
+      "tools/reference-harness/scripts/audit_b64ag_first_block_precision_gap.py",
+      {"--self-check"},
+      "b64ag first-block precision-gap audit self-check");
+  Expect(result.stderr_log.empty(),
+         "b64ag first-block precision-gap audit self-check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"self_check\": true",
+                 "b64ag first-block precision-gap audit should report self-check mode");
+  ExpectContains(result.stdout_json, "\"all_failures_are_first_block\": true",
+                 "b64ag first-block precision-gap audit should isolate failures to the two "
+                 "first-block labels");
+  ExpectContains(result.stdout_json, "\"first_block_failure_count\": 8",
+                 "b64ag first-block precision-gap audit should count the eight current "
+                 "compare50 failures");
+  ExpectContains(result.stdout_json, "\"first_block_failure_orders_match_expected\": true",
+                 "b64ag first-block precision-gap audit should require the exact two-label "
+                 "eps^-1..eps^2 failure shape");
+  ExpectContains(result.stdout_json, "\"agreement_digits_match_retained_envelope\": true",
+                 "b64ag first-block precision-gap audit should bind agreement digits to the "
+                 "retained-golden envelope");
+  ExpectContains(result.stdout_json,
+                 "\"first_block_nonzero_missing_agreement_digit_count\": 0",
+                 "b64ag first-block precision-gap audit should fail closed when any nonzero "
+                 "first-block component lacks agreement digits");
+  ExpectContains(result.stdout_json,
+                 "\"precision_gap_matches_retained_golden_envelope\": true",
+                 "b64ag first-block precision-gap audit should identify the retained-golden "
+                 "precision envelope");
+  ExpectContains(result.stdout_json, "\"first_block_nonzero_amflow_digit_count_max\": 39",
+                 "b64ag first-block precision-gap audit should report the nonzero AMFlow "
+                 "digit envelope explicitly");
+  ExpectContains(result.stdout_json, "\"minimum_digit_agreement\": 37",
+                 "b64ag first-block precision-gap audit should preserve the current digit floor");
+  ExpectContains(result.stdout_json, "\"m6_promotion_blocked\": true",
+                 "b64ag first-block precision-gap audit should not promote M6");
+}
+
 void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
   const std::filesystem::path summary_path =
       FreshTempDir("amflow-b61n-publication-qualifier-summary") /
@@ -56759,6 +56799,7 @@ int main() {
     MilestoneM6QualificationSelfCheckComposesPhase0AndCaseStudyVerdictsTest();
     MilestoneM6QualificationRetainedVerdictsPreserveBlockersTest();
     B61nPublicationQualifierHookSelfCheckCoversNegImGateTest();
+    B64agFirstBlockPrecisionGapAuditSelfCheckCoversRetainedGoldenEnvelopeTest();
     B61nPublicationQualifierHookMatchesRepoSidecarTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();

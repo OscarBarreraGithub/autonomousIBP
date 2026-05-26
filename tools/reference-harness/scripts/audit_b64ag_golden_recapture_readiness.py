@@ -269,6 +269,146 @@ def failure_code_postmortem(
     }
 
 
+def required_runtime_evidence_contract() -> dict[str, Any]:
+    """Machine-readable b64ag full-contour evidence contract.
+
+    Keep this aligned with the fail-closed checks below.  The readiness helper
+    does not use this contract to forgive missing fields; it publishes the
+    contract so runtime evidence producers can see the exact fields they must
+    emit before a candidate can clear the lane148 M6 boundary.
+    """
+
+    return {
+        "schema_version": 1,
+        "profile": "b64ag-full-contour-runtime-evidence-contract-v1",
+        "status": "requirements-only",
+        "benchmark_id": "linear_propagator",
+        "runtime_lane": "b64ag",
+        "m6_closure_claimed": False,
+        "full_eta_zero_contour_applied_claimed_by_helper": False,
+        "runtime": {
+            "required_top_level_fields": [
+                "runtime_provenance.final_solution_samples_used_as_input",
+                "continuation.variable",
+                "continuation.start_location",
+                "continuation.target_location",
+                "continuation.singular_points",
+                "continuation.full_eta_zero_contour_applied",
+                "continuation.blocked_reason",
+                "targets",
+                "results[].integral",
+                "results[].epsilon_orders",
+            ],
+            "required_values": {
+                "runtime_provenance.final_solution_samples_used_as_input": False,
+                "continuation.variable": "gaugex",
+                "continuation.start_location": "gaugex -> 1/40",
+                "continuation.target_location": "gaugex=0",
+                "continuation.singular_points": ["gaugex=0"],
+                "continuation.full_eta_zero_contour_applied": True,
+                "continuation.blocked_reason": "",
+                "targets": EXPECTED_PACKET_TARGETS,
+                "results[].integral": EXPECTED_PACKET_TARGETS,
+            },
+            "forbidden_runtime_text_patterns": [
+                pattern.pattern for pattern in BAD_TEXT
+            ],
+        },
+        "amflow_state": {
+            "required_top_level_fields": [
+                "gauge_link.boundary_point",
+                "gauge_link.diffeq_variables",
+                "gauge_link.diffeq_masters",
+            ],
+            "required_values": {
+                "gauge_link.boundary_point": "gaugex -> 1/40",
+                "gauge_link.diffeq_variables": ["gaugex"],
+                "gauge_link.diffeq_masters": EXPECTED_DE_BASIS,
+            },
+        },
+        "full_contour_diagnostics": {
+            "accepted_locations": [
+                "full_contour_diagnostics",
+                "diagnostics.full_contour",
+                "continuation.full_contour_diagnostics",
+            ],
+            "required_buckets": [
+                "contour",
+                "poles",
+                "finite_part_extraction",
+                "target_reduction",
+                "precision",
+                "provenance",
+            ],
+            "required_fields": [
+                "contour.fingerprint",
+                "contour.waypoints",
+                "poles.nonzero_poles",
+                "finite_part_extraction.rule",
+                "finite_part_extraction.ir_subtraction_applied",
+                "finite_part_extraction.finite_part_order",
+                "finite_part_extraction.dropped_singular_powers",
+                "target_reduction.fingerprint",
+                "target_reduction.target_row_count",
+                "precision.working_digits",
+                "precision.epsilon_sample_count",
+                "provenance.final_solution_samples_used_as_input",
+                "provenance.candidate_result_fingerprint",
+                "provenance.amflow_state_fingerprint",
+                "provenance.amflow_golden_fingerprint",
+            ],
+            "required_values": {
+                "finite_part_extraction.rule_contains": "PickZeroRuleS",
+                "finite_part_extraction.ir_subtraction_applied": True,
+                "finite_part_extraction.finite_part_order": 0,
+                "target_reduction.target_row_count": len(EXPECTED_PACKET_TARGETS),
+                "precision.working_digits_minimum": REQUIRED_DIGITS,
+                "precision.epsilon_sample_count_minimum": REQUIRED_EPSILON_SAMPLES,
+                "provenance.final_solution_samples_used_as_input": False,
+            },
+        },
+        "comparison": {
+            "required_top_level_fields": [
+                "comparison",
+                "benchmark_id",
+                "passed",
+                "failures",
+                "cpp_result",
+                "amflow_state",
+                "amflow_golden",
+                "tolerance_digits",
+                "integrals[].integral",
+                "integrals[].coefficients[].order",
+                "integrals[].coefficients[].cpp_present",
+                "integrals[].coefficients[].amflow_present",
+                "integrals[].coefficients[].real_agreement_digits",
+                "integrals[].coefficients[].imag_agreement_digits",
+                "integrals[].coefficients[].passed",
+            ],
+            "required_values": {
+                "comparison": "cpp-vs-amflow",
+                "benchmark_id": "linear_propagator",
+                "passed": True,
+                "failures": [],
+                "amflow_golden": str(EXPECTED_AMFLOW_GOLDEN),
+                "tolerance_digits_minimum": REQUIRED_DIGITS,
+                "integrals[].integral": EXPECTED_PACKET_TARGETS,
+                "integrals[].coefficients[].order_by_integral": EXPECTED_ORDERS,
+                "detailed_coefficient_count_minimum": REQUIRED_COEFFICIENT_ROWS,
+                "minimum_detailed_digit_agreement": REQUIRED_DIGITS,
+            },
+        },
+        "lane148_runtime_requirement": [
+            "execute full gaugex -> 0 transport for the six-master gauge-link DE basis",
+            "solve or replay the finite gaugex=1/40 boundary without final endpoint solution samples",
+            "apply target reduction and affected-power normalization across the retained packet surface",
+            "perform PickZeroRuleS finite-part extraction and post-endpoint Laurent fitting",
+            "emit contour, pole, finite-part, reduction, precision, and provenance diagnostics",
+            "compare the accepted packet against the retained AMFlow golden at the 50-digit floor",
+        ],
+    }
+
+
 def full_contour_diagnostics(cpp_result: dict[str, Any]) -> dict[str, Any] | None:
     candidates: list[Any] = [cpp_result.get("full_contour_diagnostics")]
     diagnostics = cpp_result.get("diagnostics")
@@ -536,6 +676,7 @@ def audit_b64ag_golden_recapture_readiness(
         "checks": checks,
         "blocking_reasons": blockers,
         "failure_code_postmortem": failure_code_postmortem(checks, blockers),
+        "required_runtime_evidence": required_runtime_evidence_contract(),
         "details": details,
         "inputs": {
             "cpp_result": str(cpp_result_path),
@@ -826,6 +967,22 @@ def run_self_check() -> dict[str, bool]:
 
         summary = {
             "ready_synthetic_passed": ready_summary["golden_recapture_ready"] is True,
+            "ready_contract_published": (
+                ready_summary["required_runtime_evidence"]["profile"]
+                == "b64ag-full-contour-runtime-evidence-contract-v1"
+                and ready_summary["required_runtime_evidence"][
+                    "full_contour_diagnostics"
+                ]["required_values"]["precision.working_digits_minimum"]
+                == REQUIRED_DIGITS
+                and "provenance.candidate_result_fingerprint"
+                in ready_summary["required_runtime_evidence"][
+                    "full_contour_diagnostics"
+                ]["required_fields"]
+                and ready_summary["required_runtime_evidence"]["comparison"][
+                    "required_values"
+                ]["detailed_coefficient_count_minimum"]
+                == REQUIRED_COEFFICIENT_ROWS
+            ),
             "ready_postmortem_empty": ready_summary["failure_code_postmortem"] == {
                 "schema_version": 1,
                 "profile": "b64ag-golden-recapture-readiness-postmortem-v1",
@@ -944,6 +1101,7 @@ if __name__ == "__main__":
                     {"audit_exception": False},
                     [str(error)],
                 ),
+                "required_runtime_evidence": required_runtime_evidence_contract(),
                 "m6_closure_claimed": False,
                 "full_eta_zero_contour_applied_claimed_by_helper": False,
             }

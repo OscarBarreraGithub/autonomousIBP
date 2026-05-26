@@ -95,6 +95,16 @@ if(BUILD_TESTING)
   set_tests_properties(b64ag-golden-recapture-readiness-self-check PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+  add_test(
+    NAME b64ag-first-block-gap-diagnostic-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/diagnose_b64ag_first_block_gap.py
+      --self-check
+  )
+  set_tests_properties(b64ag-first-block-gap-diagnostic-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
   add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
   target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
   target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)

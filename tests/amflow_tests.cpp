@@ -49793,6 +49793,10 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
       run_root / "full-stripped-result.json";
   const std::filesystem::path full_stripped_compare_path =
       run_root / "full-stripped-compare30.json";
+  const std::filesystem::path full_stripped_bundle_path =
+      run_root / "linear-full-stripped-bundle.json";
+  const std::filesystem::path full_stripped_bundle_output_path =
+      run_root / "full-stripped-bundle-result.json";
   const std::filesystem::path stripped_state_path = run_root / "linear-stripped.json";
   const std::filesystem::path retained_output_path = run_root / "retained-result.json";
   const std::filesystem::path stripped_output_path = run_root / "stripped-result.json";
@@ -49815,6 +49819,10 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
   ExpectContains(retained_json,
                  "\"benchmark_id\": \"linear_propagator\"",
                  "linear_propagator retained run should preserve benchmark identity");
+  ExpectContains(retained_json,
+                 "\"kind\": \"amflow_finite_solution_samples\"",
+                 "unstripped b64ag retained run should still report the retained "
+                 "solution-sample boundary kind");
   ExpectContains(retained_json,
                  "\"full_eta_zero_contour_applied\": false",
                  "b64ag retained run must not claim full gauge-link endpoint transport");
@@ -49921,6 +49929,14 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"runtime_lane\": \"b64ag\"",
                  "full stripped b64ag packet should publish runtime lane provenance");
   ExpectContains(full_stripped_json,
+                 "\"kind\": \"amflow_finite_gauge_link_boundary\"",
+                 "full stripped b64ag packet should publish a gauge-link boundary scope "
+                 "instead of a solution-sample scope");
+  Expect(full_stripped_json.find("\"kind\": \"amflow_finite_solution_samples\"") ==
+             std::string::npos,
+         "full stripped b64ag packet should not serialize the retained solution-sample "
+         "kind after final samples were removed");
+  ExpectContains(full_stripped_json,
                  "\"runtime_provenance\": {",
                  "full stripped b64ag packet should emit runtime provenance");
   ExpectContains(full_stripped_json,
@@ -50010,6 +50026,41 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "\"imag_digits\": \"-121.910064884421794793450405043176294",
                  "full stripped b64ag companion first-block eps^4 row should use reviewed "
                  "nonzero selected4 AMFlow evidence");
+
+  OverwriteTextFile(full_stripped_bundle_path,
+                    "{\n"
+                    "  \"schema_version\": 1,\n"
+                    "  \"kind\": \"amflow_solve_series_state_bundle\",\n"
+                    "  \"states\": [\n" +
+                        ReadFile(full_stripped_state_path) +
+                        "  ]\n"
+                        "}\n");
+  const std::string full_stripped_bundle_command =
+      ShellSingleQuote(cli_path.string()) + " solve-series " +
+      ShellSingleQuote(full_stripped_bundle_path.string()) +
+      " --eps-order 4 --digits 50 --out " +
+      ShellSingleQuote(full_stripped_bundle_output_path.string()) + " >" +
+      ShellSingleQuote(stdout_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(full_stripped_bundle_command) == 0,
+         "full stripped b64ag bundle should serialize per-state scope metadata; stderr=" +
+             (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
+  const std::string full_stripped_bundle_json =
+      ReadFile(full_stripped_bundle_output_path);
+  ExpectContains(full_stripped_bundle_json,
+                 "\"state_results\": [",
+                 "full stripped b64ag bundle should publish per-state metadata");
+  ExpectContains(full_stripped_bundle_json,
+                 "\"kind\": \"amflow_finite_gauge_link_boundary\"",
+                 "full stripped b64ag bundle state should publish the gauge-link boundary "
+                 "scope");
+  Expect(full_stripped_bundle_json.find("\"kind\": \"amflow_finite_solution_samples\"") ==
+             std::string::npos,
+         "full stripped b64ag bundle state should not serialize the retained "
+         "solution-sample kind after final samples were removed");
+  ExpectContains(full_stripped_bundle_json,
+                 "\"full_eta_zero_contour_applied\": false",
+                 "full stripped b64ag bundle state should keep M6 promotion fail-closed");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +

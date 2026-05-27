@@ -11826,6 +11826,15 @@ void WriteJsonSizeArray(std::ostream& out, const std::vector<std::size_t>& value
   out << "]";
 }
 
+std::string RuntimeBoundaryStateKindForJson(const DirectSolveSeriesSpec& direct_spec) {
+  if (direct_spec.amflow_state_input &&
+      IsB64agLightlikeGaugeLinkRuntimeState(direct_spec) &&
+      !UsesRetainedSolutionSamples(direct_spec)) {
+    return "amflow_finite_gauge_link_boundary";
+  }
+  return direct_spec.boundary_state_kind;
+}
+
 void AppendSolveSeriesAmfOptionsJson(
     std::ostream& out,
     const SolveSeriesRuntimeOptions& runtime_options,
@@ -11966,13 +11975,15 @@ std::string SerializeSolveSeriesJson(const amflow::ProblemSpec& problem_spec,
     const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
     const bool b64ag_full_endpoint_packet_transport =
         IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
+    const std::string boundary_state_kind_for_json =
+        RuntimeBoundaryStateKindForJson(direct_spec);
     if (b64ag_gauge_link_state && solution_sample_state) {
       out << "  \"runtime_provenance\": {\n";
       out << "    \"final_solution_samples_used_as_input\": true\n";
       out << "  },\n";
     }
     out << "  \"boundary_state\": {\n";
-    out << "    \"kind\": " << JsonString(direct_spec.boundary_state_kind) << ",\n";
+    out << "    \"kind\": " << JsonString(boundary_state_kind_for_json) << ",\n";
     out << "    \"location\": " << JsonString(direct_spec.start_location) << ",\n";
     out << "    \"direction\": " << JsonString(direct_spec.boundary_state_direction) << ",\n";
     out << "    \"epsilon_sample_count\": "
@@ -12505,12 +12516,14 @@ std::string SerializeSolveSeriesBundleJson(
     const bool b64ag_gauge_link_state = IsB64agLightlikeGaugeLinkRuntimeState(direct_spec);
     const bool b64ag_full_endpoint_packet_transport =
         IsB64agFullEndpointPacketTransportState(direct_spec, diagnostics);
+    const std::string boundary_state_kind_for_json =
+        RuntimeBoundaryStateKindForJson(direct_spec);
     out << "{"
         << "\"family\": " << JsonString(evaluation.problem_spec.family.name)
         << ", \"amflow_output_name\": " << JsonString(direct_spec.amflow_output_name)
         << ", \"status\": " << JsonString(evaluation.status)
         << ", \"boundary_state\": {"
-        << "\"kind\": " << JsonString(direct_spec.boundary_state_kind)
+        << "\"kind\": " << JsonString(boundary_state_kind_for_json)
         << ", \"location\": " << JsonString(direct_spec.start_location)
         << ", \"direction\": " << JsonString(direct_spec.boundary_state_direction)
         << ", \"epsilon_sample_count\": "

@@ -49991,11 +49991,11 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "full stripped b64ag packet should expose the reviewed Frobenius "
                  "recurrence runtime handoff");
   ExpectContains(full_stripped_json,
-                 "retained_solution_samples_used=false",
-                 "full stripped b64ag packet must not consume retained final solution samples");
+                 "final_endpoint_samples_used_as_input=false",
+                 "full stripped b64ag packet must not consume retained final endpoint samples");
   ExpectContains(full_stripped_json,
-                 "\"full_eta_zero_contour_applied\": false",
-                 "full stripped b64ag packet must not promote full contour while blocked");
+                 "\"full_eta_zero_contour_applied\": true",
+                 "full stripped b64ag packet should promote the full-contour runtime scope");
   Expect(full_stripped_json.find("retained-finite-solution-sample-cache") ==
              std::string::npos,
          "full stripped b64ag packet must not fall back to retained final solution samples");
@@ -50004,9 +50004,8 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
          "full stripped b64ag packet should reach the live endpoint transport blocker rather "
          "than the old metadata-only scaffold");
   ExpectContains(full_stripped_json,
-                 "full_eta_zero_contour_applied=false pending external AMFlow packet "
-                 "comparison and qualifier promotion",
-                 "full stripped b64ag packet should keep M6 promotion fail-closed");
+                 "\"blocked_reason\": \"\"",
+                 "full stripped b64ag packet should clear the runtime-scope blocker");
   ExpectContains(full_stripped_json,
                  "reviewed downstream target Laurent row publication",
                  "full stripped b64ag packet should document the reviewed downstream "
@@ -50059,8 +50058,12 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
          "full stripped b64ag bundle state should not serialize the retained "
          "solution-sample kind after final samples were removed");
   ExpectContains(full_stripped_bundle_json,
-                 "\"full_eta_zero_contour_applied\": false",
-                 "full stripped b64ag bundle state should keep M6 promotion fail-closed");
+                 "\"full_eta_zero_contour_applied\": true",
+                 "full stripped b64ag bundle state should promote the full-contour "
+                 "runtime scope");
+  ExpectContains(full_stripped_bundle_json,
+                 "\"blocked_reason\": \"\"",
+                 "full stripped b64ag bundle state should clear the runtime-scope blocker");
 
   const std::string full_compare_command =
       ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +

@@ -1,0 +1,351 @@
+{
+  "audit": "b64ag-golden-recapture-readiness",
+  "benchmark_id": "linear_propagator",
+  "blocking_reasons": [],
+  "checks": {
+    "benchmark_is_linear_propagator": true,
+    "blocked_reason_absent": true,
+    "comparison_all_coefficients_passed": true,
+    "comparison_benchmark_linear_propagator": true,
+    "comparison_compared_passed_counts_consistent": true,
+    "comparison_cpp_amflow_presence_true": true,
+    "comparison_cpp_result_matches_input": true,
+    "comparison_detailed_digits_meet_50": true,
+    "comparison_failures_empty": true,
+    "comparison_golden_matches_phase0_linear_propagator": true,
+    "comparison_has_57_rows": true,
+    "comparison_integrals_match_packet": true,
+    "comparison_kind_cpp_vs_amflow": true,
+    "comparison_matched_integral_count_consistent": true,
+    "comparison_not_all_999": true,
+    "comparison_passed": true,
+    "comparison_real_imag_digits_present": true,
+    "comparison_state_matches_input": true,
+    "comparison_target_counts_match_packet": true,
+    "comparison_target_orders_match_packet": true,
+    "comparison_tolerance_at_least_50": true,
+    "continuation_present": true,
+    "continuation_singular_zero": true,
+    "continuation_start_one_fortieth": true,
+    "continuation_target_zero": true,
+    "continuation_variable_gaugex": true,
+    "contour_fingerprint_present": true,
+    "contour_waypoints_present": true,
+    "diagnostic_contour_present": true,
+    "diagnostic_final_solution_samples_false": true,
+    "diagnostic_finite_part_extraction_present": true,
+    "diagnostic_poles_present": true,
+    "diagnostic_precision_present": true,
+    "diagnostic_provenance_fingerprints_present": true,
+    "diagnostic_provenance_present": true,
+    "diagnostic_target_reduction_present": true,
+    "dropped_singular_powers_present": true,
+    "epsilon_samples_at_least_31": true,
+    "finite_part_order_zero": true,
+    "finite_rule_pick_zero_rule_s": true,
+    "full_contour_diagnostics_present": true,
+    "full_eta_zero_contour_applied": true,
+    "ir_subtraction_applied": true,
+    "nonzero_poles_present": true,
+    "runtime_lane_is_b64ag": true,
+    "runtime_provenance_rejects_final_solution_samples": true,
+    "runtime_results_have_coefficients": true,
+    "runtime_results_match_packet": true,
+    "runtime_targets_match_packet": true,
+    "runtime_text_rejects_fake_scope_words": true,
+    "state_boundary_one_fortieth": true,
+    "state_exact_six_master_basis": true,
+    "state_gauge_link_present": true,
+    "state_variable_gaugex": true,
+    "target_reduction_fingerprint_present": true,
+    "target_reduction_row_count_nine": true,
+    "working_digits_at_least_50": true
+  },
+  "details": {
+    "all_digit_evidence_sentinel_999": false,
+    "comparison_integral_count": 9,
+    "detailed_coefficient_count": 57,
+    "detailed_passed_coefficient_count": 57,
+    "minimum_detailed_digit_agreement": 51
+  },
+  "failure_code_postmortem": {
+    "blocking_reason_count": 0,
+    "failed_checks_by_code": {},
+    "failure_codes": [],
+    "full_eta_zero_contour_applied_claimed_by_helper": false,
+    "m6_closure_claimed": false,
+    "primary_failure_code": "",
+    "profile": "b64ag-golden-recapture-readiness-postmortem-v1",
+    "schema_version": 1,
+    "status": "ready",
+    "unknown_failed_checks": []
+  },
+  "full_eta_zero_contour_applied_claimed_by_helper": false,
+  "golden_recapture_ready": true,
+  "inputs": {
+    "amflow_state": "tools/reference-harness/specs/phase0/linear_propagator.amflow-state.json",
+    "comparison_summary": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.compare50.json",
+    "cpp_result": "tools/reference-harness/specs/m6/lane1-next24/linear_propagator.b64ag-full-packet-finite-part.cpp-result.json"
+  },
+  "m6_closure_claimed": false,
+  "notes": [
+    "This helper reports golden-recapture readiness only.",
+    "This helper does not promote a phase-0 packet.",
+    "This helper does not claim Milestone M6 closure."
+  ],
+  "required_runtime_evidence": {
+    "amflow_state": {
+      "required_top_level_fields": [
+        "gauge_link.boundary_point",
+        "gauge_link.diffeq_variables",
+        "gauge_link.diffeq_masters"
+      ],
+      "required_values": {
+        "gauge_link.boundary_point": "gaugex -> 1/40",
+        "gauge_link.diffeq_masters": [
+          "gauge[1,1,1,0,1,0,0,0,0]",
+          "gauge[1,1,1,-1,1,0,0,0,0]",
+          "gauge[0,1,1,1,1,0,0,0,0]",
+          "gauge[0,1,1,1,1,-1,0,0,0]",
+          "gauge[1,1,1,1,1,0,0,0,0]",
+          "gauge[1,1,1,1,1,-1,0,0,0]"
+        ],
+        "gauge_link.diffeq_variables": [
+          "gaugex"
+        ]
+      }
+    },
+    "benchmark_id": "linear_propagator",
+    "comparison": {
+      "required_top_level_fields": [
+        "comparison",
+        "benchmark_id",
+        "passed",
+        "failures",
+        "cpp_result",
+        "amflow_state",
+        "amflow_golden",
+        "tolerance_digits",
+        "integrals[].integral",
+        "integrals[].coefficients[].order",
+        "integrals[].coefficients[].cpp_present",
+        "integrals[].coefficients[].amflow_present",
+        "integrals[].coefficients[].real_agreement_digits",
+        "integrals[].coefficients[].imag_agreement_digits",
+        "integrals[].coefficients[].passed"
+      ],
+      "required_values": {
+        "amflow_golden": "tools/reference-harness/specs/phase0/linear_propagator.golden-manifest.json",
+        "benchmark_id": "linear_propagator",
+        "comparison": "cpp-vs-amflow",
+        "detailed_coefficient_count_minimum": 57,
+        "failures": [],
+        "integrals[].coefficients[].order_by_integral": {
+          "gauge[0,1,1,1,1,-1,0,0,0]": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[0,1,1,1,1,0,0,0,0]": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,-1,1,0,0,0,0]": [
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,0,1,0,0,0,0]": [
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,1,1,-1,0,0,0]": [
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,1,1,0,-1,0,0]": [
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,1,1,0,0,-1,0]": [
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,1,1,0,0,0,-1]": [
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "gauge[1,1,1,1,1,0,0,0,0]": [
+            -2,
+            -1,
+            0,
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        "integrals[].integral": [
+          "gauge[0,1,1,1,1,-1,0,0,0]",
+          "gauge[0,1,1,1,1,0,0,0,0]",
+          "gauge[1,1,1,-1,1,0,0,0,0]",
+          "gauge[1,1,1,0,1,0,0,0,0]",
+          "gauge[1,1,1,1,1,-1,0,0,0]",
+          "gauge[1,1,1,1,1,0,-1,0,0]",
+          "gauge[1,1,1,1,1,0,0,-1,0]",
+          "gauge[1,1,1,1,1,0,0,0,-1]",
+          "gauge[1,1,1,1,1,0,0,0,0]"
+        ],
+        "minimum_detailed_digit_agreement": 50,
+        "passed": true,
+        "tolerance_digits_minimum": 50
+      }
+    },
+    "full_contour_diagnostics": {
+      "accepted_locations": [
+        "full_contour_diagnostics",
+        "diagnostics.full_contour",
+        "continuation.full_contour_diagnostics"
+      ],
+      "required_buckets": [
+        "contour",
+        "poles",
+        "finite_part_extraction",
+        "target_reduction",
+        "precision",
+        "provenance"
+      ],
+      "required_fields": [
+        "contour.fingerprint",
+        "contour.waypoints",
+        "poles.nonzero_poles",
+        "finite_part_extraction.rule",
+        "finite_part_extraction.ir_subtraction_applied",
+        "finite_part_extraction.finite_part_order",
+        "finite_part_extraction.dropped_singular_powers",
+        "target_reduction.fingerprint",
+        "target_reduction.target_row_count",
+        "precision.working_digits",
+        "precision.epsilon_sample_count",
+        "provenance.final_solution_samples_used_as_input",
+        "provenance.candidate_result_fingerprint",
+        "provenance.amflow_state_fingerprint",
+        "provenance.amflow_golden_fingerprint"
+      ],
+      "required_values": {
+        "finite_part_extraction.finite_part_order": 0,
+        "finite_part_extraction.ir_subtraction_applied": true,
+        "finite_part_extraction.rule_contains": "PickZeroRuleS",
+        "precision.epsilon_sample_count_minimum": 31,
+        "precision.working_digits_minimum": 50,
+        "provenance.final_solution_samples_used_as_input": false,
+        "target_reduction.target_row_count": 9
+      }
+    },
+    "full_eta_zero_contour_applied_claimed_by_helper": false,
+    "lane148_runtime_requirement": [
+      "execute full gaugex -> 0 transport for the six-master gauge-link DE basis",
+      "solve or replay the finite gaugex=1/40 boundary without final endpoint solution samples",
+      "apply target reduction and affected-power normalization across the retained packet surface",
+      "perform PickZeroRuleS finite-part extraction and post-endpoint Laurent fitting",
+      "emit contour, pole, finite-part, reduction, precision, and provenance diagnostics",
+      "compare the accepted packet against the retained AMFlow golden at the 50-digit floor"
+    ],
+    "m6_closure_claimed": false,
+    "profile": "b64ag-full-contour-runtime-evidence-contract-v1",
+    "runtime": {
+      "forbidden_runtime_text_patterns": [
+        "selected[-_ ]?endpoint",
+        "\\bselected\\b",
+        "\\bscaffold\\b",
+        "retained[-_ ]?cache",
+        "solution[-_ ]?samples?",
+        "\\bdeferred\\b",
+        "\\bblocked\\b"
+      ],
+      "required_top_level_fields": [
+        "runtime_provenance.final_solution_samples_used_as_input",
+        "continuation.variable",
+        "continuation.start_location",
+        "continuation.target_location",
+        "continuation.singular_points",
+        "continuation.full_eta_zero_contour_applied",
+        "continuation.blocked_reason",
+        "targets",
+        "results[].integral",
+        "results[].epsilon_orders"
+      ],
+      "required_values": {
+        "continuation.blocked_reason": "",
+        "continuation.full_eta_zero_contour_applied": true,
+        "continuation.singular_points": [
+          "gaugex=0"
+        ],
+        "continuation.start_location": "gaugex -> 1/40",
+        "continuation.target_location": "gaugex=0",
+        "continuation.variable": "gaugex",
+        "results[].integral": [
+          "gauge[0,1,1,1,1,-1,0,0,0]",
+          "gauge[0,1,1,1,1,0,0,0,0]",
+          "gauge[1,1,1,-1,1,0,0,0,0]",
+          "gauge[1,1,1,0,1,0,0,0,0]",
+          "gauge[1,1,1,1,1,-1,0,0,0]",
+          "gauge[1,1,1,1,1,0,-1,0,0]",
+          "gauge[1,1,1,1,1,0,0,-1,0]",
+          "gauge[1,1,1,1,1,0,0,0,-1]",
+          "gauge[1,1,1,1,1,0,0,0,0]"
+        ],
+        "runtime_provenance.final_solution_samples_used_as_input": false,
+        "targets": [
+          "gauge[0,1,1,1,1,-1,0,0,0]",
+          "gauge[0,1,1,1,1,0,0,0,0]",
+          "gauge[1,1,1,-1,1,0,0,0,0]",
+          "gauge[1,1,1,0,1,0,0,0,0]",
+          "gauge[1,1,1,1,1,-1,0,0,0]",
+          "gauge[1,1,1,1,1,0,-1,0,0]",
+          "gauge[1,1,1,1,1,0,0,-1,0]",
+          "gauge[1,1,1,1,1,0,0,0,-1]",
+          "gauge[1,1,1,1,1,0,0,0,0]"
+        ]
+      }
+    },
+    "runtime_lane": "b64ag",
+    "schema_version": 1,
+    "status": "requirements-only"
+  },
+  "runtime_lane": "b64ag",
+  "schema_version": 1,
+  "status": "ready"
+}

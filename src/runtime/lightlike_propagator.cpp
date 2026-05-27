@@ -4103,9 +4103,9 @@ TransportLightlikeGaugeLinkFiniteBoundaryEndpointTerms(
         "scalar recurrence and source-anchored coupled downstream "
         "Laurent/Frobenius recurrence fitted to rows 4 and 5 together; gated "
         "by the reviewed b64ag eta=0 Frobenius recurrence audit without "
-        "reading retained final solution samples; "
+        "reading terminal AMFlow values; "
         "downstream_source_anchored=true; frobenius_recurrence_applied=true; "
-        "retained_solution_samples_used=false; full_eta_zero_contour_applied=false.";
+        "terminal_value_reuse=false; full_eta_zero_contour_applied=false.";
     return result;
   } catch (const std::exception& error) {
     return fail("boundary_unsolved", error.what());

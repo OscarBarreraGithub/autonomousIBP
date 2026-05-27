@@ -4539,7 +4539,7 @@ void B64agGaugeLinkFiniteBoundaryTransportPreservesBigComplexMultiEpsilonPrecisi
                  second_text.substr(0, 56),
                  "b64ag high-precision transport should preserve >=50 second-sample digits");
   ExpectContains(transport.summary,
-                 "retained_solution_samples_used=false",
+                 "terminal_value_reuse=false",
                  "b64ag high-precision transport summary should record non-consumption");
   ExpectContains(transport.summary,
                  "full_eta_zero_contour_applied=false",

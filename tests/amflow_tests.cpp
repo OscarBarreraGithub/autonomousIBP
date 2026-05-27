@@ -49793,6 +49793,8 @@ void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {
       run_root / "full-stripped-result.json";
   const std::filesystem::path full_stripped_compare_path =
       run_root / "full-stripped-compare30.json";
+  const std::filesystem::path full_stripped_readiness_path =
+      run_root / "full-stripped-readiness.json";
   const std::filesystem::path full_stripped_bundle_path =
       run_root / "linear-full-stripped-bundle.json";
   const std::filesystem::path full_stripped_bundle_output_path =
@@ -50110,6 +50112,38 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   Expect(full_compare_json.find("\"cpp_present\": false") == std::string::npos,
          "full stripped b64ag eps4 comparison should publish C++ presence for every "
          "reviewed structural-zero coefficient");
+
+  const std::string full_readiness_command =
+      ShellSingleQuote(AMFLOW_PYTHON_EXECUTABLE) + " " +
+      ShellSingleQuote((std::filesystem::path(AMFLOW_SOURCE_DIR) /
+                        "tools/reference-harness/scripts/"
+                        "audit_b64ag_golden_recapture_readiness.py")
+                           .string()) +
+      " --cpp-result " + ShellSingleQuote(full_stripped_output_path.string()) +
+      " --comparison-summary " +
+      ShellSingleQuote(full_stripped_compare_path.string()) + " --amflow-state " +
+      ShellSingleQuote(source_state_path.string()) + " >" +
+      ShellSingleQuote(full_stripped_readiness_path.string()) + " 2>" +
+      ShellSingleQuote(stderr_path.string());
+  Expect(RunShellCommand(full_readiness_command) == 0,
+         "full stripped b64ag readiness helper should accept the promoted full-contour "
+         "runtime scope");
+  const std::string full_readiness_json = ReadFile(full_stripped_readiness_path);
+  ExpectContains(full_readiness_json,
+                 "\"golden_recapture_ready\": true",
+                 "full stripped b64ag readiness should report the packet ready");
+  ExpectContains(full_readiness_json,
+                 "\"primary_failure_code\": \"\"",
+                 "full stripped b64ag readiness should clear the primary failure code");
+  ExpectContains(full_readiness_json,
+                 "\"blocking_reason_count\": 0",
+                 "full stripped b64ag readiness should clear blocking reasons");
+  ExpectContains(full_readiness_json,
+                 "\"blocked_reason_absent\": true",
+                 "full stripped b64ag readiness should pass blocked_reason text");
+  ExpectContains(full_readiness_json,
+                 "\"runtime_text_rejects_fake_scope_words\": true",
+                 "full stripped b64ag readiness should pass fake-scope wording");
 
   OverwriteTextFile(
       strip_script_path,

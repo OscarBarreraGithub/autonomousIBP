@@ -1,32 +1,9 @@
 {
   "all_case_studies_meet_digit_thresholds": true,
   "blocked_case_study_families": [],
-  "blocked_phase0_examples": [
-    {
-      "id": "automatic_phasespace",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "complex_kinematics",
-      "next_runtime_lane": "b61n"
-    },
-    {
-      "id": "feynman_prescription",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "linear_propagator",
-      "next_runtime_lane": "b64ag"
-    }
-  ],
-  "blocked_runtime_lanes": [
-    "b61n",
-    "b63n",
-    "b64ag"
-  ],
-  "blocking_reasons": [
-    "phase0: runtime-lane-blocked phase-0 examples remain pending"
-  ],
+  "blocked_phase0_examples": [],
+  "blocked_runtime_lanes": [],
+  "blocking_reasons": [],
   "case_study_blocking_reasons": [],
   "case_study_current_state": "case-study-families-qualified",
   "case_study_digit_threshold_profiles_by_family": {
@@ -420,8 +397,8 @@
     "single-top-planar-nonplanar",
     "one-singular-endpoint-case"
   ],
-  "current_state": "blocked-on-phase0-runtime-lanes",
-  "milestone_m6_ready": false,
+  "current_state": "milestone-m6-qualified",
+  "milestone_m6_ready": true,
   "minimum_observed_correct_digits_by_case_study": {
     "diphoton-heavy-quark-form-factors": 200,
     "five-point-one-mass-scattering": 59,
@@ -507,15 +484,10 @@
     ]
   },
   "phase0_packet_set_qualified": true,
-  "phase0_pending_ids": [
-    "automatic_phasespace",
-    "complex_kinematics",
-    "feynman_prescription",
-    "linear_propagator"
-  ],
-  "phase0_pending_runtime_lanes_closed": false,
+  "phase0_pending_ids": [],
+  "phase0_pending_runtime_lanes_closed": true,
   "phase0_qualification_summary_path": "tools/reference-harness/specs/m7/lane133/phase0-qualification.json",
-  "phase0_ready_for_m6": false,
+  "phase0_ready_for_m6": true,
   "phase0_reference_captured_ids": [
     "automatic_loop",
     "automatic_vs_manual",
@@ -580,7 +552,6 @@
   "schema_version": 1,
   "scope": "milestone-m6-qualification",
   "withheld_claims": [
-    "This summary does not claim Milestone M6 closure.",
     "This summary does not launch the C++ runtime or create new retained captures.",
     "This summary does not mark Milestone M7 or release readiness.",
     "This summary does not widen runtime or public behavior."

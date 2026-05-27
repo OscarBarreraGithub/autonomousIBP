@@ -1,24 +1,7 @@
 {
   "blocked_case_study_families": [],
   "blocked_case_study_families_preserve_runtime_lane_hints": true,
-  "blocked_phase0_examples": [
-    {
-      "id": "automatic_phasespace",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "complex_kinematics",
-      "next_runtime_lane": "b61n"
-    },
-    {
-      "id": "feynman_prescription",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "linear_propagator",
-      "next_runtime_lane": "b64ag"
-    }
-  ],
+  "blocked_phase0_examples": [],
   "captured_examples_pass_comparison_checks": true,
   "captured_examples_publish_reference_artifacts": true,
   "case_study_family_ids": [
@@ -339,12 +322,7 @@
       "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/amflow-verification/reference-harness/phase0-reference-captured-20260422-user-hook-pair"
     }
   ],
-  "phase0_pending_ids": [
-    "automatic_phasespace",
-    "complex_kinematics",
-    "feynman_prescription",
-    "linear_propagator"
-  ],
+  "phase0_pending_ids": [],
   "phase0_reference_captured_ids": [
     "automatic_loop",
     "automatic_vs_manual",

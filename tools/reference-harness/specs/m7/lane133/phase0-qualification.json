@@ -1,22 +1,5 @@
 {
-  "blocked_phase0_examples": [
-    {
-      "id": "automatic_phasespace",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "complex_kinematics",
-      "next_runtime_lane": "b61n"
-    },
-    {
-      "id": "feynman_prescription",
-      "next_runtime_lane": "b63n"
-    },
-    {
-      "id": "linear_propagator",
-      "next_runtime_lane": "b64ag"
-    }
-  ],
+  "blocked_phase0_examples": [],
   "blocking_reasons": [],
   "current_state": "phase0-packet-set-qualified",
   "digit_threshold_profiles_reported": true,
@@ -104,12 +87,7 @@
     ]
   },
   "phase0_packet_set_qualified": true,
-  "phase0_pending_ids": [
-    "automatic_phasespace",
-    "complex_kinematics",
-    "feynman_prescription",
-    "linear_propagator"
-  ],
+  "phase0_pending_ids": [],
   "phase0_reference_captured_ids": [
     "automatic_loop",
     "automatic_vs_manual",

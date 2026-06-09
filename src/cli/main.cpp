@@ -6471,6 +6471,11 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       audit.coefficient_finite_start_fingerprint +
       "; coefficient_finite_start={" +
       audit.coefficient_finite_start_summary + "}" +
+      "; sample_space_coupled_row_transport_applied=false; "
+      "coefficient_state_transport_applied=false; "
+      "coefficient_state_endpoint_matcher_applied=false; "
+      "target_coefficients_published_from_coefficient_state=false; "
+      "target_coefficients_reconstructed_from_epsilon_samples=false" +
       "; ode_propagation_applied=false; coefficient_publication=false; "
       "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
       "stays false.";
@@ -6948,6 +6953,11 @@ ApplyB61nCoupledRowContourTransport(
                ? std::string("none")
                : audit.closer_start_last_failure) +
           B61nCloserStartCategorizationSummary(audit) +
+          "; sample_space_coupled_row_transport_applied=false; "
+          "coefficient_state_transport_applied=false; "
+          "coefficient_state_endpoint_matcher_applied=false; "
+          "target_coefficients_published_from_coefficient_state=false; "
+          "target_coefficients_reconstructed_from_epsilon_samples=false" +
           "; ode_propagation_applied=false; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
           "endpoint_refinement_integrator=" +
@@ -7018,6 +7028,11 @@ ApplyB61nCoupledRowContourTransport(
           "; contour_pole_count=" +
           std::to_string(audit.contour_pole_count) +
           "; contour_poles_forwarded_to_propagator=true" +
+          "; sample_space_coupled_row_transport_applied=true; "
+          "coefficient_state_transport_applied=false; "
+          "coefficient_state_endpoint_matcher_applied=false; "
+          "target_coefficients_published_from_coefficient_state=false; "
+          "target_coefficients_reconstructed_from_epsilon_samples=false" +
           "; ode_propagation_applied=true; coefficient_publication=false; "
           "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=false; "
           "matrix_fingerprint=" + audit.matrix_fingerprint +
@@ -7431,6 +7446,11 @@ ApplyB61nCoupledRowContourTransport(
         "; source_anchor_trajectory_fingerprint=" +
         audit.source_anchor_trajectory_fingerprint +
         "; source_anchored_evolution_rows=[5, 6]" +
+        "; sample_space_coupled_row_transport_applied=true; "
+        "coefficient_state_transport_applied=false; "
+        "coefficient_state_endpoint_matcher_applied=false; "
+        "target_coefficients_published_from_coefficient_state=false; "
+        "target_coefficients_reconstructed_from_epsilon_samples=true" +
         "; ode_propagation_applied=true; coefficient_publication=true; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=" +
         std::string(audit.full_eta_zero_contour_applied ? "true" : "false") +

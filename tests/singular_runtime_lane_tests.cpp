@@ -1,5 +1,6 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/b61n_coefficient_state_transport.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
 #include "amflow/runtime/b61n_finite_start_coefficients.hpp"
 #include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
@@ -6625,6 +6626,197 @@ void B61nFiniteStartCoefficientDataRejectsSampleFitFallbackTest() {
       "finite_start_samples-only fallback");
 }
 
+void B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest() {
+  const std::vector<std::string> labels = {"source", "target"};
+  const std::vector<std::vector<std::string>> matrix = {
+      {"0", "0"},
+      {"alpha + eps*beta", "0"},
+  };
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support =
+      amflow::ExtractB61nMatrixEpsilonSupport(matrix);
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          labels,
+          support,
+          {{-1, 0}, {0, 0}},
+          {{1, 0}});
+
+  Expect(B61nGraphHasDependencyEdge(graph, 1, 0, 0, -1, 1),
+         "b61n coefficient-state wrapper fixture should include the eps-shifted "
+         "source dependency");
+  Expect(graph.blocked_edges.empty(),
+         "b61n coefficient-state wrapper fixture should be a closed graph");
+
+  const B61nContourNumber source_eps_minus1{2, -1};
+  const B61nContourNumber source_eps0{5, 0};
+  const B61nContourNumber target_eps0{-3, 4};
+  const std::vector<amflow::B61nFiniteStartCoefficientValue>
+      eta_infinity_coefficients = {
+          {{0, -1}, source_eps_minus1, "synthetic eta-infinity recurrence eps^-1"},
+          {{0, 0}, source_eps0, "synthetic eta-infinity recurrence eps^0"},
+          {{1, 0}, target_eps0, "synthetic eta-infinity recurrence target"},
+      };
+  const amflow::B61nFiniteStartCoefficientData finite_start =
+      amflow::BuildB61nFiniteStartCoefficientData(labels,
+                                                  graph,
+                                                  eta_infinity_coefficients,
+                                                  {},
+                                                  false,
+                                                  "0 - 2*I");
+  const B61nContourNumber alpha{
+      B61nContourFloat(1) / B61nContourFloat(3),
+      -B61nContourFloat(1) / B61nContourFloat(7)};
+  const B61nContourNumber beta{
+      B61nContourFloat(2) / B61nContourFloat(5),
+      B61nContourFloat(3) / B61nContourFloat(11)};
+  const amflow::B61nLaurentMatrixEvaluator evaluator =
+      amflow::BuildB61nRealLaurentMatrixEvaluator(
+          matrix,
+          "eta",
+          {{"alpha", alpha}, {"beta", beta}},
+          graph);
+
+  amflow::B61nCoefficientStateTransportOptions options;
+  options.propagation_options.integrator =
+      amflow::ComplexContourIntegrator::FehlbergRk78;
+  options.propagation_options.steps_per_segment = 16;
+  options.propagation_options.refinement_doublings = 1;
+  options.propagation_options.max_refinement_doublings = 3;
+  options.propagation_options.refinement_error_tolerance =
+      B61nContourFloat("1e-60");
+  options.propagation_options.refinement_relative_error_tolerance =
+      B61nContourFloat("1e-60");
+
+  const std::vector<B61nContourNumber> waypoints = {
+      {0, -2},
+      {0, -1},
+      {0, 0},
+  };
+  const amflow::B61nCoefficientStateTransportResult result =
+      amflow::PropagateB61nCoefficientState(
+          labels, graph, evaluator, finite_start, waypoints, options);
+
+  Expect(result.success,
+         "b61n coefficient-state wrapper should propagate explicit "
+         "finite-start coefficient vectors: " +
+             result.audit.summary);
+  Expect(result.endpoint_coefficient_vectors.size() == 2 &&
+             result.endpoint_coefficient_vectors.front().size() == 2,
+         "b61n coefficient-state wrapper should unflatten the padded endpoint "
+         "state by epsilon order");
+  Expect(result.audit.coefficient_state_transport_applied,
+         "b61n coefficient-state wrapper should report coefficient-state ODE "
+         "transport");
+  Expect(!result.audit.sample_space_coupled_row_transport_applied,
+         "b61n coefficient-state wrapper must not report sample-space row "
+         "transport");
+  Expect(!result.audit.coefficient_state_endpoint_matcher_applied,
+         "b61n coefficient-state wrapper must leave endpoint matching to step 5");
+  Expect(!result.audit.target_coefficients_published_from_coefficient_state,
+         "b61n coefficient-state wrapper must stay nonpublishing");
+  Expect(!result.audit.target_coefficients_reconstructed_from_epsilon_samples,
+         "b61n coefficient-state wrapper must not reconstruct targets from "
+         "clustered epsilon samples");
+  Expect(result.audit.endpoint_coefficient_state_unflattened,
+         "b61n coefficient-state wrapper should unflatten the propagated state");
+  Expect(!result.audit.endpoint_fingerprint.empty(),
+         "b61n coefficient-state wrapper should fingerprint the endpoint "
+         "coefficient state");
+  ExpectContains(result.audit.summary,
+                 "coefficient_state_transport_applied=true",
+                 "b61n coefficient-state diagnostics should expose transport");
+  ExpectContains(result.audit.summary,
+                 "target_coefficients_reconstructed_from_epsilon_samples=false",
+                 "b61n coefficient-state diagnostics should forbid sample "
+                 "reconstruction");
+
+  const B61nContourNumber delta = waypoints.back() - waypoints.front();
+  const B61nContourNumber expected_target_eps0 =
+      target_eps0 + (alpha * source_eps0 + beta * source_eps_minus1) * delta;
+  ExpectB61nContourClose(result.endpoint_coefficient_vectors[0][0],
+                         source_eps_minus1,
+                         B61nContourFloat("1e-55"),
+                         "b61n coefficient-state source eps^-1 should stay "
+                         "constant");
+  ExpectB61nContourClose(result.endpoint_coefficient_vectors[1][0],
+                         source_eps0,
+                         B61nContourFloat("1e-55"),
+                         "b61n coefficient-state source eps^0 should stay "
+                         "constant");
+  ExpectB61nContourClose(result.endpoint_coefficient_vectors[1][1],
+                         expected_target_eps0,
+                         B61nContourFloat("1e-55"),
+                         "b61n coefficient-state target eps^0 should include "
+                         "the eps^1 matrix source from eps^-1 coefficients");
+}
+
+void B61nCoefficientStateTransportRejectsUnclosedTargetGraphTest() {
+  const std::vector<std::string> labels = {"source", "target"};
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support = {
+      {1, 0, 1},
+  };
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          labels,
+          support,
+          {{0, 0}, {0, 0}},
+          {{1, 0}});
+  Expect(!graph.blocked_edges.empty(),
+         "b61n coefficient-state reject fixture should have an out-of-window "
+         "dependency");
+  const std::vector<amflow::B61nFiniteStartCoefficientValue>
+      eta_infinity_coefficients = {
+          {{1, 0}, {7, -2}, "synthetic target-only recurrence"},
+      };
+  const amflow::B61nFiniteStartCoefficientData finite_start =
+      amflow::BuildB61nFiniteStartCoefficientData(labels,
+                                                  graph,
+                                                  eta_infinity_coefficients,
+                                                  {},
+                                                  false,
+                                                  "0 - I");
+  const amflow::ComplexContourLaurentMatrixEvaluator laurent_evaluator =
+      [](const B61nContourNumber&) {
+        amflow::ComplexContourMatrix eps1(
+            2, std::vector<B61nContourNumber>(2, B61nContourNumber{}));
+        eps1[1][0] = B61nContourNumber{1, 0};
+        return std::vector<amflow::ComplexContourMatrix>{eps1};
+      };
+  amflow::B61nLaurentMatrixEvaluator evaluator;
+  evaluator.evaluator = laurent_evaluator;
+  evaluator.audit.min_matrix_eps_order = 1;
+  evaluator.audit.max_matrix_eps_order = 1;
+  evaluator.audit.matrix_coefficient_count = 1;
+  evaluator.audit.fingerprint = "synthetic-unclosed-b61n-coefficient-state";
+
+  const amflow::B61nCoefficientStateTransportResult result =
+      amflow::PropagateB61nCoefficientState(
+          labels,
+          graph,
+          evaluator,
+          finite_start,
+          {{0, -1}, {0, 0}});
+
+  Expect(!result.success,
+         "b61n coefficient-state transport should fail closed on an unclosed "
+         "target graph");
+  Expect(result.endpoint_coefficient_vectors.empty(),
+         "b61n coefficient-state failure must not publish endpoint vectors");
+  Expect(!result.audit.coefficient_state_transport_applied,
+         "b61n coefficient-state failure must not call ODE propagation for an "
+         "unclosed graph");
+  Expect(result.audit.failure_code == "coefficient-state-transport-invalid-input",
+         "b61n coefficient-state failure should expose a stable invalid-input "
+         "code");
+  ExpectContains(result.audit.summary,
+                 "no blocked coefficient dependencies",
+                 "b61n coefficient-state failure should explain the unclosed "
+                 "graph");
+  ExpectContains(result.audit.summary,
+                 "target_coefficients_published_from_coefficient_state=false",
+                 "b61n coefficient-state failure must remain nonpublishing");
+}
+
 void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -7784,6 +7976,8 @@ int main() {
     B61nFiniteStartCoefficientDataMaterializesSyntheticRecurrenceTest();
     B61nFiniteStartCoefficientDryRunInventoriesRealRow56NodesTest();
     B61nFiniteStartCoefficientDataRejectsSampleFitFallbackTest();
+    B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest();
+    B61nCoefficientStateTransportRejectsUnclosedTargetGraphTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();

@@ -32,6 +32,7 @@ add_library(amflow
   src/kira/target_reduction.cpp
   src/runtime/artifact_store.cpp
   src/runtime/auxiliary_family.cpp
+  src/runtime/b61n_coefficient_state_transport.cpp
   src/runtime/b61n_coefficient_target_graph.cpp
   src/runtime/b61n_finite_start_coefficients.cpp
   src/runtime/b61n_laurent_matrix_evaluator.cpp

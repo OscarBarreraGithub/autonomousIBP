@@ -9,10 +9,14 @@
 #include <string>
 #include <vector>
 
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include "amflow/core/problem_spec.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 
 namespace {
+
+using TestBigFloat = boost::multiprecision::cpp_dec_float_100;
 
 void Expect(const bool condition, const std::string& message) {
   if (!condition) {
@@ -33,6 +37,16 @@ void ExpectEqual(const std::string& actual,
          message + ": expected " + expected + ", got " + actual);
 }
 
+void ExpectDecimalNear(const std::string& actual,
+                       const std::string& expected,
+                       const std::string& message) {
+  const TestBigFloat actual_value(actual);
+  const TestBigFloat expected_value(expected);
+  using boost::multiprecision::abs;
+  Expect(abs(actual_value - expected_value) <= TestBigFloat("1e-70"),
+         message + ": expected " + expected + ", got " + actual);
+}
+
 constexpr const char* kD246ReferenceEvidenceSidecar =
     "tools/reference-harness/specs/m6/lane146/"
     "b63n-d246-weighted-residue-reference-evidence.json";
@@ -40,6 +54,14 @@ constexpr const char* kD246ReferenceEvidenceSidecar =
 constexpr const char* kLane146Selected4Compare30 =
     "tools/reference-harness/specs/m6/lane146/"
     "automatic_phasespace.selected4-cutkosky.compare30.json";
+
+constexpr const char* kLane146Selected4CppResult =
+    "tools/reference-harness/specs/m6/lane146/"
+    "automatic_phasespace.selected4-cutkosky.cpp-result.json";
+
+constexpr const char* kLane146Selected4Golden =
+    "tools/reference-harness/specs/m6/lane146/"
+    "automatic_phasespace.selected4-cutkosky.amflow-golden.txt";
 
 std::filesystem::path LocateRepositoryRoot() {
   std::filesystem::path current = std::filesystem::current_path();
@@ -620,6 +642,174 @@ void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
   }
 }
 
+void ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest() {
+  struct ExpectedIntegral {
+    std::string integral;
+    std::vector<int> eps_orders;
+  };
+  const std::vector<ExpectedIntegral> expected_integrals = {
+      {"phase[1,-1,1,0,1,0,0]", {0, 1, 2, 3}},
+      {"phase[1,0,1,0,1,0,0]", {0, 1, 2, 3}},
+      {"phase[1,1,1,0,1,0,1]", {0, 1, 2, 3}},
+      {"phase[1,1,1,1,1,1,1]", {-3, -2, -1, 0, 1, 2, 3}},
+  };
+
+  const std::string compare_json = ReadRequiredTextFile(
+      LocateRepositoryRoot() / kLane146Selected4Compare30,
+      "lane146 b63n selected4 compare30");
+  ExpectEqual(ExtractJsonStringField(compare_json,
+                                     "benchmark_id",
+                                     "lane146 compare30"),
+              "automatic_phasespace",
+              "lane146 compare30 should remain scoped to automatic_phasespace");
+  ExpectEqual(ExtractJsonStringField(compare_json,
+                                     "comparison",
+                                     "lane146 compare30"),
+              "cpp-vs-amflow",
+              "lane146 compare30 should remain a C++ vs AMFlow comparison");
+  ExpectEqual(ExtractJsonStringField(compare_json,
+                                     "amflow_golden",
+                                     "lane146 compare30"),
+              kLane146Selected4Golden,
+              "lane146 compare30 should bind the selected4 AMFlow golden");
+  ExpectEqual(ExtractJsonStringField(compare_json,
+                                     "cpp_result",
+                                     "lane146 compare30"),
+              kLane146Selected4CppResult,
+              "lane146 compare30 should bind the retained C++ runtime result");
+  Expect(ExtractJsonIntField(compare_json,
+                             "compared_coefficient_count",
+                             "lane146 compare30") == 19,
+         "lane146 compare30 should retain exactly 19 compared coefficients");
+  Expect(ExtractJsonIntField(compare_json,
+                             "passed_coefficient_count",
+                             "lane146 compare30") == 19,
+         "lane146 compare30 should retain 19 passing coefficients");
+  Expect(ExtractJsonIntField(compare_json,
+                             "minimum_digit_agreement",
+                             "lane146 compare30") >= 30,
+         "lane146 compare30 should retain the 30-digit parity floor");
+  const std::string failures =
+      ExtractJsonArrayField(compare_json, "failures", "lane146 compare30");
+  Expect(failures.find('{') == std::string::npos,
+         "lane146 compare30 should not retain comparison failures");
+
+  const std::string cpp_result_json = ReadRequiredTextFile(
+      LocateRepositoryRoot() / kLane146Selected4CppResult,
+      "lane146 b63n selected4 C++ runtime result");
+  const std::string compare_integrals =
+      ExtractJsonArrayField(compare_json, "integrals", "lane146 compare30");
+  const std::string cpp_results =
+      ExtractJsonArrayField(cpp_result_json, "results", "lane146 C++ result");
+
+  std::size_t compared_count = 0;
+  for (const ExpectedIntegral& expected : expected_integrals) {
+    const std::string compare_integral = FindJsonObjectByStringField(
+        compare_integrals,
+        "integral",
+        expected.integral,
+        "lane146 compare30 integrals");
+    const std::string cpp_integral = FindJsonObjectByStringField(
+        cpp_results,
+        "integral",
+        expected.integral,
+        "lane146 C++ result integrals");
+    ExpectEqual(ExtractJsonStringField(compare_integral,
+                                       "status",
+                                       "lane146 compare30 integral"),
+                "compared",
+                expected.integral + " should retain compared status");
+
+    const std::string compare_coefficients = ExtractJsonArrayField(
+        compare_integral,
+        "coefficients",
+        "lane146 compare30 " + expected.integral);
+    const std::string cpp_orders = ExtractJsonArrayField(
+        cpp_integral,
+        "epsilon_orders",
+        "lane146 C++ result " + expected.integral);
+    Expect(ExtractJsonObjectsFromArray(compare_coefficients,
+                                       "lane146 compare30 coefficients")
+               .size() == expected.eps_orders.size(),
+           expected.integral +
+               " should retain exactly the expected compared coefficient scope");
+
+    for (const int eps_order : expected.eps_orders) {
+      const std::string compare_coefficient = FindJsonObjectByIntField(
+          compare_coefficients,
+          "order",
+          eps_order,
+          "lane146 compare30 coefficients for " + expected.integral);
+      const std::string cpp_order = FindJsonObjectByIntField(
+          cpp_orders,
+          "order",
+          eps_order,
+          "lane146 C++ result coefficients for " + expected.integral);
+      Expect(ExtractJsonBoolField(compare_coefficient,
+                                  "amflow_present",
+                                  "lane146 compare30 coefficient"),
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain an AMFlow value");
+      Expect(ExtractJsonBoolField(compare_coefficient,
+                                  "cpp_present",
+                                  "lane146 compare30 coefficient"),
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain a C++ runtime value");
+      Expect(ExtractJsonBoolField(compare_coefficient,
+                                  "passed",
+                                  "lane146 compare30 coefficient"),
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should pass AMFlow parity");
+      Expect(ExtractJsonIntField(compare_coefficient,
+                                 "real_agreement_digits",
+                                 "lane146 compare30 coefficient") >= 30,
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain 30 real agreement digits");
+      Expect(ExtractJsonIntField(compare_coefficient,
+                                 "imag_agreement_digits",
+                                 "lane146 compare30 coefficient") >= 30,
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain 30 imaginary agreement digits");
+
+      const std::string amflow_real = ExtractJsonStringField(
+          compare_coefficient, "amflow_real", "lane146 compare30 coefficient");
+      const std::string amflow_imag = ExtractJsonStringField(
+          compare_coefficient, "amflow_imag", "lane146 compare30 coefficient");
+      const std::string cpp_real = ExtractJsonStringField(
+          compare_coefficient, "cpp_real", "lane146 compare30 coefficient");
+      const std::string cpp_imag = ExtractJsonStringField(
+          compare_coefficient, "cpp_imag", "lane146 compare30 coefficient");
+      ExpectDecimalNear(cpp_real,
+                        amflow_real,
+                        expected.integral + " eps^" +
+                            std::to_string(eps_order) +
+                            " retained C++ real value should match AMFlow");
+      ExpectDecimalNear(cpp_imag,
+                        amflow_imag,
+                        expected.integral + " eps^" +
+                            std::to_string(eps_order) +
+                            " retained C++ imaginary value should match AMFlow");
+      ExpectDecimalNear(ExtractJsonStringField(cpp_order,
+                                               "real_digits",
+                                               "lane146 C++ result coefficient"),
+                        cpp_real,
+                        expected.integral + " eps^" +
+                            std::to_string(eps_order) +
+                            " C++ result real value should match compare30");
+      ExpectDecimalNear(ExtractJsonStringField(cpp_order,
+                                               "imag_digits",
+                                               "lane146 C++ result coefficient"),
+                        cpp_imag,
+                        expected.integral + " eps^" +
+                            std::to_string(eps_order) +
+                            " C++ result imaginary value should match compare30");
+      ++compared_count;
+    }
+  }
+  Expect(compared_count == 19,
+         "lane146 selected4 parity test should cover all 19 compared coefficients");
+}
+
 void ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest() {
   struct ExpectedWeight {
     std::size_t denominator_index;
@@ -774,6 +964,7 @@ int main() {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
+    ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();
     ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest();
     ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest();

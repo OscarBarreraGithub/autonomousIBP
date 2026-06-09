@@ -104,7 +104,10 @@ bool HasD246PublishedReferenceSidecarEvidence() {
          (TextContains(evidence, "reference") ||
           TextContains(evidence, "Reference")) &&
          TextContains(evidence, "coefficient") &&
-         TextContains(evidence, "passed") &&
+         TextContains(evidence, "\"passed\": true") &&
+         TextContains(evidence, "\"coefficient_published\": true") &&
+         !TextContains(evidence, "\"skeleton\": true") &&
+         !TextContains(evidence, "\"coefficients\": []") &&
          TextContains(evidence, "final_solution_samples_used_as_input") &&
          TextContains(evidence, "false");
 }

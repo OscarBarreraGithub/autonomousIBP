@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "runtime_lane": "b63n",
+  "benchmark_id": "automatic_phasespace",
+  "surface_label": "phase[1,2,1,1,1,1,1]",
+  "source_kind": "upstream-amflow-mathematica",
+  "status": "skeleton-pending-amflow-reference-run",
+  "skeleton": true,
+  "source_root": "/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted",
+  "source_files": {
+    "automatic_phasespace_run_wl": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted/examples/automatic_phasespace/run.wl",
+      "sha256": "f9f021e584334cc21fb682526eaf9f55de95b6f2a58b2971ae46a445fd46e2bf",
+      "line_ranges": [
+        "17-24",
+        "28-33",
+        "36-42"
+      ]
+    },
+    "amflow_m": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted/AMFlow.m",
+      "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
+      "line_ranges": [
+        "461-481",
+        "485-489",
+        "874-881",
+        "911-916",
+        "941-950"
+      ]
+    },
+    "desolver_m": {
+      "path": "/n/holylabs/schwartz_lab/Lab/obarrera/reference-inputs/autonomousIBP/cpc/amflow-gitlab-1.1-extracted/diffeq_solver/DESolver.m",
+      "sha256": "22c63b2aa4a4c8236a9593d39ba7ae8283efa12cb7730401e640ff1b43875585",
+      "line_ranges": [
+        "916-927",
+        "1053-1061",
+        "1065-1095"
+      ]
+    }
+  },
+  "amflow_parameter_set": {
+    "family": "phase",
+    "loops": [
+      "l1",
+      "l2"
+    ],
+    "legs": [
+      "p1",
+      "p2"
+    ],
+    "conservation": [],
+    "replacement": {
+      "p1^2": "0",
+      "p2^2": "0",
+      "(p1+p2)^2": "s"
+    },
+    "propagators": [
+      "l1^2-msq",
+      "(l1+p1)^2",
+      "l2^2",
+      "(l1+l2+p1)^2",
+      "(l1+l2+p1+p2)^2",
+      "(l1+l2+p2)^2",
+      "(l1+p2)^2"
+    ],
+    "numeric": {
+      "s": "100",
+      "msq": "1"
+    },
+    "prescription": [
+      0,
+      0
+    ],
+    "cut": [
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+    ],
+    "target": "j[phase,1,2,1,1,1,1,1]",
+    "precision_requested_digits": null,
+    "eps_order_requested": null,
+    "working_precision_digits": null,
+    "run_command": null,
+    "run_log": null,
+    "raw_output": null,
+    "raw_output_sha256": null
+  },
+  "cutkosky_structure": {
+    "phase_volume_loop_count": 2,
+    "cut_denominators": [
+      "D1",
+      "D3",
+      "D5"
+    ],
+    "uncut_weight_denominators": [
+      "D2",
+      "D4",
+      "D6",
+      "D7"
+    ],
+    "prefactor_formula": "K_2(eps) = -2*(Pi^(2-eps)*(2*Pi)^(2*eps-4))^2",
+    "eta_direction": "NegIm",
+    "endpoint_selection_rule": "DESolver PickZeroRuleS integer eta-zero term",
+    "final_projection": "AMFlow Cutkosky Im projection"
+  },
+  "weights": [
+    {
+      "denominator_id": "D2",
+      "denominator_index": 1,
+      "propagator_power": 2,
+      "propagator": "(l1+p1)^2",
+      "structural_form": "inverse_denominator_weight[D2(q2,cos_theta_a)]",
+      "coefficients": [],
+      "required_coefficient_scope": "contiguous epsilon range matching the future runtime publication scope",
+      "reference_validation": {
+        "passed": false,
+        "minimum_digit_agreement": null,
+        "comparison_artifact": null,
+        "final_solution_samples_used_as_input": false,
+        "synthetic_fixture": false,
+        "coefficient_published": false,
+        "blocked_reason": "pending high-precision AMFlow extraction for D2 from the full j[phase,1,2,1,1,1,1,1] target"
+      }
+    },
+    {
+      "denominator_id": "D4",
+      "denominator_index": 3,
+      "propagator_power": 1,
+      "propagator": "(l1+l2+p1)^2",
+      "structural_form": "inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]",
+      "coefficients": [],
+      "required_coefficient_scope": "contiguous epsilon range matching the future runtime publication scope",
+      "reference_validation": {
+        "passed": false,
+        "minimum_digit_agreement": null,
+        "comparison_artifact": null,
+        "final_solution_samples_used_as_input": false,
+        "synthetic_fixture": false,
+        "coefficient_published": false,
+        "blocked_reason": "pending high-precision AMFlow extraction for D4 from the full j[phase,1,2,1,1,1,1,1] target"
+      }
+    },
+    {
+      "denominator_id": "D6",
+      "denominator_index": 5,
+      "propagator_power": 1,
+      "propagator": "(l1+l2+p2)^2",
+      "structural_form": "inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]",
+      "coefficients": [],
+      "required_coefficient_scope": "contiguous epsilon range matching the future runtime publication scope",
+      "reference_validation": {
+        "passed": false,
+        "minimum_digit_agreement": null,
+        "comparison_artifact": null,
+        "final_solution_samples_used_as_input": false,
+        "synthetic_fixture": false,
+        "coefficient_published": false,
+        "blocked_reason": "pending high-precision AMFlow extraction for D6 from the full j[phase,1,2,1,1,1,1,1] target"
+      }
+    }
+  ],
+  "anti_fake": {
+    "retained_solution_samples_used_as_input": false,
+    "synthetic_fixture": false,
+    "self_comparison": false,
+    "tolerance_digits": 50,
+    "full_eta_zero_contour_applied": false,
+    "notes": "Skeleton only. This file establishes the D2/D4/D6 evidence location and schema, but it publishes no AMFlow coefficient values and must not promote b63n."
+  },
+  "publication_blockers": [
+    "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
+    "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
+    "run_command, run_log, raw_output, and raw_output_sha256 unset",
+    "D2, D4, and D6 coefficient arrays are empty",
+    "independent comparison artifacts and 50-digit agreement claims are absent"
+  ],
+  "passed": false
+}

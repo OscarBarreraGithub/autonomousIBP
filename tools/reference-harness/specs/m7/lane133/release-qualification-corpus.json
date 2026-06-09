@@ -1,0 +1,40 @@
+{
+  "blocked_case_study_ids": [],
+  "blocking_reasons": [],
+  "case_study_families_qualified": true,
+  "case_study_qualification_blockers": [],
+  "case_study_qualification_summary_path": "tools/reference-harness/specs/m7/lane115/case-study-qualification.json",
+  "case_study_verdict_present": true,
+  "checklist_path": "/n/holylabs/schwartz_lab/Lab/obarrera/autoIBP/tools/reference-harness/templates/release-signoff-checklist.json",
+  "closed_benchmark_family_coverage_statement_reviewed": true,
+  "current_state": "qualification-corpus-reviewed",
+  "missing_or_blocked_qualification_paths": [],
+  "pending_phase0_ids": [],
+  "phase0_failure_code_blockers": [],
+  "phase0_packet_set_qualified": true,
+  "phase0_packet_set_verdict_present": true,
+  "phase0_qualification_summary_path": "tools/reference-harness/specs/m7/lane133/phase0-qualification.json",
+  "qualification_corpus_required_inputs_preserved": true,
+  "qualification_corpus_required_outputs_preserved": true,
+  "qualification_corpus_review_complete": true,
+  "qualification_evidence_coherent": true,
+  "qualification_summary_path": "tools/reference-harness/specs/m7/lane133/qualification-readiness.json",
+  "residual_blockers_or_carveouts_preserved": true,
+  "reviewed_phase0_ids": [
+    "automatic_loop",
+    "automatic_vs_manual",
+    "differential_equation_solver",
+    "spacetime_dimension",
+    "user_defined_amfmode",
+    "user_defined_ending"
+  ],
+  "schema_version": 1,
+  "scope": "release-qualification-corpus",
+  "withheld_claims": [
+    "This summary does not claim qualification-corpus closure.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

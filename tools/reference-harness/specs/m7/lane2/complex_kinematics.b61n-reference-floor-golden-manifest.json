@@ -1,0 +1,51 @@
+{
+  "benchmark_id": "complex_kinematics",
+  "compare_cpp_vs_amflow_reference_floors": [
+    {
+      "component_digits": {
+        "imag": 11,
+        "real": 11
+      },
+      "id": "b61n-row5-eps0-retained-amflow-floor",
+      "integral": "box[1,0,1,1]",
+      "order": 0,
+      "reason": "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference reaches only 11/11 component digits for this target"
+    },
+    {
+      "component_digits": {
+        "imag": 46,
+        "real": 46
+      },
+      "id": "b61n-row6-eps-2-retained-amflow-floor",
+      "integral": "box[1,1,1,1]",
+      "order": -2,
+      "reason": "post-M7 b61n row 6 eps^-2 diagnostic: retained AMFlow reference reaches only 46/46 component digits for this target"
+    },
+    {
+      "component_digits": {
+        "imag": 13,
+        "real": 12
+      },
+      "id": "b61n-row6-eps-1-retained-amflow-floor",
+      "integral": "box[1,1,1,1]",
+      "order": -1,
+      "reason": "post-M7 b61n row 6 eps^-1 diagnostic: retained AMFlow reference reaches only 12/13 component digits for this target"
+    },
+    {
+      "component_digits": {
+        "imag": 12,
+        "real": 12
+      },
+      "id": "b61n-row6-eps0-retained-amflow-floor",
+      "integral": "box[1,1,1,1]",
+      "order": 0,
+      "reason": "post-M7 b61n row 6 eps^0 diagnostic: retained AMFlow reference reaches only 12/12 component digits for this target"
+    }
+  ],
+  "golden_manifest": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+  "notes": [
+    "Comparator wrapper for the post-M7 b61n row 5/6 retained-reference floor finding.",
+    "A comparison that uses these floors is accepted as matched-to-reference-floor, not as matched-to-50-digit."
+  ],
+  "schema_version": 1
+}

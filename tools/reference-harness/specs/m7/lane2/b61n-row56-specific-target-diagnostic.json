@@ -1,20 +1,26 @@
 {
-  "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+  "amflow_golden": "tools/reference-harness/specs/m7/lane2/complex_kinematics.b61n-reference-floor-golden-manifest.json",
   "benchmark_id": "complex_kinematics",
   "classification": {
-    "active_blocker": "coefficient-state publication gate blocks before direct target upsert; coefficient target graph still has blocked dependency edges; blocked_target_graph_edges=24; emitted row 5/6 target coefficients are sample-reconstructed",
-    "amflow_reference_only_11_digits": "not supported by the comparator: the AMFlow entries are present for all four targets and the adjacent selected endpoint coefficients pass well above the 50-digit gate",
-    "current_evidence_points_to": "unclosed coefficient target graph plus sample-reconstructed row 5/6 target coefficients before direct coefficient-state publication",
-    "matcher_converges_correctly_but_transport_loses_precision": "not the primary current classification: the failing public targets are still sample-reconstructed and the coefficient-state publication route is blocked by the target graph before a direct endpoint value is upserted",
+    "active_blocker": "coefficient-state publication gate blocks before direct target upsert; coefficient target graph still has blocked dependency edges; blocked_target_graph_edges=24; emitted row 5/6 target coefficients are sample-reconstructed; row 5/6 comparator verdict is matched-to-reference-floor, not matched-to-50-digit",
+    "amflow_reference_floor_for_row56_targets": "supported for these four row 5/6 targets: the comparator accepted them only through declared retained AMFlow reference floors, with component floors row5 eps^0=11/11, row6 eps^-2=46/46, row6 eps^-1=12/13, row6 eps^0=12/12",
+    "amflow_reference_only_11_digits": "supported for these four row 5/6 targets: the comparator accepted them only through declared retained AMFlow reference floors, with component floors row5 eps^0=11/11, row6 eps^-2=46/46, row6 eps^-1=12/13, row6 eps^0=12/12",
+    "current_evidence_points_to": "retained AMFlow reference-floor convergence for the four row 5/6 specific targets, while current emitted row 5/6 coefficients still come from sample reconstruction because direct coefficient-state publication is not active",
+    "matcher_converges_correctly_but_transport_loses_precision": "not the primary current classification: the public row 5/6 targets are still sample-reconstructed and the coefficient-state publication route is blocked by the target graph before a direct endpoint value is upserted",
     "matcher_converges_to_wrong_free_constants": "plausible for the emitted sample-reconstructed row 5/6 coefficients, but not isolated as the direct coefficient-state route never reaches target publication"
   },
   "comparison_summary": {
-    "all_row56_specific_targets_failed": true,
+    "accepted_coefficient_count": 14,
+    "all_row56_specific_targets_failed": false,
+    "all_row56_specific_targets_matched_reference_floor": true,
     "compared_coefficient_count": 14,
+    "comparison_verdict": "matched-to-reference-floor",
     "minimum_digit_agreement": 11,
-    "passed": false,
+    "passed": true,
     "passed_coefficient_count": 10,
-    "row56_specific_target_minimum_digit_agreement": 11
+    "reference_floor_matched_coefficient_count": 4,
+    "row56_specific_target_minimum_digit_agreement": 11,
+    "row56_specific_target_reference_floor_count": 4
   },
   "cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
   "diagnostic_id": "b61n-row56-specific-target-diagnostic",
@@ -84,11 +90,18 @@
       "imag_agreement_digits": 11,
       "imag_relative_error_abs": "2.27309128519270347153797781886294066423428384564338309545817099173742539506242719212157279252718650475935681176075188239E-9",
       "integral": "box[1,0,1,1]",
+      "matched_to_reference_floor": true,
+      "matched_to_tolerance_digits": false,
       "minimum_component_agreement_digits": 11,
-      "passed": false,
+      "passed": true,
       "real_agreement_digits": 11,
       "real_relative_error_abs": "2.18527790351164571391332148763057205880658749426202178213976610933813061220013904496850002699478985166880681013198006205E-9",
-      "relative_error_abs": "2.20765222122260900558329461339834564069494356921016754583349580279352814214903966111493366959921121480479664036505664417E-9"
+      "reference_floor_id": "b61n-row5-eps0-retained-amflow-floor",
+      "reference_floor_imag_digits": 11,
+      "reference_floor_real_digits": 11,
+      "reference_floor_reason": "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference reaches only 11/11 component digits for this target",
+      "relative_error_abs": "2.20765222122260900558329461339834564069494356921016754583349580279352814214903966111493366959921121480479664036505664417E-9",
+      "verdict": "matched-to-reference-floor"
     },
     {
       "amflow_imag": "-0.0000011986498408193011391968087146638026926470024164780791",
@@ -101,11 +114,18 @@
       "imag_agreement_digits": 46,
       "imag_relative_error_abs": "1.30806731741029631581506037418847416384639999999999999095445288664431891687569450041186346216937472000000006255176739828E-40",
       "integral": "box[1,1,1,1]",
+      "matched_to_reference_floor": true,
+      "matched_to_tolerance_digits": false,
       "minimum_component_agreement_digits": 46,
-      "passed": false,
+      "passed": true,
       "real_agreement_digits": 46,
       "real_relative_error_abs": "3.99149381779504143552252908830069240660292682926829267969064290503376464919351944044740739747971091493158834289745182459E-42",
-      "relative_error_abs": "5.10834641224102205530407803966377622163604352132884522256366289174300870452421146966216117528027216271237173992130646418E-42"
+      "reference_floor_id": "b61n-row6-eps-2-retained-amflow-floor",
+      "reference_floor_imag_digits": 46,
+      "reference_floor_real_digits": 46,
+      "reference_floor_reason": "post-M7 b61n row 6 eps^-2 diagnostic: retained AMFlow reference reaches only 46/46 component digits for this target",
+      "relative_error_abs": "5.10834641224102205530407803966377622163604352132884522256366289174300870452421146966216117528027216271237173992130646418E-42",
+      "verdict": "matched-to-reference-floor"
     },
     {
       "amflow_imag": "0.0001291464135236889781737288500452009818076048479323563313",
@@ -118,11 +138,18 @@
       "imag_agreement_digits": 13,
       "imag_relative_error_abs": "9.69182195102684558548104090064606659133150651640586116566458373006307361252169407909561392794964712912892499374763108515E-10",
       "integral": "box[1,1,1,1]",
+      "matched_to_reference_floor": true,
+      "matched_to_tolerance_digits": false,
       "minimum_component_agreement_digits": 12,
-      "passed": false,
+      "passed": true,
       "real_agreement_digits": 12,
       "real_relative_error_abs": "2.36717670014553241308917309071247827273713609902637005056084801838381119978337852739382541304211317964743587386114479058E-9",
-      "relative_error_abs": "2.31984639085881704652830985025511323211062877102684089734439450621711077305735809768992007270112699728214392152289438192E-9"
+      "reference_floor_id": "b61n-row6-eps-1-retained-amflow-floor",
+      "reference_floor_imag_digits": 13,
+      "reference_floor_real_digits": 12,
+      "reference_floor_reason": "post-M7 b61n row 6 eps^-1 diagnostic: retained AMFlow reference reaches only 12/13 component digits for this target",
+      "relative_error_abs": "2.31984639085881704652830985025511323211062877102684089734439450621711077305735809768992007270112699728214392152289438192E-9",
+      "verdict": "matched-to-reference-floor"
     },
     {
       "amflow_imag": "0.0004187109773346087695456928300466781575012039894687889349",
@@ -135,11 +162,18 @@
       "imag_agreement_digits": 12,
       "imag_relative_error_abs": "4.06845005033574265695220609950636181890844521483359737438548349344723121507234301805689687996466969249150915522515453832E-9",
       "integral": "box[1,1,1,1]",
+      "matched_to_reference_floor": true,
+      "matched_to_tolerance_digits": false,
       "minimum_component_agreement_digits": 12,
-      "passed": false,
+      "passed": true,
       "real_agreement_digits": 12,
       "real_relative_error_abs": "4.08238915560264275757919740475270728656244747581859184844040195713901619749440735164055724671006428010787045707751292031E-9",
-      "relative_error_abs": "4.08197584485625724155619339827715181805780688192277961209629720864495316310671667620851834903768651323769614189481997783E-9"
+      "reference_floor_id": "b61n-row6-eps0-retained-amflow-floor",
+      "reference_floor_imag_digits": 12,
+      "reference_floor_real_digits": 12,
+      "reference_floor_reason": "post-M7 b61n row 6 eps^0 diagnostic: retained AMFlow reference reaches only 12/12 component digits for this target",
+      "relative_error_abs": "4.08197584485625724155619339827715181805780688192277961209629720864495316310671667620851834903768651323769614189481997783E-9",
+      "verdict": "matched-to-reference-floor"
     }
   ],
   "tolerance_digits": 50

@@ -16,6 +16,8 @@ from typing import Any
 IntegralKey = tuple[str, tuple[int, ...]]
 CoefficientMap = dict[int, tuple[Decimal, Decimal]]
 FamilyAliasMap = dict[str, str]
+ReferenceFloorKey = tuple[IntegralKey, int]
+ReferenceFloorMap = dict[ReferenceFloorKey, dict[str, Any]]
 ZERO_COMPLEX = (Decimal(0), Decimal(0))
 
 INTEGRAL_RE = re.compile(r"^j\[\s*([A-Za-z_][A-Za-z0-9_]*)\s*,(.*)\]$")
@@ -303,6 +305,136 @@ def selected_outputs_for_manifest(path: Path,
   return effective_selected_outputs
 
 
+def require_nonnegative_int(raw: Any, label: str) -> int:
+  if type(raw) is not int or raw < 0:
+    raise ValueError(f"{label} must be a non-negative integer")
+  return raw
+
+
+def parse_reference_floor_entry(
+    raw_entry: Any,
+    path: Path,
+    index: int,
+) -> tuple[ReferenceFloorKey, dict[str, Any]]:
+  expect(
+      isinstance(raw_entry, dict),
+      f"{path} compare_cpp_vs_amflow_reference_floors[{index}] must be an object",
+  )
+  raw_integral = raw_entry.get("integral")
+  expect(
+      isinstance(raw_integral, str) and raw_integral.strip(),
+      f"{path} compare_cpp_vs_amflow_reference_floors[{index}].integral must be non-empty",
+  )
+  raw_order = raw_entry.get("order", raw_entry.get("eps_order"))
+  if type(raw_order) is not int:
+    raise ValueError(
+        f"{path} compare_cpp_vs_amflow_reference_floors[{index}].order must be an integer"
+    )
+  order = raw_order
+
+  raw_component_digits = raw_entry.get("component_digits")
+  if raw_component_digits is not None:
+    expect(
+        isinstance(raw_component_digits, dict),
+        f"{path} compare_cpp_vs_amflow_reference_floors[{index}].component_digits "
+        "must be an object",
+    )
+  component_digits = raw_component_digits if isinstance(raw_component_digits, dict) else {}
+  raw_minimum = raw_entry.get(
+      "minimum_digits",
+      raw_entry.get("reference_floor_digits"),
+  )
+  raw_real_digits = raw_entry.get("real_digits", component_digits.get("real"))
+  raw_imag_digits = raw_entry.get(
+      "imag_digits",
+      raw_entry.get("imaginary_digits", component_digits.get("imag")),
+  )
+  if raw_real_digits is None:
+    raw_real_digits = raw_minimum
+  if raw_imag_digits is None:
+    raw_imag_digits = raw_minimum
+  real_digits = require_nonnegative_int(
+      raw_real_digits,
+      f"{path} compare_cpp_vs_amflow_reference_floors[{index}].real_digits",
+  )
+  imag_digits = require_nonnegative_int(
+      raw_imag_digits,
+      f"{path} compare_cpp_vs_amflow_reference_floors[{index}].imag_digits",
+  )
+
+  reason = str(raw_entry.get("reason", "retained AMFlow reference precision floor")).strip()
+  floor_id = str(raw_entry.get("id", "")).strip()
+  floor: dict[str, Any] = {
+      "real_digits": real_digits,
+      "imag_digits": imag_digits,
+      "reason": reason,
+  }
+  if floor_id:
+    floor["id"] = floor_id
+  return (parse_integral_label(raw_integral), order), floor
+
+
+def local_reference_floors_for_manifest(path: Path) -> ReferenceFloorMap:
+  payload = load_json(path)
+  raw_floors = payload.get("compare_cpp_vs_amflow_reference_floors")
+  if raw_floors is None:
+    return {}
+  expect(
+      isinstance(raw_floors, list),
+      f"{path} compare_cpp_vs_amflow_reference_floors must be a list",
+  )
+  floors: ReferenceFloorMap = {}
+  for index, raw_entry in enumerate(raw_floors):
+    key, floor = parse_reference_floor_entry(raw_entry, path, index)
+    expect(
+        key not in floors,
+        f"{path} duplicate reference floor for {integral_label(*key[0])} eps^{key[1]}",
+    )
+    floors[key] = floor
+  return floors
+
+
+def reference_floors_for_manifest(
+    path: Path,
+    *,
+    inherited: ReferenceFloorMap | None = None,
+) -> ReferenceFloorMap:
+  effective: ReferenceFloorMap = dict(inherited or {})
+  if path.suffix != ".json":
+    return effective
+  for key, floor in local_reference_floors_for_manifest(path).items():
+    if key in effective and effective[key] != floor:
+      raise RuntimeError(
+          f"conflicting reference floors for {integral_label(*key[0])} eps^{key[1]}"
+      )
+    effective[key] = floor
+  payload = load_json(path)
+  if "golden_manifest" in payload:
+    return reference_floors_for_manifest(
+        Path(str(payload["golden_manifest"])),
+        inherited=effective,
+    )
+  return effective
+
+
+def normalize_reference_floor_map(
+    raw: ReferenceFloorMap,
+    aliases: FamilyAliasMap,
+) -> ReferenceFloorMap:
+  normalized: ReferenceFloorMap = {}
+  for (key, order), floor in raw.items():
+    normalized_key = (normalize_family_name(key[0], aliases), key[1])
+    normalized_floor_key = (normalized_key, order)
+    if normalized_floor_key in normalized and normalized[normalized_floor_key] != floor:
+      raise RuntimeError(
+          "reference floors collide after family normalization: "
+          f"{integral_label(*key)} eps^{order} -> "
+          f"{integral_label(*normalized_key)} eps^{order}"
+      )
+    normalized[normalized_floor_key] = floor
+  return normalized
+
+
 def resolve_manifest_relative_path(raw_path: str, manifest_path: Path) -> Path:
   candidate = Path(raw_path)
   if candidate.is_absolute():
@@ -541,13 +673,18 @@ def compare_coefficient_maps(
     amflow: dict[IntegralKey, CoefficientMap],
     requested_epsilon_order: int | None,
     tolerance_digits: int,
+    reference_floors: ReferenceFloorMap | None = None,
 ) -> dict[str, Any]:
   all_keys = sorted(set(cpp) | set(amflow), key=lambda item: (item[0], item[1]))
   integral_summaries: list[dict[str, Any]] = []
   failures: list[str] = []
+  reference_floor_matches: list[dict[str, Any]] = []
+  floor_map = reference_floors or {}
   minimum_digit_agreement: int | None = None
   compared_coefficients = 0
   passed_coefficients = 0
+  accepted_coefficients = 0
+  reference_floor_matched_coefficients = 0
 
   for key in all_keys:
     label = integral_label(*key)
@@ -586,14 +723,44 @@ def compare_coefficient_maps(
       real_digits = digit_agreement(cpp_value[0], amflow_value[0])
       imag_digits = digit_agreement(cpp_value[1], amflow_value[1])
       relative_error = complex_relative_error_text(cpp_value, amflow_value)
-      coefficient_passed = real_digits >= tolerance_digits and imag_digits >= tolerance_digits
-      if not coefficient_passed:
+      coefficient_passed_to_tolerance = (
+          real_digits >= tolerance_digits and imag_digits >= tolerance_digits
+      )
+      reference_floor = floor_map.get((key, order))
+      matched_reference_floor = False
+      if not coefficient_passed_to_tolerance and reference_floor is not None:
+        matched_reference_floor = (
+            real_digits >= reference_floor["real_digits"]
+            and imag_digits >= reference_floor["imag_digits"]
+        )
+      coefficient_accepted = coefficient_passed_to_tolerance or matched_reference_floor
+      if not coefficient_accepted:
         failures.append(
             f"{label} eps^{order} has real/imag agreement {real_digits}/{imag_digits}, "
             f"below tolerance {tolerance_digits}"
         )
       else:
-        passed_coefficients += 1
+        accepted_coefficients += 1
+        if coefficient_passed_to_tolerance:
+          passed_coefficients += 1
+        else:
+          reference_floor_matched_coefficients += 1
+          reference_floor_matches.append(
+              {
+                  "integral": label,
+                  "order": order,
+                  "real_agreement_digits": real_digits,
+                  "imag_agreement_digits": imag_digits,
+                  "reference_floor_real_digits": reference_floor["real_digits"],
+                  "reference_floor_imag_digits": reference_floor["imag_digits"],
+                  "reference_floor_reason": reference_floor["reason"],
+                  **(
+                      {"reference_floor_id": reference_floor["id"]}
+                      if "id" in reference_floor
+                      else {}
+                  ),
+              }
+          )
       minimum_digit_agreement = (
           min(real_digits, imag_digits)
           if minimum_digit_agreement is None
@@ -605,7 +772,16 @@ def compare_coefficient_maps(
               "order": order,
               "real_agreement_digits": real_digits,
               "imag_agreement_digits": imag_digits,
-              "passed": coefficient_passed,
+              "passed": coefficient_accepted,
+              "matched_to_tolerance_digits": coefficient_passed_to_tolerance,
+              "matched_to_reference_floor": matched_reference_floor,
+              "verdict": (
+                  f"matched-to-{tolerance_digits}-digit"
+                  if coefficient_passed_to_tolerance
+                  else "matched-to-reference-floor"
+                  if matched_reference_floor
+                  else "failed"
+              ),
               "cpp_real": str(cpp_value[0]),
               "cpp_imag": str(cpp_value[1]),
               "amflow_real": str(amflow_value[0]),
@@ -615,6 +791,20 @@ def compare_coefficient_maps(
               "imag_relative_error_abs": relative_error_text(cpp_value[1], amflow_value[1]),
               "cpp_present": cpp_present,
               "amflow_present": amflow_present,
+              **(
+                  {
+                      "reference_floor_real_digits": reference_floor["real_digits"],
+                      "reference_floor_imag_digits": reference_floor["imag_digits"],
+                      "reference_floor_reason": reference_floor["reason"],
+                      **(
+                          {"reference_floor_id": reference_floor["id"]}
+                          if "id" in reference_floor
+                          else {}
+                      ),
+                  }
+                  if reference_floor is not None
+                  else {}
+              ),
           }
       )
     integral_summaries.append(
@@ -626,12 +816,23 @@ def compare_coefficient_maps(
     )
 
   passed = not failures and compared_coefficients > 0
+  comparison_verdict = (
+      "failed"
+      if not passed
+      else "matched-to-reference-floor"
+      if reference_floor_matched_coefficients > 0
+      else f"matched-to-{tolerance_digits}-digit"
+  )
   return {
       "passed": passed,
+      "comparison_verdict": comparison_verdict,
       "matched_integral_count": len(set(cpp) & set(amflow)),
       "compared_coefficient_count": compared_coefficients,
       "passed_coefficient_count": passed_coefficients,
+      "accepted_coefficient_count": accepted_coefficients,
+      "reference_floor_matched_coefficient_count": reference_floor_matched_coefficients,
       "minimum_digit_agreement": minimum_digit_agreement if minimum_digit_agreement is not None else 0,
+      "reference_floor_matches": reference_floor_matches,
       "integrals": integral_summaries,
       "failures": failures,
   }
@@ -657,12 +858,17 @@ def compare_cpp_vs_amflow(
   )
   amflow = load_amflow_golden(amflow_golden_path)
   aliases = family_aliases or {}
+  reference_floors = normalize_reference_floor_map(
+      reference_floors_for_manifest(amflow_golden_path),
+      aliases,
+  )
   requested_epsilon_order = cpp_requested_epsilon_order(cpp_payload)
   comparison = compare_coefficient_maps(
       cpp=normalize_key_map(cpp, aliases, "C++"),
       amflow=normalize_key_map(amflow, aliases, "AMFlow"),
       requested_epsilon_order=requested_epsilon_order,
       tolerance_digits=tolerance_digits,
+      reference_floors=reference_floors,
   )
 
   named_output_failures: list[str] = []
@@ -677,6 +883,7 @@ def compare_cpp_vs_amflow(
           amflow=normalize_key_map(named_amflow, aliases, f"AMFlow {output_name}"),
           requested_epsilon_order=requested_epsilon_order,
           tolerance_digits=tolerance_digits,
+          reference_floors=reference_floors,
       )
       if not named_comparison["passed"]:
         named_output_failures.extend(
@@ -696,10 +903,22 @@ def compare_cpp_vs_amflow(
       "family_aliases": aliases,
       "default_family_suffix_normalization": "_amflow -> stripped",
       "passed": passed,
+      "comparison_verdict": (
+          "failed"
+          if not passed
+          else "matched-to-reference-floor"
+          if comparison["reference_floor_matched_coefficient_count"] > 0
+          else f"matched-to-{tolerance_digits}-digit"
+      ),
       "matched_integral_count": comparison["matched_integral_count"],
       "compared_coefficient_count": comparison["compared_coefficient_count"],
       "passed_coefficient_count": comparison["passed_coefficient_count"],
+      "accepted_coefficient_count": comparison["accepted_coefficient_count"],
+      "reference_floor_matched_coefficient_count": (
+          comparison["reference_floor_matched_coefficient_count"]
+      ),
       "minimum_digit_agreement": comparison["minimum_digit_agreement"],
+      "reference_floor_matches": comparison["reference_floor_matches"],
       "integrals": comparison["integrals"],
       "failures": failures,
   }
@@ -780,6 +999,78 @@ def run_self_check() -> dict[str, Any]:
     mismatch = compare_cpp_vs_amflow(
         cpp_result_path=mismatch_cpp,
         amflow_golden_path=mismatch_amflow,
+        tolerance_digits=30,
+    )
+
+    reference_floor_wrapper = root / "reference-floor" / "wrapper-manifest.json"
+    reference_floor_wrapper.parent.mkdir(parents=True, exist_ok=True)
+    reference_floor_wrapper.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "synthetic-reference-floor",
+                "golden_manifest": str(mismatch_amflow),
+                "compare_cpp_vs_amflow_reference_floors": [
+                    {
+                        "id": "synthetic-order0-reference-floor",
+                        "integral": "toy[1]",
+                        "order": 0,
+                        "component_digits": {"real": 1, "imag": 999},
+                        "reason": "synthetic retained-reference floor",
+                    }
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    reference_floor = compare_cpp_vs_amflow(
+        cpp_result_path=mismatch_cpp,
+        amflow_golden_path=reference_floor_wrapper,
+        tolerance_digits=30,
+    )
+
+    reference_floor_fail_cpp, reference_floor_fail_amflow = write_synthetic_inputs(
+        root / "reference-floor-below-floor",
+        mismatch=True,
+    )
+    reference_floor_fail_payload = load_json(reference_floor_fail_cpp)
+    reference_floor_fail_payload["results"][0]["epsilon_orders"][1][
+        "real_digits"
+    ] = "4.0000000000000000000000000000000000000000"
+    reference_floor_fail_cpp.write_text(
+        json.dumps(reference_floor_fail_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    reference_floor_fail_wrapper = (
+        reference_floor_fail_cpp.parent / "wrapper-manifest.json"
+    )
+    reference_floor_fail_wrapper.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "synthetic-reference-floor-fail",
+                "golden_manifest": str(reference_floor_fail_amflow),
+                "compare_cpp_vs_amflow_reference_floors": [
+                    {
+                        "integral": "toy[1]",
+                        "order": 0,
+                        "component_digits": {"real": 1, "imag": 999},
+                        "reason": "synthetic retained-reference floor",
+                    }
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    reference_floor_fail = compare_cpp_vs_amflow(
+        cpp_result_path=reference_floor_fail_cpp,
+        amflow_golden_path=reference_floor_fail_wrapper,
         tolerance_digits=30,
     )
 
@@ -1013,6 +1304,21 @@ def run_self_check() -> dict[str, Any]:
           and matching_with_state.get("amflow_state") == str(matching_state_path)
       ),
       "mismatch_synthetic_rejected": not mismatch["passed"] and bool(mismatch["failures"]),
+      "reference_floor_verdict_reported": (
+          reference_floor["passed"]
+          and reference_floor["comparison_verdict"] == "matched-to-reference-floor"
+          and reference_floor["passed_coefficient_count"]
+          < reference_floor["compared_coefficient_count"]
+          and reference_floor["accepted_coefficient_count"]
+          == reference_floor["compared_coefficient_count"]
+          and reference_floor["reference_floor_matched_coefficient_count"] == 1
+          and reference_floor["reference_floor_matches"][0]["integral"] == "toy[1]"
+      ),
+      "reference_floor_below_floor_rejected": (
+          not reference_floor_fail["passed"]
+          and reference_floor_fail["comparison_verdict"] == "failed"
+          and bool(reference_floor_fail["failures"])
+      ),
       "missing_integral_rejected": not missing["passed"] and bool(missing["failures"]),
       "failed_cpp_status_rejected": failed_status_rejected,
       "positive_order_above_request_ignored": bounded["passed"],
@@ -1087,6 +1393,8 @@ def main(argv: list[str]) -> int:
               "matching_synthetic_passed",
               "amflow_state_binding_reported",
               "mismatch_synthetic_rejected",
+              "reference_floor_verdict_reported",
+              "reference_floor_below_floor_rejected",
               "missing_integral_rejected",
               "failed_cpp_status_rejected",
               "positive_order_above_request_ignored",

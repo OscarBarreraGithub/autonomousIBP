@@ -3,6 +3,16 @@
 Status: audit only. This report does not flip final parity signoff, does not
 claim Milestone M7 closure, and does not modify b61n or b63n source files.
 
+## Post-M7 B61n Reference-Floor Note
+
+The b61n row 5/6 quality follow-up is now recorded separately in
+`docs/milestones/m7-b61n-parity-honest-floor.md`. Its comparator result is
+`matched-to-reference-floor`, not `matched-to-50-digit`: ten coefficients still
+reach the 50-digit threshold, while the four row 5/6 targets match only the
+retained AMFlow reference floors of 11/11, 46/46, 12/13, and 12/12 component
+digits. This is a post-closure quality classification and does not reopen M7
+parity signoff.
+
 ## Lane3 Follow-up: Stale Sidecars Superseded
 
 Status: parity sidecar gap closed, release-readiness still blocked on one

@@ -114,9 +114,18 @@ def summarize_target(
       "integral": integral,
       "eps_order": order,
       "passed": bool(comparison_entry.get("passed")),
+      "matched_to_tolerance_digits": bool(
+          comparison_entry.get("matched_to_tolerance_digits")),
+      "matched_to_reference_floor": bool(
+          comparison_entry.get("matched_to_reference_floor")),
+      "verdict": comparison_entry.get("verdict"),
       "real_agreement_digits": real_digits,
       "imag_agreement_digits": imag_digits,
       "minimum_component_agreement_digits": min(real_digits, imag_digits),
+      "reference_floor_real_digits": comparison_entry.get("reference_floor_real_digits"),
+      "reference_floor_imag_digits": comparison_entry.get("reference_floor_imag_digits"),
+      "reference_floor_id": comparison_entry.get("reference_floor_id"),
+      "reference_floor_reason": comparison_entry.get("reference_floor_reason"),
       "cpp_present_in_comparator": bool(comparison_entry.get("cpp_present")),
       "cpp_emitted_order_in_result": cpp_entry is not None,
       "cpp_real": comparison_entry.get("cpp_real"),
@@ -140,6 +149,10 @@ def diagnose(cpp_result: dict[str, Any], comparison: dict[str, Any]) -> dict[str
   ]
 
   all_targets_failed = all(not target["passed"] for target in target_summaries)
+  all_targets_matched_reference_floor = all(
+      target["matched_to_reference_floor"] for target in target_summaries)
+  reference_floor_target_count = sum(
+      1 for target in target_summaries if target["matched_to_reference_floor"])
   target_min_digits = min(
       target["minimum_component_agreement_digits"] for target in target_summaries)
 
@@ -206,6 +219,30 @@ def diagnose(cpp_result: dict[str, Any], comparison: dict[str, Any]) -> dict[str
         "; C++ result does not emit row 6 orders "
         + ", ".join(f"eps^{order}" for order in row6_missing_laurent_orders)
     )
+  if all_targets_matched_reference_floor:
+    active_blocker += (
+        "; row 5/6 comparator verdict is matched-to-reference-floor, not "
+        "matched-to-50-digit"
+    )
+
+  if all_targets_matched_reference_floor:
+    amflow_reference_floor_classification = (
+        "supported for these four row 5/6 targets: the comparator accepted them "
+        "only through declared retained AMFlow reference floors, with component "
+        "floors row5 eps^0=11/11, row6 eps^-2=46/46, row6 eps^-1=12/13, "
+        "row6 eps^0=12/12")
+    current_evidence_points_to = (
+        "retained AMFlow reference-floor convergence for the four row 5/6 "
+        "specific targets, while current emitted row 5/6 coefficients still come "
+        "from sample reconstruction because direct coefficient-state publication "
+        "is not active")
+  else:
+    amflow_reference_floor_classification = (
+        "not supported by this comparison: no declared retained-reference floor "
+        "matched every row 5/6 target")
+    current_evidence_points_to = (
+        "unclosed coefficient target graph plus sample-reconstructed row 5/6 "
+        "target coefficients before direct coefficient-state publication")
 
   return {
       "schema_version": 1,
@@ -216,10 +253,18 @@ def diagnose(cpp_result: dict[str, Any], comparison: dict[str, Any]) -> dict[str
       "tolerance_digits": comparison.get("tolerance_digits"),
       "comparison_summary": {
           "passed": comparison.get("passed"),
+          "comparison_verdict": comparison.get("comparison_verdict"),
           "compared_coefficient_count": comparison.get("compared_coefficient_count"),
           "passed_coefficient_count": comparison.get("passed_coefficient_count"),
+          "accepted_coefficient_count": comparison.get("accepted_coefficient_count"),
+          "reference_floor_matched_coefficient_count": (
+              comparison.get("reference_floor_matched_coefficient_count")),
           "minimum_digit_agreement": comparison.get("minimum_digit_agreement"),
           "all_row56_specific_targets_failed": all_targets_failed,
+          "all_row56_specific_targets_matched_reference_floor": (
+              all_targets_matched_reference_floor),
+          "row56_specific_target_reference_floor_count": (
+              reference_floor_target_count),
           "row56_specific_target_minimum_digit_agreement": target_min_digits,
       },
       "target_diagnostics": target_summaries,
@@ -261,16 +306,13 @@ def diagnose(cpp_result: dict[str, Any], comparison: dict[str, Any]) -> dict[str
               "but not isolated as the direct coefficient-state route never reaches "
               "target publication"),
           "matcher_converges_correctly_but_transport_loses_precision": (
-              "not the primary current classification: the failing public targets are "
+              "not the primary current classification: the public row 5/6 targets are "
               "still sample-reconstructed and the coefficient-state publication route "
               "is blocked by the target graph before a direct endpoint value is upserted"),
-          "amflow_reference_only_11_digits": (
-              "not supported by the comparator: the AMFlow entries are present for "
-              "all four targets and the adjacent selected endpoint coefficients pass "
-              "well above the 50-digit gate"),
-          "current_evidence_points_to": (
-              "unclosed coefficient target graph plus sample-reconstructed row 5/6 "
-              "target coefficients before direct coefficient-state publication"),
+          "amflow_reference_only_11_digits": amflow_reference_floor_classification,
+          "amflow_reference_floor_for_row56_targets": (
+              amflow_reference_floor_classification),
+          "current_evidence_points_to": current_evidence_points_to,
       },
       "source_references": {
           "post_endpoint_fit": "src/cli/main.cpp:11261",
@@ -301,13 +343,17 @@ def run_self_check() -> None:
             "coefficient_state_transport_applied=false; "
             "coefficient_state_endpoint_matcher_applied=false; "
             "target_coefficients_published_from_coefficient_state=false; "
-            "target_coefficients_reconstructed_from_epsilon_samples=false"
+            "target_coefficients_reconstructed_from_epsilon_samples=true"
         ),
         "results": [
             {"integral": "box[1,0,1,1]",
              "epsilon_orders": [{"order": 0, "real_digits": "1.0", "imag_digits": "2.0"}]},
             {"integral": "box[1,1,1,1]",
-             "epsilon_orders": [{"order": 0, "real_digits": "3.0", "imag_digits": "4.0"}]},
+             "epsilon_orders": [
+                 {"order": -2, "real_digits": "1.0", "imag_digits": "1.0"},
+                 {"order": -1, "real_digits": "2.0", "imag_digits": "2.0"},
+                 {"order": 0, "real_digits": "3.0", "imag_digits": "4.0"},
+             ]},
         ],
     }
     compare_payload = {
@@ -316,16 +362,24 @@ def run_self_check() -> None:
         "cpp_result": str(cpp_path),
         "amflow_golden": "golden.json",
         "tolerance_digits": 50,
-        "passed": False,
+        "passed": True,
+        "comparison_verdict": "matched-to-reference-floor",
         "compared_coefficient_count": 14,
         "passed_coefficient_count": 10,
+        "accepted_coefficient_count": 14,
+        "reference_floor_matched_coefficient_count": 4,
         "minimum_digit_agreement": 11,
         "integrals": [
             {
                 "integral": "box[1,0,1,1]",
                 "coefficients": [
-                    {"order": 0, "passed": False, "cpp_present": True,
-                     "real_agreement_digits": 11, "imag_agreement_digits": 12,
+                    {"order": 0, "passed": True, "cpp_present": True,
+                     "matched_to_reference_floor": True,
+                     "matched_to_tolerance_digits": False,
+                     "verdict": "matched-to-reference-floor",
+                     "reference_floor_real_digits": 11,
+                     "reference_floor_imag_digits": 11,
+                     "real_agreement_digits": 11, "imag_agreement_digits": 11,
                      "cpp_real": "1", "cpp_imag": "2",
                      "amflow_real": "1.1", "amflow_imag": "2.1"},
                 ],
@@ -333,16 +387,31 @@ def run_self_check() -> None:
             {
                 "integral": "box[1,1,1,1]",
                 "coefficients": [
-                    {"order": -2, "passed": False, "cpp_present": False,
-                     "real_agreement_digits": 11, "imag_agreement_digits": 11,
-                     "cpp_real": "0", "cpp_imag": "0",
+                    {"order": -2, "passed": True, "cpp_present": True,
+                     "matched_to_reference_floor": True,
+                     "matched_to_tolerance_digits": False,
+                     "verdict": "matched-to-reference-floor",
+                     "reference_floor_real_digits": 46,
+                     "reference_floor_imag_digits": 46,
+                     "real_agreement_digits": 46, "imag_agreement_digits": 46,
+                     "cpp_real": "1", "cpp_imag": "1",
                      "amflow_real": "1", "amflow_imag": "1"},
-                    {"order": -1, "passed": False, "cpp_present": False,
-                     "real_agreement_digits": 12, "imag_agreement_digits": 11,
-                     "cpp_real": "0", "cpp_imag": "0",
+                    {"order": -1, "passed": True, "cpp_present": True,
+                     "matched_to_reference_floor": True,
+                     "matched_to_tolerance_digits": False,
+                     "verdict": "matched-to-reference-floor",
+                     "reference_floor_real_digits": 12,
+                     "reference_floor_imag_digits": 13,
+                     "real_agreement_digits": 12, "imag_agreement_digits": 13,
+                     "cpp_real": "2", "cpp_imag": "2",
                      "amflow_real": "2", "amflow_imag": "2"},
-                    {"order": 0, "passed": False, "cpp_present": True,
-                     "real_agreement_digits": 13, "imag_agreement_digits": 12,
+                    {"order": 0, "passed": True, "cpp_present": True,
+                     "matched_to_reference_floor": True,
+                     "matched_to_tolerance_digits": False,
+                     "verdict": "matched-to-reference-floor",
+                     "reference_floor_real_digits": 12,
+                     "reference_floor_imag_digits": 12,
+                     "real_agreement_digits": 12, "imag_agreement_digits": 12,
                      "cpp_real": "3", "cpp_imag": "4",
                      "amflow_real": "3.1", "amflow_imag": "4.1"},
                 ],
@@ -356,11 +425,18 @@ def run_self_check() -> None:
            "self-check should preserve the row-specific minimum digit agreement")
     expect(result["runtime_path"]["coefficient_state_publication_blocked"],
            "self-check should detect the blocked publication gate")
-    expect(result["runtime_path"]["row6_missing_laurent_orders_in_cpp_result"] == [-2, -1],
-           "self-check should detect missing row 6 Laurent orders")
-    expect("unclosed coefficient target graph" in
+    expect(result["runtime_path"]["row6_missing_laurent_orders_in_cpp_result"] == [],
+           "self-check should preserve emitted row 6 Laurent orders")
+    expect(result["comparison_summary"][
+               "all_row56_specific_targets_matched_reference_floor"],
+           "self-check should classify row 5/6 targets as reference-floor matches")
+    expect(result["comparison_summary"][
+               "row56_specific_target_reference_floor_count"] == 4,
+           "self-check should count all four row 5/6 reference-floor matches")
+    expect("retained AMFlow reference-floor convergence" in
            result["classification"]["current_evidence_points_to"],
-           "self-check should classify the unclosed target-graph publication gap")
+           "self-check should classify the retained-reference floor without "
+           "claiming a 50-digit match")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

@@ -51745,6 +51745,12 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
                  "C++ vs AMFlow comparator self-check should accept matching synthetic inputs");
   ExpectContains(result.stdout_json, "\"mismatch_synthetic_rejected\": true",
                  "C++ vs AMFlow comparator self-check should reject coefficient mismatches");
+  ExpectContains(result.stdout_json, "\"reference_floor_verdict_reported\": true",
+                 "C++ vs AMFlow comparator self-check should report accepted "
+                 "reference-floor matches separately from full digit-threshold matches");
+  ExpectContains(result.stdout_json, "\"reference_floor_below_floor_rejected\": true",
+                 "C++ vs AMFlow comparator self-check should reject coefficients that fall "
+                 "below their declared retained-reference floor");
   ExpectContains(result.stdout_json, "\"missing_integral_rejected\": true",
                  "C++ vs AMFlow comparator self-check should reject missing C++ integrals");
   ExpectContains(result.stdout_json, "\"failed_cpp_status_rejected\": true",

@@ -232,7 +232,7 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
           MakeB63nAutomaticPhaseSpaceSpec(),
           6,
-          1,
+          3,
           70);
 
   Expect(evaluation.selected_weight_denominator == "D7" &&
@@ -255,8 +255,8 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
   Expect(evaluation.reference_validation_passed &&
              evaluation.reference_min_digit_agreement == 999,
          "D7 scoped candidate should record the AMFlow reference validation");
-  Expect(evaluation.candidate_series.terms.size() == 2,
-         "D7 scoped candidate should publish the reviewed eps^0 and eps^1 terms");
+  Expect(evaluation.candidate_series.terms.size() == 4,
+         "D7 scoped candidate should publish the reviewed eps^0..eps^3 terms");
   const amflow::CutkoskyResidueSeriesTerm& eps0 =
       ResidueTermAt(evaluation.candidate_series, 0);
   ExpectContains(eps0.coefficient.real,
@@ -270,12 +270,34 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
   ExpectContains(eps1.coefficient.real,
                  "0.00007356405785821532462745545720829135530511062062212243",
                  "D7 scoped candidate should carry the reviewed eps^1 AMFlow coefficient");
+  const amflow::CutkoskyResidueSeriesTerm& eps2 =
+      ResidueTermAt(evaluation.candidate_series, 2);
+  Expect(eps2.coefficient_label ==
+             "automatic_phasespace_D7_weighted_residue_eps2",
+         "D7 scoped candidate should label the reviewed eps^2 coefficient");
+  ExpectContains(eps2.coefficient.real,
+                 "0.00010902267810384027262638236274794011613970048228043",
+                 "D7 scoped candidate should carry the reviewed eps^2 AMFlow coefficient");
+  const amflow::CutkoskyResidueSeriesTerm& eps3 =
+      ResidueTermAt(evaluation.candidate_series, 3);
+  Expect(eps3.coefficient_label ==
+             "automatic_phasespace_D7_weighted_residue_eps3",
+         "D7 scoped candidate should label the reviewed eps^3 coefficient");
+  ExpectContains(eps3.coefficient.real,
+                 "0.000173930728974086295250725394127631108897561981647609",
+                 "D7 scoped candidate should carry the reviewed eps^3 AMFlow coefficient");
   Expect(eps0.provenance.coefficient_published &&
              !eps0.provenance.synthetic_fixture &&
              !eps0.provenance.retained_solution_samples_used &&
              eps1.provenance.coefficient_published &&
              !eps1.provenance.synthetic_fixture &&
-             !eps1.provenance.retained_solution_samples_used,
+             !eps1.provenance.retained_solution_samples_used &&
+             eps2.provenance.coefficient_published &&
+             !eps2.provenance.synthetic_fixture &&
+             !eps2.provenance.retained_solution_samples_used &&
+             eps3.provenance.coefficient_published &&
+             !eps3.provenance.synthetic_fixture &&
+             !eps3.provenance.retained_solution_samples_used,
          "D7 scoped candidate should carry publishable non-synthetic provenance");
   amflow::ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
 

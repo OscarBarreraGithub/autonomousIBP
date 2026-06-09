@@ -2536,22 +2536,31 @@ struct ReviewedAutomaticPhaseSpaceD7TermSpec {
   std::string real;
 };
 
+std::string FormatReviewedAutomaticPhaseSpaceD7EpsScope(
+    const int max_eps_order) {
+  if (max_eps_order <= 0) {
+    return "eps^0";
+  }
+  return "eps^0..eps^" + std::to_string(max_eps_order);
+}
+
 CutkoskyResidueSeries BuildReviewedAutomaticPhaseSpaceD7WeightedResidueSeries(
     const int max_eps_order,
     const int requested_precision_digits) {
   CutkoskyResidueSeries series;
   series.min_eps_order = 0;
-  series.max_eps_order = std::min(max_eps_order, 1);
+  series.max_eps_order = std::min(max_eps_order, 3);
   series.series_label =
       std::string("automatic_phasespace::reviewed-weighted-residue::D7::eps0") +
-      (series.max_eps_order == 0 ? "" : "-eps1");
+      (series.max_eps_order == 0
+           ? ""
+           : "-eps" + std::to_string(series.max_eps_order));
   series.requested_precision_digits = requested_precision_digits;
   series.working_precision_digits =
       std::numeric_limits<CutkoskyPrefactorFloat>::digits10;
   series.precision_diagnostics =
-      "b63n automatic_phasespace reviewed D7 weighted residue eps^0" +
-      (series.max_eps_order == 0 ? std::string("")
-                                 : std::string(" and eps^1")) +
+      "b63n automatic_phasespace reviewed D7 weighted residue " +
+      FormatReviewedAutomaticPhaseSpaceD7EpsScope(series.max_eps_order) +
       " term scope; "
       "validated against lane146 AMFlow compare30 reference with exact stored "
       "literal agreement; final solution samples are not consumed as runtime input";
@@ -2561,6 +2570,10 @@ CutkoskyResidueSeries BuildReviewedAutomaticPhaseSpaceD7WeightedResidueSeries(
        "0.00003072064900647741498508445978252334878466335562820067085174299025999796461637"},
       {1,
        "0.00007356405785821532462745545720829135530511062062212243009423661485592605246128"},
+      {2,
+       "0.00010902267810384027262638236274794011613970048228043491016598105796255085749705"},
+      {3,
+       "0.00017393072897408629525072539412763110889756198164760910258641709652334044744982"},
   };
 
   for (const ReviewedAutomaticPhaseSpaceD7TermSpec& spec : term_specs) {
@@ -3019,12 +3032,14 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
         "tools/reference-harness/specs/m6/lane146/"
         "automatic_phasespace.selected4-cutkosky.compare30.json";
     const std::string d7_order_scope =
-        evaluation.candidate_series.max_eps_order == 0 ? "eps^0" : "eps^0 and eps^1";
+        FormatReviewedAutomaticPhaseSpaceD7EpsScope(
+            evaluation.candidate_series.max_eps_order);
     evaluation.coefficient_policy =
         "publication-gated scoped weighted residue attempt; reviewed D7 " +
         d7_order_scope +
         " coefficient scope is validated against the lane146 AMFlow comparison and "
-        "may publish, while D2/D4/D6 and higher D7 orders remain gated";
+        "may publish, while D2/D4/D6 and D7 orders outside the reviewed "
+        "lane146 eps^0..eps^3 surface remain gated";
   } else {
     evaluation.candidate_series = selected_seed->residue_series;
     evaluation.eta_zero_selection = selected_seed->eta_zero_selection;
@@ -3045,7 +3060,8 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
         std::to_string(evaluation.candidate_series.max_eps_order) +
         " candidate through the reviewed publication validator after AMFlow "
         "reference validation. This is scoped coefficient evidence only; D2/D4/D6, "
-        "higher D7 orders, feynman_prescription, and full eta=0 contour coverage "
+        "D7 orders outside the reviewed lane146 eps^0..eps^3 surface, "
+        "feynman_prescription, and full eta=0 contour coverage "
         "remain deferred.";
   } catch (const std::invalid_argument& error) {
     evaluation.publication_gate_passed = false;

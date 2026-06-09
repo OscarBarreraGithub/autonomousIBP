@@ -19,6 +19,7 @@
 #include "amflow/core/boundary_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/boundary_generation.hpp"
+#include "amflow/solver/coefficient_evaluator.hpp"
 
 namespace amflow {
 
@@ -271,8 +272,18 @@ bool NumericSubstitutionEquals(const ProblemSpec& spec,
                                const std::string& key,
                                const std::string& expected) {
   const auto it = spec.kinematics.numeric_substitutions.find(key);
-  return it != spec.kinematics.numeric_substitutions.end() &&
-         RemoveAsciiSpaces(it->second) == RemoveAsciiSpaces(expected);
+  if (it == spec.kinematics.numeric_substitutions.end()) {
+    return false;
+  }
+  if (RemoveAsciiSpaces(it->second) == RemoveAsciiSpaces(expected)) {
+    return true;
+  }
+  try {
+    return EvaluateCoefficientExpression(it->second, NumericEvaluationPoint{}) ==
+           EvaluateCoefficientExpression(expected, NumericEvaluationPoint{});
+  } catch (const std::invalid_argument&) {
+    return false;
+  }
 }
 
 bool IsReviewedZeroMassLiteral(const std::string& value) {

@@ -639,6 +639,88 @@ void ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest(
                  "reviewed weight in a relabeled packet");
 }
 
+void ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest() {
+  const amflow::ProblemSpec canonical_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  amflow::ProblemSpec rescaled_spec = canonical_spec;
+  rescaled_spec.kinematics.numeric_substitutions = {
+      {"s", "(250*8)/20"},
+      {"msq", "(9+5)/(2*7)"},
+  };
+
+  const amflow::CutkoskyWeightedResidueEvaluationPlan canonical_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(canonical_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan rescaled_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(rescaled_spec);
+  Expect(amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+             rescaled_plan) ==
+             amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+                 canonical_plan),
+         "b63n weighted residue plan should be invariant under exact "
+         "kinematic substitution rescaling");
+
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> canonical_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          canonical_spec,
+          2,
+          70);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> rescaled_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          rescaled_spec,
+          2,
+          70);
+  Expect(amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+             rescaled_packet) ==
+             amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+                 canonical_packet),
+         "b63n weighted residue seed packet should be invariant under exact "
+         "kinematic substitution rescaling");
+
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate canonical_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(canonical_plan,
+                                                             canonical_packet);
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate rescaled_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(rescaled_plan,
+                                                             rescaled_packet);
+  Expect(canonical_gate.passed && rescaled_gate.passed,
+         "b63n weighted residue gate should pass both canonical and rescaled "
+         "kinematic substitutions");
+  Expect(amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+             rescaled_gate) ==
+             amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+                 canonical_gate),
+         "b63n weighted residue gate audit should be invariant under exact "
+         "kinematic substitution rescaling");
+
+  const amflow::CutkoskyScopedWeightedResidueEvaluation canonical_d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(canonical_spec,
+                                                               6,
+                                                               3,
+                                                               70);
+  const amflow::CutkoskyScopedWeightedResidueEvaluation rescaled_d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(rescaled_spec,
+                                                               6,
+                                                               3,
+                                                               70);
+  Expect(canonical_d7.publication_gate_passed &&
+             rescaled_d7.publication_gate_passed,
+         "rescaled b63n D7 scoped residue should retain the reviewed publication "
+         "state");
+  for (const int eps_order : {0, 1, 2, 3}) {
+    const amflow::CutkoskyResidueSeriesTerm& canonical_term =
+        ResidueTermAt(canonical_d7.candidate_series, eps_order);
+    const amflow::CutkoskyResidueSeriesTerm& rescaled_term =
+        ResidueTermAt(rescaled_d7.candidate_series, eps_order);
+    ExpectEqual(rescaled_term.coefficient.real,
+                canonical_term.coefficient.real,
+                "rescaled b63n D7 eps^" + std::to_string(eps_order) +
+                    " real coefficient should match canonical substitution");
+    ExpectEqual(rescaled_term.coefficient.imaginary,
+                canonical_term.coefficient.imaginary,
+                "rescaled b63n D7 eps^" + std::to_string(eps_order) +
+                    " imaginary coefficient should match canonical substitution");
+  }
+}
+
 void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
   const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
@@ -1092,6 +1174,7 @@ int main() {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
+    ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
     ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();

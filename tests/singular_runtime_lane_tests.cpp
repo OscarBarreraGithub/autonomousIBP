@@ -6686,6 +6686,10 @@ void B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest()
       B61nContourFloat("1e-60");
   options.propagation_options.refinement_relative_error_tolerance =
       B61nContourFloat("1e-60");
+  options.propagation_options.coupled_frobenius_anchor_row_indices = {0};
+  options.propagation_options.coupled_frobenius_anchor_endpoint_values = {
+      source_eps_minus1,
+  };
 
   const std::vector<B61nContourNumber> waypoints = {
       {0, -2},
@@ -6710,8 +6714,22 @@ void B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest()
   Expect(!result.audit.sample_space_coupled_row_transport_applied,
          "b61n coefficient-state wrapper must not report sample-space row "
          "transport");
-  Expect(!result.audit.coefficient_state_endpoint_matcher_applied,
-         "b61n coefficient-state wrapper must leave endpoint matching to step 5");
+  Expect(result.audit.coefficient_state_endpoint_matcher_applied,
+         "b61n coefficient-state wrapper should apply the augmented endpoint "
+         "matcher in coefficient coordinates");
+  Expect(result.audit.endpoint_anchor_node_count == 1,
+         "b61n coefficient-state endpoint matcher should accept augmented "
+         "anchor row indices");
+  Expect(result.audit.endpoint_free_node_count == 3,
+         "b61n coefficient-state endpoint matcher should count free augmented "
+         "coefficient nodes");
+  Expect(result.audit.endpoint_matcher_recurrence_order > 0,
+         "b61n coefficient-state endpoint matcher should report the Frobenius "
+         "recurrence order");
+  Expect(result.audit.endpoint_matcher_boundary_condition_solve ==
+             "full-constraint-match",
+         "b61n coefficient-state endpoint matcher should not select the old "
+         "two-free-row helper when the augmented free-node count differs from two");
   Expect(!result.audit.target_coefficients_published_from_coefficient_state,
          "b61n coefficient-state wrapper must stay nonpublishing");
   Expect(!result.audit.target_coefficients_reconstructed_from_epsilon_samples,
@@ -6725,6 +6743,22 @@ void B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest()
   ExpectContains(result.audit.summary,
                  "coefficient_state_transport_applied=true",
                  "b61n coefficient-state diagnostics should expose transport");
+  ExpectContains(result.audit.summary,
+                 "coefficient_state_endpoint_matcher_applied=true",
+                 "b61n coefficient-state diagnostics should expose endpoint "
+                 "matching");
+  ExpectContains(result.audit.summary,
+                 "endpoint_free_node_count=3",
+                 "b61n coefficient-state diagnostics should report free "
+                 "augmented coefficient nodes");
+  ExpectContains(result.audit.summary,
+                 "endpoint_matcher_boundary_condition_solve=full-constraint-match",
+                 "b61n coefficient-state diagnostics should report the "
+                 "generalized boundary solve");
+  ExpectContains(result.audit.summary,
+                 "target_coefficients_published_from_coefficient_state=false",
+                 "b61n coefficient-state endpoint matching must remain "
+                 "nonpublishing");
   ExpectContains(result.audit.summary,
                  "target_coefficients_reconstructed_from_epsilon_samples=false",
                  "b61n coefficient-state diagnostics should forbid sample "

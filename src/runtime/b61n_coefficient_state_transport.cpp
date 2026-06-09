@@ -14,6 +14,9 @@ namespace amflow {
 
 namespace {
 
+constexpr char kB61nCoefficientStateEndpointModelKind[] =
+    "b61n-coefficient-state-regular-taylor-r0";
+
 bool IsFiniteFloat(const ComplexContourFloat& value) {
   return boost::math::isfinite(value);
 }
@@ -126,19 +129,27 @@ void ValidateTargetGraphForStateWindow(
 
 ComplexContourPropagationOptions NormalizePropagationOptions(
     ComplexContourPropagationOptions options,
-    const B61nLaurentMatrixEvaluator& laurent_matrix_evaluator) {
+    const B61nLaurentMatrixEvaluator& laurent_matrix_evaluator,
+    const bool coefficient_state_endpoint_matching_enabled) {
   if (options.matrix_fingerprint.empty()) {
     options.matrix_fingerprint = laurent_matrix_evaluator.audit.fingerprint;
   }
-  if (options.endpoint_local_model_kind.empty() ||
-      options.endpoint_local_model_kind == "regular-taylor-r0-pending-laurent-fit") {
+  if (coefficient_state_endpoint_matching_enabled) {
+    options.endpoint_local_model_kind =
+        kB61nCoefficientStateEndpointModelKind;
+  } else if (options.endpoint_local_model_kind.empty() ||
+             options.endpoint_local_model_kind ==
+                 "regular-taylor-r0-pending-laurent-fit") {
     options.endpoint_local_model_kind =
         "b61n-coefficient-state-transport-before-endpoint-matcher";
   }
   if (options.branch_policy.empty() ||
       options.branch_policy == "NegIm lower-half-plane contour supplied by caller") {
-    options.branch_policy =
-        "NegIm lower-half-plane b61n coefficient-state transport";
+    options.branch_policy = coefficient_state_endpoint_matching_enabled
+                                ? "NegIm lower-half-plane b61n coefficient-state "
+                                  "endpoint matcher"
+                                : "NegIm lower-half-plane b61n coefficient-state "
+                                  "transport";
   }
   return options;
 }
@@ -219,6 +230,18 @@ B61nCoefficientStateTransportResult FailureResult(
       std::to_string(audit.materialized_node_count) +
       "; matrix_coefficient_count=" +
       std::to_string(audit.matrix_coefficient_count) +
+      "; endpoint_anchor_node_count=" +
+      std::to_string(audit.endpoint_anchor_node_count) +
+      "; endpoint_free_node_count=" +
+      std::to_string(audit.endpoint_free_node_count) +
+      "; endpoint_matcher_recurrence_count=" +
+      std::to_string(audit.endpoint_matcher_recurrence_count) +
+      "; endpoint_matcher_recurrence_order=" +
+      std::to_string(audit.endpoint_matcher_recurrence_order) +
+      "; endpoint_matcher_residual_abs=" +
+      (audit.endpoint_matcher_residual_abs.empty()
+           ? std::string("not_available")
+           : audit.endpoint_matcher_residual_abs) +
       "; min_state_eps_order=" + std::to_string(audit.min_state_eps_order) +
       "; max_state_eps_order=" + std::to_string(audit.max_state_eps_order) +
       "; min_matrix_eps_order=" + std::to_string(audit.min_matrix_eps_order) +
@@ -298,7 +321,9 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
 
     const ComplexContourPropagationOptions propagation_options =
         NormalizePropagationOptions(options.propagation_options,
-                                    laurent_matrix_evaluator);
+                                    laurent_matrix_evaluator,
+                                    options
+                                        .coefficient_state_endpoint_matching_enabled);
     const ComplexContourPropagationResult propagation_result =
         PropagateComplexContourVector(initial_state,
                                       waypoints,
@@ -327,6 +352,33 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
           "coefficient-state ODE propagation failed closed; propagator_summary=" +
               propagation_result.diagnostics.summary);
     }
+    audit.coefficient_state_endpoint_matcher_applied =
+        propagation_result.diagnostics.coupled_frobenius_endpoint_matcher_applied;
+    audit.endpoint_anchor_node_count =
+        propagation_result.diagnostics.coupled_frobenius_anchor_count;
+    audit.endpoint_free_node_count =
+        propagation_result.diagnostics.coupled_frobenius_free_constant_count;
+    audit.endpoint_matcher_recurrence_count =
+        propagation_result.diagnostics.coupled_frobenius_recurrence_count;
+    audit.endpoint_matcher_recurrence_order =
+        propagation_result.diagnostics.coupled_frobenius_order;
+    audit.endpoint_matcher_residual_abs =
+        propagation_result.diagnostics.coupled_frobenius_basis_residual_abs;
+    audit.endpoint_matcher_boundary_condition_residual_abs =
+        propagation_result.diagnostics
+            .coupled_frobenius_boundary_condition_residual_abs;
+    audit.endpoint_matcher_boundary_condition_solve =
+        propagation_result.diagnostics.coupled_frobenius_boundary_condition_solve;
+    if (options.coefficient_state_endpoint_matching_enabled &&
+        !audit.coefficient_state_endpoint_matcher_applied) {
+      return FailureResult(
+          std::move(audit),
+          "coefficient-state-endpoint-matcher-not-applied",
+          "coefficient-state endpoint matching was requested, but the contour "
+          "propagator did not apply the augmented-state matcher; "
+          "propagator_summary=" +
+              propagation_result.diagnostics.summary);
+    }
 
     std::vector<ComplexContourVector> endpoint_coefficients =
         UnflattenComplexContourCoefficientState(propagation_result.endpoint_values,
@@ -344,8 +396,9 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
             endpoint_coefficients));
     audit.success = true;
     audit.summary =
-        "b61n coefficient-state transport propagated the closed coefficient "
-        "state through padded retained-master epsilon-order vectors; "
+        "b61n coefficient-state transport propagated and endpoint-matched the "
+        "closed coefficient state through padded retained-master epsilon-order "
+        "vectors; "
         "master_dimension=" +
         std::to_string(audit.master_dimension) +
         "; augmented_dimension=" + std::to_string(audit.augmented_dimension) +
@@ -358,6 +411,26 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
         std::to_string(audit.materialized_node_count) +
         "; matrix_coefficient_count=" +
         std::to_string(audit.matrix_coefficient_count) +
+        "; endpoint_anchor_node_count=" +
+        std::to_string(audit.endpoint_anchor_node_count) +
+        "; endpoint_free_node_count=" +
+        std::to_string(audit.endpoint_free_node_count) +
+        "; endpoint_matcher_recurrence_count=" +
+        std::to_string(audit.endpoint_matcher_recurrence_count) +
+        "; endpoint_matcher_recurrence_order=" +
+        std::to_string(audit.endpoint_matcher_recurrence_order) +
+        "; endpoint_matcher_residual_abs=" +
+        (audit.endpoint_matcher_residual_abs.empty()
+             ? std::string("not_available")
+             : audit.endpoint_matcher_residual_abs) +
+        "; endpoint_matcher_boundary_condition_residual_abs=" +
+        (audit.endpoint_matcher_boundary_condition_residual_abs.empty()
+             ? std::string("not_available")
+             : audit.endpoint_matcher_boundary_condition_residual_abs) +
+        "; endpoint_matcher_boundary_condition_solve=" +
+        (audit.endpoint_matcher_boundary_condition_solve.empty()
+             ? std::string("not_available")
+             : audit.endpoint_matcher_boundary_condition_solve) +
         "; min_state_eps_order=" + std::to_string(audit.min_state_eps_order) +
         "; max_state_eps_order=" + std::to_string(audit.max_state_eps_order) +
         "; min_matrix_eps_order=" + std::to_string(audit.min_matrix_eps_order) +

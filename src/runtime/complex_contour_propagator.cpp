@@ -26,6 +26,8 @@ constexpr std::size_t kCoupledFrobeniusRuntimeEndpointOrder = 32;
 constexpr std::size_t kCoupledFrobeniusRuntimeSampleCount = 192;
 constexpr std::size_t kAnchoredCoupledFrobeniusRuntimeEndpointOrder = 48;
 constexpr std::size_t kAnchoredCoupledFrobeniusRuntimeSampleCount = 288;
+constexpr char kB61nCoefficientStateEndpointModelKind[] =
+    "b61n-coefficient-state-regular-taylor-r0";
 
 std::string IntegratorLabel(const ComplexContourIntegrator integrator) {
   switch (integrator) {
@@ -1373,9 +1375,18 @@ bool AppliesReviewedCoupledFrobeniusRuntimeEndpointMatcher(
     const ComplexContourVector& initial_values,
     const std::vector<ComplexContourNumber>& waypoints,
     const ComplexContourPropagationOptions& options) {
+  const bool reviewed_endpoint_model =
+      options.endpoint_local_model_kind == "regular-taylor-r0" ||
+      options.endpoint_local_model_kind == kB61nCoefficientStateEndpointModelKind;
   return initial_values.size() > 1 && waypoints.size() > 2 &&
-         options.endpoint_local_model_kind == "regular-taylor-r0" &&
+         reviewed_endpoint_model &&
          IsReviewedB61nPublicationContour(waypoints);
+}
+
+bool IsB61nCoefficientStateEndpointMatcherModel(
+    const ComplexContourPropagationOptions& options) {
+  return options.endpoint_local_model_kind ==
+         kB61nCoefficientStateEndpointModelKind;
 }
 
 ComplexContourFloat ScalarFrobeniusEndpointPatchRadius(
@@ -2025,10 +2036,12 @@ struct CoupledFrobeniusEndpointMatch {
   bool success = false;
   ComplexContourVector endpoint_values;
   std::size_t recurrence_count = 0;
+  std::size_t recurrence_order = 0;
   ComplexContourFloat basis_residual_abs = 0;
   std::size_t anchored_source_count = 0;
   ComplexContourFloat anchored_source_residual_abs = 0;
   bool two_by_two_boundary_condition_solve = false;
+  std::string boundary_condition_solve = "full-constraint-match";
   std::vector<std::size_t> free_constant_rows;
   ComplexContourFloat boundary_condition_residual_abs = 0;
   std::string summary;
@@ -2319,6 +2332,7 @@ CoupledFrobeniusEndpointMatch MatchTwoFreeCoupledFrobeniusConstants(
   match.recurrence_count = recurrence_count;
   match.anchored_source_count = anchor_row_indices.size();
   match.two_by_two_boundary_condition_solve = true;
+  match.boundary_condition_solve = "2x2-match";
   match.free_constant_rows = free_rows;
   for (std::size_t row = 0; row < free_rows.size(); ++row) {
     match.boundary_condition_residual_abs =
@@ -2459,9 +2473,11 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
     match.success = true;
     match.endpoint_values = std::move(endpoint_values);
     match.recurrence_count = recurrences.size();
+    match.recurrence_order = runtime_endpoint_order;
     match.basis_residual_abs =
         MaxVectorDifference(reconstructed_match, constraint_values);
     match.anchored_source_count = anchor_row_indices.size();
+    match.free_constant_rows = free_rows;
     for (std::size_t anchor_index = 0; anchor_index < anchor_row_indices.size();
          ++anchor_index) {
       const std::size_t source_row = anchor_row_indices[anchor_index];
@@ -2471,12 +2487,21 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
                               anchor_endpoint_values[anchor_index]));
     }
   }
+  match.recurrence_order = runtime_endpoint_order;
   match.summary =
       "coupled_frobenius_endpoint_matcher_applied=true; "
       "coupled_frobenius_recurrence_count=" +
       std::to_string(match.recurrence_count) +
       "; coupled_frobenius_order=" +
       std::to_string(runtime_endpoint_order) +
+      "; coupled_frobenius_anchor_count=" +
+      std::to_string(match.anchored_source_count) +
+      "; coupled_frobenius_free_constant_count=" +
+      std::to_string(match.free_constant_rows.size()) +
+      "; coupled_frobenius_free_constant_rows=" +
+      CompactIndexVector(match.free_constant_rows) +
+      "; coupled_frobenius_boundary_condition_solve=" +
+      match.boundary_condition_solve +
       "; coupled_frobenius_sample_count=" +
       std::to_string(runtime_sample_count) +
       "; coupled_frobenius_precision_policy=" +
@@ -2491,11 +2516,13 @@ CoupledFrobeniusEndpointMatch MatchCoupledFrobeniusEndpointFromSmallEta(
       "; leading_coefficient_source=canonical-triangular-indicial-null-vector";
   if (match.two_by_two_boundary_condition_solve) {
     match.summary +=
-        "; coupled_frobenius_boundary_condition_solve=2x2-match"
-        "; coupled_frobenius_free_constant_rows=" +
-        CompactIndexVector(match.free_constant_rows) +
         "; coupled_frobenius_free_constant_source="
         "upstream-rk-propagated-match-vector"
+        "; coupled_frobenius_boundary_condition_residual_abs=" +
+        CompactFloat(match.boundary_condition_residual_abs, 40);
+  } else {
+    match.boundary_condition_residual_abs = match.basis_residual_abs;
+    match.summary +=
         "; coupled_frobenius_boundary_condition_residual_abs=" +
         CompactFloat(match.boundary_condition_residual_abs, 40);
   }
@@ -3689,6 +3716,13 @@ ComplexContourPropagationResult PropagateComplexContourVector(
     result.endpoint_values = refined.values;
     std::string scalar_frobenius_endpoint_patch_summary;
     std::string coupled_frobenius_endpoint_matcher_summary;
+    std::size_t coupled_frobenius_anchor_count = 0;
+    std::size_t coupled_frobenius_free_constant_count = 0;
+    std::size_t coupled_frobenius_recurrence_count = 0;
+    std::size_t coupled_frobenius_order = 0;
+    std::string coupled_frobenius_basis_residual_abs;
+    std::string coupled_frobenius_boundary_condition_residual_abs;
+    std::string coupled_frobenius_boundary_condition_solve;
     if (scalar_frobenius_endpoint_patch_applied) {
       const ComplexContourNumber endpoint = waypoints.back();
       const ComplexContourNumber match_eta = propagation_waypoints.back();
@@ -3750,6 +3784,16 @@ ComplexContourPropagationResult PropagateComplexContourVector(
       result.endpoint_values = match.endpoint_values;
       endpoint_vector_norm = MaxVectorNorm(result.endpoint_values);
       coupled_frobenius_endpoint_matcher_summary = "; " + match.summary;
+      coupled_frobenius_anchor_count = match.anchored_source_count;
+      coupled_frobenius_free_constant_count = match.free_constant_rows.size();
+      coupled_frobenius_recurrence_count = match.recurrence_count;
+      coupled_frobenius_order = match.recurrence_order;
+      coupled_frobenius_basis_residual_abs =
+          CompactFloat(match.basis_residual_abs, 40);
+      coupled_frobenius_boundary_condition_residual_abs =
+          CompactFloat(match.boundary_condition_residual_abs, 40);
+      coupled_frobenius_boundary_condition_solve =
+          match.boundary_condition_solve;
       if (coupled_frobenius_match_point_retargeted) {
         coupled_frobenius_endpoint_matcher_summary +=
             "; coupled_frobenius_match_eta_policy="
@@ -3761,7 +3805,9 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         AppliesReviewedB61nEndpointExtraction(result.endpoint_values,
                                              waypoints,
                                              options);
-    const bool coefficient_publication = endpoint_extraction_applied;
+    const bool coefficient_publication =
+        endpoint_extraction_applied &&
+        !IsB61nCoefficientStateEndpointMatcherModel(options);
     const bool full_eta_zero_contour_applied = false;
     result.diagnostics.success = true;
     result.diagnostics.ode_propagation_applied = true;
@@ -3774,6 +3820,19 @@ ComplexContourPropagationResult PropagateComplexContourVector(
         scalar_frobenius_endpoint_patch_applied;
     result.diagnostics.coupled_frobenius_endpoint_matcher_applied =
         coupled_frobenius_endpoint_matcher_applied;
+    result.diagnostics.coupled_frobenius_anchor_count =
+        coupled_frobenius_anchor_count;
+    result.diagnostics.coupled_frobenius_free_constant_count =
+        coupled_frobenius_free_constant_count;
+    result.diagnostics.coupled_frobenius_recurrence_count =
+        coupled_frobenius_recurrence_count;
+    result.diagnostics.coupled_frobenius_order = coupled_frobenius_order;
+    result.diagnostics.coupled_frobenius_basis_residual_abs =
+        coupled_frobenius_basis_residual_abs;
+    result.diagnostics.coupled_frobenius_boundary_condition_residual_abs =
+        coupled_frobenius_boundary_condition_residual_abs;
+    result.diagnostics.coupled_frobenius_boundary_condition_solve =
+        coupled_frobenius_boundary_condition_solve;
     result.diagnostics.dimension = initial_values.size();
     result.diagnostics.waypoint_count = waypoints.size();
     result.diagnostics.segment_count = waypoints.size() - 1;

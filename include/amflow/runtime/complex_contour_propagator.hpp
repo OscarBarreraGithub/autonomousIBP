@@ -70,6 +70,13 @@ struct ComplexContourPropagationDiagnostics {
   bool endpoint_extraction_applied = false;
   bool scalar_frobenius_endpoint_patch_applied = false;
   bool coupled_frobenius_endpoint_matcher_applied = false;
+  std::size_t coupled_frobenius_anchor_count = 0;
+  std::size_t coupled_frobenius_free_constant_count = 0;
+  std::size_t coupled_frobenius_recurrence_count = 0;
+  std::size_t coupled_frobenius_order = 0;
+  std::string coupled_frobenius_basis_residual_abs;
+  std::string coupled_frobenius_boundary_condition_residual_abs;
+  std::string coupled_frobenius_boundary_condition_solve;
   std::size_t dimension = 0;
   std::size_t waypoint_count = 0;
   std::size_t segment_count = 0;

@@ -13,6 +13,7 @@ namespace amflow {
 
 struct B61nCoefficientStateTransportOptions {
   ComplexContourPropagationOptions propagation_options;
+  bool coefficient_state_endpoint_matching_enabled = true;
 };
 
 struct B61nCoefficientStateTransportAudit {
@@ -30,6 +31,10 @@ struct B61nCoefficientStateTransportAudit {
   std::size_t public_target_node_count = 0;
   std::size_t materialized_node_count = 0;
   std::size_t matrix_coefficient_count = 0;
+  std::size_t endpoint_anchor_node_count = 0;
+  std::size_t endpoint_free_node_count = 0;
+  std::size_t endpoint_matcher_recurrence_count = 0;
+  std::size_t endpoint_matcher_recurrence_order = 0;
   std::size_t segment_count = 0;
   std::size_t adaptive_step_count = 0;
   std::size_t adaptive_rejected_step_count = 0;
@@ -43,6 +48,9 @@ struct B61nCoefficientStateTransportAudit {
   std::string finite_start_fingerprint;
   std::string contour_fingerprint;
   std::string endpoint_fingerprint;
+  std::string endpoint_matcher_residual_abs;
+  std::string endpoint_matcher_boundary_condition_residual_abs;
+  std::string endpoint_matcher_boundary_condition_solve;
   std::string propagation_summary;
   std::string summary;
 };

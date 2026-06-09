@@ -186,16 +186,27 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
   Expect(evaluation.reference_validation_passed &&
              evaluation.reference_min_digit_agreement == 999,
          "D7 scoped candidate should record the AMFlow reference validation");
-  Expect(evaluation.candidate_series.terms.size() == 1,
-         "D7 scoped candidate should publish only the reviewed eps^0 term");
+  Expect(evaluation.candidate_series.terms.size() == 2,
+         "D7 scoped candidate should publish the reviewed eps^0 and eps^1 terms");
   const amflow::CutkoskyResidueSeriesTerm& eps0 =
       ResidueTermAt(evaluation.candidate_series, 0);
   ExpectContains(eps0.coefficient.real,
                  "0.00003072064900647741498508445978252334878466335562820067",
                  "D7 scoped candidate should carry the reviewed AMFlow coefficient");
+  const amflow::CutkoskyResidueSeriesTerm& eps1 =
+      ResidueTermAt(evaluation.candidate_series, 1);
+  Expect(eps1.coefficient_label ==
+             "automatic_phasespace_D7_weighted_residue_eps1",
+         "D7 scoped candidate should label the reviewed eps^1 coefficient");
+  ExpectContains(eps1.coefficient.real,
+                 "0.00007356405785821532462745545720829135530511062062212243",
+                 "D7 scoped candidate should carry the reviewed eps^1 AMFlow coefficient");
   Expect(eps0.provenance.coefficient_published &&
              !eps0.provenance.synthetic_fixture &&
-             !eps0.provenance.retained_solution_samples_used,
+             !eps0.provenance.retained_solution_samples_used &&
+             eps1.provenance.coefficient_published &&
+             !eps1.provenance.synthetic_fixture &&
+             !eps1.provenance.retained_solution_samples_used,
          "D7 scoped candidate should carry publishable non-synthetic provenance");
   amflow::ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
 
@@ -306,9 +317,9 @@ void ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest() {
           1,
           70);
   Expect(d7.publication_gate_passed && d7.live_coefficients_available,
-         "D7 eps^0 should remain the only reviewed published scoped weight");
+         "D7 eps^0..eps^1 should remain the only reviewed published scoped weight");
   Expect(d7.reference_validation_passed,
-         "D7 eps^0 should remain tied to the stored AMFlow comparison");
+         "D7 eps^0..eps^1 should remain tied to the stored AMFlow comparison");
   Expect(!d7.full_eta_zero_contour_applied,
          "the scoped D7 coefficient must not close the full weighted residue lane");
   ExpectContains(d7.summary,

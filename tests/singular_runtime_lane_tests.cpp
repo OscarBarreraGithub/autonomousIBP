@@ -2222,8 +2222,9 @@ void B63nScopedWeightedResiduePublishesReviewedD7TermTest() {
          "b63n scoped D7 weighted residue must not promote full eta-zero coverage");
   Expect(evaluation.failure_code.empty(),
          "b63n scoped D7 weighted residue should clear the failure code");
-  Expect(evaluation.candidate_series.terms.size() == 1,
-         "b63n scoped D7 weighted residue should publish only the reviewed eps^0 term");
+  Expect(evaluation.candidate_series.terms.size() == 2,
+         "b63n scoped D7 weighted residue should publish the reviewed eps^0 and "
+         "eps^1 terms");
   const amflow::CutkoskyResidueSeriesTerm& eps0 =
       CutkoskyResidueTermAt(evaluation.candidate_series, 0, 0, 0, "integer");
   Expect(eps0.coefficient_label ==
@@ -2233,9 +2234,21 @@ void B63nScopedWeightedResiduePublishesReviewedD7TermTest() {
                  "0.00003072064900647741498508445978252334878466335562820067",
                  "b63n scoped D7 weighted residue should carry the reviewed eps^0 "
                  "coefficient");
+  const amflow::CutkoskyResidueSeriesTerm& eps1 =
+      CutkoskyResidueTermAt(evaluation.candidate_series, 1, 0, 0, "integer");
+  Expect(eps1.coefficient_label ==
+             "automatic_phasespace_D7_weighted_residue_eps1",
+         "b63n scoped D7 weighted residue should use the eps^1 coefficient label");
+  ExpectContains(eps1.coefficient.real,
+                 "0.00007356405785821532462745545720829135530511062062212243",
+                 "b63n scoped D7 weighted residue should carry the reviewed eps^1 "
+                 "coefficient");
   Expect(eps0.provenance.coefficient_published &&
              !eps0.provenance.synthetic_fixture &&
-             !eps0.provenance.retained_solution_samples_used,
+             !eps0.provenance.retained_solution_samples_used &&
+             eps1.provenance.coefficient_published &&
+             !eps1.provenance.synthetic_fixture &&
+             !eps1.provenance.retained_solution_samples_used,
          "b63n scoped D7 weighted residue should carry publishable provenance");
   amflow::ValidateCutkoskyResiduePublicationGate(evaluation.candidate_series);
 

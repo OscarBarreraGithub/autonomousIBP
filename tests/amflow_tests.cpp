@@ -49416,6 +49416,21 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row audit should verify row 6 can depend on row 5 only after "
                  "row 5 transport");
   ExpectContains(stripped_json,
+                 "laurent_matrix_eps_order_min=0; laurent_matrix_eps_order_max=1",
+                 "b61n coupled-row audit should expose the real Laurent matrix epsilon "
+                 "range");
+  ExpectContains(stripped_json,
+                 "laurent_matrix_coefficient_count=2",
+                 "b61n coupled-row audit should expose the ordered Laurent matrix "
+                 "coefficient count");
+  ExpectContains(stripped_json,
+                 "laurent_matrix_evaluator_fingerprint=fnv1a64:",
+                 "b61n coupled-row audit should fingerprint the Laurent matrix evaluator");
+  ExpectContains(stripped_json,
+                 "target_coefficients_reconstructed_from_epsilon_samples=false",
+                 "b61n coupled-row Laurent evaluator audit should forbid endpoint "
+                 "sample reconstruction");
+  ExpectContains(stripped_json,
                  "ode_propagation_applied=false; coefficient_publication=false; "
                  "final_solution_samples_used_as_input=false",
                  "b61n coupled-row readiness audit should remain non-publishing before the "

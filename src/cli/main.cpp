@@ -33,6 +33,7 @@
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
+#include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
@@ -2119,6 +2120,7 @@ bool NearlyEqual(const BigFloat& lhs, const BigFloat& rhs) {
 BigComplex RealBigComplex(const BigFloat& value);
 BigComplex BigComplexPowNegImBranch(const BigComplex& base,
                                      const BigComplex& exponent);
+amflow::ComplexContourNumber ToComplexContourNumber(const BigComplex& value);
 
 std::string RequireAmflowBoundaryRawFile(const DirectSolveSeriesSpec& spec,
                                          const std::string& name) {
@@ -6194,11 +6196,17 @@ struct B61nCoupledRowReadinessAudit {
   std::size_t coefficient_target_graph_edge_count = 0;
   std::size_t coefficient_target_graph_matrix_support_count = 0;
   std::size_t coefficient_target_graph_blocked_edge_count = 0;
+  std::size_t laurent_matrix_coefficient_count = 0;
+  std::size_t laurent_matrix_support_count = 0;
+  int min_laurent_matrix_eps_order = 0;
+  int max_laurent_matrix_eps_order = 0;
   bool lower_triangular_dependency_order = false;
   bool controlled_eta_infinity_initial_data_certified = false;
   std::string transport_order_summary;
   std::string dependency_summary;
   std::string coefficient_target_graph_summary;
+  std::string laurent_matrix_evaluator_fingerprint;
+  std::string laurent_matrix_evaluator_summary;
   std::string summary;
 };
 
@@ -6293,6 +6301,29 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
   audit.coefficient_target_graph_blocked_edge_count =
       coefficient_target_graph.blocked_edges.size();
   audit.coefficient_target_graph_summary = coefficient_target_graph.summary;
+  amflow::B61nLaurentNumericSubstitutions laurent_numeric_substitutions;
+  for (const auto& [symbol, value] :
+       ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw)) {
+    laurent_numeric_substitutions.emplace(symbol, ToComplexContourNumber(value));
+  }
+  const amflow::B61nLaurentMatrixEvaluator laurent_matrix_evaluator =
+      amflow::BuildB61nRealLaurentMatrixEvaluator(
+          matrix_it->second,
+          spec.variable,
+          laurent_numeric_substitutions,
+          coefficient_target_graph);
+  audit.laurent_matrix_coefficient_count =
+      laurent_matrix_evaluator.audit.matrix_coefficient_count;
+  audit.laurent_matrix_support_count =
+      laurent_matrix_evaluator.audit.nonzero_support.size();
+  audit.min_laurent_matrix_eps_order =
+      laurent_matrix_evaluator.audit.min_matrix_eps_order;
+  audit.max_laurent_matrix_eps_order =
+      laurent_matrix_evaluator.audit.max_matrix_eps_order;
+  audit.laurent_matrix_evaluator_fingerprint =
+      laurent_matrix_evaluator.audit.fingerprint;
+  audit.laurent_matrix_evaluator_summary =
+      laurent_matrix_evaluator.audit.summary;
 
   std::vector<std::string> row_summaries;
   bool lower_triangular = true;
@@ -6363,6 +6394,18 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       std::to_string(audit.coefficient_target_graph_blocked_edge_count) +
       "; coefficient_target_graph={" + audit.coefficient_target_graph_summary +
       "}" +
+      "; laurent_matrix_eps_order_min=" +
+      std::to_string(audit.min_laurent_matrix_eps_order) +
+      "; laurent_matrix_eps_order_max=" +
+      std::to_string(audit.max_laurent_matrix_eps_order) +
+      "; laurent_matrix_coefficient_count=" +
+      std::to_string(audit.laurent_matrix_coefficient_count) +
+      "; laurent_matrix_support_count=" +
+      std::to_string(audit.laurent_matrix_support_count) +
+      "; laurent_matrix_evaluator_fingerprint=" +
+      audit.laurent_matrix_evaluator_fingerprint +
+      "; laurent_matrix_evaluator={" +
+      audit.laurent_matrix_evaluator_summary + "}" +
       "; ode_propagation_applied=false; coefficient_publication=false; "
       "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
       "stays false.";

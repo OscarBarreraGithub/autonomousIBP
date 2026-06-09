@@ -1,6 +1,7 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
+#include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
@@ -6100,6 +6101,71 @@ void B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest()
                          "sample fitting");
 }
 
+bool B61nSupportHas(const std::vector<amflow::B61nMatrixEpsilonSupport>& support,
+                    std::size_t row,
+                    std::size_t column,
+                    int eps_order);
+
+void B61nLaurentMatrixEvaluatorOrdersSyntheticEpsCoefficientsTest() {
+  const std::vector<std::vector<std::string>> matrix = {
+      {"eps/eta", "0"},
+      {"alpha + eps*(eta^2 + I)", "0"},
+  };
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support =
+      amflow::ExtractB61nMatrixEpsilonSupport(matrix);
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          {"source", "target"},
+          support,
+          {{-1, 1}, {-1, 1}},
+          {{1, 0}});
+  const amflow::B61nLaurentNumericSubstitutions substitutions = {
+      {"alpha", {3, -2}},
+  };
+  const B61nContourNumber eta{2, -1};
+  const amflow::B61nLaurentMatrixEvaluation evaluation =
+      amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta(
+          matrix, "eta", substitutions, eta);
+
+  Expect(evaluation.min_matrix_eps_order == 0 &&
+             evaluation.max_matrix_eps_order == 1,
+         "b61n Laurent evaluator should expose the synthetic eps^0..eps^1 range");
+  Expect(evaluation.matrix_coefficient_count == 2 &&
+             evaluation.matrix_coefficients.size() == 2,
+         "b61n Laurent evaluator should return ordered coefficient matrices");
+  Expect(B61nSupportHas(evaluation.nonzero_support, 0, 0, 1),
+         "b61n Laurent evaluator should record eps^1 support for row 0");
+  Expect(B61nSupportHas(evaluation.nonzero_support, 1, 0, 0) &&
+             B61nSupportHas(evaluation.nonzero_support, 1, 0, 1),
+         "b61n Laurent evaluator should record row 1 eps^0 and eps^1 support");
+  ExpectB61nContourClose(evaluation.matrix_coefficients[0][1][0],
+                         {3, -2},
+                         B61nContourFloat("1e-90"),
+                         "b61n Laurent evaluator eps^0 coefficient should use "
+                         "numeric substitutions");
+  ExpectB61nContourClose(evaluation.matrix_coefficients[1][1][0],
+                         {3, -3},
+                         B61nContourFloat("1e-90"),
+                         "b61n Laurent evaluator eps^1 coefficient should keep eta "
+                         "powers and I");
+  ExpectB61nContourClose(
+      evaluation.matrix_coefficients[1][0][0],
+      {B61nContourFloat(2) / B61nContourFloat(5),
+       B61nContourFloat(1) / B61nContourFloat(5)},
+      B61nContourFloat("1e-90"),
+      "b61n Laurent evaluator should divide by the supplied eta before "
+      "coefficient-state transport");
+
+  const amflow::B61nLaurentMatrixEvaluator evaluator =
+      amflow::BuildB61nRealLaurentMatrixEvaluator(
+          matrix, "eta", substitutions, graph);
+  Expect(evaluator.audit.matrix_coefficient_count == 2,
+         "b61n Laurent evaluator audit should record coefficient matrix count");
+  ExpectContains(evaluator.audit.summary,
+                 "target_coefficients_reconstructed_from_epsilon_samples=false",
+                 "b61n Laurent evaluator audit must forbid sample reconstruction");
+}
+
 std::size_t B61nTestMasterIndex(const std::vector<std::string>& labels,
                                 const std::string& label) {
   const auto it = std::find(labels.begin(), labels.end(), label);
@@ -6334,6 +6400,87 @@ void B61nCoefficientTargetGraphFailsClosedOnMalformedInputsTest() {
       },
       "missing retained master",
       "b61n reviewed row56 graph should fail closed on missing master labels");
+}
+
+void B61nRealLaurentMatrixEvaluatorFingerprintsRow56SupportTest() {
+  const std::vector<std::string> labels =
+      amflow::B61nRow56RetainedMasterLabels();
+  const std::vector<std::vector<std::string>> matrix =
+      MakeB61nRealEtaMatrixSupportFixture();
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support =
+      amflow::ExtractB61nMatrixEpsilonSupport(matrix);
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nRow56CoefficientTargetGraph(labels, support);
+  const amflow::B61nLaurentMatrixEvaluator evaluator =
+      amflow::BuildB61nRealLaurentMatrixEvaluator(
+          matrix, "eta", {}, graph);
+  const amflow::B61nLaurentMatrixEvaluator evaluator_again =
+      amflow::BuildB61nRealLaurentMatrixEvaluator(
+          matrix, "eta", {}, graph);
+
+  Expect(evaluator.audit.min_matrix_eps_order == 0 &&
+             evaluator.audit.max_matrix_eps_order == 1,
+         "b61n real Laurent evaluator should expose eps^0..eps^1 support");
+  Expect(evaluator.audit.matrix_coefficient_count == 2,
+         "b61n real Laurent evaluator should publish two ordered matrix "
+         "coefficient slots");
+  Expect(evaluator.audit.nonzero_support.size() == support.size(),
+         "b61n real Laurent evaluator audit should preserve raw support count");
+  Expect(evaluator.audit.fingerprint == evaluator_again.audit.fingerprint,
+         "b61n real Laurent evaluator fingerprint should be deterministic");
+  Expect(evaluator.audit.fingerprint == "fnv1a64:07e26515b40e0101",
+         "b61n real Laurent evaluator fingerprint should remain stable");
+  Expect(B61nSupportHas(evaluator.audit.nonzero_support,
+                        B61nTestMasterIndex(labels, "box[1,1,1,1]"),
+                        B61nTestMasterIndex(labels, "box[1,0,1,1]"),
+                        1),
+         "b61n real Laurent evaluator should retain row 6 <- row 5 eps^1 "
+         "support");
+  ExpectContains(evaluator.audit.summary,
+                 "target_graph_node_count=",
+                 "b61n real Laurent evaluator should bind the support audit to "
+                 "the target graph");
+
+  const amflow::B61nLaurentMatrixEvaluation evaluated =
+      amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta(
+          matrix, "eta", {}, {0, -2});
+  Expect(evaluated.matrix_coefficients.size() == 2,
+         "b61n real Laurent evaluator should return ordered coefficient matrices "
+         "at a concrete eta");
+  Expect(B61nSupportHas(evaluated.nonzero_support,
+                        B61nTestMasterIndex(labels, "box[1,1,1,1]"),
+                        B61nTestMasterIndex(labels, "box[1,0,1,1]"),
+                        1),
+         "b61n real Laurent evaluator should evaluate row 6 <- row 5 eps^1 "
+         "before propagation");
+}
+
+void B61nLaurentMatrixEvaluatorFailsClosedBeforePropagationTest() {
+  ExpectInvalidArgumentContains(
+      [] {
+        static_cast<void>(amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta(
+            {{"1+"}}, "eta", {}, {0, -1}));
+      },
+      "malformed",
+      "b61n Laurent evaluator should reject unparsable cells before propagation");
+  ExpectInvalidArgumentContains(
+      [] {
+        const B61nContourFloat infinity =
+            std::numeric_limits<B61nContourFloat>::infinity();
+        static_cast<void>(amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta(
+            {{"bad + eps"}}, "eta", {{"bad", {infinity, 0}}}, {0, -1}));
+      },
+      "nonfinite",
+      "b61n Laurent evaluator should reject nonfinite coefficients before "
+      "propagation");
+  ExpectInvalidArgumentContains(
+      [] {
+        static_cast<void>(amflow::EvaluateB61nLaurentMatrixCoefficientsAtEta(
+            {{"1/(1 + eps)"}}, "eta", {}, {0, -1}));
+      },
+      "monomial epsilon denominators",
+      "b61n Laurent evaluator should fail closed on unsupported infinite "
+      "epsilon series");
 }
 
 void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
@@ -7486,9 +7633,12 @@ int main() {
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest();
+    B61nLaurentMatrixEvaluatorOrdersSyntheticEpsCoefficientsTest();
     B61nCoefficientTargetGraphClosesSyntheticEpsShiftedDependencyTest();
     B61nCoefficientTargetGraphInventoriesRealRow56SupportTest();
     B61nCoefficientTargetGraphFailsClosedOnMalformedInputsTest();
+    B61nRealLaurentMatrixEvaluatorFingerprintsRow56SupportTest();
+    B61nLaurentMatrixEvaluatorFailsClosedBeforePropagationTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();

@@ -33,6 +33,7 @@ add_library(amflow
   src/runtime/artifact_store.cpp
   src/runtime/auxiliary_family.cpp
   src/runtime/b61n_coefficient_target_graph.cpp
+  src/runtime/b61n_laurent_matrix_evaluator.cpp
   src/runtime/boundary_generation.cpp
   src/runtime/complex_contour_propagator.cpp
   src/runtime/continuation_path.cpp

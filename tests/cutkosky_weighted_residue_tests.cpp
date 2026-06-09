@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -25,9 +26,20 @@ void ExpectContains(const std::string& value,
   Expect(value.find(needle) != std::string::npos, message);
 }
 
+void ExpectEqual(const std::string& actual,
+                 const std::string& expected,
+                 const std::string& message) {
+  Expect(actual == expected,
+         message + ": expected " + expected + ", got " + actual);
+}
+
 constexpr const char* kD246ReferenceEvidenceSidecar =
     "tools/reference-harness/specs/m6/lane146/"
     "b63n-d246-weighted-residue-reference-evidence.json";
+
+constexpr const char* kLane146Selected4Compare30 =
+    "tools/reference-harness/specs/m6/lane146/"
+    "automatic_phasespace.selected4-cutkosky.compare30.json";
 
 std::filesystem::path LocateRepositoryRoot() {
   std::filesystem::path current = std::filesystem::current_path();
@@ -53,6 +65,20 @@ std::string ReadTextFileIfPresent(const std::filesystem::path& path) {
   if (!input) {
     throw std::runtime_error("unable to read b63n D2/D4/D6 evidence sidecar: " +
                              path.string());
+  }
+  std::ostringstream buffer;
+  buffer << input.rdbuf();
+  return buffer.str();
+}
+
+std::string ReadRequiredTextFile(const std::filesystem::path& path,
+                                 const std::string& label) {
+  if (!std::filesystem::exists(path)) {
+    throw std::runtime_error("missing " + label + ": " + path.string());
+  }
+  std::ifstream input(path);
+  if (!input) {
+    throw std::runtime_error("unable to read " + label + ": " + path.string());
   }
   std::ostringstream buffer;
   buffer << input.rdbuf();
@@ -143,6 +169,196 @@ const amflow::CutkoskyResidueSeriesTerm& ResidueTermAt(
   }
   throw std::runtime_error("missing scoped weighted residue eps order " +
                            std::to_string(eps_order));
+}
+
+std::string JsonKeyToken(const std::string& key) {
+  return "\"" + key + "\"";
+}
+
+std::size_t FindMatchingJsonDelimiter(const std::string& text,
+                                      const std::size_t open_pos,
+                                      const char open,
+                                      const char close,
+                                      const std::string& label) {
+  if (open_pos >= text.size() || text[open_pos] != open) {
+    throw std::runtime_error("malformed " + label + ": missing opening delimiter");
+  }
+
+  int depth = 0;
+  bool in_string = false;
+  bool escaped = false;
+  for (std::size_t pos = open_pos; pos < text.size(); ++pos) {
+    const char ch = text[pos];
+    if (in_string) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch == '\\') {
+        escaped = true;
+      } else if (ch == '"') {
+        in_string = false;
+      }
+      continue;
+    }
+    if (ch == '"') {
+      in_string = true;
+      continue;
+    }
+    if (ch == open) {
+      ++depth;
+      continue;
+    }
+    if (ch == close) {
+      --depth;
+      if (depth == 0) {
+        return pos;
+      }
+    }
+  }
+  throw std::runtime_error("malformed " + label + ": unterminated JSON delimiter");
+}
+
+std::size_t FindJsonValueStart(const std::string& object,
+                               const std::string& key,
+                               const std::string& label) {
+  const std::size_t key_pos = object.find(JsonKeyToken(key));
+  if (key_pos == std::string::npos) {
+    throw std::runtime_error("missing JSON key " + key + " in " + label);
+  }
+  const std::size_t colon = object.find(':', key_pos + key.size() + 2);
+  if (colon == std::string::npos) {
+    throw std::runtime_error("missing JSON value separator for " + key +
+                             " in " + label);
+  }
+  std::size_t pos = colon + 1;
+  while (pos < object.size() &&
+         std::isspace(static_cast<unsigned char>(object[pos])) != 0) {
+    ++pos;
+  }
+  if (pos == object.size()) {
+    throw std::runtime_error("empty JSON value for " + key + " in " + label);
+  }
+  return pos;
+}
+
+std::string ExtractJsonStringField(const std::string& object,
+                                   const std::string& key,
+                                   const std::string& label) {
+  const std::size_t start = FindJsonValueStart(object, key, label);
+  if (object[start] != '"') {
+    throw std::runtime_error("JSON key " + key + " in " + label +
+                             " is not a string");
+  }
+  std::string value;
+  bool escaped = false;
+  for (std::size_t pos = start + 1; pos < object.size(); ++pos) {
+    const char ch = object[pos];
+    if (escaped) {
+      value.push_back(ch);
+      escaped = false;
+      continue;
+    }
+    if (ch == '\\') {
+      escaped = true;
+      continue;
+    }
+    if (ch == '"') {
+      return value;
+    }
+    value.push_back(ch);
+  }
+  throw std::runtime_error("unterminated JSON string for " + key + " in " +
+                           label);
+}
+
+int ExtractJsonIntField(const std::string& object,
+                        const std::string& key,
+                        const std::string& label) {
+  std::size_t pos = FindJsonValueStart(object, key, label);
+  const std::size_t begin = pos;
+  if (object[pos] == '-') {
+    ++pos;
+  }
+  while (pos < object.size() &&
+         std::isdigit(static_cast<unsigned char>(object[pos])) != 0) {
+    ++pos;
+  }
+  if (pos == begin || (pos == begin + 1 && object[begin] == '-')) {
+    throw std::runtime_error("JSON key " + key + " in " + label +
+                             " is not an integer");
+  }
+  return std::stoi(object.substr(begin, pos - begin));
+}
+
+bool ExtractJsonBoolField(const std::string& object,
+                          const std::string& key,
+                          const std::string& label) {
+  const std::size_t pos = FindJsonValueStart(object, key, label);
+  if (object.compare(pos, 4, "true") == 0) {
+    return true;
+  }
+  if (object.compare(pos, 5, "false") == 0) {
+    return false;
+  }
+  throw std::runtime_error("JSON key " + key + " in " + label +
+                           " is not a bool");
+}
+
+std::string ExtractJsonArrayField(const std::string& object,
+                                  const std::string& key,
+                                  const std::string& label) {
+  const std::size_t start = FindJsonValueStart(object, key, label);
+  if (object[start] != '[') {
+    throw std::runtime_error("JSON key " + key + " in " + label +
+                             " is not an array");
+  }
+  const std::size_t end =
+      FindMatchingJsonDelimiter(object, start, '[', ']', label + "." + key);
+  return object.substr(start, end - start + 1);
+}
+
+std::vector<std::string> ExtractJsonObjectsFromArray(
+    const std::string& array_text,
+    const std::string& label) {
+  std::vector<std::string> objects;
+  for (std::size_t pos = 0; pos < array_text.size(); ++pos) {
+    if (array_text[pos] != '{') {
+      continue;
+    }
+    const std::size_t end =
+        FindMatchingJsonDelimiter(array_text, pos, '{', '}', label);
+    objects.push_back(array_text.substr(pos, end - pos + 1));
+    pos = end;
+  }
+  if (objects.empty()) {
+    throw std::runtime_error("JSON array " + label + " contains no objects");
+  }
+  return objects;
+}
+
+std::string FindJsonObjectByStringField(const std::string& array_text,
+                                        const std::string& field,
+                                        const std::string& expected,
+                                        const std::string& label) {
+  for (const std::string& object : ExtractJsonObjectsFromArray(array_text, label)) {
+    if (ExtractJsonStringField(object, field, label) == expected) {
+      return object;
+    }
+  }
+  throw std::runtime_error("unable to find " + label + " object with " + field +
+                           "=" + expected);
+}
+
+std::string FindJsonObjectByIntField(const std::string& array_text,
+                                     const std::string& field,
+                                     const int expected,
+                                     const std::string& label) {
+  for (const std::string& object : ExtractJsonObjectsFromArray(array_text, label)) {
+    if (ExtractJsonIntField(object, field, label) == expected) {
+      return object;
+    }
+  }
+  throw std::runtime_error("unable to find " + label + " object with " + field +
+                           "=" + std::to_string(expected));
 }
 
 void ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest() {
@@ -317,6 +533,90 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
+void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
+  const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          6,
+          3,
+          70);
+  Expect(evaluation.publication_gate_passed &&
+             evaluation.live_coefficients_available,
+         "D7 scoped runtime surface must be published before AMFlow parity");
+  ExpectEqual(evaluation.reference_validation_source,
+              kLane146Selected4Compare30,
+              "D7 scoped runtime surface should name the retained AMFlow compare30");
+  Expect(evaluation.reference_min_digit_agreement >= 30,
+         "D7 scoped runtime surface should retain compare30 digit agreement");
+
+  const std::string compare_json = ReadRequiredTextFile(
+      LocateRepositoryRoot() / kLane146Selected4Compare30,
+      "lane146 b63n selected4 compare30");
+  const std::string integrals =
+      ExtractJsonArrayField(compare_json, "integrals", "lane146 compare30");
+  const std::string d7_integral = FindJsonObjectByStringField(
+      integrals,
+      "integral",
+      "phase[1,1,1,0,1,0,1]",
+      "lane146 compare30 integrals");
+  const std::string coefficients = ExtractJsonArrayField(
+      d7_integral,
+      "coefficients",
+      "lane146 compare30 D7 integral");
+
+  for (const int eps_order : {0, 1, 2, 3}) {
+    const std::string coefficient = FindJsonObjectByIntField(
+        coefficients,
+        "order",
+        eps_order,
+        "lane146 compare30 D7 coefficients");
+    Expect(ExtractJsonBoolField(coefficient,
+                                "amflow_present",
+                                "lane146 compare30 D7 coefficient"),
+           "D7 eps^" + std::to_string(eps_order) +
+               " must retain AMFlow presence");
+    Expect(ExtractJsonBoolField(coefficient,
+                                "cpp_present",
+                                "lane146 compare30 D7 coefficient"),
+           "D7 eps^" + std::to_string(eps_order) +
+               " must retain C++ presence");
+    Expect(ExtractJsonBoolField(coefficient,
+                                "passed",
+                                "lane146 compare30 D7 coefficient"),
+           "D7 eps^" + std::to_string(eps_order) +
+               " must pass the retained AMFlow comparison");
+    Expect(ExtractJsonIntField(coefficient,
+                               "real_agreement_digits",
+                               "lane146 compare30 D7 coefficient") >= 30,
+           "D7 eps^" + std::to_string(eps_order) +
+               " must retain at least 30 real agreement digits");
+    Expect(ExtractJsonIntField(coefficient,
+                               "imag_agreement_digits",
+                               "lane146 compare30 D7 coefficient") >= 30,
+           "D7 eps^" + std::to_string(eps_order) +
+               " must retain at least 30 imaginary agreement digits");
+
+    const amflow::CutkoskyResidueSeriesTerm& term =
+        ResidueTermAt(evaluation.candidate_series, eps_order);
+    ExpectEqual(term.coefficient.real,
+                ExtractJsonStringField(coefficient,
+                                       "amflow_real",
+                                       "lane146 compare30 D7 coefficient"),
+                "published D7 eps^" + std::to_string(eps_order) +
+                    " real coefficient must match AMFlow compare30");
+    ExpectEqual(term.coefficient.imaginary,
+                ExtractJsonStringField(coefficient,
+                                       "amflow_imag",
+                                       "lane146 compare30 D7 coefficient"),
+                "published D7 eps^" + std::to_string(eps_order) +
+                    " imaginary coefficient must match AMFlow compare30");
+    ExpectEqual(term.provenance.source,
+                kLane146Selected4Compare30,
+                "published D7 eps^" + std::to_string(eps_order) +
+                    " provenance must bind the compare30 fixture");
+  }
+}
+
 void ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest() {
   struct ExpectedWeight {
     std::size_t denominator_index;
@@ -437,9 +737,9 @@ void ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest() {
           1,
           70);
   Expect(d7.publication_gate_passed && d7.live_coefficients_available,
-         "D7 eps^0..eps^1 should remain the only reviewed published scoped weight");
+         "D7 eps^0..eps^3 should remain the only reviewed published scoped weight");
   Expect(d7.reference_validation_passed,
-         "D7 eps^0..eps^1 should remain tied to the stored AMFlow comparison");
+         "D7 eps^0..eps^3 should remain tied to the stored AMFlow comparison");
   Expect(!d7.full_eta_zero_contour_applied,
          "the scoped D7 coefficient must not close the full weighted residue lane");
   ExpectContains(d7.summary,
@@ -470,6 +770,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();
     ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest();
     ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest();

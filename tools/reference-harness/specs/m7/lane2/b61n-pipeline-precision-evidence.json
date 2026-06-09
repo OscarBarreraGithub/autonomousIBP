@@ -1,0 +1,195 @@
+{
+  "evidence_id": "b61n-pipeline-precision-evidence",
+  "generated_at_utc": "2026-06-09T21:54:05Z",
+  "method": {
+    "amflow_reference_values_used_for_digit_count": false,
+    "fallback": "Re-render the exact rational row 5/6 coefficients already emitted by the successful c267 stripped C++ pipeline artifact at 80, 120, and 160 fractional digits, without using AMFlow reference values.",
+    "fresh_full_recompute_attempt": {
+      "attempted": true,
+      "claim_made_from_attempt": "none",
+      "command": "./build/amflow-cli solve-series build/b61n-precision-evidence/complex_kinematics.stripped.json --eps-order 0 --digits 80 --out build/b61n-precision-evidence/complex_kinematics.stripped.eps0.digits80.cpp-result.json",
+      "result": "terminated manually after more than 10 minutes of CPU-bound runtime with no output file; scoped down per lane instruction"
+    },
+    "reference_values_used_for_uplift": false
+  },
+  "schema_version": 1,
+  "scope": "post-M7 b61n row 5/6 reference-floor alternative-path precision evidence",
+  "source_cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
+  "source_diagnostic": "tools/reference-harness/specs/m7/lane2/b61n-row56-specific-target-diagnostic.json",
+  "summary": {
+    "all_standard_serializations_match_exact_rational_80": true,
+    "all_uplifted_160_fraction_digits_exceed_reference_floor": true,
+    "all_uplifted_160_serializations_extend_standard_80": true,
+    "all_uplifted_tail_after_standard_80_has_nonzero_digit": true,
+    "classification": "our emitted c267 row 5/6 coefficient payload is not capped at the retained AMFlow reference floor; the remaining AMFlow comparison ceiling is reference-limited, while a fresh full recompute exceeded this lane budget",
+    "minimum_reference_floor_digits": 11,
+    "minimum_uplifted_fraction_digits": 160,
+    "target_count": 4
+  },
+  "targets": [
+    {
+      "additional_fraction_digits_after_standard_80": {
+        "imag": 80,
+        "real": 80
+      },
+      "digits_beyond_reference_floor_in_uplifted_160": {
+        "imag": 149,
+        "real": 149
+      },
+      "eps_order": 0,
+      "integral": "box[1,0,1,1]",
+      "reference_floor_imag_digits": 11,
+      "reference_floor_real_digits": 11,
+      "standard_80": {
+        "imag": "-0.01930683586144087109219583118529408973713423679903031785824652450686944768601191",
+        "real": "0.03334668259873120446547850833937957397959077940049829323854464939016480039320452"
+      },
+      "standard_serialization_matches_exact_rational_80": true,
+      "standard_serialized_fraction_digits": {
+        "imag": 80,
+        "real": 80
+      },
+      "uplifted_120_prefix": {
+        "imag": "-0.019306835861440871092195831185294089737134236799030317858246524506869447686011917373454378759...",
+        "real": "0.0333466825987312044654785083393795739795907794004982932385446493901648003932045245035595368380..."
+      },
+      "uplifted_160_extends_standard_80": true,
+      "uplifted_160_prefix": {
+        "imag": "-0.019306835861440871092195831185294089737134236799030317858246524506869447686011917373454378759...",
+        "real": "0.0333466825987312044654785083393795739795907794004982932385446493901648003932045245035595368380..."
+      },
+      "uplifted_fraction_digits_exceed_reference_floor": true,
+      "uplifted_serialized_fraction_digits": {
+        "imag": 160,
+        "real": 160
+      },
+      "uplifted_tail_after_standard_80_has_nonzero_digit": {
+        "imag": true,
+        "real": true
+      }
+    },
+    {
+      "additional_fraction_digits_after_standard_80": {
+        "imag": 80,
+        "real": 80
+      },
+      "digits_beyond_reference_floor_in_uplifted_160": {
+        "imag": 114,
+        "real": 114
+      },
+      "eps_order": -2,
+      "integral": "box[1,1,1,1]",
+      "reference_floor_imag_digits": 46,
+      "reference_floor_real_digits": 46,
+      "standard_80": {
+        "imag": "-0.00000119864984081930113919680871466380269264715920794625857819366046809364193862",
+        "real": "-0.00004914464347359134670706915730121591039852690291506064021870893854319380210724"
+      },
+      "standard_serialization_matches_exact_rational_80": true,
+      "standard_serialized_fraction_digits": {
+        "imag": 80,
+        "real": 80
+      },
+      "uplifted_120_prefix": {
+        "imag": "-0.000001198649840819301139196808714663802692647159207946258578193660468093641938627617479317465...",
+        "real": "-0.000049144643473591346707069157301215910398526902915060640218708938543193802107248377115929930..."
+      },
+      "uplifted_160_extends_standard_80": true,
+      "uplifted_160_prefix": {
+        "imag": "-0.000001198649840819301139196808714663802692647159207946258578193660468093641938627617479317465...",
+        "real": "-0.000049144643473591346707069157301215910398526902915060640218708938543193802107248377115929930..."
+      },
+      "uplifted_fraction_digits_exceed_reference_floor": true,
+      "uplifted_serialized_fraction_digits": {
+        "imag": 160,
+        "real": 160
+      },
+      "uplifted_tail_after_standard_80_has_nonzero_digit": {
+        "imag": true,
+        "real": true
+      }
+    },
+    {
+      "additional_fraction_digits_after_standard_80": {
+        "imag": 80,
+        "real": 80
+      },
+      "digits_beyond_reference_floor_in_uplifted_160": {
+        "imag": 147,
+        "real": 148
+      },
+      "eps_order": -1,
+      "integral": "box[1,1,1,1]",
+      "reference_floor_imag_digits": 13,
+      "reference_floor_real_digits": 12,
+      "standard_80": {
+        "imag": "0.00012914641364885538272225676086967350275198853801728101296322594198715132323725",
+        "real": "0.00057792522543171500632185886157378809236040367537343962430187505161835128920535"
+      },
+      "standard_serialization_matches_exact_rational_80": true,
+      "standard_serialized_fraction_digits": {
+        "imag": 80,
+        "real": 80
+      },
+      "uplifted_120_prefix": {
+        "imag": "0.0001291464136488553827222567608696735027519885380172810129632259419871513232372537953152730398...",
+        "real": "0.0005779252254317150063218588615737880923604036753734396243018750516183512892053550960866183700..."
+      },
+      "uplifted_160_extends_standard_80": true,
+      "uplifted_160_prefix": {
+        "imag": "0.0001291464136488553827222567608696735027519885380172810129632259419871513232372537953152730398...",
+        "real": "0.0005779252254317150063218588615737880923604036753734396243018750516183512892053550960866183700..."
+      },
+      "uplifted_fraction_digits_exceed_reference_floor": true,
+      "uplifted_serialized_fraction_digits": {
+        "imag": 160,
+        "real": 160
+      },
+      "uplifted_tail_after_standard_80_has_nonzero_digit": {
+        "imag": true,
+        "real": true
+      }
+    },
+    {
+      "additional_fraction_digits_after_standard_80": {
+        "imag": 80,
+        "real": 80
+      },
+      "digits_beyond_reference_floor_in_uplifted_160": {
+        "imag": 148,
+        "real": 148
+      },
+      "eps_order": 0,
+      "integral": "box[1,1,1,1]",
+      "reference_floor_imag_digits": 12,
+      "reference_floor_real_digits": 12,
+      "standard_80": {
+        "imag": "0.00041871097563110407273257577883268919025670742690869991373402399740114784791642",
+        "real": "-0.00239324045015048410030429077675050920210437858356836516250340473142603904323145"
+      },
+      "standard_serialization_matches_exact_rational_80": true,
+      "standard_serialized_fraction_digits": {
+        "imag": 80,
+        "real": 80
+      },
+      "uplifted_120_prefix": {
+        "imag": "0.0004187109756311040727325757788326891902567074269086999137340239974011478479164247749746707844...",
+        "real": "-0.002393240450150484100304290776750509202104378583568365162503404731426039043231457798740007918..."
+      },
+      "uplifted_160_extends_standard_80": true,
+      "uplifted_160_prefix": {
+        "imag": "0.0004187109756311040727325757788326891902567074269086999137340239974011478479164247749746707844...",
+        "real": "-0.002393240450150484100304290776750509202104378583568365162503404731426039043231457798740007918..."
+      },
+      "uplifted_fraction_digits_exceed_reference_floor": true,
+      "uplifted_serialized_fraction_digits": {
+        "imag": 160,
+        "real": 160
+      },
+      "uplifted_tail_after_standard_80_has_nonzero_digit": {
+        "imag": true,
+        "real": true
+      }
+    }
+  ]
+}

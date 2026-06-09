@@ -49510,11 +49510,25 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
                  "b61n coupled-row runtime should not leave RK78 pole diagnostics blind to "
                  "the retained AMFlow matrix pole list");
   ExpectContains(stripped_json,
-                 "ode_propagation_applied=true; coefficient_publication=true; "
+                 "ode_propagation_applied=true; coefficient_publication=false; "
+                 "coefficient_publication_blocked=sample-space-target-reconstruction-"
+                 "awaits-direct-coefficient-state-publication-gate; "
                  "final_solution_samples_used_as_input=false; "
                  "full_eta_zero_contour_applied=false",
-                 "b61n coupled-row endpoint refinement publication must still keep the "
-                 "full-contour flag false");
+                 "b61n coupled-row sample-space endpoint reconstruction must not claim "
+                 "direct coefficient publication before the coefficient-state gate");
+  ExpectContains(stripped_json,
+                 "b61n coefficient-state target publication blocked",
+                 "b61n step-6 publication surface should expose a blocked "
+                 "coefficient-state publication diagnostic");
+  ExpectContains(stripped_json,
+                 "failure_code=coefficient-state-publication-unclosed-target-graph",
+                 "b61n step-6 publication surface should fail closed while the "
+                 "row56 coefficient target graph still has blocked dependencies");
+  ExpectContains(stripped_json,
+                 "target_coefficients_published_from_coefficient_state=false",
+                 "b61n step-6 publication surface must not publish direct target "
+                 "coefficients before all guards pass");
   const std::filesystem::path bubble_audit_script_path =
       run_root / "audit_b61n_bubble_coefficients.py";
   const std::filesystem::path bubble_audit_stdout_path =

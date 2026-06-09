@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
@@ -251,6 +252,77 @@ B61nCoefficientStateTransportResult FailureResult(
   return {false, {}, std::move(audit)};
 }
 
+B61nCoefficientStatePublicationResult PublicationFailureResult(
+    B61nCoefficientStatePublicationAudit audit,
+    const B61nCoefficientTargetGraph& target_graph,
+    const B61nCoefficientStateTransportAudit& transport_audit,
+    const B61nCoefficientStatePublicationOptions& options,
+    const std::string& failure_code,
+    const std::string& reason) {
+  audit.success = false;
+  audit.failure_code = failure_code;
+  audit.target_coefficients_published_from_coefficient_state = false;
+  audit.target_coefficients_reconstructed_from_epsilon_samples =
+      transport_audit.target_coefficients_reconstructed_from_epsilon_samples;
+  audit.requested_public_target_count = target_graph.public_targets.size();
+  audit.endpoint_fingerprint = transport_audit.endpoint_fingerprint;
+  audit.summary =
+      "b61n coefficient-state target publication blocked: " + reason +
+      "; failure_code=" + failure_code +
+      "; requested_public_target_count=" +
+      std::to_string(audit.requested_public_target_count) +
+      "; published_coefficient_count=0" +
+      "; coefficient_state_finite_start_constructed=" +
+      std::string(transport_audit.materialized_node_count > 0 &&
+                          !transport_audit.finite_start_fingerprint.empty()
+                      ? "true"
+                      : "false") +
+      "; coefficient_state_transport_applied=" +
+      std::string(transport_audit.coefficient_state_transport_applied ? "true"
+                                                                      : "false") +
+      "; coefficient_state_endpoint_matcher_applied=" +
+      std::string(transport_audit.coefficient_state_endpoint_matcher_applied
+                      ? "true"
+                      : "false") +
+      "; endpoint_coefficient_state_unflattened=" +
+      std::string(transport_audit.endpoint_coefficient_state_unflattened ? "true"
+                                                                        : "false") +
+      "; target_coefficients_published_from_coefficient_state=false" +
+      "; target_coefficients_reconstructed_from_epsilon_samples=" +
+      std::string(audit.target_coefficients_reconstructed_from_epsilon_samples
+                      ? "true"
+                      : "false") +
+      "; final_solution_samples_used_as_input=" +
+      std::string(options.final_solution_samples_used_as_input ? "true"
+                                                               : "false") +
+      "; comparator_gate_passed=" +
+      std::string(options.comparator_gate_passed ? "true" : "false") +
+      "; comparator_gate_summary=" +
+      (options.comparator_gate_summary.empty() ? std::string("not_available")
+                                               : options.comparator_gate_summary) +
+      "; endpoint_fingerprint=" +
+      (audit.endpoint_fingerprint.empty() ? std::string("none")
+                                          : audit.endpoint_fingerprint) +
+      "; full_eta_zero_contour_applied=false";
+  return {false, {}, std::move(audit)};
+}
+
+std::string JoinPublishedNodeList(
+    const std::vector<B61nCoefficientStatePublishedCoefficient>& coefficients,
+    const std::vector<std::string>& master_labels) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t index = 0; index < coefficients.size(); ++index) {
+    if (index > 0) {
+      out << ", ";
+    }
+    out << FormatB61nCoefficientNode(coefficients[index].node, master_labels)
+        << "=" << CompactComplex(coefficients[index].value, 60);
+  }
+  out << "]";
+  return out.str();
+}
+
 }  // namespace
 
 B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
@@ -448,6 +520,167 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
     return FailureResult(std::move(audit),
                          "coefficient-state-transport-invalid-input",
                          error.what());
+  }
+}
+
+B61nCoefficientStatePublicationResult PublishB61nCoefficientStateTargets(
+    const std::vector<std::string>& master_labels,
+    const B61nCoefficientTargetGraph& target_graph,
+    const B61nCoefficientStateTransportResult& transport_result,
+    const B61nCoefficientStatePublicationOptions& options) {
+  B61nCoefficientStatePublicationAudit audit;
+  audit.requested_public_target_count = target_graph.public_targets.size();
+  audit.endpoint_fingerprint = transport_result.audit.endpoint_fingerprint;
+
+  const auto fail = [&](const std::string& failure_code,
+                        const std::string& reason) {
+    return PublicationFailureResult(audit,
+                                    target_graph,
+                                    transport_result.audit,
+                                    options,
+                                    failure_code,
+                                    reason);
+  };
+
+  try {
+    if (master_labels.empty()) {
+      return fail("coefficient-state-publication-invalid-input",
+                  "retained master labels are required");
+    }
+    if (target_graph.public_targets.empty()) {
+      return fail("coefficient-state-publication-no-targets",
+                  "the closed coefficient graph did not expose public target "
+                  "coefficients");
+    }
+    if (!target_graph.blocked_edges.empty()) {
+      return fail("coefficient-state-publication-unclosed-target-graph",
+                  "the coefficient target graph still has blocked dependency "
+                  "edges");
+    }
+    if (options.final_solution_samples_used_as_input) {
+      return fail("coefficient-state-publication-final-samples-used",
+                  "direct coefficient-state publication must not read retained "
+                  "AMFlow final solution samples as input");
+    }
+    if (!transport_result.success || !transport_result.audit.success) {
+      return fail("coefficient-state-publication-transport-failed",
+                  "coefficient-state transport did not complete successfully");
+    }
+    if (transport_result.audit.materialized_node_count == 0 ||
+        transport_result.audit.finite_start_fingerprint.empty()) {
+      return fail("coefficient-state-publication-finite-start-missing",
+                  "finite-start coefficient vectors were not materialized from "
+                  "explicit coefficient sources");
+    }
+    if (!transport_result.audit.coefficient_state_transport_applied) {
+      return fail("coefficient-state-publication-propagation-missing",
+                  "coefficient-state ODE propagation was not applied");
+    }
+    if (!transport_result.audit.coefficient_state_endpoint_matcher_applied) {
+      return fail("coefficient-state-publication-endpoint-match-missing",
+                  "coefficient-level endpoint matching did not run");
+    }
+    if (!transport_result.audit.endpoint_coefficient_state_unflattened) {
+      return fail("coefficient-state-publication-endpoint-state-missing",
+                  "endpoint coefficient vectors were not unflattened");
+    }
+    if (transport_result.audit.target_coefficients_reconstructed_from_epsilon_samples) {
+      return fail("coefficient-state-publication-sample-reconstruction",
+                  "target coefficients were reconstructed from clustered "
+                  "epsilon samples instead of direct coefficient-state endpoint "
+                  "values");
+    }
+    if (!options.comparator_gate_passed) {
+      return fail("coefficient-state-publication-comparator-not-green",
+                  "the stripped AMFlow comparator gate has not passed at the "
+                  "required 50-digit threshold");
+    }
+    if (transport_result.audit.min_state_eps_order >
+        transport_result.audit.max_state_eps_order) {
+      return fail("coefficient-state-publication-invalid-state-window",
+                  "coefficient-state transport reported an invalid epsilon "
+                  "window");
+    }
+    const std::size_t expected_order_count = static_cast<std::size_t>(
+        static_cast<long long>(transport_result.audit.max_state_eps_order) -
+        static_cast<long long>(transport_result.audit.min_state_eps_order) +
+        1LL);
+    if (transport_result.endpoint_coefficient_vectors.size() !=
+        expected_order_count) {
+      return fail("coefficient-state-publication-endpoint-shape-mismatch",
+                  "endpoint coefficient vector count does not match the "
+                  "transport epsilon window");
+    }
+    for (const ComplexContourVector& endpoint_vector :
+         transport_result.endpoint_coefficient_vectors) {
+      if (endpoint_vector.size() != master_labels.size()) {
+        return fail("coefficient-state-publication-endpoint-shape-mismatch",
+                    "endpoint coefficient vectors do not use the retained "
+                    "master dimension");
+      }
+    }
+
+    std::set<std::tuple<std::size_t, int>> seen_targets;
+    std::vector<B61nCoefficientStatePublishedCoefficient> coefficients;
+    coefficients.reserve(target_graph.public_targets.size());
+    for (const B61nCoefficientNode& node : target_graph.public_targets) {
+      if (node.master_index >= master_labels.size()) {
+        return fail("coefficient-state-publication-target-out-of-range",
+                    "a public target references an unknown retained master");
+      }
+      if (!seen_targets.emplace(node.master_index, node.eps_order).second) {
+        return fail("coefficient-state-publication-duplicate-target",
+                    "the public target graph contains a duplicate coefficient "
+                    "node");
+      }
+      if (node.eps_order < transport_result.audit.min_state_eps_order ||
+          node.eps_order > transport_result.audit.max_state_eps_order) {
+        return fail("coefficient-state-publication-target-outside-window",
+                    "a public target coefficient is outside the transported "
+                    "epsilon-order window");
+      }
+      const std::size_t order_index = static_cast<std::size_t>(
+          node.eps_order - transport_result.audit.min_state_eps_order);
+      const ComplexContourNumber value =
+          transport_result.endpoint_coefficient_vectors[order_index]
+                                                      [node.master_index];
+      if (!IsFiniteComplex(value)) {
+        return fail("coefficient-state-publication-nonfinite-target",
+                    "a public target coefficient endpoint value is nonfinite");
+      }
+      coefficients.push_back({node, value});
+    }
+
+    audit.success = true;
+    audit.target_coefficients_published_from_coefficient_state = true;
+    audit.target_coefficients_reconstructed_from_epsilon_samples = false;
+    audit.published_coefficient_count = coefficients.size();
+    audit.summary =
+        "b61n coefficient-state target publication prepared direct endpoint "
+        "coefficient upserts; requested_public_target_count=" +
+        std::to_string(audit.requested_public_target_count) +
+        "; published_coefficient_count=" +
+        std::to_string(audit.published_coefficient_count) +
+        "; published_coefficients=" +
+        JoinPublishedNodeList(coefficients, master_labels) +
+        "; coefficient_state_finite_start_constructed=true" +
+        "; coefficient_state_transport_applied=true" +
+        "; coefficient_state_endpoint_matcher_applied=true" +
+        "; endpoint_coefficient_state_unflattened=true" +
+        "; target_coefficients_published_from_coefficient_state=true" +
+        "; target_coefficients_reconstructed_from_epsilon_samples=false" +
+        "; final_solution_samples_used_as_input=false" +
+        "; comparator_gate_passed=true" +
+        "; comparator_gate_summary=" +
+        (options.comparator_gate_summary.empty() ? std::string("passed")
+                                                 : options.comparator_gate_summary) +
+        "; endpoint_fingerprint=" +
+        (audit.endpoint_fingerprint.empty() ? std::string("none")
+                                            : audit.endpoint_fingerprint) +
+        "; coefficient_publication=true; full_eta_zero_contour_applied=false";
+    return {true, std::move(coefficients), std::move(audit)};
+  } catch (const std::exception& error) {
+    return fail("coefficient-state-publication-invalid-input", error.what());
   }
 }
 

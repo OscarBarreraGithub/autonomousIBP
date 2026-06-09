@@ -6782,6 +6782,72 @@ void B61nCoefficientStateTransportWiresFiniteStartThroughRuntimePrimitivesTest()
                          B61nContourFloat("1e-55"),
                          "b61n coefficient-state target eps^0 should include "
                          "the eps^1 matrix source from eps^-1 coefficients");
+
+  const amflow::B61nCoefficientStatePublicationResult comparator_blocked =
+      amflow::PublishB61nCoefficientStateTargets(labels, graph, result);
+  Expect(!comparator_blocked.success,
+         "b61n coefficient-state publication must stay blocked before the "
+         "stripped AMFlow comparator gate passes");
+  Expect(comparator_blocked.audit.failure_code ==
+             "coefficient-state-publication-comparator-not-green",
+         "b61n coefficient-state publication should expose the comparator "
+         "gate as the blocking reason");
+  ExpectContains(comparator_blocked.audit.summary,
+                 "target_coefficients_published_from_coefficient_state=false",
+                 "b61n coefficient-state publication block must not claim "
+                 "direct coefficient publication");
+  ExpectContains(comparator_blocked.audit.summary,
+                 "target_coefficients_reconstructed_from_epsilon_samples=false",
+                 "b61n coefficient-state publication block must preserve the "
+                 "sample-reconstruction guard");
+
+  amflow::B61nCoefficientStatePublicationOptions publication_options;
+  publication_options.comparator_gate_passed = true;
+  publication_options.comparator_gate_summary =
+      "synthetic comparator gate passed for direct coefficient-state target";
+  const amflow::B61nCoefficientStatePublicationResult publication =
+      amflow::PublishB61nCoefficientStateTargets(
+          labels, graph, result, publication_options);
+  Expect(publication.success,
+         "b61n coefficient-state publication should prepare direct public "
+         "target coefficients after every gate passes: " +
+             publication.audit.summary);
+  Expect(publication.coefficients.size() == 1,
+         "b61n coefficient-state publication should expose exactly the public "
+         "target coefficient");
+  Expect(publication.coefficients.front().node.master_index == 1 &&
+             publication.coefficients.front().node.eps_order == 0,
+         "b61n coefficient-state publication should publish only target eps^0");
+  ExpectB61nContourClose(publication.coefficients.front().value,
+                         expected_target_eps0,
+                         B61nContourFloat("1e-55"),
+                         "b61n coefficient-state publication should read the "
+                         "direct endpoint coefficient value");
+  Expect(publication.audit.target_coefficients_published_from_coefficient_state,
+         "b61n coefficient-state publication should report direct coefficient "
+         "publication after the gate passes");
+  Expect(!publication.audit
+              .target_coefficients_reconstructed_from_epsilon_samples,
+         "b61n coefficient-state publication must not mark published targets as "
+         "sample-fit reconstructions");
+  ExpectContains(publication.audit.summary,
+                 "coefficient_publication=true",
+                 "b61n coefficient-state publication summary should expose the "
+                 "publication handoff");
+
+  amflow::B61nCoefficientStateTransportResult reconstructed_result = result;
+  reconstructed_result.audit
+      .target_coefficients_reconstructed_from_epsilon_samples = true;
+  const amflow::B61nCoefficientStatePublicationResult reconstructed_blocked =
+      amflow::PublishB61nCoefficientStateTargets(
+          labels, graph, reconstructed_result, publication_options);
+  Expect(!reconstructed_blocked.success,
+         "b61n coefficient-state publication must reject target coefficients "
+         "that were reconstructed from clustered epsilon samples");
+  Expect(reconstructed_blocked.audit.failure_code ==
+             "coefficient-state-publication-sample-reconstruction",
+         "b61n coefficient-state publication should preserve the anti-sample-fit "
+         "failure code");
 }
 
 void B61nCoefficientStateTransportRejectsUnclosedTargetGraphTest() {

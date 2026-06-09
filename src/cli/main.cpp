@@ -32,6 +32,7 @@
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/b61n_coefficient_state_transport.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
 #include "amflow/runtime/b61n_finite_start_coefficients.hpp"
 #include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
@@ -6482,6 +6483,98 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
   return audit;
 }
 
+std::optional<amflow::B61nCoefficientStatePublicationResult>
+BuildB61nCoefficientStatePublicationAttempt(
+    const DirectSolveSeriesSpec& spec,
+    const EtaInfinityInitialDataAudit& initial_data_audit) {
+  if (!IsComplexKinematicsFullEtaZeroContourState(spec)) {
+    return std::nullopt;
+  }
+  const auto matrix_it = spec.coefficient_matrices.find(spec.variable);
+  if (matrix_it == spec.coefficient_matrices.end()) {
+    return std::nullopt;
+  }
+
+  std::vector<std::string> master_labels;
+  master_labels.reserve(spec.masters.size());
+  for (const auto& master : spec.masters) {
+    master_labels.push_back(MasterIntegralLabel(master));
+  }
+
+  try {
+    const amflow::B61nCoefficientTargetGraph target_graph =
+        amflow::BuildB61nRow56CoefficientTargetGraph(
+            master_labels,
+            amflow::ExtractB61nMatrixEpsilonSupport(matrix_it->second));
+    amflow::B61nLaurentNumericSubstitutions laurent_numeric_substitutions;
+    for (const auto& [symbol, value] :
+         ParseAmflowNumericSubstitutionsAsComplex(spec.amflow_config_raw)) {
+      laurent_numeric_substitutions.emplace(symbol, ToComplexContourNumber(value));
+    }
+    const amflow::B61nLaurentMatrixEvaluator laurent_matrix_evaluator =
+        amflow::BuildB61nRealLaurentMatrixEvaluator(
+            matrix_it->second,
+            spec.variable,
+            laurent_numeric_substitutions,
+            target_graph);
+    const amflow::B61nFiniteStartCoefficientAudit finite_start_audit =
+        amflow::AuditB61nFiniteStartCoefficientData(
+            master_labels,
+            target_graph,
+            {},
+            {},
+            !initial_data_audit.finite_start_samples.empty(),
+            BigComplexCompactString(initial_data_audit.eta_start, 24));
+
+    amflow::B61nCoefficientStateTransportResult transport_result;
+    transport_result.audit.master_dimension = master_labels.size();
+    transport_result.audit.target_graph_node_count =
+        target_graph.closed_nodes.size();
+    transport_result.audit.public_target_node_count =
+        target_graph.public_targets.size();
+    transport_result.audit.materialized_node_count = 0;
+    transport_result.audit.matrix_coefficient_count =
+        laurent_matrix_evaluator.audit.matrix_coefficient_count;
+    transport_result.audit.min_state_eps_order =
+        finite_start_audit.min_state_eps_order;
+    transport_result.audit.max_state_eps_order =
+        finite_start_audit.max_state_eps_order;
+    transport_result.audit.min_matrix_eps_order =
+        laurent_matrix_evaluator.audit.min_matrix_eps_order;
+    transport_result.audit.max_matrix_eps_order =
+        laurent_matrix_evaluator.audit.max_matrix_eps_order;
+    transport_result.audit.matrix_fingerprint =
+        laurent_matrix_evaluator.audit.fingerprint;
+    transport_result.audit.finite_start_fingerprint =
+        finite_start_audit.fingerprint;
+    transport_result.audit.summary = finite_start_audit.summary;
+
+    amflow::B61nCoefficientStatePublicationOptions publication_options;
+    publication_options.final_solution_samples_used_as_input = false;
+    publication_options.comparator_gate_passed = false;
+    publication_options.comparator_gate_summary =
+        "not run: b61n direct coefficient-state publication remains blocked "
+        "before a closed target graph, materialized coefficient finite-start "
+        "data, endpoint-matched coefficient transport, and the stripped "
+        "50-digit AMFlow comparator gate are all available";
+    return amflow::PublishB61nCoefficientStateTargets(
+        master_labels, target_graph, transport_result, publication_options);
+  } catch (const std::exception& error) {
+    amflow::B61nCoefficientStatePublicationResult result;
+    result.audit.failure_code =
+        "coefficient-state-publication-diagnostic-unavailable";
+    result.audit.summary =
+        "b61n coefficient-state target publication blocked: publication "
+        "diagnostic could not be built; failure_code=" +
+        result.audit.failure_code + "; reason=" + error.what() +
+        "; target_coefficients_published_from_coefficient_state=false; "
+        "target_coefficients_reconstructed_from_epsilon_samples=false; "
+        "final_solution_samples_used_as_input=false; comparator_gate_passed=false; "
+        "full_eta_zero_contour_applied=false";
+    return result;
+  }
+}
+
 struct B61nCoupledRowContourTransportAudit {
   bool success = false;
   std::size_t transported_count = 0;
@@ -7451,7 +7544,9 @@ ApplyB61nCoupledRowContourTransport(
         "coefficient_state_endpoint_matcher_applied=false; "
         "target_coefficients_published_from_coefficient_state=false; "
         "target_coefficients_reconstructed_from_epsilon_samples=true" +
-        "; ode_propagation_applied=true; coefficient_publication=true; "
+        "; ode_propagation_applied=true; coefficient_publication=false; "
+        "coefficient_publication_blocked=sample-space-target-reconstruction-awaits-"
+        "direct-coefficient-state-publication-gate; "
         "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied=" +
         std::string(audit.full_eta_zero_contour_applied ? "true" : "false") +
         ".";
@@ -8911,6 +9006,44 @@ void AppendEtaEndpointTransportedIntegralOnce(
       diagnostics.eta_endpoint_transported_integrals.end()) {
     diagnostics.eta_endpoint_transported_integrals.push_back(transported_master_label);
   }
+}
+
+int ApplyB61nCoefficientStatePublicationToDiagnostics(
+    const DirectSolveSeriesSpec& spec,
+    const amflow::B61nCoefficientStatePublicationResult& publication,
+    amflow::SolverDiagnostics& diagnostics) {
+  if (!publication.success) {
+    return 0;
+  }
+
+  std::set<std::size_t> touched_masters;
+  for (const amflow::B61nCoefficientStatePublishedCoefficient& coefficient :
+       publication.coefficients) {
+    if (coefficient.node.master_index >=
+        diagnostics.target_epsilon_coefficients.size()) {
+      throw std::runtime_error(
+          "b61n coefficient-state publication cannot upsert target outside "
+          "diagnostics coefficient table");
+    }
+    UpsertEpsilonCoefficient(
+        diagnostics.target_epsilon_coefficients[coefficient.node.master_index],
+        coefficient.node.eps_order,
+        FromComplexContourNumber(coefficient.value));
+    RefreshTargetValueFromConstantCoefficient(diagnostics,
+                                              coefficient.node.master_index);
+    touched_masters.insert(coefficient.node.master_index);
+  }
+
+  for (const std::size_t master_index : touched_masters) {
+    if (master_index >= spec.masters.size()) {
+      throw std::runtime_error(
+          "b61n coefficient-state publication cannot name an out-of-range "
+          "retained master");
+    }
+    AppendEtaEndpointTransportedIntegralOnce(
+        diagnostics, MasterIntegralLabel(spec.masters[master_index]));
+  }
+  return static_cast<int>(touched_masters.size());
 }
 
 bool IsRetainedAutomaticLoopEtaZeroEndpointTransportState(
@@ -11180,6 +11313,22 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
     diagnostics.eta_endpoint_transport_count +=
         b61n_primitive_bubble_transport_count;
   }
+  std::optional<amflow::B61nCoefficientStatePublicationResult>
+      b61n_coefficient_state_publication_attempt;
+  if (complex_contour_scaffold_audit.has_value() &&
+      !eta_infinity_initial_data_audit.summary.empty()) {
+    b61n_coefficient_state_publication_attempt =
+        BuildB61nCoefficientStatePublicationAttempt(
+            direct_spec, eta_infinity_initial_data_audit);
+    if (b61n_coefficient_state_publication_attempt.has_value() &&
+        b61n_coefficient_state_publication_attempt->success) {
+      diagnostics.eta_endpoint_transport_count +=
+          ApplyB61nCoefficientStatePublicationToDiagnostics(
+              direct_spec,
+              *b61n_coefficient_state_publication_attempt,
+              diagnostics);
+    }
+  }
 
   diagnostics.summary =
       "Evaluated retained AMFlow eta-infinity leading boundary coefficients from " +
@@ -11253,6 +11402,10 @@ amflow::SolverDiagnostics EvaluateAmflowStateEtaInfinityBoundary(
       }
     }
     diagnostics.summary += b61n_coupled_row_transport_audit->summary;
+  }
+  if (b61n_coefficient_state_publication_attempt.has_value()) {
+    diagnostics.summary +=
+        " " + b61n_coefficient_state_publication_attempt->audit.summary;
   }
   if (complex_contour_scaffold_audit.has_value() &&
       !eta_infinity_initial_data_audit.summary.empty()) {

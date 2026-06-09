@@ -61,6 +61,34 @@ struct B61nCoefficientStateTransportResult {
   B61nCoefficientStateTransportAudit audit;
 };
 
+struct B61nCoefficientStatePublishedCoefficient {
+  B61nCoefficientNode node;
+  ComplexContourNumber value;
+};
+
+struct B61nCoefficientStatePublicationOptions {
+  bool final_solution_samples_used_as_input = false;
+  bool comparator_gate_passed = false;
+  std::string comparator_gate_summary;
+};
+
+struct B61nCoefficientStatePublicationAudit {
+  bool success = false;
+  bool target_coefficients_published_from_coefficient_state = false;
+  bool target_coefficients_reconstructed_from_epsilon_samples = false;
+  std::size_t published_coefficient_count = 0;
+  std::size_t requested_public_target_count = 0;
+  std::string failure_code;
+  std::string endpoint_fingerprint;
+  std::string summary;
+};
+
+struct B61nCoefficientStatePublicationResult {
+  bool success = false;
+  std::vector<B61nCoefficientStatePublishedCoefficient> coefficients;
+  B61nCoefficientStatePublicationAudit audit;
+};
+
 B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
     const std::vector<std::string>& master_labels,
     const B61nCoefficientTargetGraph& target_graph,
@@ -68,5 +96,11 @@ B61nCoefficientStateTransportResult PropagateB61nCoefficientState(
     const B61nFiniteStartCoefficientData& finite_start_coefficients,
     const std::vector<ComplexContourNumber>& waypoints,
     const B61nCoefficientStateTransportOptions& options = {});
+
+B61nCoefficientStatePublicationResult PublishB61nCoefficientStateTargets(
+    const std::vector<std::string>& master_labels,
+    const B61nCoefficientTargetGraph& target_graph,
+    const B61nCoefficientStateTransportResult& transport_result,
+    const B61nCoefficientStatePublicationOptions& options = {});
 
 }  // namespace amflow

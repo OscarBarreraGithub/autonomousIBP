@@ -2815,13 +2815,43 @@ CrossValidateCutkoskyWeightedResidueMomentSeeds(
         "weighted residue plan is missing one role per uncut denominator");
   }
 
-  const std::size_t paired_count = std::min(expected_specs.size(), seeds.size());
-  for (std::size_t index = 0; index < paired_count; ++index) {
-    const ExpectedCutkoskyWeightedMomentSeedSpec& expected = expected_specs[index];
+  std::map<std::string, const CutkoskyWeightedResidueMomentSeed*> seeds_by_weight;
+  std::set<std::string> expected_weights;
+  for (const ExpectedCutkoskyWeightedMomentSeedSpec& expected : expected_specs) {
+    expected_weights.insert(expected.denominator);
+  }
+  for (const CutkoskyWeightedResidueMomentSeed& seed : seeds) {
+    if (expected_weights.find(seed.selected_weight_denominator) ==
+        expected_weights.end()) {
+      AddCrossValidationFailure(
+          gate,
+          seed.selected_weight_denominator +
+              " seed is not part of the reviewed D2,D4,D6,D7 moment packet");
+      continue;
+    }
+    const auto insertion =
+        seeds_by_weight.emplace(seed.selected_weight_denominator, &seed);
+    if (!insertion.second) {
+      AddCrossValidationFailure(
+          gate,
+          seed.selected_weight_denominator +
+              " seed appears more than once in the moment seed packet");
+    }
+  }
+
+  for (const ExpectedCutkoskyWeightedMomentSeedSpec& expected : expected_specs) {
     const std::size_t expected_index = expected.denominator_index;
     const std::string& expected_weight = expected.denominator;
-    const CutkoskyWeightedResidueMomentSeed& seed = seeds[index];
-    gate.validated_weight_denominators.push_back(seed.selected_weight_denominator);
+    const auto seed_entry = seeds_by_weight.find(expected_weight);
+    if (seed_entry == seeds_by_weight.end()) {
+      AddCrossValidationFailure(
+          gate,
+          "missing reviewed " + expected_weight +
+              " seed in the moment seed packet");
+      continue;
+    }
+    const CutkoskyWeightedResidueMomentSeed& seed = *seed_entry->second;
+    gate.validated_weight_denominators.push_back(expected_weight);
 
     if (seed.surface_label != plan.surface_label) {
       AddCrossValidationFailure(

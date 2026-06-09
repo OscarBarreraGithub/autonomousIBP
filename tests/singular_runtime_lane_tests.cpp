@@ -2417,18 +2417,23 @@ void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
       "exactly D2,D4,D6,D7",
       "b63n residue-vs-moment gate should require the full reviewed seed packet");
 
-  auto mutated_order_packet = seed_packet;
-  mutated_order_packet[1].selected_weight_denominator = "D7";
-  const auto mutated_order_gate =
+  auto relabeled_duplicate_packet = seed_packet;
+  relabeled_duplicate_packet[1].selected_weight_denominator = "D7";
+  const auto relabeled_duplicate_gate =
       amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
-          automatic_plan, mutated_order_packet);
-  Expect(!mutated_order_gate.passed,
-         "b63n residue-vs-moment gate should reject weight-order drift");
+          automatic_plan, relabeled_duplicate_packet);
+  Expect(!relabeled_duplicate_gate.passed,
+         "b63n residue-vs-moment gate should reject relabeled duplicate weights");
   ExpectContains(
       amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
-          mutated_order_gate),
-      "D4 seed weight/order mismatch",
-      "b63n residue-vs-moment gate should report the mismatched seed weight");
+          relabeled_duplicate_gate),
+      "D7 seed appears more than once",
+      "b63n residue-vs-moment gate should report the duplicated seed weight");
+  ExpectContains(
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          relabeled_duplicate_gate),
+      "missing reviewed D4 seed",
+      "b63n residue-vs-moment gate should report the missing seed weight");
 
   auto mutated_power_packet = seed_packet;
   mutated_power_packet[0].selected_weight_power = 1;

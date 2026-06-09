@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cctype>
 #include <exception>
@@ -561,6 +562,83 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
+void ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest() {
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(spec);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          spec,
+          1,
+          70);
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate baseline_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(plan, seed_packet);
+  Expect(baseline_gate.passed,
+         "baseline b63n weighted residue moment seed packet should pass the "
+         "structural gate");
+  const std::string baseline_audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          baseline_gate);
+  const std::vector<std::string> expected_weight_order = {"D2", "D4", "D6", "D7"};
+
+  std::vector<std::size_t> order = {0, 1, 2, 3};
+  int permutation_count = 0;
+  do {
+    std::vector<amflow::CutkoskyWeightedResidueMomentSeed> permuted_packet;
+    permuted_packet.reserve(order.size());
+    for (const std::size_t seed_index : order) {
+      permuted_packet.push_back(seed_packet[seed_index]);
+    }
+
+    const amflow::CutkoskyWeightedResidueMomentCrossValidationGate gate =
+        amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+            plan, permuted_packet);
+    Expect(gate.passed,
+           "b63n weighted residue moment gate should pass seed permutation " +
+               std::to_string(permutation_count));
+    Expect(gate.validated_weight_denominators == expected_weight_order,
+           "b63n weighted residue moment gate should report canonical D2,D4,D6,D7 "
+           "order for seed permutation " +
+               std::to_string(permutation_count));
+    Expect(!gate.live_coefficients_available &&
+               !gate.retained_solution_samples_used &&
+               !gate.full_eta_zero_contour_applied,
+           "b63n weighted residue moment gate must keep non-publishing flags false "
+           "for seed permutation " +
+               std::to_string(permutation_count));
+    Expect(amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+               gate) == baseline_audit,
+           "b63n weighted residue moment gate audit should be permutation-invariant "
+           "for seed permutation " +
+               std::to_string(permutation_count));
+    ++permutation_count;
+  } while (std::next_permutation(order.begin(), order.end()));
+  Expect(permutation_count == 24,
+         "b63n weighted residue moment permutation test should cover all 24 "
+         "D2,D4,D6,D7 seed orders");
+
+  std::vector<amflow::CutkoskyWeightedResidueMomentSeed> relabeled_packet =
+      seed_packet;
+  relabeled_packet[1].selected_weight_denominator = "D6";
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate relabeled_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          plan, relabeled_packet);
+  Expect(!relabeled_gate.passed,
+         "b63n weighted residue moment gate should reject a relabeled duplicate "
+         "rather than treating it as a permutation");
+  const std::string relabeled_audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+          relabeled_gate);
+  ExpectContains(relabeled_audit,
+                 "D6 seed appears more than once",
+                 "b63n weighted residue moment gate should report duplicate "
+                 "weights in a relabeled packet");
+  ExpectContains(relabeled_audit,
+                 "missing reviewed D4 seed",
+                 "b63n weighted residue moment gate should report the missing "
+                 "reviewed weight in a relabeled packet");
+}
+
 void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
   const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
@@ -1013,6 +1091,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
     ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();

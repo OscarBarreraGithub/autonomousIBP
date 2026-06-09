@@ -63,6 +63,9 @@ constexpr const char* kLane146Selected4Golden =
     "tools/reference-harness/specs/m6/lane146/"
     "automatic_phasespace.selected4-cutkosky.amflow-golden.txt";
 
+constexpr int kLane146Selected4ToleranceDigits = 30;
+constexpr int kLane146Selected4ExpectedDigitAgreement = 999;
+
 std::filesystem::path LocateRepositoryRoot() {
   std::filesystem::path current = std::filesystem::current_path();
   for (int depth = 0; depth < 5; ++depth) {
@@ -685,10 +688,23 @@ void ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest() 
                              "passed_coefficient_count",
                              "lane146 compare30") == 19,
          "lane146 compare30 should retain 19 passing coefficients");
+  Expect(ExtractJsonBoolField(compare_json, "passed", "lane146 compare30"),
+         "lane146 compare30 should retain top-level pass status");
+  Expect(ExtractJsonIntField(compare_json,
+                             "matched_integral_count",
+                             "lane146 compare30") ==
+             static_cast<int>(expected_integrals.size()),
+         "lane146 compare30 should retain all selected4 matched integrals");
+  Expect(ExtractJsonIntField(compare_json,
+                             "tolerance_digits",
+                             "lane146 compare30") ==
+             kLane146Selected4ToleranceDigits,
+         "lane146 compare30 should retain the 30-digit tolerance contract");
   Expect(ExtractJsonIntField(compare_json,
                              "minimum_digit_agreement",
-                             "lane146 compare30") >= 30,
-         "lane146 compare30 should retain the 30-digit parity floor");
+                             "lane146 compare30") ==
+             kLane146Selected4ExpectedDigitAgreement,
+         "lane146 compare30 should retain the exact selected4 digit agreement");
   const std::string failures =
       ExtractJsonArrayField(compare_json, "failures", "lane146 compare30");
   Expect(failures.find('{') == std::string::npos,
@@ -703,6 +719,10 @@ void ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest() 
       ExtractJsonArrayField(cpp_result_json, "results", "lane146 C++ result");
 
   std::size_t compared_count = 0;
+  std::size_t real_digit_agreement_checks = 0;
+  std::size_t imaginary_digit_agreement_checks = 0;
+  bool observed_digit_agreement = false;
+  int observed_min_digit_agreement = 0;
   for (const ExpectedIntegral& expected : expected_integrals) {
     const std::string compare_integral = FindJsonObjectByStringField(
         compare_integrals,
@@ -760,16 +780,37 @@ void ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest() 
                                   "lane146 compare30 coefficient"),
              expected.integral + " eps^" + std::to_string(eps_order) +
                  " should pass AMFlow parity");
-      Expect(ExtractJsonIntField(compare_coefficient,
-                                 "real_agreement_digits",
-                                 "lane146 compare30 coefficient") >= 30,
+      const int real_agreement_digits =
+          ExtractJsonIntField(compare_coefficient,
+                              "real_agreement_digits",
+                              "lane146 compare30 coefficient");
+      const int imaginary_agreement_digits =
+          ExtractJsonIntField(compare_coefficient,
+                              "imag_agreement_digits",
+                              "lane146 compare30 coefficient");
+      Expect(real_agreement_digits >= kLane146Selected4ToleranceDigits,
              expected.integral + " eps^" + std::to_string(eps_order) +
                  " should retain 30 real agreement digits");
-      Expect(ExtractJsonIntField(compare_coefficient,
-                                 "imag_agreement_digits",
-                                 "lane146 compare30 coefficient") >= 30,
+      Expect(imaginary_agreement_digits >= kLane146Selected4ToleranceDigits,
              expected.integral + " eps^" + std::to_string(eps_order) +
                  " should retain 30 imaginary agreement digits");
+      Expect(real_agreement_digits == kLane146Selected4ExpectedDigitAgreement,
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain the exact compare30 real digit agreement");
+      Expect(imaginary_agreement_digits ==
+                 kLane146Selected4ExpectedDigitAgreement,
+             expected.integral + " eps^" + std::to_string(eps_order) +
+                 " should retain the exact compare30 imaginary digit agreement");
+      if (!observed_digit_agreement ||
+          real_agreement_digits < observed_min_digit_agreement) {
+        observed_min_digit_agreement = real_agreement_digits;
+        observed_digit_agreement = true;
+      }
+      if (imaginary_agreement_digits < observed_min_digit_agreement) {
+        observed_min_digit_agreement = imaginary_agreement_digits;
+      }
+      ++real_digit_agreement_checks;
+      ++imaginary_digit_agreement_checks;
 
       const std::string amflow_real = ExtractJsonStringField(
           compare_coefficient, "amflow_real", "lane146 compare30 coefficient");
@@ -808,6 +849,15 @@ void ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest() 
   }
   Expect(compared_count == 19,
          "lane146 selected4 parity test should cover all 19 compared coefficients");
+  Expect(real_digit_agreement_checks == 19 &&
+             imaginary_digit_agreement_checks == 19,
+         "lane146 selected4 parity test should check all 38 digit-agreement fields");
+  Expect(observed_min_digit_agreement ==
+             ExtractJsonIntField(compare_json,
+                                 "minimum_digit_agreement",
+                                 "lane146 compare30"),
+         "lane146 selected4 coefficient digit agreements should match the "
+         "top-level compare30 minimum");
 }
 
 void ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest() {

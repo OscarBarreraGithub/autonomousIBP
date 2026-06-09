@@ -32,6 +32,7 @@
 #include "amflow/kira/kira_backend.hpp"
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/b61n_coefficient_target_graph.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 #include "amflow/runtime/ending_scheme.hpp"
@@ -6189,10 +6190,15 @@ ApplyB61nFirstScalarContourEndpointTransport(
 struct B61nCoupledRowReadinessAudit {
   std::size_t coupled_row_count = 0;
   std::size_t inhomogeneous_source_edge_count = 0;
+  std::size_t coefficient_target_graph_node_count = 0;
+  std::size_t coefficient_target_graph_edge_count = 0;
+  std::size_t coefficient_target_graph_matrix_support_count = 0;
+  std::size_t coefficient_target_graph_blocked_edge_count = 0;
   bool lower_triangular_dependency_order = false;
   bool controlled_eta_infinity_initial_data_certified = false;
   std::string transport_order_summary;
   std::string dependency_summary;
+  std::string coefficient_target_graph_summary;
   std::string summary;
 };
 
@@ -6269,6 +6275,24 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       initial_data_audit.retained_master_count == spec.masters.size() &&
       initial_data_audit.validated_master_count == spec.masters.size() &&
       !initial_data_audit.initial_data_fingerprint.empty();
+  std::vector<std::string> master_labels;
+  master_labels.reserve(spec.masters.size());
+  for (const auto& master : spec.masters) {
+    master_labels.push_back(MasterIntegralLabel(master));
+  }
+  const amflow::B61nCoefficientTargetGraph coefficient_target_graph =
+      amflow::BuildB61nRow56CoefficientTargetGraph(
+          master_labels,
+          amflow::ExtractB61nMatrixEpsilonSupport(matrix_it->second));
+  audit.coefficient_target_graph_node_count =
+      coefficient_target_graph.closed_nodes.size();
+  audit.coefficient_target_graph_edge_count =
+      coefficient_target_graph.dependency_edges.size();
+  audit.coefficient_target_graph_matrix_support_count =
+      coefficient_target_graph.matrix_support.size();
+  audit.coefficient_target_graph_blocked_edge_count =
+      coefficient_target_graph.blocked_edges.size();
+  audit.coefficient_target_graph_summary = coefficient_target_graph.summary;
 
   std::vector<std::string> row_summaries;
   bool lower_triangular = true;
@@ -6329,6 +6353,16 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       std::to_string(audit.inhomogeneous_source_edge_count) +
       "; lower_triangular_dependency_order=" +
       std::string(audit.lower_triangular_dependency_order ? "true" : "false") +
+      "; coefficient_target_graph_node_count=" +
+      std::to_string(audit.coefficient_target_graph_node_count) +
+      "; coefficient_target_graph_edge_count=" +
+      std::to_string(audit.coefficient_target_graph_edge_count) +
+      "; coefficient_target_graph_matrix_support_count=" +
+      std::to_string(audit.coefficient_target_graph_matrix_support_count) +
+      "; coefficient_target_graph_blocked_edge_count=" +
+      std::to_string(audit.coefficient_target_graph_blocked_edge_count) +
+      "; coefficient_target_graph={" + audit.coefficient_target_graph_summary +
+      "}" +
       "; ode_propagation_applied=false; coefficient_publication=false; "
       "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
       "stays false.";

@@ -1,5 +1,6 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
+#include "amflow/runtime/b61n_coefficient_target_graph.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
 #include "amflow/runtime/continuation_path.hpp"
@@ -15,6 +16,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -6098,6 +6100,242 @@ void B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest()
                          "sample fitting");
 }
 
+std::size_t B61nTestMasterIndex(const std::vector<std::string>& labels,
+                                const std::string& label) {
+  const auto it = std::find(labels.begin(), labels.end(), label);
+  if (it == labels.end()) {
+    throw std::runtime_error("missing b61n test label " + label);
+  }
+  return static_cast<std::size_t>(it - labels.begin());
+}
+
+bool B61nGraphHasNode(const amflow::B61nCoefficientTargetGraph& graph,
+                      const std::vector<std::string>& labels,
+                      const std::string& label,
+                      const int eps_order) {
+  const std::size_t index = B61nTestMasterIndex(labels, label);
+  return std::any_of(
+      graph.closed_nodes.begin(),
+      graph.closed_nodes.end(),
+      [index, eps_order](const amflow::B61nCoefficientNode& node) {
+        return node.master_index == index && node.eps_order == eps_order;
+      });
+}
+
+bool B61nGraphHasAnyNodeForLabel(
+    const amflow::B61nCoefficientTargetGraph& graph,
+    const std::vector<std::string>& labels,
+    const std::string& label) {
+  const std::size_t index = B61nTestMasterIndex(labels, label);
+  return std::any_of(
+      graph.closed_nodes.begin(),
+      graph.closed_nodes.end(),
+      [index](const amflow::B61nCoefficientNode& node) {
+        return node.master_index == index;
+      });
+}
+
+bool B61nGraphHasDependencyEdge(
+    const amflow::B61nCoefficientTargetGraph& graph,
+    const std::size_t target_master,
+    const int target_eps_order,
+    const std::size_t source_master,
+    const int source_eps_order,
+    const int matrix_eps_order) {
+  return std::any_of(
+      graph.dependency_edges.begin(),
+      graph.dependency_edges.end(),
+      [=](const amflow::B61nCoefficientGraphEdge& edge) {
+        return edge.target.master_index == target_master &&
+               edge.target.eps_order == target_eps_order &&
+               edge.source.master_index == source_master &&
+               edge.source.eps_order == source_eps_order &&
+               edge.matrix_eps_order == matrix_eps_order;
+      });
+}
+
+bool B61nSupportHas(const std::vector<amflow::B61nMatrixEpsilonSupport>& support,
+                    const std::size_t row,
+                    const std::size_t column,
+                    const int eps_order) {
+  return std::any_of(
+      support.begin(),
+      support.end(),
+      [=](const amflow::B61nMatrixEpsilonSupport& entry) {
+        return entry.row == row && entry.column == column &&
+               entry.eps_order == eps_order;
+      });
+}
+
+std::vector<std::vector<std::string>> MakeB61nRealEtaMatrixSupportFixture() {
+  std::vector<std::vector<std::string>> matrix(
+      7, std::vector<std::string>(7, "0"));
+  matrix[0][0] = "(1 - eps)/((2 - I) + eta)";
+  matrix[2][0] =
+      "(2*(-1 + eps))/((-8 - I) + (1 - 4*I)*eta + 2*eta^2)";
+  matrix[2][2] = "(-2*(-1 + 2*eps))/((-3 - 2*I) + 2*eta)";
+  matrix[3][0] =
+      "(-1 + eps)/((81 - 43*I) + (43 - 2*I)*eta + eta^2)";
+  matrix[3][3] = "(1 - 2*eps)/((41 - I) + eta)";
+  matrix[4][0] =
+      "(-1 + eps)/((-13 + 4*I) - (4 + 2*I)*eta + eta^2)";
+  matrix[4][4] = "(1 - 2*eps)/((-6 - I) + eta)";
+  matrix[5][0] =
+      "(4*((25 + 4*I) - (25 + 4*I)*eps - (4 - 2*I)*eta + "
+      "(4 - 2*I)*eps*eta - eta^2 + eps*eta^2))/((107678 - 17919*I) + "
+      "(31469 + 75076*I)*eta - (45266 - 20341*I)*eta^2 - "
+      "(6807 + 7728*I)*eta^3 + (1932 - 20*I)*eta^4 + 4*eta^5)";
+  matrix[5][1] =
+      "(-2*(-1 + 2*eps))/((2000 - 977*I) + (977 - 4*I)*eta + "
+      "2*eta^2)";
+  matrix[5][2] =
+      "(-14*(-1 + 2*eps))/((-7954 - 1069*I) + (1061 - 3896*I)*eta + "
+      "(1948 - 12*I)*eta^2 + 4*eta^3)";
+  matrix[5][4] =
+      "(-16*(-1 + 2*eps))/ ((-12977 + 3862*I) - (3866 + 1930*I)*eta + "
+      "(965 - 6*I)*eta^2 + 2*eta^3)";
+  matrix[5][5] =
+      "((-977 + 4*I)*eps - 4*eps*eta)/((2000 - 977*I) + "
+      "(977 - 4*I)*eta + 2*eta^2)";
+  matrix[6][0] =
+      "((-2661375 - 473326*I) + (2661375 + 473326*I)*eps + "
+      "(537138 - 110902*I)*eta - (537138 - 110902*I)*eps*eta + "
+      "(71323 + 95718*I)*eta^2 - (71323 + 95718*I)*eps*eta^2 - "
+      "(31906 - 15872*I)*eta^3 + (31906 - 15872*I)*eps*eta^3 - "
+      "3968*eta^4 + 3968*eps*eta^4)/(496*((16 + 15*I) - "
+      "(15 + 4*I)*eta + 2*eta^2)^2* ((119989 - 165137*I) + "
+      "(163011 - 88346*I)*eta + (44165 - 3189*I)*eta^2 + "
+      "(1063 - 8*I)*eta^3 + 2*eta^4))";
+  matrix[6][1] =
+      "((-977 + 4*I) + (1954 - 8*I)*eps - 4*eta + 8*eps*eta)/ "
+      "(496*((81023 - 42057*I) + (42053 - 2118*I)*eta + "
+      "(1059 - 6*I)*eta^2 + 2*eta^3))";
+  matrix[6][2] =
+      "(-7*((-10939 + 1966*I) + (21878 - 3932*I)*eps - 1966*eta + "
+      "3932*eps*eta))/(496*((-3 - 2*I) + 2*eta)^2*((81023 - "
+      "42057*I) + (42053 - 2118*I)*eta + (1059 - 6*I)*eta^2 + "
+      "2*eta^3))";
+  matrix[6][4] =
+      "((9866 - 1001*I) - (19732 - 2002*I)*eps + 1001*eta - "
+      "2002*eps*eta)/ (62*((-6 - I) + eta)^2*((81023 - 42057*I) + "
+      "(42053 - 2118*I)*eta + (1059 - 6*I)*eta^2 + 2*eta^3))";
+  matrix[6][5] =
+      "(938513*eps)/(992*((81023 - 42057*I) + (42053 - 2118*I)*eta + "
+      "(1059 - 6*I)*eta^2 + 2*eta^3))";
+  matrix[6][6] = "(-1 - 2*eps)/((41 - I) + eta)";
+  return matrix;
+}
+
+void B61nCoefficientTargetGraphClosesSyntheticEpsShiftedDependencyTest() {
+  const std::vector<std::string> labels =
+      amflow::B61nRow56RetainedMasterLabels();
+  std::vector<amflow::B61nCoefficientOrderRange> ranges(labels.size(), {0, 0});
+  ranges[B61nTestMasterIndex(labels, "box[1,0,1,1]")] = {-1, 0};
+  ranges[B61nTestMasterIndex(labels, "box[1,1,1,1]")] = {0, 0};
+
+  const std::size_t row5 = B61nTestMasterIndex(labels, "box[1,0,1,1]");
+  const std::size_t row6 = B61nTestMasterIndex(labels, "box[1,1,1,1]");
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support = {
+      {row6, row5, 1},
+      {row6, row6, 0},
+  };
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          labels, support, ranges, {{row6, 0}});
+
+  Expect(B61nGraphHasNode(graph, labels, "box[1,1,1,1]", 0),
+         "b61n synthetic graph should retain the requested row 6 target");
+  Expect(B61nGraphHasNode(graph, labels, "box[1,0,1,1]", -1),
+         "b61n synthetic graph should close row 6 eps^0 through row 5 eps^-1 "
+         "when the matrix has eps^1 support");
+  Expect(B61nGraphHasDependencyEdge(graph, row6, 0, row5, -1, 1),
+         "b61n synthetic graph should record the eps-shifted dependency edge");
+  ExpectContains(graph.summary,
+                 "matrix_eps_order_max=1",
+                 "b61n synthetic graph summary should report matrix support");
+}
+
+void B61nCoefficientTargetGraphInventoriesRealRow56SupportTest() {
+  const std::vector<std::string> labels =
+      amflow::B61nRow56RetainedMasterLabels();
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support =
+      amflow::ExtractB61nMatrixEpsilonSupport(
+          MakeB61nRealEtaMatrixSupportFixture());
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nRow56CoefficientTargetGraph(labels, support);
+
+  Expect(graph.min_matrix_eps_order == 0 && graph.max_matrix_eps_order == 1,
+         "b61n real support inventory should expose the eps^0..eps^1 matrix range");
+  Expect(B61nSupportHas(support,
+                        B61nTestMasterIndex(labels, "box[1,1,1,1]"),
+                        B61nTestMasterIndex(labels, "box[1,0,1,1]"),
+                        1),
+         "b61n real support inventory should include the row 6 <- row 5 eps^1 edge");
+  Expect(B61nSupportHas(support,
+                        B61nTestMasterIndex(labels, "box[1,0,1,1]"),
+                        B61nTestMasterIndex(labels, "box[0,0,0,1]"),
+                        0),
+         "b61n real support inventory should include row 5 source eps^0 support");
+  Expect(B61nSupportHas(support,
+                        B61nTestMasterIndex(labels, "box[1,0,1,1]"),
+                        B61nTestMasterIndex(labels, "box[0,0,0,1]"),
+                        1),
+         "b61n real support inventory should include row 5 source eps^1 support");
+
+  Expect(B61nGraphHasNode(graph, labels, "box[1,0,1,1]", 0),
+         "b61n real graph should contain row 5 eps^0 public target");
+  Expect(B61nGraphHasNode(graph, labels, "box[1,1,1,1]", -2),
+         "b61n real graph should contain row 6 eps^-2 public target");
+  Expect(B61nGraphHasNode(graph, labels, "box[1,1,1,1]", -1),
+         "b61n real graph should contain row 6 eps^-1 public target");
+  Expect(B61nGraphHasNode(graph, labels, "box[1,1,1,1]", 0),
+         "b61n real graph should contain row 6 eps^0 public target");
+  for (const std::string& anchor_label :
+       amflow::B61nRow56ReviewedSourceAnchorLabels()) {
+    Expect(B61nGraphHasAnyNodeForLabel(graph, labels, anchor_label),
+           "b61n real graph should contain reviewed source anchor " +
+               anchor_label);
+  }
+  Expect(!graph.blocked_edges.empty(),
+         "b61n real graph should report out-of-range coefficient dependencies "
+         "instead of hiding them");
+  ExpectContains(graph.summary,
+                 "closed_target_nodes=[",
+                 "b61n real graph summary should print the closed node set");
+  ExpectContains(graph.summary,
+                 "matrix_epsilon_support=[",
+                 "b61n real graph summary should print matrix epsilon support");
+}
+
+void B61nCoefficientTargetGraphFailsClosedOnMalformedInputsTest() {
+  ExpectInvalidArgumentContains(
+      [] {
+        static_cast<void>(amflow::ExtractB61nMatrixEpsilonSupport(
+            {{"1"}, {"0", "1"}}));
+      },
+      "malformed matrix row",
+      "b61n graph support extraction should reject malformed matrix rows");
+  ExpectInvalidArgumentContains(
+      [] {
+        static_cast<void>(amflow::ExtractB61nMatrixEpsilonSupport(
+            std::vector<std::vector<std::string>>(
+                2, std::vector<std::string>(2, "0"))));
+      },
+      "empty matrix epsilon support",
+      "b61n graph support extraction should reject empty matrix support");
+  ExpectRuntimeErrorContains(
+      [] {
+        const std::vector<std::string> labels = {
+            "box[0,0,0,1]",
+            "box[1,0,1,0]",
+        };
+        static_cast<void>(amflow::BuildB61nRow56CoefficientTargetGraph(
+            labels, {{0, 0, 0}}));
+      },
+      "missing retained master",
+      "b61n reviewed row56 graph should fail closed on missing master labels");
+}
+
 void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -7248,6 +7486,9 @@ int main() {
     B61nComplexContourPropagatorRequiresReviewedPublicationContourTest();
     B61nComplexContourPropagatorTransportsCoupledTriangularRowsTest();
     B61nCoefficientStateTransportPropagatesLaurentOrdersBeforeEndpointFitTest();
+    B61nCoefficientTargetGraphClosesSyntheticEpsShiftedDependencyTest();
+    B61nCoefficientTargetGraphInventoriesRealRow56SupportTest();
+    B61nCoefficientTargetGraphFailsClosedOnMalformedInputsTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();

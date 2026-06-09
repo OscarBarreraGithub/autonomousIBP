@@ -49743,6 +49743,32 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
              (std::filesystem::exists(stderr_path) ? ReadFile(stderr_path) : std::string{}));
 
   const std::string stripped_json = ReadFile(stripped_output_path);
+  const auto expect_lane146_coefficient =
+      [&stripped_json](const std::string& integral,
+                       const int order,
+                       const std::string& real_digits_prefix) {
+        const std::string integral_needle = "\"integral\": \"" + integral + "\"";
+        const std::size_t integral_pos = stripped_json.find(integral_needle);
+        Expect(integral_pos != std::string::npos,
+               "b63n lane146 selected4 sweep should find " + integral);
+        const std::size_t next_integral_pos =
+            stripped_json.find("\"integral\": \"", integral_pos + integral_needle.size());
+        const std::string integral_block =
+            stripped_json.substr(
+                integral_pos,
+                next_integral_pos == std::string::npos
+                    ? std::string::npos
+                    : next_integral_pos - integral_pos);
+        ExpectContains(integral_block,
+                       "\"order\": " + std::to_string(order),
+                       "b63n lane146 selected4 sweep should find eps order " +
+                           std::to_string(order) + " for " + integral);
+        ExpectContains(integral_block,
+                       "\"real_digits\": \"" + real_digits_prefix,
+                       "b63n lane146 selected4 sweep should bind the reviewed "
+                       "coefficient for " +
+                           integral + " eps^" + std::to_string(order));
+      };
   ExpectContains(
       stripped_json,
       "\"targets\": [\"phase[1,0,1,0,1,0,0]\", \"phase[1,-1,1,0,1,0,0]\", "
@@ -49778,6 +49804,79 @@ json.dump(payload, open(sys.argv[2], "w", encoding="utf-8"))
   ExpectContains(stripped_json,
                  "\"real_digits\": \"-0.0000000002545102149084555649023204915448",
                  "b63n selected4 top selected master eps^-3 coefficient should match");
+
+  struct ExpectedLane146Selected4Coefficient {
+    std::string integral;
+    int order;
+    std::string real_digits_prefix;
+  };
+  const std::vector<ExpectedLane146Selected4Coefficient> expected_coefficients = {
+      {"phase[1,0,1,0,1,0,0]",
+       0,
+       "0.0114366535872161706034882064745407811774"},
+      {"phase[1,0,1,0,1,0,0]",
+       1,
+       "0.0139467087864737362721836314200929960896"},
+      {"phase[1,0,1,0,1,0,0]",
+       2,
+       "0.0011718937221288188702961707272050866887"},
+      {"phase[1,0,1,0,1,0,0]",
+       3,
+       "-0.0063012552844268729995768248728420665148"},
+      {"phase[1,-1,1,0,1,0,0]",
+       0,
+       "-0.3960325079882920475756203000574990427568"},
+      {"phase[1,-1,1,0,1,0,0]",
+       1,
+       "-0.4980240810957913528732668824078543936241"},
+      {"phase[1,-1,1,0,1,0,0]",
+       2,
+       "-0.0757933158037077814068040069599779645953"},
+      {"phase[1,-1,1,0,1,0,0]",
+       3,
+       "0.1791428666152225408044470736739190534856"},
+      {"phase[1,1,1,0,1,0,1]",
+       0,
+       "0.0000307206490064774149850844597825233487"},
+      {"phase[1,1,1,0,1,0,1]",
+       1,
+       "0.0000735640578582153246274554572082913553"},
+      {"phase[1,1,1,0,1,0,1]",
+       2,
+       "0.0001090226781038402726263823627479401161"},
+      {"phase[1,1,1,0,1,0,1]",
+       3,
+       "0.0001739307289740862952507253941276311088"},
+      {"phase[1,1,1,1,1,1,1]",
+       -3,
+       "-0.0000000002545102149084555649023204915448"},
+      {"phase[1,1,1,1,1,1,1]",
+       -2,
+       "0.0000000036834912781273586153305616991225"},
+      {"phase[1,1,1,1,1,1,1]",
+       -1,
+       "-0.0000000113123798116573013708846911798682"},
+      {"phase[1,1,1,1,1,1,1]",
+       0,
+       "-0.0000000090912895525194362997602232214308"},
+      {"phase[1,1,1,1,1,1,1]",
+       1,
+       "0.0000000100077475892516435606246744091814"},
+      {"phase[1,1,1,1,1,1,1]",
+       2,
+       "0.0000000123295768271386310148480908957782"},
+      {"phase[1,1,1,1,1,1,1]",
+       3,
+       "0.0000000010530548480520371468347330567353"},
+  };
+  for (const ExpectedLane146Selected4Coefficient& expected :
+       expected_coefficients) {
+    expect_lane146_coefficient(expected.integral,
+                               expected.order,
+                               expected.real_digits_prefix);
+  }
+  Expect(expected_coefficients.size() == 19,
+         "b63n lane146 selected4 sweep should cover every compared coefficient");
 }
 
 void SolveSeriesCliLinearPropagatorB64agScaffoldStaysBlockedTest() {

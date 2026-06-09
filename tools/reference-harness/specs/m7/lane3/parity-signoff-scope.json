@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "scope": "m7-parity-signoff-scope-audit",
+  "status": "blocked",
+  "option_selected": "a",
+  "generated_at": "2026-06-09T03:34:45Z",
+  "base": {
+    "requested_head": "9b4c6140d288a46d1b5af58965d8f605b6aaaeb0",
+    "requested_head_verified_as_ancestor_of_origin_main": true,
+    "origin_main_head": "8aa73a33e9a8fa92272eb015e4b72e2bc3f6225f",
+    "detached_worktree": true
+  },
+  "non_claims": [
+    "This audit does not modify b61n or b63n source files.",
+    "This audit does not claim final parity sign-off.",
+    "This audit does not claim Milestone M7 closure.",
+    "This audit does not claim release readiness.",
+    "This audit does not widen runtime or public behavior."
+  ],
+  "current_retained_prerequisites": {
+    "m6_qualification_summary": {
+      "path": "tools/reference-harness/specs/m7/lane133/m6-qualification.json",
+      "current_state": "milestone-m6-qualified",
+      "milestone_m6_ready": true,
+      "blocking_reasons": []
+    },
+    "qualification_corpus_summary": {
+      "path": "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+      "current_state": "qualification-corpus-reviewed",
+      "qualification_corpus_review_complete": true,
+      "blocking_reasons": []
+    },
+    "performance_review_summary": {
+      "path": "tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+      "current_state": "performance-review-reviewed",
+      "performance_review_complete": true,
+      "blocking_reasons": []
+    },
+    "diagnostic_review_summary": {
+      "path": "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+      "current_state": "diagnostic-review-reviewed",
+      "diagnostic_review_complete": true,
+      "blocking_reasons": []
+    },
+    "docs_completion_summary": {
+      "path": "tools/reference-harness/specs/m7/lane92/release-docs-completion.json",
+      "current_state": "docs-completion-reviewed",
+      "docs_completion_review_complete": true,
+      "blocking_reasons": []
+    },
+    "b61n_publication_hook": {
+      "path": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json",
+      "b61n_single_row_publication_hook_reviewed_by_parity_helper": true,
+      "b61n_selected5_m6_signal_preserved": true
+    }
+  },
+  "local_probe_results": {
+    "fresh_parity_signoff_summary": {
+      "producer": "tools/reference-harness/scripts/review_release_parity_signoff.py",
+      "inputs": [
+        "tools/reference-harness/specs/m7/lane133/m6-qualification.json",
+        "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+        "tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+        "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+        "tools/reference-harness/specs/m7/lane92/release-docs-completion.json"
+      ],
+      "current_state": "parity-signoff-reviewed",
+      "parity_signoff_complete": true,
+      "qualification_closure_reviewed": true,
+      "qualification_corpus_reviewed": true,
+      "missing_or_blocked_parity_paths": [],
+      "blocking_reasons": []
+    },
+    "release_readiness_with_committed_stale_parity_sidecar": {
+      "consumer": "tools/reference-harness/scripts/release_signoff_readiness.py",
+      "parity_sidecar_path": "tools/reference-harness/specs/m7/lane92/release-parity-signoff.json",
+      "parity_signoff_current_state": "blocked-on-qualification-closure",
+      "parity_signoff_complete": false,
+      "parity_signoff_blockers": [
+        "parity-signoff-incomplete",
+        "parity-qualification-closure",
+        "parity-qualification-corpus-summary",
+        "parity-path:qualification-closure-note"
+      ],
+      "parity_review_section_status": "blocked",
+      "parity_review_section_blockers": [
+        "parity-signoff-incomplete",
+        "parity-qualification-closure",
+        "parity-qualification-corpus-summary",
+        "parity-path:qualification-closure-note",
+        "milestone-m6"
+      ]
+    },
+    "release_readiness_with_fresh_parity_probe": {
+      "consumer": "tools/reference-harness/scripts/release_signoff_readiness.py",
+      "parity_signoff_current_state": "parity-signoff-reviewed",
+      "parity_signoff_complete": true,
+      "parity_signoff_blockers": [],
+      "parity_missing_or_blocked_paths": [],
+      "parity_review_section_status": "blocked",
+      "parity_review_section_blockers": [
+        "milestone-m6"
+      ],
+      "release_prerequisite_milestone_m6": {
+        "current_state": "blocked-on-qualification-closure",
+        "blockers": [
+          "case-study-numerics"
+        ]
+      },
+      "release_prerequisite_retained_reference_evidence": {
+        "current_state": "captured-but-phase0-not-qualified",
+        "blockers": [
+          "case-study-numerics"
+        ]
+      }
+    }
+  },
+  "exact_blockers": [
+    {
+      "id": "stale-retained-parity-sidecar",
+      "severity": "blocking-current-readiness-input",
+      "category": "missing-current-artifact",
+      "paths": [
+        "tools/reference-harness/specs/m7/lane92/release-parity-signoff.json",
+        "tools/reference-harness/specs/m7/lane133/m6-qualification.json",
+        "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json"
+      ],
+      "observed": "The newest committed parity sidecar consumed by the retained lane92 readiness output predates lane133 M6 and qualification-corpus closure. It still reports qualification_closure_reviewed=false, qualification_corpus_reviewed=false, parity_signoff_complete=false, and missing_or_blocked_parity_paths=[\"qualification-closure-note\"].",
+      "required_to_clear": "Publish a current release-parity-signoff sidecar generated against lane133 M6 closure, lane133 qualification corpus, lane70 performance, lane76 diagnostic, and lane92 docs evidence.",
+      "blocked_runtime_lanes": []
+    },
+    {
+      "id": "release-readiness-does-not-consume-m6-qualified-sidecar",
+      "severity": "blocking-release-readiness-validator",
+      "category": "output-validator-gap",
+      "paths": [
+        "tools/reference-harness/scripts/release_signoff_readiness.py",
+        "tools/reference-harness/specs/m7/lane133/m6-qualification.json",
+        "tools/reference-harness/specs/m7/lane133/phase0-qualification.json",
+        "tools/reference-harness/specs/m7/lane115/case-study-qualification.json"
+      ],
+      "observed": "Even with a freshly generated parity sidecar that is parity_signoff_complete=true, release_signoff_readiness.py marks the parity-signoff review section blocked by milestone-m6. The helper derives milestone-m6 from qualification/phase0/case-study fields and carries phase0 milestone_m6_requires_case_study_numerics=true into a case-study-numerics blocker, while the retained lane133 M6-qualified sidecar is not an input to release_signoff_readiness.py.",
+      "required_to_clear": "Teach release_signoff_readiness.py to consume or reconcile the accepted M6 qualification summary, then require the current all-reviewed M7 prereq set to yield no milestone-m6 blocker before accepting final parity signoff in readiness output.",
+      "blocked_runtime_lanes": []
+    },
+    {
+      "id": "m7-closure-plan-doc-drift",
+      "severity": "blocking-human-signoff-documentation",
+      "category": "written-gap-report-drift",
+      "paths": [
+        "docs/milestones/m7-closure-plan.md",
+        "tools/reference-harness/specs/m7/lane133/phase0-qualification.json",
+        "tools/reference-harness/specs/m7/lane115/case-study-qualification.json"
+      ],
+      "observed": "The M7 closure plan still reports lane92-era qualification-corpus and phase0 blockers, including pending b61n/b63n/b64ag phase-0 examples. Current retained lane133/lane115 summaries report phase0-packet-set-qualified, case-study-families-qualified, qualification-corpus-reviewed, and milestone-m6-qualified.",
+      "required_to_clear": "Refresh the M7 closure plan after the readiness validator consumes M6 closure, preserving the distinction between parity sidecar closure and release-readiness closure.",
+      "blocked_runtime_lanes": []
+    }
+  ],
+  "missing_artifacts": [
+    {
+      "path": "tools/reference-harness/specs/m7/<next-lane>/release-parity-signoff.json",
+      "reason": "A retained current parity-signoff sidecar generated from lane133 M6 and qualification-corpus evidence is not committed."
+    },
+    {
+      "path": "tools/reference-harness/specs/m7/<next-lane>/release-readiness.full-output.json",
+      "reason": "A retained readiness output showing parity-signoff reviewed cannot be produced honestly until release_signoff_readiness.py consumes or reconciles the M6-qualified sidecar."
+    }
+  ],
+  "missing_tests": [
+    {
+      "target": "tools/reference-harness/scripts/release_signoff_readiness.py --self-check",
+      "reason": "No self-check covers the current all-reviewed prereq set with an accepted M6 qualification sidecar and a complete parity sidecar, expecting the parity-signoff section not to retain a milestone-m6 blocker."
+    },
+    {
+      "target": "release readiness sidecar selection",
+      "reason": "No CI guard detects when a stale release-parity-signoff sidecar is still used after newer M6 and qualification-corpus closure sidecars land."
+    }
+  ],
+  "not_blockers_for_parity_sidecar_itself": [
+    "b61n selected5 publication hook review: currently true under review_release_parity_signoff.py",
+    "qualification corpus review: currently true in tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+    "performance review: currently true in tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+    "diagnostic review: currently true in tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+    "docs completion: currently true in tools/reference-harness/specs/m7/lane92/release-docs-completion.json"
+  ],
+  "next_atomic_actions": [
+    "Add release_signoff_readiness.py support for an explicit M6 qualification summary input, or otherwise reconcile phase0/case-study qualified subverdicts with lane133 M6 closure.",
+    "Add a self-check that reproduces the current lane133/lane115/lane70/lane76/lane92 all-reviewed prereq set and fails if parity-signoff still reports milestone-m6.",
+    "Promote a fresh release-parity-signoff sidecar after the readiness validator no longer reports the synthetic milestone-m6 blocker."
+  ]
+}

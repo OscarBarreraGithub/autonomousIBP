@@ -55779,6 +55779,9 @@ void ReleaseSignoffReadinessConsumesGeneratedParitySignoffReviewTest() {
   ExpectContains(release_result.stdout_json, "\"status\": \"blocked\"",
                  "generated-parity-signoff-aware release signoff readiness should keep "
                  "parity-signoff blocked while producer evidence is incomplete");
+  ExpectContains(release_result.stdout_json, "\"release_signoff_blockers\": [",
+                 "generated-parity-signoff-aware release signoff readiness should publish "
+                 "machine-readable blockers for the final release-ready decision");
   ExpectContains(release_result.stdout_json, "\"release_signoff_ready\": false",
                  "generated-parity-signoff-aware release signoff readiness should keep final "
                  "release signoff blocked by the remaining prerequisites");

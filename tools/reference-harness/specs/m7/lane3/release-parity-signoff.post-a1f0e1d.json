@@ -1,0 +1,38 @@
+{
+  "b61n_selected5_m6_signal_preserved": true,
+  "b61n_single_row_publication_hook_reviewed": true,
+  "blocking_reasons": [],
+  "checklist_path": "tools/reference-harness/templates/release-signoff-checklist.json",
+  "current_state": "parity-signoff-reviewed",
+  "diagnostic_review_summary_path": "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json",
+  "diagnostic_review_summary_reviewed": true,
+  "docs_completion_note_reviewed": true,
+  "docs_completion_summary_path": "tools/reference-harness/specs/m7/lane92/release-docs-completion.json",
+  "m6_qualification_summary_path": "tools/reference-harness/specs/m7/lane133/m6-qualification.json",
+  "missing_or_blocked_parity_paths": [],
+  "parity_signoff_complete": true,
+  "parity_signoff_required_inputs_preserved": true,
+  "parity_signoff_required_outputs_preserved": true,
+  "performance_review_summary_path": "tools/reference-harness/specs/m7/lane70/release-performance-review.json",
+  "performance_review_summary_reviewed": true,
+  "prerequisite_review_sections_preserved": true,
+  "qualification_closure_reviewed": true,
+  "qualification_corpus_reviewed": true,
+  "qualification_corpus_summary_path": "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+  "required_release_review_sections": [
+    "qualification-corpus",
+    "performance-review",
+    "diagnostic-review",
+    "docs-completion"
+  ],
+  "schema_version": 1,
+  "scope": "release-parity-signoff",
+  "withheld_claims": [
+    "This summary does not claim final parity sign-off.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not widen runtime or public behavior."
+  ],
+  "withheld_claims_reviewed": true
+}

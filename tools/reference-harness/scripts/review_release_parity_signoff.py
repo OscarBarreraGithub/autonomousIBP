@@ -181,7 +181,7 @@ def load_optional_summary(
     if summary_path is None:
         return None, ""
     resolved = resolve_input_path(summary_path, root, label)
-    return loader(resolved), str(resolved)
+    return loader(resolved), str(summary_path)
 
 
 def load_release_checklist(checklist_path: Path) -> dict[str, Any]:
@@ -330,6 +330,7 @@ def summarize_parity_signoff(
     docs_completion_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = root.resolve(strict=False)
+    checklist_path_text = str(checklist_path)
     checklist_path = resolve_input_path(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
 
@@ -535,7 +536,7 @@ def summarize_parity_signoff(
             if parity_signoff_complete
             else "blocked-on-prerequisite-release-reviews"
         ),
-        "checklist_path": str(checklist_path),
+        "checklist_path": checklist_path_text,
         "m6_qualification_summary_path": m6_qualification_summary_path_text,
         "qualification_corpus_summary_path": qualification_corpus_summary_path_text,
         "performance_review_summary_path": performance_review_summary_path_text,

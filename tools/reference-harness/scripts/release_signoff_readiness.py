@@ -1218,6 +1218,7 @@ def summarize_release_readiness(
     parity_signoff_summary_path: Path | None = None,
 ) -> dict[str, Any]:
     root = repo_root()
+    checklist_path_text = str(checklist_path)
     checklist_path = checklist_path.resolve(strict=False)
     expect_path_within_root(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
@@ -1547,9 +1548,33 @@ def summarize_release_readiness(
             }
         )
 
+    release_signoff_blockers: list[str] = []
+    for prerequisite in release_prerequisites:
+        if prerequisite["satisfied"]:
+            continue
+        if prerequisite["blockers"]:
+            release_signoff_blockers.extend(
+                f"prerequisite:{prerequisite['id']}:{blocker}"
+                for blocker in prerequisite["blockers"]
+            )
+        else:
+            release_signoff_blockers.append(
+                f"prerequisite:{prerequisite['id']}:{prerequisite['current_state']}"
+            )
+
+    for section in review_sections:
+        if section["status"] == "reviewed":
+            continue
+        if section["blockers"]:
+            release_signoff_blockers.extend(
+                f"review:{section['id']}:{blocker}" for blocker in section["blockers"]
+            )
+        else:
+            release_signoff_blockers.append(f"review:{section['id']}:{section['status']}")
+
     return {
         "schema_version": 1,
-        "checklist_path": str(checklist_path),
+        "checklist_path": checklist_path_text,
         "qualification_summary_path": str(qualification_summary_path),
         "checklist_sources": checklist_sources,
         "checklist_sources_present": checklist_sources_present,
@@ -1902,7 +1927,8 @@ def summarize_release_readiness(
         "release_prerequisites": release_prerequisites,
         "review_sections": review_sections,
         "withheld_claims": checklist["explicit_non_claims"],
-        "release_signoff_ready": False,
+        "release_signoff_blockers": release_signoff_blockers,
+        "release_signoff_ready": not release_signoff_blockers,
     }
 
 

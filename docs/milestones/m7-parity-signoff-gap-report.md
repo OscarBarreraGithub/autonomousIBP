@@ -3,6 +3,16 @@
 Status: audit only. This report does not flip final parity signoff, does not
 claim Milestone M7 closure, and does not modify b61n or b63n source files.
 
+## Lane3 Follow-up: Stale Sidecars Superseded
+
+Status: parity sidecar gap closed, release-readiness still blocked on one
+remaining prerequisite. `tools/reference-harness/specs/m7/lane3/release-parity-signoff.post-a1f0e1d.json`
+now records `parity-signoff-reviewed` with no parity blockers, and
+`tools/reference-harness/specs/m7/lane3/release-readiness.post-a1f0e1d.full-output.json`
+supersedes the stale lane92 readiness output for the current `origin/main`
+state. The remaining blocker is tracked in
+`docs/milestones/m7-release-signoff-remaining-blockers.md`.
+
 ## Lane3 Follow-up: Readiness Validator M6 Input
 
 Status: validator gap closed. `release_signoff_readiness.py` now accepts an

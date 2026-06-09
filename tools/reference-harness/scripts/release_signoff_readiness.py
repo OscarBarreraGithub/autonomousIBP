@@ -49,6 +49,10 @@ QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not widen runtime or public behavior.",
 )
 
+M5_ALL_PHASE_SCOPE = "m5-all-phase"
+M5_ALL_PHASE_CLOSED_STATE = "CLOSED/all-phase"
+M5_ALL_PHASE_BLOCKED_STATE = "blocked-on-m5-all-phase-closure"
+
 
 def normalize_string_list(raw: Any, label: str) -> list[str]:
     if raw is None:
@@ -917,6 +921,123 @@ def load_parity_signoff_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_m5_qualification_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "M5 qualification summary schema_version must be 1")
+    expect(
+        summary.get("scope") == M5_ALL_PHASE_SCOPE,
+        f"M5 qualification summary scope must be {M5_ALL_PHASE_SCOPE}",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "M5 qualification summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "m5_all_phase_closed",
+        "m5_feature_parity_passed",
+        "m5_all_phase_closure_approved",
+        "does_not_claim_m6",
+        "does_not_claim_m7",
+        "does_not_claim_release_readiness",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"M5 qualification summary {field} must be a bool")
+
+    required_tolerance_digits = summary.get("required_tolerance_digits")
+    if not isinstance(required_tolerance_digits, int) or required_tolerance_digits <= 0:
+        raise TypeError("M5 qualification summary required_tolerance_digits must be a positive int")
+    aggregate_compared = summary.get("aggregate_compared_coefficient_count")
+    aggregate_passed = summary.get("aggregate_passed_coefficient_count")
+    if not isinstance(aggregate_compared, int) or aggregate_compared < 0:
+        raise TypeError(
+            "M5 qualification summary aggregate_compared_coefficient_count must be a nonnegative int"
+        )
+    if not isinstance(aggregate_passed, int) or aggregate_passed < 0:
+        raise TypeError(
+            "M5 qualification summary aggregate_passed_coefficient_count must be a nonnegative int"
+        )
+
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "M5 qualification summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "M5 qualification summary withheld_claims",
+    )
+    expect_unique(withheld_claims, "M5 qualification summary withheld_claims")
+    missing_example_classes = normalize_string_list(
+        summary.get("missing_example_classes", []),
+        "M5 qualification summary missing_example_classes",
+    )
+    unknown_example_classes = normalize_string_list(
+        summary.get("unknown_example_classes", []),
+        "M5 qualification summary unknown_example_classes",
+    )
+    missing_runtime_features = normalize_string_list(
+        summary.get("missing_runtime_features", []),
+        "M5 qualification summary missing_runtime_features",
+    )
+    unknown_runtime_features = normalize_string_list(
+        summary.get("unknown_runtime_features", []),
+        "M5 qualification summary unknown_runtime_features",
+    )
+
+    if summary["m5_all_phase_closed"]:
+        expect(
+            current_state == M5_ALL_PHASE_CLOSED_STATE,
+            f"closed M5 qualification summary must use current_state={M5_ALL_PHASE_CLOSED_STATE}",
+        )
+        expect(
+            summary["m5_feature_parity_passed"],
+            "closed M5 qualification summary must report passing feature parity",
+        )
+        expect(
+            summary["m5_all_phase_closure_approved"],
+            "closed M5 qualification summary must report approved all-phase closure",
+        )
+        expect(
+            summary["does_not_claim_m6"]
+            and summary["does_not_claim_m7"]
+            and summary["does_not_claim_release_readiness"],
+            "closed M5 qualification summary must preserve M6/M7/release non-claims",
+        )
+        expect(
+            aggregate_compared > 0 and aggregate_passed == aggregate_compared,
+            "closed M5 qualification summary must be coefficient-bearing with all coefficients passed",
+        )
+        expect(not blocking_reasons, "closed M5 qualification summary must not report blockers")
+        expect(
+            not (
+                missing_example_classes
+                or unknown_example_classes
+                or missing_runtime_features
+                or unknown_runtime_features
+            ),
+            "closed M5 qualification summary must not report missing or unknown required surfaces",
+        )
+    else:
+        expect(
+            current_state == M5_ALL_PHASE_BLOCKED_STATE,
+            f"blocked M5 qualification summary must use current_state={M5_ALL_PHASE_BLOCKED_STATE}",
+        )
+        expect(blocking_reasons, "blocked M5 qualification summary must report blockers")
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+        "missing_example_classes": missing_example_classes,
+        "unknown_example_classes": unknown_example_classes,
+        "missing_runtime_features": missing_runtime_features,
+        "unknown_runtime_features": unknown_runtime_features,
+        "aggregate_compared_coefficient_count": aggregate_compared,
+        "aggregate_passed_coefficient_count": aggregate_passed,
+    }
+
+
 def load_m6_qualification_summary(summary_path: Path) -> dict[str, Any]:
     summary = load_json(summary_path)
     expect(summary.get("schema_version") == 1, "M6 qualification summary schema_version must be 1")
@@ -1208,6 +1329,7 @@ def summarize_release_readiness(
     *,
     checklist_path: Path,
     qualification_summary_path: Path,
+    m5_qualification_summary_path: Path | None = None,
     m6_qualification_summary_path: Path | None = None,
     qualification_corpus_summary_path: Path | None = None,
     phase0_qualification_summary_path: Path | None = None,
@@ -1223,6 +1345,11 @@ def summarize_release_readiness(
     expect_path_within_root(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
     qualification_summary = load_qualification_summary(qualification_summary_path)
+    m5_qualification_summary = (
+        load_m5_qualification_summary(m5_qualification_summary_path)
+        if m5_qualification_summary_path is not None
+        else None
+    )
     m6_qualification_summary = (
         load_m6_qualification_summary(m6_qualification_summary_path)
         if m6_qualification_summary_path is not None
@@ -1332,6 +1459,20 @@ def summarize_release_readiness(
         or bool(blocked_case_study_ids)
     )
     phase_f_blocked = bool(blocked_runtime_lanes)
+    m5_qualification_ready = (
+        m5_qualification_summary is not None
+        and m5_qualification_summary["m5_all_phase_closed"]
+        and not m5_qualification_summary["blocking_reasons"]
+    )
+    m5_qualification_blockers: list[str] = []
+    if m5_qualification_summary is not None:
+        if not m5_qualification_summary["m5_all_phase_closed"]:
+            m5_qualification_blockers.append(
+                "m5:" + m5_qualification_summary["current_state"]
+            )
+        m5_qualification_blockers.extend(
+            "m5:" + reason for reason in m5_qualification_summary["blocking_reasons"]
+        )
     phase0_failure_blockers = phase0_failure_code_blockers(phase0_qualification_summary)
     case_study_blockers = case_study_qualification_blockers(case_study_qualification_summary)
     if (
@@ -1411,12 +1552,21 @@ def summarize_release_readiness(
                     else "awaiting-reviewed-and-accepted-m6-packet"
                 )
         elif prerequisite_id == "phase-f-feature-parity":
-            blockers = blocked_runtime_lanes
-            current_state = (
-                "blocked-on-runtime-lanes"
-                if phase_f_blocked
-                else "awaiting-reviewed-and-accepted-m5-packet"
-            )
+            if m5_qualification_ready:
+                current_state = "reviewed-and-accepted-m5-packet"
+                satisfied = True
+            else:
+                blockers = (
+                    blocked_runtime_lanes
+                    if phase_f_blocked
+                    else m5_qualification_blockers
+                )
+                if phase_f_blocked:
+                    current_state = "blocked-on-runtime-lanes"
+                elif m5_qualification_summary is not None:
+                    current_state = "blocked-on-m5-packet-review"
+                else:
+                    current_state = "awaiting-reviewed-and-accepted-m5-packet"
         elif prerequisite_id == "retained-reference-evidence":
             blockers = [] if m6_qualification_ready else derived_m6_blockers
             if not qualification_evidence_coherent:
@@ -1588,6 +1738,44 @@ def summarize_release_readiness(
         "blocked_phase0_examples": qualification_summary["blocked_phase0_examples"],
         "blocked_case_study_families": qualification_summary["blocked_case_study_families"],
         "blocked_runtime_lanes": blocked_runtime_lanes,
+        "m5_qualification_summary_path": (
+            str(m5_qualification_summary_path)
+            if m5_qualification_summary_path is not None
+            else ""
+        ),
+        "m5_qualification_evidence_present": m5_qualification_summary is not None,
+        "m5_qualification_current_state": (
+            m5_qualification_summary["current_state"]
+            if m5_qualification_summary is not None
+            else "not-provided"
+        ),
+        "m5_qualification_sidecar_ready": (
+            m5_qualification_summary["m5_all_phase_closed"]
+            if m5_qualification_summary is not None
+            else False
+        ),
+        "m5_qualification_ready": m5_qualification_ready,
+        "m5_qualification_blockers": m5_qualification_blockers,
+        "m5_qualification_blocking_reasons": (
+            m5_qualification_summary["blocking_reasons"]
+            if m5_qualification_summary is not None
+            else []
+        ),
+        "m5_qualification_withheld_claims": (
+            m5_qualification_summary["withheld_claims"]
+            if m5_qualification_summary is not None
+            else []
+        ),
+        "m5_qualification_compared_coefficient_count": (
+            m5_qualification_summary["aggregate_compared_coefficient_count"]
+            if m5_qualification_summary is not None
+            else 0
+        ),
+        "m5_qualification_passed_coefficient_count": (
+            m5_qualification_summary["aggregate_passed_coefficient_count"]
+            if m5_qualification_summary is not None
+            else 0
+        ),
         "m6_qualification_summary_path": (
             str(m6_qualification_summary_path)
             if m6_qualification_summary_path is not None
@@ -2290,6 +2478,59 @@ def write_synthetic_parity_signoff_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_m5_qualification_summary(path: Path, *, ready: bool) -> None:
+    blocking_reasons = [] if ready else ["missing-reviewed-feature-parity-packet"]
+    withheld_claims = [
+        "This summary does not launch the C++ runtime or create new retained captures.",
+        "This summary does not claim Milestone M6, Milestone M7, or release readiness.",
+    ]
+    if not ready:
+        withheld_claims.insert(0, "This summary does not claim Milestone M5 closure.")
+
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": M5_ALL_PHASE_SCOPE,
+            "current_state": (
+                M5_ALL_PHASE_CLOSED_STATE if ready else M5_ALL_PHASE_BLOCKED_STATE
+            ),
+            "m5_all_phase_closed": ready,
+            "m5_feature_parity_passed": ready,
+            "m5_feature_parity_scope": "m5-feature-parity-only",
+            "m5_feature_parity_current_state": (
+                "m5-feature-parity-passed" if ready else "blocked-on-m5-feature-parity"
+            ),
+            "m5_feature_parity_summary_path": "synthetic-m5-feature-parity.json",
+            "m5_feature_surface_evidence_path": "synthetic-m5-feature-surface.json",
+            "m5_all_phase_closure_decision_path": "synthetic-m5-closure-decision.json",
+            "m5_all_phase_closure_decision": "accept-m5-feature-parity-as-all-phase-closure",
+            "m5_all_phase_closure_approved": ready,
+            "approved_current_state": (
+                M5_ALL_PHASE_CLOSED_STATE if ready else M5_ALL_PHASE_BLOCKED_STATE
+            ),
+            "does_not_claim_m6": True,
+            "does_not_claim_m7": True,
+            "does_not_claim_release_readiness": True,
+            "required_tolerance_digits": 30,
+            "m0b_accepted": True,
+            "required_example_classes": ["automatic_loop"],
+            "required_runtime_features": ["fixed_eps"],
+            "missing_example_classes": [],
+            "unknown_example_classes": [],
+            "missing_runtime_features": [],
+            "unknown_runtime_features": [],
+            "aggregate_compared_coefficient_count": 1 if ready else 0,
+            "aggregate_passed_coefficient_count": 1 if ready else 0,
+            "feature_parity_blocking_reasons": [],
+            "closure_decision_blockers": [],
+            "blocking_reasons": blocking_reasons,
+            "withheld_claims": withheld_claims,
+            "evidence_paths": ["synthetic-m5-feature-parity.json"],
+        },
+    )
+
+
 def write_synthetic_m6_qualification_summary(path: Path, *, ready: bool) -> None:
     blocking_reasons = (
         [] if ready else ["phase0: runtime-lane-blocked phase-0 examples remain pending"]
@@ -2330,6 +2571,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         qualification_corpus_complete_summary_path = (
             temp_root / "qualification-corpus-summary-complete.json"
         )
+        m5_qualification_summary_path = temp_root / "m5-qualification-summary.json"
         m6_qualification_summary_path = temp_root / "m6-qualification-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         case_study_qualification_summary_path = (
@@ -2355,6 +2597,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_qualification_corpus_review_summary(qualification_corpus_summary_path)
+        write_synthetic_m5_qualification_summary(m5_qualification_summary_path, ready=True)
         write_synthetic_m6_qualification_summary(m6_qualification_summary_path, ready=True)
         write_json(
             qualification_corpus_complete_summary_path,
@@ -2595,6 +2838,19 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             docs_completion_summary_path=docs_completion_reviewed_summary_path,
             parity_signoff_summary_path=parity_signoff_complete_summary_path,
         )
+        accepted_m5_m6_parity_summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+            m5_qualification_summary_path=m5_qualification_summary_path,
+            m6_qualification_summary_path=m6_qualification_summary_path,
+            qualification_corpus_summary_path=qualification_corpus_complete_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
+            performance_review_summary_path=performance_reviewed_summary_path,
+            diagnostic_review_summary_path=diagnostic_reviewed_summary_path,
+            docs_completion_summary_path=docs_completion_reviewed_summary_path,
+            parity_signoff_summary_path=parity_signoff_complete_summary_path,
+        )
         reviewed_performance_section_decoupled_from_m6 = any(
             section["id"] == "performance-review"
             and section["status"] == "reviewed"
@@ -2636,6 +2892,17 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             and not prerequisite["blockers"]
             for prerequisite in accepted_m6_parity_summary["release_prerequisites"]
         )
+        accepted_m5_sidecar_clears_feature_parity_prerequisite = any(
+            prerequisite["id"] == "phase-f-feature-parity"
+            and prerequisite["current_state"] == "reviewed-and-accepted-m5-packet"
+            and prerequisite["satisfied"]
+            and not prerequisite["blockers"]
+            for prerequisite in accepted_m5_m6_parity_summary["release_prerequisites"]
+        )
+        accepted_m5_m6_complete_reviews_can_release_ready = (
+            accepted_m5_m6_parity_summary["release_signoff_ready"]
+            and not accepted_m5_m6_parity_summary["release_signoff_blockers"]
+        )
         reviewed_performance_does_not_fake_release_readiness = (
             not anti_fake_parity_summary["release_signoff_ready"]
             and not anti_fake_complete_parity_summary["release_signoff_ready"]
@@ -2669,6 +2936,14 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         expect(
             accepted_m6_sidecar_clears_carried_case_study_numerics,
             "accepted M6 sidecar must clear carried case-study-numerics blockers",
+        )
+        expect(
+            accepted_m5_sidecar_clears_feature_parity_prerequisite,
+            "accepted M5 sidecar must clear the feature-parity prerequisite",
+        )
+        expect(
+            accepted_m5_m6_complete_reviews_can_release_ready,
+            "complete release review evidence plus accepted M5/M6 sidecars must make readiness true",
         )
         expect(
             reviewed_performance_does_not_fake_release_readiness,
@@ -2798,6 +3073,15 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             "accepted_m6_sidecar_clears_carried_case_study_numerics": (
                 accepted_m6_sidecar_clears_carried_case_study_numerics
             ),
+            "accepted_m5_sidecar_consumed": accepted_m5_m6_parity_summary[
+                "m5_qualification_evidence_present"
+            ],
+            "accepted_m5_sidecar_clears_feature_parity_prerequisite": (
+                accepted_m5_sidecar_clears_feature_parity_prerequisite
+            ),
+            "accepted_m5_m6_complete_reviews_can_release_ready": (
+                accepted_m5_m6_complete_reviews_can_release_ready
+            ),
             "reviewed_performance_does_not_fake_release_readiness": (
                 reviewed_performance_does_not_fake_release_readiness
             ),
@@ -2911,6 +3195,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to the M7 qualification-corpus review summary",
     )
     parser.add_argument(
+        "--m5-qualification-summary",
+        type=Path,
+        help="Optional path to the accepted M5 all-phase qualification closure summary",
+    )
+    parser.add_argument(
         "--m6-qualification-summary",
         type=Path,
         help="Optional path to the accepted M6 qualification closure summary",
@@ -2977,6 +3266,7 @@ def main() -> int:
     summary = summarize_release_readiness(
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
+        m5_qualification_summary_path=args.m5_qualification_summary,
         m6_qualification_summary_path=args.m6_qualification_summary,
         qualification_corpus_summary_path=args.qualification_corpus_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,

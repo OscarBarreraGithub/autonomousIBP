@@ -685,19 +685,18 @@ prerequisite M6 gate plus the same later release-review sections for later
 harness-side consumers. Neither
 artifact relaxes the dependency on truthful `Milestone M6` closure or claims
 that release sign-off is complete.
-The first executable M7 helper then stays blocked on purpose:
+The first executable M7 helper remains fail-closed by default:
 `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one
 machine-readable `qualification_readiness.py` summary plus that checklist,
-can also consume the retained phase-0 packet-set qualification verdict, the retained
-case-study-family qualification verdict, plus one qualification-corpus summary sidecar, one
-performance-review summary sidecar, one diagnostic-review summary sidecar, one docs-completion
-summary sidecar, and one parity-signoff summary sidecar, audits the durable checklist/doc targets, and writes one blocked
-release-readiness summary that keeps the current
-`b61n` / `b63n` / `b64ag` phase-0 runtime frontier, phase-0 correct-digit/failure-code
-blockers, qualification-corpus blockers, performance-review blockers, typed-failure
-diagnostic-review blockers, docs-alignment blockers, and the final parity-signoff blocker path
-visible without claiming that `Milestone M6` or
-`Milestone M7` has closed.
+can also consume the accepted M5 all-phase qualification packet, the retained phase-0 packet-set
+qualification verdict, the retained case-study-family qualification verdict, plus one
+qualification-corpus summary sidecar, one performance-review summary sidecar, one
+diagnostic-review summary sidecar, one docs-completion summary sidecar, and one parity-signoff
+summary sidecar, audits the durable checklist/doc targets, and writes one release-readiness
+summary that keeps the phase-F/M5 packet state, phase-0 correct-digit/failure-code blockers,
+qualification-corpus blockers, performance-review blockers, typed-failure diagnostic-review
+blockers, docs-alignment blockers, and the final parity-signoff blocker path visible until
+explicit accepted sidecars satisfy them.
 The `Milestone M7 qualification-corpus release-readiness producer` is the first populated
 qualification-corpus sidecar producer:
 `tools/reference-harness/scripts/review_release_qualification_corpus.py` audits the live release

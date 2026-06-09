@@ -481,6 +481,8 @@ To turn one retained M6 readiness summary into the first blocked M7 release-read
 ```bash
 python3 tools/reference-harness/scripts/release_signoff_readiness.py \
   --qualification-summary /tmp/qualification-readiness.json \
+  --m5-qualification-summary /tmp/m5-qualification.json \
+  --m6-qualification-summary /tmp/m6-qualification.json \
   --qualification-corpus-summary /tmp/qualification-corpus.json \
   --phase0-qualification-summary /tmp/phase0-qualification.json \
   --case-study-qualification-summary /tmp/case-study-qualification.json \
@@ -492,12 +494,12 @@ python3 tools/reference-harness/scripts/release_signoff_readiness.py \
 
 Add `--summary-path` if you want the JSON report written to disk as well as printed to stdout.
 This helper is still release-prep plumbing only: it audits the release-signoff checklist sources
-and docs-completion targets, keeps the current blocked `b61n` / `b62p` / `b63n` / `b64ag`
-frontier visible from the retained M6 evidence packet, preserves optional phase-0 qualification
-and case-study-family qualification verdict blockers plus qualification-corpus,
-performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar blockers when
-provided, and writes one blocked release-readiness summary without claiming that `Milestone M6`
-or `Milestone M7` is closed.
+and docs-completion targets, keeps the phase-F/M5 packet state and retained M6 evidence frontier
+visible, preserves optional phase-0 qualification and case-study-family qualification verdict
+blockers plus qualification-corpus, performance-review, diagnostic-review, docs-completion, and
+parity-signoff sidecar blockers when provided, and writes one fail-closed release-readiness
+summary. It reaches `release_signoff_ready=true` only when the accepted M5 packet, accepted M6
+packet, and every M7 review sidecar are supplied and blocker-free.
 
 To produce the first machine-readable M7 qualification-corpus sidecar consumed by that readiness
 helper:
@@ -644,10 +646,10 @@ The capture script writes:
 - `release_signoff_readiness.py` is the first executable M7 helper: it consumes one
   machine-readable `qualification_readiness.py` summary plus the release-signoff checklist,
   audits that the checklist source/doc paths exist inside the repo, preserves the blocked
-  `next_runtime_lane` frontier, can preserve optional phase-0 qualification, case-study-family
-  qualification, qualification-corpus review, performance-review, diagnostic-review,
-  docs-completion, and parity-signoff sidecar blockers, and writes one blocked
-  release-readiness summary without overclaiming
+  `next_runtime_lane` frontier, can preserve and validate the accepted M5 packet plus optional
+  M6, phase-0 qualification, case-study-family qualification, qualification-corpus review,
+  performance-review, diagnostic-review, docs-completion, and parity-signoff sidecar blockers,
+  and writes one fail-closed release-readiness summary without overclaiming
   qualified release evidence.
 - `review_release_qualification_corpus.py` is the first M7 qualification-corpus sidecar
   producer: it audits the release-signoff checklist qualification-corpus section, consumes the
@@ -715,12 +717,12 @@ The capture script writes:
   matching, missing-numeric, runtime-blocked, below-threshold, incoherent-readiness,
   case-study-id-drift, and numeric-family-metadata-drift summaries.
 - `release_signoff_readiness.py --self-check` exercises the first blocked M7 release-readiness
-  audit against one synthetic M6 summary plus synthetic phase-0 qualification,
+  audit against synthetic M5/M6 summaries plus synthetic phase-0 qualification,
   qualification-corpus, performance-review, diagnostic-review, docs-completion, and
   parity-signoff sidecars, covering withheld release claims, visible runtime-lane blockers,
   preserved qualification-corpus, performance, and typed-failure diagnostic blockers,
-  checklist/doc-path auditing, docs-completion blockers, and the final parity-signoff blocker
-  path before signoff itself is allowed to proceed.
+  checklist/doc-path auditing, docs-completion blockers, the final parity-signoff blocker,
+  and the complete accepted-M5/M6 all-reviewed ready path.
 - `review_release_qualification_corpus.py --self-check` exercises the first M7
   `release-qualification-corpus` sidecar producer against synthetic retained qualification
   evidence, covering checklist input drift, phase-0 and case-study verdict blockers, closed

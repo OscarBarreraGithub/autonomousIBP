@@ -175,21 +175,17 @@ single-name ending-planned wrapper over that reviewed Batch 45 generator.
 - current worktree now also carries the first executable M7 helper on top of that scaffold only:
   `tools/reference-harness/scripts/release_signoff_readiness.py` consumes one machine-readable
   `qualification_readiness.py` summary plus the release-signoff checklist, audits the checklist
-  source/doc targets inside the repo, preserves the blocked `b61n` / `b63n` / `b64ag`
-  phase-0 runtime-lane frontier from the retained M6 evidence packet, and writes one blocked
-  release-readiness summary. The current worktree now also lets that helper optionally consume
-  the retained phase-0 packet-set qualification verdict so the release-readiness summary preserves
-  phase-0 correct-digit and failure-code blockers explicitly, the retained case-study-family
-  qualification verdict so the now-qualified case-study surface and phase-0 prerequisite remain visible to M7,
-  plus one qualification-corpus sidecar so closed-corpus blockers
-  remain visible to M7, plus one performance-review summary sidecar so timing/scope/rebuild
-  review blockers remain visible to M7, plus one diagnostic-review summary sidecar so typed-
-  failure review blockers remain visible to M7, plus one docs-completion sidecar so docs-
-  alignment blockers remain visible to M7, plus one parity-signoff sidecar so final signoff
-  blockers remain visible to M7. This remains
-  release-prep plumbing only: it does not mark `Milestone M6` or `Milestone M7` complete, does
-  not run qualification, performance, diagnostic, docs completion, or parity signoff review, and
-  does not widen the last fully accepted public/runtime contract
+  source/doc targets inside the repo, and writes one fail-closed release-readiness summary. The
+  current worktree now also lets that helper optionally consume the accepted M5 all-phase
+  qualification packet, the retained phase-0 packet-set qualification verdict, the retained
+  case-study-family qualification verdict, one qualification-corpus sidecar, one performance-review
+  summary sidecar, one diagnostic-review summary sidecar, one docs-completion sidecar, and one
+  parity-signoff sidecar. These inputs keep phase-F/M5 packet state, phase-0 correct-digit and
+  failure-code blockers, case-study qualification state, timing/scope/rebuild review blockers,
+  typed-failure review blockers, docs-alignment blockers, and final signoff blockers visible to
+  M7 until explicit accepted sidecars satisfy them. This remains release-prep plumbing only: it
+  does not run qualification, performance, diagnostic, docs completion, or parity signoff review,
+  and does not widen the last fully accepted public/runtime contract
 - current worktree now also carries the first qualification-corpus sidecar producer for that M7
   scaffold only: `tools/reference-harness/scripts/review_release_qualification_corpus.py`
   audits the release-signoff checklist qualification-corpus input/output contract, consumes one

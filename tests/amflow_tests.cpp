@@ -53581,6 +53581,17 @@ void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
                  "\"final_parity_signoff_waits_for_docs_completion\": true",
                  "release signoff readiness self-check should keep docs completion visible as a "
                  "final parity signoff prerequisite");
+  ExpectContains(result.stdout_json, "\"accepted_m5_sidecar_consumed\": true",
+                 "release signoff readiness self-check should consume an accepted M5 sidecar in "
+                 "the complete-review scenario");
+  ExpectContains(result.stdout_json,
+                 "\"accepted_m5_sidecar_clears_feature_parity_prerequisite\": true",
+                 "release signoff readiness self-check should clear the feature-parity "
+                 "prerequisite only with an accepted M5 sidecar");
+  ExpectContains(result.stdout_json,
+                 "\"accepted_m5_m6_complete_reviews_can_release_ready\": true",
+                 "release signoff readiness self-check should allow complete M5/M6 and release "
+                 "review evidence to reach ready");
   ExpectContains(result.stdout_json, "\"withheld_claims_preserved\": true",
                  "release signoff readiness self-check should preserve the explicit non-claims "
                  "from the M7 scaffold");
@@ -53671,6 +53682,75 @@ void ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest() {
                  "\"blocked_runtime_lanes\": [\n    \"b61n\",\n    \"b63n\",\n    \"b64ag\"\n  ]",
                  "release signoff readiness summary should keep the current phase-0 blocked "
                  "runtime-lane frontier visible after SRL-5");
+}
+
+void ReleaseSignoffReadinessSummaryConsumesM5QualificationSummaryTest() {
+  const std::filesystem::path repo_root = std::filesystem::path(AMFLOW_SOURCE_DIR);
+  const std::filesystem::path release_summary_path =
+      FreshTempDir("amflow-release-signoff-m5-aware-summary") / "summary.json";
+
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-release-signoff-m5-aware-summary",
+      "tools/reference-harness/scripts/release_signoff_readiness.py",
+      {"--qualification-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane133/qualification-readiness.json")
+           .string(),
+       "--m5-qualification-summary",
+       (repo_root / "tools/reference-harness/specs/m5/m5-qualification-lane62.json").string(),
+       "--m6-qualification-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane133/m6-qualification.json").string(),
+       "--qualification-corpus-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json")
+           .string(),
+       "--phase0-qualification-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane133/phase0-qualification.json")
+           .string(),
+       "--case-study-qualification-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane115/case-study-qualification.json")
+           .string(),
+       "--performance-review-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane70/release-performance-review.json")
+           .string(),
+       "--diagnostic-review-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane76/release-diagnostic-review.json")
+           .string(),
+       "--docs-completion-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane92/release-docs-completion.json")
+           .string(),
+       "--parity-signoff-summary",
+       (repo_root / "tools/reference-harness/specs/m7/lane3/release-parity-signoff.post-a1f0e1d.json")
+           .string(),
+       "--summary-path",
+       release_summary_path.string()},
+      "M5-aware release signoff readiness summary");
+  Expect(result.stderr_log.empty(),
+         "M5-aware release signoff readiness summary should not emit stderr noise on success");
+  Expect(std::filesystem::exists(release_summary_path),
+         "M5-aware release signoff readiness summary should write the requested summary file");
+  ExpectContains(result.stdout_json, "\"m5_qualification_evidence_present\": true",
+                 "M5-aware release signoff readiness should record the accepted M5 packet");
+  ExpectContains(result.stdout_json, "\"m5_qualification_current_state\": \"CLOSED/all-phase\"",
+                 "M5-aware release signoff readiness should preserve the M5 packet state");
+  ExpectContains(result.stdout_json, "\"m5_qualification_ready\": true",
+                 "M5-aware release signoff readiness should mark the M5 prerequisite sidecar "
+                 "ready only after validation");
+  ExpectContains(result.stdout_json, "\"m5_qualification_compared_coefficient_count\": 390",
+                 "M5-aware release signoff readiness should preserve the M5 compared "
+                 "coefficient count");
+  ExpectContains(result.stdout_json,
+                 "\"m5_qualification_passed_coefficient_count\": 390",
+                 "M5-aware release signoff readiness should preserve the M5 passed "
+                 "coefficient count");
+  ExpectContains(result.stdout_json,
+                 "\"current_state\": \"reviewed-and-accepted-m5-packet\"",
+                 "M5-aware release signoff readiness should clear the phase-F prerequisite with "
+                 "the accepted M5 packet");
+  ExpectContains(result.stdout_json, "\"release_signoff_blockers\": []",
+                 "M5-aware release signoff readiness should have no remaining blockers with all "
+                 "reviewed sidecars supplied");
+  ExpectContains(result.stdout_json, "\"release_signoff_ready\": true",
+                 "M5-aware release signoff readiness should report readiness after the sole M5 "
+                 "blocker is cleared");
 }
 
 void ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest() {
@@ -57138,6 +57218,7 @@ int main() {
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();
+    ReleaseSignoffReadinessSummaryConsumesM5QualificationSummaryTest();
     ReleaseSignoffReadinessSummaryConsumesPhase0QualificationVerdictTest();
     ReleaseSignoffReadinessSummaryConsumesCaseStudyQualificationVerdictTest();
     ReleaseQualificationCorpusReviewSelfCheckProducesCompatibleSidecarTest();

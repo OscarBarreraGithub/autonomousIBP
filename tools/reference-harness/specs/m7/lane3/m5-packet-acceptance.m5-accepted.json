@@ -1,0 +1,39 @@
+{
+  "accepted_for_release_prerequisite": true,
+  "blocking_reasons": [],
+  "current_state": "reviewed-and-accepted-m5-packet",
+  "evidence_paths": [
+    "tools/reference-harness/specs/m5/m5-qualification-lane62.json",
+    "tools/reference-harness/specs/m5/m5-feature-surface-lane50.json",
+    "tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json",
+    "docs/implementation-ledger.md",
+    "tools/reference-harness/specs/m7/lane3/release-readiness.m5-accepted.full-output.json"
+  ],
+  "m5_packet_path": "tools/reference-harness/specs/m5/m5-qualification-lane62.json",
+  "m5_packet_reviewed": true,
+  "packet_assertions": {
+    "aggregate_compared_coefficient_count": 390,
+    "aggregate_passed_coefficient_count": 390,
+    "blocking_reasons_empty": true,
+    "current_state": "CLOSED/all-phase",
+    "does_not_claim_m6": true,
+    "does_not_claim_m7": true,
+    "does_not_claim_release_readiness": true,
+    "m5_all_phase_closed": true,
+    "m5_feature_parity_passed": true
+  },
+  "release_readiness_consumer": "tools/reference-harness/scripts/release_signoff_readiness.py",
+  "release_readiness_output_path": "tools/reference-harness/specs/m7/lane3/release-readiness.m5-accepted.full-output.json",
+  "review_evidence": {
+    "committed_packet_byte_identical_to_fresh_rerun": true,
+    "fresh_rerun_command": "python3 tools/reference-harness/scripts/qualify_milestone_m5.py --evidence-summary tools/reference-harness/specs/m5/m5-feature-surface-lane50.json --all-phase-closure-decision tools/reference-harness/specs/m5/m5-all-phase-closure-decision-lane62.json --out m5-qualification-lane62.rerun.json",
+    "release_readiness_consumed_m5_packet": true
+  },
+  "schema_version": 1,
+  "scope": "m7-prerequisite-m5-packet-acceptance",
+  "withheld_claims": [
+    "This acceptance sidecar does not launch the C++ runtime or create new retained captures.",
+    "This acceptance sidecar does not modify the M5 packet.",
+    "This acceptance sidecar does not widen runtime or public behavior."
+  ]
+}

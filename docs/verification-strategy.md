@@ -397,14 +397,15 @@ parity pass.
   the runtime or claiming `Milestone M6` closure.
 - `tools/reference-harness/scripts/release_signoff_readiness.py` is the first executable M7
   helper: it consumes one `qualification_readiness.py` summary plus the release-signoff checklist,
-  can also consume the retained phase-0 packet-set qualification verdict, the retained
-  case-study-family qualification verdict, plus qualification-corpus, performance-review,
-  diagnostic-review, docs-completion, and parity-signoff summary sidecars, audits the checklist source/docs
-  targets, and writes one blocked release-readiness summary that keeps the current runtime-lane
-  frontier, phase-0 correct-digit/failure-code blockers, qualification-corpus blockers,
-  performance-review blockers, typed-failure diagnostic-review
-  blockers, docs-alignment blockers, and final parity-signoff blockers when provided, visible without
-  claiming `Milestone M6` or `Milestone M7` closure.
+  can also consume the accepted M5 all-phase qualification packet, the retained phase-0
+  packet-set qualification verdict, the retained case-study-family qualification verdict, plus
+  qualification-corpus, performance-review, diagnostic-review, docs-completion, and
+  parity-signoff summary sidecars, audits the checklist source/docs targets, and writes one
+  fail-closed release-readiness summary that keeps the current runtime-lane frontier, M5 packet
+  state, phase-0 correct-digit/failure-code blockers, qualification-corpus blockers,
+  performance-review blockers, typed-failure diagnostic-review blockers, docs-alignment blockers,
+  and final parity-signoff blockers when provided, visible without claiming `Milestone M6` or
+  `Milestone M7` closure.
 - `tools/reference-harness/scripts/review_release_qualification_corpus.py` is the first M7
   qualification-corpus sidecar producer. It audits the release-signoff checklist
   qualification-corpus required inputs/outputs, consumes one retained M6 readiness summary plus

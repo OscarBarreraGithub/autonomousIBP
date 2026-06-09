@@ -1,6 +1,9 @@
 #include <cstddef>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -20,6 +23,72 @@ void ExpectContains(const std::string& value,
                     const std::string& needle,
                     const std::string& message) {
   Expect(value.find(needle) != std::string::npos, message);
+}
+
+constexpr const char* kD246ReferenceEvidenceSidecar =
+    "tools/reference-harness/specs/m6/lane146/"
+    "b63n-d246-weighted-residue-reference-evidence.json";
+
+std::filesystem::path LocateRepositoryRoot() {
+  std::filesystem::path current = std::filesystem::current_path();
+  for (int depth = 0; depth < 5; ++depth) {
+    if (std::filesystem::exists(current / "tools/reference-harness") &&
+        std::filesystem::exists(
+            current / "tests/cutkosky_weighted_residue_tests.cpp")) {
+      return current;
+    }
+    if (!current.has_parent_path() || current == current.parent_path()) {
+      break;
+    }
+    current = current.parent_path();
+  }
+  return std::filesystem::current_path();
+}
+
+std::string ReadTextFileIfPresent(const std::filesystem::path& path) {
+  if (!std::filesystem::exists(path)) {
+    return {};
+  }
+  std::ifstream input(path);
+  if (!input) {
+    throw std::runtime_error("unable to read b63n D2/D4/D6 evidence sidecar: " +
+                             path.string());
+  }
+  std::ostringstream buffer;
+  buffer << input.rdbuf();
+  return buffer.str();
+}
+
+bool TextContains(const std::string& value, const std::string& needle) {
+  return value.find(needle) != std::string::npos;
+}
+
+bool HasD246PublishedReferenceSidecarEvidence() {
+  const std::filesystem::path sidecar =
+      LocateRepositoryRoot() / kD246ReferenceEvidenceSidecar;
+  const std::string evidence = ReadTextFileIfPresent(sidecar);
+  return TextContains(evidence, "b63n") &&
+         TextContains(evidence, "automatic_phasespace") &&
+         TextContains(evidence, "phase[1,2,1,1,1,1,1]") &&
+         TextContains(evidence, "D2") &&
+         TextContains(evidence, "D4") &&
+         TextContains(evidence, "D6") &&
+         (TextContains(evidence, "amflow") ||
+          TextContains(evidence, "AMFlow")) &&
+         (TextContains(evidence, "reference") ||
+          TextContains(evidence, "Reference")) &&
+         TextContains(evidence, "coefficient") &&
+         TextContains(evidence, "passed") &&
+         TextContains(evidence, "final_solution_samples_used_as_input") &&
+         TextContains(evidence, "false");
+}
+
+bool IsSolvedScopedWeight(
+    const amflow::CutkoskyScopedWeightedResidueEvaluation& evaluation) {
+  return evaluation.publication_gate_passed ||
+         evaluation.live_coefficients_available ||
+         evaluation.reference_validation_passed ||
+         evaluation.failure_code.empty();
 }
 
 template <typename Callable>
@@ -226,6 +295,35 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
+void ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest() {
+  struct ExpectedWeight {
+    std::size_t denominator_index;
+    std::string denominator_id;
+  };
+  const std::vector<ExpectedWeight> watched_weights = {
+      {1, "D2"},
+      {3, "D4"},
+      {5, "D6"},
+  };
+  const bool has_sidecar_evidence =
+      HasD246PublishedReferenceSidecarEvidence();
+
+  for (const ExpectedWeight& expected : watched_weights) {
+    const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+        amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+            MakeB63nAutomaticPhaseSpaceSpec(),
+            expected.denominator_index,
+            1,
+            70);
+
+    Expect(!IsSolvedScopedWeight(evaluation) || has_sidecar_evidence,
+           expected.denominator_id +
+               " scoped b63n weight was promoted to solved without the "
+               "required AMFlow reference sidecar at " +
+               kD246ReferenceEvidenceSidecar);
+  }
+}
+
 void ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest() {
   struct ExpectedWeightGap {
     std::size_t denominator_index;
@@ -350,6 +448,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();
     ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest();
     ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest();
   } catch (const std::exception& error) {

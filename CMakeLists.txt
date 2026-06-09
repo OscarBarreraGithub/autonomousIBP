@@ -108,6 +108,16 @@ if(BUILD_TESTING)
   set_tests_properties(b64ag-first-block-gap-diagnostic-self-check PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+  add_test(
+    NAME b63n-d246-evidence-verifier-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b63n_d246_evidence.py
+      --self-check
+  )
+  set_tests_properties(b63n-d246-evidence-verifier-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
   add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
   target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
   target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)

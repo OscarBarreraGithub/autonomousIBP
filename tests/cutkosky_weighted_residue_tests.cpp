@@ -215,6 +215,110 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
+void ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest() {
+  struct ExpectedWeightGap {
+    std::size_t denominator_index;
+    std::string denominator_id;
+    int power;
+  };
+  const std::vector<ExpectedWeightGap> blocked_weights = {
+      {1, "D2", 2},
+      {3, "D4", 1},
+      {5, "D6", 1},
+  };
+
+  for (const ExpectedWeightGap& expected : blocked_weights) {
+    const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+        amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+            MakeB63nAutomaticPhaseSpaceSpec(),
+            expected.denominator_index,
+            1,
+            70);
+
+    Expect(evaluation.reviewed_surface,
+           "blocked automatic weight should still bind the reviewed weighted surface");
+    Expect(evaluation.selected_weight_denominator == expected.denominator_id &&
+               evaluation.selected_weight_denominator_index ==
+                   expected.denominator_index &&
+               evaluation.selected_weight_power == expected.power,
+           "scoped weighted residue evaluator should preserve the requested " +
+               expected.denominator_id + " weight");
+    Expect(evaluation.moment_cross_validation_gate.passed,
+           expected.denominator_id +
+               " scoped evaluation should pass the D2,D4,D6,D7 structural gate");
+    Expect(evaluation.publication_gate_checked &&
+               !evaluation.publication_gate_passed,
+           expected.denominator_id +
+               " scoped evaluation should stop at the publication gate");
+    Expect(evaluation.failure_code == "boundary_unsolved",
+           expected.denominator_id +
+               " scoped evaluation should remain a boundary_unsolved gap");
+    Expect(!evaluation.live_coefficients_available,
+           expected.denominator_id +
+               " scoped evaluation must not publish an unreviewed coefficient");
+    Expect(!evaluation.retained_solution_samples_used,
+           expected.denominator_id +
+               " scoped evaluation must not read retained final samples");
+    Expect(!evaluation.full_eta_zero_contour_applied,
+           expected.denominator_id +
+               " scoped evaluation must not promote full eta-zero coverage");
+    ExpectContains(evaluation.publication_gate_status,
+                   "blocked-by-publication-gate",
+                   expected.denominator_id +
+                       " scoped evaluation should expose publication blocking");
+    ExpectContains(evaluation.publication_gate_status,
+                   "synthetic",
+                   expected.denominator_id +
+                       " scoped evaluation should identify the synthetic blocker");
+    Expect(evaluation.eta_zero_selection.success,
+           expected.denominator_id +
+               " scoped evaluation should still reach the eta-zero selector");
+    Expect(evaluation.eta_zero_selection.selected_coefficient_label ==
+               "automatic_phasespace_" + expected.denominator_id +
+                   "_weighted_moment_seed",
+           expected.denominator_id +
+               " scoped evaluation should preserve the seed label");
+
+    const std::string audit =
+        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation);
+    ExpectContains(audit,
+                   "selected_weight=" + expected.denominator_id,
+                   expected.denominator_id +
+                       " scoped audit should identify the selected weight");
+    ExpectContains(audit,
+                   "publication_gate_passed=false",
+                   expected.denominator_id +
+                       " scoped audit should report the blocked publication gate");
+    ExpectContains(audit,
+                   "failure_code=boundary_unsolved",
+                   expected.denominator_id +
+                       " scoped audit should report the remaining boundary gap");
+    ExpectContains(audit,
+                   "live_coefficients_available=false",
+                   expected.denominator_id +
+                       " scoped audit must not claim live coefficients");
+  }
+
+  const amflow::CutkoskyScopedWeightedResidueEvaluation d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          6,
+          1,
+          70);
+  Expect(d7.publication_gate_passed && d7.live_coefficients_available,
+         "D7 eps^0 should remain the only reviewed published scoped weight");
+  Expect(d7.reference_validation_passed,
+         "D7 eps^0 should remain tied to the stored AMFlow comparison");
+  Expect(!d7.full_eta_zero_contour_applied,
+         "the scoped D7 coefficient must not close the full weighted residue lane");
+  ExpectContains(d7.summary,
+                 "D2/D4/D6",
+                 "D7 scoped summary should name the remaining automatic weight gap");
+  ExpectContains(d7.summary,
+                 "feynman_prescription",
+                 "D7 scoped summary should preserve the companion b63n row gap");
+}
+
 void ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest() {
   ExpectExceptionContains(
       []() {
@@ -235,6 +339,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpaceWeightedResiduePinsRemainingWeightGapTest();
     ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest();
   } catch (const std::exception& error) {
     std::cerr << "cutkosky-weighted-residue-tests failed: " << error.what()

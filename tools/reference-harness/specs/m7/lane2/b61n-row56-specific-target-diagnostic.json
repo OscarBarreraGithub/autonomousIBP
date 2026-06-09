@@ -1,0 +1,146 @@
+{
+  "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
+  "benchmark_id": "complex_kinematics",
+  "classification": {
+    "active_blocker": "coefficient-state publication gate blocks before direct target upsert; coefficient target graph still has blocked dependency edges; blocked_target_graph_edges=24; emitted row 5/6 target coefficients are sample-reconstructed",
+    "amflow_reference_only_11_digits": "not supported by the comparator: the AMFlow entries are present for all four targets and the adjacent selected endpoint coefficients pass well above the 50-digit gate",
+    "current_evidence_points_to": "unclosed coefficient target graph plus sample-reconstructed row 5/6 target coefficients before direct coefficient-state publication",
+    "matcher_converges_correctly_but_transport_loses_precision": "not the primary current classification: the failing public targets are still sample-reconstructed and the coefficient-state publication route is blocked by the target graph before a direct endpoint value is upserted",
+    "matcher_converges_to_wrong_free_constants": "plausible for the emitted sample-reconstructed row 5/6 coefficients, but not isolated as the direct coefficient-state route never reaches target publication"
+  },
+  "comparison_summary": {
+    "all_row56_specific_targets_failed": true,
+    "compared_coefficient_count": 14,
+    "minimum_digit_agreement": 11,
+    "passed": false,
+    "passed_coefficient_count": 10,
+    "row56_specific_target_minimum_digit_agreement": 11
+  },
+  "cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
+  "diagnostic_id": "b61n-row56-specific-target-diagnostic",
+  "runtime_path": {
+    "blocked_out_of_range_edge_count": "24",
+    "coefficient_state_endpoint_matcher_applied_values_seen": [
+      "false",
+      "false",
+      "false",
+      "false"
+    ],
+    "coefficient_state_finite_start_constructed": "false",
+    "coefficient_state_publication_attempt_seen": true,
+    "coefficient_state_publication_blocked": true,
+    "coefficient_state_publication_failure_codes": [
+      "coefficient-state-publication-unclosed-target-graph"
+    ],
+    "coefficient_state_publication_materialized_node_count": null,
+    "coefficient_state_publication_published_coefficient_count": "0",
+    "coefficient_state_publication_requested_public_target_count": "4",
+    "coefficient_state_transport_applied_values_seen": [
+      "false",
+      "false",
+      "false",
+      "false"
+    ],
+    "coefficient_target_graph_blocked_edge_count": "24",
+    "coefficient_target_graph_edge_count": "46",
+    "coefficient_target_graph_node_count": "14",
+    "direct_targets_still_sample_reconstructed": true,
+    "row6_missing_laurent_orders_in_cpp_result": [],
+    "sample_space_boundary_condition_solve": null,
+    "sample_space_coupled_row_matcher_applied": true,
+    "sample_space_free_constant_rows": null,
+    "sample_space_source_anchored_evolution_rows": "[5, 6]",
+    "target_coefficients_published_from_coefficient_state_values_seen": [
+      "false",
+      "false",
+      "false",
+      "false",
+      "false"
+    ],
+    "target_coefficients_reconstructed_from_epsilon_samples_values_seen": [
+      "true",
+      "false",
+      "false",
+      "false",
+      "false"
+    ]
+  },
+  "schema_version": 1,
+  "source_references": {
+    "post_endpoint_fit": "src/cli/main.cpp:11261",
+    "publication_attempt": "src/cli/main.cpp:6486",
+    "publication_gate": "src/runtime/b61n_coefficient_state_transport.cpp:526",
+    "row56_target_graph": "src/runtime/b61n_coefficient_target_graph.cpp:633"
+  },
+  "target_diagnostics": [
+    {
+      "amflow_imag": "-0.0193068358175546708506659645771451919832479750420661842973",
+      "amflow_real": "0.0333466826716029732631471786625881976810537819931807553542",
+      "cpp_emitted_order_in_result": true,
+      "cpp_imag": "-0.01930683586144087109219583118529408973713423679903031785824652450686944768601191",
+      "cpp_present_in_comparator": true,
+      "cpp_real": "0.03334668259873120446547850833937957397959077940049829323854464939016480039320452",
+      "eps_order": 0,
+      "imag_agreement_digits": 11,
+      "imag_relative_error_abs": "2.27309128519270347153797781886294066423428384564338309545817099173742539506242719212157279252718650475935681176075188239E-9",
+      "integral": "box[1,0,1,1]",
+      "minimum_component_agreement_digits": 11,
+      "passed": false,
+      "real_agreement_digits": 11,
+      "real_relative_error_abs": "2.18527790351164571391332148763057205880658749426202178213976610933813061220013904496850002699478985166880681013198006205E-9",
+      "relative_error_abs": "2.20765222122260900558329461339834564069494356921016754583349580279352814214903966111493366959921121480479664036505664417E-9"
+    },
+    {
+      "amflow_imag": "-0.0000011986498408193011391968087146638026926470024164780791",
+      "amflow_real": "-0.0000491446434735913467070691573012159103985270990756012428",
+      "cpp_emitted_order_in_result": true,
+      "cpp_imag": "-0.00000119864984081930113919680871466380269264715920794625857819366046809364193862",
+      "cpp_present_in_comparator": true,
+      "cpp_real": "-0.00004914464347359134670706915730121591039852690291506064021870893854319380210724",
+      "eps_order": -2,
+      "imag_agreement_digits": 46,
+      "imag_relative_error_abs": "1.30806731741029631581506037418847416384639999999999999095445288664431891687569450041186346216937472000000006255176739828E-40",
+      "integral": "box[1,1,1,1]",
+      "minimum_component_agreement_digits": 46,
+      "passed": false,
+      "real_agreement_digits": 46,
+      "real_relative_error_abs": "3.99149381779504143552252908830069240660292682926829267969064290503376464919351944044740739747971091493158834289745182459E-42",
+      "relative_error_abs": "5.10834641224102205530407803966377622163604352132884522256366289174300870452421146966216117528027216271237173992130646418E-42"
+    },
+    {
+      "amflow_imag": "0.0001291464135236889781737288500452009818076048479323563313",
+      "amflow_real": "0.0005779252240636638814919675522313552168373760882124884379",
+      "cpp_emitted_order_in_result": true,
+      "cpp_imag": "0.00012914641364885538272225676086967350275198853801728101296322594198715132323725",
+      "cpp_present_in_comparator": true,
+      "cpp_real": "0.00057792522543171500632185886157378809236040367537343962430187505161835128920535",
+      "eps_order": -1,
+      "imag_agreement_digits": 13,
+      "imag_relative_error_abs": "9.69182195102684558548104090064606659133150651640586116566458373006307361252169407909561392794964712912892499374763108515E-10",
+      "integral": "box[1,1,1,1]",
+      "minimum_component_agreement_digits": 12,
+      "passed": false,
+      "real_agreement_digits": 12,
+      "real_relative_error_abs": "2.36717670014553241308917309071247827273713609902637005056084801838381119978337852739382541304211317964743587386114479058E-9",
+      "relative_error_abs": "2.31984639085881704652830985025511323211062877102684089734439450621711077305735809768992007270112699728214392152289438192E-9"
+    },
+    {
+      "amflow_imag": "0.0004187109773346087695456928300466781575012039894687889349",
+      "amflow_real": "-0.0023932404599206230006337233056978502621507523814154688139",
+      "cpp_emitted_order_in_result": true,
+      "cpp_imag": "0.00041871097563110407273257577883268919025670742690869991373402399740114784791642",
+      "cpp_present_in_comparator": true,
+      "cpp_real": "-0.00239324045015048410030429077675050920210437858356836516250340473142603904323145",
+      "eps_order": 0,
+      "imag_agreement_digits": 12,
+      "imag_relative_error_abs": "4.06845005033574265695220609950636181890844521483359737438548349344723121507234301805689687996466969249150915522515453832E-9",
+      "integral": "box[1,1,1,1]",
+      "minimum_component_agreement_digits": 12,
+      "passed": false,
+      "real_agreement_digits": 12,
+      "real_relative_error_abs": "4.08238915560264275757919740475270728656244747581859184844040195713901619749440735164055724671006428010787045707751292031E-9",
+      "relative_error_abs": "4.08197584485625724155619339827715181805780688192277961209629720864495316310671667620851834903768651323769614189481997783E-9"
+    }
+  ],
+  "tolerance_digits": 50
+}

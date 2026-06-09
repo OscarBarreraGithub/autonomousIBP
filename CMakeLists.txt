@@ -119,6 +119,16 @@ if(BUILD_TESTING)
   set_tests_properties(b63n-d246-evidence-verifier-self-check PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+  add_test(
+    NAME b61n-row56-specific-target-diagnostic-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/diagnose_b61n_row56_specific_targets.py
+      --self-check
+  )
+  set_tests_properties(b61n-row56-specific-target-diagnostic-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
   add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
   target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
   target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)

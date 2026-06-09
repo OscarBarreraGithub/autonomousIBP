@@ -1,6 +1,7 @@
 #include "amflow/io/sample_data.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
+#include "amflow/runtime/b61n_finite_start_coefficients.hpp"
 #include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/endpoint_branch_ledger.hpp"
@@ -6483,6 +6484,147 @@ void B61nLaurentMatrixEvaluatorFailsClosedBeforePropagationTest() {
       "epsilon series");
 }
 
+void B61nFiniteStartCoefficientDataMaterializesSyntheticRecurrenceTest() {
+  const std::vector<std::string> labels = {"source", "target"};
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support = {
+      {1, 0, 0},
+  };
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          labels,
+          support,
+          {{0, 0}, {0, 0}},
+          {{1, 0}});
+  const std::vector<amflow::B61nFiniteStartCoefficientValue>
+      eta_infinity_coefficients = {
+          {{0, 0}, {2, -1}, "synthetic eta-infinity recurrence source"},
+          {{1, 0}, {-3, 4}, "synthetic eta-infinity recurrence target"},
+      };
+
+  const amflow::B61nFiniteStartCoefficientData data =
+      amflow::BuildB61nFiniteStartCoefficientData(labels,
+                                                  graph,
+                                                  eta_infinity_coefficients,
+                                                  {},
+                                                  true,
+                                                  "0 - 8*I");
+
+  Expect(data.min_state_eps_order == 0 && data.max_state_eps_order == 0,
+         "b61n finite-start coefficient data should preserve the synthetic "
+         "single eps order");
+  Expect(data.coefficient_vectors.size() == 1 &&
+             data.coefficient_vectors.front().size() == 2,
+         "b61n finite-start coefficient data should return one full master "
+         "coefficient vector");
+  ExpectB61nContourClose(data.coefficient_vectors.front()[0],
+                         {2, -1},
+                         B61nContourFloat("1e-80"),
+                         "b61n finite-start coefficient source should come from "
+                         "explicit eta-infinity recurrence coefficients");
+  ExpectB61nContourClose(data.coefficient_vectors.front()[1],
+                         {-3, 4},
+                         B61nContourFloat("1e-80"),
+                         "b61n finite-start coefficient target should come from "
+                         "explicit eta-infinity recurrence coefficients");
+  ExpectContains(data.summary,
+                 "solve_vandermonde_fit_used=false",
+                 "b61n finite-start coefficient materialization must not invoke "
+                 "Vandermonde fitting");
+  ExpectContains(data.summary,
+                 "finite_start_samples_used=false",
+                 "b61n finite-start coefficient materialization must not consume "
+                 "clustered finite-start samples");
+}
+
+void B61nFiniteStartCoefficientDryRunInventoriesRealRow56NodesTest() {
+  const std::vector<std::string> labels =
+      amflow::B61nRow56RetainedMasterLabels();
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support =
+      amflow::ExtractB61nMatrixEpsilonSupport(
+          MakeB61nRealEtaMatrixSupportFixture());
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nRow56CoefficientTargetGraph(labels, support);
+
+  const amflow::B61nFiniteStartCoefficientAudit audit =
+      amflow::AuditB61nFiniteStartCoefficientData(labels,
+                                                  graph,
+                                                  {},
+                                                  {},
+                                                  true,
+                                                  "0 - 1099511627776*I");
+
+  Expect(!audit.finite_start_coefficients_available,
+         "b61n real finite-start coefficient dry run should remain blocked "
+         "until coefficient recurrence data exists");
+  Expect(audit.required_node_count == graph.closed_nodes.size(),
+         "b61n real finite-start coefficient dry run should inspect every "
+         "closed graph node");
+  Expect(audit.available_node_count == 0,
+         "b61n real finite-start coefficient dry run should not invent "
+         "coefficient nodes from samples");
+  Expect(audit.missing_node_count == audit.required_node_count,
+         "b61n real finite-start coefficient dry run should report all nodes "
+         "missing before the recurrence bridge lands");
+  Expect(!audit.populated_from_finite_start_samples &&
+             !audit.finite_start_samples_used &&
+             !audit.solve_vandermonde_fit_used,
+         "b61n real finite-start coefficient dry run must forbid finite-start "
+         "sample fitting");
+  ExpectContains(audit.summary,
+                 "required_coefficient_nodes=[",
+                 "b61n real finite-start coefficient dry run should print "
+                 "required nodes");
+  ExpectContains(audit.summary,
+                 "available_coefficient_nodes=[]",
+                 "b61n real finite-start coefficient dry run should print empty "
+                 "available nodes");
+  ExpectContains(audit.summary,
+                 "finite_start_samples_present=true",
+                 "b61n real finite-start coefficient dry run should acknowledge "
+                 "sample vectors without using them");
+  ExpectContains(audit.summary,
+                 "target_coefficients_published_from_coefficient_state=false",
+                 "b61n real finite-start coefficient dry run must remain "
+                 "nonpublishing");
+}
+
+void B61nFiniteStartCoefficientDataRejectsSampleFitFallbackTest() {
+  const std::vector<std::string> labels = {"source", "target"};
+  const std::vector<amflow::B61nMatrixEpsilonSupport> support = {
+      {1, 0, 0},
+  };
+  const amflow::B61nCoefficientTargetGraph graph =
+      amflow::BuildB61nCoefficientTargetGraph(
+          labels,
+          support,
+          {{0, 0}, {0, 0}},
+          {{1, 0}});
+
+  const amflow::B61nFiniteStartCoefficientAudit audit =
+      amflow::AuditB61nFiniteStartCoefficientData(labels,
+                                                  graph,
+                                                  {},
+                                                  {},
+                                                  true,
+                                                  "0 - 8*I");
+  Expect(!audit.finite_start_coefficients_available,
+         "b61n finite-start coefficient audit should fail closed without "
+         "explicit coefficient sources");
+  Expect(!audit.populated_from_finite_start_samples &&
+             !audit.finite_start_samples_used &&
+             !audit.solve_vandermonde_fit_used,
+         "b61n finite-start coefficient audit should not fill from sample "
+         "vectors");
+  ExpectRuntimeErrorContains(
+      [&] {
+        static_cast<void>(amflow::BuildB61nFiniteStartCoefficientData(
+            labels, graph, {}, {}, true, "0 - 8*I"));
+      },
+      "missing required coefficient nodes",
+      "b61n finite-start coefficient materialization should reject a "
+      "finite_start_samples-only fallback");
+}
+
 void B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest() {
   const B61nContourNumber probe_eta{0, B61nContourFloat("-1e-20")};
   const B61nContourFloat residue_tolerance("1e-14");
@@ -7639,6 +7781,9 @@ int main() {
     B61nCoefficientTargetGraphFailsClosedOnMalformedInputsTest();
     B61nRealLaurentMatrixEvaluatorFingerprintsRow56SupportTest();
     B61nLaurentMatrixEvaluatorFailsClosedBeforePropagationTest();
+    B61nFiniteStartCoefficientDataMaterializesSyntheticRecurrenceTest();
+    B61nFiniteStartCoefficientDryRunInventoriesRealRow56NodesTest();
+    B61nFiniteStartCoefficientDataRejectsSampleFitFallbackTest();
     B61nEtaZeroIndicialEquationComputesTriangularResidueRootsTest();
     B61nEtaZeroFrobeniusRecurrenceEvaluatesSingleRowEndpointTest();
     B61nEtaZeroFrobeniusRecurrenceBuildsCoupledTriangularLeadingVectorTest();

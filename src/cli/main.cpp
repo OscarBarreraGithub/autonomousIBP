@@ -33,6 +33,7 @@
 #include "amflow/kira/target_reduction.hpp"
 #include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/b61n_coefficient_target_graph.hpp"
+#include "amflow/runtime/b61n_finite_start_coefficients.hpp"
 #include "amflow/runtime/b61n_laurent_matrix_evaluator.hpp"
 #include "amflow/runtime/complex_contour_propagator.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
@@ -6198,15 +6199,25 @@ struct B61nCoupledRowReadinessAudit {
   std::size_t coefficient_target_graph_blocked_edge_count = 0;
   std::size_t laurent_matrix_coefficient_count = 0;
   std::size_t laurent_matrix_support_count = 0;
+  std::size_t coefficient_finite_start_required_node_count = 0;
+  std::size_t coefficient_finite_start_available_node_count = 0;
+  std::size_t coefficient_finite_start_missing_node_count = 0;
   int min_laurent_matrix_eps_order = 0;
   int max_laurent_matrix_eps_order = 0;
+  int min_coefficient_finite_start_eps_order = 0;
+  int max_coefficient_finite_start_eps_order = 0;
   bool lower_triangular_dependency_order = false;
   bool controlled_eta_infinity_initial_data_certified = false;
+  bool coefficient_finite_start_coefficients_available = false;
+  bool coefficient_start_populated_from_finite_start_samples = false;
+  bool coefficient_start_solve_vandermonde_fit_used = false;
   std::string transport_order_summary;
   std::string dependency_summary;
   std::string coefficient_target_graph_summary;
   std::string laurent_matrix_evaluator_fingerprint;
   std::string laurent_matrix_evaluator_summary;
+  std::string coefficient_finite_start_fingerprint;
+  std::string coefficient_finite_start_summary;
   std::string summary;
 };
 
@@ -6324,6 +6335,34 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       laurent_matrix_evaluator.audit.fingerprint;
   audit.laurent_matrix_evaluator_summary =
       laurent_matrix_evaluator.audit.summary;
+  const amflow::B61nFiniteStartCoefficientAudit finite_start_coefficient_audit =
+      amflow::AuditB61nFiniteStartCoefficientData(
+          master_labels,
+          coefficient_target_graph,
+          {},
+          {},
+          !initial_data_audit.finite_start_samples.empty(),
+          BigComplexCompactString(initial_data_audit.eta_start, 24));
+  audit.coefficient_finite_start_required_node_count =
+      finite_start_coefficient_audit.required_node_count;
+  audit.coefficient_finite_start_available_node_count =
+      finite_start_coefficient_audit.available_node_count;
+  audit.coefficient_finite_start_missing_node_count =
+      finite_start_coefficient_audit.missing_node_count;
+  audit.min_coefficient_finite_start_eps_order =
+      finite_start_coefficient_audit.min_state_eps_order;
+  audit.max_coefficient_finite_start_eps_order =
+      finite_start_coefficient_audit.max_state_eps_order;
+  audit.coefficient_finite_start_coefficients_available =
+      finite_start_coefficient_audit.finite_start_coefficients_available;
+  audit.coefficient_start_populated_from_finite_start_samples =
+      finite_start_coefficient_audit.populated_from_finite_start_samples;
+  audit.coefficient_start_solve_vandermonde_fit_used =
+      finite_start_coefficient_audit.solve_vandermonde_fit_used;
+  audit.coefficient_finite_start_fingerprint =
+      finite_start_coefficient_audit.fingerprint;
+  audit.coefficient_finite_start_summary =
+      finite_start_coefficient_audit.summary;
 
   std::vector<std::string> row_summaries;
   bool lower_triangular = true;
@@ -6406,6 +6445,32 @@ B61nCoupledRowReadinessAudit BuildB61nCoupledRowReadinessAudit(
       audit.laurent_matrix_evaluator_fingerprint +
       "; laurent_matrix_evaluator={" +
       audit.laurent_matrix_evaluator_summary + "}" +
+      "; coefficient_finite_start_required_node_count=" +
+      std::to_string(audit.coefficient_finite_start_required_node_count) +
+      "; coefficient_finite_start_available_node_count=" +
+      std::to_string(audit.coefficient_finite_start_available_node_count) +
+      "; coefficient_finite_start_missing_node_count=" +
+      std::to_string(audit.coefficient_finite_start_missing_node_count) +
+      "; coefficient_finite_start_eps_order_min=" +
+      std::to_string(audit.min_coefficient_finite_start_eps_order) +
+      "; coefficient_finite_start_eps_order_max=" +
+      std::to_string(audit.max_coefficient_finite_start_eps_order) +
+      "; coefficient_finite_start_coefficients_available=" +
+      std::string(audit.coefficient_finite_start_coefficients_available
+                      ? "true"
+                      : "false") +
+      "; coefficient_start_populated_from_finite_start_samples=" +
+      std::string(audit.coefficient_start_populated_from_finite_start_samples
+                      ? "true"
+                      : "false") +
+      "; coefficient_start_solve_vandermonde_fit_used=" +
+      std::string(audit.coefficient_start_solve_vandermonde_fit_used
+                      ? "true"
+                      : "false") +
+      "; coefficient_finite_start_fingerprint=" +
+      audit.coefficient_finite_start_fingerprint +
+      "; coefficient_finite_start={" +
+      audit.coefficient_finite_start_summary + "}" +
       "; ode_propagation_applied=false; coefficient_publication=false; "
       "final_solution_samples_used_as_input=false; full_eta_zero_contour_applied "
       "stays false.";

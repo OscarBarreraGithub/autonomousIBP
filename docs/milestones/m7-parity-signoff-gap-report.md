@@ -3,6 +3,24 @@
 Status: audit only. This report does not flip final parity signoff, does not
 claim Milestone M7 closure, and does not modify b61n or b63n source files.
 
+## Lane3 Follow-up: Readiness Validator M6 Input
+
+Status: validator gap closed. `release_signoff_readiness.py` now accepts an
+explicit `--m6-qualification-summary` input and validates the
+`milestone-m6-qualification` sidecar before using it to clear stale derived
+`case-study-numerics` carry-forward blockers.
+
+The helper self-check now includes an accepted-M6 scenario where complete M7
+review sidecars plus a complete parity sidecar must produce a reviewed
+`parity-signoff` section with no `milestone-m6` blocker. A retained-input probe
+using lane133 M6, lane133 qualification-corpus, lane70 performance, lane76
+diagnostic, lane92 docs, and a fresh parity-signoff sidecar produces
+`parity-signoff: reviewed` while keeping `release_signoff_ready=false`.
+
+Remaining separate work: refresh or supersede the stale retained lane92
+`release-parity-signoff.json`, retain a current readiness output, and refresh
+the M7 closure plan without turning the readiness output into a release claim.
+
 ## Current Finding
 
 The parity helper itself is not blocked by b61n or b63n numerics on current

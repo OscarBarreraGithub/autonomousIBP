@@ -917,6 +917,64 @@ def load_parity_signoff_summary(summary_path: Path) -> dict[str, Any]:
     }
 
 
+def load_m6_qualification_summary(summary_path: Path) -> dict[str, Any]:
+    summary = load_json(summary_path)
+    expect(summary.get("schema_version") == 1, "M6 qualification summary schema_version must be 1")
+    expect(
+        summary.get("scope") == "milestone-m6-qualification",
+        "M6 qualification summary scope must be milestone-m6-qualification",
+    )
+
+    current_state = str(summary.get("current_state", "")).strip()
+    expect(current_state, "M6 qualification summary current_state must not be empty")
+
+    required_boolean_fields = [
+        "phase0_packet_set_qualified",
+        "phase0_ready_for_m6",
+        "phase0_pending_runtime_lanes_closed",
+        "case_study_families_qualified",
+        "case_study_ready_for_m6",
+        "milestone_m6_ready",
+    ]
+    for field in required_boolean_fields:
+        if not isinstance(summary.get(field), bool):
+            raise TypeError(f"M6 qualification summary {field} must be a bool")
+
+    blocking_reasons = normalize_string_list(
+        summary.get("blocking_reasons", []),
+        "M6 qualification summary blocking_reasons",
+    )
+    withheld_claims = normalize_string_list(
+        summary.get("withheld_claims", []),
+        "M6 qualification summary withheld_claims",
+    )
+    expect_unique(withheld_claims, "M6 qualification summary withheld_claims")
+
+    if summary["milestone_m6_ready"]:
+        expect(
+            current_state == "milestone-m6-qualified",
+            "ready M6 qualification summary must use current_state=milestone-m6-qualified",
+        )
+        expect(
+            summary["phase0_packet_set_qualified"]
+            and summary["phase0_ready_for_m6"]
+            and summary["phase0_pending_runtime_lanes_closed"]
+            and summary["case_study_families_qualified"]
+            and summary["case_study_ready_for_m6"],
+            "ready M6 qualification summary must report both subverdicts as ready",
+        )
+        expect(not blocking_reasons, "ready M6 qualification summary must not report blockers")
+    else:
+        expect(blocking_reasons, "blocked M6 qualification summary must report blockers")
+
+    return {
+        **summary,
+        "current_state": current_state,
+        "blocking_reasons": blocking_reasons,
+        "withheld_claims": withheld_claims,
+    }
+
+
 def phase0_failure_code_blockers(phase0_summary: dict[str, Any] | None) -> list[str]:
     if phase0_summary is None:
         return []
@@ -1150,6 +1208,7 @@ def summarize_release_readiness(
     *,
     checklist_path: Path,
     qualification_summary_path: Path,
+    m6_qualification_summary_path: Path | None = None,
     qualification_corpus_summary_path: Path | None = None,
     phase0_qualification_summary_path: Path | None = None,
     case_study_qualification_summary_path: Path | None = None,
@@ -1163,6 +1222,11 @@ def summarize_release_readiness(
     expect_path_within_root(checklist_path, root, "release checklist path")
     checklist = load_release_checklist(checklist_path)
     qualification_summary = load_qualification_summary(qualification_summary_path)
+    m6_qualification_summary = (
+        load_m6_qualification_summary(m6_qualification_summary_path)
+        if m6_qualification_summary_path is not None
+        else None
+    )
     qualification_corpus_summary = (
         load_qualification_corpus_review_summary(qualification_corpus_summary_path)
         if qualification_corpus_summary_path is not None
@@ -1295,6 +1359,34 @@ def summarize_release_readiness(
         if phase0_qualification_summary["milestone_m6_requires_case_study_numerics"]:
             phase0_packet_set_blockers.append("case-study-numerics")
 
+    derived_m6_blockers = (
+        phase0_pending_ids
+        + blocked_case_study_ids
+        + phase0_packet_set_blockers
+        + case_study_blockers
+    )
+    m6_qualification_ready = (
+        m6_qualification_summary is not None
+        and m6_qualification_summary["milestone_m6_ready"]
+        and qualification_evidence_coherent
+    )
+    m6_qualification_blockers: list[str] = []
+    if m6_qualification_summary is not None:
+        if not qualification_evidence_coherent:
+            m6_qualification_blockers.append("qualification-evidence")
+        if not m6_qualification_summary["milestone_m6_ready"]:
+            m6_qualification_blockers.append(
+                "m6:" + m6_qualification_summary["current_state"]
+            )
+            m6_qualification_blockers.extend(
+                "m6:" + reason for reason in m6_qualification_summary["blocking_reasons"]
+            )
+    m6_prerequisite_blockers = (
+        m6_qualification_blockers
+        if m6_qualification_summary is not None
+        else derived_m6_blockers
+    )
+
     release_prerequisites: list[dict[str, Any]] = []
     for prerequisite in checklist["release_prerequisites"]:
         prerequisite_id = prerequisite["id"]
@@ -1303,19 +1395,20 @@ def summarize_release_readiness(
         satisfied = False
 
         if prerequisite_id == "milestone-m6":
-            blockers = (
-                phase0_pending_ids
-                + blocked_case_study_ids
-                + phase0_packet_set_blockers
-                + case_study_blockers
-            )
-            current_state = (
-                "blocked-on-qualification-closure"
-                if milestone_m6_blocked
-                or bool(phase0_packet_set_blockers)
-                or bool(case_study_blockers)
-                else "awaiting-reviewed-and-accepted-m6-packet"
-            )
+            blockers = m6_prerequisite_blockers
+            if m6_qualification_ready:
+                current_state = "reviewed-and-accepted-m6-packet"
+                satisfied = True
+            elif m6_qualification_summary is not None:
+                current_state = "blocked-on-qualification-closure"
+            else:
+                current_state = (
+                    "blocked-on-qualification-closure"
+                    if milestone_m6_blocked
+                    or bool(phase0_packet_set_blockers)
+                    or bool(case_study_blockers)
+                    else "awaiting-reviewed-and-accepted-m6-packet"
+                )
         elif prerequisite_id == "phase-f-feature-parity":
             blockers = blocked_runtime_lanes
             current_state = (
@@ -1324,14 +1417,12 @@ def summarize_release_readiness(
                 else "awaiting-reviewed-and-accepted-m5-packet"
             )
         elif prerequisite_id == "retained-reference-evidence":
-            blockers = (
-                phase0_pending_ids
-                + blocked_case_study_ids
-                + phase0_packet_set_blockers
-                + case_study_blockers
-            )
+            blockers = [] if m6_qualification_ready else derived_m6_blockers
             if not qualification_evidence_coherent:
                 current_state = "incoherent-retained-evidence"
+            elif m6_qualification_ready:
+                current_state = "captured-and-qualified"
+                satisfied = True
             elif phase0_packet_set_blockers:
                 current_state = "captured-but-phase0-not-qualified"
             elif case_study_blockers:
@@ -1472,6 +1563,37 @@ def summarize_release_readiness(
         "blocked_phase0_examples": qualification_summary["blocked_phase0_examples"],
         "blocked_case_study_families": qualification_summary["blocked_case_study_families"],
         "blocked_runtime_lanes": blocked_runtime_lanes,
+        "m6_qualification_summary_path": (
+            str(m6_qualification_summary_path)
+            if m6_qualification_summary_path is not None
+            else ""
+        ),
+        "m6_qualification_evidence_present": m6_qualification_summary is not None,
+        "m6_qualification_current_state": (
+            m6_qualification_summary["current_state"]
+            if m6_qualification_summary is not None
+            else "not-provided"
+        ),
+        "m6_qualification_sidecar_ready": (
+            m6_qualification_summary["milestone_m6_ready"]
+            if m6_qualification_summary is not None
+            else False
+        ),
+        "m6_qualification_ready": m6_qualification_ready,
+        "m6_qualification_blockers": m6_qualification_blockers,
+        "m6_qualification_blockers_preserved": (
+            m6_qualification_summary is not None and bool(m6_qualification_blockers)
+        ),
+        "m6_qualification_blocking_reasons": (
+            m6_qualification_summary["blocking_reasons"]
+            if m6_qualification_summary is not None
+            else []
+        ),
+        "m6_qualification_withheld_claims": (
+            m6_qualification_summary["withheld_claims"]
+            if m6_qualification_summary is not None
+            else []
+        ),
         "qualification_corpus_summary_path": (
             str(qualification_corpus_summary_path)
             if qualification_corpus_summary_path is not None
@@ -2142,6 +2264,38 @@ def write_synthetic_parity_signoff_summary(path: Path) -> None:
     )
 
 
+def write_synthetic_m6_qualification_summary(path: Path, *, ready: bool) -> None:
+    blocking_reasons = (
+        [] if ready else ["phase0: runtime-lane-blocked phase-0 examples remain pending"]
+    )
+    withheld_claims = [
+        "This summary does not launch the C++ runtime or create new retained captures.",
+        "This summary does not mark Milestone M7 or release readiness.",
+        "This summary does not widen runtime or public behavior.",
+    ]
+    if not ready:
+        withheld_claims.insert(0, "This summary does not claim Milestone M6 closure.")
+
+    write_json(
+        path,
+        {
+            "schema_version": 1,
+            "scope": "milestone-m6-qualification",
+            "current_state": (
+                "milestone-m6-qualified" if ready else "blocked-on-phase0-runtime-lanes"
+            ),
+            "phase0_packet_set_qualified": ready,
+            "phase0_ready_for_m6": ready,
+            "phase0_pending_runtime_lanes_closed": ready,
+            "case_study_families_qualified": ready,
+            "case_study_ready_for_m6": ready,
+            "milestone_m6_ready": ready,
+            "blocking_reasons": blocking_reasons,
+            "withheld_claims": withheld_claims,
+        },
+    )
+
+
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
@@ -2150,6 +2304,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         qualification_corpus_complete_summary_path = (
             temp_root / "qualification-corpus-summary-complete.json"
         )
+        m6_qualification_summary_path = temp_root / "m6-qualification-summary.json"
         phase0_qualification_summary_path = temp_root / "phase0-qualification-summary.json"
         case_study_qualification_summary_path = (
             temp_root / "case-study-qualification-summary.json"
@@ -2174,6 +2329,7 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
 
         write_synthetic_qualification_summary(qualification_summary_path)
         write_synthetic_qualification_corpus_review_summary(qualification_corpus_summary_path)
+        write_synthetic_m6_qualification_summary(m6_qualification_summary_path, ready=True)
         write_json(
             qualification_corpus_complete_summary_path,
             {
@@ -2401,6 +2557,18 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             docs_completion_summary_path=docs_completion_reviewed_summary_path,
             parity_signoff_summary_path=parity_signoff_complete_summary_path,
         )
+        accepted_m6_parity_summary = summarize_release_readiness(
+            checklist_path=checklist_path,
+            qualification_summary_path=qualification_summary_path,
+            m6_qualification_summary_path=m6_qualification_summary_path,
+            qualification_corpus_summary_path=qualification_corpus_complete_summary_path,
+            phase0_qualification_summary_path=phase0_qualification_summary_path,
+            case_study_qualification_summary_path=case_study_qualification_summary_path,
+            performance_review_summary_path=performance_reviewed_summary_path,
+            diagnostic_review_summary_path=diagnostic_reviewed_summary_path,
+            docs_completion_summary_path=docs_completion_reviewed_summary_path,
+            parity_signoff_summary_path=parity_signoff_complete_summary_path,
+        )
         reviewed_performance_section_decoupled_from_m6 = any(
             section["id"] == "performance-review"
             and section["status"] == "reviewed"
@@ -2429,10 +2597,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             and section["blockers"] == ["milestone-m6"]
             for section in anti_fake_m6_parity_summary["review_sections"]
         )
+        accepted_m6_sidecar_clears_parity_m6_blocker = any(
+            section["id"] == "parity-signoff"
+            and section["status"] == "reviewed"
+            and "milestone-m6" not in section["blockers"]
+            for section in accepted_m6_parity_summary["review_sections"]
+        )
+        accepted_m6_sidecar_clears_carried_case_study_numerics = any(
+            prerequisite["id"] == "milestone-m6"
+            and prerequisite["current_state"] == "reviewed-and-accepted-m6-packet"
+            and prerequisite["satisfied"]
+            and not prerequisite["blockers"]
+            for prerequisite in accepted_m6_parity_summary["release_prerequisites"]
+        )
         reviewed_performance_does_not_fake_release_readiness = (
             not anti_fake_parity_summary["release_signoff_ready"]
             and not anti_fake_complete_parity_summary["release_signoff_ready"]
             and not anti_fake_m6_parity_summary["release_signoff_ready"]
+            and not accepted_m6_parity_summary["release_signoff_ready"]
         )
         expect(
             reviewed_performance_section_decoupled_from_m6,
@@ -2453,6 +2635,14 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         expect(
             complete_sidecars_do_not_bypass_m6_prerequisite,
             "complete review evidence must not bypass blocked milestone-m6",
+        )
+        expect(
+            accepted_m6_sidecar_clears_parity_m6_blocker,
+            "accepted M6 sidecar must clear the parity-signoff milestone-m6 blocker",
+        )
+        expect(
+            accepted_m6_sidecar_clears_carried_case_study_numerics,
+            "accepted M6 sidecar must clear carried case-study-numerics blockers",
         )
         expect(
             reviewed_performance_does_not_fake_release_readiness,
@@ -2573,6 +2763,15 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             "complete_sidecars_do_not_bypass_m6_prerequisite": (
                 complete_sidecars_do_not_bypass_m6_prerequisite
             ),
+            "accepted_m6_sidecar_consumed": accepted_m6_parity_summary[
+                "m6_qualification_evidence_present"
+            ],
+            "accepted_m6_sidecar_clears_parity_m6_blocker": (
+                accepted_m6_sidecar_clears_parity_m6_blocker
+            ),
+            "accepted_m6_sidecar_clears_carried_case_study_numerics": (
+                accepted_m6_sidecar_clears_carried_case_study_numerics
+            ),
             "reviewed_performance_does_not_fake_release_readiness": (
                 reviewed_performance_does_not_fake_release_readiness
             ),
@@ -2686,6 +2885,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to the M7 qualification-corpus review summary",
     )
     parser.add_argument(
+        "--m6-qualification-summary",
+        type=Path,
+        help="Optional path to the accepted M6 qualification closure summary",
+    )
+    parser.add_argument(
         "--phase0-qualification-summary",
         type=Path,
         help="Optional path to the phase-0 packet-set qualification verdict summary",
@@ -2747,6 +2951,7 @@ def main() -> int:
     summary = summarize_release_readiness(
         checklist_path=checklist_path,
         qualification_summary_path=args.qualification_summary,
+        m6_qualification_summary_path=args.m6_qualification_summary,
         qualification_corpus_summary_path=args.qualification_corpus_summary,
         phase0_qualification_summary_path=args.phase0_qualification_summary,
         case_study_qualification_summary_path=args.case_study_qualification_summary,

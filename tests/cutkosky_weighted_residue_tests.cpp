@@ -1348,6 +1348,34 @@ void ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest() {
                  "decorated D7 audit must not promote M6");
 }
 
+void ExpectD7MissingKinematicBindingFailsClosed(amflow::ProblemSpec spec,
+                                                const std::string& missing_key) {
+  Expect(spec.kinematics.numeric_substitutions.find(missing_key) ==
+             spec.kinematics.numeric_substitutions.end(),
+         "missing D7 kinematic binding fixture should omit " + missing_key);
+  ExpectExceptionContains(
+      [&spec]() {
+        static_cast<void>(amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+            spec,
+            6,
+            3,
+            70));
+      },
+      "requires exact automatic_phasespace and feynman_prescription weighted residue surfaces",
+      "D7 scoped publication must fail closed when " + missing_key +
+          " is missing");
+}
+
+void ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest() {
+  amflow::ProblemSpec missing_s_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  missing_s_spec.kinematics.numeric_substitutions = {{"msq", "1"}};
+  ExpectD7MissingKinematicBindingFailsClosed(missing_s_spec, "s");
+
+  amflow::ProblemSpec missing_msq_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  missing_msq_spec.kinematics.numeric_substitutions = {{"s", "100"}};
+  ExpectD7MissingKinematicBindingFailsClosed(missing_msq_spec, "msq");
+}
+
 void ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest() {
   const amflow::ProblemSpec plus_minus_spec =
       MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
@@ -2234,6 +2262,7 @@ int main(const int argc, char** argv) {
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest();
+    ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();

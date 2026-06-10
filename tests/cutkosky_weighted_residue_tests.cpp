@@ -208,6 +208,70 @@ const amflow::CutkoskyResidueSeriesTerm& ResidueTermAt(
                            std::to_string(eps_order));
 }
 
+std::string BoolText(const bool value) {
+  return value ? "true" : "false";
+}
+
+std::string SerializeScopedWeightedResiduePublicationPacketForDeterminism(
+    const amflow::CutkoskyScopedWeightedResidueEvaluation& evaluation) {
+  std::ostringstream out;
+  out << amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+      evaluation);
+  out << "publication_packet_version=b63n-scoped-weighted-residue-v1\n";
+  out << "series_label=" << evaluation.candidate_series.series_label << "\n";
+  out << "series_expansion_variable="
+      << evaluation.candidate_series.expansion_variable << "\n";
+  out << "series_eta_variable=" << evaluation.candidate_series.eta_variable
+      << "\n";
+  out << "series_min_eps_order=" << evaluation.candidate_series.min_eps_order
+      << "\n";
+  out << "series_max_eps_order=" << evaluation.candidate_series.max_eps_order
+      << "\n";
+  out << "series_requested_precision_digits="
+      << evaluation.candidate_series.requested_precision_digits << "\n";
+  out << "series_working_precision_digits="
+      << evaluation.candidate_series.working_precision_digits << "\n";
+  out << "series_precision_diagnostics="
+      << evaluation.candidate_series.precision_diagnostics << "\n";
+  for (std::size_t index = 0; index < evaluation.candidate_series.terms.size();
+       ++index) {
+    const amflow::CutkoskyResidueSeriesTerm& term =
+        evaluation.candidate_series.terms[index];
+    out << "term[" << index << "].eps_order=" << term.eps_order << "\n";
+    out << "term[" << index << "].eta_power=" << term.eta_power << "\n";
+    out << "term[" << index << "].log_power=" << term.log_power << "\n";
+    out << "term[" << index << "].region_key=" << term.region_key << "\n";
+    out << "term[" << index
+        << "].coefficient_label=" << term.coefficient_label << "\n";
+    out << "term[" << index << "].coefficient.real="
+        << term.coefficient.real << "\n";
+    out << "term[" << index << "].coefficient.imaginary="
+        << term.coefficient.imaginary << "\n";
+    out << "term[" << index << "].precision.requested="
+        << term.precision.requested_precision_digits << "\n";
+    out << "term[" << index << "].precision.working="
+        << term.precision.working_precision_digits << "\n";
+    out << "term[" << index << "].precision.backend="
+        << term.precision.arithmetic_backend << "\n";
+    out << "term[" << index << "].precision.summary="
+        << term.precision.summary << "\n";
+    out << "term[" << index << "].provenance.source="
+        << term.provenance.source << "\n";
+    out << "term[" << index << "].provenance.derivation="
+        << term.provenance.derivation << "\n";
+    out << "term[" << index << "].provenance.fixture_id="
+        << term.provenance.fixture_id << "\n";
+    out << "term[" << index << "].provenance.synthetic_fixture="
+        << BoolText(term.provenance.synthetic_fixture) << "\n";
+    out << "term[" << index
+        << "].provenance.retained_solution_samples_used="
+        << BoolText(term.provenance.retained_solution_samples_used) << "\n";
+    out << "term[" << index << "].provenance.coefficient_published="
+        << BoolText(term.provenance.coefficient_published) << "\n";
+  }
+  return out.str();
+}
+
 std::string JsonKeyToken(const std::string& key) {
   return "\"" + key + "\"";
 }
@@ -583,6 +647,48 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
   ExpectContains(audit,
                  "full_eta_zero_contour_applied=false",
                  "D7 scoped audit must not promote M6");
+}
+
+void ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest() {
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyScopedWeightedResidueEvaluation first =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          spec,
+          6,
+          3,
+          70);
+  const amflow::CutkoskyScopedWeightedResidueEvaluation second =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          spec,
+          6,
+          3,
+          70);
+  Expect(first.publication_gate_passed && second.publication_gate_passed,
+         "b63n D7 scoped publication determinism test requires a published input");
+
+  const std::string first_packet =
+      SerializeScopedWeightedResiduePublicationPacketForDeterminism(first);
+  const std::string second_packet =
+      SerializeScopedWeightedResiduePublicationPacketForDeterminism(second);
+  Expect(first_packet == second_packet,
+         "same b63n D7 scoped publication input must produce byte-identical "
+         "publication output across runs");
+  ExpectContains(first_packet,
+                 "publication_packet_version=b63n-scoped-weighted-residue-v1",
+                 "b63n scoped publication output should include the packet version");
+  ExpectContains(first_packet,
+                 "candidate_series_terms=4",
+                 "b63n scoped publication output should include all reviewed D7 "
+                 "eps^0..eps^3 terms");
+  ExpectContains(first_packet,
+                 "term[3].coefficient_label="
+                 "automatic_phasespace_D7_weighted_residue_eps3",
+                 "b63n scoped publication output should preserve deterministic "
+                 "eps-order serialization");
+  ExpectContains(first_packet,
+                 "term[0].provenance.coefficient_published=true",
+                 "b63n scoped publication output should preserve publishable "
+                 "provenance");
 }
 
 void ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest() {
@@ -1277,6 +1383,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();

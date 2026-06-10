@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +31,7 @@ EXPECTED_CATEGORIES = [
     "b63n-weighted-residue-moment-cross-validation-gate",
     "b63n-scoped-weighted-residue-evaluation",
 ]
+FNV1A64_RE = re.compile(r"^fnv1a64:[0-9a-f]{16}$")
 
 
 def repo_root() -> Path:
@@ -102,6 +105,15 @@ def require_string(raw: Any, label: str) -> str:
     return raw
 
 
+def require_fingerprint(raw: Any, label: str) -> str:
+    value = require_string(raw, label)
+    expect(
+        FNV1A64_RE.fullmatch(value) is not None,
+        f"{label} must be fnv1a64:<16 lowercase hex>",
+    )
+    return value
+
+
 def require_bool(raw: Any, label: str) -> bool:
     expect(isinstance(raw, bool), f"{label} must be a bool")
     return raw
@@ -129,18 +141,20 @@ def validate_payload(payload: dict[str, Any], *, require_matches: bool) -> dict[
         expect(isinstance(raw_entry, dict), f"entries[{index}] must be an object")
         label = require_string(raw_entry.get("label"), f"entries[{index}].label")
         category = require_string(raw_entry.get("category"), f"entries[{index}].category")
-        fresh = require_string(
+        fresh = require_fingerprint(
             raw_entry.get("fresh_fingerprint"),
             f"entries[{index}].fresh_fingerprint",
         )
-        pinned = require_string(
+        pinned = require_fingerprint(
             raw_entry.get("pinned_fingerprint"),
             f"entries[{index}].pinned_fingerprint",
         )
         matches = require_bool(raw_entry.get("matches_pin"), f"entries[{index}].matches_pin")
         expect(category in EXPECTED_CATEGORIES, f"{label} has unexpected category {category}")
-        expect(fresh.startswith("fnv1a64:"), f"{label} fresh fingerprint must be fnv1a64")
-        expect(pinned.startswith("fnv1a64:"), f"{label} pinned fingerprint must be fnv1a64")
+        expect(
+            matches == (fresh == pinned),
+            f"{label} matches_pin must reflect fresh/pinned fingerprint equality",
+        )
         labels.append(label)
         fresh_fingerprints.append(fresh)
         if not matches:
@@ -165,6 +179,85 @@ def validate_payload(payload: dict[str, Any], *, require_matches: bool) -> dict[
             "--self-check to print fresh hashes",
         )
     return {"mismatches": mismatches, "entry_count": len(entries)}
+
+
+def rejected(
+    payload: dict[str, Any],
+    expected_message: str,
+    *,
+    require_matches: bool = True,
+) -> bool:
+    try:
+        validate_payload(payload, require_matches=require_matches)
+    except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
+        return expected_message in str(error)
+    return False
+
+
+def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
+    accepted = validate_payload(payload, require_matches=True)
+
+    stale_categories = copy.deepcopy(payload)
+    stale_categories["published_categories"] = []
+
+    stale_entry_count = copy.deepcopy(payload)
+    stale_entry_count["entry_count"] = accepted["entry_count"] + 1
+
+    stale_label = copy.deepcopy(payload)
+    stale_label["entries"][0]["label"] = "synthetic-stale-b63n-label"
+
+    malformed_fresh_fingerprint = copy.deepcopy(payload)
+    malformed_fresh_fingerprint["entries"][0]["fresh_fingerprint"] = "fnv1a64:nothex"
+
+    malformed_pinned_fingerprint = copy.deepcopy(payload)
+    malformed_pinned_fingerprint["entries"][0]["pinned_fingerprint"] = "fnv1a64:00000000000000000"
+
+    false_match_flag = copy.deepcopy(payload)
+    false_match_flag["entries"][0]["fresh_fingerprint"] = "fnv1a64:0000000000000000"
+    false_match_flag["entries"][0]["matches_pin"] = True
+
+    runtime_fingerprint_drift = copy.deepcopy(payload)
+    runtime_fingerprint_drift["entries"][0]["fresh_fingerprint"] = "fnv1a64:0000000000000000"
+    runtime_fingerprint_drift["entries"][0]["matches_pin"] = False
+
+    checks = {
+        "accepts_runtime_fingerprint_payload": accepted["entry_count"] == len(EXPECTED_LABELS),
+        "rejects_published_category_drift": rejected(
+            stale_categories,
+            "published b63n weighted-residue audit categories drifted",
+        ),
+        "rejects_stale_entry_count": rejected(
+            stale_entry_count,
+            "entry_count must match entries",
+        ),
+        "rejects_label_drift": rejected(
+            stale_label,
+            "b63n weighted-residue fingerprint labels drifted",
+        ),
+        "rejects_malformed_fresh_fingerprint": rejected(
+            malformed_fresh_fingerprint,
+            "fresh_fingerprint must be fnv1a64:<16 lowercase hex>",
+        ),
+        "rejects_malformed_pinned_fingerprint": rejected(
+            malformed_pinned_fingerprint,
+            "pinned_fingerprint must be fnv1a64:<16 lowercase hex>",
+        ),
+        "rejects_false_match_flag": rejected(
+            false_match_flag,
+            "matches_pin must reflect fresh/pinned fingerprint equality",
+        ),
+        "rejects_runtime_fingerprint_drift": rejected(
+            runtime_fingerprint_drift,
+            "b63n weighted-residue audit fingerprints drifted",
+        ),
+    }
+    expect(all(checks.values()), "b63n weighted-residue fingerprint self-check failed")
+    return {
+        "kind": "b63n-weighted-residue-fingerprint-self-check",
+        "entry_count": accepted["entry_count"],
+        "passed": True,
+        "checks": checks,
+    }
 
 
 def render_plain(payload: dict[str, Any]) -> str:
@@ -214,21 +307,12 @@ def main(argv: list[str]) -> int:
     root = repo_root()
     test_binary = resolve_test_binary(args.test_binary, root)
     payload = run_emitter(test_binary, root)
-    summary = validate_payload(payload, require_matches=args.self_check)
 
     if args.self_check:
-        print(
-            json.dumps(
-                {
-                    "kind": "b63n-weighted-residue-fingerprint-self-check",
-                    "entry_count": summary["entry_count"],
-                    "passed": True,
-                },
-                indent=2,
-                sort_keys=True,
-            )
-        )
+        print(json.dumps(run_self_check(payload), indent=2, sort_keys=True))
         return 0
+
+    validate_payload(payload, require_matches=False)
 
     if args.format == "plain":
         print(render_plain(payload), end="")

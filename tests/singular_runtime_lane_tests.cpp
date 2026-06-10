@@ -69,6 +69,14 @@ std::string NormalizeCutkoskyConjugateSignTokens(std::string value) {
   return value;
 }
 
+bool IsPositiveNumericLiteral(const std::string& value) {
+  return boost::multiprecision::cpp_dec_float_100(value) > 0;
+}
+
+bool IsNegativeNumericLiteral(const std::string& value) {
+  return boost::multiprecision::cpp_dec_float_100(value) < 0;
+}
+
 const amflow::CutkoskyPrefactorSeriesTerm& CutkoskyPrefactorTermAt(
     const amflow::CutkoskyPrefactorSeries& series,
     const int eps_order) {
@@ -2644,6 +2652,78 @@ void B63nScopedWeightedResiduePublishesReviewedD7TermTest() {
   ExpectContains(audit,
                  "full_eta_zero_contour_applied=false",
                  "b63n scoped D7 audit must not promote M6");
+}
+
+void B63nD7SeedDenominatorIdentityPinsPublishedCoefficientSignsTest() {
+  const amflow::ProblemSpec automatic_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const auto gate =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentCrossValidationGate(
+          automatic_spec,
+          3,
+          70);
+  Expect(gate.passed,
+         "b63n D7 sign property requires the reviewed seed packet to pass");
+  Expect(gate.validated_seed_denominator_identities.size() == 4,
+         "b63n D7 sign property should see all reviewed seed identities");
+  const std::string d7_identity =
+      "D7;index=6;power=1;role=D7=(l1+p2)^2 angular weight;"
+      "form=inverse_denominator_weight[D7(q2,cos_theta_a)]";
+  Expect(gate.validated_seed_denominator_identities[3] == d7_identity,
+         "b63n D7 sign property should bind the published row to the D7 seed "
+         "denominator identity");
+
+  const auto seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          automatic_spec,
+          3,
+          70);
+  Expect(seed_packet.size() == 4 &&
+             seed_packet[3].selected_weight_denominator == "D7",
+         "b63n D7 sign property should inspect the reviewed D7 seed");
+
+  const auto evaluation = amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+      automatic_spec,
+      6,
+      3,
+      70);
+  Expect(evaluation.publication_gate_passed &&
+             evaluation.reference_validation_passed &&
+             evaluation.selected_weight_denominator == "D7" &&
+             evaluation.selected_weight_denominator_index == 6 &&
+             evaluation.selected_weight_power == 1 &&
+             evaluation.selected_weight_structural_form ==
+                 "inverse_denominator_weight[D7(q2,cos_theta_a)]",
+         "b63n D7 sign property should compare only the reviewed D7 publication");
+
+  for (int eps_order = 0; eps_order <= 3; ++eps_order) {
+    const amflow::CutkoskyResidueSeriesTerm& seed_term =
+        CutkoskyResidueTermAt(seed_packet[3].residue_series,
+                              eps_order,
+                              0,
+                              0,
+                              "integer");
+    const amflow::CutkoskyResidueSeriesTerm& published_term =
+        CutkoskyResidueTermAt(evaluation.candidate_series,
+                              eps_order,
+                              0,
+                              0,
+                              "integer");
+    Expect(IsNegativeNumericLiteral(seed_term.coefficient.real) &&
+               seed_term.coefficient.imaginary == "0",
+           "b63n D7 seed should retain the negative K_2 prefactor sign at eps^" +
+               std::to_string(eps_order));
+    Expect(IsPositiveNumericLiteral(published_term.coefficient.real) &&
+               published_term.coefficient.imaginary == "0",
+           "b63n published D7 coefficient should retain the reviewed positive "
+           "sign at eps^" +
+               std::to_string(eps_order));
+    Expect(!seed_term.provenance.coefficient_published &&
+               seed_term.provenance.synthetic_fixture &&
+               published_term.provenance.coefficient_published &&
+               !published_term.provenance.synthetic_fixture,
+           "b63n D7 sign property should keep synthetic seed signs separate from "
+           "published coefficient signs");
+  }
 }
 
 void B63nScopedWeightedResidueRejectsDegeneratePublicationDataTest() {
@@ -8568,6 +8648,7 @@ int main() {
     B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
     B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest();
     B63nScopedWeightedResiduePublishesReviewedD7TermTest();
+    B63nD7SeedDenominatorIdentityPinsPublishedCoefficientSignsTest();
     B63nScopedWeightedResidueRejectsDegeneratePublicationDataTest();
     B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();

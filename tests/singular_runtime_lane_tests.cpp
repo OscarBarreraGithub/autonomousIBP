@@ -2300,6 +2300,51 @@ void B63nScopedWeightedResiduePublishesReviewedD7TermTest() {
                  "b63n scoped D7 audit must not promote M6");
 }
 
+void B63nScopedWeightedResidueRejectsDegeneratePublicationDataTest() {
+  const auto evaluation = amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+      MakeB63nAutomaticPhaseSpaceSpec(),
+      6,
+      3,
+      70);
+
+  auto eta_degenerate = evaluation.candidate_series;
+  eta_degenerate.terms.front().eta_power = 1;
+  ExpectInvalidArgumentContains(
+      [&eta_degenerate]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(eta_degenerate);
+      },
+      "eta^0 endpoint data",
+      "b63n scoped D7 residue must not publish nonzero eta-power data");
+
+  auto log_degenerate = evaluation.candidate_series;
+  log_degenerate.terms.front().log_power = 1;
+  ExpectInvalidArgumentContains(
+      [&log_degenerate]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(log_degenerate);
+      },
+      "logarithmic endpoint data",
+      "b63n scoped D7 residue must not publish unresolved logarithmic data");
+
+  auto region_degenerate = evaluation.candidate_series;
+  region_degenerate.terms.front().region_key = "fractional";
+  ExpectInvalidArgumentContains(
+      [&region_degenerate]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(region_degenerate);
+      },
+      "non-integer endpoint region",
+      "b63n scoped D7 residue must not publish fractional endpoint-region data");
+
+  auto duplicated_eta_zero = evaluation.candidate_series;
+  duplicated_eta_zero.terms.push_back(duplicated_eta_zero.terms.front());
+  duplicated_eta_zero.terms.back().coefficient_label += "_duplicate";
+  ExpectInvalidArgumentContains(
+      [&duplicated_eta_zero]() {
+        amflow::ValidateCutkoskyResiduePublicationGate(duplicated_eta_zero);
+      },
+      "exactly one published integer eta^0 log^0 coefficient for eps^0",
+      "b63n scoped D7 residue must not publish ambiguous eta-zero data");
+}
+
 void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
   const amflow::ProblemSpec automatic_spec = MakeB63nAutomaticPhaseSpaceSpec();
   const auto automatic_plan =
@@ -8175,6 +8220,7 @@ int main() {
     B63nCutkoskyWeightedResidueEvaluationPlanAuditsDeferredContractTest();
     B63nAutomaticPhaseSpaceWeightedMomentSeedIsPublicationGatedTest();
     B63nScopedWeightedResiduePublishesReviewedD7TermTest();
+    B63nScopedWeightedResidueRejectsDegeneratePublicationDataTest();
     B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest();
     B63nPickCutkoskyEtaZeroTermSelectsOnlyLiveSymbolicTermTest();
     B63nAutomaticPhaseSpaceFirstCutkoskyCoefficientAuditTest();

@@ -395,6 +395,10 @@ std::string CutkoskyPublicationTermLabel(const std::size_t index) {
   return "published residue term[" + std::to_string(index) + "]";
 }
 
+std::string CutkoskyPublicationEpsOrderLabel(const int eps_order) {
+  return "eps^" + std::to_string(eps_order);
+}
+
 void ValidateCutkoskyPublicationPrecision(const int requested_digits,
                                           const int working_digits,
                                           const std::string& label) {
@@ -451,6 +455,50 @@ void ValidateCutkoskyPublishedCoefficientLiteralPrecision(
         label + " imaginary coefficient literal precision >= " +
         std::to_string(kCutkoskyPublicationMinimumPrecisionDigits) +
         " significant decimal digits");
+  }
+}
+
+void ValidateCutkoskyPublicationEndpointShape(
+    const CutkoskyResidueSeriesTerm& term,
+    const std::string& label) {
+  const std::string region_key =
+      term.region_key.empty() ? "integer" : term.region_key;
+  if (region_key != "integer") {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate rejects non-integer endpoint region "
+        "for " +
+        label);
+  }
+  if (term.eta_power != 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate requires eta^0 endpoint data for " +
+        label);
+  }
+  if (term.log_power != 0) {
+    throw std::invalid_argument(
+        "b63n Cutkosky residue publication gate rejects logarithmic endpoint data for " +
+        label);
+  }
+}
+
+void ValidateCutkoskyPublishedEtaZeroSelections(
+    const CutkoskyResidueSeries& series,
+    const std::vector<std::size_t>& published_indices) {
+  std::map<int, std::vector<CutkoskyEtaZeroTerm>> published_by_eps_order;
+  for (const std::size_t index : published_indices) {
+    const CutkoskyResidueSeriesTerm& term = series.terms[index];
+    published_by_eps_order[term.eps_order].push_back(
+        {"integer", term.eta_power, term.log_power, term.coefficient_label});
+  }
+  for (const auto& [eps_order, terms] : published_by_eps_order) {
+    const CutkoskyEtaZeroSelectionResult selection =
+        PickCutkoskyEtaZeroTerm(terms);
+    if (!selection.success) {
+      throw std::invalid_argument(
+          "b63n Cutkosky residue publication gate requires exactly one published "
+          "integer eta^0 log^0 coefficient for " +
+          CutkoskyPublicationEpsOrderLabel(eps_order) + ": " + selection.summary);
+    }
   }
 }
 
@@ -1558,6 +1606,7 @@ void ValidateCutkoskyResiduePublicationGate(
           "b63n Cutkosky residue publication gate rejects retained-solution-sample " +
           label);
     }
+    ValidateCutkoskyPublicationEndpointShape(term, label);
   }
 
   std::vector<std::size_t> published_indices;
@@ -1601,6 +1650,7 @@ void ValidateCutkoskyResiduePublicationGate(
           label);
     }
   }
+  ValidateCutkoskyPublishedEtaZeroSelections(series, published_indices);
 
   ValidateCutkoskyPublicationPrecision(series.requested_precision_digits,
                                        series.working_precision_digits,

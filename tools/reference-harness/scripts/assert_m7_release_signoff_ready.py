@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import difflib
+import hashlib
 import json
 import subprocess
 import sys
@@ -63,6 +65,8 @@ def build_readiness_command(root: Path, accepted_summary: dict[str, Any], output
     command = [
         sys.executable,
         str(root / "tools/reference-harness/scripts/release_signoff_readiness.py"),
+        "--source-commit-override",
+        require_source_commit(accepted_summary.get("source_commit")),
     ]
     for option, field in READINESS_INPUTS:
         command.extend([option, require_repo_path(root, accepted_summary.get(field), field)])
@@ -78,6 +82,39 @@ def print_process_failure(completed: subprocess.CompletedProcess[str]) -> None:
     if completed.stderr:
         print("stderr:", file=sys.stderr)
         print(completed.stderr, file=sys.stderr)
+
+
+def require_source_commit(raw: Any) -> str:
+    expect(isinstance(raw, str) and raw.strip(), "accepted source_commit must be a non-empty string")
+    value = raw.strip()
+    expect(
+        7 <= len(value) <= 64 and all(character in "0123456789abcdefABCDEF" for character in value),
+        f"accepted source_commit must be a git object id: {value}",
+    )
+    return value
+
+
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def print_byte_drift(label: str, expected: bytes, actual: bytes) -> None:
+    print(f"M7 release readiness determinism regressed: {label} drifted", file=sys.stderr)
+    print(
+        f"expected bytes={len(expected)} sha256={sha256(expected)}",
+        file=sys.stderr,
+    )
+    print(f"actual bytes={len(actual)} sha256={sha256(actual)}", file=sys.stderr)
+    expected_text = expected.decode("utf-8", errors="replace").splitlines(keepends=True)
+    actual_text = actual.decode("utf-8", errors="replace").splitlines(keepends=True)
+    diff = difflib.unified_diff(
+        expected_text,
+        actual_text,
+        fromfile="recorded-release-readiness.json",
+        tofile=label,
+        n=3,
+    )
+    print("".join(list(diff)[:120]), file=sys.stderr)
 
 
 def summarize_failure(summary: dict[str, Any]) -> dict[str, Any]:
@@ -106,6 +143,15 @@ def main() -> int:
         if completed.returncode != 0:
             print_process_failure(completed)
             return completed.returncode
+        accepted_bytes = accepted_summary_path.read_bytes()
+        fresh_bytes = output_path.read_bytes()
+        if fresh_bytes != accepted_bytes:
+            print_byte_drift("fresh-summary-file", accepted_bytes, fresh_bytes)
+            return 1
+        stdout_bytes = completed.stdout.encode("utf-8")
+        if stdout_bytes != accepted_bytes:
+            print_byte_drift("fresh-stdout", accepted_bytes, stdout_bytes)
+            return 1
         fresh_summary = read_json(output_path)
 
     if fresh_summary.get("release_signoff_ready") is not True:

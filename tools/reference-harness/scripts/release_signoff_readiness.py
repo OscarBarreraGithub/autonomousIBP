@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import string
 import subprocess
 import tempfile
 from pathlib import Path
@@ -63,9 +64,28 @@ def git_head(root: Path) -> str:
     return completed.stdout.strip()
 
 
-def attach_source_provenance(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+def require_source_commit_override(raw: str) -> str:
+    value = raw.strip()
+    expect(value, "source commit override must not be empty")
+    expect(
+        7 <= len(value) <= 64 and all(character in string.hexdigits for character in value),
+        "source commit override must be a git object id",
+    )
+    return value
+
+
+def attach_source_provenance(
+    root: Path,
+    payload: dict[str, Any],
+    *,
+    source_commit_override: str | None = None,
+) -> dict[str, Any]:
     stamped = dict(payload_without_source_provenance_digest(payload))
-    stamped["source_commit"] = git_head(root)
+    stamped["source_commit"] = (
+        require_source_commit_override(source_commit_override)
+        if source_commit_override is not None
+        else git_head(root)
+    )
     stamped["source_provenance_sha256"] = source_provenance_sha256(stamped)
     return stamped
 
@@ -3284,6 +3304,10 @@ def parse_args() -> argparse.Namespace:
         help="Optional output file for the release-readiness summary",
     )
     parser.add_argument(
+        "--source-commit-override",
+        help="Override source_commit for deterministic fixture regeneration.",
+    )
+    parser.add_argument(
         "--self-check",
         action="store_true",
         help="Run a synthetic release-readiness audit against the live checklist",
@@ -3321,7 +3345,11 @@ def main() -> int:
         docs_completion_summary_path=args.docs_completion_summary,
         parity_signoff_summary_path=args.parity_signoff_summary,
     )
-    summary = attach_source_provenance(root, summary)
+    summary = attach_source_provenance(
+        root,
+        summary,
+        source_commit_override=args.source_commit_override,
+    )
     if args.summary_path is not None:
         write_json(args.summary_path, summary)
     print(json.dumps(summary, indent=2, sort_keys=True))

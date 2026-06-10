@@ -95,13 +95,29 @@ def expect(condition: bool, message: str) -> None:
         raise RuntimeError(message)
 
 
+def canonical_json_text(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(canonical_json_text(payload), encoding="utf-8")
 
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+def default_publication_qualifier_sidecar_path() -> Path:
+    return (
+        repo_root()
+        / "tools"
+        / "reference-harness"
+        / "specs"
+        / "m6"
+        / "lane5-next7"
+        / "b61n-publication-qualifier-hook.json"
+    )
 
 
 def resolve_sidecar_path(path_text: str, sidecar_path: Path) -> Path:
@@ -2199,6 +2215,67 @@ def run_self_check() -> dict[str, Any]:
     }
 
 
+def run_determinism_check(sidecar_path: Path) -> dict[str, Any]:
+    first_summary = audit_sidecar(sidecar_path)
+    second_summary = audit_sidecar(sidecar_path)
+    first_text = canonical_json_text(first_summary)
+    second_text = canonical_json_text(second_summary)
+    expect(
+        first_text == second_text,
+        "b61n publication qualifier replay must produce byte-identical canonical JSON",
+    )
+
+    with tempfile.TemporaryDirectory(prefix="amflow-b61n-publication-determinism-") as tmp:
+        root = Path(tmp)
+        first_path = root / "first-summary.json"
+        second_path = root / "second-summary.json"
+        write_json(first_path, first_summary)
+        write_json(second_path, second_summary)
+        first_bytes = first_path.read_bytes()
+        second_bytes = second_path.read_bytes()
+        expect(
+            first_bytes == second_bytes,
+            "b61n publication qualifier summary files must be byte-identical",
+        )
+
+    expect(
+        first_summary["publication_gate_reviewed"] is True,
+        "b61n determinism check must preserve publication gate review status",
+    )
+    expect(
+        first_summary["amflow_cross_comparator_publication_gate_passed"] is False
+        and first_summary["amflow_cross_comparator_blocked_publication_variant_count"]
+        == first_summary["variant_count"],
+        "b61n determinism check must preserve the current comparator publication blocker",
+    )
+    expect(
+        first_summary["m6_qualifier_hook_prepositioned"] is True
+        and first_summary["m7_parity_single_row_hook_prepositioned"] is True,
+        "b61n determinism check must preserve M6/M7 publication hooks",
+    )
+    withheld_claims = first_summary["withheld_claims"]
+    expect(
+        all(claim in withheld_claims for claim in WITHHELD_CLAIMS),
+        "b61n determinism check must preserve withheld claims",
+    )
+
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-qualifier-determinism",
+        "sidecar_path": str(sidecar_path),
+        "audit_replay_byte_deterministic": True,
+        "summary_file_byte_deterministic": True,
+        "summary_sha256": hashlib.sha256(first_text.encode("utf-8")).hexdigest(),
+        "deterministic_summary_bytes": len(first_bytes),
+        "publication_gate_reviewed": first_summary["publication_gate_reviewed"],
+        "variant_count": first_summary["variant_count"],
+        "reviewed_endpoint_integrals": first_summary["reviewed_endpoint_integrals"],
+        "amflow_cross_comparator_publication_gate_blocks_current": True,
+        "m6_m7_hooks_preserved": True,
+        "withheld_claims_preserved": True,
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -2211,10 +2288,16 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Optional output file for the audit summary",
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--self-check",
         action="store_true",
         help="Run synthetic b61n publication qualifier checks",
+    )
+    mode.add_argument(
+        "--determinism-check",
+        action="store_true",
+        help="Replay the b61n publication qualifier and require byte-stable summaries",
     )
     return parser.parse_args()
 
@@ -2228,14 +2311,12 @@ def main() -> int:
     sidecar_path = (
         args.sidecar_path
         if args.sidecar_path is not None
-        else repo_root()
-        / "tools"
-        / "reference-harness"
-        / "specs"
-        / "m6"
-        / "lane5-next7"
-        / "b61n-publication-qualifier-hook.json"
+        else default_publication_qualifier_sidecar_path()
     )
+    if args.determinism_check:
+        print(json.dumps(run_determinism_check(sidecar_path), indent=2, sort_keys=True))
+        return 0
+
     summary = audit_sidecar(sidecar_path)
     if args.summary_path is not None:
         write_json(args.summary_path, summary)

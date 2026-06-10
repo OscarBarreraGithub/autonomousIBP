@@ -266,6 +266,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m6-sidecar-shape-validation
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_m6_sidecar_shapes.py
+      --verify
+  )
+  set_tests_properties(m6-sidecar-shape-validation PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-signoff-readiness-accepted-inputs
     COMMAND
       ${Python3_EXECUTABLE}

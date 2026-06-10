@@ -293,6 +293,61 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
                 raise BundleError(f"bundle content mismatch: {entry['archive_path']}")
 
 
+def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
+    expected_names = sorted(
+        [f"{manifest['bundle_root']}/{MANIFEST_NAME}"]
+        + [entry["archive_path"] for entry in manifest["files"]]
+    )
+
+    with tempfile.TemporaryDirectory(prefix="m7-release-evidence-roundtrip-") as temp_dir:
+        extract_root = Path(temp_dir) / "extract"
+        extract_root.mkdir()
+        resolved_extract_root = extract_root.resolve(strict=True)
+
+        with tarfile.open(output_path, "r:gz") as tar:
+            for member in tar.getmembers():
+                assert_safe_archive_name(member.name)
+                if not member.isfile():
+                    raise BundleError(f"bundle member is not a regular file: {member.name}")
+                member_stream = tar.extractfile(member)
+                if member_stream is None:
+                    raise BundleError(f"bundle member could not be read: {member.name}")
+                target_path = extract_root / member.name
+                resolved_target = target_path.resolve(strict=False)
+                try:
+                    resolved_target.relative_to(resolved_extract_root)
+                except ValueError as error:
+                    raise BundleError(f"bundle member escapes extraction root: {member.name}") from error
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                target_path.write_bytes(member_stream.read())
+
+        extracted_names = sorted(
+            path.relative_to(extract_root).as_posix()
+            for path in extract_root.rglob("*")
+            if path.is_file()
+        )
+        if extracted_names != expected_names:
+            missing = sorted(set(expected_names).difference(extracted_names))
+            unexpected = sorted(set(extracted_names).difference(expected_names))
+            raise BundleError(
+                f"round-trip extracted file drift; missing={missing}, unexpected={unexpected}"
+            )
+
+        manifest_path = extract_root / manifest["bundle_root"] / MANIFEST_NAME
+        extracted_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if extracted_manifest != manifest:
+            raise BundleError("round-trip manifest content drifted")
+
+        for entry in manifest["files"]:
+            data = (extract_root / entry["archive_path"]).read_bytes()
+            if len(data) != entry["bytes"]:
+                raise BundleError(f"round-trip byte count mismatch: {entry['archive_path']}")
+            if hashlib.sha256(data).hexdigest() != entry["sha256"]:
+                raise BundleError(f"round-trip checksum mismatch: {entry['archive_path']}")
+            if data != (root / entry["path"]).read_bytes():
+                raise BundleError(f"round-trip content mismatch: {entry['archive_path']}")
+
+
 def self_check(root: Path) -> None:
     synthetic_records = [
         ("b/release.json", b"{\"status\":\"accepted\"}\n"),
@@ -312,6 +367,7 @@ def self_check(root: Path) -> None:
         manifest = build_manifest(root, DEFAULT_READINESS_SIDECAR, DEFAULT_BUNDLE_ROOT)
         write_bundle(root, output_path, manifest)
         validate_bundle(root, output_path, manifest)
+        round_trip_bundle(root, output_path, manifest)
 
     required_paths = {
         DEFAULT_READINESS_SIDECAR.as_posix(),

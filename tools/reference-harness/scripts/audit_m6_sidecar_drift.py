@@ -17,6 +17,7 @@ from validate_m6_sidecar_shapes import (
     SchemaError,
     SidecarValidation,
     repo_root,
+    resolve_m6_root,
     validate_json_sidecar,
     validate_sqlite_sidecar,
     write_json,
@@ -80,8 +81,8 @@ def clean_str(value: Any) -> str | None:
     return None
 
 
-def lane_from_path(path: Path, root: Path, m6_root: Path) -> str:
-    parts = path.relative_to(root / m6_root).parts
+def lane_from_path(path: Path, m6_root: Path) -> str:
+    parts = path.relative_to(m6_root).parts
     return parts[0] if len(parts) > 1 else "<m6-root>"
 
 
@@ -135,7 +136,7 @@ def metadata_status(payload: dict[str, Any], validation: SidecarValidation) -> s
 def entry_from_validation(
     path: Path,
     root: Path,
-    m6_root: Path,
+    absolute_m6_root: Path,
     validation: SidecarValidation,
     payload: dict[str, Any] | None,
 ) -> DriftEntry:
@@ -149,7 +150,7 @@ def entry_from_validation(
         path=str(path.relative_to(root)),
         family=validation.family,
         benchmark_id=scoped_benchmark,
-        lane=lane_from_path(path, root, m6_root),
+        lane=lane_from_path(path, absolute_m6_root),
         accepted=validation.accepted,
         status=status,
         basis=validation.basis,
@@ -157,8 +158,7 @@ def entry_from_validation(
 
 
 def collect_entries(root: Path, m6_root: Path) -> tuple[list[DriftEntry], int, int]:
-    absolute_root = root / m6_root
-    expect(absolute_root.is_dir(), f"{m6_root} must exist")
+    absolute_root = resolve_m6_root(root, m6_root)
     json_paths = sorted(absolute_root.rglob("*.json"))
     sqlite_paths = sorted(
         path for path in absolute_root.rglob("*") if path.is_file() and path.suffix in SQLITE_SUFFIXES
@@ -171,14 +171,14 @@ def collect_entries(root: Path, m6_root: Path) -> tuple[list[DriftEntry], int, i
         try:
             payload = read_json(path)
             validation = validate_json_sidecar(path, root)
-            entries.append(entry_from_validation(path, root, m6_root, validation, payload))
+            entries.append(entry_from_validation(path, root, absolute_root, validation, payload))
         except Exception as error:  # noqa: BLE001 - report all sidecar drift at once.
             errors.append(f"{path.relative_to(root)}: {error}")
 
     for path in sqlite_paths:
         try:
             validation = validate_sqlite_sidecar(path, root)
-            entries.append(entry_from_validation(path, root, m6_root, validation, None))
+            entries.append(entry_from_validation(path, root, absolute_root, validation, None))
         except Exception as error:  # noqa: BLE001 - report all sidecar drift at once.
             errors.append(f"{path.relative_to(root)}: {error}")
 

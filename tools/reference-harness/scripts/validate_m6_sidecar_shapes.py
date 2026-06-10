@@ -132,6 +132,18 @@ def require_repo_path(root: Path, raw: Any, field: str) -> str:
     return value
 
 
+def resolve_m6_root(root: Path, m6_root: Path) -> Path:
+    candidate = m6_root if m6_root.is_absolute() else root / m6_root
+    resolved_root = root.resolve(strict=False)
+    resolved = candidate.resolve(strict=False)
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as error:
+        raise SchemaError(f"{m6_root} must stay within the repository") from error
+    expect(resolved.is_dir(), f"{m6_root} must exist")
+    return resolved
+
+
 def require_optional_repo_path(
     root: Path,
     payload: dict[str, Any],
@@ -374,8 +386,7 @@ def validate_sqlite_sidecar(path: Path, root: Path) -> SidecarValidation:
 
 
 def validate_all_m6_sidecars(root: Path, m6_root: Path) -> dict[str, Any]:
-    absolute_root = root / m6_root
-    expect(absolute_root.is_dir(), f"{m6_root} must exist")
+    absolute_root = resolve_m6_root(root, m6_root)
     json_paths = sorted(absolute_root.rglob("*.json"))
     sqlite_paths = sorted(
         path for path in absolute_root.rglob("*") if path.is_file() and path.suffix in SQLITE_SUFFIXES
@@ -505,11 +516,39 @@ def run_self_check() -> dict[str, Any]:
         except SchemaError:
             escaped_path_rejected = True
 
+        escaped_m6_root_rejected = False
+        with tempfile.TemporaryDirectory(
+            dir=root.parent,
+            prefix=f"{root.name}-outside-m6-",
+        ) as outside_dir:
+            outside_root = Path(outside_dir)
+            outside_lane = outside_root / "lane-external"
+            write_json(
+                outside_lane / "external.cpp-result.json",
+                {
+                    "schema_version": 1,
+                    "benchmark_id": "external",
+                    "family": "external",
+                    "targets": [{"integral": "external[1]"}],
+                    "solver": {"method": "synthetic"},
+                    "boundary_state": {"source": "synthetic"},
+                    "continuation": {"path": []},
+                    "results": [{"integral": "external[1]", "orders": []}],
+                    "status": "success",
+                    "duration_seconds": 0.0,
+                },
+            )
+            try:
+                validate_all_m6_sidecars(root, outside_root)
+            except SchemaError:
+                escaped_m6_root_rejected = True
+
         expect(summary["json_sidecar_count"] == 2, "self-check JSON sidecar count drifted")
         expect(summary["sqlite_sidecar_count"] == 1, "self-check SQLite sidecar count drifted")
         expect(summary["accepted_sidecar_count"] == 3, "self-check accepted sidecar count drifted")
         expect(bad_schema_rejected, "self-check did not reject a bad schema version")
         expect(escaped_path_rejected, "self-check did not reject an escaped repository path")
+        expect(escaped_m6_root_rejected, "self-check did not reject an escaped M6 root")
 
         return {
             "valid_json_sidecars": summary["json_sidecar_count"],
@@ -517,6 +556,7 @@ def run_self_check() -> dict[str, Any]:
             "accepted_sidecars": summary["accepted_sidecar_count"],
             "bad_schema_rejected": bad_schema_rejected,
             "escaped_path_rejected": escaped_path_rejected,
+            "escaped_m6_root_rejected": escaped_m6_root_rejected,
         }
 
 

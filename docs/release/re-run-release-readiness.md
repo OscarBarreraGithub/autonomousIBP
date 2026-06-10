@@ -38,6 +38,22 @@ inventory with schema validation, and summarizes the accepted performance review
 sidecar. It does not rerun AMFlow numerics or create new release evidence. CTest
 runs the same command as `m7-release-health-summary`.
 
+## Status Badge
+
+Use this command when you need a Shields-compatible endpoint JSON payload for
+the committed release state:
+
+```sh
+python3 tools/reference-harness/scripts/release_status_badge.py --verify
+```
+
+The badge helper reads the same release health summary JSON and renders only the
+badge label, message, and color. It does not rerun AMFlow numerics, alter release
+evidence, or promote sidecar acceptance. CTest runs `m7-release-status-badge`,
+`m7-release-status-badge-self-check`, and `m7-release-status-badge-fixture` to
+cover the live health path, synthetic status mapping, and committed fixture
+contract.
+
 ## Performance Baseline
 
 Use this command when you need to confirm that the accepted-input replay has not

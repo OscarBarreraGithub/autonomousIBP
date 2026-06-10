@@ -363,6 +363,35 @@ if(BUILD_TESTING)
   set_tests_properties(m7-release-health-summary-json-fixture PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+  add_test(
+    NAME m7-release-status-badge
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/release_status_badge.py
+      --verify
+  )
+  set_tests_properties(m7-release-status-badge PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-status-badge-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/release_status_badge.py
+      --self-check
+  )
+  set_tests_properties(m7-release-status-badge-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-status-badge-fixture
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_status_badge_fixture.py
+  )
+  set_tests_properties(m7-release-status-badge-fixture PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
   add_executable(singular-runtime-lane-tests tests/singular_runtime_lane_tests.cpp)
   target_link_libraries(singular-runtime-lane-tests PRIVATE amflow)
   target_compile_features(singular-runtime-lane-tests PRIVATE cxx_std_17)

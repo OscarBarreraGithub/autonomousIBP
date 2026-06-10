@@ -361,6 +361,17 @@ if(BUILD_TESTING)
   add_test(NAME singular-runtime-lane-tests COMMAND singular-runtime-lane-tests)
   set_tests_properties(singular-runtime-lane-tests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-publication-audit-trail-query-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py
+      --self-check
+      --test-binary
+      $<TARGET_FILE:singular-runtime-lane-tests>)
+  set_tests_properties(b61n-publication-audit-trail-query-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_executable(cutkosky-weighted-residue-tests
     tests/cutkosky_weighted_residue_tests.cpp)

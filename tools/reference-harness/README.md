@@ -153,6 +153,10 @@ python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
 python3 tools/reference-harness/scripts/verify_b61n_publication_audit_field.py \
   --self-check
 
+python3 tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py \
+  --self-check \
+  --test-binary build/singular-runtime-lane-tests
+
 python3 tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py \
   --self-check \
   --test-binary build/cutkosky-weighted-residue-tests
@@ -172,8 +176,9 @@ production, diagnostic-review sidecar production, docs-completion sidecar produc
 parity-signoff sidecar production, the single-packet comparator, packet-level
 correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
-comparison, packet-set correct-digit scorer, b61n publication audit field-path queries, and
-b63n scoped gate audit-query regression paths without needing a real benchmark packet.
+comparison, packet-set correct-digit scorer, b61n publication audit field-path queries, b61n
+publication audit-trail queries, and b63n scoped gate audit-query regression paths without
+needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -778,6 +783,10 @@ The capture script writes:
   missing nested keys, out-of-range indexes, or mismatched expected values. The helper can also
   consume a saved audit JSON through `--audit-json`, which keeps the qualifier as the audit
   producer and this script as a narrow verifier.
+- `verify_b61n_publication_audit_trail.py --self-check` queries the built
+  `singular-runtime-lane-tests` emitter and fails closed unless the b61n publication audit trail
+  exposes the reviewed lane142 primitive-bubble publication, the off-axis contour publication
+  block, stable audit fingerprints, and non-promotion flags.
 - `verify_b63n_scoped_gate_audit_trail.py --self-check` queries the built
   `cutkosky-weighted-residue-tests` emitter and fails closed unless the scoped b63n publication
   audit exposes the nested moment gate status, canonical D2/D4/D6/D7 seed identities and

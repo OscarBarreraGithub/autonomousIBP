@@ -52,6 +52,48 @@ void ExpectNotContains(const std::string& value,
   }
 }
 
+std::string BoolText(const bool value) {
+  return value ? "true" : "false";
+}
+
+std::string JsonEscape(const std::string& value) {
+  std::ostringstream escaped;
+  for (const unsigned char ch : value) {
+    switch (ch) {
+      case '"':
+        escaped << "\\\"";
+        break;
+      case '\\':
+        escaped << "\\\\";
+        break;
+      case '\b':
+        escaped << "\\b";
+        break;
+      case '\f':
+        escaped << "\\f";
+        break;
+      case '\n':
+        escaped << "\\n";
+        break;
+      case '\r':
+        escaped << "\\r";
+        break;
+      case '\t':
+        escaped << "\\t";
+        break;
+      default:
+        if (ch < 0x20) {
+          escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                  << static_cast<int>(ch) << std::dec << std::setfill(' ');
+        } else {
+          escaped << static_cast<char>(ch);
+        }
+        break;
+    }
+  }
+  return escaped.str();
+}
+
 std::string ReplaceAll(std::string value,
                        const std::string& needle,
                        const std::string& replacement) {
@@ -6229,6 +6271,100 @@ amflow::ComplexContourPropagationResult PropagateB61nLane142PrimitiveBubble(
   return PropagateB61nLane142PrimitiveBubbleOverWaypoints(options, waypoints);
 }
 
+std::string SerializeB61nPublicationAuditTrail(
+    const amflow::ComplexContourPropagationResult& result) {
+  const amflow::ComplexContourPropagationDiagnostics& diagnostics =
+      result.diagnostics;
+  std::ostringstream out;
+  out << "kind=b61n-publication-contour-evaluation\n";
+  out << "success=" << BoolText(result.success) << "\n";
+  out << "endpoint_integral_id=" << diagnostics.endpoint_integral_id << "\n";
+  out << "matrix_fingerprint=" << diagnostics.matrix_fingerprint << "\n";
+  out << "contour_fingerprint=" << diagnostics.contour_fingerprint << "\n";
+  out << "endpoint_local_model_kind=" << diagnostics.endpoint_local_model_kind
+      << "\n";
+  out << "transport_scope=" << diagnostics.transport_scope << "\n";
+  out << "ode_propagation_applied="
+      << BoolText(diagnostics.ode_propagation_applied) << "\n";
+  out << "coefficient_publication="
+      << BoolText(diagnostics.coefficient_publication) << "\n";
+  out << "endpoint_extraction_applied="
+      << BoolText(diagnostics.endpoint_extraction_applied) << "\n";
+  out << "retained_solution_samples_used="
+      << BoolText(diagnostics.retained_solution_samples_used) << "\n";
+  out << "full_eta_zero_contour_applied="
+      << BoolText(diagnostics.full_eta_zero_contour_applied) << "\n";
+  out << "eta_zero_endpoint_reached="
+      << BoolText(diagnostics.eta_zero_endpoint_reached) << "\n";
+  out << "failure_code=" << diagnostics.failure_code << "\n";
+  out << "summary=" << diagnostics.summary << "\n";
+  return out.str();
+}
+
+void EmitB61nPublicationAuditTrailJson(std::ostream& out) {
+  struct PublicationAuditEntry {
+    std::string label;
+    amflow::ComplexContourPropagationResult result;
+  };
+
+  const std::vector<B61nContourNumber> off_axis_waypoints = {
+      {0, -2},
+      {B61nContourFloat("0.25"), -1},
+      {0, 0},
+  };
+  const std::vector<PublicationAuditEntry> entries = {
+      {"published-lane142-primitive-bubble",
+       PropagateB61nLane142PrimitiveBubble(
+           B61nLane142PrimitiveBubbleOptions())},
+      {"blocked-off-axis-publication-contour",
+       PropagateB61nLane142PrimitiveBubbleOverWaypoints(
+           B61nLane142PrimitiveBubbleOptions(), off_axis_waypoints)},
+  };
+
+  out << "{\n";
+  out << "  \"kind\": \"b61n-publication-audit-trail-query\",\n";
+  out << "  \"entry_count\": " << entries.size() << ",\n";
+  out << "  \"entries\": [\n";
+  for (std::size_t index = 0; index < entries.size(); ++index) {
+    const PublicationAuditEntry& entry = entries[index];
+    const amflow::ComplexContourPropagationDiagnostics& diagnostics =
+        entry.result.diagnostics;
+    const std::string audit = SerializeB61nPublicationAuditTrail(entry.result);
+    out << "    {\n";
+    out << "      \"label\": \"" << JsonEscape(entry.label) << "\",\n";
+    out << "      \"endpoint_integral_id\": \""
+        << JsonEscape(diagnostics.endpoint_integral_id) << "\",\n";
+    out << "      \"matrix_fingerprint\": \""
+        << JsonEscape(diagnostics.matrix_fingerprint) << "\",\n";
+    out << "      \"contour_fingerprint\": \""
+        << JsonEscape(diagnostics.contour_fingerprint) << "\",\n";
+    out << "      \"endpoint_local_model_kind\": \""
+        << JsonEscape(diagnostics.endpoint_local_model_kind) << "\",\n";
+    out << "      \"transport_scope\": \""
+        << JsonEscape(diagnostics.transport_scope) << "\",\n";
+    out << "      \"ode_propagation_applied\": "
+        << BoolText(diagnostics.ode_propagation_applied) << ",\n";
+    out << "      \"coefficient_publication\": "
+        << BoolText(diagnostics.coefficient_publication) << ",\n";
+    out << "      \"endpoint_extraction_applied\": "
+        << BoolText(diagnostics.endpoint_extraction_applied) << ",\n";
+    out << "      \"retained_solution_samples_used\": "
+        << BoolText(diagnostics.retained_solution_samples_used) << ",\n";
+    out << "      \"full_eta_zero_contour_applied\": "
+        << BoolText(diagnostics.full_eta_zero_contour_applied) << ",\n";
+    out << "      \"eta_zero_endpoint_reached\": "
+        << BoolText(diagnostics.eta_zero_endpoint_reached) << ",\n";
+    out << "      \"failure_code\": \""
+        << JsonEscape(diagnostics.failure_code) << "\",\n";
+    out << "      \"audit_fingerprint\": \""
+        << amflow::ComputeArtifactFingerprint(audit) << "\",\n";
+    out << "      \"audit\": \"" << JsonEscape(audit) << "\"\n";
+    out << "    }" << (index + 1 == entries.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+}
+
 void B61nComplexContourPropagatorPublishesLane142PrimitiveBubbleEndpointTest() {
   const amflow::ComplexContourPropagationResult result =
       PropagateB61nLane142PrimitiveBubble(B61nLane142PrimitiveBubbleOptions());
@@ -8554,8 +8690,19 @@ void B61nComplexContourPropagatorRejectsNonEtaZeroEndpointTest() {
 
 }  // namespace
 
-int main() {
+int main(const int argc, char** argv) {
   try {
+    if (argc == 2 &&
+        std::string(argv[1]) == "--emit-b61n-publication-audit-trail") {
+      EmitB61nPublicationAuditTrailJson(std::cout);
+      return 0;
+    }
+    if (argc != 1) {
+      std::cerr << "usage: singular-runtime-lane-tests "
+                   "[--emit-b61n-publication-audit-trail]\n";
+      return 2;
+    }
+
     UnmarkedSingularTargetEndpointStillRejectsTest();
     MarkedSingularTargetEndpointRecordsEndpointContractTest();
     MarkedSingularTargetEndpointRejectsMismatchedMarkerTest();

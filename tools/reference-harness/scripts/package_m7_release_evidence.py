@@ -13,7 +13,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 DEFAULT_READINESS_SIDECAR = Path(
@@ -114,6 +114,95 @@ def require_bundle_root(raw: str) -> str:
     if path.is_absolute() or ".." in path.parts:
         raise BundleError(f"bundle root must be a safe relative path: {raw}")
     return path.as_posix()
+
+
+def require_manifest_string(payload: dict[str, Any], field: str, label: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise BundleError(f"{label}.{field} must be a non-empty string")
+    if value != value.strip():
+        raise BundleError(f"{label}.{field} must not carry surrounding whitespace")
+    return value
+
+
+def require_manifest_relative_path(value: str, label: str) -> str:
+    parts = value.split("/")
+    if (
+        value.startswith("/")
+        or "\\" in value
+        or any(part in {"", ".", ".."} for part in parts)
+    ):
+        raise BundleError(f"{label} must be a safe repository-relative POSIX path: {value}")
+    return value
+
+
+def require_manifest_sha256(value: str, label: str) -> str:
+    if len(value) != 64 or any(char not in "0123456789abcdef" for char in value):
+        raise BundleError(f"{label} must be a lowercase 64-character sha256 hex digest")
+    return value
+
+
+def validate_manifest_shape(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_bundle_root = manifest.get("bundle_root")
+    if not isinstance(raw_bundle_root, str):
+        raise BundleError("bundle_root must be a string")
+    bundle_root = require_bundle_root(raw_bundle_root)
+    if bundle_root != raw_bundle_root:
+        raise BundleError("bundle_root must be normalized without surrounding whitespace")
+
+    files = manifest.get("files")
+    if not isinstance(files, list):
+        raise BundleError("bundle manifest files must be a list")
+    file_count = manifest.get("file_count")
+    if type(file_count) is not int or file_count != len(files):
+        raise BundleError("bundle manifest file_count must match files length")
+
+    normalized_files: list[dict[str, Any]] = []
+    seen_paths: set[str] = set()
+    seen_archive_paths: set[str] = set()
+    for index, entry in enumerate(files):
+        label = f"files[{index}]"
+        if not isinstance(entry, dict):
+            raise BundleError(f"{label} must be an object")
+        relative_path = require_manifest_relative_path(
+            require_manifest_string(entry, "path", label),
+            f"{label}.path",
+        )
+        archive_path = require_manifest_relative_path(
+            require_manifest_string(entry, "archive_path", label),
+            f"{label}.archive_path",
+        )
+        expected_archive_path = f"{bundle_root}/{relative_path}"
+        if archive_path != expected_archive_path:
+            raise BundleError(
+                f"{label}.archive_path must match bundle_root/path: {expected_archive_path}"
+            )
+        byte_count = entry.get("bytes")
+        if type(byte_count) is not int or byte_count < 0:
+            raise BundleError(f"{label}.bytes must be a nonnegative integer")
+        sha256 = require_manifest_sha256(
+            require_manifest_string(entry, "sha256", label),
+            f"{label}.sha256",
+        )
+        if relative_path in seen_paths:
+            raise BundleError(f"bundle manifest contains duplicate path: {relative_path}")
+        if archive_path in seen_archive_paths:
+            raise BundleError(f"bundle manifest contains duplicate archive_path: {archive_path}")
+        seen_paths.add(relative_path)
+        seen_archive_paths.add(archive_path)
+        normalized_files.append(
+            {
+                "path": relative_path,
+                "archive_path": archive_path,
+                "bytes": byte_count,
+                "sha256": sha256,
+            }
+        )
+
+    paths = [entry["path"] for entry in normalized_files]
+    if paths != sorted(paths):
+        raise BundleError("bundle manifest files must be sorted by repository path")
+    return normalized_files
 
 
 def collect_release_evidence_paths(root: Path, readiness_sidecar: Path) -> list[str]:
@@ -218,11 +307,12 @@ def add_bytes(tar: tarfile.TarFile, archive_name: str, data: bytes) -> None:
 
 
 def write_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
+    files = validate_manifest_shape(manifest)
     bundle_root = manifest["bundle_root"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8") + b"\n"
     archive_entries: list[tuple[str, bytes]] = [(f"{bundle_root}/{MANIFEST_NAME}", manifest_bytes)]
-    for entry in manifest["files"]:
+    for entry in files:
         relative_path = entry["path"]
         data = (root / relative_path).read_bytes()
         digest = hashlib.sha256(data).hexdigest()
@@ -244,6 +334,7 @@ def assert_safe_archive_name(name: str) -> None:
 
 
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
+    files = validate_manifest_shape(manifest)
     expected_corpus_digest = manifest.get("evidence_corpus_sha256")
     if (
         not isinstance(expected_corpus_digest, str)
@@ -255,12 +346,12 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
         raise BundleError("bundle manifest has an unsupported evidence corpus digest algorithm")
     actual_corpus_digest = evidence_corpus_digest(
         root,
-        [entry["path"] for entry in manifest.get("files", [])],
+        [entry["path"] for entry in files],
     )
     if actual_corpus_digest != expected_corpus_digest:
         raise BundleError("bundle manifest evidence_corpus_sha256 does not match the release evidence corpus")
 
-    expected_names = {entry["archive_path"] for entry in manifest["files"]}
+    expected_names = {entry["archive_path"] for entry in files}
     expected_names.add(f"{manifest['bundle_root']}/{MANIFEST_NAME}")
 
     with tarfile.open(output_path, "r:gz") as tar:
@@ -282,7 +373,7 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
         if bundled_manifest_payload != manifest:
             raise BundleError("bundle manifest content drifted")
 
-        for entry in manifest["files"]:
+        for entry in files:
             member = tar.extractfile(entry["archive_path"])
             if member is None:
                 raise BundleError(f"bundle member missing: {entry['archive_path']}")
@@ -294,9 +385,10 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
 
 
 def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
+    files = validate_manifest_shape(manifest)
     expected_names = sorted(
         [f"{manifest['bundle_root']}/{MANIFEST_NAME}"]
-        + [entry["archive_path"] for entry in manifest["files"]]
+        + [entry["archive_path"] for entry in files]
     )
 
     with tempfile.TemporaryDirectory(prefix="m7-release-evidence-roundtrip-") as temp_dir:
@@ -338,7 +430,7 @@ def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -
         if extracted_manifest != manifest:
             raise BundleError("round-trip manifest content drifted")
 
-        for entry in manifest["files"]:
+        for entry in files:
             data = (extract_root / entry["archive_path"]).read_bytes()
             if len(data) != entry["bytes"]:
                 raise BundleError(f"round-trip byte count mismatch: {entry['archive_path']}")
@@ -346,6 +438,20 @@ def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -
                 raise BundleError(f"round-trip checksum mismatch: {entry['archive_path']}")
             if data != (root / entry["path"]).read_bytes():
                 raise BundleError(f"round-trip content mismatch: {entry['archive_path']}")
+
+
+def expect_bundle_error(label: str, expected: str, action: Callable[[], None]) -> None:
+    try:
+        action()
+    except BundleError as error:
+        if expected not in str(error):
+            raise BundleError(f"{label} failed for the wrong reason: {error}") from error
+        return
+    raise BundleError(f"{label} unexpectedly passed")
+
+
+def clone_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    return json.loads(json.dumps(manifest))
 
 
 def self_check(root: Path) -> None:
@@ -368,6 +474,32 @@ def self_check(root: Path) -> None:
         write_bundle(root, output_path, manifest)
         validate_bundle(root, output_path, manifest)
         round_trip_bundle(root, output_path, manifest)
+
+        bad_count_manifest = clone_manifest(manifest)
+        bad_count_manifest["file_count"] = bad_count_manifest["file_count"] + 1
+        expect_bundle_error(
+            "manifest file_count coherence check",
+            "file_count must match files length",
+            lambda: validate_bundle(root, output_path, bad_count_manifest),
+        )
+
+        bad_archive_manifest = clone_manifest(manifest)
+        bad_archive_manifest["files"][0]["archive_path"] = (
+            f"{manifest['bundle_root']}/../escape.json"
+        )
+        expect_bundle_error(
+            "manifest archive path coherence check",
+            "archive_path must be a safe",
+            lambda: write_bundle(root, output_path, bad_archive_manifest),
+        )
+
+        unsorted_manifest = clone_manifest(manifest)
+        unsorted_manifest["files"] = list(reversed(unsorted_manifest["files"]))
+        expect_bundle_error(
+            "manifest sorted-path check",
+            "files must be sorted",
+            lambda: validate_bundle(root, output_path, unsorted_manifest),
+        )
 
     required_paths = {
         DEFAULT_READINESS_SIDECAR.as_posix(),

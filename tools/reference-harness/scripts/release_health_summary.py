@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""Print a compact M7 release health summary from committed sidecars."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from assert_m7_release_signoff_ready import (
+    ACCEPTED_READINESS_SIDECAR,
+    read_json,
+    repo_root,
+)
+from audit_m7_sidecar_inventory import (
+    M7_ROOT,
+    InventoryError,
+    build_inventory,
+    verify_inventory,
+    verify_schema_reconciliation,
+)
+from validate_m7_release_sidecar_schemas import SchemaError
+
+
+WITHHELD_CLAIMS: tuple[str, ...] = (
+    "This summary reads committed sidecars only; it does not create new release evidence.",
+    "This summary does not rerun AMFlow numerics or widen release claims.",
+)
+
+
+class HealthError(RuntimeError):
+    """Raised when committed release health inputs cannot be summarized."""
+
+
+@dataclass(frozen=True)
+class ReadinessSummary:
+    ready: bool
+    blocker_count: int
+    blockers: list[str]
+    source_commit: str
+    prerequisite_count: int
+    satisfied_prerequisite_count: int
+    review_section_count: int
+    reviewed_section_count: int
+    performance_review_path: str
+
+
+@dataclass(frozen=True)
+class InventorySummary:
+    sidecar_count: int
+    accepted_count: int
+    unaccepted_count: int
+
+
+@dataclass(frozen=True)
+class BenchmarkSummary:
+    label: str
+    run_count: int
+    max_wall_seconds: float
+    max_rss_kb: int
+
+
+@dataclass(frozen=True)
+class PerformanceSummary:
+    complete: bool
+    benchmark_count: int
+    run_count: int
+    max_wall_seconds: float
+    max_rss_kb: int
+    benchmarks: list[BenchmarkSummary]
+
+
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise HealthError(message)
+
+
+def require_repo_file(root: Path, raw: Any, field: str) -> str:
+    expect(isinstance(raw, str) and raw.strip(), f"{field} must be a non-empty path")
+    value = raw.strip()
+    candidate = root / value
+    try:
+        candidate.resolve(strict=False).relative_to(root.resolve(strict=False))
+    except ValueError as error:
+        raise HealthError(f"{field} must stay within the repository: {value}") from error
+    expect(candidate.is_file(), f"{field} does not exist as a file: {value}")
+    return value
+
+
+def require_string_list(raw: Any, field: str) -> list[str]:
+    expect(isinstance(raw, list), f"{field} must be a list")
+    values: list[str] = []
+    for index, item in enumerate(raw):
+        expect(isinstance(item, str), f"{field}[{index}] must be a string")
+        values.append(item)
+    return values
+
+
+def numeric_value(raw: Any, field: str) -> float:
+    expect(type(raw) in {int, float}, f"{field} must be numeric")
+    return float(raw)
+
+
+def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary:
+    readiness_path = root / readiness_sidecar
+    payload = read_json(readiness_path)
+    blockers = require_string_list(payload.get("release_signoff_blockers"), "release_signoff_blockers")
+    prerequisites = payload.get("release_prerequisites")
+    reviews = payload.get("review_sections")
+    expect(isinstance(prerequisites, list), "release_prerequisites must be a list")
+    expect(isinstance(reviews, list), "review_sections must be a list")
+
+    satisfied_prerequisites = 0
+    for index, prerequisite in enumerate(prerequisites):
+        expect(isinstance(prerequisite, dict), f"release_prerequisites[{index}] must be an object")
+        if prerequisite.get("satisfied") is True:
+            satisfied_prerequisites += 1
+
+    reviewed_sections = 0
+    for index, section in enumerate(reviews):
+        expect(isinstance(section, dict), f"review_sections[{index}] must be an object")
+        section_blockers = section.get("blockers")
+        if section.get("status") == "reviewed" and section_blockers == []:
+            reviewed_sections += 1
+
+    source_commit = payload.get("source_commit")
+    expect(isinstance(source_commit, str) and source_commit.strip(), "source_commit must be non-empty")
+    performance_review_path = require_repo_file(
+        root,
+        payload.get("performance_review_summary_path"),
+        "performance_review_summary_path",
+    )
+    return ReadinessSummary(
+        ready=payload.get("release_signoff_ready") is True,
+        blocker_count=len(blockers),
+        blockers=blockers,
+        source_commit=source_commit.strip(),
+        prerequisite_count=len(prerequisites),
+        satisfied_prerequisite_count=satisfied_prerequisites,
+        review_section_count=len(reviews),
+        reviewed_section_count=reviewed_sections,
+        performance_review_path=performance_review_path,
+    )
+
+
+def summarize_inventory(root: Path, m7_root: Path) -> InventorySummary:
+    entries = build_inventory(root, m7_root)
+    verify_inventory(entries)
+    verify_schema_reconciliation(root, m7_root, entries)
+    accepted = sum(1 for entry in entries if entry.status == "accepted")
+    return InventorySummary(
+        sidecar_count=len(entries),
+        accepted_count=accepted,
+        unaccepted_count=len(entries) - accepted,
+    )
+
+
+def benchmark_label(entry: dict[str, Any], index: int) -> str:
+    benchmark_id = entry.get("benchmark_id")
+    label = entry.get("label")
+    expect(isinstance(benchmark_id, str) and benchmark_id.strip(), f"benchmark[{index}].benchmark_id missing")
+    expect(isinstance(label, str) and label.strip(), f"benchmark[{index}].label missing")
+    return f"{benchmark_id.strip()}.{label.strip()}"
+
+
+def summarize_performance(root: Path, performance_review_path: str) -> PerformanceSummary:
+    payload = read_json(root / performance_review_path)
+    anti_fake = payload.get("anti_fake_parity_checks")
+    expect(isinstance(anti_fake, dict), "anti_fake_parity_checks must be an object")
+    failed_anti_fake = [key for key, value in sorted(anti_fake.items()) if value is not True]
+    expect(not failed_anti_fake, "performance anti-fake checks failed: " + ",".join(failed_anti_fake))
+
+    raw_benchmarks = payload.get("benchmark_timing_evidence")
+    expect(isinstance(raw_benchmarks, list) and raw_benchmarks, "benchmark_timing_evidence must be non-empty")
+    benchmarks: list[BenchmarkSummary] = []
+    for index, entry in enumerate(raw_benchmarks):
+        expect(isinstance(entry, dict), f"benchmark_timing_evidence[{index}] must be an object")
+        expect(entry.get("all_runs_exit_zero") is True, f"benchmark[{index}] did not have all zero exits")
+        expect(entry.get("all_runs_status_success") is True, f"benchmark[{index}] did not have all success statuses")
+        run_count = entry.get("run_count")
+        expect(type(run_count) is int and run_count > 0, f"benchmark[{index}].run_count must be positive")
+        max_wall_seconds = numeric_value(entry.get("wall_seconds_max"), f"benchmark[{index}].wall_seconds_max")
+        max_rss_kb = entry.get("max_rss_kb_max")
+        expect(type(max_rss_kb) is int and max_rss_kb >= 0, f"benchmark[{index}].max_rss_kb_max must be nonnegative")
+        benchmarks.append(
+            BenchmarkSummary(
+                label=benchmark_label(entry, index),
+                run_count=run_count,
+                max_wall_seconds=max_wall_seconds,
+                max_rss_kb=max_rss_kb,
+            )
+        )
+
+    return PerformanceSummary(
+        complete=payload.get("performance_review_complete") is True
+        and payload.get("benchmark_family_scope_reviewed") is True,
+        benchmark_count=len(benchmarks),
+        run_count=sum(benchmark.run_count for benchmark in benchmarks),
+        max_wall_seconds=max(benchmark.max_wall_seconds for benchmark in benchmarks),
+        max_rss_kb=max(benchmark.max_rss_kb for benchmark in benchmarks),
+        benchmarks=benchmarks,
+    )
+
+
+def render_text(
+    readiness: ReadinessSummary,
+    inventory: InventorySummary,
+    performance: PerformanceSummary,
+) -> str:
+    status = "READY" if readiness.ready and readiness.blocker_count == 0 else "BLOCKED"
+    benchmark_tokens = [
+        f"{benchmark.label} max={benchmark.max_wall_seconds:.2f}s"
+        for benchmark in performance.benchmarks
+    ]
+    lines = [
+        "M7 release health summary",
+        f"status: {status}",
+        f"source_commit: {readiness.source_commit}",
+        (
+            "readiness: "
+            f"release_signoff_ready={str(readiness.ready).lower()} "
+            f"blockers={readiness.blocker_count} "
+            f"prerequisites={readiness.satisfied_prerequisite_count}/{readiness.prerequisite_count} "
+            f"review_sections={readiness.reviewed_section_count}/{readiness.review_section_count}"
+        ),
+        (
+            "inventory: "
+            f"total={inventory.sidecar_count} "
+            f"accepted={inventory.accepted_count} "
+            f"unaccepted={inventory.unaccepted_count} "
+            "schema_reconciled=true"
+        ),
+        (
+            "performance: "
+            f"review_complete={str(performance.complete).lower()} "
+            f"benchmarks={performance.benchmark_count} "
+            f"runs={performance.run_count} "
+            f"max_wall_seconds={performance.max_wall_seconds:.2f} "
+            f"max_rss_kb={performance.max_rss_kb}"
+        ),
+        "performance_benchmarks: " + "; ".join(benchmark_tokens),
+        "blockers: " + ("none" if not readiness.blockers else "; ".join(readiness.blockers)),
+        "withheld_claims: " + " ".join(WITHHELD_CLAIMS),
+    ]
+    return "\n".join(lines)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--readiness-sidecar",
+        default=str(ACCEPTED_READINESS_SIDECAR),
+        help="Repository-relative accepted release-readiness sidecar to summarize.",
+    )
+    parser.add_argument(
+        "--m7-root",
+        default=str(M7_ROOT),
+        help="Repository-relative M7 sidecar root to inventory.",
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="Fail unless readiness is ready, blockers are empty, inventory reconciles, and performance is complete.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    root = repo_root()
+    try:
+        readiness_sidecar = Path(require_repo_file(root, args.readiness_sidecar, "readiness sidecar"))
+        readiness = summarize_readiness(root, readiness_sidecar)
+        inventory = summarize_inventory(root, Path(args.m7_root))
+        performance = summarize_performance(root, readiness.performance_review_path)
+    except (HealthError, InventoryError, SchemaError, RuntimeError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+
+    print(render_text(readiness, inventory, performance))
+    if args.verify:
+        failures: list[str] = []
+        if not readiness.ready:
+            failures.append("release_signoff_ready is false")
+        if readiness.blockers:
+            failures.append("release_signoff_blockers is not empty")
+        if readiness.satisfied_prerequisite_count != readiness.prerequisite_count:
+            failures.append("not all release prerequisites are satisfied")
+        if readiness.reviewed_section_count != readiness.review_section_count:
+            failures.append("not all release review sections are reviewed")
+        if not performance.complete:
+            failures.append("performance review is incomplete")
+        if failures:
+            print("M7 release health verification failed: " + "; ".join(failures), file=sys.stderr)
+            return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

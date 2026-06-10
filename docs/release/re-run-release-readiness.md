@@ -24,6 +24,20 @@ path through `release_signoff_readiness.py`, and fails if the fresh summary does
 not report `release_signoff_ready=true` with `release_signoff_blockers=[]`.
 CTest runs the same wrapper as `m7-release-signoff-readiness-accepted-inputs`.
 
+## Health Summary
+
+Use this command when you need a one-page operator summary of the committed
+readiness, blocker, sidecar-inventory, and performance-review state:
+
+```sh
+python3 tools/reference-harness/scripts/release_health_summary.py --verify
+```
+
+The summary reads the accepted readiness sidecar, reconciles the M7 sidecar
+inventory with schema validation, and summarizes the accepted performance review
+sidecar. It does not rerun AMFlow numerics or create new release evidence. CTest
+runs the same command as `m7-release-health-summary`.
+
 ## Performance Baseline
 
 Use this command when you need to confirm that the accepted-input replay has not

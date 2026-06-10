@@ -2756,6 +2756,77 @@ def run_determinism_check(sidecar_path: Path) -> dict[str, Any]:
     }
 
 
+def run_precision_evidence_binding_check(sidecar_path: Path) -> dict[str, Any]:
+    sidecar = load_json(sidecar_path)
+    source_evidence = normalize_string_list(sidecar.get("source_evidence"), "source_evidence")
+    expect(
+        B61N_PRECISION_EVIDENCE in source_evidence,
+        f"publication source_evidence must include {B61N_PRECISION_EVIDENCE}",
+    )
+
+    precision_path = resolve_sidecar_path(B61N_PRECISION_EVIDENCE, sidecar_path)
+    expect(
+        precision_path.exists(),
+        f"publication precision evidence path is missing: {B61N_PRECISION_EVIDENCE}",
+    )
+    precision = load_json(precision_path)
+    expect(
+        precision.get("evidence_id") == "b61n-pipeline-precision-evidence",
+        "publication precision evidence_id drifted",
+    )
+    source_cpp_result = normalized_string(
+        precision.get("source_cpp_result"),
+        "publication precision evidence source_cpp_result",
+    )
+    expect(
+        source_cpp_result == B61N_PRECISION_CPP_RESULT,
+        "publication precision evidence source_cpp_result drifted",
+    )
+
+    audit_summary = audit_sidecar(sidecar_path)
+    expect(
+        audit_summary["precision_evidence_sidecar_reviewed"] is True,
+        "publication audit summary must report the precision sidecar as reviewed",
+    )
+    expect(
+        audit_summary["precision_evidence_source_cpp_result_bound"] is True,
+        "publication audit summary must bind the precision sidecar to its C++ result",
+    )
+    expect(
+        audit_summary["precision_evidence_target_count"] == len(EXPECTED_PRECISION_TARGETS),
+        "publication audit summary precision target count drifted",
+    )
+    expect(
+        set(audit_summary["precision_evidence_target_set"])
+        == {target_key(integral, eps_order) for integral, eps_order in EXPECTED_PRECISION_TARGETS},
+        "publication audit summary precision target set drifted",
+    )
+    expect(
+        audit_summary["precision_evidence_minimum_uplifted_fraction_digits"] >= 160,
+        "publication audit summary must preserve the 160-digit precision uplift",
+    )
+    expect(
+        audit_summary["precision_evidence_not_amflow_reference_backed"] is True,
+        "publication audit summary must preserve the non-AMFlow-reference-backed precision claim",
+    )
+
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-precision-evidence-binding",
+        "sidecar_path": str(sidecar_path),
+        "precision_evidence_sidecar": B61N_PRECISION_EVIDENCE,
+        "precision_evidence_listed_in_publication_source_evidence": True,
+        "precision_evidence_file_present": True,
+        "precision_evidence_source_cpp_result": source_cpp_result,
+        "publication_audit_consumed_precision_evidence": True,
+        "precision_evidence_target_count": audit_summary["precision_evidence_target_count"],
+        "precision_evidence_minimum_uplifted_fraction_digits": audit_summary[
+            "precision_evidence_minimum_uplifted_fraction_digits"
+        ],
+        "precision_evidence_not_amflow_reference_backed": True,
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -2779,6 +2850,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Replay the b61n publication qualifier and require byte-stable summaries",
     )
+    mode.add_argument(
+        "--precision-evidence-binding-check",
+        action="store_true",
+        help="Assert the publication audit consumes the b61n precision evidence sidecar",
+    )
     return parser.parse_args()
 
 
@@ -2795,6 +2871,15 @@ def main() -> int:
     )
     if args.determinism_check:
         print(json.dumps(run_determinism_check(sidecar_path), indent=2, sort_keys=True))
+        return 0
+    if args.precision_evidence_binding_check:
+        print(
+            json.dumps(
+                run_precision_evidence_binding_check(sidecar_path),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return 0
 
     summary = audit_sidecar(sidecar_path)

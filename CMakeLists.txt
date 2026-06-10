@@ -158,6 +158,25 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-precision-uplift-monotonicity
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b61n_precision_uplift_monotonicity.py
+  )
+  set_tests_properties(b61n-precision-uplift-monotonicity PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME b61n-precision-uplift-monotonicity-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b61n_precision_uplift_monotonicity.py
+      --self-check
+  )
+  set_tests_properties(b61n-precision-uplift-monotonicity-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-signoff-readiness-accepted-inputs
     COMMAND
       ${Python3_EXECUTABLE}

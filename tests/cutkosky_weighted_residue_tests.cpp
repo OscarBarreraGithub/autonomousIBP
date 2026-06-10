@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -1348,6 +1349,220 @@ void ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest() {
                  "decorated D7 audit must not promote M6");
 }
 
+struct D7NumericPointVariant {
+  std::string label;
+  std::map<std::string, std::string> numeric_substitutions;
+  std::map<std::string, std::string> complex_numeric_substitutions;
+  bool expect_publication = false;
+  bool expect_pre_surface_rejection = false;
+  std::string expected_failure_fragment;
+};
+
+void ExpectPublishedD7NumericPointVariant(
+    const amflow::CutkoskyScopedWeightedResidueEvaluation& evaluation,
+    const std::string& label) {
+  Expect(evaluation.evaluation_attempted,
+         label + " D7 numeric-point sweep should attempt evaluation");
+  Expect(evaluation.reviewed_surface &&
+             evaluation.selected_weight_denominator == "D7" &&
+             evaluation.selected_weight_denominator_index == 6,
+         label + " D7 numeric-point sweep should bind the reviewed D7 surface");
+  Expect(evaluation.publication_gate_checked &&
+             evaluation.publication_gate_passed &&
+             evaluation.reference_validation_passed &&
+             evaluation.live_coefficients_available,
+         label + " D7 numeric-point sweep should publish only the reviewed "
+                 "lane146 point");
+  Expect(!evaluation.retained_solution_samples_used &&
+             !evaluation.full_eta_zero_contour_applied,
+         label + " D7 numeric-point sweep must not use retained final samples or "
+                 "promote full eta-zero coverage");
+  Expect(evaluation.reference_validation_source == kLane146Selected4Compare30 &&
+             evaluation.reference_min_digit_agreement ==
+                 kLane146Selected4ExpectedDigitAgreement,
+         label + " D7 numeric-point sweep should preserve lane146 reference "
+                 "validation");
+}
+
+void ExpectBlockedD7NumericPointVariant(
+    const amflow::CutkoskyScopedWeightedResidueEvaluation& evaluation,
+    const D7NumericPointVariant& variant) {
+  Expect(evaluation.evaluation_attempted,
+         variant.label + " D7 numeric-point sweep should attempt evaluation");
+  Expect(evaluation.reviewed_surface &&
+             evaluation.selected_weight_denominator == "D7" &&
+             evaluation.selected_weight_denominator_index == 6,
+         variant.label +
+             " D7 numeric-point sweep should still audit the D7 weight");
+  Expect(evaluation.moment_cross_validation_gate.passed,
+         variant.label +
+             " D7 numeric-point sweep should keep the coefficient-free moment "
+             "gate passing");
+  Expect(evaluation.publication_gate_checked &&
+             !evaluation.publication_gate_passed &&
+             evaluation.failure_code == "boundary_unsolved",
+         variant.label +
+             " D7 numeric-point sweep must fail closed at publication");
+  Expect(!evaluation.reference_validation_passed &&
+             evaluation.reference_validation_source.empty() &&
+             evaluation.reference_min_digit_agreement == 0,
+         variant.label +
+             " D7 numeric-point sweep must not claim lane146 reference validation");
+  Expect(!evaluation.live_coefficients_available &&
+             !evaluation.retained_solution_samples_used &&
+             !evaluation.full_eta_zero_contour_applied,
+         variant.label +
+             " D7 numeric-point sweep must not publish coefficients, use retained "
+             "final samples, or promote full eta-zero coverage");
+  ExpectContains(evaluation.publication_gate_status,
+                 variant.expected_failure_fragment,
+                 variant.label +
+                     " D7 numeric-point sweep should explain the binding failure");
+
+  const amflow::CutkoskyResidueSeriesTerm& eps0 =
+      ResidueTermAt(evaluation.candidate_series, 0);
+  Expect(eps0.coefficient_label == "automatic_phasespace_D7_weighted_moment_seed" &&
+             eps0.provenance.synthetic_fixture &&
+             !eps0.provenance.coefficient_published &&
+             !eps0.provenance.retained_solution_samples_used,
+         variant.label +
+             " D7 numeric-point sweep should retain unpublished synthetic seed "
+             "provenance");
+
+  const std::string audit =
+      amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation);
+  ExpectContains(audit,
+                 "selected_weight=D7",
+                 variant.label + " D7 numeric-point audit should retain D7");
+  ExpectContains(audit,
+                 "publication_gate_passed=false",
+                 variant.label +
+                     " D7 numeric-point audit should report publication rejection");
+  ExpectContains(audit,
+                 "reference_validation_passed=false",
+                 variant.label +
+                     " D7 numeric-point audit should reject lane146 validation");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 variant.label +
+                     " D7 numeric-point audit must not promote M6");
+}
+
+void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
+  const std::vector<D7NumericPointVariant> variants = {
+      {"canonical-literals",
+       {{"s", "100"}, {"msq", "1"}},
+       {},
+       true,
+       false,
+       ""},
+      {"canonical-expressions",
+       {{"s", "(250*8)/20"}, {"msq", "(9+5)/(2*7)"}},
+       {},
+       true,
+       false,
+       ""},
+      {"missing-s",
+       {{"msq", "1"}},
+       {},
+       false,
+       true,
+       "requires exact automatic_phasespace and feynman_prescription weighted "
+       "residue surfaces"},
+      {"missing-msq",
+       {{"s", "100"}},
+       {},
+       false,
+       true,
+       "requires exact automatic_phasespace and feynman_prescription weighted "
+       "residue surfaces"},
+      {"missing-s-and-msq",
+       {},
+       {},
+       false,
+       true,
+       "requires exact automatic_phasespace and feynman_prescription weighted "
+       "residue surfaces"},
+      {"wrong-s",
+       {{"s", "101"}, {"msq", "1"}},
+       {},
+       false,
+       true,
+       "requires exact automatic_phasespace and feynman_prescription weighted "
+       "residue surfaces"},
+      {"wrong-msq",
+       {{"s", "100"}, {"msq", "2"}},
+       {},
+       false,
+       true,
+       "requires exact automatic_phasespace and feynman_prescription weighted "
+       "residue surfaces"},
+      {"extra-real-spectator",
+       {{"s", "100"}, {"msq", "1"}, {"spectator", "1/1000"}},
+       {},
+       false,
+       false,
+       "require exactly the s and msq numeric substitutions"},
+      {"extra-complex-spectator",
+       {{"s", "100"}, {"msq", "1"}},
+       {{"spectator", "1/1000 + I/1000"}},
+       false,
+       false,
+       "require real numeric substitutions only"},
+  };
+
+  int accepted_count = 0;
+  int pre_surface_rejection_count = 0;
+  int publication_block_count = 0;
+  for (const D7NumericPointVariant& variant : variants) {
+    amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+    spec.kinematics.numeric_substitutions = variant.numeric_substitutions;
+    spec.kinematics.complex_numeric_substitutions =
+        variant.complex_numeric_substitutions;
+    spec.complex_mode = !variant.complex_numeric_substitutions.empty();
+
+    try {
+      const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+          amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(spec, 6, 3, 70);
+      Expect(!variant.expect_pre_surface_rejection,
+             variant.label +
+                 " D7 numeric-point sweep should fail before reviewed-surface "
+                 "binding");
+      if (variant.expect_publication) {
+        ExpectPublishedD7NumericPointVariant(evaluation, variant.label);
+        ++accepted_count;
+      } else {
+        ExpectBlockedD7NumericPointVariant(evaluation, variant);
+        ++publication_block_count;
+      }
+    } catch (const std::exception& error) {
+      Expect(variant.expect_pre_surface_rejection,
+             variant.label + " D7 numeric-point sweep unexpectedly threw: " +
+                 error.what());
+      ExpectContains(error.what(),
+                     variant.expected_failure_fragment,
+                     variant.label +
+                         " D7 numeric-point sweep should reject before the "
+                         "reviewed surface binds");
+      Expect(!variant.expect_publication,
+             variant.label +
+                 " D7 numeric-point sweep must not publish after a pre-surface "
+                 "rejection");
+      ++pre_surface_rejection_count;
+    }
+  }
+
+  Expect(accepted_count == 2,
+         "D7 numeric-point sweep should accept only the literal and exact-expression "
+         "lane146 points");
+  Expect(pre_surface_rejection_count == 5,
+         "D7 numeric-point sweep should reject missing or wrong required bindings "
+         "before surface publication");
+  Expect(publication_block_count == 2,
+         "D7 numeric-point sweep should block extra real and complex bindings at "
+         "the publication gate");
+}
+
 void ExpectD7MissingKinematicBindingFailsClosed(amflow::ProblemSpec spec,
                                                 const std::string& missing_key) {
   Expect(spec.kinematics.numeric_substitutions.find(missing_key) ==
@@ -2248,10 +2463,17 @@ int main(const int argc, char** argv) {
       EmitB63nScopedGateAuditTrailJson(std::cout);
       return 0;
     }
+    if (argc == 2 &&
+        std::string(argv[1]) ==
+            "--check-b63n-d7-numeric-point-binding-sweep") {
+      ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest();
+      return 0;
+    }
     if (argc != 1) {
       std::cerr << "usage: cutkosky-weighted-residue-tests "
                    "[--emit-b63n-weighted-residue-fingerprints|"
-                   "--emit-b63n-scoped-gate-audit-trail]\n";
+                   "--emit-b63n-scoped-gate-audit-trail|"
+                   "--check-b63n-d7-numeric-point-binding-sweep]\n";
       return 2;
     }
 
@@ -2263,6 +2485,7 @@ int main(const int argc, char** argv) {
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest();
     ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest();
+    ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();

@@ -669,6 +669,28 @@ if(BUILD_TESTING)
   set_tests_properties(b63n-scoped-gate-audit-trail-query-self-check
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b63n-parity-status-summary
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/b63n_parity_status_summary.py
+      --format
+      json
+      --include-runtime-audit
+      --test-binary
+      $<TARGET_FILE:cutkosky-weighted-residue-tests>)
+  set_tests_properties(b63n-parity-status-summary
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b63n-parity-status-summary-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/b63n_parity_status_summary.py
+      --self-check)
+  set_tests_properties(b63n-parity-status-summary-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(
     amflow-tests
     amflow-cli

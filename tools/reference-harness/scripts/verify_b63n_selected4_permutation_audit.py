@@ -7,6 +7,7 @@ import argparse
 import json
 import sys
 from decimal import Decimal, InvalidOperation
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -107,6 +108,85 @@ def parse_decimal(raw: Any, label: str) -> Decimal:
         raise ValueError(f"{label} must parse as a decimal") from error
     expect(value.is_finite(), f"{label} must be finite")
     return value
+
+
+def decimal_literal_fraction(raw: Any, label: str) -> Fraction:
+    return Fraction(parse_decimal(raw, label))
+
+
+def rational_literal_fraction(raw: Any, label: str) -> Fraction:
+    expect(isinstance(raw, str), f"{label} must be a rational string")
+    value = raw.strip()
+    expect(value, f"{label} must not be empty")
+    if "/" not in value:
+        return decimal_literal_fraction(value, label)
+    numerator, denominator = value.split("/", 1)
+    try:
+        return Fraction(int(numerator), int(denominator))
+    except ValueError as error:
+        raise ValueError(f"{label} must parse as an integer rational") from error
+
+
+def integral_to_amflow_label(integral: str) -> str:
+    expect(
+        integral.startswith("phase[") and integral.endswith("]"),
+        f"{integral} must be a phase integral label",
+    )
+    indices = [item.strip() for item in integral[len("phase["):-1].split(",")]
+    expect(indices and all(indices), f"{integral} must contain nonempty indices")
+    return "j[phase, " + ", ".join(indices) + "]"
+
+
+def parse_golden_term(raw_term: str, label: str) -> tuple[int, Fraction]:
+    term = raw_term.strip()
+    expect(term, f"{label} must not be empty")
+    if "*eps^" in term:
+        coefficient, exponent = term.split("*eps^", 1)
+        return int(exponent), decimal_literal_fraction(coefficient, label)
+    if term.endswith("*eps"):
+        return 1, decimal_literal_fraction(term[:-len("*eps")], label)
+    if "/eps^" in term:
+        coefficient, exponent = term.split("/eps^", 1)
+        return -int(exponent), decimal_literal_fraction(coefficient, label)
+    if term.endswith("/eps"):
+        return -1, decimal_literal_fraction(term[:-len("/eps")], label)
+    return 0, decimal_literal_fraction(term, label)
+
+
+def parse_golden_expression(expression: str, label: str) -> dict[int, Fraction]:
+    coefficients: dict[int, Fraction] = {}
+    for index, raw_term in enumerate(expression.replace(" - ", " + -").split(" + ")):
+        order, coefficient = parse_golden_term(raw_term, f"{label}.term[{index}]")
+        expect(order not in coefficients, f"{label} repeats eps^{order}")
+        coefficients[order] = coefficient
+    return coefficients
+
+
+def parse_amflow_golden_text(golden_text: str) -> dict[str, dict[int, Fraction]]:
+    text = golden_text.strip()
+    expect(text.startswith("{") and text.endswith("}"), "AMFlow golden text must be a rule list")
+    marker_positions: list[tuple[int, str, str]] = []
+    for integral in EXPECTED_SELECTED4_ORDERS:
+        marker = integral_to_amflow_label(integral) + " -> "
+        position = text.find(marker)
+        expect(position >= 0, f"AMFlow golden text missing {integral}")
+        marker_positions.append((position, integral, marker))
+    marker_positions.sort()
+
+    parsed: dict[str, dict[int, Fraction]] = {}
+    for index, (position, integral, marker) in enumerate(marker_positions):
+        expression_start = position + len(marker)
+        expression_end = marker_positions[index + 1][0] if index + 1 < len(marker_positions) else len(text) - 1
+        expression = text[expression_start:expression_end].strip()
+        if expression.endswith(","):
+            expression = expression[:-1].strip()
+        coefficients = parse_golden_expression(expression, f"AMFlow golden {integral}")
+        expect(
+            sorted(coefficients) == EXPECTED_SELECTED4_ORDERS[integral],
+            f"AMFlow golden coefficient order scope drifted for {integral}",
+        )
+        parsed[integral] = coefficients
+    return parsed
 
 
 def parse_audit_text(text: str) -> dict[str, str]:
@@ -302,6 +382,7 @@ def validate_compare_and_cpp(
     compare: dict[str, Any],
     cpp_result: dict[str, Any],
     evidence: dict[str, Any],
+    golden_text: str,
 ) -> dict[str, Any]:
     expect(compare.get("schema_version") == 1, "compare schema_version must be 1")
     expect(compare.get("comparison") == "cpp-vs-amflow", "compare must be cpp-vs-amflow")
@@ -344,7 +425,9 @@ def validate_compare_and_cpp(
 
     compare_rows = rows_by_label(compare.get("integrals"), "integral", "compare integrals")
     cpp_rows = rows_by_label(cpp_result.get("results"), "integral", "cpp results")
+    golden_rows = parse_amflow_golden_text(golden_text)
     expect(set(compare_rows) == set(EXPECTED_SELECTED4_ORDERS), "compare integral set drifted")
+    expect(set(golden_rows) == set(EXPECTED_SELECTED4_ORDERS), "AMFlow golden integral set drifted")
     expect(
         set(EXPECTED_SELECTED4_ORDERS).issubset(set(cpp_rows)),
         "cpp result missing one or more selected4 integrals",
@@ -391,6 +474,39 @@ def validate_compare_and_cpp(
             cpp_imag = parse_decimal(coefficient.get("cpp_imag"), f"{integral} eps^{order} cpp_imag")
             expect(cpp_real == amflow_real, f"{integral} eps^{order} real value drifted")
             expect(cpp_imag == amflow_imag, f"{integral} eps^{order} imaginary value drifted")
+            golden_real = golden_rows[integral][order]
+            compare_real = decimal_literal_fraction(
+                coefficient.get("amflow_real"),
+                f"{integral} eps^{order} compare amflow_real rational",
+            )
+            expect(
+                compare_real == golden_real,
+                f"{integral} eps^{order} compare AMFlow literal does not exactly match golden",
+            )
+            expect(
+                decimal_literal_fraction(
+                    coefficient.get("amflow_imag"),
+                    f"{integral} eps^{order} compare amflow_imag rational",
+                )
+                == 0,
+                f"{integral} eps^{order} compare AMFlow imaginary literal must be exactly zero",
+            )
+            expect(
+                rational_literal_fraction(
+                    cpp_coefficient.get("exact_real"),
+                    f"{integral} eps^{order} cpp exact_real",
+                )
+                == golden_real,
+                f"{integral} eps^{order} cpp exact_real does not exactly match golden",
+            )
+            expect(
+                rational_literal_fraction(
+                    cpp_coefficient.get("exact_imag"),
+                    f"{integral} eps^{order} cpp exact_imag",
+                )
+                == 0,
+                f"{integral} eps^{order} cpp exact_imag must be exactly zero",
+            )
             expect(
                 parse_decimal(cpp_coefficient.get("real_digits"), f"{integral} eps^{order} cpp real_digits")
                 == cpp_real,
@@ -415,6 +531,7 @@ def validate_compare_and_cpp(
         "compare_valid": True,
         "compared_coefficient_count": observed_count,
         "minimum_digit_agreement": observed_minimum_digits,
+        "golden_literal_exact_match_count": observed_count,
         "published_d7_integral": PUBLISHED_D7_INTEGRAL,
         "published_d7_orders": d7_orders,
     }
@@ -425,12 +542,13 @@ def verify_payloads(
     evidence: dict[str, Any],
     compare: dict[str, Any],
     cpp_result: dict[str, Any],
+    golden_text: str,
     *,
     compare_path: Path,
 ) -> dict[str, Any]:
     audit_summary = validate_permutation_audit(audit_text)
     evidence_summary = validate_evidence_sidecar(evidence, compare_path)
-    compare_summary = validate_compare_and_cpp(compare, cpp_result, evidence)
+    compare_summary = validate_compare_and_cpp(compare, cpp_result, evidence, golden_text)
 
     expect(
         audit_summary["surface"] == "phase[1,2,1,1,1,1,1]",
@@ -472,11 +590,16 @@ def verify_paths(
         audit_text = CANONICAL_PERMUTATION_AUDIT
     else:
         audit_text = audit_path.read_text(encoding="utf-8")
+    compare = load_json(compare_path)
+    golden_path = compare.get("amflow_golden")
+    expect(isinstance(golden_path, str) and golden_path, "compare amflow_golden must be a path")
+    golden_text = (repo_root() / golden_path).read_text(encoding="utf-8")
     return verify_payloads(
         audit_text,
         load_json(evidence_path),
-        load_json(compare_path),
+        compare,
         load_json(cpp_result_path),
+        golden_text,
         compare_path=compare_path.relative_to(repo_root()) if compare_path.is_absolute() else compare_path,
     )
 
@@ -496,7 +619,50 @@ def sample_coefficient(order: int, real: str) -> dict[str, Any]:
     }
 
 
-def sample_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def rational_text_from_decimal_literal(real: str) -> str:
+    value = decimal_literal_fraction(real, "sample decimal literal")
+    if value.denominator == 1:
+        return str(value.numerator)
+    return f"{value.numerator}/{value.denominator}"
+
+
+def format_golden_term(order: int, real: str, *, first: bool) -> str:
+    negative = real.startswith("-")
+    magnitude = real[1:] if negative else real
+    if first:
+        sign = "-" if negative else ""
+    else:
+        sign = " - " if negative else " + "
+    if order == 0:
+        suffix = ""
+    elif order == 1:
+        suffix = "*eps"
+    elif order > 1:
+        suffix = f"*eps^{order}"
+    elif order == -1:
+        suffix = "/eps"
+    else:
+        suffix = f"/eps^{abs(order)}"
+    return f"{sign}{magnitude}{suffix}"
+
+
+def sample_golden_text(compare_integrals: list[dict[str, Any]]) -> str:
+    rules = []
+    for row in compare_integrals:
+        integral = row["integral"]
+        terms = [
+            format_golden_term(
+                coefficient["order"],
+                coefficient["amflow_real"],
+                first=index == 0,
+            )
+            for index, coefficient in enumerate(row["coefficients"])
+        ]
+        rules.append(f"{integral_to_amflow_label(integral)} -> {''.join(terms)}")
+    return "{" + ", ".join(rules) + "}"
+
+
+def sample_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], str]:
     compare_integrals = []
     cpp_results = []
     for integral_index, (integral, orders) in enumerate(EXPECTED_SELECTED4_ORDERS.items(), start=1):
@@ -505,7 +671,13 @@ def sample_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         for order in orders:
             real = f"{integral_index}.{order + 10}25"
             compare_coefficients.append(sample_coefficient(order, real))
-            cpp_orders.append({"order": order, "real_digits": real, "imag_digits": "0"})
+            cpp_orders.append({
+                "order": order,
+                "real_digits": real,
+                "imag_digits": "0",
+                "exact_real": rational_text_from_decimal_literal(real),
+                "exact_imag": "0",
+            })
         compare_integrals.append({
             "integral": integral,
             "status": "compared",
@@ -565,7 +737,7 @@ def sample_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         },
         "results": cpp_results,
     }
-    return evidence, compare, cpp_result
+    return evidence, compare, cpp_result, sample_golden_text(compare_integrals)
 
 
 def rejected(
@@ -573,6 +745,7 @@ def rejected(
     evidence: dict[str, Any],
     compare: dict[str, Any],
     cpp_result: dict[str, Any],
+    golden_text: str,
     expected: str,
 ) -> bool:
     try:
@@ -581,6 +754,7 @@ def rejected(
             evidence,
             compare,
             cpp_result,
+            golden_text,
             compare_path=DEFAULT_COMPARE,
         )
     except Exception as error:  # noqa: BLE001 - self-check records fail-closed behavior.
@@ -589,12 +763,13 @@ def rejected(
 
 
 def run_self_check() -> dict[str, Any]:
-    evidence, compare, cpp_result = sample_payloads()
+    evidence, compare, cpp_result, golden_text = sample_payloads()
     good = verify_payloads(
         CANONICAL_PERMUTATION_AUDIT,
         evidence,
         compare,
         cpp_result,
+        golden_text,
         compare_path=DEFAULT_COMPARE,
     )
 
@@ -608,14 +783,22 @@ def run_self_check() -> dict[str, Any]:
     bad_compare["integrals"][2]["coefficients"][1]["passed"] = False
     bad_cpp_result = json.loads(json.dumps(cpp_result))
     bad_cpp_result["continuation"]["full_eta_zero_contour_applied"] = True
+    bad_golden_text = golden_text.replace("1.1025", "9.1025", 1)
+    bad_cpp_exact = json.loads(json.dumps(cpp_result))
+    bad_cpp_exact["results"][0]["epsilon_orders"][0]["exact_real"] = "9"
 
     checks = {
-        "canonical_fixture_passes": good["cross_check_passed"] is True,
+        "canonical_fixture_passes": (
+            good["cross_check_passed"] is True
+            and good["selected4_compare"]["golden_literal_exact_match_count"]
+            == EXPECTED_COMPARED_COEFFICIENTS
+        ),
         "rejects_noncanonical_moment_order": rejected(
             bad_audit,
             evidence,
             compare,
             cpp_result,
+            golden_text,
             "canonical D2,D4,D6,D7",
         ),
         "rejects_final_solution_sample_input": rejected(
@@ -623,6 +806,7 @@ def run_self_check() -> dict[str, Any]:
             bad_evidence,
             compare,
             cpp_result,
+            golden_text,
             "reject final solution samples",
         ),
         "rejects_failed_compare_coefficient": rejected(
@@ -630,6 +814,7 @@ def run_self_check() -> dict[str, Any]:
             evidence,
             bad_compare,
             cpp_result,
+            golden_text,
             "did not pass",
         ),
         "rejects_full_contour_overclaim": rejected(
@@ -637,7 +822,24 @@ def run_self_check() -> dict[str, Any]:
             evidence,
             compare,
             bad_cpp_result,
+            golden_text,
             "must not claim full eta-zero contour",
+        ),
+        "rejects_golden_literal_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            evidence,
+            compare,
+            cpp_result,
+            bad_golden_text,
+            "compare AMFlow literal does not exactly match golden",
+        ),
+        "rejects_cpp_exact_rational_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            evidence,
+            compare,
+            bad_cpp_exact,
+            golden_text,
+            "cpp exact_real does not exactly match golden",
         ),
     }
     expect(all(checks.values()), "b63n selected4 permutation audit verifier self-check failed")

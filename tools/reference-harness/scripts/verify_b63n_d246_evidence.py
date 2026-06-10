@@ -517,6 +517,8 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         blockers = require_list(payload.get("publication_blockers"), "publication_blockers")
         expect(blockers, "skeleton evidence must record publication_blockers")
+        for blocker_index, raw_blocker in enumerate(blockers):
+            require_string(raw_blocker, f"publication_blockers[{blocker_index}]")
 
     return {
         "schema_version": 1,
@@ -698,6 +700,9 @@ def run_self_check() -> dict[str, Any]:
         "blocked_reason"
     ] = "todo"
 
+    bad_skeleton_placeholder_publication_blocker = skeleton_fixture()
+    bad_skeleton_placeholder_publication_blocker["publication_blockers"] = ["todo"]
+
     bad_skeleton_digit_claim = skeleton_fixture()
     bad_skeleton_digit_claim["weights"][1]["reference_validation"][
         "minimum_digit_agreement"
@@ -768,6 +773,10 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_rejects_placeholder_blocker": rejected(
             bad_skeleton_placeholder_blocker,
             "blocked_reason must not be a placeholder",
+        ),
+        "skeleton_rejects_placeholder_publication_blocker": rejected(
+            bad_skeleton_placeholder_publication_blocker,
+            "publication_blockers[0] must not be a placeholder",
         ),
         "skeleton_rejects_digit_agreement_claim": rejected(
             bad_skeleton_digit_claim,

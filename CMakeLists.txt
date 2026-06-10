@@ -286,6 +286,27 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m6-sidecar-drift-audit
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m6_sidecar_drift.py
+      --verify
+      --summary-only
+  )
+  set_tests_properties(m6-sidecar-drift-audit PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m6-sidecar-drift-audit-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m6_sidecar_drift.py
+      --self-check
+  )
+  set_tests_properties(m6-sidecar-drift-audit-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-signoff-readiness-accepted-inputs
     COMMAND
       ${Python3_EXECUTABLE}

@@ -317,6 +317,18 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m6-unaccepted-sidecar-promotion-guard
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m6_sidecar_drift.py
+      --verify
+      --verify-unaccepted-not-promoted
+      --summary-only
+  )
+  set_tests_properties(m6-unaccepted-sidecar-promotion-guard PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-signoff-readiness-accepted-inputs
     COMMAND
       ${Python3_EXECUTABLE}

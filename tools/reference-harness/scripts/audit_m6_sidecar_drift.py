@@ -28,6 +28,20 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This report does not run AMFlow numerics, close runtime lanes, or claim Milestone M6 readiness.",
 )
 
+EXPECTED_UNACCEPTED_M6_SIDECARS: tuple[str, ...] = (
+    "tools/reference-harness/specs/m6/lane1-next11/"
+    "complex_kinematics.two-constant-long-timeout.eps0.compare50.json",
+    "tools/reference-harness/specs/m6/lane1-next8/"
+    "complex_kinematics.two-constant-long-timeout.eps0.compare50.json",
+    "tools/reference-harness/specs/m6/lane124/b61n-runtime-evidence.json",
+    "tools/reference-harness/specs/m6/lane142/b61n-selected5-real-coefficients-evidence.json",
+    "tools/reference-harness/specs/m6/lane146/b63n-d246-weighted-residue-reference-evidence.json",
+    "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-amflow-cross-comparator.blocked.json",
+    "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json",
+    "tools/reference-harness/specs/m6/lane6-iter13/"
+    "complex_kinematics.rk78-pole-aware.stripped.eps0.compare50.json",
+)
+
 
 class DriftError(RuntimeError):
     """Raised when an M6 sidecar drift report cannot be produced honestly."""
@@ -219,7 +233,11 @@ def build_report(root: Path, m6_root: Path) -> dict[str, Any]:
     ]
     stale_unaccepted = sum(group["unaccepted_count"] for group in drift_groups)
     accepted_count = sum(1 for entry in entries if entry.accepted)
-    unaccepted_count = len(entries) - accepted_count
+    unaccepted_entries = sorted(
+        (entry for entry in entries if not entry.accepted),
+        key=lambda entry: entry.path,
+    )
+    unaccepted_count = len(unaccepted_entries)
     return {
         "schema_version": 1,
         "m6_root": str(m6_root),
@@ -229,6 +247,7 @@ def build_report(root: Path, m6_root: Path) -> dict[str, Any]:
         "sqlite_sidecar_count": sqlite_count,
         "accepted_count": accepted_count,
         "unaccepted_count": unaccepted_count,
+        "unaccepted_sidecars": [entry_payload(entry) for entry in unaccepted_entries],
         "drift_group_count": len(drift_groups),
         "stale_unaccepted_sidecar_count": stale_unaccepted,
         "drift_groups": drift_groups,
@@ -257,6 +276,18 @@ def verify_report(report: dict[str, Any]) -> None:
     expect(sidecar_count == json_count + sqlite_count, "sidecar type counts do not sum")
     expect(sidecar_count == accepted_count + unaccepted_count, "accepted/unaccepted counts do not sum")
     expect(stale_unaccepted <= unaccepted_count, "stale unaccepted count exceeds unaccepted total")
+    unaccepted_sidecars = report.get("unaccepted_sidecars")
+    expect(isinstance(unaccepted_sidecars, list), "unaccepted_sidecars must be a list")
+    expect(
+        len(unaccepted_sidecars) == unaccepted_count,
+        "unaccepted_sidecars length does not match unaccepted_count",
+    )
+    for index, sidecar in enumerate(unaccepted_sidecars):
+        expect(isinstance(sidecar, dict), f"unaccepted_sidecars[{index}] must be an object")
+        expect(
+            isinstance(sidecar.get("path"), str) and sidecar["path"].strip(),
+            f"unaccepted_sidecars[{index}].path must be a non-empty string",
+        )
     drift_groups = report.get("drift_groups")
     expect(isinstance(drift_groups, list), "drift_groups must be a list")
     expect(drift_group_count == len(drift_groups), "drift_group_count does not match drift_groups")
@@ -314,13 +345,40 @@ def verify_no_drift(report: dict[str, Any]) -> None:
         )
 
 
+def verify_unaccepted_sidecars_not_promoted(
+    report: dict[str, Any],
+    *,
+    expected_paths: tuple[str, ...] = EXPECTED_UNACCEPTED_M6_SIDECARS,
+) -> None:
+    unaccepted_sidecars = report.get("unaccepted_sidecars")
+    expect(isinstance(unaccepted_sidecars, list), "unaccepted_sidecars must be a list")
+    observed_paths = {
+        str(sidecar.get("path", "")).strip()
+        for sidecar in unaccepted_sidecars
+        if isinstance(sidecar, dict)
+    }
+    expected = set(expected_paths)
+    missing = sorted(expected - observed_paths)
+    if missing:
+        raise DriftError(
+            "Expected unaccepted M6 sidecars were promoted, removed, or renamed:\n"
+            + "\n".join(missing)
+        )
+    expect(
+        len(expected_paths) == len(expected),
+        "expected unaccepted M6 sidecar guard paths must be unique",
+    )
+
+
 def run_self_check() -> dict[str, Any]:
     with tempfile.TemporaryDirectory() as temp_dir:
         root = Path(temp_dir)
         old_lane = root / M6_ROOT / "lane-old"
         new_lane = root / M6_ROOT / "lane-new"
+        stale_sidecar = old_lane / "sample-runtime-evidence.json"
+        accepted_sidecar = new_lane / "sample-runtime-evidence.json"
         write_json(
-            old_lane / "sample-runtime-evidence.json",
+            stale_sidecar,
             {
                 "schema_version": 1,
                 "benchmark_id": "sample",
@@ -329,7 +387,7 @@ def run_self_check() -> dict[str, Any]:
             },
         )
         write_json(
-            new_lane / "sample-runtime-evidence.json",
+            accepted_sidecar,
             {
                 "schema_version": 1,
                 "benchmark_id": "sample",
@@ -354,6 +412,20 @@ def run_self_check() -> dict[str, Any]:
             verify_no_drift(report)
         except DriftError:
             no_drift_rejected = True
+        promotion_guard_passed = False
+        verify_unaccepted_sidecars_not_promoted(
+            report,
+            expected_paths=(str(stale_sidecar.relative_to(root)),),
+        )
+        promotion_guard_passed = True
+        promoted_sidecar_rejected = False
+        try:
+            verify_unaccepted_sidecars_not_promoted(
+                report,
+                expected_paths=(str(accepted_sidecar.relative_to(root)),),
+            )
+        except DriftError:
+            promoted_sidecar_rejected = True
         expect(report["status"] == "drift-observed", "self-check must observe drift")
         expect(report["sidecar_count"] == 3, "self-check sidecar count drifted")
         expect(report["accepted_count"] == 2, "self-check accepted count drifted")
@@ -361,6 +433,11 @@ def run_self_check() -> dict[str, Any]:
         expect(report["drift_group_count"] == 1, "self-check drift group count drifted")
         expect(report["stale_unaccepted_sidecar_count"] == 1, "self-check stale count drifted")
         expect(no_drift_rejected, "self-check verify_no_drift did not reject drift")
+        expect(promotion_guard_passed, "self-check promotion guard did not pass stale sidecar")
+        expect(
+            promoted_sidecar_rejected,
+            "self-check promotion guard did not reject accepted sidecar",
+        )
         return {
             "sidecar_count": report["sidecar_count"],
             "accepted_count": report["accepted_count"],
@@ -368,6 +445,8 @@ def run_self_check() -> dict[str, Any]:
             "drift_group_count": report["drift_group_count"],
             "stale_unaccepted_sidecar_count": report["stale_unaccepted_sidecar_count"],
             "no_drift_rejected": no_drift_rejected,
+            "promotion_guard_passed": promotion_guard_passed,
+            "promoted_sidecar_rejected": promoted_sidecar_rejected,
         }
 
 
@@ -400,6 +479,11 @@ def parse_args() -> argparse.Namespace:
         help="Fail if accepted and unaccepted sidecars coexist for the same benchmark/family.",
     )
     parser.add_argument(
+        "--verify-unaccepted-not-promoted",
+        action="store_true",
+        help="Fail if any pinned unaccepted M6 sidecar validates as accepted.",
+    )
+    parser.add_argument(
         "--self-check",
         action="store_true",
         help="Run synthetic drift-detection regression checks.",
@@ -419,6 +503,8 @@ def main() -> int:
             verify_report(report)
         if args.verify_no_drift:
             verify_no_drift(report)
+        if args.verify_unaccepted_not_promoted:
+            verify_unaccepted_sidecars_not_promoted(report)
     except (DriftError, SchemaError) as error:
         print(str(error), file=sys.stderr)
         return 1

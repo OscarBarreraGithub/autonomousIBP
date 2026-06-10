@@ -38,6 +38,14 @@ void ExpectEqual(const std::string& actual,
          message + ": expected " + expected + ", got " + actual);
 }
 
+void ExpectStringVectorEqual(const std::vector<std::string>& actual,
+                             const std::vector<std::string>& expected,
+                             const std::string& message) {
+  Expect(actual == expected,
+         message + ": expected size " + std::to_string(expected.size()) +
+             ", got size " + std::to_string(actual.size()));
+}
+
 void ExpectDecimalNear(const std::string& actual,
                        const std::string& expected,
                        const std::string& message) {
@@ -745,6 +753,78 @@ void ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest() {
   }
 }
 
+void ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest() {
+  const amflow::ProblemSpec canonical_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  amflow::ProblemSpec transformed_spec = canonical_spec;
+  transformed_spec.kinematics.numeric_substitutions = {
+      {"s", "(25*16)/4"},
+      {"msq", "(3*11-5)/(7*4)"},
+  };
+
+  const amflow::CutkoskyWeightedResidueEvaluationPlan canonical_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(canonical_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan transformed_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(transformed_spec);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> canonical_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          canonical_spec,
+          2,
+          70);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> transformed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          transformed_spec,
+          2,
+          70);
+
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate canonical_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(canonical_plan,
+                                                             canonical_packet);
+  std::vector<amflow::CutkoskyWeightedResidueMomentSeed> permuted_transformed_packet;
+  for (const std::size_t index : {std::size_t{3}, std::size_t{0}, std::size_t{2},
+                                  std::size_t{1}}) {
+    permuted_transformed_packet.push_back(transformed_packet[index]);
+  }
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate transformed_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(
+          transformed_plan,
+          permuted_transformed_packet);
+
+  Expect(canonical_gate.passed && transformed_gate.passed,
+         "combined b63n permutation/rescaling provenance diagnostic transform "
+         "should pass both gates");
+  ExpectStringVectorEqual(transformed_gate.validated_weight_denominators,
+                          canonical_gate.validated_weight_denominators,
+                          "b63n validated weight order should stay canonical under "
+                          "combined permutation/rescaling transforms");
+  ExpectStringVectorEqual(
+      transformed_gate.validated_seed_denominator_identities,
+      canonical_gate.validated_seed_denominator_identities,
+      "b63n seed denominator identities should stay canonical under combined "
+      "permutation/rescaling transforms");
+  ExpectStringVectorEqual(transformed_gate.validated_seed_provenance,
+                          canonical_gate.validated_seed_provenance,
+                          "b63n seed provenance diagnostics should stay canonical "
+                          "under combined permutation/rescaling transforms");
+  Expect(canonical_gate.validated_seed_provenance.size() == 4,
+         "b63n provenance diagnostic regression should cover D2,D4,D6,D7");
+  ExpectContains(
+      canonical_gate.validated_seed_provenance[1],
+      "D4;series=automatic_phasespace::weighted-moment-seed::D4::prefactor;"
+      "eta_zero_label=automatic_phasespace_D4_weighted_moment_seed;"
+      "coefficient_label=automatic_phasespace_D4_weighted_moment_seed;"
+      "source=reviewed automatic_phasespace symbolic integrand; not AMFlow final "
+      "solution samples;fixture=lane3-next2-automatic-phasespace-D4-weighted-"
+      "moment-seed;synthetic=true;retained_solution_samples_used=false;"
+      "coefficient_published=false",
+      "b63n provenance diagnostics should retain the D4 synthetic fixture boundary");
+  Expect(amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+             transformed_gate) ==
+             amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+                 canonical_gate),
+         "b63n cross-validation audit should stay stable when provenance "
+         "diagnostics are canonicalized after permutation and exact rescaling");
+}
+
 void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
   const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
@@ -1199,6 +1279,7 @@ int main() {
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
+    ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
     ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();

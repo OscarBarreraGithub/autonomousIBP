@@ -19,6 +19,23 @@ EXPECTED_LABELS = [
     "published-lane142-primitive-bubble",
     "blocked-off-axis-publication-contour",
 ]
+EXPECTED_AUDIT_KEYS = [
+    "kind",
+    "success",
+    "endpoint_integral_id",
+    "matrix_fingerprint",
+    "contour_fingerprint",
+    "endpoint_local_model_kind",
+    "transport_scope",
+    "ode_propagation_applied",
+    "coefficient_publication",
+    "endpoint_extraction_applied",
+    "retained_solution_samples_used",
+    "full_eta_zero_contour_applied",
+    "eta_zero_endpoint_reached",
+    "failure_code",
+    "summary",
+]
 EXPECTED_ENDPOINT = "box[1,0,1,0]"
 EXPECTED_MATRIX_FINGERPRINT = "lane142-b61n-selected5-primitive-bubble-v1"
 EXPECTED_LOCAL_MODEL = "b61n-primitive-bubble-regular-taylor-r0"
@@ -283,6 +300,11 @@ def validate_entry(raw_entry: Any, index: int) -> dict[str, Any]:
     )
 
     fields = parse_audit_text(audit)
+    actual_keys = list(fields)
+    expect(
+        actual_keys == EXPECTED_AUDIT_KEYS,
+        f"{label} audit keys must remain {EXPECTED_AUDIT_KEYS!r}, got {actual_keys!r}",
+    )
     exact_fields = {
         "kind": "b61n-publication-contour-evaluation",
         "success": "true",
@@ -342,6 +364,7 @@ def validate_entry(raw_entry: Any, index: int) -> dict[str, Any]:
         "coefficient_publication": coefficient_publication,
         "audit_fingerprint": fingerprint,
         "contour_fingerprint": contour_fingerprint,
+        "audit_keys": actual_keys,
     }
 
 
@@ -366,6 +389,9 @@ def validate_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "publication_audit_trail_query_passed": True,
         "entry_count": len(validated),
         "queried_labels": labels,
+        "audit_keys_by_label": {
+            entry["label"]: entry["audit_keys"] for entry in validated
+        },
         "published_entry_count": sum(
             1 for entry in validated if entry["coefficient_publication"]
         ),
@@ -421,6 +447,12 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         "full_eta_zero_contour_applied=",
         "full_eta_zero_contour_applied=true",
     )
+    missing_endpoint_key = copy.deepcopy(payload)
+    replace_entry_audit_line(
+        missing_endpoint_key["entries"][0],
+        "endpoint_integral_id=",
+        None,
+    )
     missing_summary = copy.deepcopy(payload)
     replace_entry_audit_line(missing_summary["entries"][1], "summary=", None)
     stale_audit_fingerprint = copy.deepcopy(payload)
@@ -443,7 +475,14 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
             full_contour_overclaim,
             "must not claim full eta-zero contour",
         ),
-        "rejects_missing_summary": rejected(missing_summary, "audit missing summary"),
+        "rejects_missing_expected_audit_key": rejected(
+            missing_endpoint_key,
+            "audit keys must remain",
+        ),
+        "rejects_missing_summary_key": rejected(
+            missing_summary,
+            "audit keys must remain",
+        ),
         "rejects_stale_audit_fingerprint": rejected(
             stale_audit_fingerprint,
             "audit fingerprint must match audit text",

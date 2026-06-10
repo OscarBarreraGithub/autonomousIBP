@@ -786,7 +786,7 @@ The capture script writes:
 - `verify_b61n_publication_audit_trail.py --self-check` queries the built
   `singular-runtime-lane-tests` emitter and fails closed unless the b61n publication audit trail
   exposes the reviewed lane142 primitive-bubble publication, the off-axis contour publication
-  block, stable audit fingerprints, and non-promotion flags.
+  block, pinned audit-text keys, stable audit fingerprints, and non-promotion flags.
 - `verify_b63n_scoped_gate_audit_trail.py --self-check` queries the built
   `cutkosky-weighted-residue-tests` emitter and fails closed unless the scoped b63n publication
   audit exposes the nested moment gate status, canonical D2/D4/D6/D7 seed identities and

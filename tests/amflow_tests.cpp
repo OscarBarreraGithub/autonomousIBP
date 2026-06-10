@@ -53301,6 +53301,8 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
                  "b61n publication qualifier should reject malformed Numeric substitutions");
   ExpectContains(result.stdout_json, "\"retained_numeric_drift_rejected\": true",
                  "b61n publication qualifier should reject retained Numeric source drift");
+  ExpectContains(result.stdout_json, "\"diagnostic_fields_preserved\": true",
+                 "b61n publication qualifier should preserve every expected diagnostic field");
   ExpectContains(result.stdout_json, "\"m6_qualifier_hook_prepositioned\": true",
                  "b61n publication qualifier should pre-position the M6 hook");
   ExpectContains(result.stdout_json, "\"m6_auto_promote_accepts_future_packet\": true",
@@ -53483,6 +53485,29 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
   ExpectContains(result.stdout_json,
                  "\"This summary does not claim full eta=0 contour execution.\"",
                  "b61n publication qualifier should preserve the full-contour non-claim");
+}
+
+void B61nPublicationQualifierDiagnosticFieldsCheckTest() {
+  const ReferenceHarnessSelfCheckRun result = RunReferenceHarnessScript(
+      "amflow-b61n-publication-diagnostic-fields",
+      "tools/reference-harness/scripts/audit_b61n_publication_qualifier.py",
+      {"--diagnostic-fields-check"},
+      "b61n publication qualifier diagnostic fields");
+  Expect(result.stderr_log.empty(),
+         "b61n publication qualifier diagnostic field check should not emit stderr noise on "
+         "success");
+  ExpectContains(result.stdout_json, "\"diagnostic_fields_preserved\": true",
+                 "b61n publication qualifier should preserve expected diagnostic fields");
+  ExpectContains(result.stdout_json, "\"expected_diagnostic_fields\": [",
+                 "b61n publication qualifier should publish the pinned diagnostic field list");
+  ExpectContains(result.stdout_json, "\"precision_evidence_sidecar_path\"",
+                 "b61n publication qualifier should keep precision sidecar diagnostics visible");
+  ExpectContains(result.stdout_json, "\"m6_observed_minimum_digit_agreement\"",
+                 "b61n publication qualifier should keep nullable M6 digit diagnostics visible");
+  ExpectContains(result.stdout_json,
+                 "\"amflow_cross_comparator_publication_gate_passed\": false",
+                 "b61n publication qualifier diagnostic field check should preserve publication "
+                 "gate status");
 }
 
 void ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest() {
@@ -57248,6 +57273,7 @@ int main() {
     B64agFirstBlockPrecisionGapAuditSelfCheckCoversRetainedGoldenEnvelopeTest();
     B64agFirstBlockStructureAuditSelfCheckCoversIndicialSurfaceTest();
     B61nPublicationQualifierHookMatchesRepoSidecarTest();
+    B61nPublicationQualifierDiagnosticFieldsCheckTest();
     ReleaseSignoffReadinessSelfCheckReportsBlockedPrerequisitesTest();
     ReferenceHarnessReadmeListsQualificationCorpusReviewSelfCheckTest();
     ReleaseSignoffReadinessSummaryConsumesRetainedQualificationSummaryTest();

@@ -119,6 +119,48 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not claim full eta=0 contour execution.",
     "This summary does not widen runtime or public behavior.",
 )
+EXPECTED_AUDIT_DIAGNOSTIC_FIELDS: tuple[str, ...] = (
+    "schema_version",
+    "scope",
+    "sidecar_path",
+    "benchmark_id",
+    "publication_gate_reviewed",
+    "variant_count",
+    "reviewed_endpoint_integrals",
+    "full_selected5_endpoint_variants",
+    "new_lane5_endpoint_variant",
+    "multi_numeric_negim_gate_regressed",
+    "smoke_numeric_cases_shape_only",
+    "retained_contour_evidence_matched",
+    "retained_numeric_evidence_matched",
+    "reviewed_endpoint_compare_evidence_matched",
+    "precision_evidence_sidecar_reviewed",
+    "precision_evidence_source_cpp_result_bound",
+    "precision_evidence_sidecar_path",
+    "precision_evidence_source_cpp_result",
+    "precision_evidence_target_count",
+    "precision_evidence_target_set",
+    "precision_evidence_minimum_reference_floor_digits",
+    "precision_evidence_minimum_uplifted_fraction_digits",
+    "precision_evidence_fallback_explicit",
+    "precision_evidence_not_amflow_reference_backed",
+    "amflow_cross_comparator_publication_gate_required",
+    "amflow_cross_comparator_publication_gate_passed",
+    "amflow_cross_comparator_blocked_publication_variant_count",
+    "amflow_cross_comparator_minimum_digit_agreement_required",
+    "amflow_cross_comparator_minimum_digit_agreement_observed",
+    "source_contour_fingerprint",
+    "source_minimum_pole_distance_to_contour",
+    "m6_qualifier_hook_prepositioned",
+    "m6_qualifier_hook_currently_promoted",
+    "m6_optional_capture_packet",
+    "m6_minimum_digit_agreement_required",
+    "m6_observed_minimum_digit_agreement",
+    "m7_parity_single_row_hook_prepositioned",
+    "m7_single_row_path",
+    "m7_required_m6_signal_endpoint_count",
+    "withheld_claims",
+)
 
 
 def expect(condition: bool, message: str) -> None:
@@ -1911,6 +1953,103 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
     }
 
 
+def validate_expected_audit_diagnostic_fields(
+    summary: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    missing = [field for field in EXPECTED_AUDIT_DIAGNOSTIC_FIELDS if field not in summary]
+    expect(
+        not missing,
+        f"{label} missing expected b61n publication diagnostic fields: {', '.join(missing)}",
+    )
+
+    bool_fields = (
+        "publication_gate_reviewed",
+        "full_selected5_endpoint_variants",
+        "new_lane5_endpoint_variant",
+        "multi_numeric_negim_gate_regressed",
+        "smoke_numeric_cases_shape_only",
+        "retained_contour_evidence_matched",
+        "retained_numeric_evidence_matched",
+        "reviewed_endpoint_compare_evidence_matched",
+        "precision_evidence_sidecar_reviewed",
+        "precision_evidence_source_cpp_result_bound",
+        "precision_evidence_fallback_explicit",
+        "precision_evidence_not_amflow_reference_backed",
+        "amflow_cross_comparator_publication_gate_required",
+        "amflow_cross_comparator_publication_gate_passed",
+        "m6_qualifier_hook_prepositioned",
+        "m6_qualifier_hook_currently_promoted",
+        "m7_parity_single_row_hook_prepositioned",
+    )
+    for field in bool_fields:
+        expect(type(summary[field]) is bool, f"{label} field {field} must be a bool")
+
+    int_fields = (
+        "schema_version",
+        "variant_count",
+        "precision_evidence_target_count",
+        "precision_evidence_minimum_reference_floor_digits",
+        "precision_evidence_minimum_uplifted_fraction_digits",
+        "amflow_cross_comparator_blocked_publication_variant_count",
+        "amflow_cross_comparator_minimum_digit_agreement_required",
+        "m6_minimum_digit_agreement_required",
+        "m7_required_m6_signal_endpoint_count",
+    )
+    for field in int_fields:
+        expect(
+            isinstance(summary[field], int) and not isinstance(summary[field], bool),
+            f"{label} field {field} must be an int",
+        )
+
+    nullable_int_fields = (
+        "amflow_cross_comparator_minimum_digit_agreement_observed",
+        "m6_observed_minimum_digit_agreement",
+    )
+    for field in nullable_int_fields:
+        value = summary[field]
+        expect(
+            value is None or (isinstance(value, int) and not isinstance(value, bool)),
+            f"{label} field {field} must be an int or null",
+        )
+
+    string_fields = (
+        "scope",
+        "sidecar_path",
+        "benchmark_id",
+        "precision_evidence_sidecar_path",
+        "precision_evidence_source_cpp_result",
+        "source_contour_fingerprint",
+        "source_minimum_pole_distance_to_contour",
+        "m6_optional_capture_packet",
+        "m7_single_row_path",
+    )
+    for field in string_fields:
+        value = summary[field]
+        expect(
+            isinstance(value, str) and value.strip(),
+            f"{label} field {field} must be a non-empty string",
+        )
+
+    list_fields = (
+        "reviewed_endpoint_integrals",
+        "precision_evidence_target_set",
+        "withheld_claims",
+    )
+    for field in list_fields:
+        value = summary[field]
+        expect(
+            isinstance(value, list) and value,
+            f"{label} field {field} must be a non-empty list",
+        )
+
+    return {
+        "expected_diagnostic_field_count": len(EXPECTED_AUDIT_DIAGNOSTIC_FIELDS),
+        "expected_diagnostic_fields": list(EXPECTED_AUDIT_DIAGNOSTIC_FIELDS),
+        "missing_expected_diagnostic_fields": [],
+    }
+
+
 def synthetic_sidecar() -> dict[str, Any]:
     numeric_a = {
         "s": "496",
@@ -2050,6 +2189,10 @@ def run_self_check() -> dict[str, Any]:
         write_json(sidecar_path, synthetic_sidecar())
         summary_path = root / "summary.json"
         summary = audit_sidecar(sidecar_path)
+        diagnostic_field_summary = validate_expected_audit_diagnostic_fields(
+            summary,
+            "b61n publication qualifier self-check summary",
+        )
         write_json(summary_path, summary)
         summary_written = summary_path.exists()
 
@@ -2709,7 +2852,41 @@ def run_self_check() -> dict[str, Any]:
         "swapped_variant_rejected": swapped_variant_rejected,
         "invalid_numeric_rejected": invalid_numeric_rejected,
         "retained_numeric_drift_rejected": retained_numeric_drift_rejected,
+        "diagnostic_fields_preserved": (
+            diagnostic_field_summary["missing_expected_diagnostic_fields"] == []
+        ),
+        "expected_diagnostic_field_count": diagnostic_field_summary[
+            "expected_diagnostic_field_count"
+        ],
         "summary_written": summary_written,
+    }
+
+
+def run_diagnostic_fields_check(sidecar_path: Path) -> dict[str, Any]:
+    audit_summary = audit_sidecar(sidecar_path)
+    diagnostic_field_summary = validate_expected_audit_diagnostic_fields(
+        audit_summary,
+        "b61n publication qualifier audit summary",
+    )
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-diagnostic-fields",
+        "sidecar_path": str(sidecar_path),
+        **diagnostic_field_summary,
+        "diagnostic_fields_preserved": True,
+        "publication_gate_reviewed": audit_summary["publication_gate_reviewed"],
+        "precision_evidence_sidecar_reviewed": audit_summary[
+            "precision_evidence_sidecar_reviewed"
+        ],
+        "amflow_cross_comparator_publication_gate_passed": audit_summary[
+            "amflow_cross_comparator_publication_gate_passed"
+        ],
+        "m6_qualifier_hook_currently_promoted": audit_summary[
+            "m6_qualifier_hook_currently_promoted"
+        ],
+        "m7_parity_single_row_hook_prepositioned": audit_summary[
+            "m7_parity_single_row_hook_prepositioned"
+        ],
     }
 
 
@@ -2846,9 +3023,19 @@ def run_precision_evidence_binding_check(sidecar_path: Path) -> dict[str, Any]:
 
 
 def run_precision_inventory_consistency_check(sidecar_path: Path) -> dict[str, Any]:
+    binding_summary = run_precision_evidence_binding_check(sidecar_path)
     audit_summary = audit_sidecar(sidecar_path)
     consumed_precision_sidecar = repo_relative_path(
         Path(audit_summary["precision_evidence_sidecar_path"])
+    )
+    expect(
+        binding_summary["precision_evidence_sidecar"] == consumed_precision_sidecar,
+        "publication precision binding and inventory checks disagree on accepted sidecar",
+    )
+    expect(
+        binding_summary["precision_evidence_source_cpp_result"]
+        == audit_summary["precision_evidence_source_cpp_result"],
+        "publication precision binding and inventory checks disagree on source C++ result",
     )
     expect(
         consumed_precision_sidecar == B61N_PRECISION_EVIDENCE,
@@ -2901,6 +3088,9 @@ def run_precision_inventory_consistency_check(sidecar_path: Path) -> dict[str, A
         "precision_evidence_inventory_schema": precision_entry.schema,
         "precision_evidence_source_cpp_result": B61N_PRECISION_CPP_RESULT,
         "precision_evidence_source_cpp_result_inventory_status": source_cpp_entry.status,
+        "precision_binding_inventory_accepted_source_agree": True,
+        "accepted_b61n_publication_input": consumed_precision_sidecar,
+        "accepted_b61n_publication_input_source_cpp_result": B61N_PRECISION_CPP_RESULT,
         "publication_precision_evidence_matches_accepted_inventory": True,
     }
 
@@ -2941,6 +3131,11 @@ def parse_args() -> argparse.Namespace:
             "the accepted M7 inventory category"
         ),
     )
+    mode.add_argument(
+        "--diagnostic-fields-check",
+        action="store_true",
+        help="Assert the publication audit emits every expected diagnostic summary field",
+    )
     return parser.parse_args()
 
 
@@ -2971,6 +3166,15 @@ def main() -> int:
         print(
             json.dumps(
                 run_precision_inventory_consistency_check(sidecar_path),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.diagnostic_fields_check:
+        print(
+            json.dumps(
+                run_diagnostic_fields_check(sidecar_path),
                 indent=2,
                 sort_keys=True,
             )

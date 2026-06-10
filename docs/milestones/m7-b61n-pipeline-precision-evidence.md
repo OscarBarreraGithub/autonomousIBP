@@ -89,4 +89,14 @@ target_coefficients_reconstructed_from_epsilon_samples=true
 target_coefficients_published_from_coefficient_state=false
 ```
 
+## Publication Gate Boundary
+
+The reference-floor verdict is an external-comparison classification only: it
+records that the retained AMFlow reference cannot test those four row 5/6
+components beyond its documented floor. It does not satisfy the b61n
+publication gate. Coefficient publication still requires a `cpp-vs-amflow`
+publication comparator that covers every reviewed selected5 endpoint at the
+50-digit floor, and the current publication audit must remain blocked while that
+gate reports the two-digit systematic mismatch.
+
 `M7_PARITY_SIGNOFF_FLIPPED=false`

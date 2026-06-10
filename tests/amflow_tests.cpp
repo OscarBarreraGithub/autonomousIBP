@@ -53240,6 +53240,14 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
   ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
                  "b61n publication qualifier should bind reviewed endpoint variants to compare "
                  "evidence");
+  ExpectContains(result.stdout_json, "\"precision_evidence_sidecar_reviewed\": true",
+                 "b61n publication qualifier should bind the post-M7 precision evidence sidecar");
+  ExpectContains(result.stdout_json, "\"precision_evidence_source_cpp_result_bound\": true",
+                 "b61n publication qualifier should bind precision evidence to its source C++ "
+                 "result");
+  ExpectContains(result.stdout_json, "\"precision_evidence_not_amflow_reference_backed\": true",
+                 "b61n publication qualifier should reject AMFlow-reference-backed precision "
+                 "uplift shortcuts");
   ExpectContains(result.stdout_json,
                  "\"amflow_cross_comparator_publication_gate_required\": true",
                  "b61n publication qualifier should require AMFlow comparator agreement before "
@@ -53278,6 +53286,12 @@ void B61nPublicationQualifierHookSelfCheckCoversNegImGateTest() {
                  "b61n publication qualifier should reject single-Numeric regressions");
   ExpectContains(result.stdout_json, "\"source_evidence_rejected\": true",
                  "b61n publication qualifier should reject missing source evidence");
+  ExpectContains(result.stdout_json, "\"precision_evidence_rejected\": true",
+                 "b61n publication qualifier should reject hooks that omit the precision "
+                 "evidence sidecar");
+  ExpectContains(result.stdout_json, "\"precision_evidence_drift_rejected\": true",
+                 "b61n publication qualifier should reject drift between precision evidence and "
+                 "the source C++ result");
   ExpectContains(result.stdout_json, "\"swapped_variant_rejected\": true",
                  "b61n publication qualifier should bind variant ids to endpoint integrals");
   ExpectContains(result.stdout_json, "\"invalid_numeric_rejected\": true",
@@ -53428,6 +53442,16 @@ void B61nPublicationQualifierHookMatchesRepoSidecarTest() {
                  "b61n publication qualifier should preserve retained Numeric source binding");
   ExpectContains(result.stdout_json, "\"reviewed_endpoint_compare_evidence_matched\": true",
                  "b61n publication qualifier should preserve reviewed endpoint compare binding");
+  ExpectContains(result.stdout_json, "\"precision_evidence_sidecar_reviewed\": true",
+                 "b61n publication qualifier should preserve the post-M7 precision evidence "
+                 "binding");
+  ExpectContains(result.stdout_json, "\"precision_evidence_target_count\": 4",
+                 "b61n publication qualifier should audit all four row 5/6 precision targets");
+  ExpectContains(result.stdout_json, "\"precision_evidence_fallback_explicit\": true",
+                 "b61n publication qualifier should keep the exact-rational fallback explicit");
+  ExpectContains(result.stdout_json,
+                 "\"precision_evidence_minimum_uplifted_fraction_digits\": 160",
+                 "b61n publication qualifier should preserve the 160-digit precision uplift");
   ExpectContains(result.stdout_json,
                  "\"amflow_cross_comparator_publication_gate_required\": true",
                  "b61n publication qualifier should preserve the publication comparator gate");

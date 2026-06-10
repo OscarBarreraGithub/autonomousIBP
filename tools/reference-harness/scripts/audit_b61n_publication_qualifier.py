@@ -9,6 +9,7 @@ import json
 import re
 import tempfile
 from decimal import Decimal, InvalidOperation
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -55,11 +56,19 @@ REVIEWED_SOURCE_CONTOUR_WAYPOINT_SUMMARY = (
 RETAINED_SOURCE_NUMERIC_EVIDENCE = (
     "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json"
 )
+B61N_PRECISION_EVIDENCE = (
+    "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
+)
+B61N_PRECISION_CPP_RESULT = (
+    "tools/reference-harness/specs/m7/lane2/"
+    "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+)
 REQUIRED_SOURCE_EVIDENCE: tuple[str, ...] = (
     "tools/reference-harness/specs/m6/lane142/b61n-selected5-real-coefficients-evidence.json",
     "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.compare30.json",
     "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.stripped-result.json",
     RETAINED_SOURCE_NUMERIC_EVIDENCE,
+    B61N_PRECISION_EVIDENCE,
 )
 REQUIRED_SOURCE_BINDING: dict[str, str] = {
     "coefficient_evidence": REQUIRED_SOURCE_EVIDENCE[0],
@@ -81,6 +90,24 @@ B61N_PUBLICATION_BLOCKED_COMPARATOR = (
 B61N_PUBLICATION_BLOCKED_COMPARATOR_SHA256 = (
     "eb9d2d0b882e0f56cef5c571e2c3de0a9f59c98dbb2bb98c6b05d3762d5e64d3"
 )
+EXPECTED_PRECISION_TARGETS: dict[tuple[str, int], dict[str, int]] = {
+    ("box[1,0,1,1]", 0): {
+        "reference_floor_real_digits": 11,
+        "reference_floor_imag_digits": 11,
+    },
+    ("box[1,1,1,1]", -2): {
+        "reference_floor_real_digits": 46,
+        "reference_floor_imag_digits": 46,
+    },
+    ("box[1,1,1,1]", -1): {
+        "reference_floor_real_digits": 12,
+        "reference_floor_imag_digits": 13,
+    },
+    ("box[1,1,1,1]", 0): {
+        "reference_floor_real_digits": 12,
+        "reference_floor_imag_digits": 12,
+    },
+}
 WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not claim Milestone M6 closure.",
     "This summary does not claim Milestone M7 closure.",
@@ -284,6 +311,10 @@ def find_nested_int(raw: Any, key: str) -> int | None:
             if nested is not None:
                 return nested
     return None
+
+
+def target_key(integral: str, eps_order: int) -> str:
+    return f"{integral} eps^{eps_order}"
 
 
 def numeric_case_fingerprint(numeric_substitutions: dict[str, Any]) -> str:
@@ -1251,6 +1282,391 @@ def validate_reviewed_endpoint_compare_evidence(
                    f"b61n compare endpoint {endpoint} imag agreement must pass compare30")
 
 
+def fractional_digit_count(raw_decimal: str, label: str) -> int:
+    decimal = raw_decimal[1:] if raw_decimal.startswith("-") else raw_decimal
+    expect("e" not in decimal.lower(), f"{label} must be plain decimal")
+    expect("." in decimal, f"{label} must contain a decimal point")
+    fractional = decimal.split(".", 1)[1]
+    expect(fractional.isdigit(), f"{label} fractional part must contain only digits")
+    return len(fractional)
+
+
+def render_fractional_digits(raw_fraction: str, fractional_digits: int) -> str:
+    fraction = Fraction(raw_fraction)
+    sign = "-" if fraction < 0 else ""
+    numerator = abs(fraction.numerator)
+    denominator = fraction.denominator
+    scale = 10**fractional_digits
+    scaled = numerator * scale // denominator
+    integer_part = scaled // scale
+    fractional_part = scaled % scale
+    return f"{sign}{integer_part}.{fractional_part:0{fractional_digits}d}"
+
+
+def visible_prefix(raw_prefix: Any, label: str) -> str:
+    prefix = normalized_string(raw_prefix, label)
+    expect(prefix.endswith("..."), f"{label} must be an ellipsis-truncated prefix")
+    return prefix[:-3]
+
+
+def index_cpp_result_coefficients(
+    cpp_result: dict[str, Any],
+) -> dict[tuple[str, int], dict[str, Any]]:
+    raw_results = cpp_result.get("results")
+    if not isinstance(raw_results, list):
+        raise TypeError("b61n precision source cpp_result.results must be a list")
+    indexed: dict[tuple[str, int], dict[str, Any]] = {}
+    for result_index, raw_result in enumerate(raw_results):
+        if not isinstance(raw_result, dict):
+            raise TypeError("b61n precision source cpp_result results must be objects")
+        integral = normalized_string(
+            raw_result.get("integral"),
+            f"b61n precision source cpp_result.results[{result_index}].integral",
+        )
+        raw_orders = raw_result.get("epsilon_orders")
+        if not isinstance(raw_orders, list):
+            raise TypeError(
+                "b61n precision source cpp_result epsilon_orders must be a list"
+            )
+        for order_index, raw_order in enumerate(raw_orders):
+            if not isinstance(raw_order, dict):
+                raise TypeError(
+                    "b61n precision source cpp_result epsilon_orders must be objects"
+                )
+            order = normalize_int(
+                raw_order.get("order"),
+                f"b61n precision source {integral}.epsilon_orders[{order_index}].order",
+            )
+            key = (integral, order)
+            expect(
+                key not in indexed,
+                f"b61n precision source cpp_result repeats {target_key(*key)}",
+            )
+            indexed[key] = raw_order
+    return indexed
+
+
+def index_precision_targets(
+    precision_evidence: dict[str, Any],
+) -> dict[tuple[str, int], dict[str, Any]]:
+    raw_targets = precision_evidence.get("targets")
+    if not isinstance(raw_targets, list):
+        raise TypeError("b61n precision evidence targets must be a list")
+    indexed: dict[tuple[str, int], dict[str, Any]] = {}
+    for target_index, raw_target in enumerate(raw_targets):
+        if not isinstance(raw_target, dict):
+            raise TypeError("b61n precision evidence targets must be objects")
+        integral = normalized_string(
+            raw_target.get("integral"),
+            f"b61n precision evidence targets[{target_index}].integral",
+        )
+        eps_order = normalize_int(
+            raw_target.get("eps_order"),
+            f"b61n precision evidence targets[{target_index}].eps_order",
+        )
+        key = (integral, eps_order)
+        expect(
+            key not in indexed,
+            f"b61n precision evidence repeats {target_key(*key)}",
+        )
+        indexed[key] = raw_target
+    return indexed
+
+
+def validate_precision_component(
+    *,
+    target: dict[str, Any],
+    cpp_coefficient: dict[str, Any],
+    expected_floor: int,
+    component: str,
+    label: str,
+) -> dict[str, int]:
+    standard_digits = normalize_int(
+        target.get("standard_serialized_fraction_digits", {}).get(component),
+        f"{label}.standard_serialized_fraction_digits.{component}",
+    )
+    uplifted_digits = normalize_int(
+        target.get("uplifted_serialized_fraction_digits", {}).get(component),
+        f"{label}.uplifted_serialized_fraction_digits.{component}",
+    )
+    reference_floor = normalize_int(
+        target.get(f"reference_floor_{component}_digits"),
+        f"{label}.reference_floor_{component}_digits",
+    )
+    expect(
+        reference_floor == expected_floor,
+        f"{label} {component} reference floor drifted",
+    )
+    expect(
+        reference_floor < standard_digits < uplifted_digits,
+        f"{label} {component} precision sidecar must increase past the reference floor",
+    )
+    expect(
+        uplifted_digits >= 160,
+        f"{label} {component} precision sidecar must retain the 160-digit uplift",
+    )
+
+    standard = normalized_string(
+        target.get("standard_80", {}).get(component),
+        f"{label}.standard_80.{component}",
+    )
+    expect(
+        fractional_digit_count(standard, f"{label}.standard_80.{component}")
+        == standard_digits,
+        f"{label} {component} standard digit count drifted",
+    )
+    cpp_digits = normalized_string(
+        cpp_coefficient.get(f"{component}_digits"),
+        f"cpp_result.{label}.{component}_digits",
+    )
+    expect(
+        cpp_digits == standard,
+        f"{label} {component} precision evidence no longer matches source C++ result",
+    )
+    exact_fraction = normalized_string(
+        cpp_coefficient.get(f"exact_{component}"),
+        f"cpp_result.{label}.exact_{component}",
+    )
+    expect(
+        render_fractional_digits(exact_fraction, standard_digits) == standard,
+        f"{label} {component} standard serialization no longer renders from exact rational",
+    )
+
+    additional_digits = normalize_int(
+        target.get("additional_fraction_digits_after_standard_80", {}).get(component),
+        f"{label}.additional_fraction_digits_after_standard_80.{component}",
+    )
+    expect(
+        additional_digits == uplifted_digits - standard_digits,
+        f"{label} {component} additional digit delta is inconsistent",
+    )
+    digits_beyond_floor = normalize_int(
+        target.get("digits_beyond_reference_floor_in_uplifted_160", {}).get(component),
+        f"{label}.digits_beyond_reference_floor_in_uplifted_160.{component}",
+    )
+    expect(
+        digits_beyond_floor == uplifted_digits - reference_floor,
+        f"{label} {component} uplifted-floor digit delta is inconsistent",
+    )
+
+    uplifted = render_fractional_digits(exact_fraction, uplifted_digits)
+    expect(
+        uplifted.startswith(standard),
+        f"{label} {component} uplifted exact rendering must extend standard digits",
+    )
+    prefix = visible_prefix(
+        target.get("uplifted_160_prefix", {}).get(component),
+        f"{label}.uplifted_160_prefix.{component}",
+    )
+    expect(
+        uplifted.startswith(prefix),
+        f"{label} {component} uplifted prefix no longer matches exact rational",
+    )
+    tail = uplifted[len(standard):]
+    expect(
+        any(char.isdigit() and char != "0" for char in tail),
+        f"{label} {component} uplifted exact tail after standard digits must be nonzero",
+    )
+    expect(
+        target.get("uplifted_tail_after_standard_80_has_nonzero_digit", {}).get(component)
+        is True,
+        f"{label} {component} sidecar must record the nonzero uplifted tail",
+    )
+    return {
+        "reference_floor_digits": reference_floor,
+        "standard_fraction_digits": standard_digits,
+        "uplifted_fraction_digits": uplifted_digits,
+    }
+
+
+def validate_b61n_precision_payloads(
+    precision_evidence: dict[str, Any],
+    cpp_result: dict[str, Any],
+) -> dict[str, Any]:
+    expect(precision_evidence.get("schema_version") == 1,
+           "b61n precision evidence schema_version must be 1")
+    expect(
+        precision_evidence.get("evidence_id") == "b61n-pipeline-precision-evidence",
+        "b61n precision evidence_id drifted",
+    )
+    expect(
+        normalized_string(precision_evidence.get("source_cpp_result"),
+                          "b61n precision source_cpp_result")
+        == B61N_PRECISION_CPP_RESULT,
+        "b61n precision evidence source_cpp_result drifted",
+    )
+    method = precision_evidence.get("method")
+    if not isinstance(method, dict):
+        raise TypeError("b61n precision evidence method must be an object")
+    expect(
+        method.get("amflow_reference_values_used_for_digit_count") is False,
+        "b61n precision evidence must not use AMFlow values for digit counting",
+    )
+    expect(
+        method.get("reference_values_used_for_uplift") is False,
+        "b61n precision evidence must not use reference values for uplift",
+    )
+    fallback = normalized_string(method.get("fallback"), "b61n precision fallback")
+    expect(
+        "exact rational" in fallback and "without using AMFlow reference values" in fallback,
+        "b61n precision fallback must explicitly identify the exact-rational path",
+    )
+    fresh_attempt = method.get("fresh_full_recompute_attempt")
+    if not isinstance(fresh_attempt, dict):
+        raise TypeError("b61n precision fresh_full_recompute_attempt must be an object")
+    expect(
+        fresh_attempt.get("attempted") is True,
+        "b61n precision evidence must record the fresh recompute attempt",
+    )
+    expect(
+        normalized_string(
+            fresh_attempt.get("claim_made_from_attempt"),
+            "b61n precision fresh recompute claim",
+        )
+        == "none",
+        "b61n precision evidence must not claim from the interrupted recompute",
+    )
+
+    summary = precision_evidence.get("summary")
+    if not isinstance(summary, dict):
+        raise TypeError("b61n precision evidence summary must be an object")
+    for key in (
+        "all_standard_serializations_match_exact_rational_80",
+        "all_uplifted_160_fraction_digits_exceed_reference_floor",
+        "all_uplifted_160_serializations_extend_standard_80",
+        "all_uplifted_tail_after_standard_80_has_nonzero_digit",
+    ):
+        expect(summary.get(key) is True, f"b61n precision evidence summary {key} drifted")
+    expect(
+        normalize_int(summary.get("target_count"), "b61n precision target_count")
+        == len(EXPECTED_PRECISION_TARGETS),
+        "b61n precision evidence target count drifted",
+    )
+    expect(
+        normalize_int(
+            summary.get("minimum_uplifted_fraction_digits"),
+            "b61n precision minimum_uplifted_fraction_digits",
+        )
+        >= 160,
+        "b61n precision evidence must retain the 160-digit uplift floor",
+    )
+
+    expect(cpp_result.get("benchmark_id") == "complex_kinematics",
+           "b61n precision source C++ benchmark drifted")
+    solver = cpp_result.get("solver")
+    if not isinstance(solver, dict):
+        raise TypeError("b61n precision source C++ solver must be an object")
+    expect(
+        normalize_int(solver.get("precision_digits"), "b61n precision source C++ digits") >= 80,
+        "b61n precision source C++ result must retain at least 80 digits",
+    )
+    continuation = cpp_result.get("continuation")
+    if not isinstance(continuation, dict):
+        raise TypeError("b61n precision source C++ continuation must be an object")
+    expect(
+        continuation.get("transport_scope") == "eta-zero-selected-endpoint-coefficients",
+        "b61n precision source C++ result transport scope drifted",
+    )
+    expect(
+        continuation.get("eta_zero_endpoint_transport_applied") is True,
+        "b61n precision source C++ result must retain endpoint transport",
+    )
+    expect(
+        continuation.get("full_eta_zero_contour_applied") is False,
+        "b61n precision source C++ result must not claim the full contour",
+    )
+    expect(
+        find_nested_bool(cpp_result, "final_solution_samples_used_as_input") is not True,
+        "b61n precision source C++ result must not consume final solution samples",
+    )
+
+    cpp_coefficients = index_cpp_result_coefficients(cpp_result)
+    precision_targets = index_precision_targets(precision_evidence)
+    expect(
+        set(precision_targets) == set(EXPECTED_PRECISION_TARGETS),
+        "b61n precision evidence target set drifted",
+    )
+
+    minimum_reference_floor = 10**9
+    minimum_uplifted_digits = 10**9
+    for key, expected in EXPECTED_PRECISION_TARGETS.items():
+        target = precision_targets[key]
+        coefficient = cpp_coefficients.get(key)
+        expect(coefficient is not None,
+               f"b61n precision source C++ result missing {target_key(*key)}")
+        expect(
+            target.get("standard_serialization_matches_exact_rational_80") is True,
+            f"b61n precision evidence {target_key(*key)} lost exact-rational marker",
+        )
+        expect(
+            target.get("uplifted_160_extends_standard_80") is True,
+            f"b61n precision evidence {target_key(*key)} lost uplift extension marker",
+        )
+        expect(
+            target.get("uplifted_fraction_digits_exceed_reference_floor") is True,
+            f"b61n precision evidence {target_key(*key)} lost floor-exceeded marker",
+        )
+        for component in ("real", "imag"):
+            metrics = validate_precision_component(
+                target=target,
+                cpp_coefficient=coefficient,
+                expected_floor=expected[f"reference_floor_{component}_digits"],
+                component=component,
+                label=target_key(*key),
+            )
+            minimum_reference_floor = min(
+                minimum_reference_floor,
+                metrics["reference_floor_digits"],
+            )
+            minimum_uplifted_digits = min(
+                minimum_uplifted_digits,
+                metrics["uplifted_fraction_digits"],
+            )
+    expect(
+        normalize_int(
+            summary.get("minimum_reference_floor_digits"),
+            "b61n precision minimum_reference_floor_digits",
+        )
+        == minimum_reference_floor,
+        "b61n precision evidence minimum reference floor drifted",
+    )
+    return {
+        "precision_evidence_sidecar_reviewed": True,
+        "precision_evidence_source_cpp_result_bound": True,
+        "precision_evidence_target_count": len(precision_targets),
+        "precision_evidence_target_set": [
+            target_key(integral, eps_order)
+            for integral, eps_order in sorted(precision_targets)
+        ],
+        "precision_evidence_minimum_reference_floor_digits": minimum_reference_floor,
+        "precision_evidence_minimum_uplifted_fraction_digits": minimum_uplifted_digits,
+        "precision_evidence_fallback_explicit": True,
+        "precision_evidence_not_amflow_reference_backed": True,
+    }
+
+
+def validate_b61n_precision_evidence(
+    evidence_paths: dict[str, Path],
+) -> dict[str, Any]:
+    precision_path = evidence_paths[B61N_PRECISION_EVIDENCE]
+    precision_evidence = load_json(precision_path)
+    source_cpp_result = normalized_string(
+        precision_evidence.get("source_cpp_result"),
+        "b61n precision source_cpp_result",
+    )
+    cpp_path = resolve_sidecar_path(source_cpp_result, precision_path)
+    expect(cpp_path.exists(), "b61n precision source C++ result path is missing")
+    summary = validate_b61n_precision_payloads(
+        precision_evidence,
+        load_json(cpp_path),
+    )
+    return {
+        **summary,
+        "precision_evidence_sidecar_path": str(precision_path),
+        "precision_evidence_source_cpp_result": source_cpp_result,
+    }
+
+
 def validate_source_evidence(sidecar: dict[str, Any], sidecar_path: Path) -> dict[str, Any]:
     source_evidence = normalize_string_list(sidecar.get("source_evidence"), "source_evidence")
     for required in REQUIRED_SOURCE_EVIDENCE:
@@ -1317,8 +1733,10 @@ def validate_source_evidence(sidecar: dict[str, Any], sidecar_path: Path) -> dic
     source_contour = parse_source_contour_summary(
         normalized_string(stripped.get("summary"), "b61n stripped result summary")
     )
+    precision_evidence = validate_b61n_precision_evidence(evidence_paths)
     return {
         **source_contour,
+        **precision_evidence,
         "sidecar_path": sidecar_path,
         "retained_numeric_substitutions": normalize_numeric_substitutions(
             source_numeric_text,
@@ -1419,6 +1837,30 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "retained_numeric_evidence_matched": True,
         "reviewed_endpoint_compare_evidence_matched": source_evidence[
             "reviewed_endpoint_compare_evidence_matched"
+        ],
+        "precision_evidence_sidecar_reviewed": source_evidence[
+            "precision_evidence_sidecar_reviewed"
+        ],
+        "precision_evidence_source_cpp_result_bound": source_evidence[
+            "precision_evidence_source_cpp_result_bound"
+        ],
+        "precision_evidence_target_count": source_evidence[
+            "precision_evidence_target_count"
+        ],
+        "precision_evidence_target_set": source_evidence[
+            "precision_evidence_target_set"
+        ],
+        "precision_evidence_minimum_reference_floor_digits": source_evidence[
+            "precision_evidence_minimum_reference_floor_digits"
+        ],
+        "precision_evidence_minimum_uplifted_fraction_digits": source_evidence[
+            "precision_evidence_minimum_uplifted_fraction_digits"
+        ],
+        "precision_evidence_fallback_explicit": source_evidence[
+            "precision_evidence_fallback_explicit"
+        ],
+        "precision_evidence_not_amflow_reference_backed": source_evidence[
+            "precision_evidence_not_amflow_reference_backed"
         ],
         "amflow_cross_comparator_publication_gate_required": True,
         "amflow_cross_comparator_publication_gate_passed": all(
@@ -2141,12 +2583,35 @@ def run_self_check() -> dict[str, Any]:
         source_evidence_rejected = False
         try:
             bad = synthetic_sidecar()
-            bad["source_evidence"] = bad["source_evidence"][:-1]
+            bad["source_evidence"].remove(RETAINED_SOURCE_NUMERIC_EVIDENCE)
             bad_path = root / "missing-source-evidence.json"
             write_json(bad_path, bad)
             audit_sidecar(bad_path)
         except RuntimeError as error:
             source_evidence_rejected = "source_evidence missing" in str(error)
+
+        precision_evidence_rejected = False
+        try:
+            bad = synthetic_sidecar()
+            bad["source_evidence"].remove(B61N_PRECISION_EVIDENCE)
+            bad_path = root / "missing-precision-evidence.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            precision_evidence_rejected = B61N_PRECISION_EVIDENCE in str(error)
+
+        precision_evidence_drift_rejected = False
+        try:
+            precision = load_json(repo_root() / B61N_PRECISION_EVIDENCE)
+            cpp_result = load_json(repo_root() / B61N_PRECISION_CPP_RESULT)
+            precision["targets"][0]["standard_80"]["real"] = "0.0"
+            validate_b61n_precision_payloads(precision, cpp_result)
+        except RuntimeError as error:
+            precision_evidence_drift_rejected = (
+                "precision evidence no longer matches source C++ result" in str(error)
+                or "standard serialization no longer renders" in str(error)
+                or "standard digit count drifted" in str(error)
+            )
 
         m7_hook_rejected = False
         try:
@@ -2170,6 +2635,19 @@ def run_self_check() -> dict[str, Any]:
         "retained_numeric_evidence_matched": summary["retained_numeric_evidence_matched"],
         "reviewed_endpoint_compare_evidence_matched": summary[
             "reviewed_endpoint_compare_evidence_matched"
+        ],
+        "precision_evidence_sidecar_reviewed": summary[
+            "precision_evidence_sidecar_reviewed"
+        ],
+        "precision_evidence_source_cpp_result_bound": summary[
+            "precision_evidence_source_cpp_result_bound"
+        ],
+        "precision_evidence_target_count": summary["precision_evidence_target_count"],
+        "precision_evidence_fallback_explicit": summary[
+            "precision_evidence_fallback_explicit"
+        ],
+        "precision_evidence_not_amflow_reference_backed": summary[
+            "precision_evidence_not_amflow_reference_backed"
         ],
         "amflow_cross_comparator_publication_gate_required": summary[
             "amflow_cross_comparator_publication_gate_required"
@@ -2208,6 +2686,8 @@ def run_self_check() -> dict[str, Any]:
         "m6_promoted_sidecar_rejected": m6_promoted_sidecar_rejected,
         "m7_hook_rejected": m7_hook_rejected,
         "source_evidence_rejected": source_evidence_rejected,
+        "precision_evidence_rejected": precision_evidence_rejected,
+        "precision_evidence_drift_rejected": precision_evidence_drift_rejected,
         "swapped_variant_rejected": swapped_variant_rejected,
         "invalid_numeric_rejected": invalid_numeric_rejected,
         "retained_numeric_drift_rejected": retained_numeric_drift_rejected,

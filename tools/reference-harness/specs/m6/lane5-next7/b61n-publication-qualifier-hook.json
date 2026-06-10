@@ -6,7 +6,8 @@
     "tools/reference-harness/specs/m6/lane142/b61n-selected5-real-coefficients-evidence.json",
     "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.compare30.json",
     "tools/reference-harness/specs/m6/lane142/complex_kinematics.selected5.stripped-result.json",
-    "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json"
+    "tools/reference-harness/specs/phase0/complex_kinematics.amflow-state.json",
+    "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
   ],
   "publication_variants": [
     {

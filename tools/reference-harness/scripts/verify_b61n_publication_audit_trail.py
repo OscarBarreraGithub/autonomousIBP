@@ -438,6 +438,14 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
     accepted = validate_payload(payload)
     missing_publication_flag = copy.deepcopy(payload)
     del missing_publication_flag["entries"][0]["coefficient_publication"]
+    top_level_publication_mismatch = copy.deepcopy(payload)
+    top_level_publication_mismatch["entries"][0]["coefficient_publication"] = False
+    audit_success_mismatch = copy.deepcopy(payload)
+    replace_entry_audit_line(
+        audit_success_mismatch["entries"][0],
+        "success=",
+        "success=false",
+    )
     stale_matrix = copy.deepcopy(payload)
     stale_matrix["entries"][0]["matrix_fingerprint"] = "synthetic-stale-b61n-matrix"
     full_contour_overclaim = copy.deepcopy(payload)
@@ -459,6 +467,8 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
     stale_audit_fingerprint["entries"][1]["audit_fingerprint"] = (
         "fnv1a64:0000000000000000"
     )
+    label_order_drift = copy.deepcopy(payload)
+    label_order_drift["entries"] = list(reversed(label_order_drift["entries"]))
     checks = {
         "accepts_runtime_publication_audit_emitter": accepted[
             "publication_audit_trail_query_passed"
@@ -466,6 +476,14 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         "rejects_missing_entry_publication_flag": rejected(
             missing_publication_flag,
             "entries[0].coefficient_publication is missing",
+        ),
+        "rejects_top_level_audit_publication_mismatch": rejected(
+            top_level_publication_mismatch,
+            "audit coefficient_publication",
+        ),
+        "rejects_audit_success_line_mismatch": rejected(
+            audit_success_mismatch,
+            "audit success",
         ),
         "rejects_stale_matrix_fingerprint": rejected(
             stale_matrix,
@@ -486,6 +504,10 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         "rejects_stale_audit_fingerprint": rejected(
             stale_audit_fingerprint,
             "audit fingerprint must match audit text",
+        ),
+        "rejects_audit_label_order_drift": rejected(
+            label_order_drift,
+            "b61n audit entries must remain in published,blocked order",
         ),
     }
     expect(all(checks.values()), "b61n publication audit trail verifier self-check failed")

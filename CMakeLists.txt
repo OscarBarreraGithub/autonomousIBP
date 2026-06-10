@@ -219,6 +219,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-publication-qualifier-failure-modes-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_b61n_publication_qualifier.py
+      --self-check
+  )
+  set_tests_properties(b61n-publication-qualifier-failure-modes-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b61n-reference-floor-parity-gate
     COMMAND
       ${Python3_EXECUTABLE}
@@ -520,6 +530,14 @@ if(BUILD_TESTING)
       ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/b61n_parity_status_summary.py
       --self-check)
   set_tests_properties(b61n-parity-status-summary-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-parity-status-summary-json-fixture
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_b61n_parity_status_json_fixture.py)
+  set_tests_properties(b61n-parity-status-summary-json-fixture
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 

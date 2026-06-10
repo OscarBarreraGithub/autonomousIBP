@@ -1,0 +1,86 @@
+{
+  "audit_fingerprints": {
+    "entries": [
+      {
+        "category": "b61n-publication-contour-evaluation",
+        "label": "published-lane142-primitive-bubble",
+        "pinned_fingerprint": "fnv1a64:92f403f7f2c701d5"
+      }
+    ],
+    "entry_count": 1,
+    "pins_match": null,
+    "runtime_checked": false
+  },
+  "blockers": [
+    "row 5/6 comparison is matched to retained AMFlow reference floor, not 50-digit parity",
+    "publication gate remains blocked by the b61n AMFlow cross-comparator floor"
+  ],
+  "inputs_verified": true,
+  "precision_uplift": {
+    "amflow_reference_values_used_for_digit_count": false,
+    "component_count": 8,
+    "minimum_reference_floor_digits": 11,
+    "minimum_standard_fraction_digits": 80,
+    "minimum_uplifted_fraction_digits": 160,
+    "target_count": 4
+  },
+  "publication_gate": {
+    "blocked_variant_count": 5,
+    "gate_passed": false,
+    "m6_qualifier_hook_currently_promoted": false,
+    "m6_qualifier_hook_prepositioned": true,
+    "m7_parity_single_row_hook_prepositioned": true,
+    "minimum_digit_agreement_observed": 2,
+    "minimum_digit_agreement_required": 50,
+    "variant_count": 5
+  },
+  "reference_floor": {
+    "compared_coefficient_count": 14,
+    "comparison_verdict": "matched-to-reference-floor",
+    "matched_to_reference_floor_count": 4,
+    "matched_to_tolerance_count": 10,
+    "minimum_digit_agreement": 11,
+    "targets": [
+      {
+        "integral": "box[1,0,1,1]",
+        "order": 0,
+        "reference_floor_id": "b61n-row5-eps0-retained-amflow-floor",
+        "reference_floor_imag_digits": 11,
+        "reference_floor_real_digits": 11
+      },
+      {
+        "integral": "box[1,1,1,1]",
+        "order": -2,
+        "reference_floor_id": "b61n-row6-eps-2-retained-amflow-floor",
+        "reference_floor_imag_digits": 46,
+        "reference_floor_real_digits": 46
+      },
+      {
+        "integral": "box[1,1,1,1]",
+        "order": -1,
+        "reference_floor_id": "b61n-row6-eps-1-retained-amflow-floor",
+        "reference_floor_imag_digits": 13,
+        "reference_floor_real_digits": 12
+      },
+      {
+        "integral": "box[1,1,1,1]",
+        "order": 0,
+        "reference_floor_id": "b61n-row6-eps0-retained-amflow-floor",
+        "reference_floor_imag_digits": 12,
+        "reference_floor_real_digits": 12
+      }
+    ]
+  },
+  "schema_version": 1,
+  "status": "blocked-reference-floor-limited",
+  "summary_id": "b61n-post-m7-parity-status-v1",
+  "withheld_claims": [
+    "This summary reads committed b61n evidence and optional audit fingerprints only.",
+    "This summary does not rerun AMFlow numerics.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim full eta=0 contour execution.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

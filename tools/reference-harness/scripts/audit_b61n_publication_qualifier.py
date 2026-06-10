@@ -1067,6 +1067,10 @@ def validate_amflow_cross_comparator_publication_gate(
             status.startswith("blocked-"),
             f"{label} blocked publication gate must publish a blocked status",
         )
+        expect(
+            diagnostic_evidence,
+            f"{label} blocked AMFlow comparator publication gate diagnostic evidence is required",
+        )
     expect(
         not coefficient_publication or gate_passed,
         f"{label} cannot publish before AMFlow cross-comparator digit agreement passes",
@@ -2696,6 +2700,89 @@ def run_self_check() -> dict[str, Any]:
                 "matched count is inconsistent" in str(error)
             )
 
+        publication_gate_rejects_missing_blocked_diagnostic = False
+        try:
+            bad = synthetic_sidecar()
+            del bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"][
+                "diagnostic_evidence"
+            ]
+            bad_path = root / "publication-missing-blocked-diagnostic.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_missing_blocked_diagnostic = (
+                "diagnostic evidence is required" in str(error)
+            )
+
+        publication_gate_rejects_false_pass_status = False
+        try:
+            bad = synthetic_sidecar()
+            bad["publication_variants"][0]["amflow_cross_comparator_publication_gate"][
+                "status"
+            ] = "passed"
+            bad_path = root / "publication-false-pass-status.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_false_pass_status = (
+                "blocked publication gate must publish a blocked status" in str(error)
+            )
+
+        publication_gate_rejects_missing_passed_cpp_hash = False
+        try:
+            bad = synthetic_sidecar()
+            for bad_variant in bad["publication_variants"]:
+                bad_variant["coefficient_publication"] = True
+                bad_variant["amflow_cross_comparator_publication_gate"] = {
+                    "required_before_coefficient_publication": True,
+                    "comparison_kind": "cpp-vs-amflow",
+                    "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement_observed": 54,
+                    "comparison_summary": "publication-compare50.json",
+                    "comparison_summary_sha256": sha256_file(
+                        root / "publication-compare50.json"
+                    ),
+                    "amflow_golden_sha256": publication_amflow_golden_sha256,
+                    "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                    "status": "passed",
+                    "currently_allows_publication": True,
+                }
+            bad_path = root / "publication-passed-missing-cpp-hash.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_missing_passed_cpp_hash = (
+                "cpp_result sha256 is required" in str(error)
+            )
+
+        publication_gate_rejects_observed_digit_drift = False
+        try:
+            bad = synthetic_sidecar()
+            for bad_variant in bad["publication_variants"]:
+                bad_variant["coefficient_publication"] = True
+                bad_variant["amflow_cross_comparator_publication_gate"] = {
+                    "required_before_coefficient_publication": True,
+                    "comparison_kind": "cpp-vs-amflow",
+                    "minimum_digit_agreement_required": MINIMUM_PROMOTION_DIGITS,
+                    "minimum_digit_agreement_observed": 55,
+                    "comparison_summary": "publication-compare50.json",
+                    "comparison_summary_sha256": sha256_file(
+                        root / "publication-compare50.json"
+                    ),
+                    "cpp_result_sha256": publication_cpp_result_sha256,
+                    "amflow_golden_sha256": publication_amflow_golden_sha256,
+                    "diagnostic_evidence": SYSTEMATIC_MISMATCH_DIAGNOSTIC,
+                    "status": "passed",
+                    "currently_allows_publication": True,
+                }
+            bad_path = root / "publication-observed-digit-drift.json"
+            write_json(bad_path, bad)
+            audit_sidecar(bad_path)
+        except RuntimeError as error:
+            publication_gate_rejects_observed_digit_drift = (
+                "observed digits drifted" in str(error)
+            )
+
         m6_promoted_sidecar_rejected = False
         try:
             promoted = synthetic_sidecar()
@@ -2791,7 +2878,7 @@ def run_self_check() -> dict[str, Any]:
         except RuntimeError as error:
             m7_hook_rejected = "single-row path" in str(error)
 
-    return {
+    checks = {
         "publication_gate_reviewed": summary["publication_gate_reviewed"],
         "full_selected5_endpoint_variants": summary["full_selected5_endpoint_variants"],
         "new_lane5_endpoint_variant": summary["new_lane5_endpoint_variant"],
@@ -2839,6 +2926,18 @@ def run_self_check() -> dict[str, Any]:
         "publication_gate_rejects_bad_matched_count": (
             publication_gate_rejects_bad_matched_count
         ),
+        "publication_gate_rejects_missing_blocked_diagnostic": (
+            publication_gate_rejects_missing_blocked_diagnostic
+        ),
+        "publication_gate_rejects_false_pass_status": (
+            publication_gate_rejects_false_pass_status
+        ),
+        "publication_gate_rejects_missing_passed_cpp_hash": (
+            publication_gate_rejects_missing_passed_cpp_hash
+        ),
+        "publication_gate_rejects_observed_digit_drift": (
+            publication_gate_rejects_observed_digit_drift
+        ),
         "m6_qualifier_hook_prepositioned": summary["m6_qualifier_hook_prepositioned"],
         "m6_auto_promote_accepts_future_packet": m6_auto_promote_accepts_future_packet,
         "m6_scalar_digit_summary_rejected": m6_scalar_digit_summary_rejected,
@@ -2868,6 +2967,14 @@ def run_self_check() -> dict[str, Any]:
         ],
         "summary_written": summary_written,
     }
+    failed_checks = [
+        key for key, value in checks.items() if isinstance(value, bool) and not value
+    ]
+    expect(
+        not failed_checks,
+        "b61n publication qualifier self-check failed: " + ", ".join(failed_checks),
+    )
+    return checks
 
 
 def run_diagnostic_fields_check(sidecar_path: Path) -> dict[str, Any]:

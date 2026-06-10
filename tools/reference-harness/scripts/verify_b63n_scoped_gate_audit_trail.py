@@ -35,6 +35,9 @@ EXPECTED_CANDIDATE_PROVENANCE = {
     "blocked-D2-scoped-weighted-residue": "D2;series=automatic_phasespace::weighted-moment-seed::D2::prefactor;eta_zero_label=automatic_phasespace_D2_weighted_moment_seed;coefficient_label=automatic_phasespace_D2_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
     "published-D7-scoped-weighted-residue": "D7;series=automatic_phasespace::reviewed-weighted-residue::D7::eps0-eps3;eta_zero_label=automatic_phasespace_D7_weighted_residue_eps0;coefficient_label=automatic_phasespace_D7_weighted_residue_eps0;source=tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.compare30.json;fixture=lane146-reviewed-automatic-phasespace-D7-weighted-residue-eps0;synthetic=false;retained_solution_samples_used=false;coefficient_published=true",
 }
+FNV1A64_OFFSET = 14695981039346656037
+FNV1A64_PRIME = 1099511628211
+FNV1A64_MASK = (1 << 64) - 1
 
 
 def repo_root() -> Path:
@@ -44,6 +47,14 @@ def repo_root() -> Path:
 def expect(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
+
+
+def compute_artifact_fingerprint(text: str) -> str:
+    value = FNV1A64_OFFSET
+    for byte in text.encode("utf-8"):
+        value ^= byte
+        value = (value * FNV1A64_PRIME) & FNV1A64_MASK
+    return f"fnv1a64:{value:016x}"
 
 
 def common_binary_candidates(root: Path) -> list[Path]:
@@ -225,7 +236,16 @@ def validate_entry(raw_entry: Any, index: int) -> dict[str, Any]:
         require_entry_field(raw_entry, "audit", f"entries[{index}].audit"),
         f"entries[{index}].audit",
     )
-    expect(fingerprint.startswith("fnv1a64:"), f"{label} audit fingerprint must be fnv1a64")
+    expect(
+        fingerprint.startswith("fnv1a64:"),
+        f"{label} audit fingerprint must be fnv1a64",
+    )
+    expected_fingerprint = compute_artifact_fingerprint(audit)
+    expect(
+        fingerprint == expected_fingerprint,
+        f"{label} audit fingerprint must match audit text: "
+        f"expected {expected_fingerprint}, got {fingerprint}",
+    )
 
     fields = parse_audit_text(audit)
     required_exact = {
@@ -338,6 +358,16 @@ def replace_audit_line(audit: str, prefix: str, replacement: str | None) -> str:
     return "\n".join(output) + "\n"
 
 
+def replace_entry_audit_line(
+    entry: dict[str, Any],
+    prefix: str,
+    replacement: str | None,
+) -> None:
+    audit = replace_audit_line(entry["audit"], prefix, replacement)
+    entry["audit"] = audit
+    entry["audit_fingerprint"] = compute_artifact_fingerprint(audit)
+
+
 def rejected(payload: dict[str, Any], expected_message: str) -> bool:
     try:
         validate_payload(payload)
@@ -351,23 +381,27 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
     missing_entry_gate_field = copy.deepcopy(payload)
     del missing_entry_gate_field["entries"][0]["publication_gate_checked"]
     missing_nested_gate = copy.deepcopy(payload)
-    missing_nested_gate["entries"][0]["audit"] = replace_audit_line(
-        missing_nested_gate["entries"][0]["audit"],
+    replace_entry_audit_line(
+        missing_nested_gate["entries"][0],
         "moment_cross_validation_publication_gate=",
         None,
     )
     stale_seed_identity = copy.deepcopy(payload)
-    stale_seed_identity["entries"][1]["audit"] = replace_audit_line(
-        stale_seed_identity["entries"][1]["audit"],
+    replace_entry_audit_line(
+        stale_seed_identity["entries"][1],
         "moment_cross_validation_seed_denominator_identity[3]=",
         "moment_cross_validation_seed_denominator_identity[3]=D7;stale=true",
     )
     full_contour_overclaim = copy.deepcopy(payload)
     full_contour_overclaim["entries"][0]["full_eta_zero_contour_applied"] = True
-    full_contour_overclaim["entries"][0]["audit"] = replace_audit_line(
-        full_contour_overclaim["entries"][0]["audit"],
+    replace_entry_audit_line(
+        full_contour_overclaim["entries"][0],
         "full_eta_zero_contour_applied=",
         "full_eta_zero_contour_applied=true",
+    )
+    stale_audit_fingerprint = copy.deepcopy(payload)
+    stale_audit_fingerprint["entries"][1]["audit_fingerprint"] = (
+        "fnv1a64:0000000000000000"
     )
     checks = {
         "accepts_runtime_scoped_gate_emitter": accepted["scoped_gate_audit_query_passed"],
@@ -378,6 +412,10 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         "rejects_missing_nested_gate_status": rejected(missing_nested_gate, "audit missing moment_cross_validation_publication_gate"),
         "rejects_stale_nested_seed_identity": rejected(stale_seed_identity, "nested seed identities"),
         "rejects_full_contour_overclaim": rejected(full_contour_overclaim, "must not claim full eta-zero contour"),
+        "rejects_stale_audit_fingerprint": rejected(
+            stale_audit_fingerprint,
+            "audit fingerprint must match audit text",
+        ),
     }
     expect(all(checks.values()), "b63n scoped gate audit trail verifier self-check failed")
     accepted["self_check_passed"] = True

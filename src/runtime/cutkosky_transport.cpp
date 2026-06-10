@@ -3313,4 +3313,10 @@ std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
   return out.str();
 }
 
+std::string ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+    const CutkoskyScopedWeightedResidueEvaluation& evaluation) {
+  return ComputeArtifactFingerprint(
+      SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation));
+}
+
 }  // namespace amflow

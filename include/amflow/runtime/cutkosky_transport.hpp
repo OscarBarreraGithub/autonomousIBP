@@ -413,5 +413,7 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
     int requested_precision_digits = 80);
 std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
     const CutkoskyScopedWeightedResidueEvaluation& evaluation);
+std::string ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+    const CutkoskyScopedWeightedResidueEvaluation& evaluation);
 
 }  // namespace amflow

@@ -738,6 +738,51 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
+void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
+  const amflow::CutkoskyScopedWeightedResidueEvaluation blocked_d2 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          1,
+          2,
+          70);
+  const amflow::CutkoskyScopedWeightedResidueEvaluation published_d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          6,
+          3,
+          70);
+
+  Expect(!blocked_d2.publication_gate_passed &&
+             blocked_d2.failure_code == "boundary_unsolved",
+         "b63n D2 audit fingerprint regression requires the blocked D2 input");
+  Expect(published_d7.publication_gate_passed &&
+             published_d7.reference_validation_passed,
+         "b63n D7 audit fingerprint regression requires the published D7 input");
+
+  const std::string blocked_d2_fingerprint =
+      amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+          blocked_d2);
+  const std::string published_d7_fingerprint =
+      amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+          published_d7);
+  ExpectEqual(blocked_d2_fingerprint,
+              "fnv1a64:8c19abf9c1a1f0d1",
+              "blocked b63n D2 weighted-residue audit fingerprint should stay pinned");
+  ExpectEqual(published_d7_fingerprint,
+              "fnv1a64:1c099d4fbf9dd649",
+              "published b63n D7 weighted-residue audit fingerprint should stay pinned");
+  Expect(blocked_d2_fingerprint != published_d7_fingerprint,
+         "blocked and published b63n weighted-residue audits should not hash "
+         "to the same value");
+
+  amflow::CutkoskyScopedWeightedResidueEvaluation tampered_d2 = blocked_d2;
+  tampered_d2.publication_gate_status += "; drift";
+  Expect(amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+             tampered_d2) != blocked_d2_fingerprint,
+         "b63n weighted-residue audit fingerprint should change when the "
+         "canonical audit output drifts");
+}
+
 void ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest() {
   const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
   const amflow::CutkoskyScopedWeightedResidueEvaluation first =
@@ -1812,6 +1857,7 @@ int main() {
   try {
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
+    ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest();
     ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();

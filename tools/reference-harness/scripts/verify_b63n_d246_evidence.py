@@ -450,6 +450,10 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if "skeleton" in payload:
         skeleton = require_bool(payload.get("skeleton"), "skeleton")
     expect(not (passed and skeleton), "skeleton evidence cannot also pass publication")
+    expect(
+        passed or skeleton,
+        "D246 evidence must be either published evidence or an explicit skeleton",
+    )
     published = passed and not skeleton
     if skeleton:
         status = require_string(payload.get("status"), "status")
@@ -674,6 +678,10 @@ def run_self_check() -> dict[str, Any]:
     bad_skeleton_passed = skeleton_fixture()
     bad_skeleton_passed["passed"] = True
 
+    bad_unclassified_unpublished = skeleton_fixture()
+    bad_unclassified_unpublished["skeleton"] = False
+    bad_unclassified_unpublished.pop("status")
+
     bad_skeleton_placeholder_blocker = skeleton_fixture()
     bad_skeleton_placeholder_blocker["weights"][0]["reference_validation"][
         "blocked_reason"
@@ -731,6 +739,10 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_cannot_pass_publication": rejected(
             bad_skeleton_passed,
             "skeleton evidence cannot also pass publication",
+        ),
+        "unpublished_evidence_must_be_explicit_skeleton": rejected(
+            bad_unclassified_unpublished,
+            "must be either published evidence or an explicit skeleton",
         ),
         "skeleton_rejects_placeholder_blocker": rejected(
             bad_skeleton_placeholder_blocker,

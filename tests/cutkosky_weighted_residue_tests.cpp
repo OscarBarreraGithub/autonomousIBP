@@ -1043,6 +1043,131 @@ void ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTe
                  "the conjugate validation marker");
 }
 
+void ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest() {
+  const amflow::ProblemSpec automatic_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyWeightedResidueEvaluationPlan automatic_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(automatic_spec);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          automatic_spec,
+          3,
+          70);
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate automatic_gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(automatic_plan,
+                                                             seed_packet);
+  Expect(automatic_gate.passed,
+         "b63n D7/conjugate composition requires the reviewed automatic seed gate");
+
+  const auto d7_seed =
+      std::find_if(seed_packet.begin(),
+                   seed_packet.end(),
+                   [](const amflow::CutkoskyWeightedResidueMomentSeed& seed) {
+                     return seed.selected_weight_denominator == "D7";
+                   });
+  Expect(d7_seed != seed_packet.end() &&
+             d7_seed->selected_weight_denominator_index == 6 &&
+             d7_seed->selected_weight_power == 1,
+         "b63n D7/conjugate composition should bind the reviewed D7 seed");
+
+  const amflow::CutkoskyScopedWeightedResidueEvaluation published_d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          automatic_spec,
+          6,
+          3,
+          70);
+  Expect(published_d7.publication_gate_passed &&
+             published_d7.reference_validation_passed &&
+             published_d7.live_coefficients_available &&
+             !published_d7.full_eta_zero_contour_applied,
+         "b63n D7/conjugate composition requires the scoped D7 publication only");
+
+  for (const int eps_order : {0, 1, 2, 3}) {
+    const amflow::CutkoskyResidueSeriesTerm& seed_term =
+        ResidueTermAt(d7_seed->residue_series, eps_order);
+    const amflow::CutkoskyResidueSeriesTerm& published_term =
+        ResidueTermAt(published_d7.candidate_series, eps_order);
+    Expect(DecimalSign(seed_term.coefficient.real) < 0 &&
+               seed_term.coefficient.imaginary == "0",
+           "b63n D7 seed eps^" + std::to_string(eps_order) +
+               " should keep the negative K_2 seed sign before composition");
+    Expect(DecimalSign(published_term.coefficient.real) > 0 &&
+               published_term.coefficient.imaginary == "0",
+           "b63n D7 published eps^" + std::to_string(eps_order) +
+               " should keep the reviewed positive sign before composition");
+    Expect(seed_term.provenance.synthetic_fixture &&
+               !seed_term.provenance.coefficient_published &&
+               !seed_term.provenance.retained_solution_samples_used &&
+               published_term.provenance.coefficient_published &&
+               !published_term.provenance.synthetic_fixture &&
+               !published_term.provenance.retained_solution_samples_used,
+           "b63n D7 seed and publication provenance should remain separated "
+           "before composition");
+  }
+
+  const std::string seed_packet_audit =
+      amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(seed_packet);
+  const std::string published_d7_audit =
+      amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(published_d7);
+  Expect(NormalizeB63nConjugatePlanAudit(seed_packet_audit) ==
+             seed_packet_audit,
+         "b63n feynman conjugate normalizer must leave automatic D7 seed signs "
+         "unchanged");
+  Expect(NormalizeB63nConjugatePlanAudit(published_d7_audit) ==
+             published_d7_audit,
+         "b63n feynman conjugate normalizer must leave scoped D7 publication "
+         "signs unchanged");
+  ExpectContains(
+      seed_packet_audit,
+      "D7;series=automatic_phasespace::weighted-moment-seed::D7::prefactor",
+      "b63n D7/conjugate composition should keep the D7 seed provenance visible");
+  ExpectContains(published_d7_audit,
+                 "selected_weight=D7",
+                 "b63n D7/conjugate composition should keep the D7 scoped "
+                 "publication visible");
+
+  const amflow::ProblemSpec plus_minus_spec =
+      MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                      amflow::FeynmanPrescription::MinusI0);
+  amflow::ProblemSpec minus_plus_spec = plus_minus_spec;
+  FlipB63nFeynmanConjugatePrescriptions(minus_plus_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plus_minus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(plus_minus_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan minus_plus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(minus_plus_spec);
+  Expect(plus_minus_plan.requires_feynman_conjugate_validation &&
+             minus_plus_plan.requires_feynman_conjugate_validation &&
+             plus_minus_plan.coefficient_free &&
+             minus_plus_plan.coefficient_free &&
+             !plus_minus_plan.live_coefficients_available &&
+             !minus_plus_plan.live_coefficients_available &&
+             !plus_minus_plan.full_eta_zero_contour_applied &&
+             !minus_plus_plan.full_eta_zero_contour_applied,
+         "b63n feynman conjugate composition should remain a non-publishing "
+         "plan guard");
+  Expect(plus_minus_plan.conjugate_residue_model_kind ==
+             minus_plus_plan.residue_model_kind &&
+             minus_plus_plan.conjugate_residue_model_kind ==
+                 plus_minus_plan.residue_model_kind,
+         "b63n feynman conjugate composition should keep symmetric conjugate "
+         "partners");
+
+  const std::string plus_composite_audit =
+      seed_packet_audit + published_d7_audit +
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          plus_minus_plan);
+  const std::string minus_composite_audit =
+      seed_packet_audit + published_d7_audit +
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          minus_plus_plan);
+  Expect(plus_composite_audit != minus_composite_audit,
+         "b63n D7/conjugate composition should expose the sign-bearing feynman "
+         "ledger before normalization");
+  Expect(NormalizeB63nConjugatePlanAudit(plus_composite_audit) ==
+             NormalizeB63nConjugatePlanAudit(minus_composite_audit),
+         "b63n D7 seed sign audit should compose with the feynman conjugate flip "
+         "after only conjugate sign tokens are normalized");
+}
+
 void ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest() {
   const amflow::ProblemSpec canonical_spec = MakeB63nAutomaticPhaseSpaceSpec();
   amflow::ProblemSpec transformed_spec = canonical_spec;
@@ -1691,6 +1816,7 @@ int main() {
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
+    ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();
     ScopedAutomaticPhaseSpaceSeedIdentitySignBoundaryTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();

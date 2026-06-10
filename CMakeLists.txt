@@ -303,6 +303,15 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-evidence-manifest-digest-fixture
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_evidence_manifest_digest.py
+  )
+  set_tests_properties(m7-release-evidence-manifest-digest-fixture PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-markdown-docs-validation
     COMMAND
       ${Python3_EXECUTABLE}

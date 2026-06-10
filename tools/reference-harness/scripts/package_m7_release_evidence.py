@@ -26,6 +26,8 @@ DEFAULT_M5_ACCEPTANCE_SIDECAR = Path(
 )
 DEFAULT_BUNDLE_ROOT = "m7-release-evidence"
 MANIFEST_NAME = "manifest.json"
+EVIDENCE_CORPUS_DIGEST_ALGORITHM = "sha256-length-prefixed-path-and-bytes-v1"
+SYNTHETIC_CORPUS_DIGEST = "b579c9c5587df3fb81c750b3cd133573aee5bda295a9881faf1da26194cfe1d9"
 
 READINESS_INPUT_PATH_FIELDS: tuple[str, ...] = (
     "qualification_summary_path",
@@ -144,26 +146,44 @@ def collect_release_evidence_paths(root: Path, readiness_sidecar: Path) -> list[
     return sorted(evidence_paths)
 
 
-def file_digest(path: Path) -> str:
+def sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def update_length_prefixed(digest: Any, data: bytes) -> None:
+    digest.update(len(data).to_bytes(8, "big"))
+    digest.update(data)
+
+
+def evidence_corpus_digest_from_records(records: list[tuple[str, bytes]]) -> str:
     digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
+    digest.update(b"autoibp-m7-release-evidence-corpus-v1\n")
+    for relative_path, data in sorted(records):
+        update_length_prefixed(digest, relative_path.encode("utf-8"))
+        update_length_prefixed(digest, data)
     return digest.hexdigest()
+
+
+def evidence_corpus_digest(root: Path, evidence_paths: list[str]) -> str:
+    records = [(relative_path, (root / relative_path).read_bytes()) for relative_path in evidence_paths]
+    return evidence_corpus_digest_from_records(records)
 
 
 def build_manifest(root: Path, readiness_sidecar: Path, bundle_root: str) -> dict[str, Any]:
     bundle_root = require_bundle_root(bundle_root)
     evidence_paths = collect_release_evidence_paths(root, readiness_sidecar)
     files: list[dict[str, Any]] = []
+    corpus_records: list[tuple[str, bytes]] = []
     for relative_path in evidence_paths:
         file_path = root / relative_path
+        data = file_path.read_bytes()
+        corpus_records.append((relative_path, data))
         files.append(
             {
                 "path": relative_path,
                 "archive_path": f"{bundle_root}/{relative_path}",
-                "bytes": file_path.stat().st_size,
-                "sha256": file_digest(file_path),
+                "bytes": len(data),
+                "sha256": sha256_hex(data),
             }
         )
 
@@ -174,6 +194,8 @@ def build_manifest(root: Path, readiness_sidecar: Path, bundle_root: str) -> dic
         "readiness_sidecar": require_repo_file(root, readiness_sidecar.as_posix(), "readiness sidecar"),
         "bundle_root": bundle_root,
         "file_count": len(files),
+        "evidence_corpus_digest_algorithm": EVIDENCE_CORPUS_DIGEST_ALGORITHM,
+        "evidence_corpus_sha256": evidence_corpus_digest_from_records(corpus_records),
         "files": files,
         "withheld_claims": list(WITHHELD_CLAIMS),
     }
@@ -222,6 +244,22 @@ def assert_safe_archive_name(name: str) -> None:
 
 
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
+    expected_corpus_digest = manifest.get("evidence_corpus_sha256")
+    if (
+        not isinstance(expected_corpus_digest, str)
+        or len(expected_corpus_digest) != 64
+        or any(char not in "0123456789abcdef" for char in expected_corpus_digest)
+    ):
+        raise BundleError("bundle manifest must publish a 64-character evidence_corpus_sha256")
+    if manifest.get("evidence_corpus_digest_algorithm") != EVIDENCE_CORPUS_DIGEST_ALGORITHM:
+        raise BundleError("bundle manifest has an unsupported evidence corpus digest algorithm")
+    actual_corpus_digest = evidence_corpus_digest(
+        root,
+        [entry["path"] for entry in manifest.get("files", [])],
+    )
+    if actual_corpus_digest != expected_corpus_digest:
+        raise BundleError("bundle manifest evidence_corpus_sha256 does not match the release evidence corpus")
+
     expected_names = {entry["archive_path"] for entry in manifest["files"]}
     expected_names.add(f"{manifest['bundle_root']}/{MANIFEST_NAME}")
 
@@ -256,6 +294,19 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
 
 
 def self_check(root: Path) -> None:
+    synthetic_records = [
+        ("b/release.json", b"{\"status\":\"accepted\"}\n"),
+        ("a/readiness.json", b"{\"ready\":true}\n"),
+    ]
+    synthetic_digest = evidence_corpus_digest_from_records(list(reversed(synthetic_records)))
+    if synthetic_digest != SYNTHETIC_CORPUS_DIGEST:
+        raise BundleError("synthetic release evidence corpus digest drifted")
+    mutated_digest = evidence_corpus_digest_from_records(
+        [("b/release.json", b"{\"status\":\"blocked\"}\n"), synthetic_records[1]]
+    )
+    if mutated_digest == synthetic_digest:
+        raise BundleError("release evidence corpus digest did not detect content drift")
+
     with tempfile.TemporaryDirectory(prefix="m7-release-evidence-bundle-") as temp_dir:
         output_path = Path(temp_dir) / "m7-release-evidence.tar.gz"
         manifest = build_manifest(root, DEFAULT_READINESS_SIDECAR, DEFAULT_BUNDLE_ROOT)
@@ -327,6 +378,7 @@ def main() -> int:
             json.dumps(
                 {
                     "bundle": str(args.output),
+                    "evidence_corpus_sha256": manifest["evidence_corpus_sha256"],
                     "file_count": manifest["file_count"],
                     "manifest": f"{manifest['bundle_root']}/{MANIFEST_NAME}",
                     "source_commit": manifest["source_commit"],

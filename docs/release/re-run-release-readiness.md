@@ -66,9 +66,13 @@ python3 tools/reference-harness/scripts/package_m7_release_evidence.py \
 
 The archive contains the accepted readiness output, the direct readiness input
 sidecars and checklist, the M5 acceptance sidecar, the JSON sidecars named by
-that M5 acceptance packet, and a checksum manifest. CTest runs
+that M5 acceptance packet, and a checksum manifest. The manifest also publishes
+`evidence_corpus_sha256`, a deterministic SHA-256 over sorted repo-relative
+evidence paths and exact file bytes. CTest runs
 `m7-release-evidence-bundle-self-check` to build and validate the same archive
-shape in a temporary directory.
+shape in a temporary directory, and
+`m7-release-evidence-manifest-digest-fixture` to fail if the committed evidence
+corpus drifts without an intentional digest refresh.
 
 ## Direct replay
 

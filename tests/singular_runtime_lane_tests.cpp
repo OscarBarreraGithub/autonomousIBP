@@ -52,6 +52,23 @@ void ExpectNotContains(const std::string& value,
   }
 }
 
+std::string ReplaceAll(std::string value,
+                       const std::string& needle,
+                       const std::string& replacement) {
+  std::size_t position = 0;
+  while ((position = value.find(needle, position)) != std::string::npos) {
+    value.replace(position, needle.size(), replacement);
+    position += replacement.size();
+  }
+  return value;
+}
+
+std::string NormalizeCutkoskyConjugateSignTokens(std::string value) {
+  value = ReplaceAll(std::move(value), "plus_i0", "conjugate_i0");
+  value = ReplaceAll(std::move(value), "minus_i0", "conjugate_i0");
+  return value;
+}
+
 const amflow::CutkoskyPrefactorSeriesTerm& CutkoskyPrefactorTermAt(
     const amflow::CutkoskyPrefactorSeries& series,
     const int eps_order) {
@@ -1644,6 +1661,186 @@ void B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest
                  "b63n feynman_prescription scaffold should record the conjugate uncut ledger");
   Expect(!plus_minus.live_coefficients_available && !minus_plus.live_coefficients_available,
          "b63n feynman_prescription scaffold must not claim coefficient parity");
+}
+
+void B63nFeynmanPrescriptionConjugateFlipPreservesSignBlindScaffoldTest() {
+  const amflow::ProblemSpec plus_minus_spec =
+      MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                      amflow::FeynmanPrescription::MinusI0);
+  const amflow::ProblemSpec minus_plus_spec =
+      MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::MinusI0,
+                                      amflow::FeynmanPrescription::PlusI0);
+
+  const amflow::CutkoskyEtaZeroTransportAudit plus_minus_audit =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(plus_minus_spec);
+  const amflow::CutkoskyEtaZeroTransportAudit minus_plus_audit =
+      amflow::BuildCutkoskyEtaZeroTransportScaffold(minus_plus_spec);
+  Expect(plus_minus_audit.reviewed_surface && minus_plus_audit.reviewed_surface,
+         "b63n feynman conjugate flip should stay on reviewed surfaces");
+  Expect(plus_minus_audit.cut_propagator_indices ==
+             minus_plus_audit.cut_propagator_indices,
+         "b63n feynman conjugate flip should preserve cut support");
+  Expect(plus_minus_audit.cut_powers == minus_plus_audit.cut_powers,
+         "b63n feynman conjugate flip should preserve cut powers");
+  Expect(plus_minus_audit.phase_volume_loop_momenta ==
+             minus_plus_audit.phase_volume_loop_momenta,
+         "b63n feynman conjugate flip should preserve phase-volume loop momenta");
+  Expect(plus_minus_audit.phase_volume_loop_count ==
+             minus_plus_audit.phase_volume_loop_count,
+         "b63n feynman conjugate flip should preserve phase-volume loop count");
+  Expect(plus_minus_audit.provider_strategy == minus_plus_audit.provider_strategy,
+         "b63n feynman conjugate flip should preserve the cut provider strategy");
+  Expect(plus_minus_audit.eta_contour_direction ==
+             minus_plus_audit.eta_contour_direction,
+         "b63n feynman conjugate flip should preserve eta-contour direction");
+  Expect(plus_minus_audit.cutkosky_prefactor ==
+             minus_plus_audit.cutkosky_prefactor,
+         "b63n feynman conjugate flip should preserve the K_1 prefactor");
+  Expect(NormalizeCutkoskyConjugateSignTokens(
+             plus_minus_audit.branch_ledger_entries.back()) ==
+             NormalizeCutkoskyConjugateSignTokens(
+                 minus_plus_audit.branch_ledger_entries.back()),
+         "b63n feynman conjugate flip should preserve the sign-blind branch-ledger "
+         "shape");
+  Expect(plus_minus_audit.branch_ledger[1].prescriptions[0].prescription ==
+             amflow::FeynmanPrescription::PlusI0 &&
+             minus_plus_audit.branch_ledger[1].prescriptions[0].prescription ==
+                 amflow::FeynmanPrescription::MinusI0 &&
+             plus_minus_audit.branch_ledger[1].prescriptions[1].prescription ==
+                 amflow::FeynmanPrescription::MinusI0 &&
+             minus_plus_audit.branch_ledger[1].prescriptions[1].prescription ==
+                 amflow::FeynmanPrescription::PlusI0,
+         "b63n feynman conjugate flip should swap only the T_l1/T_l2 branch signs");
+
+  const amflow::CutkoskyResidueEndpointModel plus_minus_model =
+      amflow::BuildCutkoskyResidueEndpointModel(plus_minus_spec);
+  const amflow::CutkoskyResidueEndpointModel minus_plus_model =
+      amflow::BuildCutkoskyResidueEndpointModel(minus_plus_spec);
+  Expect(plus_minus_model.phase_space_parameterization ==
+             minus_plus_model.phase_space_parameterization,
+         "b63n feynman conjugate flip should preserve the phase-space parameterization");
+  Expect(plus_minus_model.physical_integration_domain ==
+             minus_plus_model.physical_integration_domain,
+         "b63n feynman conjugate flip should preserve the physical domain");
+  Expect(plus_minus_model.kallen_discriminant ==
+             minus_plus_model.kallen_discriminant,
+         "b63n feynman conjugate flip should preserve the Kallen discriminant");
+  Expect(plus_minus_model.contour_half_plane ==
+             minus_plus_model.contour_half_plane,
+         "b63n feynman conjugate flip should preserve the contour half-plane");
+  Expect(plus_minus_model.endpoint_local_model_kind ==
+             minus_plus_model.endpoint_local_model_kind,
+         "b63n feynman conjugate flip should preserve the endpoint model class");
+  Expect(plus_minus_model.residue_variables == minus_plus_model.residue_variables,
+         "b63n feynman conjugate flip should preserve residue variables");
+  Expect(plus_minus_model.endpoint_poles.size() ==
+             minus_plus_model.endpoint_poles.size(),
+         "b63n feynman conjugate flip should preserve endpoint-pole count");
+  for (std::size_t index = 0; index < plus_minus_model.endpoint_poles.size();
+       ++index) {
+    const amflow::CutkoskyResidueEndpointPole& lhs =
+        plus_minus_model.endpoint_poles[index];
+    const amflow::CutkoskyResidueEndpointPole& rhs =
+        minus_plus_model.endpoint_poles[index];
+    Expect(lhs.variable == rhs.variable && lhs.location == rhs.location &&
+               lhs.classification == rhs.classification && lhs.source == rhs.source &&
+               lhs.on_physical_contour == rhs.on_physical_contour,
+           "b63n feynman conjugate flip should preserve endpoint-pole geometry");
+  }
+  Expect(plus_minus_model.eta_contour_waypoints.size() ==
+             minus_plus_model.eta_contour_waypoints.size(),
+         "b63n feynman conjugate flip should preserve contour waypoint count");
+  for (std::size_t index = 0;
+       index < plus_minus_model.eta_contour_waypoints.size(); ++index) {
+    Expect(plus_minus_model.eta_contour_waypoints[index].eta ==
+               minus_plus_model.eta_contour_waypoints[index].eta &&
+               plus_minus_model.eta_contour_waypoints[index].purpose ==
+                   minus_plus_model.eta_contour_waypoints[index].purpose,
+           "b63n feynman conjugate flip should preserve contour waypoint geometry");
+  }
+  Expect(plus_minus_model.contour_fingerprint !=
+             minus_plus_model.contour_fingerprint,
+         "b63n feynman conjugate flip should re-fingerprint sign-bearing contour "
+         "provenance");
+
+  const amflow::CutkoskySymbolicSubintegralAssembly plus_minus_assembly =
+      amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly(plus_minus_spec);
+  const amflow::CutkoskySymbolicSubintegralAssembly minus_plus_assembly =
+      amflow::BuildFeynmanPrescriptionSymbolicSubintegralAssembly(minus_plus_spec);
+  Expect(plus_minus_assembly.surface_label == minus_plus_assembly.surface_label,
+         "b63n feynman conjugate flip should preserve the symbolic surface");
+  Expect(plus_minus_assembly.cut_denominator_indices ==
+             minus_plus_assembly.cut_denominator_indices,
+         "b63n feynman conjugate flip should preserve symbolic cut denominators");
+  Expect(plus_minus_assembly.residue_variables ==
+             minus_plus_assembly.residue_variables,
+         "b63n feynman conjugate flip should preserve symbolic residue variables");
+  Expect(plus_minus_assembly.subintegrals.size() ==
+             minus_plus_assembly.subintegrals.size(),
+         "b63n feynman conjugate flip should preserve symbolic subintegral count");
+  for (std::size_t subintegral_index = 0;
+       subintegral_index < plus_minus_assembly.subintegrals.size();
+       ++subintegral_index) {
+    const amflow::CutkoskySymbolicSubintegral& lhs =
+        plus_minus_assembly.subintegrals[subintegral_index];
+    const amflow::CutkoskySymbolicSubintegral& rhs =
+        minus_plus_assembly.subintegrals[subintegral_index];
+    Expect(lhs.ledger_handle == rhs.ledger_handle &&
+               lhs.loop_momentum == rhs.loop_momentum &&
+               lhs.prescription_source == rhs.prescription_source &&
+               lhs.factors.size() == rhs.factors.size(),
+           "b63n feynman conjugate flip should preserve subintegral carriers");
+    Expect(lhs.prescription != rhs.prescription &&
+               NormalizeCutkoskyConjugateSignTokens(lhs.ledger_sign) ==
+                   NormalizeCutkoskyConjugateSignTokens(rhs.ledger_sign),
+           "b63n feynman conjugate flip should swap subintegral prescriptions");
+    for (std::size_t factor_index = 0; factor_index < lhs.factors.size();
+         ++factor_index) {
+      const amflow::CutkoskySymbolicSubintegralFactor& lhs_factor =
+          lhs.factors[factor_index];
+      const amflow::CutkoskySymbolicSubintegralFactor& rhs_factor =
+          rhs.factors[factor_index];
+      Expect(lhs_factor.denominator_id == rhs_factor.denominator_id &&
+                 lhs_factor.denominator_index == rhs_factor.denominator_index &&
+                 lhs_factor.propagator_power == rhs_factor.propagator_power &&
+                 lhs_factor.propagator_expression ==
+                     rhs_factor.propagator_expression,
+             "b63n feynman conjugate flip should preserve denominator grouping");
+      Expect(NormalizeCutkoskyConjugateSignTokens(lhs_factor.role) ==
+                 NormalizeCutkoskyConjugateSignTokens(rhs_factor.role) &&
+                 NormalizeCutkoskyConjugateSignTokens(
+                     lhs_factor.structural_form) ==
+                     NormalizeCutkoskyConjugateSignTokens(
+                         rhs_factor.structural_form),
+             "b63n feynman conjugate flip should alter only denominator sign tokens");
+    }
+  }
+
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plus_minus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(plus_minus_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan minus_plus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(minus_plus_spec);
+  Expect(plus_minus_plan.requires_feynman_conjugate_validation &&
+             minus_plus_plan.requires_feynman_conjugate_validation,
+         "b63n feynman conjugate flip should keep the conjugate-validation gate");
+  Expect(plus_minus_plan.conjugate_residue_model_kind ==
+             minus_plus_plan.residue_model_kind &&
+             minus_plus_plan.conjugate_residue_model_kind ==
+                 plus_minus_plan.residue_model_kind,
+         "b63n feynman conjugate flip should cross-link conjugate residue models");
+  Expect(plus_minus_plan.surface_label == minus_plus_plan.surface_label &&
+             plus_minus_plan.cut_denominator_indices ==
+                 minus_plus_plan.cut_denominator_indices &&
+             plus_minus_plan.uncut_denominator_indices ==
+                 minus_plus_plan.uncut_denominator_indices &&
+             plus_minus_plan.residue_variables == minus_plus_plan.residue_variables,
+         "b63n feynman conjugate flip should preserve weighted-residue structure");
+  Expect(NormalizeCutkoskyConjugateSignTokens(
+             plus_minus_plan.branch_ledger_summary) ==
+             NormalizeCutkoskyConjugateSignTokens(
+                 minus_plus_plan.branch_ledger_summary),
+         "b63n feynman conjugate flip should preserve the weighted-residue ledger "
+         "modulo sign labels");
 }
 
 void B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest() {
@@ -8363,6 +8560,7 @@ int main() {
     B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();
     B63nFeynmanPrescriptionCutkoskyTransportScaffoldRecordsConjugateLedgersTest();
+    B63nFeynmanPrescriptionConjugateFlipPreservesSignBlindScaffoldTest();
     B63nCutkoskyBranchLedgerExposesStructuredFieldsAndLegacySerializationTest();
     B63nCutkoskyResidueEndpointModelBuildsContourPlanTest();
     B63nAutomaticPhaseSpaceSymbolicIntegrandAssemblesUncutWeightsTest();

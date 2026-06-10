@@ -56,6 +56,17 @@ void ExpectDecimalNear(const std::string& actual,
          message + ": expected " + expected + ", got " + actual);
 }
 
+int DecimalSign(const std::string& value) {
+  const TestBigFloat parsed(value.empty() ? "0" : value);
+  if (parsed > 0) {
+    return 1;
+  }
+  if (parsed < 0) {
+    return -1;
+  }
+  return 0;
+}
+
 constexpr const char* kD246ReferenceEvidenceSidecar =
     "tools/reference-harness/specs/m6/lane146/"
     "b63n-d246-weighted-residue-reference-evidence.json";
@@ -931,6 +942,126 @@ void ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvar
          "diagnostics are canonicalized after permutation and exact rescaling");
 }
 
+void ScopedAutomaticPhaseSpaceSeedIdentitySignBoundaryTest() {
+  struct ExpectedSeedBoundary {
+    std::size_t denominator_index;
+    std::string denominator_id;
+    int power;
+    std::string identity_fragment;
+  };
+  const std::vector<ExpectedSeedBoundary> expected_boundaries = {
+      {1,
+       "D2",
+       2,
+       "D2;index=1;power=2;role=D2=(l1+p1)^2 angular weight with power 2;"
+       "form=inverse_denominator_weight[D2(q2,cos_theta_a)]"},
+      {3,
+       "D4",
+       1,
+       "D4;index=3;power=1;role=D4=(l1+l2+p1)^2 angular weight;"
+       "form=inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]"},
+      {5,
+       "D6",
+       1,
+       "D6;index=5;power=1;role=D6=(l1+l2+p2)^2 angular weight;"
+       "form=inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]"},
+      {6,
+       "D7",
+       1,
+       "D7;index=6;power=1;role=D7=(l1+p2)^2 angular weight;"
+       "form=inverse_denominator_weight[D7(q2,cos_theta_a)]"},
+  };
+
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(spec);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          spec,
+          3,
+          70);
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(plan, seed_packet);
+  Expect(gate.passed,
+         "b63n seed identity/sign boundary test requires a valid seed packet");
+  Expect(gate.validated_seed_denominator_identities.size() ==
+             expected_boundaries.size(),
+         "b63n seed identity/sign boundary test should cover D2,D4,D6,D7");
+
+  const amflow::CutkoskyScopedWeightedResidueEvaluation published_d7 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          spec,
+          6,
+          3,
+          70);
+  Expect(published_d7.publication_gate_passed &&
+             published_d7.live_coefficients_available,
+         "b63n seed identity/sign boundary test requires the reviewed D7 "
+         "publication surface");
+  std::vector<int> published_d7_signs;
+  for (const int eps_order : {0, 1, 2, 3}) {
+    const amflow::CutkoskyResidueSeriesTerm& d7_term =
+        ResidueTermAt(published_d7.candidate_series, eps_order);
+    const int sign = DecimalSign(d7_term.coefficient.real);
+    Expect(sign > 0,
+           "reviewed published D7 eps^" + std::to_string(eps_order) +
+               " coefficient should stay positive");
+    Expect(d7_term.provenance.coefficient_published &&
+               !d7_term.provenance.synthetic_fixture,
+           "reviewed published D7 eps^" + std::to_string(eps_order) +
+               " coefficient should retain publishable provenance");
+    published_d7_signs.push_back(sign);
+  }
+
+  for (const ExpectedSeedBoundary& expected : expected_boundaries) {
+    const amflow::CutkoskyWeightedResidueMomentSeed* seed = nullptr;
+    for (const amflow::CutkoskyWeightedResidueMomentSeed& candidate :
+         seed_packet) {
+      if (candidate.selected_weight_denominator == expected.denominator_id) {
+        seed = &candidate;
+        break;
+      }
+    }
+    Expect(seed != nullptr,
+           "b63n seed packet should include " + expected.denominator_id);
+    Expect(seed->selected_weight_denominator_index ==
+               expected.denominator_index &&
+               seed->selected_weight_power == expected.power,
+           "b63n seed identity should bind the reviewed " +
+               expected.denominator_id + " denominator index and power");
+    const std::string seed_audit =
+        amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit(*seed);
+    ExpectContains(seed_audit,
+                   "selected_weight_identity=" + expected.identity_fragment,
+                   "b63n seed audit should pin the " + expected.denominator_id +
+                       " denominator identity");
+    ExpectContains(seed_audit,
+                   "publication_gate=blocked-by-publication-gate",
+                   "b63n " + expected.denominator_id +
+                       " seed should stay blocked before publication");
+
+    for (const int eps_order : {0, 1, 2, 3}) {
+      const amflow::CutkoskyResidueSeriesTerm& seed_term =
+          ResidueTermAt(seed->residue_series, eps_order);
+      const int seed_sign = DecimalSign(seed_term.coefficient.real);
+      Expect(seed_sign < 0,
+             expected.denominator_id + " synthetic seed eps^" +
+                 std::to_string(eps_order) +
+                 " sign should follow the negative K_2 normalization");
+      Expect(seed_sign != published_d7_signs[static_cast<std::size_t>(eps_order)],
+             expected.denominator_id + " synthetic seed eps^" +
+                 std::to_string(eps_order) +
+                 " must not borrow the reviewed D7 published sign");
+      Expect(seed_term.provenance.synthetic_fixture &&
+                 !seed_term.provenance.coefficient_published &&
+                 !seed_term.provenance.retained_solution_samples_used,
+             expected.denominator_id + " synthetic seed eps^" +
+                 std::to_string(eps_order) +
+                 " should remain unpublished seed provenance");
+    }
+  }
+}
+
 void ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test() {
   const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
@@ -1387,6 +1518,7 @@ int main() {
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();
+    ScopedAutomaticPhaseSpaceSeedIdentitySignBoundaryTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();
     ScopedAutomaticPhaseSpaceSelected4PinsAllLane146ComparedCoefficientsTest();
     ScopedAutomaticPhaseSpaceD246SolvedStateRequiresSidecarEvidenceTest();

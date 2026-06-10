@@ -1032,6 +1032,48 @@ def run_self_check() -> dict[str, Any]:
         tolerance_digits=30,
     )
 
+    reference_floor_above_floor_cpp, reference_floor_above_floor_amflow = (
+        write_synthetic_inputs(root / "reference-floor-above-floor", mismatch=True)
+    )
+    reference_floor_above_floor_payload = load_json(reference_floor_above_floor_cpp)
+    reference_floor_above_floor_payload["results"][0]["epsilon_orders"][1][
+        "real_digits"
+    ] = "3.0100000000000000000000000000000000000000"
+    reference_floor_above_floor_cpp.write_text(
+        json.dumps(reference_floor_above_floor_payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    reference_floor_above_floor_wrapper = (
+        reference_floor_above_floor_cpp.parent / "wrapper-manifest.json"
+    )
+    reference_floor_above_floor_wrapper.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "benchmark_id": "synthetic-reference-floor-above-floor",
+                "golden_manifest": str(reference_floor_above_floor_amflow),
+                "compare_cpp_vs_amflow_reference_floors": [
+                    {
+                        "id": "synthetic-order0-reference-floor",
+                        "integral": "toy[1]",
+                        "order": 0,
+                        "component_digits": {"real": 1, "imag": 999},
+                        "reason": "synthetic retained-reference floor",
+                    }
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    reference_floor_above_floor = compare_cpp_vs_amflow(
+        cpp_result_path=reference_floor_above_floor_cpp,
+        amflow_golden_path=reference_floor_above_floor_wrapper,
+        tolerance_digits=30,
+    )
+
     reference_floor_fail_cpp, reference_floor_fail_amflow = write_synthetic_inputs(
         root / "reference-floor-below-floor",
         mismatch=True,
@@ -1294,6 +1336,18 @@ def run_self_check() -> dict[str, Any]:
         for coefficient in integral.get("coefficients", [])
         if isinstance(coefficient, dict)
     ]
+    reference_floor_above_floor_coefficients = [
+        coefficient
+        for integral in reference_floor_above_floor["integrals"]
+        for coefficient in integral.get("coefficients", [])
+        if isinstance(coefficient, dict)
+    ]
+    reference_floor_fail_coefficients = [
+        coefficient
+        for integral in reference_floor_fail["integrals"]
+        for coefficient in integral.get("coefficients", [])
+        if isinstance(coefficient, dict)
+    ]
 
   return {
       "schema_version": 1,
@@ -1314,10 +1368,37 @@ def run_self_check() -> dict[str, Any]:
           and reference_floor["reference_floor_matched_coefficient_count"] == 1
           and reference_floor["reference_floor_matches"][0]["integral"] == "toy[1]"
       ),
+      "reference_floor_above_floor_accepted": (
+          reference_floor_above_floor["passed"]
+          and reference_floor_above_floor["comparison_verdict"] == "matched-to-reference-floor"
+          and not reference_floor_above_floor["failures"]
+          and reference_floor_above_floor["passed_coefficient_count"]
+          < reference_floor_above_floor["compared_coefficient_count"]
+          and reference_floor_above_floor["accepted_coefficient_count"]
+          == reference_floor_above_floor["compared_coefficient_count"]
+          and reference_floor_above_floor["reference_floor_matched_coefficient_count"] == 1
+          and any(
+              coefficient.get("order") == 0
+              and coefficient.get("verdict") == "matched-to-reference-floor"
+              and coefficient.get("matched_to_reference_floor") is True
+              and coefficient.get("matched_to_tolerance_digits") is False
+              and coefficient.get("real_agreement_digits")
+              > coefficient.get("reference_floor_real_digits")
+              for coefficient in reference_floor_above_floor_coefficients
+          )
+      ),
       "reference_floor_below_floor_rejected": (
           not reference_floor_fail["passed"]
           and reference_floor_fail["comparison_verdict"] == "failed"
           and bool(reference_floor_fail["failures"])
+          and any(
+              coefficient.get("order") == 0
+              and coefficient.get("verdict") == "failed"
+              and coefficient.get("matched_to_reference_floor") is False
+              and coefficient.get("real_agreement_digits")
+              < coefficient.get("reference_floor_real_digits")
+              for coefficient in reference_floor_fail_coefficients
+          )
       ),
       "missing_integral_rejected": not missing["passed"] and bool(missing["failures"]),
       "failed_cpp_status_rejected": failed_status_rejected,
@@ -1394,6 +1475,7 @@ def main(argv: list[str]) -> int:
               "amflow_state_binding_reported",
               "mismatch_synthetic_rejected",
               "reference_floor_verdict_reported",
+              "reference_floor_above_floor_accepted",
               "reference_floor_below_floor_rejected",
               "missing_integral_rejected",
               "failed_cpp_status_rejected",

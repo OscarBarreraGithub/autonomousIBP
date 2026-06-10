@@ -51748,6 +51748,9 @@ void CompareCppVsAmflowSelfCheckCoversSyntheticInputsTest() {
   ExpectContains(result.stdout_json, "\"reference_floor_verdict_reported\": true",
                  "C++ vs AMFlow comparator self-check should report accepted "
                  "reference-floor matches separately from full digit-threshold matches");
+  ExpectContains(result.stdout_json, "\"reference_floor_above_floor_accepted\": true",
+                 "C++ vs AMFlow comparator self-check should accept a coefficient above its "
+                 "declared retained-reference floor as a reference-floor match");
   ExpectContains(result.stdout_json, "\"reference_floor_below_floor_rejected\": true",
                  "C++ vs AMFlow comparator self-check should reject coefficients that fall "
                  "below their declared retained-reference floor");

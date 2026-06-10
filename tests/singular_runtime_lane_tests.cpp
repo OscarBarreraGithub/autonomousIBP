@@ -1149,6 +1149,155 @@ void B63nCutkoskyResiduePublicationGateRejectsLowCoefficientLiteralPrecisionTest
       "b63n publication gate should reject low-precision coefficient literals");
 }
 
+unsigned int NextB63nPublicationGateFuzzValue(unsigned int& state) {
+  state = state * 1664525u + 1013904223u;
+  return state;
+}
+
+void B63nCutkoskyResiduePublicationGateRejectsRandomizedUnsafePerturbationsTest() {
+  unsigned int fuzz_state = 0xb63f00du;
+
+  for (int iteration = 0; iteration < 24; ++iteration) {
+    amflow::CutkoskyResidueSeriesTerm term =
+        MakeReviewedB63nPublishedResidueTerm();
+    term.eps_order =
+        static_cast<int>(NextB63nPublicationGateFuzzValue(fuzz_state) % 7u) - 3;
+    term.coefficient_label =
+        "reviewed_b63n_eta0_fuzz_pass_" + std::to_string(iteration);
+
+    const amflow::CutkoskyResidueSeries series =
+        MakeB63nPublicationGateResidueSeries({term});
+    amflow::ValidateCutkoskyResiduePublicationGate(series);
+  }
+
+  for (int iteration = 0; iteration < 102; ++iteration) {
+    const unsigned int mutation = static_cast<unsigned int>(iteration % 17);
+    amflow::CutkoskyResidueSeriesTerm term =
+        MakeReviewedB63nPublishedResidueTerm();
+    term.eps_order =
+        static_cast<int>(NextB63nPublicationGateFuzzValue(fuzz_state) % 5u) - 2;
+    term.coefficient_label =
+        "reviewed_b63n_eta0_fuzz_reject_" + std::to_string(iteration);
+    std::vector<amflow::CutkoskyResidueSeriesTerm> terms = {term};
+    std::string expected_rejection;
+
+    switch (mutation) {
+      case 0:
+        terms.front().provenance.synthetic_fixture = true;
+        terms.front().provenance.source = "randomized synthetic fixture";
+        expected_rejection = "synthetic";
+        break;
+      case 1:
+        terms.front().provenance.retained_solution_samples_used = true;
+        terms.front().provenance.source = "retained AMFlow final solution samples";
+        expected_rejection = "retained";
+        break;
+      case 2:
+        terms.front().region_key = "fractional";
+        expected_rejection = "non-integer";
+        break;
+      case 3:
+        terms.front().eta_power =
+            (NextB63nPublicationGateFuzzValue(fuzz_state) % 2u == 0u) ? -1 : 1;
+        expected_rejection = "eta^0";
+        break;
+      case 4:
+        terms.front().log_power = 1;
+        expected_rejection = "logarithmic";
+        break;
+      case 5:
+        terms.front().provenance.source.clear();
+        expected_rejection = "source provenance";
+        break;
+      case 6:
+        terms.front().provenance.derivation.clear();
+        expected_rejection = "derivation provenance";
+        break;
+      case 7:
+        terms.front().coefficient_label.clear();
+        expected_rejection = "coefficient label";
+        break;
+      case 8:
+        terms.front().coefficient.real = "3.25";
+        terms.front().coefficient.imaginary =
+            "-0.5000000000000000000000000000000000000000000000000000000000001";
+        expected_rejection = "coefficient literal precision";
+        break;
+      case 9:
+        terms.front().coefficient.real = "not-a-decimal";
+        expected_rejection = "numeric coefficient";
+        break;
+      case 10:
+        terms.front().coefficient.real = "0";
+        terms.front().coefficient.imaginary = "0";
+        expected_rejection = "zero coefficient";
+        break;
+      case 11:
+        expected_rejection = "series requested precision";
+        break;
+      case 12:
+        terms.front().precision.requested_precision_digits = 29;
+        expected_rejection = "published residue term[0] requested precision";
+        break;
+      case 13:
+        terms.front().precision.working_precision_digits = 69;
+        expected_rejection = "published residue term[0] working precision";
+        break;
+      case 14: {
+        amflow::CutkoskyResidueSeriesTerm duplicate = terms.front();
+        duplicate.coefficient_label += "_duplicate";
+        terms.push_back(duplicate);
+        expected_rejection = "exactly one published";
+        break;
+      }
+      case 15: {
+        amflow::CutkoskyResidueSeriesTerm synthetic_unpublished =
+            MakeSyntheticB63nResidueTerm(
+                0,
+                0,
+                0,
+                "integer",
+                "2.0000000000000000000000000000000000000000000000000000000000001",
+                "0",
+                "synthetic_unpublished_fuzz_" + std::to_string(iteration),
+                "lane-b63n-publication-fuzz");
+        terms.push_back(synthetic_unpublished);
+        expected_rejection = "synthetic";
+        break;
+      }
+      case 16: {
+        amflow::CutkoskyResidueSeriesTerm retained_unpublished =
+            MakeReviewedB63nPublishedResidueTerm();
+        retained_unpublished.provenance.coefficient_published = false;
+        retained_unpublished.provenance.retained_solution_samples_used = true;
+        retained_unpublished.provenance.source =
+            "retained AMFlow final solution samples";
+        retained_unpublished.coefficient_label =
+            "retained_unpublished_fuzz_" + std::to_string(iteration);
+        terms.push_back(retained_unpublished);
+        expected_rejection = "retained";
+        break;
+      }
+      default:
+        throw std::runtime_error("unhandled b63n publication gate fuzz mutation");
+    }
+
+    amflow::CutkoskyResidueSeries series =
+        MakeB63nPublicationGateResidueSeries(terms);
+    if (mutation == 11) {
+      series.requested_precision_digits = 29;
+    }
+
+    ExpectInvalidArgumentContains(
+        [&series]() {
+          amflow::ValidateCutkoskyResiduePublicationGate(series);
+        },
+        expected_rejection,
+        "b63n randomized publication gate perturbation " +
+            std::to_string(iteration) + " should fail closed");
+  }
+}
+
 void B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest() {
   const amflow::CutkoskyPrefactorSeries k1 =
       amflow::BuildCutkoskyPrefactorEpsilonSeries(1, 0, 3, 70);
@@ -8209,6 +8358,7 @@ int main() {
     B63nCutkoskyResiduePublicationGateRejectsMissingDerivationTest();
     B63nCutkoskyResiduePublicationGateRejectsNoPublishedTermTest();
     B63nCutkoskyResiduePublicationGateRejectsLowCoefficientLiteralPrecisionTest();
+    B63nCutkoskyResiduePublicationGateRejectsRandomizedUnsafePerturbationsTest();
     B63nCutkoskyPrefactorSeriesExpandsReviewedKFactorsTest();
     B63nSyntheticResidueSeriesPrefactorFeedsEtaZeroSelectorTest();
     B63nAutomaticPhaseSpaceCutkoskyTransportScaffoldAuditsEndpointContractTest();

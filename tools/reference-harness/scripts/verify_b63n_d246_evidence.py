@@ -294,7 +294,7 @@ def validate_cutkosky_structure(structure: dict[str, Any]) -> None:
     )
 
 
-def validate_coefficient(coefficient: dict[str, Any], label: str) -> int:
+def validate_coefficient(coefficient: dict[str, Any], label: str) -> tuple[int, int]:
     eps_order = require_int(coefficient.get("eps_order"), f"{label}.eps_order")
     require_exact(coefficient.get("eta_power"), 0, f"{label}.eta_power")
     require_exact(coefficient.get("log_power"), 0, f"{label}.log_power")
@@ -318,7 +318,7 @@ def validate_coefficient(coefficient: dict[str, Any], label: str) -> int:
         agreement_digits <= working_precision,
         f"{label}.agreement_digits must not exceed working precision",
     )
-    return eps_order
+    return eps_order, agreement_digits
 
 
 def validate_reference_validation(
@@ -405,11 +405,22 @@ def validate_weight(weight: dict[str, Any], *, published: bool, index: int) -> t
         return denominator_id, [], None
 
     expect(coefficients, f"{label}.coefficients must not be empty for published evidence")
-    eps_orders = [
-        validate_coefficient(require_object(coefficient, f"{label}.coefficients[{coefficient_index}]"),
-                             f"{label}.coefficients[{coefficient_index}]")
+    coefficient_evidence = [
+        validate_coefficient(
+            require_object(coefficient, f"{label}.coefficients[{coefficient_index}]"),
+            f"{label}.coefficients[{coefficient_index}]",
+        )
         for coefficient_index, coefficient in enumerate(coefficients)
     ]
+    eps_orders = [eps_order for eps_order, _agreement_digits in coefficient_evidence]
+    coefficient_agreement_floor = min(
+        agreement_digits for _eps_order, agreement_digits in coefficient_evidence
+    )
+    expect(
+        minimum_digits is not None and minimum_digits <= coefficient_agreement_floor,
+        f"{label}.reference_validation.minimum_digit_agreement must not exceed "
+        "the coefficient agreement floor",
+    )
     expect(len(set(eps_orders)) == len(eps_orders), f"{label}.coefficients has duplicate eps_order")
     expect(contiguous(eps_orders), f"{label}.coefficients must publish a contiguous eps_order range")
     return denominator_id, sorted(eps_orders), minimum_digits
@@ -690,6 +701,11 @@ def run_self_check() -> dict[str, Any]:
     bad_low_digits = full_fixture()
     bad_low_digits["weights"][2]["coefficients"][0]["agreement_digits"] = 49
 
+    bad_minimum_digit_overclaim = full_fixture()
+    bad_minimum_digit_overclaim["weights"][0]["reference_validation"][
+        "minimum_digit_agreement"
+    ] = 61
+
     bad_fake_samples = full_fixture()
     bad_fake_samples["weights"][0]["reference_validation"][
         "final_solution_samples_used_as_input"
@@ -739,6 +755,10 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_low_digit_agreement": rejected(
             bad_low_digits,
             "agreement_digits must be at least 50",
+        ),
+        "full_rejects_minimum_digit_overclaim": rejected(
+            bad_minimum_digit_overclaim,
+            "minimum_digit_agreement must not exceed the coefficient agreement floor",
         ),
         "full_rejects_final_solution_sample_input": rejected(
             bad_fake_samples,

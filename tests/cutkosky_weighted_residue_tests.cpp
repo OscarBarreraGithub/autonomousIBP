@@ -13,6 +13,7 @@
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
 #include "amflow/core/problem_spec.hpp"
+#include "amflow/runtime/artifact_store.hpp"
 #include "amflow/runtime/cutkosky_transport.hpp"
 
 namespace {
@@ -771,19 +772,38 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
 }
 
 void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(spec);
+  const std::vector<amflow::CutkoskyWeightedResidueMomentSeed> seed_packet =
+      amflow::BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
+          spec,
+          2,
+          70);
+  const amflow::CutkoskyWeightedResidueMomentCrossValidationGate gate =
+      amflow::CrossValidateCutkoskyWeightedResidueMomentSeeds(plan,
+                                                              seed_packet);
   const amflow::CutkoskyScopedWeightedResidueEvaluation blocked_d2 =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
-          MakeB63nAutomaticPhaseSpaceSpec(),
+          spec,
           1,
           2,
           70);
   const amflow::CutkoskyScopedWeightedResidueEvaluation published_d7 =
       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
-          MakeB63nAutomaticPhaseSpaceSpec(),
+          spec,
           6,
           3,
           70);
 
+  Expect(plan.reviewed_surface && plan.coefficient_free,
+         "b63n audit fingerprint regression requires the reviewed weighted "
+         "residue plan");
+  Expect(seed_packet.size() == 4,
+         "b63n audit fingerprint regression requires the D2,D4,D6,D7 seed "
+         "packet");
+  Expect(gate.passed,
+         "b63n audit fingerprint regression requires the cross-validation gate");
   Expect(!blocked_d2.publication_gate_passed &&
              blocked_d2.failure_code == "boundary_unsolved",
          "b63n D2 audit fingerprint regression requires the blocked D2 input");
@@ -798,6 +818,20 @@ void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
       amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
           published_d7);
   ExpectUniqueAuditFingerprintPins({
+      {"evaluation-plan",
+       amflow::ComputeArtifactFingerprint(
+           amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plan)),
+       "fnv1a64:a9c31cddfef4646b"},
+      {"moment-seed-packet",
+       amflow::ComputeArtifactFingerprint(
+           amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+               seed_packet)),
+       "fnv1a64:d5c19619e8703771"},
+      {"moment-cross-validation-gate",
+       amflow::ComputeArtifactFingerprint(
+           amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+               gate)),
+       "fnv1a64:aa480d3ceb075144"},
       {"blocked-D2-scoped-weighted-residue",
        blocked_d2_fingerprint,
        "fnv1a64:8c19abf9c1a1f0d1"},

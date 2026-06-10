@@ -257,6 +257,7 @@ if(BUILD_TESTING)
       ${Python3_EXECUTABLE}
       ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m7_sidecar_inventory.py
       --verify
+      --verify-schema-reconciliation
       --summary-only
   )
   set_tests_properties(m7-release-sidecar-inventory-audit PROPERTIES

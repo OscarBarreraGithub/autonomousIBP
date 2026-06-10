@@ -855,19 +855,28 @@ def validate_fresh_accepted_readiness_output(root: Path) -> None:
     )
 
 
-def validate_all_m7_sidecars(root: Path, m7_root: Path) -> dict[str, int]:
-    schema_counts: dict[str, int] = {}
+def collect_m7_sidecar_schemas(root: Path, m7_root: Path) -> dict[str, str]:
+    sidecar_schemas: dict[str, str] = {}
     paths = sorted((root / m7_root).rglob("*.json"))
     expect(paths, f"{m7_root} must contain M7 JSON sidecars")
     errors: list[str] = []
     for path in paths:
+        relative = str(path.relative_to(root))
         try:
             schema_name = validate_m7_sidecar(path, root)
-            schema_counts[schema_name] = schema_counts.get(schema_name, 0) + 1
+            expect(relative not in sidecar_schemas, f"{relative} was validated twice")
+            sidecar_schemas[relative] = schema_name
         except Exception as error:  # noqa: BLE001 - report every schema drift before failing.
-            errors.append(f"{path.relative_to(root)}: {error}")
+            errors.append(f"{relative}: {error}")
     if errors:
         raise SchemaError("M7 sidecar schema validation failed:\n" + "\n".join(errors))
+    return sidecar_schemas
+
+
+def validate_all_m7_sidecars(root: Path, m7_root: Path) -> dict[str, int]:
+    schema_counts: dict[str, int] = {}
+    for schema_name in collect_m7_sidecar_schemas(root, m7_root).values():
+        schema_counts[schema_name] = schema_counts.get(schema_name, 0) + 1
     return schema_counts
 
 

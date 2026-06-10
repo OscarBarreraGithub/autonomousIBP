@@ -13,6 +13,7 @@ from typing import Any
 from validate_m7_release_sidecar_schemas import (
     M7_ROOT,
     SchemaError,
+    collect_m7_sidecar_schemas,
     repo_root,
     validate_m7_sidecar,
 )
@@ -270,6 +271,40 @@ def verify_inventory(entries: list[InventoryEntry]) -> None:
     expect(len(paths) == len(set(paths)), "inventory must not contain duplicate paths")
 
 
+def verify_schema_reconciliation(root: Path, m7_root: Path, entries: list[InventoryEntry]) -> None:
+    schema_by_path = collect_m7_sidecar_schemas(root, m7_root)
+    inventory_by_path = {entry.path: entry for entry in entries}
+    expect(
+        len(inventory_by_path) == len(entries),
+        "inventory/schema reconciliation requires unique inventory paths",
+    )
+    schema_paths = set(schema_by_path)
+    inventory_paths = set(inventory_by_path)
+    missing_from_inventory = sorted(schema_paths - inventory_paths)
+    missing_from_schema_validation = sorted(inventory_paths - schema_paths)
+    schema_mismatches = [
+        (
+            path,
+            inventory_by_path[path].schema,
+            schema_by_path[path],
+        )
+        for path in sorted(schema_paths & inventory_paths)
+        if inventory_by_path[path].schema != schema_by_path[path]
+    ]
+    if missing_from_inventory or missing_from_schema_validation or schema_mismatches:
+        lines = ["M7 inventory/schema reconciliation failed:"]
+        for path in missing_from_inventory:
+            lines.append(f"schema-valid sidecar missing from inventory: {path}")
+        for path in missing_from_schema_validation:
+            lines.append(f"inventory sidecar missing from schema validation: {path}")
+        for path, inventory_schema, schema_validation_schema in schema_mismatches:
+            lines.append(
+                "inventory/schema classification mismatch: "
+                f"{path}: inventory={inventory_schema!r} schema={schema_validation_schema!r}"
+            )
+        raise InventoryError("\n".join(lines))
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -293,6 +328,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fail if the inventory is empty, duplicate, or lacks either status class.",
     )
+    parser.add_argument(
+        "--verify-schema-reconciliation",
+        action="store_true",
+        help=(
+            "Fail unless the inventory path/schema set exactly matches the M7 sidecar "
+            "schema validator."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -304,6 +347,8 @@ def main() -> int:
         entries = build_inventory(root, m7_root)
         if args.verify:
             verify_inventory(entries)
+        if args.verify_schema_reconciliation:
+            verify_schema_reconciliation(root, m7_root, entries)
     except (InventoryError, SchemaError) as error:
         print(str(error), file=sys.stderr)
         return 1

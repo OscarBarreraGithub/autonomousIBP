@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "42256cf628b700f98a9b1291fec1508bb69d02bbb433e6e5f731f3449c61d161",
   "audit_kind": "m6-required-failure-code-profile-coverage",
   "benchmark_id": "user_defined_amfmode",
   "failure_code_profile": "default-required-failure-codes",

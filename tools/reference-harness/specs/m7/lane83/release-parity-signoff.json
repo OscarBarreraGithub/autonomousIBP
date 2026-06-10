@@ -1,4 +1,6 @@
 {
+  "source_commit": "54c4230e5e1457885dd554d4ff3d9ef4623cd445",
+  "source_provenance_sha256": "0a3369a8297adab236bc0e58300d618b6a496a93a57ce093fb69c8ba6c5ef5b0",
   "blocking_reasons": [
     "qualification closure note has not been reviewed"
   ],

@@ -1,4 +1,6 @@
 {
+  "source_commit": "e69a8c8094fbc6c58622f0d40da75e1a86b4b45a",
+  "source_provenance_sha256": "287b494a2eb365a8dbddcf6c7c45a203c246ff00b2b1114177d7fb611f5303ef",
   "blocked_phase0_examples": [],
   "blocking_reasons": [],
   "current_state": "phase0-packet-set-qualified",

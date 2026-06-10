@@ -1,4 +1,6 @@
 {
+  "source_commit": "a4f710bbefd866fea9788ee21d5a22a1440b650d",
+  "source_provenance_sha256": "7a5892dfe0d043b21b39ebc86584a5928dfcc35e6033a84ba6cc06cb611e16b1",
   "amflow_golden": "tools/reference-harness/specs/m7/lane2/complex_kinematics.b61n-reference-floor-golden-manifest.json",
   "benchmark_id": "complex_kinematics",
   "classification": {

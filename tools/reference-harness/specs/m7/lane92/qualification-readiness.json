@@ -1,4 +1,6 @@
 {
+  "source_commit": "011473a77b8db529b33d4d6f4c201378bee4015b",
+  "source_provenance_sha256": "b780f7a15ed9fbe067908b5b833b665ce14ff2bd24e8a041758ea61f6fa4706d",
   "blocked_case_study_families": [],
   "blocked_case_study_families_preserve_runtime_lane_hints": true,
   "blocked_phase0_examples": [

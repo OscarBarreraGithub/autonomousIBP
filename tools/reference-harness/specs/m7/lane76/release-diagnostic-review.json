@@ -1,4 +1,6 @@
 {
+  "source_commit": "eea042aace667bf42e9ff44b332e1570043dc387",
+  "source_provenance_sha256": "ed3b614106bcbb1f6a18a3455f0b12868311bd1ae88d0b24b8051a0e40201e15",
   "anti_fake_diagnostic_checks": {
     "known_regression_rows_reference_committed_docs": true,
     "missing_or_degraded_paths_empty_only_after_rows_reviewed": true,

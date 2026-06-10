@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "1b0a355cc21137f87c8eae5eadf45d38a0ed1b3dedf1eafeed7de9f12ee34764",
   "amflow_golden": "tools/reference-harness/specs/phase0/automatic_loop.eps8-golden-manifest.json",
   "benchmark_id": "automatic_loop",
   "compared_coefficient_count": 126,

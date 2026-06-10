@@ -1,4 +1,6 @@
 {
+  "source_commit": "2766ab10410e2c5fc5022ba319e2408684ad1e0f",
+  "source_provenance_sha256": "4ed349c5a0ab062c993c5c28b7f7bee96641dace38f513028fa546aa7141a5e6",
   "amflow_golden": "tools/reference-harness/specs/phase0/complex_kinematics.golden-manifest.json",
   "benchmark_id": "complex_kinematics",
   "compared_coefficient_count": 14,

@@ -1,4 +1,6 @@
 {
+  "source_commit": "011473a77b8db529b33d4d6f4c201378bee4015b",
+  "source_provenance_sha256": "04bcb5b834fbcd916a352451fad5cb5fc89206bd705da4037e22cb5a3dcd86e2",
   "blocked_phase0_examples": [
     {
       "id": "automatic_phasespace",

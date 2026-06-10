@@ -1,4 +1,6 @@
 {
+  "source_commit": "2766ab10410e2c5fc5022ba319e2408684ad1e0f",
+  "source_provenance_sha256": "48b13dc4c0d934aae5182dc91d337fe682ad749db8847b2397bfc4363d037eb8",
   "schema_version": 1,
   "benchmark_id": "complex_kinematics",
   "family": "box",

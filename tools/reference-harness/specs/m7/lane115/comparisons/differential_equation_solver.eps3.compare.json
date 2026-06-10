@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "1af2fc2baa98600a1a9dbdda2f067d57d024cd2cfb4f58772bc35c20d182a810",
   "amflow_golden": "tools/reference-harness/specs/phase0/differential_equation_solver.golden-manifest.json",
   "benchmark_id": "differential_equation_solver",
   "compared_coefficient_count": 12,

@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "6050e1dddce46c98d52a83af3ead48c96d8de9d6abdf62392be59008a673d68c",
   "amflow_golden": "tools/reference-harness/specs/m5/lane50/goldens/spacetime_dimension.direct-nondefault-d.amflow-golden.txt",
   "benchmark_id": "lane44_spacetime_dimension_direct",
   "compared_coefficient_count": 2,

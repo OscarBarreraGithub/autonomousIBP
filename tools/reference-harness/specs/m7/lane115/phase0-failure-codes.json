@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "3098dbf8282f94d121b9b3a3b394ddd4f12fd80464cb73dd1adf13abefaa0397",
   "all_compared_benchmarks_publish_failure_code_audits": true,
   "all_compared_benchmarks_report_required_failure_codes": true,
   "any_compared_benchmarks_report_unexpected_failure_codes": false,

@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "3d24d609b704bd2813803c1680bb060f3578e995f849f62d7cbe4e20a17de372",
   "anti_fake_parity_notes": [
     "Phase-0 packet failure-code-audit.json files are written into the retained packet roots and copied into this lane115 bundle.",
     "Fresh lane115 comparator summaries were generated from retained solve-series outputs with compare_cpp_vs_amflow.py and are committed beside the sidecar copies.",

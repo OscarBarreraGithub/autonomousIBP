@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "9850dd2f64ef0b8baa179522321b27f46c2ad31fa57a77d46a90fad0a6be4c76",
   "amflow_golden": "tools/reference-harness/specs/m5/lane50/goldens/user_defined_ending.final_usr.box1_m2_1_1_2.scoped-golden.txt",
   "benchmark_id": "user_defined_ending",
   "compared_coefficient_count": 6,

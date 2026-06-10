@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "aac61c40dc9d3c0476f20112f28e331ccfc7cebed4fa14d6778c8f76f4d0c95e",
   "case_study_families": [
     {
       "digit_threshold_profile": "core-package-family-default",

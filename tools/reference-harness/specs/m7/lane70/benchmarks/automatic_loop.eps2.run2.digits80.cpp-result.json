@@ -1,4 +1,6 @@
 {
+  "source_commit": "1b9da3cef58da60a656cfca9a73c3e000766b5c9",
+  "source_provenance_sha256": "4db44fe580a84303768b512512c8f42975dbe433cf67c9f494397509ebf8aae0",
   "schema_version": 1,
   "benchmark_id": "automatic_loop",
   "family": "multiple",

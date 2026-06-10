@@ -1,4 +1,6 @@
 {
+  "source_commit": "e4f4d0a55e8c7b115f4cd2a2c92d7a23e1c5bdba",
+  "source_provenance_sha256": "504ee224591823585340cbd2f2fab64ecd6237ad0ef18076371f1b3ae2d5a73a",
   "anti_fake_parity": {
     "canonical_text_contains_real_user_defined_amfmode_values": true,
     "manifest_values_synthesized_for_test": false,

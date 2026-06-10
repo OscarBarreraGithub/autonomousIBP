@@ -1,4 +1,6 @@
 {
+  "source_commit": "eea042aace667bf42e9ff44b332e1570043dc387",
+  "source_provenance_sha256": "7a02cdcbf1a0a3113a813630c1b6735bc9e5b844cdfee648e7e3719f3a080304",
   "anti_fake_parity_checks": {
     "case_study_numeric_sidecars_counted_from_retained_files": true,
     "committed_phase0_source_remains_669_of_671": true,

@@ -1,4 +1,6 @@
 {
+  "source_commit": "1b9da3cef58da60a656cfca9a73c3e000766b5c9",
+  "source_provenance_sha256": "ca1e2dee2fcbdc4810cd2019a434053d58501024359d0dee8e9b248508f28dff",
   "schema_version": 1,
   "benchmark_id": "automatic_vs_manual",
   "family": "tt",

@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,48 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
+
+
+SOURCE_PROVENANCE_DIGEST_FIELDS = frozenset(
+    ("source_payload_sha256", "source_provenance_sha256")
+)
+
+
+def payload_without_source_provenance_digest(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in SOURCE_PROVENANCE_DIGEST_FIELDS
+    }
+
+
+def source_provenance_sha256(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        payload_without_source_provenance_digest(payload),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def git_head(root: Path) -> str:
+    completed = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, f"git rev-parse HEAD failed: {completed.stderr.strip()}")
+    return completed.stdout.strip()
+
+
+def attach_source_provenance(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    stamped = dict(payload_without_source_provenance_digest(payload))
+    stamped["source_commit"] = git_head(root)
+    stamped["source_provenance_sha256"] = source_provenance_sha256(stamped)
+    return stamped
 
 
 PARITY_SIGNOFF_REQUIRED_RELEASE_REVIEW_SECTIONS: tuple[str, ...] = (
@@ -3249,10 +3293,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    root = repo_root()
     checklist_path = (
         args.checklist_path
         if args.checklist_path is not None
-        else repo_root() / "tools" / "reference-harness" / "templates" / "release-signoff-checklist.json"
+        else root / "tools" / "reference-harness" / "templates" / "release-signoff-checklist.json"
     )
 
     if args.self_check:
@@ -3276,6 +3321,7 @@ def main() -> int:
         docs_completion_summary_path=args.docs_completion_summary,
         parity_signoff_summary_path=args.parity_signoff_summary,
     )
+    summary = attach_source_provenance(root, summary)
     if args.summary_path is not None:
         write_json(args.summary_path, summary)
     print(json.dumps(summary, indent=2, sort_keys=True))

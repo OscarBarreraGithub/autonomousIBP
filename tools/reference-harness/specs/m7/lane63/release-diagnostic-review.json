@@ -1,4 +1,6 @@
 {
+  "source_commit": "db7cb625ed937d63e24e5bea4b9dc4cf97f98437",
+  "source_provenance_sha256": "2c19e03f7f7c1f727a472dc9f94131ccb415978069752a40c648b32a9ba43bba",
   "blocking_reasons": [
     "typed failure-path preservation review is not complete",
     "retained unstable-run diagnostic evidence has not been reviewed"

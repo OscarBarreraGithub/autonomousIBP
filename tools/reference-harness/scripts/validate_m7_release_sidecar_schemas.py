@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -28,6 +30,11 @@ M7_ROOT = Path("tools/reference-harness/specs/m7")
 ACCEPTED_READINESS_SIDECAR = Path(
     "tools/reference-harness/specs/m7/lane3/"
     "release-readiness.m5-accepted.full-output.json"
+)
+SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+SOURCE_PROVENANCE_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+PROVENANCE_DIGEST_FIELDS = frozenset(
+    ("source_payload_sha256", "source_provenance_sha256")
 )
 
 READINESS_INPUTS: tuple[tuple[str, str], ...] = (
@@ -74,6 +81,56 @@ def read_json(path: Path) -> dict[str, Any]:
         payload = json.load(stream)
     expect(isinstance(payload, dict), f"{path} must contain a JSON object")
     return payload
+
+
+def payload_without_source_provenance_digest(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in payload.items()
+        if key not in PROVENANCE_DIGEST_FIELDS
+    }
+
+
+def source_provenance_sha256(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        payload_without_source_provenance_digest(payload),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def require_git_commit(root: Path, commit: str, label: str) -> None:
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, f"{label} source_commit is not a known commit")
+
+
+def validate_source_provenance(path: Path, root: Path, payload: dict[str, Any]) -> None:
+    label = str(path.relative_to(root))
+    commit = require_non_empty_str(payload, "source_commit", label)
+    expect(
+        SOURCE_COMMIT_PATTERN.fullmatch(commit) is not None,
+        f"{label} source_commit must be a full lowercase 40-character git SHA",
+    )
+    require_git_commit(root, commit, label)
+
+    digest = require_non_empty_str(payload, "source_provenance_sha256", label)
+    expect(
+        SOURCE_PROVENANCE_SHA256_PATTERN.fullmatch(digest) is not None,
+        f"{label} source_provenance_sha256 must be a lowercase SHA-256 digest",
+    )
+    expected_digest = source_provenance_sha256(payload)
+    expect(
+        digest == expected_digest,
+        f"{label} source provenance drifted: expected {expected_digest}, got {digest}",
+    )
 
 
 def require_schema_version(payload: dict[str, Any], label: str) -> None:
@@ -719,6 +776,7 @@ def validate_one_off_scoped_sidecar(path: Path, payload: dict[str, Any]) -> str:
 
 def validate_m7_sidecar(path: Path, root: Path) -> str:
     payload = read_json(path)
+    validate_source_provenance(path, root, payload)
     relative_path = path.relative_to(root)
     scope = payload.get("scope")
 

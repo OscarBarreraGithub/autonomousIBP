@@ -1,4 +1,6 @@
 {
+  "source_commit": "1b9da3cef58da60a656cfca9a73c3e000766b5c9",
+  "source_provenance_sha256": "66a201a0b0ef882079963120b23593035857391f10bea06a2175d2a292301246",
   "anti_fake_parity_checks": {
     "all_benchmark_exit_statuses_zero": true,
     "artifact_sha256s_recorded": true,

@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "1f9b431928092281378479dc1a0b07f70313683c5f75c5419a948a3fb5f530f7",
   "audit_kind": "m6-required-failure-code-profile-coverage",
   "benchmark_id": "spacetime_dimension",
   "failure_code_profile": "default-required-failure-codes",

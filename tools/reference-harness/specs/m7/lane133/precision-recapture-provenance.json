@@ -1,4 +1,6 @@
 {
+  "source_commit": "12333abd5b73d9b82f5d605fcbd2f2660d4ddbf7",
+  "source_provenance_sha256": "1d3283f8250da0e38ff8a10799d20418b4ed70801299ed41304eab701d6685a7",
   "schema_version": 1,
   "lane": "lane133",
   "scope": "phase0-loop-50digit-recapture",

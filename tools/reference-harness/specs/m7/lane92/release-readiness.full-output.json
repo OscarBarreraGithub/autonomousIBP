@@ -1,4 +1,6 @@
 {
+  "source_commit": "15482f150d4c544c61c49a2a75432a32fe3b711a",
+  "source_provenance_sha256": "f3effc49f0d7fdb0dc77a16ec6b04560caa4187a1bb296f3d49e6aab2f489a01",
   "blocked_case_study_families": [],
   "blocked_phase0_examples": [
     {

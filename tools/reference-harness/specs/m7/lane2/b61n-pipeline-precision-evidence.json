@@ -1,4 +1,6 @@
 {
+  "source_commit": "67fc57de0671e811d5aa0d3863c753880dbb582f",
+  "source_provenance_sha256": "ec73e9c46d2ab9f1b23b75da5cd75ebb1910023db7de1b7524a45ef5f79f9889",
   "evidence_id": "b61n-pipeline-precision-evidence",
   "generated_at_utc": "2026-06-09T21:54:05Z",
   "method": {

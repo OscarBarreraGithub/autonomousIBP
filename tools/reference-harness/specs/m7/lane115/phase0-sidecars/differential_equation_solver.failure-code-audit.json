@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "546439ccafa8b05f4dba7d10b72e9929c91c0e32ebd721163610cade25b537a9",
   "audit_kind": "m6-required-failure-code-profile-coverage",
   "benchmark_id": "differential_equation_solver",
   "failure_code_profile": "default-required-failure-codes",

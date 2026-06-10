@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "eb4d3d625979788b514c8d952230e899fa86ef99fbfb53be6d848aa91e1cc428",
   "amflow_golden": "tools/reference-harness/specs/phase0/automatic_vs_manual.golden-manifest.json",
   "benchmark_id": "automatic_vs_manual",
   "compared_coefficient_count": 89,

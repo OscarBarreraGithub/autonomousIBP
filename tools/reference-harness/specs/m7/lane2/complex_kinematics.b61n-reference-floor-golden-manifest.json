@@ -1,4 +1,6 @@
 {
+  "source_commit": "a4f710bbefd866fea9788ee21d5a22a1440b650d",
+  "source_provenance_sha256": "37fdebe99f11d5cf45c0a6353a7bac159a69217c48601d1d45c874c6965dee29",
   "benchmark_id": "complex_kinematics",
   "compare_cpp_vs_amflow_reference_floors": [
     {

@@ -1,4 +1,6 @@
 {
+  "source_commit": "60fd79cbe7298ece2387f16f4c502df74b29b8a3",
+  "source_provenance_sha256": "c99ef4192e5f662f538b6b45348020dcf8721b46904391348d8402d374dbdd50",
   "accepted_for_release_prerequisite": true,
   "blocking_reasons": [],
   "current_state": "reviewed-and-accepted-m5-packet",

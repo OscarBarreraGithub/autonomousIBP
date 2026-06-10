@@ -1,4 +1,6 @@
 {
+  "source_commit": "3b4f048445f5ed952c082a123142aa928d142cab",
+  "source_provenance_sha256": "d86b134b9b9bcbebf59234c8ba554ee01ef3eb4639fb2833f30341b8a01e499f",
   "amflow_golden": "tools/reference-harness/specs/m5/lane50/goldens/user_defined_amfmode.box1_m2_1_1_2.scoped-golden.txt",
   "benchmark_id": "user_defined_amfmode",
   "compared_coefficient_count": 6,

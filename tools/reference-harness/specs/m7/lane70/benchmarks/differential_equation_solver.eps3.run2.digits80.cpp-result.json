@@ -1,4 +1,6 @@
 {
+  "source_commit": "1b9da3cef58da60a656cfca9a73c3e000766b5c9",
+  "source_provenance_sha256": "045dd460bcd241277d94222be08106d63aa45a76ead878a51810f5de00e1045e",
   "schema_version": 1,
   "benchmark_id": "differential_equation_solver",
   "family": "multiple",

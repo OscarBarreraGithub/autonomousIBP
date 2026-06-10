@@ -1,4 +1,6 @@
 {
+  "source_commit": "15482f150d4c544c61c49a2a75432a32fe3b711a",
+  "source_provenance_sha256": "6d57f272820859debd91712d9b0da3d98a12c5cee5a496017b9929281c91334a",
   "blocked_case_study_ids": [],
   "blocking_reasons": [
     "retained packet-set correct-digit scoring has not fully passed",

@@ -85,6 +85,14 @@ def badge_payload(health: dict[str, Any]) -> dict[str, Any]:
     ready = readiness.get("release_signoff_ready")
     expect(isinstance(ready, bool), "readiness.release_signoff_ready must be boolean")
     blocker_count = require_int(readiness, "blocker_count")
+    expected_status = "ready" if ready and blocker_count == 0 else "blocked"
+    expect(
+        status == expected_status,
+        (
+            "release health status is inconsistent with readiness fields: "
+            f"status={status} expected={expected_status}"
+        ),
+    )
     sidecar_count = require_int(inventory, "sidecar_count")
     accepted_count = require_int(inventory, "accepted_count")
     unaccepted_count = require_int(inventory, "unaccepted_count")
@@ -137,6 +145,15 @@ def synthetic_health(
     }
 
 
+def expect_badge_error(label: str, health: dict[str, Any], expected: str) -> None:
+    try:
+        badge_payload(health)
+    except BadgeError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise BadgeError(f"{label} unexpectedly passed")
+
+
 def self_check() -> None:
     ready_badge = badge_payload(
         synthetic_health(
@@ -180,20 +197,30 @@ def self_check() -> None:
         "blocked badge payload drifted",
     )
 
-    try:
-        badge_payload(
-            synthetic_health(
-                status="ready",
-                ready=True,
-                blocker_count=0,
-                sidecar_count=10,
-                accepted_count=8,
-                unaccepted_count=1,
-            )
-        )
-    except BadgeError:
-        return
-    raise BadgeError("badge payload accepted inconsistent inventory counts")
+    expect_badge_error(
+        "inconsistent inventory count check",
+        synthetic_health(
+            status="ready",
+            ready=True,
+            blocker_count=0,
+            sidecar_count=10,
+            accepted_count=8,
+            unaccepted_count=1,
+        ),
+        "inventory accepted/unaccepted counts do not sum",
+    )
+    expect_badge_error(
+        "status/readiness coherence check",
+        synthetic_health(
+            status="ready",
+            ready=False,
+            blocker_count=0,
+            sidecar_count=10,
+            accepted_count=8,
+            unaccepted_count=2,
+        ),
+        "status is inconsistent with readiness fields",
+    )
 
 
 def parse_args() -> argparse.Namespace:

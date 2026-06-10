@@ -1575,6 +1575,69 @@ void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
          "the publication gate");
 }
 
+void ScopedAutomaticPhaseSpaceD7NumericBindingFormatInvariantPublicationTest() {
+  const amflow::CutkoskyScopedWeightedResidueEvaluation baseline =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          6,
+          3,
+          70);
+  ExpectPublishedD7NumericPointVariant(baseline, "canonical-baseline");
+
+  const std::string baseline_packet =
+      SerializeScopedWeightedResiduePublicationPacketForDeterminism(baseline);
+  const std::string baseline_fingerprint =
+      amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+          baseline);
+
+  const std::vector<D7NumericPointVariant> format_variants = {
+      {"whitespace-padded-literals",
+       {{"s", " \t100\n"}, {"msq", "\n 1 \t"}},
+       {},
+       true,
+       false,
+       ""},
+      {"spaced-exact-expressions",
+       {{"s", " ( 250 * 8 ) / 20 "}, {"msq", " ( 9 + 5 ) / ( 2 * 7 ) "}},
+       {},
+       true,
+       false,
+       ""},
+      {"signed-parenthesized-literals",
+       {{"s", "(+100)"}, {"msq", "+(1)"}},
+       {},
+       true,
+       false,
+       ""},
+  };
+
+  for (const D7NumericPointVariant& variant : format_variants) {
+    amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+    spec.kinematics.numeric_substitutions = variant.numeric_substitutions;
+    const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+        amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+            spec,
+            6,
+            3,
+            70);
+
+    ExpectPublishedD7NumericPointVariant(evaluation, variant.label);
+    ExpectEqual(
+        SerializeScopedWeightedResiduePublicationPacketForDeterminism(evaluation),
+        baseline_packet,
+        variant.label +
+            " D7 publication packet should be invariant under numeric binding "
+            "formatting");
+    ExpectEqual(
+        amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
+            evaluation),
+        baseline_fingerprint,
+        variant.label +
+            " D7 publication audit fingerprint should be invariant under numeric "
+            "binding formatting");
+  }
+}
+
 void ExpectD7MissingKinematicBindingFailsClosed(amflow::ProblemSpec spec,
                                                 const std::string& missing_key) {
   Expect(spec.kinematics.numeric_substitutions.find(missing_key) ==
@@ -2569,11 +2632,18 @@ int main(const int argc, char** argv) {
       ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest();
       return 0;
     }
+    if (argc == 2 &&
+        std::string(argv[1]) ==
+            "--check-b63n-d7-numeric-binding-format-invariance") {
+      ScopedAutomaticPhaseSpaceD7NumericBindingFormatInvariantPublicationTest();
+      return 0;
+    }
     if (argc != 1) {
       std::cerr << "usage: cutkosky-weighted-residue-tests "
                    "[--emit-b63n-weighted-residue-fingerprints|"
                    "--emit-b63n-scoped-gate-audit-trail|"
-                   "--check-b63n-d7-numeric-point-binding-sweep]\n";
+                   "--check-b63n-d7-numeric-point-binding-sweep|"
+                   "--check-b63n-d7-numeric-binding-format-invariance]\n";
       return 2;
     }
 
@@ -2586,6 +2656,7 @@ int main(const int argc, char** argv) {
     ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest();
     ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest();
     ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest();
+    ScopedAutomaticPhaseSpaceD7NumericBindingFormatInvariantPublicationTest();
     ScopedAutomaticPhaseSpaceD7KinematicPerturbationFailsClosedTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();

@@ -510,6 +510,13 @@ if(BUILD_TESTING)
   set_tests_properties(b63n-d7-numeric-point-binding-sweep PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(
+    NAME b63n-d7-numeric-binding-format-invariance
+    COMMAND
+      cutkosky-weighted-residue-tests
+      --check-b63n-d7-numeric-binding-format-invariance)
+  set_tests_properties(b63n-d7-numeric-binding-format-invariance PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
     NAME b63n-weighted-residue-fingerprint-regenerator-self-check
     COMMAND
       ${Python3_EXECUTABLE}

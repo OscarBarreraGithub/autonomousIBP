@@ -394,6 +394,17 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-unaccepted-sidecar-review-queue
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py
+      --verify
+      --summary-only
+  )
+  set_tests_properties(m7-release-unaccepted-sidecar-review-queue PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-readiness-sidecar-references
     COMMAND
       ${Python3_EXECUTABLE}

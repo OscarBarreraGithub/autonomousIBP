@@ -11,6 +11,9 @@ The accepted closure trail is documented in
 [`m7-closure-evidence.md`](m7-closure-evidence.md). The operator runbook for the
 primary readiness replay is
 [`re-run-release-readiness.md`](re-run-release-readiness.md).
+The AMFlow example reproduction boundary is summarized in
+[`known-gaps.md`](known-gaps.md) and detailed in
+[`amflow-example-coverage.md`](amflow-example-coverage.md).
 
 ## Readiness Replay
 
@@ -53,6 +56,7 @@ The checklist schema consumed by these producers is
 | --- | --- | --- |
 | [`validate_m7_release_sidecar_schemas.py`](../../tools/reference-harness/scripts/validate_m7_release_sidecar_schemas.py) | Validate committed M7 JSON sidecar schemas, confirm each `source_commit` is a known commit, and recompute `source_provenance_sha256`. | `m7-release-sidecar-schema-validation`. |
 | [`audit_m7_sidecar_inventory.py`](../../tools/reference-harness/scripts/audit_m7_sidecar_inventory.py) | List committed M7 sidecars by accepted or unaccepted status. Use this as the unaccepted sidecar review queue. | `m7-release-sidecar-inventory-audit`. |
+| [`list_m7_unaccepted_sidecars.py`](../../tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py) | Print only the unaccepted subset from the same inventory classifier for focused review queue triage. | `m7-release-unaccepted-sidecar-review-queue`. |
 | [`verify_m7_release_readiness_sidecar_references.py`](../../tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py) | Verify the accepted readiness sidecar references existing, accepted M7 JSON sidecars and no stale unaccepted substitutes. | `m7-release-readiness-sidecar-references`. |
 
 Useful inspection commands:
@@ -61,12 +65,16 @@ Useful inspection commands:
 python3 tools/reference-harness/scripts/validate_m7_release_sidecar_schemas.py
 python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --format text
 python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --format json
+python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format text
+python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format json
 python3 tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py
 ```
 
 `audit_m7_sidecar_inventory.py --format json` is the most direct machine-readable
 queue for unaccepted sidecars. Treat entries with `"status": "unaccepted"` as
-review candidates, not as release evidence.
+review candidates, not as release evidence. Use
+`list_m7_unaccepted_sidecars.py` when you want that queue without the accepted
+sidecar rows.
 
 ## Evidence Bundle And Health
 

@@ -16,6 +16,16 @@ from urllib.parse import unquote, urlsplit
 
 RELEASE_DOCS_ROOT = Path("docs/release")
 RELEASE_CHECKLIST = Path("docs/release-signoff-checklist.md")
+REQUIRED_RELEASE_MARKDOWN = frozenset(
+    (
+        RELEASE_CHECKLIST,
+        RELEASE_DOCS_ROOT / "amflow-example-coverage.md",
+        RELEASE_DOCS_ROOT / "known-gaps.md",
+        RELEASE_DOCS_ROOT / "m7-closure-evidence.md",
+        RELEASE_DOCS_ROOT / "re-run-release-readiness.md",
+        RELEASE_DOCS_ROOT / "tools.md",
+    )
+)
 ALLOWED_FENCE_LANGUAGES = frozenset(("bash", "json", "sh", "text"))
 SHELL_FENCE_LANGUAGES = frozenset(("bash", "sh"))
 INLINE_LINK_PATTERN = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)")
@@ -43,6 +53,14 @@ def release_markdown_paths(root: Path) -> list[Path]:
     release_root = root / RELEASE_DOCS_ROOT
     if not release_root.is_dir():
         raise MarkdownError(f"{RELEASE_DOCS_ROOT} is missing")
+
+    missing_required = sorted(
+        str(relative_path)
+        for relative_path in REQUIRED_RELEASE_MARKDOWN
+        if not (root / relative_path).is_file()
+    )
+    if missing_required:
+        raise MarkdownError("required release markdown is missing: " + ", ".join(missing_required))
 
     paths = sorted(release_root.glob("*.md"))
     checklist = root / RELEASE_CHECKLIST

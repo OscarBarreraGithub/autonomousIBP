@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -209,7 +210,7 @@ def render_text(
     inventory: InventorySummary,
     performance: PerformanceSummary,
 ) -> str:
-    status = "READY" if readiness.ready and readiness.blocker_count == 0 else "BLOCKED"
+    status = release_status(readiness).upper()
     benchmark_tokens = [
         f"{benchmark.label} max={benchmark.max_wall_seconds:.2f}s"
         for benchmark in performance.benchmarks
@@ -247,6 +248,56 @@ def render_text(
     return "\n".join(lines)
 
 
+def release_status(readiness: ReadinessSummary) -> str:
+    return "ready" if readiness.ready and readiness.blocker_count == 0 else "blocked"
+
+
+def render_json(
+    readiness: ReadinessSummary,
+    inventory: InventorySummary,
+    performance: PerformanceSummary,
+) -> str:
+    payload = {
+        "schema_version": 1,
+        "status": release_status(readiness),
+        "source_commit": readiness.source_commit,
+        "readiness": {
+            "release_signoff_ready": readiness.ready,
+            "blocker_count": readiness.blocker_count,
+            "prerequisite_count": readiness.prerequisite_count,
+            "satisfied_prerequisite_count": readiness.satisfied_prerequisite_count,
+            "review_section_count": readiness.review_section_count,
+            "reviewed_section_count": readiness.reviewed_section_count,
+            "performance_review_path": readiness.performance_review_path,
+        },
+        "inventory": {
+            "sidecar_count": inventory.sidecar_count,
+            "accepted_count": inventory.accepted_count,
+            "unaccepted_count": inventory.unaccepted_count,
+            "schema_reconciled": True,
+        },
+        "performance": {
+            "review_complete": performance.complete,
+            "benchmark_count": performance.benchmark_count,
+            "run_count": performance.run_count,
+            "max_wall_seconds": performance.max_wall_seconds,
+            "max_rss_kb": performance.max_rss_kb,
+            "benchmarks": [
+                {
+                    "label": benchmark.label,
+                    "run_count": benchmark.run_count,
+                    "max_wall_seconds": benchmark.max_wall_seconds,
+                    "max_rss_kb": benchmark.max_rss_kb,
+                }
+                for benchmark in performance.benchmarks
+            ],
+        },
+        "blockers": readiness.blockers,
+        "withheld_claims": list(WITHHELD_CLAIMS),
+    }
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -258,6 +309,12 @@ def parse_args() -> argparse.Namespace:
         "--m7-root",
         default=str(M7_ROOT),
         help="Repository-relative M7 sidecar root to inventory.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="Output format.",
     )
     parser.add_argument(
         "--verify",
@@ -279,7 +336,10 @@ def main() -> int:
         print(str(error), file=sys.stderr)
         return 1
 
-    print(render_text(readiness, inventory, performance))
+    if args.format == "json":
+        print(render_json(readiness, inventory, performance))
+    else:
+        print(render_text(readiness, inventory, performance))
     if args.verify:
         failures: list[str] = []
         if not readiness.ready:

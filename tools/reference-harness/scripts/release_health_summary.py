@@ -83,13 +83,15 @@ def expect(condition: bool, message: str) -> None:
 def require_repo_file(root: Path, raw: Any, field: str) -> str:
     expect(isinstance(raw, str) and raw.strip(), f"{field} must be a non-empty path")
     value = raw.strip()
-    candidate = root / value
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = root / candidate
     try:
-        candidate.resolve(strict=False).relative_to(root.resolve(strict=False))
+        relative = candidate.resolve(strict=False).relative_to(root.resolve(strict=True))
     except ValueError as error:
         raise HealthError(f"{field} must stay within the repository: {value}") from error
     expect(candidate.is_file(), f"{field} does not exist as a file: {value}")
-    return value
+    return relative.as_posix()
 
 
 def require_string_list(raw: Any, field: str) -> list[str]:
@@ -342,6 +344,24 @@ def self_check(root: Path) -> None:
     summarize_inventory_for_readiness(root, M7_ROOT, ACCEPTED_READINESS_SIDECAR)
     readiness = summarize_readiness(root, ACCEPTED_READINESS_SIDECAR)
     summarize_performance(root, readiness.performance_review_path)
+
+    absolute_readiness_sidecar = Path(
+        require_repo_file(
+            root,
+            (root / ACCEPTED_READINESS_SIDECAR).as_posix(),
+            "readiness sidecar",
+        )
+    )
+    expect(
+        absolute_readiness_sidecar == ACCEPTED_READINESS_SIDECAR,
+        "absolute readiness sidecar path did not normalize to repository-relative form",
+    )
+    absolute_readiness = summarize_readiness(root, absolute_readiness_sidecar)
+    expect(
+        absolute_readiness.performance_review_path == readiness.performance_review_path,
+        "absolute readiness sidecar path changed the selected performance review",
+    )
+    summarize_inventory_for_readiness(root, M7_ROOT, absolute_readiness_sidecar)
 
     performance_payload = read_json(root / readiness.performance_review_path)
     duplicate_payload = json.loads(json.dumps(performance_payload))

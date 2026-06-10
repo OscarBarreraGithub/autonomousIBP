@@ -88,6 +88,69 @@ def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
     return strings
 
 
+def require_reference_floor_targets(
+    payload: dict[str, Any],
+    *,
+    expected_count: int,
+    expected_digit_floor: int,
+) -> list[dict[str, Any]]:
+    value = payload.get("row56_reference_floor_targets")
+    expect(isinstance(value, list), "row56_reference_floor_targets must be a list")
+    expect(
+        len(value) == expected_count,
+        "row56 reference-floor target list length must match reference-floor match count",
+    )
+
+    targets: list[dict[str, Any]] = []
+    target_keys: set[tuple[str, int]] = set()
+    target_ids: set[str] = set()
+    digit_floor: int | None = None
+    for index, item in enumerate(value):
+        label = f"row56_reference_floor_targets[{index}]"
+        expect(isinstance(item, dict), f"{label} must be an object")
+
+        integral = item.get("integral")
+        expect(
+            isinstance(integral, str) and integral,
+            f"{label}.integral must be a non-empty string",
+        )
+        order = item.get("order")
+        expect(type(order) is int, f"{label}.order must be an int")
+        target_key = (integral, order)
+        expect(
+            target_key not in target_keys,
+            f"{label} duplicates a row/order reference-floor target",
+        )
+        target_keys.add(target_key)
+
+        reference_floor_id = item.get("reference_floor_id")
+        expect(
+            isinstance(reference_floor_id, str) and reference_floor_id,
+            f"{label}.reference_floor_id must be a non-empty string",
+        )
+        expect(
+            reference_floor_id not in target_ids,
+            f"{label}.reference_floor_id duplicates another reference-floor target",
+        )
+        target_ids.add(reference_floor_id)
+
+        for field in ("reference_floor_real_digits", "reference_floor_imag_digits"):
+            digits = item.get(field)
+            expect(
+                type(digits) is int and digits >= 0,
+                f"{label}.{field} must be a nonnegative int",
+            )
+            digit_floor = digits if digit_floor is None else min(digit_floor, digits)
+
+        targets.append(item)
+
+    expect(
+        digit_floor == expected_digit_floor,
+        "row56 reference-floor target digit floor must match minimum digit agreement",
+    )
+    return targets
+
+
 def summarize_pinned_fingerprints() -> dict[str, Any]:
     entries = [
         {
@@ -157,6 +220,11 @@ def summarize_payloads(
     expect(
         require_int(reference_floor, "minimum_digit_agreement") == 11,
         "minimum b61n agreement must keep the retained 11-digit floor visible",
+    )
+    reference_floor_targets = require_reference_floor_targets(
+        reference_floor,
+        expected_count=reference_floor_count,
+        expected_digit_floor=reference_floor["minimum_digit_agreement"],
     )
     expect(reference_floor.get("m7_closure_claimed") is False, "reference-floor summary claimed M7 closure")
     expect(
@@ -252,7 +320,7 @@ def summarize_payloads(
             "matched_to_tolerance_count": tolerance_pass_count,
             "matched_to_reference_floor_count": reference_floor_count,
             "minimum_digit_agreement": reference_floor["minimum_digit_agreement"],
-            "targets": reference_floor["row56_reference_floor_targets"],
+            "targets": reference_floor_targets,
         },
         "precision_uplift": {
             "target_count": precision_targets,
@@ -453,6 +521,27 @@ def run_self_check() -> dict[str, Any]:
     precision_target_count_drift = copy.deepcopy(precision)
     precision_target_count_drift["target_count"] = 3
 
+    reference_floor_target_count_drift = copy.deepcopy(reference_floor)
+    reference_floor_target_count_drift["row56_reference_floor_targets"] = (
+        reference_floor_target_count_drift["row56_reference_floor_targets"][:-1]
+    )
+
+    duplicate_reference_floor_target = copy.deepcopy(reference_floor)
+    duplicate_reference_floor_target["row56_reference_floor_targets"][1]["integral"] = (
+        duplicate_reference_floor_target["row56_reference_floor_targets"][0]["integral"]
+    )
+    duplicate_reference_floor_target["row56_reference_floor_targets"][1]["order"] = (
+        duplicate_reference_floor_target["row56_reference_floor_targets"][0]["order"]
+    )
+
+    target_digit_floor_drift = copy.deepcopy(reference_floor)
+    target_digit_floor_drift["row56_reference_floor_targets"][0][
+        "reference_floor_real_digits"
+    ] = 12
+    target_digit_floor_drift["row56_reference_floor_targets"][0][
+        "reference_floor_imag_digits"
+    ] = 12
+
     promoted_gate = copy.deepcopy(publication)
     promoted_gate["amflow_cross_comparator_publication_gate_passed"] = True
 
@@ -498,6 +587,27 @@ def run_self_check() -> dict[str, Any]:
             publication=publication,
             fingerprints=fingerprints,
             expected_error="target count must match",
+        ),
+        "rejects_reference_floor_target_count_drift": rejected(
+            reference_floor=reference_floor_target_count_drift,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="target list length must match",
+        ),
+        "rejects_duplicate_reference_floor_target": rejected(
+            reference_floor=duplicate_reference_floor_target,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="duplicates a row/order reference-floor target",
+        ),
+        "rejects_reference_floor_target_digit_floor_drift": rejected(
+            reference_floor=target_digit_floor_drift,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="target digit floor must match",
         ),
         "rejects_publication_gate_promotion": rejected(
             reference_floor=reference_floor,

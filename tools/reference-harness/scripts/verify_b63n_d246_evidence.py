@@ -20,14 +20,17 @@ DEFAULT_SIDECAR = Path(
 
 EXPECTED_SOURCE_FILES: dict[str, dict[str, Any]] = {
     "automatic_phasespace_run_wl": {
+        "relative_path": "examples/automatic_phasespace/run.wl",
         "sha256": "f9f021e584334cc21fb682526eaf9f55de95b6f2a58b2971ae46a445fd46e2bf",
         "line_ranges": ["17-24", "28-33", "36-42"],
     },
     "amflow_m": {
+        "relative_path": "AMFlow.m",
         "sha256": "6fd47002b36399ee71c38e3e43e5e75541d1f2641966ca103fc8b8ce37dc7add",
         "line_ranges": ["461-481", "485-489", "874-881", "911-916", "941-950"],
     },
     "desolver_m": {
+        "relative_path": "diffeq_solver/DESolver.m",
         "sha256": "22c63b2aa4a4c8236a9593d39ba7ae8283efa12cb7730401e640ff1b43875585",
         "line_ranges": ["916-927", "1053-1061", "1065-1095"],
     },
@@ -187,6 +190,8 @@ def validate_source_files(payload: dict[str, Any]) -> None:
             source_path.startswith(source_root.rstrip("/") + "/"),
             f"source_files.{key}.path must live under source_root",
         )
+        expected_path = f"{source_root.rstrip('/')}/{expected['relative_path']}"
+        require_exact(source_path, expected_path, f"source_files.{key}.path")
         require_exact(entry.get("sha256"), expected["sha256"], f"source_files.{key}.sha256")
         require_string_list(
             entry.get("line_ranges"),
@@ -564,7 +569,7 @@ def skeleton_fixture() -> dict[str, Any]:
         "source_root": "/example/amflow",
         "source_files": {
             key: {
-                "path": f"/example/amflow/{key}.wl",
+                "path": f"/example/amflow/{spec['relative_path']}",
                 "sha256": spec["sha256"],
                 "line_ranges": spec["line_ranges"],
             }
@@ -703,6 +708,11 @@ def run_self_check() -> dict[str, Any]:
         "comparison_artifact"
     ] = "artifacts/d6.compare.json"
 
+    bad_source_path = skeleton_fixture()
+    bad_source_path["source_files"]["automatic_phasespace_run_wl"][
+        "path"
+    ] = "/example/amflow/examples/feynman_prescription/run.wl"
+
     bad_full_missing_coefficients = full_fixture()
     bad_full_missing_coefficients["weights"][0]["coefficients"] = []
 
@@ -766,6 +776,10 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_rejects_comparison_artifact_claim": rejected(
             bad_skeleton_comparison_claim,
             "skeleton must not record comparison_artifact",
+        ),
+        "rejects_wrong_source_file_path": rejected(
+            bad_source_path,
+            "source_files.automatic_phasespace_run_wl.path",
         ),
         "full_requires_nonempty_coefficients": rejected(
             bad_full_missing_coefficients,

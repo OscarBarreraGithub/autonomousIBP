@@ -76,6 +76,26 @@ review candidates, not as release evidence. Use
 `list_m7_unaccepted_sidecars.py` when you want that queue without the accepted
 sidecar rows.
 
+## M6 Prerequisite Sidecar Guards
+
+These checks validate the committed M6 sidecar corpus that the accepted release
+readiness packet consumes through qualification summaries. They read committed
+artifacts only; they do not regenerate AMFlow evidence, edit sidecars, or alter
+release acceptance.
+
+| Tool | Primary use | CI coverage |
+| --- | --- | --- |
+| [`validate_m6_sidecar_shapes.py`](../../tools/reference-harness/scripts/validate_m6_sidecar_shapes.py) | Validate committed M6 JSON and SQLite sidecar schemas, repo-local path references, and accepted/blocked shape consistency. | `m6-sidecar-shape-validation`. |
+| [`audit_m6_sidecar_drift.py`](../../tools/reference-harness/scripts/audit_m6_sidecar_drift.py) | Summarize accepted and unaccepted M6 sidecars, report stale metadata groups, and pin known unaccepted sidecars against silent promotion. | `m6-sidecar-drift-audit`, `m6-sidecar-drift-audit-self-check`, and `m6-unaccepted-sidecar-promotion-guard`. |
+
+Useful inspection commands:
+
+```sh
+python3 tools/reference-harness/scripts/validate_m6_sidecar_shapes.py --verify
+python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --summary-only
+python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --verify-unaccepted-not-promoted --summary-only
+```
+
 ## Evidence Bundle And Health
 
 | Tool | Primary use | CI coverage |

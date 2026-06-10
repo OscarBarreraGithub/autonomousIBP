@@ -165,6 +165,38 @@ bool IsSolvedScopedWeight(
          evaluation.failure_code.empty();
 }
 
+struct AuditFingerprintPin {
+  std::string label;
+  std::string actual;
+  std::string expected;
+};
+
+void ExpectUniqueAuditFingerprintPins(
+    const std::vector<AuditFingerprintPin>& pins) {
+  Expect(pins.size() >= 2,
+         "b63n audit fingerprint uniqueness sanity requires at least two pins");
+  for (std::size_t index = 0; index < pins.size(); ++index) {
+    const AuditFingerprintPin& pin = pins[index];
+    Expect(!pin.label.empty(),
+           "b63n audit fingerprint pin label must not be empty");
+    ExpectEqual(pin.actual,
+                pin.expected,
+                pin.label +
+                    " b63n weighted-residue audit fingerprint should stay pinned");
+    for (std::size_t other = index + 1; other < pins.size(); ++other) {
+      const AuditFingerprintPin& other_pin = pins[other];
+      Expect(pin.expected != other_pin.expected,
+             "distinct b63n audit fingerprint pins must stay unique: " +
+                 pin.label + " and " + other_pin.label + " both pin " +
+                 pin.expected);
+      Expect(pin.actual != other_pin.actual,
+             "distinct b63n weighted-residue audits must not collide: " +
+                 pin.label + " and " + other_pin.label + " both produced " +
+                 pin.actual);
+    }
+  }
+}
+
 template <typename Callable>
 void ExpectExceptionContains(Callable&& callable,
                              const std::string& expected_substring,
@@ -765,15 +797,14 @@ void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
   const std::string published_d7_fingerprint =
       amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
           published_d7);
-  ExpectEqual(blocked_d2_fingerprint,
-              "fnv1a64:8c19abf9c1a1f0d1",
-              "blocked b63n D2 weighted-residue audit fingerprint should stay pinned");
-  ExpectEqual(published_d7_fingerprint,
-              "fnv1a64:1c099d4fbf9dd649",
-              "published b63n D7 weighted-residue audit fingerprint should stay pinned");
-  Expect(blocked_d2_fingerprint != published_d7_fingerprint,
-         "blocked and published b63n weighted-residue audits should not hash "
-         "to the same value");
+  ExpectUniqueAuditFingerprintPins({
+      {"blocked-D2-scoped-weighted-residue",
+       blocked_d2_fingerprint,
+       "fnv1a64:8c19abf9c1a1f0d1"},
+      {"published-D7-scoped-weighted-residue",
+       published_d7_fingerprint,
+       "fnv1a64:1c099d4fbf9dd649"},
+  });
 
   amflow::CutkoskyScopedWeightedResidueEvaluation tampered_d2 = blocked_d2;
   tampered_d2.publication_gate_status += "; drift";

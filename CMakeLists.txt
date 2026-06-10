@@ -421,6 +421,28 @@ if(BUILD_TESTING)
   set_tests_properties(b61n-publication-audit-fingerprint-regenerator-self-check
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-parity-status-summary
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/b61n_parity_status_summary.py
+      --format
+      json
+      --include-runtime-audit
+      --test-binary
+      $<TARGET_FILE:singular-runtime-lane-tests>)
+  set_tests_properties(b61n-parity-status-summary
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-parity-status-summary-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/b61n_parity_status_summary.py
+      --self-check)
+  set_tests_properties(b61n-parity-status-summary-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_executable(cutkosky-weighted-residue-tests
     tests/cutkosky_weighted_residue_tests.cpp)

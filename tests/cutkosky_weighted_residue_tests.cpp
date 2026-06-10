@@ -737,6 +737,15 @@ void ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest() {
                  "moment_cross_validation=passed",
                  "scoped weighted residue audit should report the existing moment gate");
   ExpectContains(audit,
+                 "moment_cross_validation_publication_gate=blocked-by-publication-gate",
+                 "scoped weighted residue audit should carry the nested gate status");
+  ExpectContains(audit,
+                 "moment_cross_validation_seed_denominator_identity[0]=D2;index=1;power=2;role=D2=(l1+p1)^2 angular weight with power 2;form=inverse_denominator_weight[D2(q2,cos_theta_a)]",
+                 "scoped weighted residue audit should carry the D2 seed identity");
+  ExpectContains(audit,
+                 "moment_cross_validation_seed_provenance[0]=D2;series=automatic_phasespace::weighted-moment-seed::D2::prefactor;eta_zero_label=automatic_phasespace_D2_weighted_moment_seed;coefficient_label=automatic_phasespace_D2_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+                 "scoped weighted residue audit should carry the D2 seed provenance");
+  ExpectContains(audit,
                  "selected_weight_role=D2=(l1+p1)^2 angular weight with power 2",
                  "scoped weighted residue audit should expose the D2 role");
   ExpectContains(audit,
@@ -842,6 +851,12 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "reference_min_digit_agreement=999",
                  "D7 scoped audit should report the stored AMFlow agreement");
   ExpectContains(audit,
+                 "moment_cross_validation_seed_denominator_identity[3]=D7;index=6;power=1;role=D7=(l1+p2)^2 angular weight;form=inverse_denominator_weight[D7(q2,cos_theta_a)]",
+                 "D7 scoped audit should carry the nested D7 seed identity");
+  ExpectContains(audit,
+                 "moment_cross_validation_seed_provenance[3]=D7;series=automatic_phasespace::weighted-moment-seed::D7::prefactor;eta_zero_label=automatic_phasespace_D7_weighted_moment_seed;coefficient_label=automatic_phasespace_D7_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D7-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+                 "D7 scoped audit should carry the nested D7 seed provenance");
+  ExpectContains(audit,
                  "selected_weight_role=D7=(l1+p2)^2 angular weight",
                  "D7 scoped audit should expose the selected denominator role");
   ExpectContains(audit,
@@ -922,12 +937,12 @@ std::vector<AuditFingerprintPin> BuildB63nWeightedResidueAuditFingerprintPins() 
           {"blocked-D2-scoped-weighted-residue",
            "b63n-scoped-weighted-residue-evaluation",
            amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(blocked_d2),
-           "fnv1a64:8c19abf9c1a1f0d1"},
+           "fnv1a64:e2147f991e568fd9"},
           {"published-D7-scoped-weighted-residue",
            "b63n-scoped-weighted-residue-evaluation",
            amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
                published_d7),
-           "fnv1a64:1c099d4fbf9dd649"}};
+           "fnv1a64:08761824abdc4ba1"}};
 }
 
 void EmitB63nWeightedResidueAuditFingerprintsJson(std::ostream& out) {

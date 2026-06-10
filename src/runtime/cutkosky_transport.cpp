@@ -3294,6 +3294,26 @@ std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
   out << "moment_cross_validation="
       << (evaluation.moment_cross_validation_gate.passed ? "passed" : "blocked")
       << "\n";
+  out << "moment_cross_validation_publication_gate="
+      << evaluation.moment_cross_validation_gate.publication_gate_status << "\n";
+  out << "moment_cross_validation_failure_count="
+      << evaluation.moment_cross_validation_gate.failure_reasons.size() << "\n";
+  for (std::size_t index = 0;
+       index <
+       evaluation.moment_cross_validation_gate.validated_seed_denominator_identities.size();
+       ++index) {
+    out << "moment_cross_validation_seed_denominator_identity[" << index << "]="
+        << evaluation.moment_cross_validation_gate
+               .validated_seed_denominator_identities[index]
+        << "\n";
+  }
+  for (std::size_t index = 0;
+       index < evaluation.moment_cross_validation_gate.validated_seed_provenance.size();
+       ++index) {
+    out << "moment_cross_validation_seed_provenance[" << index << "]="
+        << evaluation.moment_cross_validation_gate.validated_seed_provenance[index]
+        << "\n";
+  }
   out << "candidate_series_terms=" << evaluation.candidate_series.terms.size()
       << "\n";
   out << "candidate_provenance="

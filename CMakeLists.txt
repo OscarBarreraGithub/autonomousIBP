@@ -343,6 +343,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-readiness-sidecar-references
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py
+      --self-check
+  )
+  set_tests_properties(m7-release-readiness-sidecar-references PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-health-summary
     COMMAND
       ${Python3_EXECUTABLE}

@@ -108,6 +108,11 @@ def require_string(raw: Any, label: str) -> str:
     return raw
 
 
+def require_entry_field(entry: dict[str, Any], key: str, label: str) -> Any:
+    expect(key in entry, f"{label} is missing")
+    return entry[key]
+
+
 def require_bool(raw: Any, label: str) -> bool:
     expect(isinstance(raw, bool), f"{label} must be a bool")
     return raw
@@ -148,40 +153,78 @@ def bool_text(value: bool) -> str:
 
 def validate_entry(raw_entry: Any, index: int) -> dict[str, Any]:
     expect(isinstance(raw_entry, dict), f"entries[{index}] must be an object")
-    label = require_string(raw_entry.get("label"), f"entries[{index}].label")
+    label = require_string(
+        require_entry_field(raw_entry, "label", f"entries[{index}].label"),
+        f"entries[{index}].label",
+    )
     selected_weight = require_string(
-        raw_entry.get("selected_weight"),
+        require_entry_field(
+            raw_entry,
+            "selected_weight",
+            f"entries[{index}].selected_weight",
+        ),
         f"entries[{index}].selected_weight",
     )
     selected_weight_index = require_int(
-        raw_entry.get("selected_weight_index"),
+        require_entry_field(
+            raw_entry,
+            "selected_weight_index",
+            f"entries[{index}].selected_weight_index",
+        ),
         f"entries[{index}].selected_weight_index",
     )
     publication_gate_checked = require_bool(
-        raw_entry.get("publication_gate_checked"),
+        require_entry_field(
+            raw_entry,
+            "publication_gate_checked",
+            f"entries[{index}].publication_gate_checked",
+        ),
         f"entries[{index}].publication_gate_checked",
     )
     publication_gate_passed = require_bool(
-        raw_entry.get("publication_gate_passed"),
+        require_entry_field(
+            raw_entry,
+            "publication_gate_passed",
+            f"entries[{index}].publication_gate_passed",
+        ),
         f"entries[{index}].publication_gate_passed",
     )
     live_coefficients_available = require_bool(
-        raw_entry.get("live_coefficients_available"),
+        require_entry_field(
+            raw_entry,
+            "live_coefficients_available",
+            f"entries[{index}].live_coefficients_available",
+        ),
         f"entries[{index}].live_coefficients_available",
     )
     retained_solution_samples_used = require_bool(
-        raw_entry.get("retained_solution_samples_used"),
+        require_entry_field(
+            raw_entry,
+            "retained_solution_samples_used",
+            f"entries[{index}].retained_solution_samples_used",
+        ),
         f"entries[{index}].retained_solution_samples_used",
     )
     full_eta_zero_contour_applied = require_bool(
-        raw_entry.get("full_eta_zero_contour_applied"),
+        require_entry_field(
+            raw_entry,
+            "full_eta_zero_contour_applied",
+            f"entries[{index}].full_eta_zero_contour_applied",
+        ),
         f"entries[{index}].full_eta_zero_contour_applied",
     )
     fingerprint = require_string(
-        raw_entry.get("audit_fingerprint"),
+        require_entry_field(
+            raw_entry,
+            "audit_fingerprint",
+            f"entries[{index}].audit_fingerprint",
+        ),
         f"entries[{index}].audit_fingerprint",
     )
-    audit = require_string(raw_entry.get("audit"), f"entries[{index}].audit")
+    audit = require_string(
+        require_entry_field(raw_entry, "audit", f"entries[{index}].audit"),
+        f"entries[{index}].audit",
+    )
     expect(fingerprint.startswith("fnv1a64:"), f"{label} audit fingerprint must be fnv1a64")
 
     fields = parse_audit_text(audit)
@@ -305,6 +348,8 @@ def rejected(payload: dict[str, Any], expected_message: str) -> bool:
 
 def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
     accepted = validate_payload(payload)
+    missing_entry_gate_field = copy.deepcopy(payload)
+    del missing_entry_gate_field["entries"][0]["publication_gate_checked"]
     missing_nested_gate = copy.deepcopy(payload)
     missing_nested_gate["entries"][0]["audit"] = replace_audit_line(
         missing_nested_gate["entries"][0]["audit"],
@@ -326,6 +371,10 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
     )
     checks = {
         "accepts_runtime_scoped_gate_emitter": accepted["scoped_gate_audit_query_passed"],
+        "rejects_missing_entry_publication_gate_checked": rejected(
+            missing_entry_gate_field,
+            "entries[0].publication_gate_checked is missing",
+        ),
         "rejects_missing_nested_gate_status": rejected(missing_nested_gate, "audit missing moment_cross_validation_publication_gate"),
         "rejects_stale_nested_seed_identity": rejected(stale_seed_identity, "nested seed identities"),
         "rejects_full_contour_overclaim": rejected(full_contour_overclaim, "must not claim full eta-zero contour"),

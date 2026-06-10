@@ -157,6 +157,10 @@ python3 tools/reference-harness/scripts/verify_b61n_publication_audit_trail.py \
   --self-check \
   --test-binary build/singular-runtime-lane-tests
 
+python3 tools/reference-harness/scripts/regenerate_b61n_publication_audit_fingerprints.py \
+  --self-check \
+  --test-binary build/singular-runtime-lane-tests
+
 python3 tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py \
   --self-check \
   --test-binary build/cutkosky-weighted-residue-tests
@@ -787,6 +791,10 @@ The capture script writes:
   `singular-runtime-lane-tests` emitter and fails closed unless the b61n publication audit trail
   exposes the reviewed lane142 primitive-bubble publication, the off-axis contour publication
   block, pinned audit-text keys, stable audit fingerprints, and non-promotion flags.
+- `regenerate_b61n_publication_audit_fingerprints.py --self-check` queries the same b61n
+  runtime emitter, requires the fresh audit fingerprint to match the pinned lane142 publication
+  hash, and now probes stale labels, category drift, pin drift, false match flags, runtime
+  fingerprint drift, and stale entry counts before reporting a passing self-check.
 - `verify_b63n_scoped_gate_audit_trail.py --self-check` queries the built
   `cutkosky-weighted-residue-tests` emitter and fails closed unless the scoped b63n publication
   audit exposes the nested moment gate status, canonical D2/D4/D6/D7 seed identities and

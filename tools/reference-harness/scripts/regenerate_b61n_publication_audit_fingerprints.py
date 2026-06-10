@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from pathlib import Path
@@ -125,9 +126,23 @@ def validate_payload(payload: dict[str, Any], *, require_matches: bool) -> dict[
             f"entries[{index}].pinned_fingerprint",
         )
         matches = require_bool(raw_entry.get("matches_pin"), f"entries[{index}].matches_pin")
+        expected_pin = EXPECTED_PINS.get(label)
+        expect(expected_pin is not None, f"unexpected b61n publication audit label {label}")
+        expect(
+            category == expected_pin["category"],
+            f"{label} category drifted from expected pin metadata",
+        )
         expect(category in EXPECTED_CATEGORIES, f"{label} has unexpected category {category}")
         expect(fresh.startswith("fnv1a64:"), f"{label} fresh fingerprint must be fnv1a64")
         expect(pinned.startswith("fnv1a64:"), f"{label} pinned fingerprint must be fnv1a64")
+        expect(
+            pinned == expected_pin["pinned_fingerprint"],
+            f"{label} pinned fingerprint drifted from expected pin metadata",
+        )
+        expect(
+            matches == (fresh == pinned),
+            f"{label} matches_pin must reflect fresh/pinned fingerprint equality",
+        )
         labels.append(label)
         fresh_fingerprints.append(fresh)
         if not matches:
@@ -152,6 +167,86 @@ def validate_payload(payload: dict[str, Any], *, require_matches: bool) -> dict[
             "--self-check to print fresh hashes",
         )
     return {"mismatches": mismatches, "entry_count": len(entries)}
+
+
+def rejected(
+    payload: dict[str, Any],
+    expected_message: str,
+    *,
+    require_matches: bool = True,
+) -> bool:
+    try:
+        validate_payload(payload, require_matches=require_matches)
+    except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
+        return expected_message in str(error)
+    return False
+
+
+def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
+    accepted = validate_payload(payload, require_matches=True)
+
+    stale_categories = copy.deepcopy(payload)
+    stale_categories["published_categories"] = []
+
+    stale_label = copy.deepcopy(payload)
+    stale_label["entries"][0]["label"] = "synthetic-stale-b61n-label"
+
+    stale_category = copy.deepcopy(payload)
+    stale_category["entries"][0]["category"] = "synthetic-stale-b61n-category"
+
+    stale_pinned_fingerprint = copy.deepcopy(payload)
+    stale_pinned_fingerprint["entries"][0]["pinned_fingerprint"] = "fnv1a64:0000000000000000"
+    stale_pinned_fingerprint["entries"][0]["matches_pin"] = False
+
+    false_match_flag = copy.deepcopy(payload)
+    false_match_flag["entries"][0]["fresh_fingerprint"] = "fnv1a64:0000000000000000"
+    false_match_flag["entries"][0]["matches_pin"] = True
+
+    runtime_fingerprint_drift = copy.deepcopy(payload)
+    runtime_fingerprint_drift["entries"][0]["fresh_fingerprint"] = "fnv1a64:0000000000000000"
+    runtime_fingerprint_drift["entries"][0]["matches_pin"] = False
+
+    stale_entry_count = copy.deepcopy(payload)
+    stale_entry_count["entry_count"] = accepted["entry_count"] + 1
+
+    checks = {
+        "accepts_runtime_fingerprint_payload": accepted["entry_count"] == len(EXPECTED_LABELS),
+        "rejects_published_category_drift": rejected(
+            stale_categories,
+            "published b61n publication audit categories drifted",
+        ),
+        "rejects_unexpected_label": rejected(
+            stale_label,
+            "unexpected b61n publication audit label",
+        ),
+        "rejects_entry_category_drift": rejected(
+            stale_category,
+            "category drifted from expected pin metadata",
+        ),
+        "rejects_pinned_fingerprint_drift": rejected(
+            stale_pinned_fingerprint,
+            "pinned fingerprint drifted from expected pin metadata",
+        ),
+        "rejects_false_match_flag": rejected(
+            false_match_flag,
+            "matches_pin must reflect fresh/pinned fingerprint equality",
+        ),
+        "rejects_runtime_fingerprint_drift": rejected(
+            runtime_fingerprint_drift,
+            "b61n publication audit fingerprints drifted",
+        ),
+        "rejects_stale_entry_count": rejected(
+            stale_entry_count,
+            "entry_count must match entries",
+        ),
+    }
+    expect(all(checks.values()), "b61n fingerprint regenerator self-check failed")
+    return {
+        "kind": "b61n-publication-audit-fingerprint-self-check",
+        "entry_count": accepted["entry_count"],
+        "passed": True,
+        "checks": checks,
+    }
 
 
 def render_plain(payload: dict[str, Any]) -> str:
@@ -199,21 +294,12 @@ def main(argv: list[str]) -> int:
     root = repo_root()
     test_binary = resolve_test_binary(args.test_binary, root)
     payload = build_regeneration_payload(test_binary, root)
-    summary = validate_payload(payload, require_matches=args.self_check)
 
     if args.self_check:
-        print(
-            json.dumps(
-                {
-                    "kind": "b61n-publication-audit-fingerprint-self-check",
-                    "entry_count": summary["entry_count"],
-                    "passed": True,
-                },
-                indent=2,
-                sort_keys=True,
-            )
-        )
+        print(json.dumps(run_self_check(payload), indent=2, sort_keys=True))
         return 0
+
+    validate_payload(payload, require_matches=False)
 
     if args.format == "plain":
         print(render_plain(payload), end="")

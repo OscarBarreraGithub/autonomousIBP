@@ -370,8 +370,8 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
     valid_summary = load_json(retained_comparison_path)
     valid_contract = validate_reference_floor_summary(valid_summary, "self_check.valid")
 
-    below_floor = copy.deepcopy(valid_summary)
-    below_floor["integrals"][-1]["coefficients"][-1]["imag_agreement_digits"] = 11
+    masked_row56_regression = copy.deepcopy(valid_summary)
+    masked_row56_regression["integrals"][-1]["coefficients"][-1]["imag_agreement_digits"] = 11
 
     fake_50_digit = copy.deepcopy(valid_summary)
     fake_50_digit["integrals"][-1]["coefficients"][-1]["matched_to_tolerance_digits"] = True
@@ -381,7 +381,10 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
 
     checks = {
         "retained_fixture_passes": valid_contract["reference_floor_matched_coefficient_count"] == 4,
-        "rejects_below_reference_floor": rejected(below_floor, "dropped below reference floor"),
+        "rejects_matched_reference_floor_below_floor_regression": rejected(
+            masked_row56_regression,
+            "dropped below reference floor",
+        ),
         "rejects_fake_50_digit_row56_claim": rejected(fake_50_digit, "must not be reported"),
         "rejects_missing_row56_reference_floor_target": rejected(missing_target, "row 5/6 target set"),
     }

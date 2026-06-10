@@ -210,6 +210,7 @@ def summarize_performance(root: Path, performance_review_path: str) -> Performan
         run_count = entry.get("run_count")
         expect(type(run_count) is int and run_count > 0, f"benchmark[{index}].run_count must be positive")
         max_wall_seconds = numeric_value(entry.get("wall_seconds_max"), f"benchmark[{index}].wall_seconds_max")
+        expect(max_wall_seconds >= 0.0, f"benchmark[{index}].wall_seconds_max must be nonnegative")
         max_rss_kb = entry.get("max_rss_kb_max")
         expect(type(max_rss_kb) is int and max_rss_kb >= 0, f"benchmark[{index}].max_rss_kb_max must be nonnegative")
         label = benchmark_label(entry, index)
@@ -360,6 +361,18 @@ def self_check(root: Path) -> None:
             "duplicate performance benchmark check",
             lambda: summarize_performance(root, str(duplicate_path.relative_to(root))),
             "duplicate performance benchmark label",
+        )
+        negative_timing_payload = json.loads(json.dumps(performance_payload))
+        negative_timing_payload["benchmark_timing_evidence"][0]["wall_seconds_max"] = -0.01
+        negative_timing_path = Path(temp_dir) / "negative-performance-benchmark.json"
+        negative_timing_path.write_text(
+            json.dumps(negative_timing_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "negative performance benchmark timing check",
+            lambda: summarize_performance(root, str(negative_timing_path.relative_to(root))),
+            "wall_seconds_max must be nonnegative",
         )
 
     expect_health_error(

@@ -149,6 +149,15 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-reference-floor-parity-gate
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b61n_reference_floor_parity.py
+  )
+  set_tests_properties(b61n-reference-floor-parity-gate PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-signoff-readiness-accepted-inputs
     COMMAND
       ${Python3_EXECUTABLE}

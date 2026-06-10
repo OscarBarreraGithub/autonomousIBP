@@ -67,6 +67,7 @@ EXPECTED_WEIGHTS: dict[str, dict[str, Any]] = {
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PLACEHOLDER_TEXT = {"", "placeholder", "todo", "tbd", "unknown", "none", "null"}
 MINIMUM_DIGITS = 50
+REQUIRED_PUBLISHED_EPS_ORDERS = [0, 1, 2, 3]
 
 
 def expect(condition: bool, message: str) -> None:
@@ -501,6 +502,11 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
                     orders == expected_orders,
                     "published weights must share the same contiguous eps_order scope",
                 )
+        expect(
+            expected_orders is not None
+            and all(order in expected_orders for order in REQUIRED_PUBLISHED_EPS_ORDERS),
+            "published weights must include the D246 eps^0..eps^3 coefficient scope",
+        )
         blockers = payload.get("publication_blockers", [])
         expect(blockers in ([], None), "published evidence must not retain publication_blockers")
     else:
@@ -706,6 +712,11 @@ def run_self_check() -> dict[str, Any]:
         sample_coefficient("D4", 2),
     ]
 
+    bad_truncated_eps = full_fixture()
+    for weight in bad_truncated_eps["weights"]:
+        denominator_id = weight["denominator_id"]
+        weight["coefficients"] = [sample_coefficient(denominator_id, 0)]
+
     bad_low_digits = full_fixture()
     bad_low_digits["weights"][2]["coefficients"][0]["agreement_digits"] = 49
 
@@ -763,6 +774,10 @@ def run_self_check() -> dict[str, Any]:
         "full_requires_contiguous_eps_scope": rejected(
             bad_noncontiguous_eps,
             "contiguous eps_order range",
+        ),
+        "full_rejects_truncated_eps_scope": rejected(
+            bad_truncated_eps,
+            "eps^0..eps^3 coefficient scope",
         ),
         "full_rejects_low_digit_agreement": rejected(
             bad_low_digits,

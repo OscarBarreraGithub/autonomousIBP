@@ -1591,6 +1591,94 @@ void ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest() {
   ExpectD7MissingKinematicBindingFailsClosed(missing_msq_spec, "msq");
 }
 
+void ExpectD7KinematicPerturbationDoesNotReuseLane146Publication(
+    const std::string& label,
+    const std::map<std::string, std::string>& numeric_substitutions) {
+  amflow::ProblemSpec perturbed_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  perturbed_spec.kinematics.numeric_substitutions = numeric_substitutions;
+
+  try {
+    const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+        amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+            perturbed_spec,
+            6,
+            3,
+            70);
+    Expect(evaluation.evaluation_attempted,
+           label + " D7 perturbation should still audit the attempted request");
+    Expect(evaluation.selected_weight_denominator == "D7" &&
+               evaluation.selected_weight_denominator_index == 6,
+           label + " D7 perturbation should retain the requested denominator");
+    Expect(evaluation.publication_gate_checked &&
+               !evaluation.publication_gate_passed &&
+               evaluation.failure_code == "boundary_unsolved",
+           label +
+               " D7 perturbation must fail closed instead of reusing lane146");
+    Expect(!evaluation.reference_validation_passed &&
+               evaluation.reference_validation_source.empty() &&
+               evaluation.reference_min_digit_agreement == 0,
+           label +
+               " D7 perturbation must not claim the exact lane146 AMFlow reference");
+    Expect(!evaluation.live_coefficients_available &&
+               !evaluation.retained_solution_samples_used &&
+               !evaluation.full_eta_zero_contour_applied,
+           label +
+               " D7 perturbation must not publish coefficients, consume retained "
+               "samples, or promote eta-zero coverage");
+
+    const amflow::CutkoskyResidueSeriesTerm& eps0 =
+        ResidueTermAt(evaluation.candidate_series, 0);
+    Expect(eps0.coefficient_label ==
+               "automatic_phasespace_D7_weighted_moment_seed",
+           label + " D7 perturbation should fall back only to the synthetic seed");
+    Expect(eps0.provenance.synthetic_fixture &&
+               !eps0.provenance.coefficient_published &&
+               eps0.provenance.source != kLane146Selected4Compare30,
+           label +
+               " D7 perturbation must not carry published lane146 provenance");
+  } catch (const std::exception& error) {
+    ExpectContains(error.what(),
+                   "requires exact automatic_phasespace and feynman_prescription "
+                   "weighted residue surfaces",
+                   label +
+                       " D7 perturbation should reject before exact surface "
+                       "binding or fail closed after binding");
+  }
+}
+
+void ScopedAutomaticPhaseSpaceD7KinematicPerturbationFailsClosedTest() {
+  const amflow::CutkoskyScopedWeightedResidueEvaluation canonical =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          MakeB63nAutomaticPhaseSpaceSpec(),
+          6,
+          3,
+          70);
+  Expect(canonical.publication_gate_passed &&
+             canonical.reference_validation_source == kLane146Selected4Compare30,
+         "D7 perturbation guard requires the canonical lane146 point to publish");
+
+  struct D7KinematicPerturbation {
+    std::string label;
+    std::map<std::string, std::string> numeric_substitutions;
+  };
+  const std::vector<D7KinematicPerturbation> perturbations = {
+      {"s-plus-rational-delta",
+       {{"s", "100 + 1/1000000000000"}, {"msq", "1"}}},
+      {"s-minus-rational-delta",
+       {{"s", "100 - 1/1000000000000"}, {"msq", "1"}}},
+      {"msq-plus-rational-delta",
+       {{"s", "100"}, {"msq", "1 + 1/1000000000000"}}},
+      {"msq-minus-rational-delta",
+       {{"s", "100"}, {"msq", "1 - 1/1000000000000"}}},
+  };
+
+  for (const D7KinematicPerturbation& perturbation : perturbations) {
+    ExpectD7KinematicPerturbationDoesNotReuseLane146Publication(
+        perturbation.label,
+        perturbation.numeric_substitutions);
+  }
+}
+
 void ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest() {
   const amflow::ProblemSpec plus_minus_spec =
       MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
@@ -2486,6 +2574,7 @@ int main(const int argc, char** argv) {
     ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest();
     ScopedAutomaticPhaseSpaceD7MissingKinematicBindingFailsClosedTest();
     ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest();
+    ScopedAutomaticPhaseSpaceD7KinematicPerturbationFailsClosedTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();

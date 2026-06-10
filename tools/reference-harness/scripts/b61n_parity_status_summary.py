@@ -450,12 +450,31 @@ def run_self_check() -> dict[str, Any]:
     lost_uplift = copy.deepcopy(precision)
     lost_uplift["minimum_uplifted_fraction_digits"] = 80
 
+    precision_target_count_drift = copy.deepcopy(precision)
+    precision_target_count_drift["target_count"] = 3
+
     promoted_gate = copy.deepcopy(publication)
     promoted_gate["amflow_cross_comparator_publication_gate_passed"] = True
+
+    amflow_reference_backed_precision = copy.deepcopy(publication)
+    amflow_reference_backed_precision["precision_evidence_not_amflow_reference_backed"] = False
+
+    promoted_m6_hook = copy.deepcopy(publication)
+    promoted_m6_hook["m6_qualifier_hook_currently_promoted"] = True
+
+    missing_withheld_claim = copy.deepcopy(publication)
+    missing_withheld_claim["withheld_claims"] = [
+        claim
+        for claim in missing_withheld_claim["withheld_claims"]
+        if claim != "This summary does not claim Milestone M7 closure."
+    ]
 
     fingerprint_drift = copy.deepcopy(fingerprints)
     fingerprint_drift["runtime_checked"] = True
     fingerprint_drift["pins_match"] = False
+
+    fingerprint_count_drift = copy.deepcopy(fingerprints)
+    fingerprint_count_drift["entry_count"] += 1
 
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-reference-floor-limited",
@@ -473,6 +492,13 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             expected_error="160 fractional digits",
         ),
+        "rejects_precision_target_count_drift": rejected(
+            reference_floor=reference_floor,
+            precision=precision_target_count_drift,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="target count must match",
+        ),
         "rejects_publication_gate_promotion": rejected(
             reference_floor=reference_floor,
             precision=precision,
@@ -480,12 +506,40 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             expected_error="publication gate must stay blocked",
         ),
+        "rejects_amflow_reference_backed_precision_mislabel": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=amflow_reference_backed_precision,
+            fingerprints=fingerprints,
+            expected_error="explicitly non-AMFlow-reference-backed",
+        ),
+        "rejects_m6_hook_promotion": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=promoted_m6_hook,
+            fingerprints=fingerprints,
+            expected_error="M6 qualifier hook must not be promoted",
+        ),
+        "rejects_missing_withheld_m7_claim": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=missing_withheld_claim,
+            fingerprints=fingerprints,
+            expected_error="withheld_claims missing",
+        ),
         "rejects_runtime_fingerprint_drift": rejected(
             reference_floor=reference_floor,
             precision=precision,
             publication=publication,
             fingerprints=fingerprint_drift,
             expected_error="fingerprints must match pins",
+        ),
+        "rejects_fingerprint_count_drift": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprint_count_drift,
+            expected_error="fingerprint entry_count must match entries",
         ),
     }
     expect(all(checks.values()), "b61n parity status summary self-check failed")

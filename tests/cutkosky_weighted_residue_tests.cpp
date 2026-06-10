@@ -1279,6 +1279,75 @@ void ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest() {
   }
 }
 
+void ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest() {
+  amflow::ProblemSpec decorated_spec = MakeB63nAutomaticPhaseSpaceSpec();
+  decorated_spec.kinematics.numeric_substitutions = {
+      {"msq", "1"},
+      {"s", "100"},
+      {"spectator", "1/1000"},
+  };
+
+  const amflow::CutkoskyScopedWeightedResidueEvaluation evaluation =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(decorated_spec,
+                                                               6,
+                                                               3,
+                                                               70);
+
+  Expect(evaluation.reviewed_surface,
+         "decorated D7 scoped evaluation should still bind the reviewed surface");
+  Expect(evaluation.selected_weight_denominator == "D7" &&
+             evaluation.selected_weight_denominator_index == 6,
+         "decorated D7 scoped evaluation should still audit the requested D7 weight");
+  Expect(evaluation.moment_cross_validation_gate.passed,
+         "decorated D7 scoped evaluation should still pass the coefficient-free "
+         "moment gate");
+  Expect(evaluation.publication_gate_checked &&
+             !evaluation.publication_gate_passed &&
+             evaluation.failure_code == "boundary_unsolved",
+         "decorated D7 scoped evaluation must fail closed at publication");
+  Expect(!evaluation.reference_validation_passed &&
+             evaluation.reference_validation_source.empty() &&
+             evaluation.reference_min_digit_agreement == 0,
+         "decorated D7 scoped evaluation must not claim the lane146 AMFlow "
+         "reference validation");
+  Expect(!evaluation.live_coefficients_available &&
+             !evaluation.retained_solution_samples_used &&
+             !evaluation.full_eta_zero_contour_applied,
+         "decorated D7 scoped evaluation must not publish coefficients, use "
+         "retained final samples, or promote full eta-zero coverage");
+  ExpectContains(evaluation.publication_gate_status,
+                 "require exactly the s and msq numeric substitutions",
+                 "decorated D7 publication gate should explain that lane146 "
+                 "kinematics cannot carry extra bindings");
+
+  const amflow::CutkoskyResidueSeriesTerm& eps0 =
+      ResidueTermAt(evaluation.candidate_series, 0);
+  Expect(eps0.coefficient_label == "automatic_phasespace_D7_weighted_moment_seed",
+         "decorated D7 scoped evaluation should retain the synthetic seed label");
+  Expect(eps0.provenance.synthetic_fixture &&
+             !eps0.provenance.coefficient_published &&
+             !eps0.provenance.retained_solution_samples_used,
+         "decorated D7 scoped evaluation should keep unpublished seed provenance");
+
+  const std::string audit =
+      amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(evaluation);
+  ExpectContains(audit,
+                 "selected_weight=D7",
+                 "decorated D7 audit should retain the selected weight");
+  ExpectContains(audit,
+                 "publication_gate_passed=false",
+                 "decorated D7 audit should report publication rejection");
+  ExpectContains(audit,
+                 "reference_validation_passed=false",
+                 "decorated D7 audit should reject lane146 reference validation");
+  ExpectContains(audit,
+                 "candidate_provenance=D7;series=automatic_phasespace::weighted-moment-seed::D7::prefactor",
+                 "decorated D7 audit should expose the synthetic D7 provenance");
+  ExpectContains(audit,
+                 "full_eta_zero_contour_applied=false",
+                 "decorated D7 audit must not promote M6");
+}
+
 void ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest() {
   const amflow::ProblemSpec plus_minus_spec =
       MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
@@ -2164,6 +2233,7 @@ int main(const int argc, char** argv) {
     ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
+    ScopedAutomaticPhaseSpaceD7ExtraKinematicBindingFailsClosedTest();
     ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticD7SeedSignComposesWithFeynmanConjugateFlipTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();

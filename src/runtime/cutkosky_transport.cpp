@@ -43,6 +43,44 @@ bool HasNonWhitespace(const std::string& value) {
   return !RemoveAsciiSpaces(value).empty();
 }
 
+std::string ReviewedAutomaticPhaseSpaceLane146D7KinematicsBlocker(
+    const ProblemSpec& spec) {
+  if (!spec.kinematics.complex_numeric_substitutions.empty()) {
+    return "reviewed lane146 D7 coefficients require real numeric "
+           "substitutions only";
+  }
+  const std::map<std::string, std::string>& substitutions =
+      spec.kinematics.numeric_substitutions;
+  const auto s_it = substitutions.find("s");
+  const auto msq_it = substitutions.find("msq");
+  if (substitutions.size() != 2 || s_it == substitutions.end() ||
+      msq_it == substitutions.end()) {
+    return "reviewed lane146 D7 coefficients require exactly the s and msq "
+           "numeric substitutions";
+  }
+
+  ExactRational s_value;
+  ExactRational msq_value;
+  try {
+    s_value = EvaluateCoefficientExpression(s_it->second,
+                                            NumericEvaluationPoint{});
+    msq_value = EvaluateCoefficientExpression(msq_it->second,
+                                              NumericEvaluationPoint{});
+  } catch (const std::exception& error) {
+    return std::string("reviewed lane146 D7 coefficients require parseable "
+                       "exact real numeric substitutions: ") +
+           error.what();
+  }
+
+  if (s_value != ExactRational{"100", "1"} ||
+      msq_value != ExactRational{"1", "1"}) {
+    return "reviewed lane146 D7 coefficients require exact numeric "
+           "substitutions s=100 and msq=1; got s=" +
+           s_value.ToString() + ", msq=" + msq_value.ToString();
+  }
+  return {};
+}
+
 bool StartsWith(const std::string& value, const std::string& prefix) {
   return value.rfind(prefix, 0) == 0;
 }
@@ -3192,7 +3230,12 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
   evaluation.selected_weight_role = selected_seed->selected_weight_role;
   evaluation.selected_weight_structural_form =
       selected_seed->selected_weight_structural_form;
-  if (selected_seed->selected_weight_denominator == "D7") {
+  const std::string d7_kinematics_blocker =
+      selected_seed->selected_weight_denominator == "D7"
+          ? ReviewedAutomaticPhaseSpaceLane146D7KinematicsBlocker(spec)
+          : std::string{};
+  if (selected_seed->selected_weight_denominator == "D7" &&
+      d7_kinematics_blocker.empty()) {
     evaluation.candidate_series =
         BuildReviewedAutomaticPhaseSpaceD7WeightedResidueSeries(
             max_eps_order,
@@ -3216,6 +3259,12 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
   } else {
     evaluation.candidate_series = selected_seed->residue_series;
     evaluation.eta_zero_selection = selected_seed->eta_zero_selection;
+    if (!d7_kinematics_blocker.empty()) {
+      evaluation.coefficient_policy =
+          "publication-gated scoped weighted residue attempt; reviewed D7 "
+          "lane146 coefficients are bound to their exact AMFlow numeric "
+          "substitutions and must not be reused at perturbed kinematics";
+    }
   }
   evaluation.publication_gate_checked = true;
 
@@ -3242,12 +3291,25 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
     evaluation.failure_code = "boundary_unsolved";
     evaluation.publication_gate_status =
         std::string("blocked-by-publication-gate: ") + error.what();
+    if (!d7_kinematics_blocker.empty()) {
+      evaluation.publication_gate_status =
+          "blocked-by-publication-gate: " + d7_kinematics_blocker +
+          "; " + error.what();
+    }
     evaluation.summary =
         "b63n automatic_phasespace scoped weighted residue evaluation reached the " +
         evaluation.selected_weight_denominator +
         " candidate and the eta-zero selector, then stopped at the publication "
         "validator. No live coefficient, retained final sample, or full eta=0 "
         "contour claim is made.";
+    if (!d7_kinematics_blocker.empty()) {
+      evaluation.summary =
+          "b63n automatic_phasespace scoped weighted residue evaluation refused "
+          "reviewed D7 coefficient publication because " +
+          d7_kinematics_blocker +
+          ". No live coefficient, retained final sample, or full eta=0 contour "
+          "claim is made.";
+    }
   }
   return evaluation;
 }

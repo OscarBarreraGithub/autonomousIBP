@@ -206,6 +206,84 @@ amflow::ProblemSpec MakeB63nAutomaticPhaseSpaceSpec() {
   return spec;
 }
 
+amflow::ProblemSpec MakeB63nFeynmanPrescriptionSpec(
+    const amflow::FeynmanPrescription l1_prescription,
+    const amflow::FeynmanPrescription l2_prescription) {
+  amflow::ProblemSpec spec;
+  spec.family.name = "loopxloop";
+  spec.family.loop_momenta = {"l1", "l2", "q"};
+  spec.family.loop_prescriptions = {l1_prescription,
+                                    l2_prescription,
+                                    amflow::FeynmanPrescription::None};
+  spec.family.propagators = {
+      amflow::Propagator("l1^2"),
+      amflow::Propagator("(l1+p1)^2"),
+      amflow::Propagator("(l1+p1+p2)^2"),
+      amflow::Propagator("(l1+q)^2"),
+      amflow::Propagator("l2^2"),
+      amflow::Propagator("(l2-p2)^2"),
+      amflow::Propagator("(l2-p2-p1)^2"),
+      amflow::Propagator("(l2-q)^2"),
+      amflow::Propagator("q^2-msq"),
+      amflow::Propagator("(p1+p2-q)^2-m2sq"),
+      amflow::Propagator("(l1-l2)^2"),
+      amflow::Propagator("(p1-q)^2"),
+  };
+  for (const std::size_t index : {std::size_t{8}, std::size_t{9}}) {
+    spec.family.propagators[index].kind = amflow::PropagatorKind::Cut;
+    spec.family.propagators[index].prescription =
+        static_cast<int>(amflow::FeynmanPrescription::None);
+  }
+  spec.kinematics.invariants = {"s", "msq", "m2sq"};
+  spec.kinematics.numeric_substitutions = {
+      {"s", "10"},
+      {"msq", "1"},
+      {"m2sq", "2/5"},
+  };
+  spec.targets = {
+      amflow::TargetIntegral{"loopxloop",
+                             {0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0}}};
+  return spec;
+}
+
+void ApplyB63nFeynmanExactKinematicRescaling(amflow::ProblemSpec& spec) {
+  spec.kinematics.numeric_substitutions = {
+      {"s", "(5*4)/2"},
+      {"msq", "(9-8)"},
+      {"m2sq", "(6+2)/20"},
+  };
+}
+
+void FlipB63nFeynmanConjugatePrescriptions(amflow::ProblemSpec& spec) {
+  Expect(spec.family.loop_prescriptions.size() >= 2,
+         "b63n feynman conjugate flip requires l1/l2 prescriptions");
+  const amflow::FeynmanPrescription l1 = spec.family.loop_prescriptions[0];
+  spec.family.loop_prescriptions[0] = spec.family.loop_prescriptions[1];
+  spec.family.loop_prescriptions[1] = l1;
+}
+
+std::string ReplaceAll(std::string value,
+                       const std::string& from,
+                       const std::string& to) {
+  if (from.empty()) {
+    return value;
+  }
+  std::size_t position = 0;
+  while ((position = value.find(from, position)) != std::string::npos) {
+    value.replace(position, from.size(), to);
+    position += to.size();
+  }
+  return value;
+}
+
+std::string NormalizeB63nConjugatePlanAudit(std::string value) {
+  value = ReplaceAll(value, "plus-minus", "conjugate-pair");
+  value = ReplaceAll(value, "minus-plus", "conjugate-pair");
+  value = ReplaceAll(value, "plus_i0", "conjugate_i0");
+  value = ReplaceAll(value, "minus_i0", "conjugate_i0");
+  return value;
+}
+
 const amflow::CutkoskyResidueSeriesTerm& ResidueTermAt(
     const amflow::CutkoskyResidueSeries& series,
     const int eps_order) {
@@ -870,6 +948,101 @@ void ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest() {
   }
 }
 
+void ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest() {
+  const amflow::ProblemSpec plus_minus_spec =
+      MakeB63nFeynmanPrescriptionSpec(amflow::FeynmanPrescription::PlusI0,
+                                      amflow::FeynmanPrescription::MinusI0);
+  amflow::ProblemSpec rescaled_plus_minus_spec = plus_minus_spec;
+  ApplyB63nFeynmanExactKinematicRescaling(rescaled_plus_minus_spec);
+
+  amflow::ProblemSpec flipped_then_rescaled_spec = plus_minus_spec;
+  FlipB63nFeynmanConjugatePrescriptions(flipped_then_rescaled_spec);
+  ApplyB63nFeynmanExactKinematicRescaling(flipped_then_rescaled_spec);
+
+  amflow::ProblemSpec rescaled_then_flipped_spec = plus_minus_spec;
+  ApplyB63nFeynmanExactKinematicRescaling(rescaled_then_flipped_spec);
+  FlipB63nFeynmanConjugatePrescriptions(rescaled_then_flipped_spec);
+
+  const amflow::CutkoskyWeightedResidueEvaluationPlan plus_minus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(plus_minus_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan rescaled_plus_minus_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          rescaled_plus_minus_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan flipped_then_rescaled_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          flipped_then_rescaled_spec);
+  const amflow::CutkoskyWeightedResidueEvaluationPlan rescaled_then_flipped_plan =
+      amflow::BuildCutkoskyWeightedResidueEvaluationPlan(
+          rescaled_then_flipped_spec);
+
+  const std::string plus_minus_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          plus_minus_plan);
+  const std::string rescaled_plus_minus_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          rescaled_plus_minus_plan);
+  const std::string flipped_then_rescaled_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          flipped_then_rescaled_plan);
+  const std::string rescaled_then_flipped_audit =
+      amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(
+          rescaled_then_flipped_plan);
+
+  Expect(rescaled_plus_minus_audit == plus_minus_audit,
+         "b63n feynman_prescription weighted residue plan should be invariant "
+         "under exact kinematic rescaling");
+  Expect(flipped_then_rescaled_audit == rescaled_then_flipped_audit,
+         "b63n feynman_prescription weighted residue plan should commute exact "
+         "kinematic rescaling with the conjugate-prescription flip");
+  Expect(NormalizeB63nConjugatePlanAudit(flipped_then_rescaled_audit) ==
+             NormalizeB63nConjugatePlanAudit(plus_minus_audit),
+         "b63n feynman_prescription weighted residue plan should change only "
+         "conjugate sign-bearing audit tokens after rescaling and flipping");
+
+  Expect(plus_minus_plan.requires_feynman_conjugate_validation &&
+             flipped_then_rescaled_plan.requires_feynman_conjugate_validation,
+         "b63n feynman_prescription weighted residue plan should retain the "
+         "conjugate validation requirement");
+  Expect(plus_minus_plan.coefficient_free &&
+             flipped_then_rescaled_plan.coefficient_free &&
+             !plus_minus_plan.live_coefficients_available &&
+             !flipped_then_rescaled_plan.live_coefficients_available &&
+             !plus_minus_plan.retained_solution_samples_used &&
+             !flipped_then_rescaled_plan.retained_solution_samples_used &&
+             !plus_minus_plan.full_eta_zero_contour_applied &&
+             !flipped_then_rescaled_plan.full_eta_zero_contour_applied,
+         "b63n feynman_prescription weighted residue composition must remain "
+         "coefficient-free and non-publishing");
+  Expect(plus_minus_plan.residue_model_kind ==
+             "feynman_prescription::two-body-residue::plus-minus" &&
+             flipped_then_rescaled_plan.residue_model_kind ==
+                 "feynman_prescription::two-body-residue::minus-plus",
+         "b63n feynman_prescription weighted residue composition should swap "
+         "the conjugate residue model");
+  Expect(plus_minus_plan.conjugate_residue_model_kind ==
+             flipped_then_rescaled_plan.residue_model_kind &&
+             flipped_then_rescaled_plan.conjugate_residue_model_kind ==
+                 plus_minus_plan.residue_model_kind,
+         "b63n feynman_prescription weighted residue composition should keep "
+         "the conjugate partner pointers symmetric");
+  Expect(plus_minus_plan.cut_denominator_indices ==
+             flipped_then_rescaled_plan.cut_denominator_indices &&
+             plus_minus_plan.uncut_denominator_indices ==
+                 flipped_then_rescaled_plan.uncut_denominator_indices &&
+             plus_minus_plan.residue_variables ==
+                 flipped_then_rescaled_plan.residue_variables,
+         "b63n feynman_prescription weighted residue composition should preserve "
+         "cut support, moment weights, and residue variables");
+  ExpectContains(flipped_then_rescaled_audit,
+                 "conjugate_partner=feynman_prescription::two-body-residue::plus-minus",
+                 "b63n feynman_prescription flipped/rescaled audit should name "
+                 "the plus/minus conjugate partner");
+  ExpectContains(flipped_then_rescaled_audit,
+                 "required_validation=feynman-conjugate",
+                 "b63n feynman_prescription flipped/rescaled audit should retain "
+                 "the conjugate validation marker");
+}
+
 void ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest() {
   const amflow::ProblemSpec canonical_spec = MakeB63nAutomaticPhaseSpaceSpec();
   amflow::ProblemSpec transformed_spec = canonical_spec;
@@ -1517,6 +1690,7 @@ int main() {
     ScopedAutomaticPhaseSpacePublishedD7OutputIsByteDeterministicTest();
     ScopedAutomaticPhaseSpaceWeightedResidueMomentSeedPermutationInvariantTest();
     ScopedAutomaticPhaseSpaceWeightedResidueKinematicRescalingInvariantTest();
+    ScopedFeynmanPrescriptionWeightedResiduePlanRescalingConjugateCompositionTest();
     ScopedAutomaticPhaseSpaceWeightedResidueProvenanceDiagnosticsTransformInvariantTest();
     ScopedAutomaticPhaseSpaceSeedIdentitySignBoundaryTest();
     ScopedAutomaticPhaseSpacePublishedD7MatchesLane146AMFlowCompare30Test();

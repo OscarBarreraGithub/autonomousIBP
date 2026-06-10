@@ -1,0 +1,9 @@
+M7 release health summary
+status: READY
+source_commit: 60fd79cbe7298ece2387f16f4c502df74b29b8a3
+readiness: release_signoff_ready=true blockers=0 prerequisites=3/3 review_sections=5/5
+inventory: total=77 accepted=56 unaccepted=21 schema_reconciled=true
+performance: review_complete=true benchmarks=3 runs=9 max_wall_seconds=42.16 max_rss_kb=7932
+performance_benchmarks: differential_equation_solver.eps3 max=0.88s; automatic_loop.eps2 max=1.76s; automatic_vs_manual.eps0 max=42.16s
+blockers: none
+withheld_claims: This summary reads committed sidecars only; it does not create new release evidence. This summary does not rerun AMFlow numerics or widen release claims.

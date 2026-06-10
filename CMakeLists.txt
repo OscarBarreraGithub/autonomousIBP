@@ -394,6 +394,15 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-health-summary-text-fixture
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py
+  )
+  set_tests_properties(m7-release-health-summary-text-fixture PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-status-badge
     COMMAND
       ${Python3_EXECUTABLE}

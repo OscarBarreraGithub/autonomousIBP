@@ -1509,6 +1509,18 @@ void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
        false,
        true,
        "require parseable exact real numeric substitutions"},
+      {"decimal-s",
+       {{"s", "100.0"}, {"msq", "1"}},
+       {},
+       false,
+       true,
+       "require parseable exact real numeric substitutions"},
+      {"decimal-msq",
+       {{"s", "100"}, {"msq", "1.0"}},
+       {},
+       false,
+       true,
+       "require parseable exact real numeric substitutions"},
       {"extra-real-spectator",
        {{"s", "100"}, {"msq", "1"}, {"spectator", "1/1000"}},
        {},
@@ -1567,9 +1579,9 @@ void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
   Expect(accepted_count == 2,
          "D7 numeric-point sweep should accept only the literal and exact-expression "
          "lane146 points");
-  Expect(pre_surface_rejection_count == 7,
-         "D7 numeric-point sweep should reject missing, wrong, or malformed required "
-         "bindings before surface publication");
+  Expect(pre_surface_rejection_count == 9,
+         "D7 numeric-point sweep should reject missing, wrong, malformed, or "
+         "decimal-style required bindings before surface publication");
   Expect(publication_block_count == 2,
          "D7 numeric-point sweep should block extra real and complex bindings at "
          "the publication gate");
@@ -1609,8 +1621,67 @@ void ScopedAutomaticPhaseSpaceD7NumericBindingFormatInvariantPublicationTest() {
        true,
        false,
        ""},
+      {"leading-zero-literals",
+       {{"s", "000100"}, {"msq", "000001"}},
+       {},
+       true,
+       false,
+       ""},
+      {"reduced-rational-literals",
+       {{"s", "500/5"}, {"msq", "42/42"}},
+       {},
+       true,
+       false,
+       ""},
+      {"additive-cancellation",
+       {{"s", "99 + (3 - 2)"}, {"msq", "1 + (9 - 9)"}},
+       {},
+       true,
+       false,
+       ""},
+      {"subtractive-cancellation",
+       {{"s", "(125 - 25)"}, {"msq", "(11 - 10)"}},
+       {},
+       true,
+       false,
+       ""},
+      {"nested-product-quotient",
+       {{"s", "((2 * 2 * 5) * 5) / 1"}, {"msq", "(3 * 7) / 21"}},
+       {},
+       true,
+       false,
+       ""},
+      {"unary-sign-cancellation",
+       {{"s", "-(-100)"}, {"msq", "-(0 - 1)"}},
+       {},
+       true,
+       false,
+       ""},
+      {"zero-normalized-rational-offsets",
+       {{"s", "100 + (6 / 9 - 2 / 3)"},
+        {"msq", "(5 / 5) * (13 - 12)"}},
+       {},
+       true,
+       false,
+       ""},
+      {"deeply-parenthesized-literals",
+       {{"s", "((((100))))"}, {"msq", "((((1))))"}},
+       {},
+       true,
+       false,
+       ""},
+      {"split-sum-rational-form",
+       {{"s", "(99 * 3 + 3) / 3"}, {"msq", "1000 - 999"}},
+       {},
+       true,
+       false,
+       ""},
   };
+  Expect(format_variants.size() >= 12,
+         "D7 binding-format invariance should sweep a comprehensive exact "
+         "numeric formatting surface");
 
+  int published_format_count = 0;
   for (const D7NumericPointVariant& variant : format_variants) {
     amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
     spec.kinematics.numeric_substitutions = variant.numeric_substitutions;
@@ -1635,7 +1706,11 @@ void ScopedAutomaticPhaseSpaceD7NumericBindingFormatInvariantPublicationTest() {
         variant.label +
             " D7 publication audit fingerprint should be invariant under numeric "
             "binding formatting");
+    ++published_format_count;
   }
+  Expect(published_format_count ==
+             static_cast<int>(format_variants.size()),
+         "D7 binding-format sweep should publish every exact formatting variant");
 }
 
 void ExpectD7MissingKinematicBindingFailsClosed(amflow::ProblemSpec spec,

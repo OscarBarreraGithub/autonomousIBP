@@ -55,7 +55,7 @@ The checklist schema consumed by these producers is
 | Tool | Primary use | CI coverage |
 | --- | --- | --- |
 | [`validate_m7_release_sidecar_schemas.py`](../../tools/reference-harness/scripts/validate_m7_release_sidecar_schemas.py) | Validate committed M7 JSON sidecar schemas, confirm each `source_commit` is a known commit, and recompute `source_provenance_sha256`. | `m7-release-sidecar-schema-validation`. |
-| [`audit_m7_sidecar_inventory.py`](../../tools/reference-harness/scripts/audit_m7_sidecar_inventory.py) | List committed M7 sidecars by accepted or unaccepted status. Use this as the unaccepted sidecar review queue. | `m7-release-sidecar-inventory-audit`. |
+| [`audit_m7_sidecar_inventory.py`](../../tools/reference-harness/scripts/audit_m7_sidecar_inventory.py) | List committed M7 sidecars by accepted or unaccepted status. Its optional `--m7-root` is guarded as a repository-relative directory under the checkout. | `m7-release-sidecar-inventory-audit` and `m7-release-sidecar-inventory-root-guard`. |
 | [`list_m7_unaccepted_sidecars.py`](../../tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py) | Print only the unaccepted subset from the same inventory classifier for focused review queue triage. | `m7-release-unaccepted-sidecar-review-queue`. |
 | [`verify_m7_release_readiness_sidecar_references.py`](../../tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_references.py) | Verify the accepted readiness sidecar references existing, accepted M7 JSON sidecars and no stale unaccepted substitutes. | `m7-release-readiness-sidecar-references`. |
 
@@ -63,7 +63,8 @@ Useful inspection commands:
 
 ```sh
 python3 tools/reference-harness/scripts/validate_m7_release_sidecar_schemas.py
-python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --format text
+python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --verify --verify-schema-reconciliation --summary-only
+python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --self-check
 python3 tools/reference-harness/scripts/audit_m7_sidecar_inventory.py --format json
 python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format text
 python3 tools/reference-harness/scripts/list_m7_unaccepted_sidecars.py --format json
@@ -72,9 +73,10 @@ python3 tools/reference-harness/scripts/verify_m7_release_readiness_sidecar_refe
 
 `audit_m7_sidecar_inventory.py --format json` is the most direct machine-readable
 queue for unaccepted sidecars. Treat entries with `"status": "unaccepted"` as
-review candidates, not as release evidence. Use
-`list_m7_unaccepted_sidecars.py` when you want that queue without the accepted
-sidecar rows.
+review candidates, not as release evidence. Use `--self-check` to exercise the
+root guard against absolute paths, parent traversal, and non-directory roots.
+Use `list_m7_unaccepted_sidecars.py` when you want that queue without the
+accepted sidecar rows.
 
 ## M6 Prerequisite Sidecar Guards
 

@@ -1958,9 +1958,15 @@ def validate_expected_audit_diagnostic_fields(
     label: str,
 ) -> dict[str, Any]:
     missing = [field for field in EXPECTED_AUDIT_DIAGNOSTIC_FIELDS if field not in summary]
+    expected_fields = set(EXPECTED_AUDIT_DIAGNOSTIC_FIELDS)
+    unexpected = [field for field in summary if field not in expected_fields]
     expect(
         not missing,
         f"{label} missing expected b61n publication diagnostic fields: {', '.join(missing)}",
+    )
+    expect(
+        not unexpected,
+        f"{label} has unexpected b61n publication diagnostic fields: {', '.join(unexpected)}",
     )
 
     bool_fields = (
@@ -2047,6 +2053,7 @@ def validate_expected_audit_diagnostic_fields(
         "expected_diagnostic_field_count": len(EXPECTED_AUDIT_DIAGNOSTIC_FIELDS),
         "expected_diagnostic_fields": list(EXPECTED_AUDIT_DIAGNOSTIC_FIELDS),
         "missing_expected_diagnostic_fields": [],
+        "unexpected_diagnostic_fields": [],
     }
 
 
@@ -2854,6 +2861,7 @@ def run_self_check() -> dict[str, Any]:
         "retained_numeric_drift_rejected": retained_numeric_drift_rejected,
         "diagnostic_fields_preserved": (
             diagnostic_field_summary["missing_expected_diagnostic_fields"] == []
+            and diagnostic_field_summary["unexpected_diagnostic_fields"] == []
         ),
         "expected_diagnostic_field_count": diagnostic_field_summary[
             "expected_diagnostic_field_count"
@@ -2929,6 +2937,49 @@ def run_diagnostic_field_removal_self_check(sidecar_path: Path) -> dict[str, Any
         "removed_diagnostic_field": removed_field,
         "rejection_message": rejection_message,
         "diagnostic_field_guard_rejected_actual_removal": True,
+        "accepted_diagnostic_field_count": accepted["expected_diagnostic_field_count"],
+    }
+
+
+def run_diagnostic_field_addition_self_check(sidecar_path: Path) -> dict[str, Any]:
+    audit_summary = audit_sidecar(sidecar_path)
+    accepted = validate_expected_audit_diagnostic_fields(
+        audit_summary,
+        "b61n publication qualifier audit summary",
+    )
+    added_field = "synthetic_unreviewed_diagnostic_field"
+    expect(
+        added_field not in audit_summary,
+        f"diagnostic field addition self-check cannot add present field {added_field}",
+    )
+    mutated_summary = dict(audit_summary)
+    mutated_summary[added_field] = "unreviewed diagnostic drift"
+
+    rejected_added_field = False
+    rejection_message = ""
+    try:
+        validate_expected_audit_diagnostic_fields(
+            mutated_summary,
+            "b61n publication qualifier field-addition mutation",
+        )
+    except RuntimeError as error:
+        rejection_message = str(error)
+        rejected_added_field = (
+            "unexpected b61n publication diagnostic fields" in rejection_message
+            and added_field in rejection_message
+        )
+    expect(
+        rejected_added_field,
+        "b61n diagnostic field guard accepted a summary with an unreviewed field added",
+    )
+
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-diagnostic-field-addition-self-check",
+        "sidecar_path": str(sidecar_path),
+        "added_diagnostic_field": added_field,
+        "rejection_message": rejection_message,
+        "diagnostic_field_guard_rejected_actual_addition": True,
         "accepted_diagnostic_field_count": accepted["expected_diagnostic_field_count"],
     }
 
@@ -3184,6 +3235,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Verify the diagnostic field guard rejects a summary with a required field removed",
     )
+    mode.add_argument(
+        "--diagnostic-field-addition-self-check",
+        action="store_true",
+        help="Verify the diagnostic field guard rejects a summary with an unreviewed field added",
+    )
     return parser.parse_args()
 
 
@@ -3232,6 +3288,15 @@ def main() -> int:
         print(
             json.dumps(
                 run_diagnostic_field_removal_self_check(sidecar_path),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.diagnostic_field_addition_self_check:
+        print(
+            json.dumps(
+                run_diagnostic_field_addition_self_check(sidecar_path),
                 indent=2,
                 sort_keys=True,
             )

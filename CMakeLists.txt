@@ -199,6 +199,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-publication-diagnostic-field-addition-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_b61n_publication_qualifier.py
+      --diagnostic-field-addition-self-check
+  )
+  set_tests_properties(b61n-publication-diagnostic-field-addition-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b61n-publication-audit-field-query-self-check
     COMMAND
       ${Python3_EXECUTABLE}

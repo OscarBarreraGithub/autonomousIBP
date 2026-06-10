@@ -8,13 +8,14 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from validate_m7_release_sidecar_schemas import (
     M7_ROOT,
     SchemaError,
     collect_m7_sidecar_schemas,
     repo_root,
+    require_m7_root,
     validate_m7_sidecar,
 )
 
@@ -209,6 +210,7 @@ def classify_sidecar(schema_name: str, payload: dict[str, Any]) -> tuple[str, st
 
 
 def build_inventory(root: Path, m7_root: Path) -> list[InventoryEntry]:
+    m7_root = require_m7_root(root, m7_root)
     paths = sorted((root / m7_root).rglob("*.json"))
     expect(paths, f"{m7_root} must contain M7 JSON sidecars")
     entries: list[InventoryEntry] = []
@@ -233,6 +235,35 @@ def build_inventory(root: Path, m7_root: Path) -> list[InventoryEntry]:
     if errors:
         raise InventoryError("M7 sidecar inventory failed:\n" + "\n".join(errors))
     return entries
+
+
+def expect_inventory_error(label: str, expected: str, action: Callable[[], None]) -> None:
+    try:
+        action()
+    except (InventoryError, SchemaError) as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise InventoryError(f"{label} unexpectedly passed")
+
+
+def self_check(root: Path) -> None:
+    entries = build_inventory(root, M7_ROOT)
+    verify_inventory(entries)
+    expect_inventory_error(
+        "absolute m7 root guard",
+        "m7 root must be repository-relative",
+        lambda: build_inventory(root, root / M7_ROOT),
+    )
+    expect_inventory_error(
+        "parent traversal m7 root guard",
+        "m7 root must not contain '..'",
+        lambda: build_inventory(root, Path("../autoIBP/tools/reference-harness/specs/m7")),
+    )
+    expect_inventory_error(
+        "non-directory m7 root guard",
+        "m7 root does not exist as a directory",
+        lambda: build_inventory(root, Path("CMakeLists.txt")),
+    )
 
 
 def render_text(entries: list[InventoryEntry], *, summary_only: bool) -> str:
@@ -336,6 +367,11 @@ def parse_args() -> argparse.Namespace:
             "schema validator."
         ),
     )
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="Run positive and negative checks for M7 inventory root validation.",
+    )
     return parser.parse_args()
 
 
@@ -344,6 +380,10 @@ def main() -> int:
     root = repo_root()
     m7_root = Path(args.m7_root)
     try:
+        if args.self_check:
+            self_check(root)
+            print("M7 sidecar inventory root self-check passed")
+            return 0
         entries = build_inventory(root, m7_root)
         if args.verify:
             verify_inventory(entries)

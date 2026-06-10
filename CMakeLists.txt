@@ -415,6 +415,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-sidecar-inventory-root-guard
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_m7_sidecar_inventory.py
+      --self-check
+  )
+  set_tests_properties(m7-release-sidecar-inventory-root-guard PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-unaccepted-sidecar-review-queue
     COMMAND
       ${Python3_EXECUTABLE}

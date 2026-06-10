@@ -76,6 +76,23 @@ def expect(condition: bool, message: str) -> None:
         raise SchemaError(message)
 
 
+def require_m7_root(root: Path, raw: Path) -> Path:
+    value = str(raw)
+    expect(value.strip(), "m7 root must not be empty")
+    expect(value == value.strip(), "m7 root must not carry surrounding whitespace")
+    expect(not raw.is_absolute(), f"m7 root must be repository-relative: {value}")
+    expect(".." not in raw.parts, f"m7 root must not contain '..': {value}")
+
+    candidate = (root / raw).resolve(strict=False)
+    resolved_root = root.resolve(strict=True)
+    try:
+        relative = candidate.relative_to(resolved_root)
+    except ValueError as error:
+        raise SchemaError(f"m7 root must stay within the repository: {value}") from error
+    expect(candidate.is_dir(), f"m7 root does not exist as a directory: {value}")
+    return relative
+
+
 def read_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as stream:
         payload = json.load(stream)
@@ -857,6 +874,7 @@ def validate_fresh_accepted_readiness_output(root: Path) -> None:
 
 def collect_m7_sidecar_schemas(root: Path, m7_root: Path) -> dict[str, str]:
     sidecar_schemas: dict[str, str] = {}
+    m7_root = require_m7_root(root, m7_root)
     paths = sorted((root / m7_root).rglob("*.json"))
     expect(paths, f"{m7_root} must contain M7 JSON sidecars")
     errors: list[str] = []

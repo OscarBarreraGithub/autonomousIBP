@@ -8,7 +8,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from assert_m7_release_signoff_ready import (
     ACCEPTED_READINESS_SIDECAR,
@@ -17,6 +17,7 @@ from assert_m7_release_signoff_ready import (
 )
 from audit_m7_sidecar_inventory import (
     M7_ROOT,
+    InventoryEntry,
     InventoryError,
     build_inventory,
     verify_inventory,
@@ -146,10 +147,34 @@ def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary
     )
 
 
-def summarize_inventory(root: Path, m7_root: Path) -> InventorySummary:
+def verify_readiness_sidecar_entry(
+    entries: list[InventoryEntry],
+    readiness_sidecar: Path,
+) -> None:
+    relative = readiness_sidecar.as_posix()
+    matching = [entry for entry in entries if entry.path == relative]
+    expect(matching, f"readiness sidecar is not present in M7 inventory: {relative}")
+    entry = matching[0]
+    expect(
+        entry.schema == "release-readiness-output",
+        "readiness sidecar must have schema release-readiness-output: "
+        f"{relative} has {entry.schema}",
+    )
+    expect(
+        entry.status == "accepted",
+        f"readiness sidecar is not accepted: {relative} ({entry.basis})",
+    )
+
+
+def summarize_inventory_for_readiness(
+    root: Path,
+    m7_root: Path,
+    readiness_sidecar: Path,
+) -> InventorySummary:
     entries = build_inventory(root, m7_root)
     verify_inventory(entries)
     verify_schema_reconciliation(root, m7_root, entries)
+    verify_readiness_sidecar_entry(entries, readiness_sidecar)
     accepted = sum(1 for entry in entries if entry.status == "accepted")
     return InventorySummary(
         sidecar_count=len(entries),
@@ -298,6 +323,38 @@ def render_json(
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
+def expect_health_error(label: str, action: Callable[[], None], expected: str) -> None:
+    try:
+        action()
+    except HealthError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise HealthError(f"{label} unexpectedly passed")
+
+
+def self_check(root: Path) -> None:
+    summarize_inventory_for_readiness(root, M7_ROOT, ACCEPTED_READINESS_SIDECAR)
+
+    expect_health_error(
+        "unaccepted readiness sidecar check",
+        lambda: summarize_inventory_for_readiness(
+            root,
+            M7_ROOT,
+            Path("tools/reference-harness/specs/m7/lane3/release-readiness.post-a1f0e1d.full-output.json"),
+        ),
+        "readiness sidecar is not accepted",
+    )
+    expect_health_error(
+        "non-readiness sidecar check",
+        lambda: summarize_inventory_for_readiness(
+            root,
+            M7_ROOT,
+            Path("tools/reference-harness/specs/m7/lane70/release-performance-review.json"),
+        ),
+        "readiness sidecar must have schema release-readiness-output",
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -321,6 +378,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fail unless readiness is ready, blockers are empty, inventory reconciles, and performance is complete.",
     )
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="Run negative checks for stale or non-readiness source sidecars.",
+    )
     return parser.parse_args()
 
 
@@ -328,9 +390,13 @@ def main() -> int:
     args = parse_args()
     root = repo_root()
     try:
+        if args.self_check:
+            self_check(root)
+            print("M7 release health source-sidecar self-check passed")
+            return 0
         readiness_sidecar = Path(require_repo_file(root, args.readiness_sidecar, "readiness sidecar"))
         readiness = summarize_readiness(root, readiness_sidecar)
-        inventory = summarize_inventory(root, Path(args.m7_root))
+        inventory = summarize_inventory_for_readiness(root, Path(args.m7_root), readiness_sidecar)
         performance = summarize_performance(root, readiness.performance_review_path)
     except (HealthError, InventoryError, SchemaError, RuntimeError) as error:
         print(str(error), file=sys.stderr)

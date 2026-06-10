@@ -425,6 +425,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-health-source-sidecar-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/release_health_summary.py
+      --self-check
+  )
+  set_tests_properties(m7-release-health-source-sidecar-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-health-summary-json
     COMMAND
       ${Python3_EXECUTABLE}

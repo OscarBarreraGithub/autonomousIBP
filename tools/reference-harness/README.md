@@ -150,6 +150,9 @@ python3 tools/reference-harness/scripts/review_release_docs_completion.py \
 python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
 
+python3 tools/reference-harness/scripts/verify_b61n_publication_audit_field.py \
+  --self-check
+
 python3 tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py \
   --self-check \
   --test-binary build/cutkosky-weighted-residue-tests
@@ -169,8 +172,8 @@ production, diagnostic-review sidecar production, docs-completion sidecar produc
 parity-signoff sidecar production, the single-packet comparator, packet-level
 correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
-comparison, packet-set correct-digit scorer, and b63n scoped gate audit-query regression paths
-without needing a real benchmark packet.
+comparison, packet-set correct-digit scorer, b61n publication audit field-path queries, and
+b63n scoped gate audit-query regression paths without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -770,6 +773,11 @@ The capture script writes:
   path, correct-digit-threshold blocking, failure-code metadata blocking, missing-audit blocking,
   unexpected-failure-code blocking, and packet-label / phase-0-id drift rejection while keeping
   full `Milestone M6` closure withheld.
+- `verify_b61n_publication_audit_field.py --self-check` generates the b61n publication
+  qualifier audit summary, queries selected fields by dotted/bracket path, and fails closed on
+  missing nested keys, out-of-range indexes, or mismatched expected values. The helper can also
+  consume a saved audit JSON through `--audit-json`, which keeps the qualifier as the audit
+  producer and this script as a narrow verifier.
 - `verify_b63n_scoped_gate_audit_trail.py --self-check` queries the built
   `cutkosky-weighted-residue-tests` emitter and fails closed unless the scoped b63n publication
   audit exposes the nested moment gate status, canonical D2/D4/D6/D7 seed identities and

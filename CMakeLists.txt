@@ -199,6 +199,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-publication-audit-field-query-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b61n_publication_audit_field.py
+      --self-check
+  )
+  set_tests_properties(b61n-publication-audit-field-query-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b61n-reference-floor-parity-gate
     COMMAND
       ${Python3_EXECUTABLE}

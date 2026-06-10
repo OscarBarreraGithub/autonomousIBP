@@ -57,6 +57,8 @@ class DriftEntry:
     accepted: bool
     status: str
     basis: str
+    external_absolute_paths: tuple[str, ...]
+    missing_external_absolute_paths: tuple[str, ...]
 
 
 def expect(condition: bool, message: str) -> None:
@@ -88,6 +90,36 @@ def lane_from_path(path: Path, m6_root: Path) -> str:
 
 def benchmark_id(payload: dict[str, Any]) -> str:
     return clean_str(payload.get("benchmark_id")) or "<unscoped>"
+
+
+def external_absolute_paths(value: Any, root: Path) -> tuple[str, ...]:
+    root_resolved = root.resolve(strict=False)
+    paths: set[str] = set()
+
+    def visit(item: Any) -> None:
+        if isinstance(item, dict):
+            for nested in item.values():
+                visit(nested)
+            return
+        if isinstance(item, list):
+            for nested in item:
+                visit(nested)
+            return
+        if not isinstance(item, str):
+            return
+
+        text = item.strip()
+        candidate = Path(text)
+        if not text or not candidate.is_absolute():
+            return
+        resolved = candidate.resolve(strict=False)
+        try:
+            resolved.relative_to(root_resolved)
+        except ValueError:
+            paths.add(text)
+
+    visit(value)
+    return tuple(sorted(paths))
 
 
 def embedded_bool_status(payload: dict[str, Any], field: str, label: str) -> str | None:
@@ -143,9 +175,11 @@ def entry_from_validation(
     if payload is None:
         scoped_benchmark = "<sqlite>"
         status = validation.basis
+        external_paths: tuple[str, ...] = ()
     else:
         scoped_benchmark = benchmark_id(payload)
         status = metadata_status(payload, validation)
+        external_paths = external_absolute_paths(payload, root)
     return DriftEntry(
         path=str(path.relative_to(root)),
         family=validation.family,
@@ -154,6 +188,10 @@ def entry_from_validation(
         accepted=validation.accepted,
         status=status,
         basis=validation.basis,
+        external_absolute_paths=external_paths,
+        missing_external_absolute_paths=tuple(
+            external_path for external_path in external_paths if not Path(external_path).exists()
+        ),
     )
 
 
@@ -188,13 +226,18 @@ def collect_entries(root: Path, m6_root: Path) -> tuple[list[DriftEntry], int, i
 
 
 def entry_payload(entry: DriftEntry) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "path": entry.path,
         "lane": entry.lane,
         "accepted": entry.accepted,
         "status": entry.status,
         "basis": entry.basis,
     }
+    if entry.external_absolute_paths:
+        payload["external_absolute_paths"] = list(entry.external_absolute_paths)
+    if entry.missing_external_absolute_paths:
+        payload["missing_external_absolute_paths"] = list(entry.missing_external_absolute_paths)
+    return payload
 
 
 def drift_group_payload(
@@ -238,6 +281,14 @@ def build_report(root: Path, m6_root: Path) -> dict[str, Any]:
         key=lambda entry: entry.path,
     )
     unaccepted_count = len(unaccepted_entries)
+    external_entries = sorted(
+        (entry for entry in entries if entry.external_absolute_paths),
+        key=lambda entry: entry.path,
+    )
+    external_path_count = sum(len(entry.external_absolute_paths) for entry in external_entries)
+    missing_external_path_count = sum(
+        len(entry.missing_external_absolute_paths) for entry in external_entries
+    )
     return {
         "schema_version": 1,
         "m6_root": str(m6_root),
@@ -248,6 +299,9 @@ def build_report(root: Path, m6_root: Path) -> dict[str, Any]:
         "accepted_count": accepted_count,
         "unaccepted_count": unaccepted_count,
         "unaccepted_sidecars": [entry_payload(entry) for entry in unaccepted_entries],
+        "external_absolute_path_reference_count": external_path_count,
+        "missing_external_absolute_path_reference_count": missing_external_path_count,
+        "external_absolute_path_sidecars": [entry_payload(entry) for entry in external_entries],
         "drift_group_count": len(drift_groups),
         "stale_unaccepted_sidecar_count": stale_unaccepted,
         "drift_groups": drift_groups,
@@ -263,18 +317,26 @@ def verify_report(report: dict[str, Any]) -> None:
     unaccepted_count = report.get("unaccepted_count")
     drift_group_count = report.get("drift_group_count")
     stale_unaccepted = report.get("stale_unaccepted_sidecar_count")
+    external_paths = report.get("external_absolute_path_reference_count")
+    missing_external_paths = report.get("missing_external_absolute_path_reference_count")
     for field, value in (
         ("sidecar_count", sidecar_count),
         ("json_sidecar_count", json_count),
         ("sqlite_sidecar_count", sqlite_count),
         ("accepted_count", accepted_count),
         ("unaccepted_count", unaccepted_count),
+        ("external_absolute_path_reference_count", external_paths),
+        ("missing_external_absolute_path_reference_count", missing_external_paths),
         ("drift_group_count", drift_group_count),
         ("stale_unaccepted_sidecar_count", stale_unaccepted),
     ):
         expect(type(value) is int and value >= 0, f"{field} must be a nonnegative integer")
     expect(sidecar_count == json_count + sqlite_count, "sidecar type counts do not sum")
     expect(sidecar_count == accepted_count + unaccepted_count, "accepted/unaccepted counts do not sum")
+    expect(
+        missing_external_paths <= external_paths,
+        "missing external absolute path count exceeds external absolute path total",
+    )
     expect(stale_unaccepted <= unaccepted_count, "stale unaccepted count exceeds unaccepted total")
     unaccepted_sidecars = report.get("unaccepted_sidecars")
     expect(isinstance(unaccepted_sidecars, list), "unaccepted_sidecars must be a list")
@@ -288,6 +350,36 @@ def verify_report(report: dict[str, Any]) -> None:
             isinstance(sidecar.get("path"), str) and sidecar["path"].strip(),
             f"unaccepted_sidecars[{index}].path must be a non-empty string",
         )
+    external_sidecars = report.get("external_absolute_path_sidecars")
+    expect(isinstance(external_sidecars, list), "external_absolute_path_sidecars must be a list")
+    observed_external_paths = 0
+    observed_missing_external_paths = 0
+    for index, sidecar in enumerate(external_sidecars):
+        expect(isinstance(sidecar, dict), f"external_absolute_path_sidecars[{index}] must be an object")
+        expect(
+            isinstance(sidecar.get("path"), str) and sidecar["path"].strip(),
+            f"external_absolute_path_sidecars[{index}].path must be a non-empty string",
+        )
+        entry_paths = sidecar.get("external_absolute_paths")
+        expect(
+            isinstance(entry_paths, list) and entry_paths,
+            f"external_absolute_path_sidecars[{index}].external_absolute_paths must be a non-empty list",
+        )
+        observed_external_paths += len(entry_paths)
+        missing_paths = sidecar.get("missing_external_absolute_paths", [])
+        expect(
+            isinstance(missing_paths, list),
+            f"external_absolute_path_sidecars[{index}].missing_external_absolute_paths must be a list",
+        )
+        observed_missing_external_paths += len(missing_paths)
+    expect(
+        observed_external_paths == external_paths,
+        "external absolute path reference count does not match sidecar details",
+    )
+    expect(
+        observed_missing_external_paths == missing_external_paths,
+        "missing external absolute path reference count does not match sidecar details",
+    )
     drift_groups = report.get("drift_groups")
     expect(isinstance(drift_groups, list), "drift_groups must be a list")
     expect(drift_group_count == len(drift_groups), "drift_group_count does not match drift_groups")
@@ -311,6 +403,11 @@ def render_text(report: dict[str, Any], *, summary_only: bool) -> str:
             "drift: "
             f"groups={report['drift_group_count']} "
             f"stale_unaccepted_sidecars={report['stale_unaccepted_sidecar_count']}"
+        ),
+        (
+            "external_absolute_paths: "
+            f"references={report['external_absolute_path_reference_count']} "
+            f"missing={report['missing_external_absolute_path_reference_count']}"
         ),
     ]
     if not summary_only:
@@ -377,6 +474,7 @@ def run_self_check() -> dict[str, Any]:
         new_lane = root / M6_ROOT / "lane-new"
         stale_sidecar = old_lane / "sample-runtime-evidence.json"
         accepted_sidecar = new_lane / "sample-runtime-evidence.json"
+        missing_external_path = root.parent / f"{root.name}-missing-external-artifact.json"
         write_json(
             stale_sidecar,
             {
@@ -384,6 +482,7 @@ def run_self_check() -> dict[str, Any]:
                 "benchmark_id": "sample",
                 "status": "blocked-pending",
                 "passed": False,
+                "external_trace": str(missing_external_path),
             },
         )
         write_json(
@@ -430,6 +529,14 @@ def run_self_check() -> dict[str, Any]:
         expect(report["sidecar_count"] == 3, "self-check sidecar count drifted")
         expect(report["accepted_count"] == 2, "self-check accepted count drifted")
         expect(report["unaccepted_count"] == 1, "self-check unaccepted count drifted")
+        expect(
+            report["external_absolute_path_reference_count"] == 1,
+            "self-check external absolute path reference count drifted",
+        )
+        expect(
+            report["missing_external_absolute_path_reference_count"] == 1,
+            "self-check missing external absolute path reference count drifted",
+        )
         expect(report["drift_group_count"] == 1, "self-check drift group count drifted")
         expect(report["stale_unaccepted_sidecar_count"] == 1, "self-check stale count drifted")
         expect(no_drift_rejected, "self-check verify_no_drift did not reject drift")
@@ -442,6 +549,12 @@ def run_self_check() -> dict[str, Any]:
             "sidecar_count": report["sidecar_count"],
             "accepted_count": report["accepted_count"],
             "unaccepted_count": report["unaccepted_count"],
+            "external_absolute_path_reference_count": report[
+                "external_absolute_path_reference_count"
+            ],
+            "missing_external_absolute_path_reference_count": report[
+                "missing_external_absolute_path_reference_count"
+            ],
             "drift_group_count": report["drift_group_count"],
             "stale_unaccepted_sidecar_count": report["stale_unaccepted_sidecar_count"],
             "no_drift_rejected": no_drift_rejected,

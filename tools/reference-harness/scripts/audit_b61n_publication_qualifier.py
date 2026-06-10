@@ -2890,6 +2890,49 @@ def run_diagnostic_fields_check(sidecar_path: Path) -> dict[str, Any]:
     }
 
 
+def run_diagnostic_field_removal_self_check(sidecar_path: Path) -> dict[str, Any]:
+    audit_summary = audit_sidecar(sidecar_path)
+    accepted = validate_expected_audit_diagnostic_fields(
+        audit_summary,
+        "b61n publication qualifier audit summary",
+    )
+    removed_field = "precision_evidence_source_cpp_result"
+    mutated_summary = dict(audit_summary)
+    expect(
+        removed_field in mutated_summary,
+        f"diagnostic field removal self-check cannot remove absent field {removed_field}",
+    )
+    del mutated_summary[removed_field]
+
+    rejected_missing_field = False
+    rejection_message = ""
+    try:
+        validate_expected_audit_diagnostic_fields(
+            mutated_summary,
+            "b61n publication qualifier field-removal mutation",
+        )
+    except RuntimeError as error:
+        rejection_message = str(error)
+        rejected_missing_field = (
+            "missing expected b61n publication diagnostic fields" in rejection_message
+            and removed_field in rejection_message
+        )
+    expect(
+        rejected_missing_field,
+        "b61n diagnostic field guard accepted a summary with a required field removed",
+    )
+
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-diagnostic-field-removal-self-check",
+        "sidecar_path": str(sidecar_path),
+        "removed_diagnostic_field": removed_field,
+        "rejection_message": rejection_message,
+        "diagnostic_field_guard_rejected_actual_removal": True,
+        "accepted_diagnostic_field_count": accepted["expected_diagnostic_field_count"],
+    }
+
+
 def run_determinism_check(sidecar_path: Path) -> dict[str, Any]:
     first_summary = audit_sidecar(sidecar_path)
     second_summary = audit_sidecar(sidecar_path)
@@ -3136,6 +3179,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Assert the publication audit emits every expected diagnostic summary field",
     )
+    mode.add_argument(
+        "--diagnostic-field-removal-self-check",
+        action="store_true",
+        help="Verify the diagnostic field guard rejects a summary with a required field removed",
+    )
     return parser.parse_args()
 
 
@@ -3175,6 +3223,15 @@ def main() -> int:
         print(
             json.dumps(
                 run_diagnostic_fields_check(sidecar_path),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.diagnostic_field_removal_self_check:
+        print(
+            json.dumps(
+                run_diagnostic_field_removal_self_check(sidecar_path),
                 indent=2,
                 sort_keys=True,
             )

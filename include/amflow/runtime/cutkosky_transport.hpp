@@ -292,6 +292,8 @@ struct CutkoskyWeightedResidueMomentCrossValidationGate {
   std::string residue_model_kind;
   std::string coefficient_policy;
   std::vector<std::string> validated_weight_denominators;
+  std::vector<std::string> validated_seed_denominator_identities;
+  std::vector<std::string> validated_seed_provenance;
   std::vector<std::string> failure_reasons;
   std::string publication_gate_status;
   std::string summary;
@@ -312,6 +314,8 @@ struct CutkoskyScopedWeightedResidueEvaluation {
   std::string selected_weight_denominator;
   std::size_t selected_weight_denominator_index = 0;
   int selected_weight_power = 0;
+  std::string selected_weight_role;
+  std::string selected_weight_structural_form;
   std::string evaluation_scope;
   std::string coefficient_policy;
   std::string failure_code;

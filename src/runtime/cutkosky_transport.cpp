@@ -2398,6 +2398,14 @@ BuildAutomaticPhaseSpaceWeightedResidueMomentSeeds(
   return seeds;
 }
 
+std::string FormatWeightedResidueSeedDenominatorIdentity(
+    const CutkoskyWeightedResidueMomentSeed& seed);
+
+std::string FormatWeightedResidueSeriesProvenance(
+    const std::string& selected_weight,
+    const CutkoskyResidueSeries& series,
+    const CutkoskyEtaZeroSelectionResult& selection);
+
 std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
     const CutkoskyWeightedResidueMomentSeed& seed) {
   std::ostringstream out;
@@ -2412,6 +2420,13 @@ std::string SerializeCutkoskyWeightedResidueMomentSeedAudit(
   out << "selected_weight_power=" << seed.selected_weight_power << "\n";
   out << "selected_weight_role=" << seed.selected_weight_role << "\n";
   out << "selected_weight_form=" << seed.selected_weight_structural_form << "\n";
+  out << "selected_weight_identity="
+      << FormatWeightedResidueSeedDenominatorIdentity(seed) << "\n";
+  out << "seed_provenance="
+      << FormatWeightedResidueSeriesProvenance(seed.selected_weight_denominator,
+                                               seed.residue_series,
+                                               seed.eta_zero_selection)
+      << "\n";
   out << "coefficient_policy=" << seed.coefficient_policy << "\n";
   out << "live_coefficients_available="
       << (seed.live_coefficients_available ? "true" : "false") << "\n";
@@ -2442,6 +2457,12 @@ std::string SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
         << "selected_weight=" << seed.selected_weight_denominator
         << ";selected_weight_index=" << seed.selected_weight_denominator_index
         << ";selected_weight_power=" << seed.selected_weight_power
+        << ";selected_weight_identity="
+        << FormatWeightedResidueSeedDenominatorIdentity(seed)
+        << ";seed_provenance="
+        << FormatWeightedResidueSeriesProvenance(seed.selected_weight_denominator,
+                                                 seed.residue_series,
+                                                 seed.eta_zero_selection)
         << ";series_terms=" << seed.residue_series.terms.size()
         << ";live_coefficients_available="
         << (seed.live_coefficients_available ? "true" : "false")
@@ -2529,6 +2550,47 @@ const CutkoskyResidueSeriesTerm* FindCutkoskyResidueTerm(
     }
   }
   return nullptr;
+}
+
+std::string BoolDiagnostic(const bool value) {
+  return value ? "true" : "false";
+}
+
+std::string FormatWeightedResidueSeedDenominatorIdentity(
+    const CutkoskyWeightedResidueMomentSeed& seed) {
+  std::ostringstream out;
+  out << seed.selected_weight_denominator
+      << ";index=" << seed.selected_weight_denominator_index
+      << ";power=" << seed.selected_weight_power
+      << ";role=" << seed.selected_weight_role
+      << ";form=" << seed.selected_weight_structural_form;
+  return out.str();
+}
+
+std::string FormatWeightedResidueSeriesProvenance(
+    const std::string& selected_weight,
+    const CutkoskyResidueSeries& series,
+    const CutkoskyEtaZeroSelectionResult& selection) {
+  const CutkoskyResidueSeriesTerm* term =
+      FindCutkoskyResidueTerm(series, 0, 0, 0, "integer");
+  std::ostringstream out;
+  out << selected_weight << ";series=" << series.series_label
+      << ";eta_zero_label=" << selection.selected_coefficient_label;
+  if (term == nullptr) {
+    out << ";coefficient_label=<missing>;source=<missing>;fixture=<missing>"
+        << ";synthetic=<missing>;retained_solution_samples_used=<missing>"
+        << ";coefficient_published=<missing>";
+    return out.str();
+  }
+  out << ";coefficient_label=" << term->coefficient_label
+      << ";source=" << term->provenance.source
+      << ";fixture=" << term->provenance.fixture_id
+      << ";synthetic=" << BoolDiagnostic(term->provenance.synthetic_fixture)
+      << ";retained_solution_samples_used="
+      << BoolDiagnostic(term->provenance.retained_solution_samples_used)
+      << ";coefficient_published="
+      << BoolDiagnostic(term->provenance.coefficient_published);
+  return out.str();
 }
 
 const CutkoskyPrefactorSeriesTerm* FindCutkoskyPrefactorTerm(
@@ -2863,6 +2925,12 @@ CrossValidateCutkoskyWeightedResidueMomentSeeds(
     }
     const CutkoskyWeightedResidueMomentSeed& seed = *seed_entry->second;
     gate.validated_weight_denominators.push_back(expected_weight);
+    gate.validated_seed_denominator_identities.push_back(
+        FormatWeightedResidueSeedDenominatorIdentity(seed));
+    gate.validated_seed_provenance.push_back(
+        FormatWeightedResidueSeriesProvenance(expected_weight,
+                                             seed.residue_series,
+                                             seed.eta_zero_selection));
 
     if (seed.surface_label != plan.surface_label) {
       AddCrossValidationFailure(
@@ -2992,6 +3060,17 @@ std::string SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
     out << gate.validated_weight_denominators[index];
   }
   out << "\n";
+  for (std::size_t index = 0;
+       index < gate.validated_seed_denominator_identities.size();
+       ++index) {
+    out << "seed_denominator_identity[" << index << "]="
+        << gate.validated_seed_denominator_identities[index] << "\n";
+  }
+  for (std::size_t index = 0; index < gate.validated_seed_provenance.size();
+       ++index) {
+    out << "seed_provenance[" << index << "]="
+        << gate.validated_seed_provenance[index] << "\n";
+  }
   out << "publication_gate=" << gate.publication_gate_status << "\n";
   out << "failure_count=" << gate.failure_reasons.size() << "\n";
   for (std::size_t index = 0; index < gate.failure_reasons.size(); ++index) {
@@ -3060,6 +3139,9 @@ EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
   evaluation.selected_weight_denominator_index =
       selected_seed->selected_weight_denominator_index;
   evaluation.selected_weight_power = selected_seed->selected_weight_power;
+  evaluation.selected_weight_role = selected_seed->selected_weight_role;
+  evaluation.selected_weight_structural_form =
+      selected_seed->selected_weight_structural_form;
   if (selected_seed->selected_weight_denominator == "D7") {
     evaluation.candidate_series =
         BuildReviewedAutomaticPhaseSpaceD7WeightedResidueSeries(
@@ -3134,6 +3216,9 @@ std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
   out << "selected_weight_index="
       << evaluation.selected_weight_denominator_index << "\n";
   out << "selected_weight_power=" << evaluation.selected_weight_power << "\n";
+  out << "selected_weight_role=" << evaluation.selected_weight_role << "\n";
+  out << "selected_weight_form=" << evaluation.selected_weight_structural_form
+      << "\n";
   out << "evaluation_scope=" << evaluation.evaluation_scope << "\n";
   out << "coefficient_policy=" << evaluation.coefficient_policy << "\n";
   out << "publication_gate_checked="
@@ -3160,6 +3245,12 @@ std::string SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
       << (evaluation.moment_cross_validation_gate.passed ? "passed" : "blocked")
       << "\n";
   out << "candidate_series_terms=" << evaluation.candidate_series.terms.size()
+      << "\n";
+  out << "candidate_provenance="
+      << FormatWeightedResidueSeriesProvenance(
+             evaluation.selected_weight_denominator,
+             evaluation.candidate_series,
+             evaluation.eta_zero_selection)
       << "\n";
   out << "eta_zero_selection="
       << (evaluation.eta_zero_selection.success ? "selected" : "blocked")

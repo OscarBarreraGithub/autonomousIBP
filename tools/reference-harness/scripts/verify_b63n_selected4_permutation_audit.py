@@ -37,12 +37,32 @@ live_coefficients_available=false
 retained_solution_samples_used=false
 full_eta_zero_contour_applied=false
 moment_weights=D2,D4,D6,D7
+seed_denominator_identity[0]=D2;index=1;power=2;role=D2=(l1+p1)^2 angular weight with power 2;form=inverse_denominator_weight[D2(q2,cos_theta_a)]
+seed_denominator_identity[1]=D4;index=3;power=1;role=D4=(l1+l2+p1)^2 angular weight;form=inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]
+seed_denominator_identity[2]=D6;index=5;power=1;role=D6=(l1+l2+p2)^2 angular weight;form=inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]
+seed_denominator_identity[3]=D7;index=6;power=1;role=D7=(l1+p2)^2 angular weight;form=inverse_denominator_weight[D7(q2,cos_theta_a)]
+seed_provenance[0]=D2;series=automatic_phasespace::weighted-moment-seed::D2::prefactor;eta_zero_label=automatic_phasespace_D2_weighted_moment_seed;coefficient_label=automatic_phasespace_D2_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false
+seed_provenance[1]=D4;series=automatic_phasespace::weighted-moment-seed::D4::prefactor;eta_zero_label=automatic_phasespace_D4_weighted_moment_seed;coefficient_label=automatic_phasespace_D4_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D4-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false
+seed_provenance[2]=D6;series=automatic_phasespace::weighted-moment-seed::D6::prefactor;eta_zero_label=automatic_phasespace_D6_weighted_moment_seed;coefficient_label=automatic_phasespace_D6_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D6-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false
+seed_provenance[3]=D7;series=automatic_phasespace::weighted-moment-seed::D7::prefactor;eta_zero_label=automatic_phasespace_D7_weighted_moment_seed;coefficient_label=automatic_phasespace_D7_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D7-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false
 publication_gate=blocked-by-publication-gate: all moment seeds remain synthetic and non-publishing
 failure_count=0
 summary=b63n automatic_phasespace weighted residue plan is cross-validated against the D2,D4,D6,D7 synthetic moment seed packet; no live coefficient, retained final sample, or full eta=0 contour claim is made
 """
 
 EXPECTED_MOMENT_WEIGHTS = ["D2", "D4", "D6", "D7"]
+EXPECTED_SEED_DENOMINATOR_IDENTITIES = [
+    "D2;index=1;power=2;role=D2=(l1+p1)^2 angular weight with power 2;form=inverse_denominator_weight[D2(q2,cos_theta_a)]",
+    "D4;index=3;power=1;role=D4=(l1+l2+p1)^2 angular weight;form=inverse_denominator_weight[D4(q2,cos_theta_a,cos_theta_b)]",
+    "D6;index=5;power=1;role=D6=(l1+l2+p2)^2 angular weight;form=inverse_denominator_weight[D6(q2,cos_theta_a,cos_theta_b)]",
+    "D7;index=6;power=1;role=D7=(l1+p2)^2 angular weight;form=inverse_denominator_weight[D7(q2,cos_theta_a)]",
+]
+EXPECTED_SEED_PROVENANCE = [
+    "D2;series=automatic_phasespace::weighted-moment-seed::D2::prefactor;eta_zero_label=automatic_phasespace_D2_weighted_moment_seed;coefficient_label=automatic_phasespace_D2_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+    "D4;series=automatic_phasespace::weighted-moment-seed::D4::prefactor;eta_zero_label=automatic_phasespace_D4_weighted_moment_seed;coefficient_label=automatic_phasespace_D4_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D4-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+    "D6;series=automatic_phasespace::weighted-moment-seed::D6::prefactor;eta_zero_label=automatic_phasespace_D6_weighted_moment_seed;coefficient_label=automatic_phasespace_D6_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D6-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+    "D7;series=automatic_phasespace::weighted-moment-seed::D7::prefactor;eta_zero_label=automatic_phasespace_D7_weighted_moment_seed;coefficient_label=automatic_phasespace_D7_weighted_moment_seed;source=reviewed automatic_phasespace symbolic integrand; not AMFlow final solution samples;fixture=lane3-next2-automatic-phasespace-D7-weighted-moment-seed;synthetic=true;retained_solution_samples_used=false;coefficient_published=false",
+]
 EXPECTED_SELECTED4_ORDERS = {
     "phase[1,-1,1,0,1,0,0]": [0, 1, 2, 3],
     "phase[1,0,1,0,1,0,0]": [0, 1, 2, 3],
@@ -231,6 +251,22 @@ def validate_permutation_audit(audit_text: str) -> dict[str, Any]:
         moment_weights == EXPECTED_MOMENT_WEIGHTS,
         "audit moment_weights must be canonical D2,D4,D6,D7",
     )
+    seed_denominator_identities = [
+        require_field(fields, f"seed_denominator_identity[{index}]")
+        for index in range(len(EXPECTED_SEED_DENOMINATOR_IDENTITIES))
+    ]
+    expect(
+        seed_denominator_identities == EXPECTED_SEED_DENOMINATOR_IDENTITIES,
+        "audit seed denominator identities must preserve canonical D2,D4,D6,D7 indices, powers, roles, and structural forms",
+    )
+    seed_provenance = [
+        require_field(fields, f"seed_provenance[{index}]")
+        for index in range(len(EXPECTED_SEED_PROVENANCE))
+    ]
+    expect(
+        seed_provenance == EXPECTED_SEED_PROVENANCE,
+        "audit seed provenance must preserve canonical D2,D4,D6,D7 synthetic propagation records",
+    )
     expect(
         require_field(fields, "publication_gate").startswith("blocked-by-publication-gate"),
         "audit publication_gate must remain blocked by publication gate",
@@ -247,6 +283,8 @@ def validate_permutation_audit(audit_text: str) -> dict[str, Any]:
         "audit_valid": True,
         "surface": fields["surface"],
         "moment_weights": moment_weights,
+        "seed_denominator_identities": seed_denominator_identities,
+        "seed_provenance": seed_provenance,
         "live_coefficients_available": parse_bool(
             fields["live_coefficients_available"],
             "audit.live_coefficients_available",
@@ -777,6 +815,10 @@ def run_self_check() -> dict[str, Any]:
         "moment_weights=D2,D4,D6,D7",
         "moment_weights=D7,D6,D4,D2",
     )
+    bad_seed_provenance_audit = CANONICAL_PERMUTATION_AUDIT.replace(
+        "seed_provenance[0]=D2;series=automatic_phasespace::weighted-moment-seed::D2::prefactor",
+        "seed_provenance[0]=D2;series=drifted-weighted-moment-seed",
+    )
     bad_evidence = json.loads(json.dumps(evidence))
     bad_evidence["final_solution_samples_used_as_input"] = True
     bad_compare = json.loads(json.dumps(compare))
@@ -800,6 +842,14 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             golden_text,
             "canonical D2,D4,D6,D7",
+        ),
+        "rejects_seed_provenance_drift": rejected(
+            bad_seed_provenance_audit,
+            evidence,
+            compare,
+            cpp_result,
+            golden_text,
+            "seed provenance",
         ),
         "rejects_final_solution_sample_input": rejected(
             CANONICAL_PERMUTATION_AUDIT,

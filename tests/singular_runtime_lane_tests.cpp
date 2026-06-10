@@ -2331,6 +2331,17 @@ void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
   Expect(gate.validated_weight_denominators ==
              std::vector<std::string>({"D2", "D4", "D6", "D7"}),
          "b63n residue-vs-moment gate should validate weights in integrand order");
+  Expect(gate.validated_seed_denominator_identities.size() == 4 &&
+             gate.validated_seed_provenance.size() == 4,
+         "b63n residue-vs-moment gate should publish one identity and provenance "
+         "record per reviewed seed");
+  Expect(gate.validated_seed_denominator_identities.front() ==
+             "D2;index=1;power=2;role=D2=(l1+p1)^2 angular weight with power 2;"
+             "form=inverse_denominator_weight[D2(q2,cos_theta_a)]",
+         "b63n residue-vs-moment gate should expose the D2 seed identity");
+  ExpectContains(gate.validated_seed_provenance.front(),
+                 "fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed",
+                 "b63n residue-vs-moment gate should expose D2 seed provenance");
   ExpectContains(gate.publication_gate_status,
                  "blocked-by-publication-gate",
                  "b63n residue-vs-moment gate should retain the publication block");
@@ -2363,6 +2374,46 @@ void B63nWeightedResidueMomentCrossValidationGateBindsPlanToSeedPacketTest() {
       "retained_solution_samples_used=false\n"
       "full_eta_zero_contour_applied=false\n"
       "moment_weights=D2,D4,D6,D7\n"
+      "seed_denominator_identity[0]=D2;index=1;power=2;role=D2=(l1+p1)^2 "
+      "angular weight with power 2;form=inverse_denominator_weight[D2(q2,"
+      "cos_theta_a)]\n"
+      "seed_denominator_identity[1]=D4;index=3;power=1;role="
+      "D4=(l1+l2+p1)^2 angular weight;form=inverse_denominator_weight[D4(q2,"
+      "cos_theta_a,cos_theta_b)]\n"
+      "seed_denominator_identity[2]=D6;index=5;power=1;role="
+      "D6=(l1+l2+p2)^2 angular weight;form=inverse_denominator_weight[D6(q2,"
+      "cos_theta_a,cos_theta_b)]\n"
+      "seed_denominator_identity[3]=D7;index=6;power=1;role="
+      "D7=(l1+p2)^2 angular weight;form=inverse_denominator_weight[D7(q2,"
+      "cos_theta_a)]\n"
+      "seed_provenance[0]=D2;series=automatic_phasespace::weighted-moment-seed::"
+      "D2::prefactor;eta_zero_label=automatic_phasespace_D2_weighted_moment_seed;"
+      "coefficient_label=automatic_phasespace_D2_weighted_moment_seed;source="
+      "reviewed automatic_phasespace symbolic integrand; not AMFlow final solution "
+      "samples;fixture=lane3-next2-automatic-phasespace-D2-weighted-moment-seed;"
+      "synthetic=true;retained_solution_samples_used=false;"
+      "coefficient_published=false\n"
+      "seed_provenance[1]=D4;series=automatic_phasespace::weighted-moment-seed::"
+      "D4::prefactor;eta_zero_label=automatic_phasespace_D4_weighted_moment_seed;"
+      "coefficient_label=automatic_phasespace_D4_weighted_moment_seed;source="
+      "reviewed automatic_phasespace symbolic integrand; not AMFlow final solution "
+      "samples;fixture=lane3-next2-automatic-phasespace-D4-weighted-moment-seed;"
+      "synthetic=true;retained_solution_samples_used=false;"
+      "coefficient_published=false\n"
+      "seed_provenance[2]=D6;series=automatic_phasespace::weighted-moment-seed::"
+      "D6::prefactor;eta_zero_label=automatic_phasespace_D6_weighted_moment_seed;"
+      "coefficient_label=automatic_phasespace_D6_weighted_moment_seed;source="
+      "reviewed automatic_phasespace symbolic integrand; not AMFlow final solution "
+      "samples;fixture=lane3-next2-automatic-phasespace-D6-weighted-moment-seed;"
+      "synthetic=true;retained_solution_samples_used=false;"
+      "coefficient_published=false\n"
+      "seed_provenance[3]=D7;series=automatic_phasespace::weighted-moment-seed::"
+      "D7::prefactor;eta_zero_label=automatic_phasespace_D7_weighted_moment_seed;"
+      "coefficient_label=automatic_phasespace_D7_weighted_moment_seed;source="
+      "reviewed automatic_phasespace symbolic integrand; not AMFlow final solution "
+      "samples;fixture=lane3-next2-automatic-phasespace-D7-weighted-moment-seed;"
+      "synthetic=true;retained_solution_samples_used=false;"
+      "coefficient_published=false\n"
       "publication_gate=blocked-by-publication-gate: all moment seeds remain "
       "synthetic and non-publishing\n"
       "failure_count=0\n"

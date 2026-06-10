@@ -505,6 +505,12 @@ def run_self_check() -> dict[str, Any]:
         except SchemaError:
             escaped_path_rejected = True
 
+        expect(summary["json_sidecar_count"] == 2, "self-check JSON sidecar count drifted")
+        expect(summary["sqlite_sidecar_count"] == 1, "self-check SQLite sidecar count drifted")
+        expect(summary["accepted_sidecar_count"] == 3, "self-check accepted sidecar count drifted")
+        expect(bad_schema_rejected, "self-check did not reject a bad schema version")
+        expect(escaped_path_rejected, "self-check did not reject an escaped repository path")
+
         return {
             "valid_json_sidecars": summary["json_sidecar_count"],
             "valid_sqlite_sidecars": summary["sqlite_sidecar_count"],

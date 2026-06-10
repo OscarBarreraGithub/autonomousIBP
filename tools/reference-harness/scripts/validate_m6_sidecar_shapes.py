@@ -9,7 +9,7 @@ import sqlite3
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 M6_ROOT = Path("tools/reference-harness/specs/m6")
@@ -133,15 +133,30 @@ def require_repo_path(root: Path, raw: Any, field: str) -> str:
 
 
 def resolve_m6_root(root: Path, m6_root: Path) -> Path:
-    candidate = m6_root if m6_root.is_absolute() else root / m6_root
-    resolved_root = root.resolve(strict=False)
+    value = str(m6_root)
+    expect(value.strip(), "m6 root must not be empty")
+    expect(value == value.strip(), "m6 root must not carry surrounding whitespace")
+    expect(not m6_root.is_absolute(), f"m6 root must be repository-relative: {value}")
+    expect(".." not in m6_root.parts, f"m6 root must not contain '..': {value}")
+
+    candidate = root / m6_root
+    resolved_root = root.resolve(strict=True)
     resolved = candidate.resolve(strict=False)
     try:
         resolved.relative_to(resolved_root)
     except ValueError as error:
-        raise SchemaError(f"{m6_root} must stay within the repository") from error
-    expect(resolved.is_dir(), f"{m6_root} must exist")
+        raise SchemaError(f"m6 root must stay within the repository: {value}") from error
+    expect(resolved.is_dir(), f"m6 root does not exist as a directory: {value}")
     return resolved
+
+
+def expect_schema_error(label: str, expected: str, action: Callable[[], Any]) -> bool:
+    try:
+        action()
+    except SchemaError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return True
+    raise SchemaError(f"{label} unexpectedly passed")
 
 
 def require_optional_repo_path(
@@ -516,6 +531,24 @@ def run_self_check() -> dict[str, Any]:
         except SchemaError:
             escaped_path_rejected = True
 
+        absolute_m6_root_rejected = expect_schema_error(
+            "absolute m6 root guard",
+            "m6 root must be repository-relative",
+            lambda: validate_all_m6_sidecars(root, root / M6_ROOT),
+        )
+        parent_traversal_m6_root_rejected = expect_schema_error(
+            "parent traversal m6 root guard",
+            "m6 root must not contain '..'",
+            lambda: validate_all_m6_sidecars(
+                root,
+                Path("tools/reference-harness/specs/m6/../m6"),
+            ),
+        )
+        non_directory_m6_root_rejected = expect_schema_error(
+            "non-directory m6 root guard",
+            "m6 root does not exist as a directory",
+            lambda: validate_all_m6_sidecars(root, Path("CMakeLists.txt")),
+        )
         escaped_m6_root_rejected = False
         with tempfile.TemporaryDirectory(
             dir=root.parent,
@@ -548,6 +581,12 @@ def run_self_check() -> dict[str, Any]:
         expect(summary["accepted_sidecar_count"] == 3, "self-check accepted sidecar count drifted")
         expect(bad_schema_rejected, "self-check did not reject a bad schema version")
         expect(escaped_path_rejected, "self-check did not reject an escaped repository path")
+        expect(absolute_m6_root_rejected, "self-check did not reject an absolute M6 root")
+        expect(
+            parent_traversal_m6_root_rejected,
+            "self-check did not reject a parent-traversal M6 root",
+        )
+        expect(non_directory_m6_root_rejected, "self-check did not reject a non-directory M6 root")
         expect(escaped_m6_root_rejected, "self-check did not reject an escaped M6 root")
 
         return {
@@ -556,6 +595,9 @@ def run_self_check() -> dict[str, Any]:
             "accepted_sidecars": summary["accepted_sidecar_count"],
             "bad_schema_rejected": bad_schema_rejected,
             "escaped_path_rejected": escaped_path_rejected,
+            "absolute_m6_root_rejected": absolute_m6_root_rejected,
+            "parent_traversal_m6_root_rejected": parent_traversal_m6_root_rejected,
+            "non_directory_m6_root_rejected": non_directory_m6_root_rejected,
             "escaped_m6_root_rejected": escaped_m6_root_rejected,
         }
 

@@ -87,7 +87,7 @@ release acceptance.
 
 | Tool | Primary use | CI coverage |
 | --- | --- | --- |
-| [`validate_m6_sidecar_shapes.py`](../../tools/reference-harness/scripts/validate_m6_sidecar_shapes.py) | Validate committed M6 JSON and SQLite sidecar schemas, repo-local path references, and accepted/blocked shape consistency. | `m6-sidecar-shape-validation`. |
+| [`validate_m6_sidecar_shapes.py`](../../tools/reference-harness/scripts/validate_m6_sidecar_shapes.py) | Validate committed M6 JSON and SQLite sidecar schemas, repo-local path references, and accepted/blocked shape consistency. | `m6-sidecar-shape-validation` and `m6-sidecar-shape-validation-self-check`. |
 | [`audit_m6_sidecar_drift.py`](../../tools/reference-harness/scripts/audit_m6_sidecar_drift.py) | Summarize accepted and unaccepted M6 sidecars, report stale metadata groups, and pin known unaccepted sidecars against silent promotion. | `m6-sidecar-drift-audit`, `m6-sidecar-drift-audit-self-check`, and `m6-unaccepted-sidecar-promotion-guard`. |
 
 Useful inspection commands:

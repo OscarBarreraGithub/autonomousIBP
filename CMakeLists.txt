@@ -305,6 +305,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m6-sidecar-shape-validation-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_m6_sidecar_shapes.py
+      --self-check
+  )
+  set_tests_properties(m6-sidecar-shape-validation-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m6-sidecar-drift-audit
     COMMAND
       ${Python3_EXECUTABLE}

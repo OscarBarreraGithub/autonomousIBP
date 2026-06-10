@@ -169,6 +169,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b61n-publication-precision-inventory-consistency
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_b61n_publication_qualifier.py
+      --precision-inventory-consistency-check
+  )
+  set_tests_properties(b61n-publication-precision-inventory-consistency PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b61n-reference-floor-parity-gate
     COMMAND
       ${Python3_EXECUTABLE}

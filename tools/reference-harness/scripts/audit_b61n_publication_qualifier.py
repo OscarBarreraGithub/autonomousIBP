@@ -13,6 +13,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
+from audit_m7_sidecar_inventory import M7_ROOT, build_inventory
 from freeze_phase0_goldens import load_json
 
 
@@ -62,6 +63,9 @@ B61N_PRECISION_EVIDENCE = (
 B61N_PRECISION_CPP_RESULT = (
     "tools/reference-harness/specs/m7/lane2/"
     "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+)
+B61N_PRECISION_INVENTORY_SCHEMA = (
+    "post-M7 b61n row 5/6 reference-floor alternative-path precision evidence"
 )
 REQUIRED_SOURCE_EVIDENCE: tuple[str, ...] = (
     "tools/reference-harness/specs/m6/lane142/b61n-selected5-real-coefficients-evidence.json",
@@ -260,6 +264,14 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def repo_relative_path(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(repo_root()).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def find_nested_bool(raw: Any, key: str) -> bool | None:
@@ -1844,6 +1856,12 @@ def audit_sidecar(sidecar_path: Path) -> dict[str, Any]:
         "precision_evidence_source_cpp_result_bound": source_evidence[
             "precision_evidence_source_cpp_result_bound"
         ],
+        "precision_evidence_sidecar_path": source_evidence[
+            "precision_evidence_sidecar_path"
+        ],
+        "precision_evidence_source_cpp_result": source_evidence[
+            "precision_evidence_source_cpp_result"
+        ],
         "precision_evidence_target_count": source_evidence[
             "precision_evidence_target_count"
         ],
@@ -2827,6 +2845,66 @@ def run_precision_evidence_binding_check(sidecar_path: Path) -> dict[str, Any]:
     }
 
 
+def run_precision_inventory_consistency_check(sidecar_path: Path) -> dict[str, Any]:
+    audit_summary = audit_sidecar(sidecar_path)
+    consumed_precision_sidecar = repo_relative_path(
+        Path(audit_summary["precision_evidence_sidecar_path"])
+    )
+    expect(
+        consumed_precision_sidecar == B61N_PRECISION_EVIDENCE,
+        "publication audit consumed an unexpected b61n precision evidence sidecar",
+    )
+    expect(
+        audit_summary["precision_evidence_source_cpp_result"] == B61N_PRECISION_CPP_RESULT,
+        "publication audit consumed precision evidence with an unexpected source C++ result",
+    )
+
+    entries = build_inventory(repo_root(), M7_ROOT)
+    inventory_by_path = {entry.path: entry for entry in entries}
+    precision_entry = inventory_by_path.get(consumed_precision_sidecar)
+    expect(
+        precision_entry is not None,
+        "publication-consumed b61n precision evidence is missing from the M7 inventory",
+    )
+    expect(
+        precision_entry.status == "accepted",
+        "publication-consumed b61n precision evidence is not accepted in the M7 inventory",
+    )
+    expect(
+        precision_entry.schema == B61N_PRECISION_INVENTORY_SCHEMA,
+        "publication-consumed b61n precision evidence has an unexpected inventory schema",
+    )
+
+    accepted_precision_inventory = sorted(
+        entry.path
+        for entry in entries
+        if entry.status == "accepted" and entry.schema == B61N_PRECISION_INVENTORY_SCHEMA
+    )
+    expect(
+        accepted_precision_inventory == [consumed_precision_sidecar],
+        "publication audit precision evidence does not match the accepted inventory category",
+    )
+
+    source_cpp_entry = inventory_by_path.get(B61N_PRECISION_CPP_RESULT)
+    expect(
+        source_cpp_entry is not None and source_cpp_entry.status == "accepted",
+        "publication precision source C++ result must remain accepted in the M7 inventory",
+    )
+
+    return {
+        "schema_version": 1,
+        "scope": "b61n-publication-precision-inventory-consistency",
+        "sidecar_path": str(sidecar_path),
+        "publication_consumed_precision_evidence": consumed_precision_sidecar,
+        "accepted_precision_inventory": accepted_precision_inventory,
+        "precision_evidence_inventory_status": precision_entry.status,
+        "precision_evidence_inventory_schema": precision_entry.schema,
+        "precision_evidence_source_cpp_result": B61N_PRECISION_CPP_RESULT,
+        "precision_evidence_source_cpp_result_inventory_status": source_cpp_entry.status,
+        "publication_precision_evidence_matches_accepted_inventory": True,
+    }
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -2855,6 +2933,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Assert the publication audit consumes the b61n precision evidence sidecar",
     )
+    mode.add_argument(
+        "--precision-inventory-consistency-check",
+        action="store_true",
+        help=(
+            "Assert the publication audit's consumed b61n precision evidence matches "
+            "the accepted M7 inventory category"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -2876,6 +2962,15 @@ def main() -> int:
         print(
             json.dumps(
                 run_precision_evidence_binding_check(sidecar_path),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if args.precision_inventory_consistency_check:
+        print(
+            json.dumps(
+                run_precision_inventory_consistency_check(sidecar_path),
                 indent=2,
                 sort_keys=True,
             )

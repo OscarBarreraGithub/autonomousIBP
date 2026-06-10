@@ -120,6 +120,25 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b63n-selected4-permutation-audit-verifier
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b63n_selected4_permutation_audit.py
+  )
+  set_tests_properties(b63n-selected4-permutation-audit-verifier PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME b63n-selected4-permutation-audit-verifier-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b63n_selected4_permutation_audit.py
+      --self-check
+  )
+  set_tests_properties(b63n-selected4-permutation-audit-verifier-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b61n-row56-specific-target-diagnostic-self-check
     COMMAND
       ${Python3_EXECUTABLE}

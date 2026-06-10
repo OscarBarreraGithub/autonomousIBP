@@ -4,6 +4,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -232,6 +233,14 @@ void ExpectPublishedAuditCategoryFingerprintPins(
   }
 }
 
+std::vector<std::string> PublishedB63nWeightedResidueAuditCategories() {
+  return {"b63n-cutkosky-weighted-residue-evaluation-plan",
+          "b63n-automatic-phasespace-weighted-residue-moment-seed",
+          "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
+          "b63n-weighted-residue-moment-cross-validation-gate",
+          "b63n-scoped-weighted-residue-evaluation"};
+}
+
 template <typename Callable>
 void ExpectExceptionContains(Callable&& callable,
                              const std::string& expected_substring,
@@ -430,6 +439,44 @@ std::string SerializeScopedWeightedResiduePublicationPacketForDeterminism(
 
 std::string JsonKeyToken(const std::string& key) {
   return "\"" + key + "\"";
+}
+
+std::string JsonEscape(const std::string& value) {
+  std::ostringstream escaped;
+  for (const unsigned char ch : value) {
+    switch (ch) {
+      case '"':
+        escaped << "\\\"";
+        break;
+      case '\\':
+        escaped << "\\\\";
+        break;
+      case '\b':
+        escaped << "\\b";
+        break;
+      case '\f':
+        escaped << "\\f";
+        break;
+      case '\n':
+        escaped << "\\n";
+        break;
+      case '\r':
+        escaped << "\\r";
+        break;
+      case '\t':
+        escaped << "\\t";
+        break;
+      default:
+        if (ch < 0x20) {
+          escaped << "\\u" << std::hex << std::setw(4) << std::setfill('0')
+                  << static_cast<int>(ch) << std::dec << std::setfill(' ');
+        } else {
+          escaped << static_cast<char>(ch);
+        }
+        break;
+    }
+  }
+  return escaped.str();
 }
 
 std::size_t FindMatchingJsonDelimiter(const std::string& text,
@@ -805,7 +852,7 @@ void ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test() {
                  "D7 scoped audit must not promote M6");
 }
 
-void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
+std::vector<AuditFingerprintPin> BuildB63nWeightedResidueAuditFingerprintPins() {
   const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
   const amflow::CutkoskyWeightedResidueEvaluationPlan plan =
       amflow::BuildCutkoskyWeightedResidueEvaluationPlan(spec);
@@ -831,19 +878,19 @@ void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
           70);
 
   Expect(plan.reviewed_surface && plan.coefficient_free,
-         "b63n audit fingerprint regression requires the reviewed weighted "
+         "b63n audit fingerprint regeneration requires the reviewed weighted "
          "residue plan");
   Expect(seed_packet.size() == 4,
-         "b63n audit fingerprint regression requires the D2,D4,D6,D7 seed "
+         "b63n audit fingerprint regeneration requires the D2,D4,D6,D7 seed "
          "packet");
   Expect(gate.passed,
-         "b63n audit fingerprint regression requires the cross-validation gate");
+         "b63n audit fingerprint regeneration requires the cross-validation gate");
   Expect(!blocked_d2.publication_gate_passed &&
              blocked_d2.failure_code == "boundary_unsolved",
-         "b63n D2 audit fingerprint regression requires the blocked D2 input");
+         "b63n D2 audit fingerprint regeneration requires the blocked D2 input");
   Expect(published_d7.publication_gate_passed &&
              published_d7.reference_validation_passed,
-         "b63n D7 audit fingerprint regression requires the published D7 input");
+         "b63n D7 audit fingerprint regeneration requires the published D7 input");
 
   const auto d7_seed =
       std::find_if(seed_packet.begin(),
@@ -852,43 +899,91 @@ void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
                      return seed.selected_weight_denominator == "D7";
                    });
   Expect(d7_seed != seed_packet.end(),
-         "b63n audit fingerprint category coverage requires a D7 moment seed");
+         "b63n audit fingerprint regeneration requires a D7 moment seed");
+
+  return {{"evaluation-plan",
+           "b63n-cutkosky-weighted-residue-evaluation-plan",
+           amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plan),
+           "fnv1a64:a9c31cddfef4646b"},
+          {"D7-moment-seed",
+           "b63n-automatic-phasespace-weighted-residue-moment-seed",
+           amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit(*d7_seed),
+           "fnv1a64:f29d369c5bd1cfd5"},
+          {"moment-seed-packet",
+           "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
+           amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+               seed_packet),
+           "fnv1a64:d5c19619e8703771"},
+          {"moment-cross-validation-gate",
+           "b63n-weighted-residue-moment-cross-validation-gate",
+           amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+               gate),
+           "fnv1a64:aa480d3ceb075144"},
+          {"blocked-D2-scoped-weighted-residue",
+           "b63n-scoped-weighted-residue-evaluation",
+           amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(blocked_d2),
+           "fnv1a64:8c19abf9c1a1f0d1"},
+          {"published-D7-scoped-weighted-residue",
+           "b63n-scoped-weighted-residue-evaluation",
+           amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+               published_d7),
+           "fnv1a64:1c099d4fbf9dd649"}};
+}
+
+void EmitB63nWeightedResidueAuditFingerprintsJson(std::ostream& out) {
+  const std::vector<AuditFingerprintPin> pins =
+      BuildB63nWeightedResidueAuditFingerprintPins();
+  const std::vector<std::string> published_categories =
+      PublishedB63nWeightedResidueAuditCategories();
+
+  out << "{\n";
+  out << "  \"kind\": \"b63n-weighted-residue-audit-fingerprint-regeneration\",\n";
+  out << "  \"entry_count\": " << pins.size() << ",\n";
+  out << "  \"published_categories\": [";
+  for (std::size_t index = 0; index < published_categories.size(); ++index) {
+    if (index != 0) {
+      out << ", ";
+    }
+    out << "\"" << JsonEscape(published_categories[index]) << "\"";
+  }
+  out << "],\n";
+  out << "  \"entries\": [\n";
+  for (std::size_t index = 0; index < pins.size(); ++index) {
+    const AuditFingerprintPin& pin = pins[index];
+    const std::string fresh_fingerprint =
+        amflow::ComputeArtifactFingerprint(pin.audit);
+    out << "    {\n";
+    out << "      \"label\": \"" << JsonEscape(pin.label) << "\",\n";
+    out << "      \"category\": \"" << JsonEscape(pin.category) << "\",\n";
+    out << "      \"fresh_fingerprint\": \"" << fresh_fingerprint << "\",\n";
+    out << "      \"pinned_fingerprint\": \"" << pin.expected_fingerprint
+        << "\",\n";
+    out << "      \"matches_pin\": "
+        << (fresh_fingerprint == pin.expected_fingerprint ? "true" : "false")
+        << "\n";
+    out << "    }" << (index + 1 == pins.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+}
+
+void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const amflow::CutkoskyScopedWeightedResidueEvaluation blocked_d2 =
+      amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+          spec,
+          1,
+          2,
+          70);
+  Expect(!blocked_d2.publication_gate_passed &&
+             blocked_d2.failure_code == "boundary_unsolved",
+         "b63n D2 audit fingerprint regression requires the blocked D2 input");
   const std::string blocked_d2_fingerprint =
       amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
           blocked_d2);
   ExpectPublishedAuditCategoryFingerprintPins(
-      {{"evaluation-plan",
-        "b63n-cutkosky-weighted-residue-evaluation-plan",
-        amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plan),
-        "fnv1a64:a9c31cddfef4646b"},
-       {"D7-moment-seed",
-        "b63n-automatic-phasespace-weighted-residue-moment-seed",
-        amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit(*d7_seed),
-        "fnv1a64:f29d369c5bd1cfd5"},
-       {"moment-seed-packet",
-        "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
-        amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
-            seed_packet),
-        "fnv1a64:d5c19619e8703771"},
-       {"moment-cross-validation-gate",
-        "b63n-weighted-residue-moment-cross-validation-gate",
-        amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
-            gate),
-        "fnv1a64:aa480d3ceb075144"},
-       {"blocked-D2-scoped-weighted-residue",
-        "b63n-scoped-weighted-residue-evaluation",
-        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(blocked_d2),
-        "fnv1a64:8c19abf9c1a1f0d1"},
-       {"published-D7-scoped-weighted-residue",
-        "b63n-scoped-weighted-residue-evaluation",
-        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
-            published_d7),
-        "fnv1a64:1c099d4fbf9dd649"}},
-      {"b63n-cutkosky-weighted-residue-evaluation-plan",
-       "b63n-automatic-phasespace-weighted-residue-moment-seed",
-       "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
-       "b63n-weighted-residue-moment-cross-validation-gate",
-       "b63n-scoped-weighted-residue-evaluation"});
+      BuildB63nWeightedResidueAuditFingerprintPins(),
+      PublishedB63nWeightedResidueAuditCategories());
 
   amflow::CutkoskyScopedWeightedResidueEvaluation tampered_d2 = blocked_d2;
   tampered_d2.publication_gate_status += "; drift";
@@ -1968,8 +2063,19 @@ void ScopedAutomaticPhaseSpaceWeightedResidueRejectsCutDenominatorTest() {
 
 }  // namespace
 
-int main() {
+int main(const int argc, char** argv) {
   try {
+    if (argc == 2 &&
+        std::string(argv[1]) == "--emit-b63n-weighted-residue-fingerprints") {
+      EmitB63nWeightedResidueAuditFingerprintsJson(std::cout);
+      return 0;
+    }
+    if (argc != 1) {
+      std::cerr << "usage: cutkosky-weighted-residue-tests "
+                   "[--emit-b63n-weighted-residue-fingerprints]\n";
+      return 2;
+    }
+
     ScopedAutomaticPhaseSpaceWeightedResidueStopsAtPublicationGateTest();
     ScopedAutomaticPhaseSpaceWeightedResidueCanSelectD7Test();
     ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest();

@@ -269,6 +269,17 @@ if(BUILD_TESTING)
     COMMAND cutkosky-weighted-residue-tests)
   set_tests_properties(cutkosky-weighted-residue-tests PROPERTIES
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b63n-weighted-residue-fingerprint-regenerator-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/regenerate_b63n_weighted_residue_fingerprints.py
+      --self-check
+      --test-binary
+      $<TARGET_FILE:cutkosky-weighted-residue-tests>)
+  set_tests_properties(b63n-weighted-residue-fingerprint-regenerator-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(
     amflow-tests
     amflow-cli

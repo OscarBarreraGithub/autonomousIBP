@@ -410,6 +410,17 @@ if(BUILD_TESTING)
   set_tests_properties(b61n-publication-audit-trail-query-self-check
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-publication-audit-fingerprint-regenerator-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/regenerate_b61n_publication_audit_fingerprints.py
+      --self-check
+      --test-binary
+      $<TARGET_FILE:singular-runtime-lane-tests>)
+  set_tests_properties(b61n-publication-audit-fingerprint-regenerator-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_executable(cutkosky-weighted-residue-tests
     tests/cutkosky_weighted_residue_tests.cpp)

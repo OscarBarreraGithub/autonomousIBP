@@ -1497,6 +1497,18 @@ void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
        true,
        "requires exact automatic_phasespace and feynman_prescription weighted "
        "residue surfaces"},
+      {"malformed-s",
+       {{"s", "100+"}, {"msq", "1"}},
+       {},
+       false,
+       true,
+       "require parseable exact real numeric substitutions"},
+      {"malformed-msq",
+       {{"s", "100"}, {"msq", "1/"}},
+       {},
+       false,
+       true,
+       "require parseable exact real numeric substitutions"},
       {"extra-real-spectator",
        {{"s", "100"}, {"msq", "1"}, {"spectator", "1/1000"}},
        {},
@@ -1555,9 +1567,9 @@ void ScopedAutomaticPhaseSpaceD7NumericPointVariantSweepGateTest() {
   Expect(accepted_count == 2,
          "D7 numeric-point sweep should accept only the literal and exact-expression "
          "lane146 points");
-  Expect(pre_surface_rejection_count == 5,
-         "D7 numeric-point sweep should reject missing or wrong required bindings "
-         "before surface publication");
+  Expect(pre_surface_rejection_count == 7,
+         "D7 numeric-point sweep should reject missing, wrong, or malformed required "
+         "bindings before surface publication");
   Expect(publication_block_count == 2,
          "D7 numeric-point sweep should block extra real and complex bindings at "
          "the publication gate");

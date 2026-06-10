@@ -734,6 +734,55 @@ bool MatchesAutomaticPhaseSpaceFirstCoefficientSurface(
          NumericSubstitutionEquals(spec, "msq", "1");
 }
 
+bool MatchesAutomaticPhaseSpaceSurfaceShape(
+    const ProblemSpec& spec,
+    const std::vector<std::size_t>& cut_indices) {
+  if (spec.targets.empty()) {
+    return false;
+  }
+  const std::vector<std::string> automatic_phasespace_propagators = {
+      "l1^2-msq",
+      "(l1+p1)^2",
+      "l2^2",
+      "(l1+l2+p1)^2",
+      "(l1+l2+p1+p2)^2",
+      "(l1+l2+p2)^2",
+      "(l1+p2)^2",
+  };
+  return spec.family.name == "phase" &&
+         VectorEquals(spec.family.loop_momenta, {"l1", "l2"}) &&
+         PropagatorsMatchExactSurface(spec, automatic_phasespace_propagators) &&
+         VectorEquals(cut_indices, {0, 2, 4}) &&
+         VectorEquals(spec.targets.front().indices, {1, 2, 1, 1, 1, 1, 1});
+}
+
+std::string ReviewedAutomaticPhaseSpaceLane146D7MalformedKinematicsBlocker(
+    const ProblemSpec& spec,
+    const std::vector<std::size_t>& cut_indices) {
+  if (!MatchesAutomaticPhaseSpaceSurfaceShape(spec, cut_indices) ||
+      !spec.kinematics.complex_numeric_substitutions.empty()) {
+    return {};
+  }
+  const std::map<std::string, std::string>& substitutions =
+      spec.kinematics.numeric_substitutions;
+  if (substitutions.size() != 2 || substitutions.count("s") != 1 ||
+      substitutions.count("msq") != 1) {
+    return {};
+  }
+
+  try {
+    static_cast<void>(EvaluateCoefficientExpression(substitutions.at("s"),
+                                                    NumericEvaluationPoint{}));
+    static_cast<void>(EvaluateCoefficientExpression(substitutions.at("msq"),
+                                                    NumericEvaluationPoint{}));
+  } catch (const std::exception& error) {
+    return std::string("reviewed lane146 D7 coefficients require parseable "
+                       "exact real numeric substitutions: ") +
+           error.what();
+  }
+  return {};
+}
+
 bool MatchesFeynmanPrescriptionSurface(const ProblemSpec& spec,
                                        const std::vector<std::size_t>& cut_indices) {
   if (spec.targets.empty()) {
@@ -2293,6 +2342,16 @@ BuildCutkoskyWeightedResidueEvaluationPlan(const ProblemSpec& spec) {
       }
     }
     return plan;
+  }
+
+  const std::string d7_malformed_kinematics_blocker =
+      ReviewedAutomaticPhaseSpaceLane146D7MalformedKinematicsBlocker(spec,
+                                                                     cut_indices);
+  if (!d7_malformed_kinematics_blocker.empty()) {
+    throw BoundaryUnsolvedError(
+        "b63n Cutkosky weighted residue evaluation plan refused a reviewed "
+        "automatic_phasespace D7 near-surface before coefficient publication: " +
+        d7_malformed_kinematics_blocker);
   }
 
   throw BoundaryUnsolvedError(

@@ -350,7 +350,18 @@ def validate_reference_validation(
     if not published:
         expect(not passed, f"{label} skeleton validation must not pass")
         expect(not coefficient_published, f"{label} skeleton must not publish coefficients")
-        expect("blocked_reason" in validation, f"{label} skeleton must record blocked_reason")
+        expect(
+            validation.get("minimum_digit_agreement") is None,
+            f"{label} skeleton must not claim minimum_digit_agreement",
+        )
+        expect(
+            validation.get("comparison_artifact") is None,
+            f"{label} skeleton must not record comparison_artifact",
+        )
+        require_string(
+            validation.get("blocked_reason"),
+            f"{label}.reference_validation.blocked_reason",
+        )
         return None
 
     expect(passed, f"{label} published validation must pass")
@@ -652,6 +663,21 @@ def run_self_check() -> dict[str, Any]:
     bad_skeleton_passed = skeleton_fixture()
     bad_skeleton_passed["passed"] = True
 
+    bad_skeleton_placeholder_blocker = skeleton_fixture()
+    bad_skeleton_placeholder_blocker["weights"][0]["reference_validation"][
+        "blocked_reason"
+    ] = "todo"
+
+    bad_skeleton_digit_claim = skeleton_fixture()
+    bad_skeleton_digit_claim["weights"][1]["reference_validation"][
+        "minimum_digit_agreement"
+    ] = 50
+
+    bad_skeleton_comparison_claim = skeleton_fixture()
+    bad_skeleton_comparison_claim["weights"][2]["reference_validation"][
+        "comparison_artifact"
+    ] = "artifacts/d6.compare.json"
+
     bad_full_missing_coefficients = full_fixture()
     bad_full_missing_coefficients["weights"][0]["coefficients"] = []
 
@@ -689,6 +715,18 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_cannot_pass_publication": rejected(
             bad_skeleton_passed,
             "skeleton evidence cannot also pass publication",
+        ),
+        "skeleton_rejects_placeholder_blocker": rejected(
+            bad_skeleton_placeholder_blocker,
+            "blocked_reason must not be a placeholder",
+        ),
+        "skeleton_rejects_digit_agreement_claim": rejected(
+            bad_skeleton_digit_claim,
+            "skeleton must not claim minimum_digit_agreement",
+        ),
+        "skeleton_rejects_comparison_artifact_claim": rejected(
+            bad_skeleton_comparison_claim,
+            "skeleton must not record comparison_artifact",
         ),
         "full_requires_nonempty_coefficients": rejected(
             bad_full_missing_coefficients,

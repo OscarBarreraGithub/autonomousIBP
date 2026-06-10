@@ -110,6 +110,15 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME b63n-d246-evidence-verifier
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b63n_d246_evidence.py
+  )
+  set_tests_properties(b63n-d246-evidence-verifier PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME b63n-d246-evidence-verifier-self-check
     COMMAND
       ${Python3_EXECUTABLE}

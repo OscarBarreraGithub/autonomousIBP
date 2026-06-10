@@ -24,6 +24,22 @@ path through `release_signoff_readiness.py`, and fails if the fresh summary does
 not report `release_signoff_ready=true` with `release_signoff_blockers=[]`.
 CTest runs the same wrapper as `m7-release-signoff-readiness-accepted-inputs`.
 
+## Bundle Accepted Evidence
+
+Use this command to create a distributable tarball of the accepted release
+evidence sidecars:
+
+```sh
+python3 tools/reference-harness/scripts/package_m7_release_evidence.py \
+  --output /tmp/m7-release-evidence.tar.gz
+```
+
+The archive contains the accepted readiness output, the direct readiness input
+sidecars and checklist, the M5 acceptance sidecar, the JSON sidecars named by
+that M5 acceptance packet, and a checksum manifest. CTest runs
+`m7-release-evidence-bundle-self-check` to build and validate the same archive
+shape in a temporary directory.
+
 ## Direct replay
 
 Use the direct command when you need to inspect or archive the regenerated JSON

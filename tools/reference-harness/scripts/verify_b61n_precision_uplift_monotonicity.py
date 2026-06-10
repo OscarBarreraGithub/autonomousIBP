@@ -344,6 +344,7 @@ def verify_payloads(
     component_records: list[dict[str, Any]] = []
     targets = require_list(precision_evidence.get("targets"), "precision_evidence.targets")
     expect(targets, "precision evidence targets must not be empty")
+    precision_target_keys: list[tuple[str, int]] = []
 
     for target_index, raw_target in enumerate(targets):
         target = require_object(raw_target, f"precision_evidence.targets[{target_index}]")
@@ -357,6 +358,11 @@ def verify_payloads(
         )
         key = (integral, eps_order)
         label = target_key(*key)
+        expect(
+            key not in precision_target_keys,
+            f"precision_evidence.targets repeats {label}",
+        )
+        precision_target_keys.append(key)
         expect(key in cpp_by_target, f"C++ result is missing {label}")
         expect(key in diagnostic_by_target, f"diagnostic is missing {label}")
         for component in COMPONENTS:
@@ -375,6 +381,11 @@ def verify_payloads(
                     **record,
                 }
             )
+
+    expect(
+        set(precision_target_keys) == set(diagnostic_by_target),
+        "precision evidence target set must match diagnostic row 5/6 targets",
+    )
 
     summary = require_object(precision_evidence.get("summary"), "precision_evidence.summary")
     expect(
@@ -547,6 +558,20 @@ def run_self_check() -> dict[str, Any]:
     bad_standard = copy.deepcopy(evidence)
     bad_standard["targets"][0]["standard_80"]["real"] = "1.235"
 
+    duplicate_target = copy.deepcopy(evidence)
+    duplicate_target["targets"].append(copy.deepcopy(duplicate_target["targets"][0]))
+    duplicate_target["summary"]["target_count"] = 2
+
+    missing_diagnostic_target = copy.deepcopy(diagnostic)
+    missing_diagnostic_target["target_diagnostics"].append(
+        {
+            "integral": "box[1,1,1,1]",
+            "eps_order": 0,
+            "reference_floor_real_digits": 2,
+            "reference_floor_imag_digits": 2,
+        }
+    )
+
     checks = {
         "synthetic_fixture_passes": valid_summary["component_count"] == 2,
         "rejects_nonmonotone_uplift": rejected(
@@ -566,6 +591,18 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             diagnostic,
             "standard serialization no longer matches exact rational",
+        ),
+        "rejects_duplicate_precision_target": rejected(
+            duplicate_target,
+            cpp_result,
+            diagnostic,
+            "repeats box[1,0,1,1] eps^0",
+        ),
+        "rejects_missing_diagnostic_target": rejected(
+            evidence,
+            cpp_result,
+            missing_diagnostic_target,
+            "target set must match diagnostic row 5/6 targets",
         ),
     }
     expect(all(checks.values()), "b61n precision-uplift monotonicity self-check failed")

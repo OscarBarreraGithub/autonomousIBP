@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -201,6 +202,7 @@ def summarize_performance(root: Path, performance_review_path: str) -> Performan
     raw_benchmarks = payload.get("benchmark_timing_evidence")
     expect(isinstance(raw_benchmarks, list) and raw_benchmarks, "benchmark_timing_evidence must be non-empty")
     benchmarks: list[BenchmarkSummary] = []
+    seen_labels: set[str] = set()
     for index, entry in enumerate(raw_benchmarks):
         expect(isinstance(entry, dict), f"benchmark_timing_evidence[{index}] must be an object")
         expect(entry.get("all_runs_exit_zero") is True, f"benchmark[{index}] did not have all zero exits")
@@ -210,9 +212,12 @@ def summarize_performance(root: Path, performance_review_path: str) -> Performan
         max_wall_seconds = numeric_value(entry.get("wall_seconds_max"), f"benchmark[{index}].wall_seconds_max")
         max_rss_kb = entry.get("max_rss_kb_max")
         expect(type(max_rss_kb) is int and max_rss_kb >= 0, f"benchmark[{index}].max_rss_kb_max must be nonnegative")
+        label = benchmark_label(entry, index)
+        expect(label not in seen_labels, f"duplicate performance benchmark label: {label}")
+        seen_labels.add(label)
         benchmarks.append(
             BenchmarkSummary(
-                label=benchmark_label(entry, index),
+                label=label,
                 run_count=run_count,
                 max_wall_seconds=max_wall_seconds,
                 max_rss_kb=max_rss_kb,
@@ -334,6 +339,28 @@ def expect_health_error(label: str, action: Callable[[], None], expected: str) -
 
 def self_check(root: Path) -> None:
     summarize_inventory_for_readiness(root, M7_ROOT, ACCEPTED_READINESS_SIDECAR)
+    readiness = summarize_readiness(root, ACCEPTED_READINESS_SIDECAR)
+    summarize_performance(root, readiness.performance_review_path)
+
+    performance_payload = read_json(root / readiness.performance_review_path)
+    duplicate_payload = json.loads(json.dumps(performance_payload))
+    benchmark_evidence = duplicate_payload.get("benchmark_timing_evidence")
+    expect(
+        isinstance(benchmark_evidence, list) and benchmark_evidence,
+        "accepted performance sidecar must carry benchmark timing evidence",
+    )
+    benchmark_evidence.append(dict(benchmark_evidence[0]))
+    with tempfile.TemporaryDirectory(prefix="release-health-self-check-", dir=root) as temp_dir:
+        duplicate_path = Path(temp_dir) / "duplicate-performance-benchmark.json"
+        duplicate_path.write_text(
+            json.dumps(duplicate_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "duplicate performance benchmark check",
+            lambda: summarize_performance(root, str(duplicate_path.relative_to(root))),
+            "duplicate performance benchmark label",
+        )
 
     expect_health_error(
         "unaccepted readiness sidecar check",

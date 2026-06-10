@@ -24,6 +24,22 @@ path through `release_signoff_readiness.py`, and fails if the fresh summary does
 not report `release_signoff_ready=true` with `release_signoff_blockers=[]`.
 CTest runs the same wrapper as `m7-release-signoff-readiness-accepted-inputs`.
 
+## Performance Baseline
+
+Use this command when you need to confirm that the accepted-input replay has not
+regressed into a materially slower release gate:
+
+```sh
+python3 tools/reference-harness/scripts/assert_m7_release_signoff_performance.py
+```
+
+The gate replays the accepted readiness inputs three times, reports the measured
+wall-clock samples as JSON, and fails if the median replay exceeds 5 seconds or
+any single replay exceeds 10 seconds. This is a gross regression guard for
+`release_signoff_readiness.py` orchestration overhead only; it is not an AMFlow
+runtime numeric benchmark. CTest runs the same wrapper as
+`m7-release-signoff-readiness-performance-baseline`.
+
 ## Bundle Accepted Evidence
 
 Use this command to create a distributable tarball of the accepted release

@@ -254,6 +254,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-signoff-readiness-performance-baseline
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_signoff_performance.py
+  )
+  set_tests_properties(m7-release-signoff-readiness-performance-baseline PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    TIMEOUT 45)
+
+  add_test(
     NAME m7-release-sidecar-schema-validation
     COMMAND
       ${Python3_EXECUTABLE}

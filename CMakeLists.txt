@@ -312,6 +312,17 @@ if(BUILD_TESTING)
   set_tests_properties(b63n-weighted-residue-fingerprint-regenerator-self-check
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b63n-scoped-gate-audit-trail-query-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py
+      --self-check
+      --test-binary
+      $<TARGET_FILE:cutkosky-weighted-residue-tests>)
+  set_tests_properties(b63n-scoped-gate-audit-trail-query-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(
     amflow-tests
     amflow-cli

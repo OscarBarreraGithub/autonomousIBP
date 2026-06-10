@@ -982,6 +982,67 @@ void EmitB63nWeightedResidueAuditFingerprintsJson(std::ostream& out) {
   out << "}\n";
 }
 
+void EmitB63nScopedGateAuditTrailJson(std::ostream& out) {
+  struct ScopedAuditEntry {
+    std::string label;
+    amflow::CutkoskyScopedWeightedResidueEvaluation evaluation;
+  };
+
+  const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
+  const std::vector<ScopedAuditEntry> entries = {
+      {"blocked-D2-scoped-weighted-residue",
+       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+           spec,
+           1,
+           2,
+           70)},
+      {"published-D7-scoped-weighted-residue",
+       amflow::EvaluateAutomaticPhaseSpaceScopedWeightedResidue(
+           spec,
+           6,
+           3,
+           70)},
+  };
+
+  out << "{\n";
+  out << "  \"kind\": \"b63n-scoped-gate-audit-trail-query\",\n";
+  out << "  \"entry_count\": " << entries.size() << ",\n";
+  out << "  \"entries\": [\n";
+  for (std::size_t index = 0; index < entries.size(); ++index) {
+    const ScopedAuditEntry& entry = entries[index];
+    const amflow::CutkoskyScopedWeightedResidueEvaluation& evaluation =
+        entry.evaluation;
+    const std::string audit =
+        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+            evaluation);
+    out << "    {\n";
+    out << "      \"label\": \"" << JsonEscape(entry.label) << "\",\n";
+    out << "      \"selected_weight\": \""
+        << JsonEscape(evaluation.selected_weight_denominator) << "\",\n";
+    out << "      \"selected_weight_index\": "
+        << evaluation.selected_weight_denominator_index << ",\n";
+    out << "      \"publication_gate_checked\": "
+        << (evaluation.publication_gate_checked ? "true" : "false") << ",\n";
+    out << "      \"publication_gate_passed\": "
+        << (evaluation.publication_gate_passed ? "true" : "false") << ",\n";
+    out << "      \"live_coefficients_available\": "
+        << (evaluation.live_coefficients_available ? "true" : "false")
+        << ",\n";
+    out << "      \"retained_solution_samples_used\": "
+        << (evaluation.retained_solution_samples_used ? "true" : "false")
+        << ",\n";
+    out << "      \"full_eta_zero_contour_applied\": "
+        << (evaluation.full_eta_zero_contour_applied ? "true" : "false")
+        << ",\n";
+    out << "      \"audit_fingerprint\": \""
+        << amflow::ComputeArtifactFingerprint(audit) << "\",\n";
+    out << "      \"audit\": \"" << JsonEscape(audit) << "\"\n";
+    out << "    }" << (index + 1 == entries.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+}
+
 void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
   const amflow::ProblemSpec spec = MakeB63nAutomaticPhaseSpaceSpec();
   const amflow::CutkoskyScopedWeightedResidueEvaluation blocked_d2 =
@@ -2085,9 +2146,15 @@ int main(const int argc, char** argv) {
       EmitB63nWeightedResidueAuditFingerprintsJson(std::cout);
       return 0;
     }
+    if (argc == 2 &&
+        std::string(argv[1]) == "--emit-b63n-scoped-gate-audit-trail") {
+      EmitB63nScopedGateAuditTrailJson(std::cout);
+      return 0;
+    }
     if (argc != 1) {
       std::cerr << "usage: cutkosky-weighted-residue-tests "
-                   "[--emit-b63n-weighted-residue-fingerprints]\n";
+                   "[--emit-b63n-weighted-residue-fingerprints|"
+                   "--emit-b63n-scoped-gate-audit-trail]\n";
       return 2;
     }
 

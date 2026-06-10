@@ -149,9 +149,13 @@ python3 tools/reference-harness/scripts/review_release_docs_completion.py \
 
 python3 tools/reference-harness/scripts/review_release_parity_signoff.py \
   --self-check
+
+python3 tools/reference-harness/scripts/verify_b63n_scoped_gate_audit_trail.py \
+  --self-check \
+  --test-binary build/cutkosky-weighted-residue-tests
 ```
 
-`amflow-tests` now exercises all twenty-five helper self-checks through the configured
+`ctest` now exercises the repo-local helper self-checks through the configured
 `Python3_EXECUTABLE`, so the repo-local gate covers bootstrap, fetch, placeholder-freeze,
 retained-capture, scaffold-validation, qualification-readiness, case-study-family readiness, the
 case-study numeric summary producer, the C++ solve-series versus AMFlow ingester, AMFlow
@@ -165,8 +169,8 @@ production, diagnostic-review sidecar production, docs-completion sidecar produc
 parity-signoff sidecar production, the single-packet comparator, packet-level
 correct-digit scorer, packet-level
 failure-code audit, packet-set failure-code audit, plus the packet-set retained-reference
-comparison and packet-set correct-digit scorer regression paths without needing a real benchmark
-packet.
+comparison, packet-set correct-digit scorer, and b63n scoped gate audit-query regression paths
+without needing a real benchmark packet.
 
 If `inputs/upstream/amflow` already exists, the fetch helper verifies that `origin` matches `--amflow-url` and fetches the requested ref before it records the pinned commit. If the CPC archive is re-extracted, the helper recreates `inputs/extracted/cpc` first so stale files cannot survive reruns.
 Tar extraction is policy-driven inside the helper itself: it rejects symlink, hardlink, device, absolute-path, and escaping entries before any tar payload is written, rather than relying on interpreter defaults.
@@ -766,3 +770,7 @@ The capture script writes:
   path, correct-digit-threshold blocking, failure-code metadata blocking, missing-audit blocking,
   unexpected-failure-code blocking, and packet-label / phase-0-id drift rejection while keeping
   full `Milestone M6` closure withheld.
+- `verify_b63n_scoped_gate_audit_trail.py --self-check` queries the built
+  `cutkosky-weighted-residue-tests` emitter and fails closed unless the scoped b63n publication
+  audit exposes the nested moment gate status, canonical D2/D4/D6/D7 seed identities and
+  provenance, and the non-promotion flags added for the scoped gate audit trail.

@@ -168,32 +168,66 @@ bool IsSolvedScopedWeight(
 
 struct AuditFingerprintPin {
   std::string label;
-  std::string actual;
-  std::string expected;
+  std::string category;
+  std::string audit;
+  std::string expected_fingerprint;
 };
 
-void ExpectUniqueAuditFingerprintPins(
-    const std::vector<AuditFingerprintPin>& pins) {
-  Expect(pins.size() >= 2,
-         "b63n audit fingerprint uniqueness sanity requires at least two pins");
+void ExpectPublishedAuditCategoryFingerprintPins(
+    const std::vector<AuditFingerprintPin>& pins,
+    const std::vector<std::string>& published_categories) {
+  Expect(pins.size() >= published_categories.size(),
+         "b63n audit fingerprint coverage requires at least one pin per "
+         "published category");
+  std::vector<std::string> actual_fingerprints;
+  actual_fingerprints.reserve(pins.size());
   for (std::size_t index = 0; index < pins.size(); ++index) {
     const AuditFingerprintPin& pin = pins[index];
     Expect(!pin.label.empty(),
            "b63n audit fingerprint pin label must not be empty");
-    ExpectEqual(pin.actual,
-                pin.expected,
+    Expect(!pin.category.empty(),
+           pin.label + " b63n audit fingerprint category must not be empty");
+    Expect(std::find(published_categories.begin(),
+                     published_categories.end(),
+                     pin.category) != published_categories.end(),
+           pin.label + " b63n audit fingerprint category is not in the "
+                       "published weighted-residue category list: " +
+               pin.category);
+    ExpectContains(pin.audit,
+                   "kind=" + pin.category + "\n",
+                   pin.label + " b63n audit fingerprint pin should match the "
+                               "serialized audit category");
+    actual_fingerprints.push_back(amflow::ComputeArtifactFingerprint(pin.audit));
+    ExpectEqual(actual_fingerprints[index],
+                pin.expected_fingerprint,
                 pin.label +
                     " b63n weighted-residue audit fingerprint should stay pinned");
+  }
+  for (const std::string& category : published_categories) {
+    bool covered = false;
+    for (const AuditFingerprintPin& pin : pins) {
+      if (pin.category == category) {
+        covered = true;
+        break;
+      }
+    }
+    Expect(covered,
+           "published b63n weighted-residue audit category lacks a pinned "
+           "fingerprint: " +
+               category);
+  }
+  for (std::size_t index = 0; index < pins.size(); ++index) {
+    const AuditFingerprintPin& pin = pins[index];
     for (std::size_t other = index + 1; other < pins.size(); ++other) {
       const AuditFingerprintPin& other_pin = pins[other];
-      Expect(pin.expected != other_pin.expected,
+      Expect(pin.expected_fingerprint != other_pin.expected_fingerprint,
              "distinct b63n audit fingerprint pins must stay unique: " +
                  pin.label + " and " + other_pin.label + " both pin " +
-                 pin.expected);
-      Expect(pin.actual != other_pin.actual,
+                 pin.expected_fingerprint);
+      Expect(actual_fingerprints[index] != actual_fingerprints[other],
              "distinct b63n weighted-residue audits must not collide: " +
                  pin.label + " and " + other_pin.label + " both produced " +
-                 pin.actual);
+                 actual_fingerprints[index]);
     }
   }
 }
@@ -811,34 +845,50 @@ void ScopedAutomaticPhaseSpaceWeightedResidueAuditFingerprintDriftTest() {
              published_d7.reference_validation_passed,
          "b63n D7 audit fingerprint regression requires the published D7 input");
 
+  const auto d7_seed =
+      std::find_if(seed_packet.begin(),
+                   seed_packet.end(),
+                   [](const amflow::CutkoskyWeightedResidueMomentSeed& seed) {
+                     return seed.selected_weight_denominator == "D7";
+                   });
+  Expect(d7_seed != seed_packet.end(),
+         "b63n audit fingerprint category coverage requires a D7 moment seed");
   const std::string blocked_d2_fingerprint =
       amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
           blocked_d2);
-  const std::string published_d7_fingerprint =
-      amflow::ComputeCutkoskyScopedWeightedResidueEvaluationAuditFingerprint(
-          published_d7);
-  ExpectUniqueAuditFingerprintPins({
-      {"evaluation-plan",
-       amflow::ComputeArtifactFingerprint(
-           amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plan)),
-       "fnv1a64:a9c31cddfef4646b"},
-      {"moment-seed-packet",
-       amflow::ComputeArtifactFingerprint(
-           amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
-               seed_packet)),
-       "fnv1a64:d5c19619e8703771"},
-      {"moment-cross-validation-gate",
-       amflow::ComputeArtifactFingerprint(
-           amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
-               gate)),
-       "fnv1a64:aa480d3ceb075144"},
-      {"blocked-D2-scoped-weighted-residue",
-       blocked_d2_fingerprint,
-       "fnv1a64:8c19abf9c1a1f0d1"},
-      {"published-D7-scoped-weighted-residue",
-       published_d7_fingerprint,
-       "fnv1a64:1c099d4fbf9dd649"},
-  });
+  ExpectPublishedAuditCategoryFingerprintPins(
+      {{"evaluation-plan",
+        "b63n-cutkosky-weighted-residue-evaluation-plan",
+        amflow::SerializeCutkoskyWeightedResidueEvaluationPlanAudit(plan),
+        "fnv1a64:a9c31cddfef4646b"},
+       {"D7-moment-seed",
+        "b63n-automatic-phasespace-weighted-residue-moment-seed",
+        amflow::SerializeCutkoskyWeightedResidueMomentSeedAudit(*d7_seed),
+        "fnv1a64:f29d369c5bd1cfd5"},
+       {"moment-seed-packet",
+        "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
+        amflow::SerializeCutkoskyWeightedResidueMomentSeedPacketAudit(
+            seed_packet),
+        "fnv1a64:d5c19619e8703771"},
+       {"moment-cross-validation-gate",
+        "b63n-weighted-residue-moment-cross-validation-gate",
+        amflow::SerializeCutkoskyWeightedResidueMomentCrossValidationGateAudit(
+            gate),
+        "fnv1a64:aa480d3ceb075144"},
+       {"blocked-D2-scoped-weighted-residue",
+        "b63n-scoped-weighted-residue-evaluation",
+        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(blocked_d2),
+        "fnv1a64:8c19abf9c1a1f0d1"},
+       {"published-D7-scoped-weighted-residue",
+        "b63n-scoped-weighted-residue-evaluation",
+        amflow::SerializeCutkoskyScopedWeightedResidueEvaluationAudit(
+            published_d7),
+        "fnv1a64:1c099d4fbf9dd649"}},
+      {"b63n-cutkosky-weighted-residue-evaluation-plan",
+       "b63n-automatic-phasespace-weighted-residue-moment-seed",
+       "b63n-automatic-phasespace-weighted-residue-moment-seed-packet",
+       "b63n-weighted-residue-moment-cross-validation-gate",
+       "b63n-scoped-weighted-residue-evaluation"});
 
   amflow::CutkoskyScopedWeightedResidueEvaluation tampered_d2 = blocked_d2;
   tampered_d2.publication_gate_status += "; drift";

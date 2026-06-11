@@ -85,7 +85,8 @@ def expect(condition: bool, message: str) -> None:
 
 def require_repo_file(root: Path, raw: Any, field: str) -> str:
     expect(isinstance(raw, str) and raw.strip(), f"{field} must be a non-empty path")
-    value = raw.strip()
+    expect(raw == raw.strip(), f"{field} must not carry surrounding whitespace")
+    value = raw
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = root / candidate
@@ -399,6 +400,15 @@ def self_check(root: Path) -> None:
     expect(
         absolute_readiness.performance_review_path == readiness.performance_review_path,
         "absolute readiness sidecar path changed the selected performance review",
+    )
+    expect_health_error(
+        "readiness sidecar surrounding whitespace check",
+        lambda: require_repo_file(
+            root,
+            f" {ACCEPTED_READINESS_SIDECAR.as_posix()} ",
+            "readiness sidecar",
+        ),
+        "readiness sidecar must not carry surrounding whitespace",
     )
     summarize_inventory_for_readiness(
         root,

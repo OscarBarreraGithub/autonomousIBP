@@ -185,6 +185,23 @@ def require_absolute_path_text(raw: Any, label: str) -> str:
     return value
 
 
+def require_relative_artifact_path_text(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    expect(raw == raw.strip(), f"{label} must not contain surrounding whitespace")
+    value = require_string(raw, label)
+    expect("\\" not in value, f"{label} must use POSIX path separators")
+    path = Path(value)
+    expect(not path.is_absolute(), f"{label} must be a relative artifact path")
+    expect(path.as_posix() == value, f"{label} must be a normalized POSIX path")
+    expect(
+        "." not in path.parts and ".." not in path.parts,
+        f"{label} must not contain . or .. components",
+    )
+    expect(not value.endswith("/"), f"{label} must not end with a slash")
+    return value
+
+
 def require_decimal_string(raw: Any, label: str) -> str:
     value = require_string(raw, label)
     try:
@@ -385,7 +402,7 @@ def validate_coefficient(coefficient: dict[str, Any], label: str) -> tuple[int, 
     require_exact(coefficient.get("region_key"), "integer", f"{label}.region_key")
     require_decimal_string(coefficient.get("real"), f"{label}.real")
     require_decimal_string(coefficient.get("imaginary"), f"{label}.imaginary")
-    require_string(coefficient.get("source"), f"{label}.source")
+    require_relative_artifact_path_text(coefficient.get("source"), f"{label}.source")
     require_sha256(coefficient.get("source_sha256"), f"{label}.source_sha256")
     require_string(coefficient.get("extraction_label"), f"{label}.extraction_label")
     working_precision = require_int(
@@ -909,6 +926,16 @@ def run_self_check() -> dict[str, Any]:
     bad_low_digits = full_fixture()
     bad_low_digits["weights"][2]["coefficients"][0]["agreement_digits"] = 49
 
+    bad_absolute_coefficient_source = full_fixture()
+    bad_absolute_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = "/tmp/d2-eps0.json"
+
+    bad_parent_coefficient_source = full_fixture()
+    bad_parent_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = "artifacts/../d2-eps0.json"
+
     bad_minimum_digit_overclaim = full_fixture()
     bad_minimum_digit_overclaim["weights"][0]["reference_validation"][
         "minimum_digit_agreement"
@@ -1027,6 +1054,14 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_low_digit_agreement": rejected(
             bad_low_digits,
             "agreement_digits must be at least 50",
+        ),
+        "full_rejects_absolute_coefficient_source": rejected(
+            bad_absolute_coefficient_source,
+            "source must be a relative artifact path",
+        ),
+        "full_rejects_parent_coefficient_source": rejected(
+            bad_parent_coefficient_source,
+            "source must not contain . or .. components",
         ),
         "full_rejects_minimum_digit_overclaim": rejected(
             bad_minimum_digit_overclaim,

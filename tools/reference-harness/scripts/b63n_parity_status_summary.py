@@ -185,6 +185,16 @@ def require_object(raw: Any, label: str) -> dict[str, Any]:
     return raw
 
 
+def require_int_list(raw: Any, label: str) -> list[int]:
+    values = require_list(raw, label)
+    for index, value in enumerate(values):
+        expect(
+            isinstance(value, int) and not isinstance(value, bool),
+            f"{label}[{index}] must be an int",
+        )
+    return values
+
+
 def require_evidence_source_path(sources: dict[str, Any], field: str) -> str:
     value = require_string(sources, field)
     path = Path(value)
@@ -614,6 +624,23 @@ def summarize_payloads(
         selected4_transported_count == len(selected4_transported_integrals),
         "selected4 transported integral count must match transported_integrals",
     )
+    selected4_per_integral_orders = require_object(
+        selected4.get("per_integral_orders"),
+        "selected4 per_integral_orders",
+    )
+    expect(
+        set(selected4_per_integral_orders) == set(selected4_transported_integrals),
+        "selected4 per_integral_orders integral scope must match transported_integrals",
+    )
+    for integral in selected4_transported_integrals:
+        observed_orders = require_int_list(
+            selected4_per_integral_orders.get(integral),
+            f"selected4 per_integral_orders[{integral}]",
+        )
+        expect(
+            observed_orders == EXPECTED_SELECTED4_ORDERS[integral],
+            f"selected4 per-integral order scope drifted for {integral}",
+        )
     expect(
         selected4["published_d7_integral"] in selected4_transported_integrals,
         "selected4 published D7 integral must be transported",
@@ -639,6 +666,10 @@ def summarize_payloads(
     )
     expect(d246.get("m6_closure_claimed") is False, "D246 must not claim M6 closure")
     expect(d246.get("m7_closure_claimed") is False, "D246 must not claim M7 closure")
+    expect(
+        d246.get("minimum_digit_agreement") is None,
+        "D246 skeleton evidence must not claim minimum digit agreement",
+    )
     blockers = require_list(d246.get("publication_blockers"), "D246 publication_blockers")
     expect(
         blockers == list(EXPECTED_D246_PUBLICATION_BLOCKERS),
@@ -866,9 +897,18 @@ def run_self_check() -> dict[str, Any]:
     wrong_transported_count = copy.deepcopy(selected4)
     wrong_transported_count["transported_integral_count"] -= 1
 
+    selected4_per_integral_order_drift = copy.deepcopy(selected4)
+    selected4_per_integral_order_drift["per_integral_orders"][PUBLISHED_D7_INTEGRAL] = [0, 1, 2]
+
+    selected4_per_integral_scope_drift = copy.deepcopy(selected4)
+    selected4_per_integral_scope_drift["per_integral_orders"].pop(PUBLISHED_D7_INTEGRAL)
+
     promoted_d246 = copy.deepcopy(d246)
     promoted_d246["published_evidence"] = True
     promoted_d246["skeleton_evidence"] = False
+
+    d246_digit_claim = copy.deepcopy(d246)
+    d246_digit_claim["minimum_digit_agreement"] = 50
 
     d246_m6_closure_claim = copy.deepcopy(d246)
     d246_m6_closure_claim["m6_closure_claimed"] = True
@@ -1005,6 +1045,24 @@ def run_self_check() -> dict[str, Any]:
             evidence_sources=evidence_sources,
             expected_error="transported integral count",
         ),
+        "rejects_selected4_per_integral_order_drift": rejected(
+            first=first,
+            selected4=selected4_per_integral_order_drift,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="selected4 per-integral order scope drifted",
+        ),
+        "rejects_selected4_per_integral_scope_drift": rejected(
+            first=first,
+            selected4=selected4_per_integral_scope_drift,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="selected4 per_integral_orders integral scope",
+        ),
         "rejects_d246_silent_promotion": rejected(
             first=first,
             selected4=selected4,
@@ -1013,6 +1071,15 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             evidence_sources=evidence_sources,
             expected_error="D2/D4/D6 must remain blocked",
+        ),
+        "rejects_d246_skeleton_digit_overclaim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246_digit_claim,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="D246 skeleton evidence must not claim minimum digit agreement",
         ),
         "rejects_d246_m6_closure_overclaim": rejected(
             first=first,

@@ -131,14 +131,14 @@ def require_git_commit(root: Path, commit: str, label: str) -> None:
 
 def validate_source_provenance(path: Path, root: Path, payload: dict[str, Any]) -> None:
     label = str(path.relative_to(root))
-    commit = require_non_empty_str(payload, "source_commit", label)
+    commit = require_exact_non_empty_str(payload, "source_commit", label)
     expect(
         SOURCE_COMMIT_PATTERN.fullmatch(commit) is not None,
         f"{label} source_commit must be a full lowercase 40-character git SHA",
     )
     require_git_commit(root, commit, label)
 
-    digest = require_non_empty_str(payload, "source_provenance_sha256", label)
+    digest = require_exact_non_empty_str(payload, "source_provenance_sha256", label)
     expect(
         SOURCE_PROVENANCE_SHA256_PATTERN.fullmatch(digest) is not None,
         f"{label} source_provenance_sha256 must be a lowercase SHA-256 digest",
@@ -181,6 +181,13 @@ def require_non_empty_str(payload: dict[str, Any], field: str, label: str) -> st
     value = require_field(payload, field, str, label)
     expect(value.strip(), f"{label} {field} must not be empty")
     return value.strip()
+
+
+def require_exact_non_empty_str(payload: dict[str, Any], field: str, label: str) -> str:
+    value = require_field(payload, field, str, label)
+    expect(value.strip(), f"{label} {field} must not be empty")
+    expect(value == value.strip(), f"{label} {field} must not carry surrounding whitespace")
+    return value
 
 
 def require_bool_fields(payload: dict[str, Any], fields: tuple[str, ...], label: str) -> None:
@@ -872,6 +879,50 @@ def validate_fresh_accepted_readiness_output(root: Path) -> None:
     )
 
 
+def expect_schema_error(label: str, expected: str, action: Callable[[], None]) -> None:
+    try:
+        action()
+    except SchemaError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise SchemaError(f"{label} unexpectedly passed")
+
+
+def validate_source_provenance_self_check(root: Path) -> None:
+    accepted_summary = read_json(root / ACCEPTED_READINESS_SIDECAR)
+    accepted_commit = require_exact_non_empty_str(
+        accepted_summary,
+        "source_commit",
+        ACCEPTED_READINESS_SIDECAR.as_posix(),
+    )
+    synthetic_path = (
+        root
+        / "tools/reference-harness/specs/m7/lane3/synthetic-source-provenance.json"
+    )
+    base_payload = {"source_commit": accepted_commit}
+    base_payload["source_provenance_sha256"] = source_provenance_sha256(base_payload)
+    validate_source_provenance(synthetic_path, root, base_payload)
+
+    whitespace_commit = dict(base_payload)
+    whitespace_commit["source_commit"] = f" {accepted_commit} "
+    whitespace_commit["source_provenance_sha256"] = source_provenance_sha256(whitespace_commit)
+    expect_schema_error(
+        "source_commit surrounding whitespace guard",
+        "source_commit must not carry surrounding whitespace",
+        lambda: validate_source_provenance(synthetic_path, root, whitespace_commit),
+    )
+
+    whitespace_digest = dict(base_payload)
+    whitespace_digest["source_provenance_sha256"] = (
+        f" {base_payload['source_provenance_sha256']} "
+    )
+    expect_schema_error(
+        "source_provenance_sha256 surrounding whitespace guard",
+        "source_provenance_sha256 must not carry surrounding whitespace",
+        lambda: validate_source_provenance(synthetic_path, root, whitespace_digest),
+    )
+
+
 def collect_m7_sidecar_schemas(root: Path, m7_root: Path) -> dict[str, str]:
     sidecar_schemas: dict[str, str] = {}
     m7_root = require_m7_root(root, m7_root)
@@ -920,6 +971,7 @@ def main() -> int:
     schema_counts = validate_all_m7_sidecars(root, m7_root)
     if not args.skip_fresh_readiness:
         validate_fresh_accepted_readiness_output(root)
+    validate_source_provenance_self_check(root)
     total = sum(schema_counts.values())
     counts = ", ".join(f"{name}={count}" for name, count in sorted(schema_counts.items()))
     print(f"M7 release sidecar schema validation passed: {total} JSON sidecars ({counts})")

@@ -33,6 +33,11 @@ public docs are complete, or that the project is release-ready.
       `docs/verification-strategy.md`, and
       `docs/full-amflow-completion-roadmap.md` all describe the same candidate
       state.
+- [ ] If the packet changes `linear_propagator` / `b64ag` status, the release
+      docs still route that row through the lane 4 guard and attach proof that
+      selected lane147 evidence remains non-promotable until a fail-closed
+      recapture/runtime-packet guard exists:
+      [`b64ag-post-m7-continuation-guard.md`](../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).
 
 ## Review Buckets
 

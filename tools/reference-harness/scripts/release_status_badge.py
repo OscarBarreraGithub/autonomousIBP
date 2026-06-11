@@ -111,6 +111,19 @@ def require_source_commit(payload: dict[str, Any]) -> str:
     return source_commit
 
 
+def require_known_source_commit(root: Path, payload: dict[str, Any]) -> str:
+    source_commit = require_source_commit(payload)
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{source_commit}^{{commit}}"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, "source_commit is not a known commit")
+    return source_commit
+
+
 def validate_performance(health: dict[str, Any]) -> None:
     performance = require_object(health, "performance")
     expect(
@@ -308,6 +321,15 @@ def expect_badge_error(label: str, health: dict[str, Any], expected: str) -> Non
 def expect_path_error(label: str, root: Path, raw: Path, expected: str) -> None:
     try:
         require_repo_file(root, raw, "health JSON")
+    except BadgeError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise BadgeError(f"{label} unexpectedly passed")
+
+
+def expect_known_commit_error(label: str, root: Path, health: dict[str, Any], expected: str) -> None:
+    try:
+        require_known_source_commit(root, health)
     except BadgeError as error:
         expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
         return
@@ -533,6 +555,27 @@ def self_check() -> None:
         == fixture_absolute.resolve(strict=True),
         "absolute health JSON path did not normalize to the committed fixture",
     )
+    fixture_health = read_json(fixture_absolute)
+    expect(
+        require_known_source_commit(root, fixture_health)
+        == fixture_health["source_commit"].strip(),
+        "committed health fixture source commit was not reachable",
+    )
+    unknown_source_commit = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    unknown_source_commit["source_commit"] = "f" * 40
+    expect_known_commit_error(
+        "unknown health source commit check",
+        root,
+        unknown_source_commit,
+        "source_commit is not a known commit",
+    )
     expect_path_error(
         "health JSON repository escape guard",
         root,
@@ -588,6 +631,7 @@ def main() -> int:
             health_path = require_repo_file(root, args.health_json, "health JSON")
             health = read_json(health_path)
 
+        require_known_source_commit(root, health)
         print(render_shields_json(badge_payload(health)))
         return 0
     except BadgeError as error:

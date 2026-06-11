@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import string
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -32,6 +32,7 @@ def repo_root() -> Path:
 SOURCE_PROVENANCE_DIGEST_FIELDS = frozenset(
     ("source_payload_sha256", "source_provenance_sha256")
 )
+SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 def payload_without_source_provenance_digest(payload: dict[str, Any]) -> dict[str, Any]:
@@ -64,13 +65,25 @@ def git_head(root: Path) -> str:
     return completed.stdout.strip()
 
 
-def require_source_commit_override(raw: str) -> str:
+def require_git_commit(root: Path, commit: str, label: str) -> None:
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, f"{label} is not a known commit")
+
+
+def require_source_commit_override(root: Path, raw: str) -> str:
     value = raw.strip()
     expect(value, "source commit override must not be empty")
     expect(
-        7 <= len(value) <= 64 and all(character in string.hexdigits for character in value),
-        "source commit override must be a git object id",
+        SOURCE_COMMIT_PATTERN.fullmatch(value) is not None,
+        "source commit override must be a full lowercase 40-character git SHA",
     )
+    require_git_commit(root, value, "source commit override")
     return value
 
 
@@ -82,12 +95,20 @@ def attach_source_provenance(
 ) -> dict[str, Any]:
     stamped = dict(payload_without_source_provenance_digest(payload))
     stamped["source_commit"] = (
-        require_source_commit_override(source_commit_override)
+        require_source_commit_override(root, source_commit_override)
         if source_commit_override is not None
         else git_head(root)
     )
     stamped["source_provenance_sha256"] = source_provenance_sha256(stamped)
     return stamped
+
+
+def source_commit_override_rejected(root: Path, raw: str, expected: str) -> bool:
+    try:
+        attach_source_provenance(root, {"schema_version": 1}, source_commit_override=raw)
+    except RuntimeError as error:
+        return expected in str(error)
+    return False
 
 
 PARITY_SIGNOFF_REQUIRED_RELEASE_REVIEW_SECTIONS: tuple[str, ...] = (
@@ -2628,6 +2649,7 @@ def write_synthetic_m6_qualification_summary(path: Path, *, ready: bool) -> None
 
 
 def run_self_check(checklist_path: Path) -> dict[str, Any]:
+    root = repo_root()
     with tempfile.TemporaryDirectory(prefix="amflow-release-signoff-readiness-self-check-") as tmp:
         temp_root = Path(tmp)
         qualification_summary_path = temp_root / "qualification-summary.json"
@@ -2973,6 +2995,30 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             and not anti_fake_m6_parity_summary["release_signoff_ready"]
             and not accepted_m6_parity_summary["release_signoff_ready"]
         )
+        current_head = git_head(root)
+        valid_source_commit_override = attach_source_provenance(
+            root,
+            {"schema_version": 1},
+            source_commit_override=current_head,
+        )
+        source_commit_override_preserved = (
+            valid_source_commit_override["source_commit"] == current_head
+        )
+        short_source_commit_override_rejected = source_commit_override_rejected(
+            root,
+            current_head[:12],
+            "full lowercase 40-character git SHA",
+        )
+        uppercase_source_commit_override_rejected = source_commit_override_rejected(
+            root,
+            "A" * 40,
+            "full lowercase 40-character git SHA",
+        )
+        unknown_source_commit_override_rejected = source_commit_override_rejected(
+            root,
+            "0" * 40,
+            "is not a known commit",
+        )
         expect(
             reviewed_performance_section_decoupled_from_m6,
             "complete performance review evidence must not be blocked by milestone-m6",
@@ -3012,6 +3058,22 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
         expect(
             reviewed_performance_does_not_fake_release_readiness,
             "complete performance review evidence must not complete release readiness",
+        )
+        expect(
+            source_commit_override_preserved,
+            "valid source commit override must be preserved",
+        )
+        expect(
+            short_source_commit_override_rejected,
+            "short source commit override must be rejected",
+        )
+        expect(
+            uppercase_source_commit_override_rejected,
+            "uppercase source commit override must be rejected",
+        )
+        expect(
+            unknown_source_commit_override_rejected,
+            "unknown source commit override must be rejected",
         )
 
         return {
@@ -3148,6 +3210,16 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             ),
             "reviewed_performance_does_not_fake_release_readiness": (
                 reviewed_performance_does_not_fake_release_readiness
+            ),
+            "source_commit_override_preserved": source_commit_override_preserved,
+            "short_source_commit_override_rejected": (
+                short_source_commit_override_rejected
+            ),
+            "uppercase_source_commit_override_rejected": (
+                uppercase_source_commit_override_rejected
+            ),
+            "unknown_source_commit_override_rejected": (
+                unknown_source_commit_override_rejected
             ),
             "diagnostic_review_evidence_consumed": summary["diagnostic_review_evidence_present"],
             "diagnostic_review_blockers_preserved": summary["diagnostic_review_blockers"]

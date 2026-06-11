@@ -111,6 +111,10 @@ def badge_payload(health: dict[str, Any]) -> dict[str, Any]:
     sidecar_count = require_int(inventory, "sidecar_count")
     accepted_count = require_int(inventory, "accepted_count")
     unaccepted_count = require_int(inventory, "unaccepted_count")
+    expect(
+        inventory.get("schema_reconciled") is True,
+        "inventory.schema_reconciled must be true",
+    )
     expect(accepted_count <= sidecar_count, "inventory.accepted_count exceeds sidecar_count")
     expect(
         accepted_count + unaccepted_count == sidecar_count,
@@ -144,6 +148,7 @@ def synthetic_health(
     sidecar_count: int,
     accepted_count: int,
     unaccepted_count: int,
+    schema_reconciled: bool = True,
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
@@ -157,6 +162,7 @@ def synthetic_health(
             "sidecar_count": sidecar_count,
             "accepted_count": accepted_count,
             "unaccepted_count": unaccepted_count,
+            "schema_reconciled": schema_reconciled,
         },
     }
 
@@ -236,6 +242,19 @@ def self_check() -> None:
             unaccepted_count=2,
         ),
         "status is inconsistent with readiness fields",
+    )
+    expect_badge_error(
+        "inventory schema reconciliation check",
+        synthetic_health(
+            status="ready",
+            ready=True,
+            blocker_count=0,
+            sidecar_count=10,
+            accepted_count=8,
+            unaccepted_count=2,
+            schema_reconciled=False,
+        ),
+        "inventory.schema_reconciled must be true",
     )
     mismatched_blockers = synthetic_health(
         status="blocked",

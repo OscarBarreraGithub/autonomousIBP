@@ -85,8 +85,10 @@ def git_head(root: Path) -> str:
 def require_repo_file(root: Path, raw: Any, label: str) -> str:
     if not isinstance(raw, str) or not raw.strip():
         raise BundleError(f"{label} must be a non-empty string path")
+    if raw != raw.strip():
+        raise BundleError(f"{label} must not carry surrounding whitespace")
 
-    candidate = Path(raw.strip())
+    candidate = Path(raw)
     if not candidate.is_absolute():
         candidate = root / candidate
 
@@ -635,6 +637,16 @@ def self_check(root: Path) -> None:
     )
     if mutated_digest == synthetic_digest:
         raise BundleError("release evidence corpus digest did not detect content drift")
+
+    expect_bundle_error(
+        "evidence input path whitespace check",
+        "must not carry surrounding whitespace",
+        lambda: require_repo_file(
+            root,
+            f" {DEFAULT_READINESS_SIDECAR.as_posix()} ",
+            "readiness sidecar",
+        ),
+    )
 
     with tempfile.TemporaryDirectory(prefix="m7-release-evidence-bundle-") as temp_dir:
         output_path = Path(temp_dir) / "m7-release-evidence.tar.gz"

@@ -168,6 +168,10 @@ def validate_entry(raw_entry: Any, index: int) -> dict[str, Any]:
         require_entry_field(raw_entry, "label", f"entries[{index}].label"),
         f"entries[{index}].label",
     )
+    expect(
+        label in EXPECTED_CANDIDATE_PROVENANCE,
+        f"unexpected scoped gate label {label}",
+    )
     selected_weight = require_string(
         require_entry_field(
             raw_entry,
@@ -392,6 +396,8 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         "moment_cross_validation_seed_denominator_identity[3]=",
         "moment_cross_validation_seed_denominator_identity[3]=D7;stale=true",
     )
+    unexpected_entry_label = copy.deepcopy(payload)
+    unexpected_entry_label["entries"][0]["label"] = "synthetic-stale-scoped-label"
     full_contour_overclaim = copy.deepcopy(payload)
     full_contour_overclaim["entries"][0]["full_eta_zero_contour_applied"] = True
     replace_entry_audit_line(
@@ -411,6 +417,10 @@ def run_self_check(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "rejects_missing_nested_gate_status": rejected(missing_nested_gate, "audit missing moment_cross_validation_publication_gate"),
         "rejects_stale_nested_seed_identity": rejected(stale_seed_identity, "nested seed identities"),
+        "rejects_unexpected_entry_label": rejected(
+            unexpected_entry_label,
+            "unexpected scoped gate label synthetic-stale-scoped-label",
+        ),
         "rejects_full_contour_overclaim": rejected(full_contour_overclaim, "must not claim full eta-zero contour"),
         "rejects_stale_audit_fingerprint": rejected(
             stale_audit_fingerprint,

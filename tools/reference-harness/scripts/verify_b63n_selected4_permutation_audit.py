@@ -513,8 +513,40 @@ def validate_compare_and_cpp(
         "cpp transport scope must remain selected-endpoint scoped",
     )
     expect(
+        continuation.get("eta_zero_endpoint_transport_applied") is True,
+        "cpp eta-zero endpoint transport must be applied",
+    )
+    expect(
         continuation.get("full_eta_zero_contour_applied") is False,
         "cpp result must not claim full eta-zero contour",
+    )
+    cpp_transported = require_list(
+        continuation.get("eta_zero_endpoint_transported_integrals"),
+        "cpp continuation eta_zero_endpoint_transported_integrals",
+    )
+    expect(
+        all(isinstance(integral, str) and integral for integral in cpp_transported),
+        "cpp transported integral entries must be non-empty strings",
+    )
+    expect(
+        len(set(cpp_transported)) == len(cpp_transported),
+        "cpp transported integral entries must be unique",
+    )
+    expect(
+        set(cpp_transported) == set(EXPECTED_SELECTED4_ORDERS),
+        "cpp result transported integral scope drifted",
+    )
+    expect(
+        cpp_transported == evidence.get("eta_zero_endpoint_transported_integrals"),
+        "cpp result transported integral order drifted from evidence",
+    )
+    expect(
+        parse_int(
+            continuation.get("eta_zero_endpoint_transported_master_count"),
+            "cpp eta_zero_endpoint_transported_master_count",
+        )
+        == len(cpp_transported),
+        "cpp transported master count must match transported integrals",
     )
 
     compare_rows = rows_by_label(compare.get("integrals"), "integral", "compare integrals")
@@ -852,6 +884,9 @@ def sample_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], s
         "continuation": {
             "transport_applied": True,
             "transport_scope": "eta-zero-selected-endpoint-coefficients",
+            "eta_zero_endpoint_transport_applied": True,
+            "eta_zero_endpoint_transported_master_count": len(EXPECTED_SELECTED4_ORDERS),
+            "eta_zero_endpoint_transported_integrals": list(EXPECTED_SELECTED4_ORDERS),
             "full_eta_zero_contour_applied": False,
         },
         "results": cpp_results,
@@ -931,6 +966,14 @@ def run_self_check() -> dict[str, Any]:
     bad_cpp_source_compare["cpp_result"] = bad_cpp_source_evidence["cpp_result"]
     bad_cpp_result = json.loads(json.dumps(cpp_result))
     bad_cpp_result["continuation"]["full_eta_zero_contour_applied"] = True
+    bad_cpp_transported_scope = json.loads(json.dumps(cpp_result))
+    bad_cpp_transported_scope["continuation"]["eta_zero_endpoint_transported_integrals"] = [
+        integral
+        for integral in bad_cpp_transported_scope["continuation"][
+            "eta_zero_endpoint_transported_integrals"
+        ]
+        if integral != PUBLISHED_D7_INTEGRAL
+    ]
     bad_golden_text = golden_text.replace("1.1025", "9.1025", 1)
     bad_cpp_exact = json.loads(json.dumps(cpp_result))
     bad_cpp_exact["results"][0]["epsilon_orders"][0]["exact_real"] = "9"
@@ -1020,6 +1063,14 @@ def run_self_check() -> dict[str, Any]:
             bad_cpp_result,
             golden_text,
             "must not claim full eta-zero contour",
+        ),
+        "rejects_cpp_transported_integral_scope_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            evidence,
+            compare,
+            bad_cpp_transported_scope,
+            golden_text,
+            "cpp result transported integral scope drifted",
         ),
         "rejects_golden_literal_drift": rejected(
             CANONICAL_PERMUTATION_AUDIT,

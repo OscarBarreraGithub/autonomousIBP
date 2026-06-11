@@ -23,7 +23,7 @@ from audit_m7_sidecar_inventory import (
     verify_inventory,
     verify_schema_reconciliation,
 )
-from validate_m7_release_sidecar_schemas import SchemaError, validate_m7_sidecar
+from validate_m7_release_sidecar_schemas import SchemaError, require_m7_root, validate_m7_sidecar
 
 
 @dataclass(frozen=True)
@@ -132,6 +132,7 @@ def verify_readiness_m7_sidecar_references(
     m7_root: Path = M7_ROOT,
     readiness_sidecar: str | None = None,
 ) -> list[SidecarReference]:
+    m7_root = require_m7_root(root, m7_root)
     entries = build_inventory(root, m7_root)
     verify_inventory(entries)
     verify_schema_reconciliation(root, m7_root, entries)
@@ -209,6 +210,36 @@ def self_check(root: Path) -> None:
         )
     else:
         raise ReachabilityError("reference whitespace self-check unexpectedly passed")
+
+    try:
+        verify_readiness_m7_sidecar_references(
+            root,
+            accepted_payload,
+            Path(f" {M7_ROOT.as_posix()} "),
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
+    except (InventoryError, SchemaError) as error:
+        expect(
+            "m7 root must not carry surrounding whitespace" in str(error),
+            f"m7 root whitespace self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("m7 root whitespace self-check unexpectedly passed")
+
+    try:
+        verify_readiness_m7_sidecar_references(
+            root,
+            accepted_payload,
+            root / M7_ROOT,
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
+    except (InventoryError, SchemaError) as error:
+        expect(
+            "m7 root must be repository-relative" in str(error),
+            f"absolute m7 root self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("absolute m7 root self-check unexpectedly passed")
 
     missing = dict(accepted_payload)
     missing["phase0_qualification_summary_path"] = (

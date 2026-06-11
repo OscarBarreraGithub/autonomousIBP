@@ -622,6 +622,14 @@ def summarize_payloads(
         selected4.get("full_eta_zero_contour_applied") is False,
         "selected4 must not claim full eta-zero contour",
     )
+    expect(
+        selected4.get("m6_closure_claimed") is False,
+        "selected4 must not claim M6 closure",
+    )
+    expect(
+        selected4.get("m7_closure_claimed") is False,
+        "selected4 must not claim M7 closure",
+    )
 
     expect(d246.get("schema_valid") is True, "D246 sidecar schema must be valid")
     expect(d246.get("weights") == ["D2", "D4", "D6"], "D246 weights drifted")
@@ -629,6 +637,8 @@ def summarize_payloads(
         d246.get("published_evidence") is False and d246.get("skeleton_evidence") is True,
         "D2/D4/D6 must remain blocked as skeleton evidence",
     )
+    expect(d246.get("m6_closure_claimed") is False, "D246 must not claim M6 closure")
+    expect(d246.get("m7_closure_claimed") is False, "D246 must not claim M7 closure")
     blockers = require_list(d246.get("publication_blockers"), "D246 publication_blockers")
     expect(
         blockers == list(EXPECTED_D246_PUBLICATION_BLOCKERS),
@@ -841,6 +851,12 @@ def run_self_check() -> dict[str, Any]:
     fake_full_contour = copy.deepcopy(selected4)
     fake_full_contour["full_eta_zero_contour_applied"] = True
 
+    selected4_m6_closure_claim = copy.deepcopy(selected4)
+    selected4_m6_closure_claim["m6_closure_claimed"] = True
+
+    selected4_m7_closure_claim = copy.deepcopy(selected4)
+    selected4_m7_closure_claim["m7_closure_claimed"] = True
+
     low_digit_selected4 = copy.deepcopy(selected4)
     low_digit_selected4["minimum_digit_agreement"] = 29
 
@@ -853,6 +869,12 @@ def run_self_check() -> dict[str, Any]:
     promoted_d246 = copy.deepcopy(d246)
     promoted_d246["published_evidence"] = True
     promoted_d246["skeleton_evidence"] = False
+
+    d246_m6_closure_claim = copy.deepcopy(d246)
+    d246_m6_closure_claim["m6_closure_claimed"] = True
+
+    d246_m7_closure_claim = copy.deepcopy(d246)
+    d246_m7_closure_claim["m7_closure_claimed"] = True
 
     stale_d246_blockers = copy.deepcopy(d246)
     stale_d246_blockers["publication_blockers"][3] = "D2, D4, and D6 coefficient arrays are empty"
@@ -938,6 +960,24 @@ def run_self_check() -> dict[str, Any]:
             evidence_sources=evidence_sources,
             expected_error="full eta-zero contour",
         ),
+        "rejects_selected4_m6_closure_overclaim": rejected(
+            first=first,
+            selected4=selected4_m6_closure_claim,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="selected4 must not claim M6 closure",
+        ),
+        "rejects_selected4_m7_closure_overclaim": rejected(
+            first=first,
+            selected4=selected4_m7_closure_claim,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="selected4 must not claim M7 closure",
+        ),
         "rejects_selected4_digit_floor_regression": rejected(
             first=first,
             selected4=low_digit_selected4,
@@ -973,6 +1013,24 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             evidence_sources=evidence_sources,
             expected_error="D2/D4/D6 must remain blocked",
+        ),
+        "rejects_d246_m6_closure_overclaim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246_m6_closure_claim,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="D246 must not claim M6 closure",
+        ),
+        "rejects_d246_m7_closure_overclaim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246_m7_closure_claim,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="D246 must not claim M7 closure",
         ),
         "rejects_d246_publication_blocker_drift": rejected(
             first=first,

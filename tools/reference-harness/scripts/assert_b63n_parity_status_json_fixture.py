@@ -46,6 +46,8 @@ EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS = [
     "phase[1,1,1,0,1,0,1]",
     "phase[1,1,1,1,1,1,1]",
 ]
+EXPECTED_SELECTED4_COMPARED_COEFFICIENTS = 19
+EXPECTED_SELECTED4_MINIMUM_DIGIT_AGREEMENT = 999
 EXPECTED_FIRST_INTEGRAL = "phase[1,0,1,0,1,0,0]"
 EXPECTED_FIRST_ORDERS = [0, 1, 2, 3]
 EXPECTED_SCOPED_GATE_LABELS = [
@@ -150,6 +152,7 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         payload.get("selected4_parity"),
         f"{label}.selected4_parity",
     )
+    require_exact(selected4.get("lane"), "lane146", f"{label}.selected4_parity.lane")
     require_exact(
         selected4.get("transported_integrals"),
         EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS,
@@ -159,6 +162,16 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         selected4.get("transported_integral_count"),
         len(EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS),
         f"{label}.selected4_parity.transported_integral_count",
+    )
+    require_exact(
+        selected4.get("compared_coefficient_count"),
+        EXPECTED_SELECTED4_COMPARED_COEFFICIENTS,
+        f"{label}.selected4_parity.compared_coefficient_count",
+    )
+    require_exact(
+        selected4.get("minimum_digit_agreement"),
+        EXPECTED_SELECTED4_MINIMUM_DIGIT_AGREEMENT,
+        f"{label}.selected4_parity.minimum_digit_agreement",
     )
     require_exact(
         selected4.get("published_d7_integral"),
@@ -374,6 +387,12 @@ def run_self_check(root: Path) -> int:
     wrong_transported_count = copy.deepcopy(expected)
     wrong_transported_count["selected4_parity"]["transported_integral_count"] -= 1
 
+    selected4_compared_count_drift = copy.deepcopy(expected)
+    selected4_compared_count_drift["selected4_parity"]["compared_coefficient_count"] -= 1
+
+    selected4_digit_floor_drift = copy.deepcopy(expected)
+    selected4_digit_floor_drift["selected4_parity"]["minimum_digit_agreement"] = 998
+
     stale_scoped_gate = copy.deepcopy(expected)
     stale_scoped_gate["scoped_gate_audit"]["queried_weights"] = ["D7", "D2"]
 
@@ -436,6 +455,20 @@ def run_self_check(root: Path) -> int:
         "rejects_selected4_transported_count_drift": rejected(
             lambda: validate_summary_contract(wrong_transported_count, label="synthetic summary"),
             "transported_integral_count",
+        ),
+        "rejects_selected4_compared_count_drift": rejected(
+            lambda: validate_summary_contract(
+                selected4_compared_count_drift,
+                label="synthetic summary",
+            ),
+            "selected4_parity.compared_coefficient_count",
+        ),
+        "rejects_selected4_digit_floor_drift": rejected(
+            lambda: validate_summary_contract(
+                selected4_digit_floor_drift,
+                label="synthetic summary",
+            ),
+            "selected4_parity.minimum_digit_agreement",
         ),
         "rejects_scoped_gate_weight_order_drift": rejected(
             lambda: validate_summary_contract(stale_scoped_gate, label="synthetic summary"),

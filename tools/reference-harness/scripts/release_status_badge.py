@@ -47,6 +47,16 @@ def require_int(payload: dict[str, Any], field: str) -> int:
     return value
 
 
+def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
+    value = payload.get(field)
+    expect(isinstance(value, list), f"{field} must be a list")
+    values: list[str] = []
+    for index, item in enumerate(value):
+        expect(isinstance(item, str), f"{field}[{index}] must be a string")
+        values.append(item)
+    return values
+
+
 def run_release_health(root: Path, *, verify: bool) -> dict[str, Any]:
     command = [
         sys.executable,
@@ -85,6 +95,11 @@ def badge_payload(health: dict[str, Any]) -> dict[str, Any]:
     ready = readiness.get("release_signoff_ready")
     expect(isinstance(ready, bool), "readiness.release_signoff_ready must be boolean")
     blocker_count = require_int(readiness, "blocker_count")
+    blockers = require_string_list(health, "blockers")
+    expect(
+        len(blockers) == blocker_count,
+        "health blockers length does not match readiness.blocker_count",
+    )
     expected_status = "ready" if ready and blocker_count == 0 else "blocked"
     expect(
         status == expected_status,
@@ -133,6 +148,7 @@ def synthetic_health(
     return {
         "schema_version": 1,
         "status": status,
+        "blockers": [f"blocker-{index}" for index in range(blocker_count)],
         "readiness": {
             "release_signoff_ready": ready,
             "blocker_count": blocker_count,
@@ -220,6 +236,34 @@ def self_check() -> None:
             unaccepted_count=2,
         ),
         "status is inconsistent with readiness fields",
+    )
+    mismatched_blockers = synthetic_health(
+        status="blocked",
+        ready=False,
+        blocker_count=2,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    mismatched_blockers["blockers"] = ["single-blocker"]
+    expect_badge_error(
+        "blocker list/count coherence check",
+        mismatched_blockers,
+        "blockers length does not match",
+    )
+    malformed_blockers = synthetic_health(
+        status="blocked",
+        ready=False,
+        blocker_count=1,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    malformed_blockers["blockers"] = [42]
+    expect_badge_error(
+        "blocker list type check",
+        malformed_blockers,
+        "blockers[0] must be a string",
     )
 
 

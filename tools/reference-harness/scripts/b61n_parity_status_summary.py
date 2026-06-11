@@ -263,6 +263,10 @@ def summarize_payloads(
         "precision minimum reference floor must match the comparator floor",
     )
     expect(min_uplifted >= 160, "precision uplift must preserve at least 160 fractional digits")
+    expect(
+        precision.get("amflow_reference_values_used_for_digit_count") is False,
+        "precision uplift must not use AMFlow reference values for digit counting",
+    )
     expect(precision.get("m7_closure_claimed") is False, "precision summary claimed M7 closure")
     expect(precision.get("release_readiness_claimed") is False, "precision summary claimed release readiness")
 
@@ -349,7 +353,10 @@ def summarize_payloads(
                 "minimum_standard_fraction_digits",
             ),
             "minimum_uplifted_fraction_digits": min_uplifted,
-            "amflow_reference_values_used_for_digit_count": False,
+            "amflow_reference_values_used_for_digit_count": require_bool(
+                precision,
+                "amflow_reference_values_used_for_digit_count",
+            ),
         },
         "publication_gate": {
             "variant_count": variant_count,
@@ -496,6 +503,7 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
         "minimum_reference_floor_digits": 11,
         "minimum_standard_fraction_digits": 80,
         "minimum_uplifted_fraction_digits": 160,
+        "amflow_reference_values_used_for_digit_count": False,
         "m7_closure_claimed": False,
         "release_readiness_claimed": False,
     }
@@ -535,6 +543,9 @@ def run_self_check() -> dict[str, Any]:
 
     lost_uplift = copy.deepcopy(precision)
     lost_uplift["minimum_uplifted_fraction_digits"] = 80
+
+    amflow_reference_backed_digit_count = copy.deepcopy(precision)
+    amflow_reference_backed_digit_count["amflow_reference_values_used_for_digit_count"] = True
 
     precision_target_count_drift = copy.deepcopy(precision)
     precision_target_count_drift["target_count"] = 3
@@ -608,6 +619,13 @@ def run_self_check() -> dict[str, Any]:
             publication=publication,
             fingerprints=fingerprints,
             expected_error="160 fractional digits",
+        ),
+        "rejects_amflow_reference_backed_digit_count": rejected(
+            reference_floor=reference_floor,
+            precision=amflow_reference_backed_digit_count,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="must not use AMFlow reference values",
         ),
         "rejects_precision_target_count_drift": rejected(
             reference_floor=reference_floor,

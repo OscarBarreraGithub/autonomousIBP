@@ -451,8 +451,9 @@ def verify_paths(precision_evidence_path: Path) -> dict[str, Any]:
     root = repo_root()
     evidence = load_json(precision_evidence_path)
     method = require_object(evidence.get("method"), "precision_evidence.method")
+    amflow_reference_values_used = method.get("amflow_reference_values_used_for_digit_count")
     expect(
-        method.get("amflow_reference_values_used_for_digit_count") is False,
+        amflow_reference_values_used is False,
         "precision evidence must not use AMFlow reference values for digit count uplift",
     )
     cpp_path = resolve_repo_path(
@@ -471,6 +472,7 @@ def verify_paths(precision_evidence_path: Path) -> dict[str, Any]:
         "precision_evidence": str(precision_evidence_path),
         "source_cpp_result": str(cpp_path),
         "source_diagnostic": str(diagnostic_path),
+        "amflow_reference_values_used_for_digit_count": amflow_reference_values_used,
     }
 
 

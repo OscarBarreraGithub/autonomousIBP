@@ -6,6 +6,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,7 @@ READINESS_INPUTS: tuple[tuple[str, str], ...] = (
     ("--docs-completion-summary", "docs_completion_summary_path"),
     ("--parity-signoff-summary", "parity_signoff_summary_path"),
 )
+SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 def repo_root() -> Path:
@@ -66,7 +68,7 @@ def build_readiness_command(root: Path, accepted_summary: dict[str, Any], output
         sys.executable,
         str(root / "tools/reference-harness/scripts/release_signoff_readiness.py"),
         "--source-commit-override",
-        require_source_commit(accepted_summary.get("source_commit")),
+        require_known_source_commit(root, accepted_summary.get("source_commit")),
     ]
     for option, field in READINESS_INPUTS:
         command.extend([option, require_repo_path(root, accepted_summary.get(field), field)])
@@ -84,14 +86,63 @@ def print_process_failure(completed: subprocess.CompletedProcess[str]) -> None:
         print(completed.stderr, file=sys.stderr)
 
 
-def require_source_commit(raw: Any) -> str:
+def require_known_source_commit(root: Path, raw: Any) -> str:
     expect(isinstance(raw, str) and raw.strip(), "accepted source_commit must be a non-empty string")
     value = raw.strip()
+    expect(raw == value, "accepted source_commit must not carry surrounding whitespace")
     expect(
-        7 <= len(value) <= 64 and all(character in "0123456789abcdefABCDEF" for character in value),
-        f"accepted source_commit must be a git object id: {value}",
+        SOURCE_COMMIT_PATTERN.fullmatch(value) is not None,
+        "accepted source_commit must be a full lowercase 40-character git SHA",
     )
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{value}^{{commit}}"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, "accepted source_commit is not a known commit")
     return value
+
+
+def source_commit_rejected(root: Path, raw: Any, expected: str) -> bool:
+    try:
+        require_known_source_commit(root, raw)
+    except RuntimeError as error:
+        return expected in str(error)
+    return False
+
+
+def run_source_commit_self_check(root: Path, accepted_commit: str) -> None:
+    checks = {
+        "accepts_known_full_lowercase_commit": require_known_source_commit(root, accepted_commit)
+        == accepted_commit,
+        "rejects_abbreviated_commit": source_commit_rejected(
+            root,
+            accepted_commit[:12],
+            "accepted source_commit must be a full lowercase 40-character git SHA",
+        ),
+        "rejects_uppercase_commit": source_commit_rejected(
+            root,
+            accepted_commit.upper(),
+            "accepted source_commit must be a full lowercase 40-character git SHA",
+        ),
+        "rejects_surrounding_whitespace": source_commit_rejected(
+            root,
+            f" {accepted_commit} ",
+            "accepted source_commit must not carry surrounding whitespace",
+        ),
+        "rejects_unknown_commit": source_commit_rejected(
+            root,
+            "0" * 40,
+            "accepted source_commit is not a known commit",
+        ),
+    }
+    if not all(checks.values()):
+        raise RuntimeError(
+            "accepted source_commit self-check failed:\n"
+            + json.dumps(checks, indent=2, sort_keys=True)
+        )
 
 
 def sha256(data: bytes) -> str:
@@ -130,6 +181,10 @@ def main() -> int:
     root = repo_root()
     accepted_summary_path = root / ACCEPTED_READINESS_SIDECAR
     accepted_summary = read_json(accepted_summary_path)
+    run_source_commit_self_check(
+        root,
+        require_known_source_commit(root, accepted_summary.get("source_commit")),
+    )
     with tempfile.TemporaryDirectory(prefix="m7-release-readiness-") as temp_dir:
         output_path = Path(temp_dir) / "release-readiness.json"
         command = build_readiness_command(root, accepted_summary, output_path)

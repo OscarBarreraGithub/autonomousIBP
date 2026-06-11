@@ -15,6 +15,13 @@ from typing import Any
 DEFAULT_EXTENSION_FIXTURE = Path(
     "tools/reference-harness/specs/b61n/b61n-exact-rational-extension-160.json"
 )
+DEFAULT_SOURCE_CPP_RESULT = Path(
+    "tools/reference-harness/specs/m7/lane2/"
+    "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+)
+DEFAULT_SOURCE_PRECISION_EVIDENCE = Path(
+    "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
+)
 EXPECTED_TARGETS: tuple[tuple[str, int], ...] = (
     ("box[1,0,1,1]", 0),
     ("box[1,1,1,1]", -2),
@@ -270,6 +277,30 @@ def validate_payloads(
         precision_evidence.get("evidence_id") == "b61n-pipeline-precision-evidence",
         "precision evidence_id drifted",
     )
+    fixture_cpp_source = require_string(
+        extension_fixture.get("source_cpp_result"),
+        "extension_fixture.source_cpp_result",
+    )
+    fixture_precision_source = require_string(
+        extension_fixture.get("source_precision_evidence"),
+        "extension_fixture.source_precision_evidence",
+    )
+    precision_cpp_source = require_string(
+        precision_evidence.get("source_cpp_result"),
+        "precision_evidence.source_cpp_result",
+    )
+    expect(
+        fixture_cpp_source == DEFAULT_SOURCE_CPP_RESULT.as_posix(),
+        "extension fixture source_cpp_result drifted from reviewed lane2 C++ result",
+    )
+    expect(
+        fixture_precision_source == DEFAULT_SOURCE_PRECISION_EVIDENCE.as_posix(),
+        "extension fixture source_precision_evidence drifted from reviewed lane2 sidecar",
+    )
+    expect(
+        precision_cpp_source == fixture_cpp_source,
+        "extension fixture source_cpp_result must match precision evidence source_cpp_result",
+    )
 
     fixture_by_target = index_targets(extension_fixture, "extension_fixture")
     evidence_by_target = index_targets(precision_evidence, "precision_evidence")
@@ -308,6 +339,8 @@ def validate_payloads(
         "target_count": len(EXPECTED_TARGETS),
         "component_count": len(component_records),
         "fractional_digits": fractional_digits,
+        "source_cpp_result": fixture_cpp_source,
+        "source_precision_evidence": fixture_precision_source,
         "minimum_standard_fractional_digits": min(
             record["standard_fractional_digits"] for record in component_records
         ),
@@ -371,6 +404,7 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
     imag_160 = render_fractional_digits(exact_imag, EXPECTED_FRACTIONAL_DIGITS)
     precision_evidence = {
         "evidence_id": "b61n-pipeline-precision-evidence",
+        "source_cpp_result": DEFAULT_SOURCE_CPP_RESULT.as_posix(),
         "targets": [
             {
                 "integral": "box[1,0,1,1]",
@@ -449,6 +483,8 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
     extension_fixture = {
         "schema_version": 1,
         "fixture_id": "b61n-exact-rational-extension-160",
+        "source_cpp_result": DEFAULT_SOURCE_CPP_RESULT.as_posix(),
+        "source_precision_evidence": DEFAULT_SOURCE_PRECISION_EVIDENCE.as_posix(),
         "fractional_digits": EXPECTED_FRACTIONAL_DIGITS,
         "targets": [
             {
@@ -483,6 +519,21 @@ def run_self_check() -> dict[str, Any]:
     bad_digit_count = copy.deepcopy(extension_fixture)
     bad_digit_count["fractional_digits"] = 159
 
+    bad_fixture_source = copy.deepcopy(extension_fixture)
+    bad_fixture_source["source_cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/stale-c267.cpp-result.json"
+    )
+
+    bad_precision_source = copy.deepcopy(precision_evidence)
+    bad_precision_source["source_cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/stale-c267.cpp-result.json"
+    )
+
+    bad_precision_sidecar_source = copy.deepcopy(extension_fixture)
+    bad_precision_sidecar_source["source_precision_evidence"] = (
+        "tools/reference-harness/specs/m7/lane2/stale-precision-evidence.json"
+    )
+
     checks = {
         "synthetic_fixture_passes": valid_summary["component_count"] == 8,
         "rejects_160_digit_drift": rejected(
@@ -502,6 +553,24 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             precision_evidence,
             "fractional_digits must stay 160",
+        ),
+        "rejects_fixture_cpp_source_drift": rejected(
+            bad_fixture_source,
+            cpp_result,
+            precision_evidence,
+            "source_cpp_result drifted from reviewed lane2 C++ result",
+        ),
+        "rejects_precision_cpp_source_mismatch": rejected(
+            extension_fixture,
+            cpp_result,
+            bad_precision_source,
+            "source_cpp_result must match precision evidence source_cpp_result",
+        ),
+        "rejects_fixture_precision_sidecar_source_drift": rejected(
+            bad_precision_sidecar_source,
+            cpp_result,
+            precision_evidence,
+            "source_precision_evidence drifted from reviewed lane2 sidecar",
         ),
     }
     expect(all(checks.values()), "b61n exact-rational extension stability self-check failed")

@@ -46,6 +46,8 @@ EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS = [
     "phase[1,1,1,0,1,0,1]",
     "phase[1,1,1,1,1,1,1]",
 ]
+EXPECTED_FIRST_INTEGRAL = "phase[1,0,1,0,1,0,0]"
+EXPECTED_FIRST_ORDERS = [0, 1, 2, 3]
 EXPECTED_SCOPED_GATE_LABELS = [
     "blocked-D2-scoped-weighted-residue",
     "published-D7-scoped-weighted-residue",
@@ -112,6 +114,37 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         f"{label}.status",
     )
     require_exact(payload.get("inputs_verified"), True, f"{label}.inputs_verified")
+
+    first = require_object(
+        payload.get("first_coefficient"),
+        f"{label}.first_coefficient",
+    )
+    require_exact(first.get("lane"), "lane143", f"{label}.first_coefficient.lane")
+    require_exact(
+        first.get("integral"),
+        EXPECTED_FIRST_INTEGRAL,
+        f"{label}.first_coefficient.integral",
+    )
+    require_exact(
+        first.get("orders"),
+        EXPECTED_FIRST_ORDERS,
+        f"{label}.first_coefficient.orders",
+    )
+    require_exact(
+        first.get("compared_coefficient_count"),
+        len(EXPECTED_FIRST_ORDERS),
+        f"{label}.first_coefficient.compared_coefficient_count",
+    )
+    require_exact(
+        first.get("minimum_digit_agreement"),
+        999,
+        f"{label}.first_coefficient.minimum_digit_agreement",
+    )
+    require_exact(
+        first.get("full_eta_zero_contour_applied"),
+        False,
+        f"{label}.first_coefficient.full_eta_zero_contour_applied",
+    )
 
     selected4 = require_object(
         payload.get("selected4_parity"),
@@ -288,6 +321,12 @@ def run_self_check(root: Path) -> int:
     promoted_full_contour = copy.deepcopy(expected)
     promoted_full_contour["selected4_parity"]["full_eta_zero_contour_applied"] = True
 
+    first_integral_drift = copy.deepcopy(expected)
+    first_integral_drift["first_coefficient"]["integral"] = "phase[1,1,1,0,1,0,1]"
+
+    first_full_contour_promotion = copy.deepcopy(expected)
+    first_full_contour_promotion["first_coefficient"]["full_eta_zero_contour_applied"] = True
+
     digit_floor_drift = copy.deepcopy(expected)
     digit_floor_drift["first_coefficient"]["minimum_digit_agreement"] = 998
 
@@ -320,9 +359,17 @@ def run_self_check(root: Path) -> int:
             lambda: fixture_matches(expected, promoted_full_contour),
             "selected4_parity.full_eta_zero_contour_applied",
         ),
-        "rejects_exact_fixture_digit_drift": not fixture_matches(
-            expected,
-            digit_floor_drift,
+        "rejects_first_coefficient_integral_drift": rejected(
+            lambda: fixture_matches(expected, first_integral_drift),
+            "first_coefficient.integral",
+        ),
+        "rejects_first_coefficient_full_contour_promotion": rejected(
+            lambda: fixture_matches(expected, first_full_contour_promotion),
+            "first_coefficient.full_eta_zero_contour_applied",
+        ),
+        "rejects_first_coefficient_digit_floor_drift": rejected(
+            lambda: fixture_matches(expected, digit_floor_drift),
+            "first_coefficient.minimum_digit_agreement",
         ),
         "rejects_missing_withheld_claims": rejected(
             lambda: fixture_matches(expected, missing_withheld_claims),

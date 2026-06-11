@@ -512,6 +512,50 @@ def summarize_fingerprint_pinned() -> dict[str, Any]:
     }
 
 
+def validate_scoped_gate_summary(scoped_gate: dict[str, Any]) -> None:
+    expected_fields = {
+        "runtime_checked",
+        "entry_count",
+        "queried_labels",
+        "queried_weights",
+        "passed",
+    }
+    expect(set(scoped_gate) == expected_fields, "scoped gate audit summary fields drifted")
+    runtime_checked = require_bool(scoped_gate, "runtime_checked")
+    expect(
+        scoped_gate.get("queried_labels") == list(EXPECTED_SCOPED_GATE_LABELS),
+        "scoped gate labels drifted",
+    )
+    expect(scoped_gate.get("queried_weights") == ["D2", "D7"], "scoped gate weights drifted")
+    if runtime_checked:
+        expect(scoped_gate.get("passed") is True, "runtime scoped gate audit must pass")
+        expect(scoped_gate.get("entry_count") == 2, "runtime scoped gate entry count drifted")
+        return
+    expect(scoped_gate.get("passed") is None, "pinned scoped gate audit must not claim pass")
+    expect(
+        scoped_gate.get("entry_count") is None,
+        "pinned scoped gate audit must not claim entry count",
+    )
+
+
+def validate_fingerprint_summary(fingerprints: dict[str, Any]) -> None:
+    expected_fields = {"runtime_checked", "entry_count", "pins_match"}
+    expect(set(fingerprints) == expected_fields, "audit fingerprint summary fields drifted")
+    runtime_checked = require_bool(fingerprints, "runtime_checked")
+    if runtime_checked:
+        expect(fingerprints.get("entry_count") == 6, "b63n audit fingerprint entry count drifted")
+        expect(fingerprints.get("pins_match") is True, "b63n audit fingerprints must match pins")
+        return
+    expect(
+        fingerprints.get("entry_count") is None,
+        "pinned audit fingerprints must not claim entry count",
+    )
+    expect(
+        fingerprints.get("pins_match") is None,
+        "pinned audit fingerprints must not claim pin match",
+    )
+
+
 def summarize_payloads(
     *,
     first: dict[str, Any],
@@ -591,18 +635,8 @@ def summarize_payloads(
         "D246 publication blockers drifted from the pinned skeleton contract",
     )
 
-    if scoped_gate.get("runtime_checked") is True:
-        expect(scoped_gate.get("passed") is True, "runtime scoped gate audit must pass")
-        expect(scoped_gate.get("entry_count") == 2, "runtime scoped gate entry count drifted")
-        expect(
-            scoped_gate.get("queried_labels") == list(EXPECTED_SCOPED_GATE_LABELS),
-            "runtime scoped gate labels drifted",
-        )
-        expect(scoped_gate.get("queried_weights") == ["D2", "D7"], "runtime scoped gate weights drifted")
-
-    if fingerprints.get("runtime_checked") is True:
-        expect(fingerprints.get("entry_count") == 6, "b63n audit fingerprint entry count drifted")
-        expect(fingerprints.get("pins_match") is True, "b63n audit fingerprints must match pins")
+    validate_scoped_gate_summary(scoped_gate)
+    validate_fingerprint_summary(fingerprints)
 
     return {
         "schema_version": 1,
@@ -829,6 +863,29 @@ def run_self_check() -> dict[str, Any]:
     stale_fingerprints = copy.deepcopy(fingerprints)
     stale_fingerprints["pins_match"] = False
 
+    pinned_scoped_gate = summarize_scoped_gate_pinned()
+    pinned_fingerprints = summarize_fingerprint_pinned()
+    valid_pinned = summarize_payloads(
+        first=first,
+        selected4=selected4,
+        d246=d246,
+        scoped_gate=pinned_scoped_gate,
+        fingerprints=pinned_fingerprints,
+        evidence_sources=evidence_sources,
+    )
+
+    pinned_scoped_gate_entry_claim = copy.deepcopy(pinned_scoped_gate)
+    pinned_scoped_gate_entry_claim["entry_count"] = 2
+
+    pinned_scoped_gate_pass_claim = copy.deepcopy(pinned_scoped_gate)
+    pinned_scoped_gate_pass_claim["passed"] = True
+
+    pinned_fingerprint_entry_claim = copy.deepcopy(pinned_fingerprints)
+    pinned_fingerprint_entry_claim["entry_count"] = 6
+
+    pinned_fingerprint_pin_claim = copy.deepcopy(pinned_fingerprints)
+    pinned_fingerprint_pin_claim["pins_match"] = True
+
     evidence_source_drift = copy.deepcopy(evidence_sources)
     evidence_source_drift["first_compare"] = evidence_source_drift["first_evidence"]
 
@@ -868,6 +925,10 @@ def run_self_check() -> dict[str, Any]:
 
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-full-weighted-residue-surface",
+        "synthetic_pinned_summary_passes": (
+            valid_pinned["scoped_gate_audit"]["runtime_checked"] is False
+            and valid_pinned["audit_fingerprints"]["runtime_checked"] is False
+        ),
         "rejects_full_contour_overclaim": rejected(
             first=first,
             selected4=fake_full_contour,
@@ -929,7 +990,7 @@ def run_self_check() -> dict[str, Any]:
             scoped_gate=stale_scoped_gate,
             fingerprints=fingerprints,
             evidence_sources=evidence_sources,
-            expected_error="runtime scoped gate weights",
+            expected_error="scoped gate weights drifted",
         ),
         "rejects_runtime_fingerprint_drift": rejected(
             first=first,
@@ -939,6 +1000,42 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=stale_fingerprints,
             evidence_sources=evidence_sources,
             expected_error="fingerprints must match pins",
+        ),
+        "rejects_pinned_scoped_gate_entry_claim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=pinned_scoped_gate_entry_claim,
+            fingerprints=pinned_fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="pinned scoped gate audit must not claim entry count",
+        ),
+        "rejects_pinned_scoped_gate_pass_claim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=pinned_scoped_gate_pass_claim,
+            fingerprints=pinned_fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="pinned scoped gate audit must not claim pass",
+        ),
+        "rejects_pinned_fingerprint_entry_claim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=pinned_scoped_gate,
+            fingerprints=pinned_fingerprint_entry_claim,
+            evidence_sources=evidence_sources,
+            expected_error="pinned audit fingerprints must not claim entry count",
+        ),
+        "rejects_pinned_fingerprint_pin_claim": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=pinned_scoped_gate,
+            fingerprints=pinned_fingerprint_pin_claim,
+            evidence_sources=evidence_sources,
+            expected_error="pinned audit fingerprints must not claim pin match",
         ),
         "rejects_evidence_source_drift": rejected(
             first=first,

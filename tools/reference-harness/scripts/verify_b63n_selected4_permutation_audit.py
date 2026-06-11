@@ -563,8 +563,13 @@ def validate_compare_and_cpp(
     observed_minimum_digits = 999
     d7_orders: list[int] = []
     for integral, expected_orders in EXPECTED_SELECTED4_ORDERS.items():
+        compare_row = compare_rows[integral]
+        expect(
+            compare_row.get("status") == "compared",
+            f"compare row {integral} status must be compared",
+        )
         compare_coefficients = coefficients_by_order(
-            compare_rows[integral].get("coefficients"),
+            compare_row.get("coefficients"),
             f"compare coefficients {integral}",
         )
         cpp_coefficients = coefficients_by_order(
@@ -953,6 +958,8 @@ def run_self_check() -> dict[str, Any]:
     )
     bad_compare = json.loads(json.dumps(compare))
     bad_compare["integrals"][2]["coefficients"][1]["passed"] = False
+    bad_compare_status = json.loads(json.dumps(compare))
+    bad_compare_status["integrals"][0]["status"] = "skipped"
     bad_golden_source_evidence = json.loads(json.dumps(evidence))
     bad_golden_source_compare = json.loads(json.dumps(compare))
     bad_golden_source_evidence["amflow_golden_slice"] = "/tmp/drifted-golden.txt"
@@ -1039,6 +1046,14 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             golden_text,
             "did not pass",
+        ),
+        "rejects_noncompared_compare_row_status": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            evidence,
+            bad_compare_status,
+            cpp_result,
+            golden_text,
+            "status must be compared",
         ),
         "rejects_coordinated_golden_source_path_drift": rejected(
             CANONICAL_PERMUTATION_AUDIT,

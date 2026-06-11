@@ -82,7 +82,10 @@ REQUIRED_SKELETON_PUBLICATION_BLOCKERS: tuple[tuple[str, tuple[str, ...]], ...] 
         "run artifact blocker",
         ("run_command", "run_log", "raw_output", "raw_output_sha256"),
     ),
-    ("empty coefficient blocker", ("D2", "D4", "D6", "coefficient arrays")),
+    (
+        "empty coefficient blocker",
+        ("D2", "D4", "D6", FULL_WEIGHTED_TARGET, "coefficient arrays"),
+    ),
     ("comparison blocker", ("independent comparison", "50-digit")),
 )
 
@@ -700,7 +703,10 @@ def skeleton_fixture() -> dict[str, Any]:
             "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
             "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
             "run_command, run_log, raw_output, and raw_output_sha256 unset",
-            "D2, D4, and D6 coefficient arrays are empty",
+            (
+                "D2, D4, and D6 coefficient arrays are empty for the full "
+                f"{FULL_WEIGHTED_TARGET} target"
+            ),
             "independent comparison artifacts and 50-digit agreement claims are absent",
         ],
         "passed": False,
@@ -783,6 +789,11 @@ def run_self_check() -> dict[str, Any]:
         for blocker in bad_skeleton_missing_publication_blocker_class["publication_blockers"]
         if "precision_requested_digits" not in blocker
     ]
+
+    bad_skeleton_publication_blocker_missing_target = skeleton_fixture()
+    bad_skeleton_publication_blocker_missing_target["publication_blockers"][3] = (
+        "D2, D4, and D6 coefficient arrays are empty"
+    )
 
     bad_skeleton_digit_claim = skeleton_fixture()
     bad_skeleton_digit_claim["weights"][1]["reference_validation"][
@@ -878,6 +889,10 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_rejects_missing_publication_blocker_class": rejected(
             bad_skeleton_missing_publication_blocker_class,
             "publication_blockers must include precision request blocker",
+        ),
+        "skeleton_rejects_publication_blocker_without_full_target": rejected(
+            bad_skeleton_publication_blocker_missing_target,
+            "publication_blockers must include empty coefficient blocker",
         ),
         "skeleton_rejects_digit_agreement_claim": rejected(
             bad_skeleton_digit_claim,

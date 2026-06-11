@@ -14,7 +14,7 @@
       "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
       "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
       "run_command, run_log, raw_output, and raw_output_sha256 unset",
-      "D2, D4, and D6 coefficient arrays are empty",
+      "D2, D4, and D6 coefficient arrays are empty for the full j[phase,1,2,1,1,1,1,1] target",
       "independent comparison artifacts and 50-digit agreement claims are absent"
     ],
     "published_evidence": false,

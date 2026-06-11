@@ -156,6 +156,11 @@ def require_exact(raw: Any, expected: Any, label: str) -> None:
     expect(raw == expected, f"{label} must be {expected!r}, got {raw!r}")
 
 
+def require_explicit_null(payload: dict[str, Any], field: str, label: str) -> None:
+    expect(field in payload, f"{label} must be explicitly null for skeleton evidence")
+    expect(payload[field] is None, f"{label} must be null for skeleton evidence")
+
+
 def require_sha256(raw: Any, label: str) -> str:
     value = require_string(raw, label)
     expect(SHA256_RE.fullmatch(value) is not None, f"{label} must be a lowercase sha256")
@@ -296,6 +301,20 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         require_sha256(raw_output_sha256, "amflow_parameter_set.raw_output_sha256")
 
     if not published:
+        for field in (
+            "precision_requested_digits",
+            "eps_order_requested",
+            "working_precision_digits",
+            "run_command",
+            "run_log",
+            "raw_output",
+            "raw_output_sha256",
+        ):
+            require_explicit_null(
+                parameters,
+                field,
+                f"amflow_parameter_set.{field}",
+            )
         expect(
             precision is None,
             "skeleton evidence must not record precision_requested_digits",
@@ -415,13 +434,15 @@ def validate_reference_validation(
     if not published:
         expect(not passed, f"{label} skeleton validation must not pass")
         expect(not coefficient_published, f"{label} skeleton must not publish coefficients")
-        expect(
-            validation.get("minimum_digit_agreement") is None,
-            f"{label} skeleton must not claim minimum_digit_agreement",
+        require_explicit_null(
+            validation,
+            "minimum_digit_agreement",
+            f"{label}.reference_validation.minimum_digit_agreement",
         )
-        expect(
-            validation.get("comparison_artifact") is None,
-            f"{label} skeleton must not record comparison_artifact",
+        require_explicit_null(
+            validation,
+            "comparison_artifact",
+            f"{label}.reference_validation.comparison_artifact",
         )
         require_string(
             validation.get("blocked_reason"),
@@ -817,6 +838,9 @@ def run_self_check() -> dict[str, Any]:
     bad_skeleton_run_artifact_claim = skeleton_fixture()
     bad_skeleton_run_artifact_claim["amflow_parameter_set"]["raw_output_sha256"] = "c" * 64
 
+    bad_skeleton_missing_artifact_slot = skeleton_fixture()
+    del bad_skeleton_missing_artifact_slot["amflow_parameter_set"]["raw_output"]
+
     bad_skeleton_placeholder_publication_blocker = skeleton_fixture()
     bad_skeleton_placeholder_publication_blocker["publication_blockers"] = ["todo"]
 
@@ -841,6 +865,11 @@ def run_self_check() -> dict[str, Any]:
     bad_skeleton_comparison_claim["weights"][2]["reference_validation"][
         "comparison_artifact"
     ] = "artifacts/d6.compare.json"
+
+    bad_skeleton_missing_comparison_slot = skeleton_fixture()
+    del bad_skeleton_missing_comparison_slot["weights"][0]["reference_validation"][
+        "comparison_artifact"
+    ]
 
     bad_full_skeleton_status = full_fixture()
     bad_full_skeleton_status["status"] = "skeleton-pending-amflow-reference-run"
@@ -929,11 +958,15 @@ def run_self_check() -> dict[str, Any]:
         ),
         "skeleton_rejects_precision_claim": rejected(
             bad_skeleton_precision_claim,
-            "skeleton evidence must not record precision_requested_digits",
+            "amflow_parameter_set.precision_requested_digits must be null",
         ),
         "skeleton_rejects_run_artifact_claim": rejected(
             bad_skeleton_run_artifact_claim,
-            "skeleton evidence must not record raw_output_sha256",
+            "amflow_parameter_set.raw_output_sha256 must be null",
+        ),
+        "skeleton_requires_explicit_artifact_null_slot": rejected(
+            bad_skeleton_missing_artifact_slot,
+            "amflow_parameter_set.raw_output must be explicitly null",
         ),
         "skeleton_rejects_placeholder_publication_blocker": rejected(
             bad_skeleton_placeholder_publication_blocker,
@@ -949,11 +982,15 @@ def run_self_check() -> dict[str, Any]:
         ),
         "skeleton_rejects_digit_agreement_claim": rejected(
             bad_skeleton_digit_claim,
-            "skeleton must not claim minimum_digit_agreement",
+            "minimum_digit_agreement must be null",
         ),
         "skeleton_rejects_comparison_artifact_claim": rejected(
             bad_skeleton_comparison_claim,
-            "skeleton must not record comparison_artifact",
+            "comparison_artifact must be null",
+        ),
+        "skeleton_requires_explicit_comparison_null_slot": rejected(
+            bad_skeleton_missing_comparison_slot,
+            "weights[0].reference_validation.comparison_artifact must be explicitly null",
         ),
         "published_rejects_skeleton_status": rejected(
             bad_full_skeleton_status,

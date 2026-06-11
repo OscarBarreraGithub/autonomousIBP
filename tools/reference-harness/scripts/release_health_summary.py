@@ -150,22 +150,23 @@ def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary
     )
 
 
-def verify_readiness_sidecar_entry(
+def verify_sidecar_inventory_entry(
     entries: list[InventoryEntry],
-    readiness_sidecar: Path,
+    sidecar_path: str,
+    *,
+    label: str,
+    expected_schema: str,
 ) -> None:
-    relative = readiness_sidecar.as_posix()
-    matching = [entry for entry in entries if entry.path == relative]
-    expect(matching, f"readiness sidecar is not present in M7 inventory: {relative}")
+    matching = [entry for entry in entries if entry.path == sidecar_path]
+    expect(matching, f"{label} is not present in M7 inventory: {sidecar_path}")
     entry = matching[0]
     expect(
-        entry.schema == "release-readiness-output",
-        "readiness sidecar must have schema release-readiness-output: "
-        f"{relative} has {entry.schema}",
+        entry.schema == expected_schema,
+        f"{label} must have schema {expected_schema}: {sidecar_path} has {entry.schema}",
     )
     expect(
         entry.status == "accepted",
-        f"readiness sidecar is not accepted: {relative} ({entry.basis})",
+        f"{label} is not accepted: {sidecar_path} ({entry.basis})",
     )
 
 
@@ -173,11 +174,24 @@ def summarize_inventory_for_readiness(
     root: Path,
     m7_root: Path,
     readiness_sidecar: Path,
+    performance_review_path: str | None = None,
 ) -> InventorySummary:
     entries = build_inventory(root, m7_root)
     verify_inventory(entries)
     verify_schema_reconciliation(root, m7_root, entries)
-    verify_readiness_sidecar_entry(entries, readiness_sidecar)
+    verify_sidecar_inventory_entry(
+        entries,
+        readiness_sidecar.as_posix(),
+        label="readiness sidecar",
+        expected_schema="release-readiness-output",
+    )
+    if performance_review_path is not None:
+        verify_sidecar_inventory_entry(
+            entries,
+            performance_review_path,
+            label="performance review sidecar",
+            expected_schema="release-performance-review",
+        )
     accepted = sum(1 for entry in entries if entry.status == "accepted")
     return InventorySummary(
         sidecar_count=len(entries),
@@ -341,8 +355,13 @@ def expect_health_error(label: str, action: Callable[[], None], expected: str) -
 
 
 def self_check(root: Path) -> None:
-    summarize_inventory_for_readiness(root, M7_ROOT, ACCEPTED_READINESS_SIDECAR)
     readiness = summarize_readiness(root, ACCEPTED_READINESS_SIDECAR)
+    summarize_inventory_for_readiness(
+        root,
+        M7_ROOT,
+        ACCEPTED_READINESS_SIDECAR,
+        readiness.performance_review_path,
+    )
     summarize_performance(root, readiness.performance_review_path)
 
     absolute_readiness_sidecar = Path(
@@ -361,7 +380,12 @@ def self_check(root: Path) -> None:
         absolute_readiness.performance_review_path == readiness.performance_review_path,
         "absolute readiness sidecar path changed the selected performance review",
     )
-    summarize_inventory_for_readiness(root, M7_ROOT, absolute_readiness_sidecar)
+    summarize_inventory_for_readiness(
+        root,
+        M7_ROOT,
+        absolute_readiness_sidecar,
+        absolute_readiness.performance_review_path,
+    )
 
     performance_payload = read_json(root / readiness.performance_review_path)
     duplicate_payload = json.loads(json.dumps(performance_payload))
@@ -376,6 +400,16 @@ def self_check(root: Path) -> None:
         duplicate_path.write_text(
             json.dumps(duplicate_payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
+        )
+        expect_health_error(
+            "performance sidecar inventory membership check",
+            lambda: summarize_inventory_for_readiness(
+                root,
+                M7_ROOT,
+                ACCEPTED_READINESS_SIDECAR,
+                duplicate_path.relative_to(root).as_posix(),
+            ),
+            "performance review sidecar is not present in M7 inventory",
         )
         expect_health_error(
             "duplicate performance benchmark check",
@@ -412,6 +446,16 @@ def self_check(root: Path) -> None:
             Path("tools/reference-harness/specs/m7/lane70/release-performance-review.json"),
         ),
         "readiness sidecar must have schema release-readiness-output",
+    )
+    expect_health_error(
+        "non-performance sidecar check",
+        lambda: summarize_inventory_for_readiness(
+            root,
+            M7_ROOT,
+            ACCEPTED_READINESS_SIDECAR,
+            "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+        ),
+        "performance review sidecar must have schema release-performance-review",
     )
 
 
@@ -456,7 +500,12 @@ def main() -> int:
             return 0
         readiness_sidecar = Path(require_repo_file(root, args.readiness_sidecar, "readiness sidecar"))
         readiness = summarize_readiness(root, readiness_sidecar)
-        inventory = summarize_inventory_for_readiness(root, Path(args.m7_root), readiness_sidecar)
+        inventory = summarize_inventory_for_readiness(
+            root,
+            Path(args.m7_root),
+            readiness_sidecar,
+            readiness.performance_review_path,
+        )
         performance = summarize_performance(root, readiness.performance_review_path)
     except (HealthError, InventoryError, SchemaError, RuntimeError) as error:
         print(str(error), file=sys.stderr)

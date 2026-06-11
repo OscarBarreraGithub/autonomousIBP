@@ -68,10 +68,17 @@ EXPECTED_WEIGHTS: dict[str, dict[str, Any]] = {
 }
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+COMPARE_ARTIFACT_RE = re.compile(r"\.compare\d*(?:[.-][A-Za-z0-9_-]+)*\.json$")
 PLACEHOLDER_TEXT = {"", "placeholder", "todo", "tbd", "unknown", "none", "null"}
 MINIMUM_DIGITS = 50
 REQUIRED_PUBLISHED_EPS_ORDERS = [0, 1, 2, 3]
 FULL_WEIGHTED_TARGET = "j[phase,1,2,1,1,1,1,1]"
+BANNED_COEFFICIENT_SOURCE_SUFFIXES = (
+    ".cpp-result.json",
+    ".stripped-result.json",
+    ".amflow-state.json",
+    ".golden-manifest.json",
+)
 REQUIRED_SKELETON_COEFFICIENT_SCOPE = (
     "contiguous epsilon range matching the future runtime publication scope"
 )
@@ -199,6 +206,24 @@ def require_relative_artifact_path_text(raw: Any, label: str) -> str:
         f"{label} must not contain . or .. components",
     )
     expect(not value.endswith("/"), f"{label} must not end with a slash")
+    return value
+
+
+def require_coefficient_source_path_text(raw: Any, label: str) -> str:
+    value = require_relative_artifact_path_text(raw, label)
+    filename = Path(value).name
+    banned_suffix = next(
+        (suffix for suffix in BANNED_COEFFICIENT_SOURCE_SUFFIXES if filename.endswith(suffix)),
+        None,
+    )
+    expect(
+        banned_suffix is None,
+        f"{label} must not cite retained runtime/comparison artifacts as coefficient source",
+    )
+    expect(
+        COMPARE_ARTIFACT_RE.search(filename) is None,
+        f"{label} must not cite retained runtime/comparison artifacts as coefficient source",
+    )
     return value
 
 
@@ -414,7 +439,7 @@ def validate_coefficient(coefficient: dict[str, Any], label: str) -> tuple[int, 
     require_exact(coefficient.get("region_key"), "integer", f"{label}.region_key")
     require_decimal_string(coefficient.get("real"), f"{label}.real")
     require_decimal_string(coefficient.get("imaginary"), f"{label}.imaginary")
-    require_relative_artifact_path_text(coefficient.get("source"), f"{label}.source")
+    require_coefficient_source_path_text(coefficient.get("source"), f"{label}.source")
     require_sha256(coefficient.get("source_sha256"), f"{label}.source_sha256")
     require_string(coefficient.get("extraction_label"), f"{label}.extraction_label")
     working_precision = require_int(
@@ -948,6 +973,48 @@ def run_self_check() -> dict[str, Any]:
         "source"
     ] = "artifacts/../d2-eps0.json"
 
+    bad_cpp_result_coefficient_source = full_fixture()
+    bad_cpp_result_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = (
+        "tools/reference-harness/specs/m5/proof-runs/lane45/"
+        "automatic_phasespace.cpp-result.json"
+    )
+
+    bad_stripped_result_coefficient_source = full_fixture()
+    bad_stripped_result_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.stripped-result.json"
+    )
+
+    bad_compare_coefficient_source = full_fixture()
+    bad_compare_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.compare30.json"
+    )
+
+    bad_suffixed_compare_coefficient_source = full_fixture()
+    bad_suffixed_compare_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.c267-stripped.eps0.compare50.reference-floor.json"
+    )
+
+    bad_amflow_state_coefficient_source = full_fixture()
+    bad_amflow_state_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json"
+
+    bad_golden_manifest_coefficient_source = full_fixture()
+    bad_golden_manifest_coefficient_source["weights"][0]["coefficients"][0][
+        "source"
+    ] = "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json"
+
     bad_minimum_digit_overclaim = full_fixture()
     bad_minimum_digit_overclaim["weights"][0]["reference_validation"][
         "minimum_digit_agreement"
@@ -1087,6 +1154,30 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_parent_coefficient_source": rejected(
             bad_parent_coefficient_source,
             "source must not contain . or .. components",
+        ),
+        "full_rejects_cpp_result_coefficient_source": rejected(
+            bad_cpp_result_coefficient_source,
+            "retained runtime/comparison artifacts",
+        ),
+        "full_rejects_stripped_result_coefficient_source": rejected(
+            bad_stripped_result_coefficient_source,
+            "retained runtime/comparison artifacts",
+        ),
+        "full_rejects_compare_coefficient_source": rejected(
+            bad_compare_coefficient_source,
+            "retained runtime/comparison artifacts",
+        ),
+        "full_rejects_suffixed_compare_coefficient_source": rejected(
+            bad_suffixed_compare_coefficient_source,
+            "retained runtime/comparison artifacts",
+        ),
+        "full_rejects_amflow_state_coefficient_source": rejected(
+            bad_amflow_state_coefficient_source,
+            "retained runtime/comparison artifacts",
+        ),
+        "full_rejects_golden_manifest_coefficient_source": rejected(
+            bad_golden_manifest_coefficient_source,
+            "retained runtime/comparison artifacts",
         ),
         "full_rejects_minimum_digit_overclaim": rejected(
             bad_minimum_digit_overclaim,

@@ -46,7 +46,8 @@ def expect(condition: bool, message: str) -> None:
 
 def require_repo_file(root: Path, raw: Any, field: str) -> str:
     expect(isinstance(raw, str) and raw.strip(), f"{field} must be a non-empty path")
-    value = raw.strip()
+    expect(raw == raw.strip(), f"{field} must not carry surrounding whitespace")
+    value = raw
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = root / candidate
@@ -176,6 +177,38 @@ def self_check(root: Path) -> None:
         readiness_sidecar=accepted_readiness_sidecar,
     )
     expect(verified, "self-check accepted fixture did not verify any M7 sidecars")
+
+    try:
+        require_repo_file(
+            root,
+            f" {ACCEPTED_READINESS_SIDECAR.as_posix()} ",
+            "readiness sidecar",
+        )
+    except ReachabilityError as error:
+        expect(
+            "readiness sidecar must not carry surrounding whitespace" in str(error),
+            f"readiness sidecar whitespace self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("readiness sidecar whitespace self-check unexpectedly passed")
+
+    whitespace_reference = dict(accepted_payload)
+    whitespace_reference["phase0_qualification_summary_path"] = (
+        f" {accepted_payload['phase0_qualification_summary_path']} "
+    )
+    try:
+        verify_readiness_m7_sidecar_references(
+            root,
+            whitespace_reference,
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
+    except ReachabilityError as error:
+        expect(
+            "phase0_qualification_summary_path must not carry surrounding whitespace" in str(error),
+            f"reference whitespace self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("reference whitespace self-check unexpectedly passed")
 
     missing = dict(accepted_payload)
     missing["phase0_qualification_summary_path"] = (

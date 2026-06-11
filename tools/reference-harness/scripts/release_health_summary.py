@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -109,7 +110,9 @@ def require_string_list(raw: Any, field: str) -> list[str]:
 
 def numeric_value(raw: Any, field: str) -> float:
     expect(type(raw) in {int, float}, f"{field} must be numeric")
-    return float(raw)
+    value = float(raw)
+    expect(math.isfinite(value), f"{field} must be finite")
+    return value
 
 
 def require_source_commit(root: Path, raw: Any, field: str) -> str:
@@ -457,6 +460,18 @@ def self_check(root: Path) -> None:
             "negative performance benchmark timing check",
             lambda: summarize_performance(root, str(negative_timing_path.relative_to(root))),
             "wall_seconds_max must be nonnegative",
+        )
+        infinite_timing_payload = json.loads(json.dumps(performance_payload))
+        infinite_timing_payload["benchmark_timing_evidence"][0]["wall_seconds_max"] = float("inf")
+        infinite_timing_path = Path(temp_dir) / "infinite-performance-benchmark.json"
+        infinite_timing_path.write_text(
+            json.dumps(infinite_timing_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "infinite performance benchmark timing check",
+            lambda: summarize_performance(root, str(infinite_timing_path.relative_to(root))),
+            "wall_seconds_max must be finite",
         )
         short_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
         short_commit_payload["source_commit"] = "5fdba2c"

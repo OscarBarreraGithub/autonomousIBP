@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -73,7 +74,9 @@ def require_nonnegative_number(payload: dict[str, Any], field: str, label: str |
     value = payload.get(field)
     diagnostic = label or field
     expect(type(value) in {int, float} and value >= 0, f"{diagnostic} must be a nonnegative number")
-    return float(value)
+    numeric = float(value)
+    expect(math.isfinite(numeric), f"{diagnostic} must be finite")
+    return numeric
 
 
 def require_nonempty_string(payload: dict[str, Any], field: str, label: str | None = None) -> str:
@@ -540,6 +543,20 @@ def self_check() -> None:
         "performance run-count coherence check",
         mismatched_performance,
         "performance run_count does not match benchmark run totals",
+    )
+    infinite_performance = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    infinite_performance["performance"]["max_wall_seconds"] = float("inf")
+    expect_badge_error(
+        "performance finite timing check",
+        infinite_performance,
+        "max_wall_seconds must be finite",
     )
 
     root = repo_root()

@@ -41,6 +41,13 @@ the upstream AMFlow scripts:
 | `user_defined_amfmode` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. |
 | `user_defined_ending` | Needs both `final_Tradition` and `final_usr` ending workflows, including manual boundary writes and Gamma-ratio boundary handling. |
 
+For the `linear_propagator` row, the lane 4 post-M7 guard records the
+non-promotion boundary for existing selected `b64ag` evidence and the fixture
+shape expected of a future fail-closed recapture/runtime-packet guard:
+[`b64ag-post-m7-continuation-guard.md`](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).
+It is a routing reference only, not new runtime evidence or a release-signoff
+input.
+
 There are no zero-evidence upstream rows in the current inventory: all ten
 upstream example classes have at least some retained or C++ comparison evidence
 in the repository. The gap is the narrower and more important one: most rows do

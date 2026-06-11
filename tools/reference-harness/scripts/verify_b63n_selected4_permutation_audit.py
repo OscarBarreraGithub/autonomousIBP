@@ -24,6 +24,10 @@ DEFAULT_CPP_RESULT = Path(
     "tools/reference-harness/specs/m6/lane146/"
     "automatic_phasespace.selected4-cutkosky.cpp-result.json"
 )
+DEFAULT_GOLDEN = Path(
+    "tools/reference-harness/specs/m6/lane146/"
+    "automatic_phasespace.selected4-cutkosky.amflow-golden.txt"
+)
 
 CANONICAL_PERMUTATION_AUDIT = """\
 kind=b63n-weighted-residue-moment-cross-validation-gate
@@ -102,6 +106,30 @@ def print_json(payload: dict[str, Any]) -> None:
 
 def path_text(path: Path) -> str:
     return str(path.as_posix())
+
+
+def resolve_repo_path(root: Path, path: Path) -> Path:
+    return path if path.is_absolute() else root / path
+
+
+def require_reviewed_artifact_path(
+    root: Path,
+    path: Path,
+    expected: Path,
+    label: str,
+) -> tuple[Path, Path]:
+    root_resolved = root.resolve()
+    resolved = resolve_repo_path(root_resolved, path).resolve()
+    try:
+        relative = resolved.relative_to(root_resolved)
+    except ValueError as error:
+        raise RuntimeError(f"{label} must stay under repository root: {path}") from error
+    expect(
+        path_text(relative) == path_text(expected),
+        f"{label} must stay bound to {path_text(expected)}",
+    )
+    expect(resolved.is_file(), f"{label} artifact must exist: {path_text(relative)}")
+    return resolved, relative
 
 
 def parse_bool(raw: Any, label: str) -> bool:
@@ -439,6 +467,22 @@ def validate_compare_and_cpp(
     expect(compare.get("benchmark_id") == "automatic_phasespace", "compare benchmark drifted")
     expect(compare.get("passed") is True, "compare must pass")
     expect(compare.get("failures") == [], "compare must not retain failures")
+    expect(
+        evidence.get("amflow_golden_slice") == path_text(DEFAULT_GOLDEN),
+        "selected4 evidence AMFlow golden slice path drifted",
+    )
+    expect(
+        evidence.get("cpp_result") == path_text(DEFAULT_CPP_RESULT),
+        "selected4 evidence C++ result path drifted",
+    )
+    expect(
+        compare.get("amflow_golden") == path_text(DEFAULT_GOLDEN),
+        "compare AMFlow golden path drifted",
+    )
+    expect(
+        compare.get("cpp_result") == path_text(DEFAULT_CPP_RESULT),
+        "compare C++ result path drifted",
+    )
     expect(compare.get("amflow_golden") == evidence.get("amflow_golden_slice"), "golden path drifted")
     expect(compare.get("cpp_result") == evidence.get("cpp_result"), "cpp result path drifted")
     tolerance_digits = parse_int(compare.get("tolerance_digits"), "compare tolerance_digits")
@@ -636,6 +680,25 @@ def verify_paths(
     compare_path: Path,
     cpp_result_path: Path,
 ) -> dict[str, Any]:
+    root = repo_root()
+    evidence_path, _evidence_relative = require_reviewed_artifact_path(
+        root,
+        evidence_path,
+        DEFAULT_EVIDENCE,
+        "selected4 evidence path",
+    )
+    compare_path, compare_relative = require_reviewed_artifact_path(
+        root,
+        compare_path,
+        DEFAULT_COMPARE,
+        "selected4 compare path",
+    )
+    cpp_result_path, _cpp_result_relative = require_reviewed_artifact_path(
+        root,
+        cpp_result_path,
+        DEFAULT_CPP_RESULT,
+        "selected4 C++ result path",
+    )
     if audit_path is None:
         audit_text = CANONICAL_PERMUTATION_AUDIT
     else:
@@ -643,14 +706,20 @@ def verify_paths(
     compare = load_json(compare_path)
     golden_path = compare.get("amflow_golden")
     expect(isinstance(golden_path, str) and golden_path, "compare amflow_golden must be a path")
-    golden_text = (repo_root() / golden_path).read_text(encoding="utf-8")
+    golden_path, _golden_relative = require_reviewed_artifact_path(
+        root,
+        Path(golden_path),
+        DEFAULT_GOLDEN,
+        "compare AMFlow golden path",
+    )
+    golden_text = golden_path.read_text(encoding="utf-8")
     return verify_payloads(
         audit_text,
         load_json(evidence_path),
         compare,
         load_json(cpp_result_path),
         golden_text,
-        compare_path=compare_path.relative_to(repo_root()) if compare_path.is_absolute() else compare_path,
+        compare_path=compare_relative,
     )
 
 
@@ -849,6 +918,17 @@ def run_self_check() -> dict[str, Any]:
     )
     bad_compare = json.loads(json.dumps(compare))
     bad_compare["integrals"][2]["coefficients"][1]["passed"] = False
+    bad_golden_source_evidence = json.loads(json.dumps(evidence))
+    bad_golden_source_compare = json.loads(json.dumps(compare))
+    bad_golden_source_evidence["amflow_golden_slice"] = "/tmp/drifted-golden.txt"
+    bad_golden_source_compare["amflow_golden"] = "/tmp/drifted-golden.txt"
+    bad_cpp_source_evidence = json.loads(json.dumps(evidence))
+    bad_cpp_source_compare = json.loads(json.dumps(compare))
+    bad_cpp_source_evidence["cpp_result"] = (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.cpp-result.json"
+    )
+    bad_cpp_source_compare["cpp_result"] = bad_cpp_source_evidence["cpp_result"]
     bad_cpp_result = json.loads(json.dumps(cpp_result))
     bad_cpp_result["continuation"]["full_eta_zero_contour_applied"] = True
     bad_golden_text = golden_text.replace("1.1025", "9.1025", 1)
@@ -916,6 +996,22 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             golden_text,
             "did not pass",
+        ),
+        "rejects_coordinated_golden_source_path_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_golden_source_evidence,
+            bad_golden_source_compare,
+            cpp_result,
+            golden_text,
+            "AMFlow golden",
+        ),
+        "rejects_coordinated_cpp_source_path_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_cpp_source_evidence,
+            bad_cpp_source_compare,
+            cpp_result,
+            golden_text,
+            "C++ result path",
         ),
         "rejects_full_contour_overclaim": rejected(
             CANONICAL_PERMUTATION_AUDIT,

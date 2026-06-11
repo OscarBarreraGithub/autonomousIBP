@@ -89,15 +89,54 @@ def collect_readiness_m7_sidecar_references(
     return references
 
 
+def verify_accepted_readiness_sidecar(
+    root: Path,
+    readiness_sidecar: str,
+    m7_root: Path,
+    inventory_by_path: dict[str, Any],
+) -> None:
+    expect(
+        is_m7_json_sidecar(readiness_sidecar, m7_root),
+        f"readiness sidecar must be an M7 JSON sidecar under {m7_root}: {readiness_sidecar}",
+    )
+    entry = inventory_by_path.get(readiness_sidecar)
+    expect(
+        entry is not None,
+        f"readiness sidecar is not present in M7 sidecar inventory: {readiness_sidecar}",
+    )
+    expect(
+        entry.schema == "release-readiness-output",
+        (
+            "readiness sidecar must have release-readiness-output schema: "
+            f"{readiness_sidecar} ({entry.schema})"
+        ),
+    )
+    expect(
+        entry.status == "accepted",
+        f"readiness sidecar is not accepted: {readiness_sidecar} ({entry.basis})",
+    )
+    schema = validate_m7_sidecar(root / readiness_sidecar, root)
+    expect(
+        schema == entry.schema,
+        (
+            "readiness sidecar schema drifted for "
+            f"{readiness_sidecar}: inventory={entry.schema!r} direct={schema!r}"
+        ),
+    )
+
+
 def verify_readiness_m7_sidecar_references(
     root: Path,
     readiness_payload: dict[str, Any],
     m7_root: Path = M7_ROOT,
+    readiness_sidecar: str | None = None,
 ) -> list[SidecarReference]:
     entries = build_inventory(root, m7_root)
     verify_inventory(entries)
     verify_schema_reconciliation(root, m7_root, entries)
     inventory_by_path = {entry.path: entry for entry in entries}
+    if readiness_sidecar is not None:
+        verify_accepted_readiness_sidecar(root, readiness_sidecar, m7_root, inventory_by_path)
 
     verified: list[SidecarReference] = []
     for field, relative in collect_readiness_m7_sidecar_references(root, readiness_payload, m7_root):
@@ -125,8 +164,17 @@ def verify_readiness_m7_sidecar_references(
 
 
 def self_check(root: Path) -> None:
+    accepted_readiness_sidecar = require_repo_file(
+        root,
+        ACCEPTED_READINESS_SIDECAR.as_posix(),
+        "readiness sidecar",
+    )
     accepted_payload = read_json(root / ACCEPTED_READINESS_SIDECAR)
-    verified = verify_readiness_m7_sidecar_references(root, accepted_payload)
+    verified = verify_readiness_m7_sidecar_references(
+        root,
+        accepted_payload,
+        readiness_sidecar=accepted_readiness_sidecar,
+    )
     expect(verified, "self-check accepted fixture did not verify any M7 sidecars")
 
     missing = dict(accepted_payload)
@@ -134,7 +182,11 @@ def self_check(root: Path) -> None:
         "tools/reference-harness/specs/m7/lane133/missing-phase0-qualification.json"
     )
     try:
-        verify_readiness_m7_sidecar_references(root, missing)
+        verify_readiness_m7_sidecar_references(
+            root,
+            missing,
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
     except ReachabilityError as error:
         expect(
             "phase0_qualification_summary_path does not exist as a file" in str(error),
@@ -146,7 +198,11 @@ def self_check(root: Path) -> None:
     non_file = dict(accepted_payload)
     non_file["phase0_qualification_summary_path"] = "tools/reference-harness/specs/m7/lane133"
     try:
-        verify_readiness_m7_sidecar_references(root, non_file)
+        verify_readiness_m7_sidecar_references(
+            root,
+            non_file,
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
     except ReachabilityError as error:
         expect(
             "phase0_qualification_summary_path does not exist as a file" in str(error),
@@ -160,7 +216,11 @@ def self_check(root: Path) -> None:
         "tools/reference-harness/specs/m7/lane76/release-qualification-corpus.json"
     )
     try:
-        verify_readiness_m7_sidecar_references(root, unaccepted)
+        verify_readiness_m7_sidecar_references(
+            root,
+            unaccepted,
+            readiness_sidecar=accepted_readiness_sidecar,
+        )
     except ReachabilityError as error:
         expect(
             "qualification_corpus_summary_path does not reference an accepted M7 sidecar" in str(error),
@@ -168,6 +228,41 @@ def self_check(root: Path) -> None:
         )
     else:
         raise ReachabilityError("unaccepted sidecar self-check unexpectedly passed")
+
+    wrong_schema_readiness = (
+        "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json"
+    )
+    try:
+        verify_readiness_m7_sidecar_references(
+            root,
+            accepted_payload,
+            readiness_sidecar=wrong_schema_readiness,
+        )
+    except ReachabilityError as error:
+        expect(
+            "readiness sidecar must have release-readiness-output schema" in str(error),
+            f"wrong-schema readiness sidecar self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("wrong-schema readiness sidecar self-check unexpectedly passed")
+
+    blocked_readiness_sidecar = (
+        "tools/reference-harness/specs/m7/lane3/release-readiness.post-a1f0e1d.full-output.json"
+    )
+    blocked_payload = read_json(root / blocked_readiness_sidecar)
+    try:
+        verify_readiness_m7_sidecar_references(
+            root,
+            blocked_payload,
+            readiness_sidecar=blocked_readiness_sidecar,
+        )
+    except ReachabilityError as error:
+        expect(
+            "readiness sidecar is not accepted" in str(error),
+            f"unaccepted readiness sidecar self-check failed for the wrong reason: {error}",
+        )
+    else:
+        raise ReachabilityError("unaccepted readiness sidecar self-check unexpectedly passed")
 
 
 def parse_args() -> argparse.Namespace:
@@ -206,6 +301,7 @@ def main() -> int:
             root,
             readiness_payload,
             Path(args.m7_root),
+            readiness_sidecar=readiness_path.relative_to(root).as_posix(),
         )
         if args.self_check:
             self_check(root)

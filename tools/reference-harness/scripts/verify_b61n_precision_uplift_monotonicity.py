@@ -15,6 +15,13 @@ from typing import Any
 DEFAULT_PRECISION_EVIDENCE = Path(
     "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
 )
+DEFAULT_SOURCE_CPP_RESULT = Path(
+    "tools/reference-harness/specs/m7/lane2/"
+    "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+)
+DEFAULT_SOURCE_DIAGNOSTIC = Path(
+    "tools/reference-harness/specs/m7/lane2/b61n-row56-specific-target-diagnostic.json"
+)
 
 EXPECTED_TARGETS: tuple[tuple[str, int], ...] = (
     ("box[1,0,1,1]", 0),
@@ -339,6 +346,22 @@ def verify_payloads(
         == "post-M7 b61n row 5/6 reference-floor alternative-path precision evidence",
         "precision evidence scope drifted",
     )
+    expect(
+        require_string(
+            precision_evidence.get("source_cpp_result"),
+            "precision_evidence.source_cpp_result",
+        )
+        == DEFAULT_SOURCE_CPP_RESULT.as_posix(),
+        "precision evidence source_cpp_result drifted from reviewed lane2 C++ result",
+    )
+    expect(
+        require_string(
+            precision_evidence.get("source_diagnostic"),
+            "precision_evidence.source_diagnostic",
+        )
+        == DEFAULT_SOURCE_DIAGNOSTIC.as_posix(),
+        "precision evidence source_diagnostic drifted from reviewed lane2 row56 diagnostic",
+    )
     expect(cpp_result.get("benchmark_id") == "complex_kinematics", "C++ benchmark_id drifted")
     expect(
         diagnostic.get("diagnostic_id") == "b61n-row56-specific-target-diagnostic",
@@ -519,6 +542,8 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
         "schema_version": 1,
         "evidence_id": "b61n-pipeline-precision-evidence",
         "scope": "post-M7 b61n row 5/6 reference-floor alternative-path precision evidence",
+        "source_cpp_result": DEFAULT_SOURCE_CPP_RESULT.as_posix(),
+        "source_diagnostic": DEFAULT_SOURCE_DIAGNOSTIC.as_posix(),
         "summary": {
             "all_standard_serializations_match_exact_rational_80": True,
             "all_uplifted_160_fraction_digits_exceed_reference_floor": True,
@@ -595,6 +620,16 @@ def run_self_check() -> dict[str, Any]:
     wrong_target_cpp_result["results"][0]["integral"] = "box[0,0,0,1]"
     wrong_target_diagnostic["target_diagnostics"][0]["integral"] = "box[0,0,0,1]"
 
+    wrong_source_cpp_result = copy.deepcopy(evidence)
+    wrong_source_cpp_result["source_cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/synthetic-b61n-source.cpp-result.json"
+    )
+
+    wrong_source_diagnostic = copy.deepcopy(evidence)
+    wrong_source_diagnostic["source_diagnostic"] = (
+        "tools/reference-harness/specs/m7/lane2/synthetic-b61n-row56-diagnostic.json"
+    )
+
     checks = {
         "synthetic_fixture_passes": valid_summary["component_count"] == 8,
         "rejects_nonmonotone_uplift": rejected(
@@ -632,6 +667,18 @@ def run_self_check() -> dict[str, Any]:
             wrong_target_cpp_result,
             wrong_target_diagnostic,
             "row 5/6 target order drifted",
+        ),
+        "rejects_source_cpp_result_drift": rejected(
+            wrong_source_cpp_result,
+            cpp_result,
+            diagnostic,
+            "source_cpp_result drifted from reviewed lane2 C++ result",
+        ),
+        "rejects_source_diagnostic_drift": rejected(
+            wrong_source_diagnostic,
+            cpp_result,
+            diagnostic,
+            "source_diagnostic drifted from reviewed lane2 row56 diagnostic",
         ),
     }
     expect(all(checks.values()), "b61n precision-uplift monotonicity self-check failed")

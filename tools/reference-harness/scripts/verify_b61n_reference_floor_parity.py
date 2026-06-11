@@ -129,6 +129,15 @@ def coefficient_key(integral: str, order: int) -> str:
     return f"{integral} eps^{order}"
 
 
+def repo_relative_path(root: Path, raw_path: str | Path) -> str:
+    path = Path(raw_path)
+    resolved = path if path.is_absolute() else root / path
+    try:
+        return resolved.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
 def expected_target_contract() -> list[dict[str, Any]]:
     return [
         {
@@ -334,10 +343,31 @@ def validate_reference_floor_manifest(manifest: dict[str, Any], label: str) -> d
     }
 
 
-def validate_reference_floor_summary(summary: dict[str, Any], label: str) -> dict[str, Any]:
+def validate_reference_floor_summary(
+    summary: dict[str, Any],
+    label: str,
+    *,
+    root: Path,
+) -> dict[str, Any]:
     expect(summary.get("schema_version") == 1, f"{label}.schema_version must be 1")
     expect(summary.get("comparison") == "cpp-vs-amflow", f"{label}.comparison drifted")
     expect(summary.get("benchmark_id") == "complex_kinematics", f"{label}.benchmark_id drifted")
+    cpp_result = repo_relative_path(
+        root,
+        require_string(summary.get("cpp_result"), f"{label}.cpp_result"),
+    )
+    amflow_golden = repo_relative_path(
+        root,
+        require_string(summary.get("amflow_golden"), f"{label}.amflow_golden"),
+    )
+    expect(
+        cpp_result == DEFAULT_CPP_RESULT.as_posix(),
+        f"{label}.cpp_result drifted from reviewed lane2 C++ result",
+    )
+    expect(
+        amflow_golden == DEFAULT_AMFLOW_GOLDEN.as_posix(),
+        f"{label}.amflow_golden drifted from reviewed lane2 AMFlow golden",
+    )
     expect(summary.get("tolerance_digits") == 50, f"{label}.tolerance_digits must stay compare50")
     expect(summary.get("passed") is True, f"{label} must pass")
     expect(
@@ -465,6 +495,7 @@ def verify_paths(
     amflow_golden_path: Path,
     retained_comparison_path: Path,
 ) -> dict[str, Any]:
+    root = repo_root()
     manifest_contract = validate_reference_floor_manifest(
         load_json(amflow_golden_path),
         "amflow_golden",
@@ -475,8 +506,16 @@ def verify_paths(
         tolerance_digits=50,
     )
     retained_summary = load_json(retained_comparison_path)
-    fresh_contract = validate_reference_floor_summary(fresh_summary, "fresh_comparison")
-    retained_contract = validate_reference_floor_summary(retained_summary, "retained_comparison")
+    fresh_contract = validate_reference_floor_summary(
+        fresh_summary,
+        "fresh_comparison",
+        root=root,
+    )
+    retained_contract = validate_reference_floor_summary(
+        retained_summary,
+        "retained_comparison",
+        root=root,
+    )
     expect(
         fresh_contract == retained_contract,
         "fresh comparison and retained comparison disagree on the b61n reference-floor contract",
@@ -502,7 +541,7 @@ def verify_paths(
 
 def rejected(summary: dict[str, Any], expected_error: str) -> bool:
     try:
-        validate_reference_floor_summary(summary, "self_check")
+        validate_reference_floor_summary(summary, "self_check", root=repo_root())
     except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
         return expected_error in str(error)
     return False
@@ -518,7 +557,11 @@ def manifest_rejected(manifest: dict[str, Any], expected_error: str) -> bool:
 
 def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> dict[str, Any]:
     valid_summary = load_json(retained_comparison_path)
-    valid_contract = validate_reference_floor_summary(valid_summary, "self_check.valid")
+    valid_contract = validate_reference_floor_summary(
+        valid_summary,
+        "self_check.valid",
+        root=repo_root(),
+    )
     valid_manifest = load_json(amflow_golden_path)
     manifest_contract = validate_reference_floor_manifest(
         valid_manifest,
@@ -562,6 +605,16 @@ def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> 
     stale_summary_floor_reason["reference_floor_matches"][0][
         "reference_floor_reason"
     ] = "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference floor drifted"
+
+    stale_summary_cpp_result = copy.deepcopy(valid_summary)
+    stale_summary_cpp_result["cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/stale-b61n.cpp-result.json"
+    )
+
+    stale_summary_amflow_golden = copy.deepcopy(valid_summary)
+    stale_summary_amflow_golden["amflow_golden"] = (
+        "tools/reference-harness/specs/m7/lane2/stale-b61n-reference-floor-golden.json"
+    )
 
     missing_manifest_target = copy.deepcopy(valid_manifest)
     missing_manifest_target["compare_cpp_vs_amflow_reference_floors"] = missing_manifest_target[
@@ -623,6 +676,14 @@ def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> 
         "rejects_reference_floor_reason_drift": rejected(
             stale_summary_floor_reason,
             "reference_floor_reason drifted",
+        ),
+        "rejects_summary_cpp_result_source_drift": rejected(
+            stale_summary_cpp_result,
+            "cpp_result drifted from reviewed lane2 C++ result",
+        ),
+        "rejects_summary_amflow_golden_source_drift": rejected(
+            stale_summary_amflow_golden,
+            "amflow_golden drifted from reviewed lane2 AMFlow golden",
         ),
         "rejects_missing_manifest_reference_floor_target": manifest_rejected(
             missing_manifest_target,

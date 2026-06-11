@@ -371,6 +371,31 @@ def summarize_payloads(
         selected4.get("published_d7_orders") == [0, 1, 2, 3],
         "selected4 D7 order scope drifted",
     )
+    selected4_transported_integrals = require_list(
+        selected4.get("transported_integrals"),
+        "selected4 transported_integrals",
+    )
+    expect(
+        all(isinstance(integral, str) and integral for integral in selected4_transported_integrals),
+        "selected4 transported_integrals entries must be non-empty strings",
+    )
+    expect(
+        len(set(selected4_transported_integrals)) == len(selected4_transported_integrals),
+        "selected4 transported_integrals must not contain duplicates",
+    )
+    expect(
+        set(selected4_transported_integrals) == set(EXPECTED_SELECTED4_ORDERS),
+        "selected4 transported integral scope drifted",
+    )
+    selected4_transported_count = require_int(selected4, "transported_integral_count")
+    expect(
+        selected4_transported_count == len(selected4_transported_integrals),
+        "selected4 transported integral count must match transported_integrals",
+    )
+    expect(
+        selected4["published_d7_integral"] in selected4_transported_integrals,
+        "selected4 published D7 integral must be transported",
+    )
     expect(
         selected4.get("full_eta_zero_contour_applied") is False,
         "selected4 must not claim full eta-zero contour",
@@ -413,8 +438,8 @@ def summarize_payloads(
         },
         "selected4_parity": {
             "lane": selected4["lane"],
-            "transported_integral_count": selected4["transported_integral_count"],
-            "transported_integrals": selected4["transported_integrals"],
+            "transported_integral_count": selected4_transported_count,
+            "transported_integrals": selected4_transported_integrals,
             "compared_coefficient_count": selected4["compared_coefficient_count"],
             "minimum_digit_agreement": selected4["minimum_digit_agreement"],
             "published_d7_integral": selected4["published_d7_integral"],
@@ -586,6 +611,9 @@ def run_self_check() -> dict[str, Any]:
     missing_d7_orders = copy.deepcopy(selected4)
     missing_d7_orders["published_d7_orders"] = [0, 1, 2]
 
+    wrong_transported_count = copy.deepcopy(selected4)
+    wrong_transported_count["transported_integral_count"] -= 1
+
     promoted_d246 = copy.deepcopy(d246)
     promoted_d246["published_evidence"] = True
     promoted_d246["skeleton_evidence"] = False
@@ -621,6 +649,14 @@ def run_self_check() -> dict[str, Any]:
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
             expected_error="D7 order scope",
+        ),
+        "rejects_selected4_transported_count_drift": rejected(
+            first=first,
+            selected4=wrong_transported_count,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            expected_error="transported integral count",
         ),
         "rejects_d246_silent_promotion": rejected(
             first=first,

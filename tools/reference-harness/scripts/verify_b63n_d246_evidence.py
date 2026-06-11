@@ -71,6 +71,20 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 PLACEHOLDER_TEXT = {"", "placeholder", "todo", "tbd", "unknown", "none", "null"}
 MINIMUM_DIGITS = 50
 REQUIRED_PUBLISHED_EPS_ORDERS = [0, 1, 2, 3]
+FULL_WEIGHTED_TARGET = "j[phase,1,2,1,1,1,1,1]"
+REQUIRED_SKELETON_COEFFICIENT_SCOPE = (
+    "contiguous epsilon range matching the future runtime publication scope"
+)
+REQUIRED_SKELETON_PUBLICATION_BLOCKERS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("precision request blocker", ("precision_requested_digits", "high precision")),
+    ("epsilon scope blocker", ("eps_order_requested", "contiguous epsilon range")),
+    (
+        "run artifact blocker",
+        ("run_command", "run_log", "raw_output", "raw_output_sha256"),
+    ),
+    ("empty coefficient blocker", ("D2", "D4", "D6", "coefficient arrays")),
+    ("comparison blocker", ("independent comparison", "50-digit")),
+)
 
 
 def expect(condition: bool, message: str) -> None:
@@ -177,6 +191,17 @@ def require_string_list(raw: Any, expected: list[str], label: str) -> None:
     values = require_list(raw, label)
     expect(all(isinstance(item, str) for item in values), f"{label} entries must be strings")
     require_exact(values, expected, label)
+
+
+def require_text_fragments(value: str, label: str, fragments: tuple[str, ...]) -> None:
+    missing = [fragment for fragment in fragments if fragment not in value]
+    expect(not missing, f"{label} must contain {missing!r}")
+
+
+def require_publication_blocker_coverage(blockers: list[str]) -> None:
+    for label, fragments in REQUIRED_SKELETON_PUBLICATION_BLOCKERS:
+        covered = any(all(fragment in blocker for fragment in fragments) for blocker in blockers)
+        expect(covered, f"publication_blockers must include {label}")
 
 
 def validate_source_files(payload: dict[str, Any]) -> None:
@@ -411,6 +436,24 @@ def validate_weight(weight: dict[str, Any], *, published: bool, index: int) -> t
     )
 
     if not published:
+        require_exact(
+            weight.get("required_coefficient_scope"),
+            REQUIRED_SKELETON_COEFFICIENT_SCOPE,
+            f"{label}.required_coefficient_scope",
+        )
+        reference_validation = require_object(
+            weight.get("reference_validation"),
+            f"{label}.reference_validation",
+        )
+        blocked_reason = require_string(
+            reference_validation.get("blocked_reason"),
+            f"{label}.reference_validation.blocked_reason",
+        )
+        require_text_fragments(
+            blocked_reason,
+            f"{label}.reference_validation.blocked_reason",
+            ("pending", "AMFlow", denominator_id, FULL_WEIGHTED_TARGET),
+        )
         expect(coefficients == [], f"{label}.coefficients must be empty for skeleton evidence")
         return denominator_id, [], None
 
@@ -529,8 +572,10 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
     else:
         blockers = require_list(payload.get("publication_blockers"), "publication_blockers")
         expect(blockers, "skeleton evidence must record publication_blockers")
+        blocker_texts: list[str] = []
         for blocker_index, raw_blocker in enumerate(blockers):
-            require_string(raw_blocker, f"publication_blockers[{blocker_index}]")
+            blocker_texts.append(require_string(raw_blocker, f"publication_blockers[{blocker_index}]"))
+        require_publication_blocker_coverage(blocker_texts)
 
     return {
         "schema_version": 1,
@@ -636,7 +681,10 @@ def skeleton_fixture() -> dict[str, Any]:
                     "final_solution_samples_used_as_input": False,
                     "synthetic_fixture": False,
                     "coefficient_published": False,
-                    "blocked_reason": f"pending high-precision AMFlow extraction for {denominator_id}",
+                    "blocked_reason": (
+                        f"pending high-precision AMFlow extraction for {denominator_id} "
+                        f"from the full {FULL_WEIGHTED_TARGET} target"
+                    ),
                 },
             }
             for denominator_id, spec in EXPECTED_WEIGHTS.items()
@@ -648,7 +696,13 @@ def skeleton_fixture() -> dict[str, Any]:
             "tolerance_digits": 50,
             "full_eta_zero_contour_applied": False,
         },
-        "publication_blockers": ["pending high-precision AMFlow extraction"],
+        "publication_blockers": [
+            "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
+            "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
+            "run_command, run_log, raw_output, and raw_output_sha256 unset",
+            "D2, D4, and D6 coefficient arrays are empty",
+            "independent comparison artifacts and 50-digit agreement claims are absent",
+        ],
         "passed": False,
     }
 
@@ -712,8 +766,23 @@ def run_self_check() -> dict[str, Any]:
         "blocked_reason"
     ] = "todo"
 
+    bad_skeleton_blocker_missing_target = skeleton_fixture()
+    bad_skeleton_blocker_missing_target["weights"][0]["reference_validation"][
+        "blocked_reason"
+    ] = "pending high-precision AMFlow extraction for D2"
+
+    bad_skeleton_scope = skeleton_fixture()
+    bad_skeleton_scope["weights"][1]["required_coefficient_scope"] = "eps0 only"
+
     bad_skeleton_placeholder_publication_blocker = skeleton_fixture()
     bad_skeleton_placeholder_publication_blocker["publication_blockers"] = ["todo"]
+
+    bad_skeleton_missing_publication_blocker_class = skeleton_fixture()
+    bad_skeleton_missing_publication_blocker_class["publication_blockers"] = [
+        blocker
+        for blocker in bad_skeleton_missing_publication_blocker_class["publication_blockers"]
+        if "precision_requested_digits" not in blocker
+    ]
 
     bad_skeleton_digit_claim = skeleton_fixture()
     bad_skeleton_digit_claim["weights"][1]["reference_validation"][
@@ -794,9 +863,21 @@ def run_self_check() -> dict[str, Any]:
             bad_skeleton_placeholder_blocker,
             "blocked_reason must not be a placeholder",
         ),
+        "skeleton_rejects_blocker_without_full_target": rejected(
+            bad_skeleton_blocker_missing_target,
+            "blocked_reason must contain",
+        ),
+        "skeleton_rejects_required_scope_drift": rejected(
+            bad_skeleton_scope,
+            "required_coefficient_scope",
+        ),
         "skeleton_rejects_placeholder_publication_blocker": rejected(
             bad_skeleton_placeholder_publication_blocker,
             "publication_blockers[0] must not be a placeholder",
+        ),
+        "skeleton_rejects_missing_publication_blocker_class": rejected(
+            bad_skeleton_missing_publication_blocker_class,
+            "publication_blockers must include precision request blocker",
         ),
         "skeleton_rejects_digit_agreement_claim": rejected(
             bad_skeleton_digit_claim,

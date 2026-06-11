@@ -28,6 +28,7 @@ from verify_b61n_reference_floor_parity import (
     DEFAULT_AMFLOW_GOLDEN,
     DEFAULT_CPP_RESULT,
     DEFAULT_RETAINED_COMPARISON,
+    EXPECTED_TARGETS as EXPECTED_REFERENCE_FLOOR_TARGETS,
     repo_root,
     verify_paths as verify_reference_floor_paths,
 )
@@ -121,12 +122,21 @@ def require_reference_floor_targets(
             target_key not in target_keys,
             f"{label} duplicates a row/order reference-floor target",
         )
+        expected_target = EXPECTED_REFERENCE_FLOOR_TARGETS.get(target_key)
+        expect(
+            expected_target is not None,
+            f"{label} is not a reviewed b61n row 5/6 reference-floor target",
+        )
         target_keys.add(target_key)
 
         reference_floor_id = item.get("reference_floor_id")
         expect(
             isinstance(reference_floor_id, str) and reference_floor_id,
             f"{label}.reference_floor_id must be a non-empty string",
+        )
+        expect(
+            reference_floor_id == expected_target["reference_floor_id"],
+            f"{label}.reference_floor_id must be {expected_target['reference_floor_id']!r}",
         )
         expect(
             reference_floor_id not in target_ids,
@@ -140,10 +150,18 @@ def require_reference_floor_targets(
                 type(digits) is int and digits >= 0,
                 f"{label}.{field} must be a nonnegative int",
             )
+            expect(
+                digits == expected_target[field],
+                f"{label}.{field} must be {expected_target[field]}",
+            )
             digit_floor = digits if digit_floor is None else min(digit_floor, digits)
 
         targets.append(item)
 
+    expect(
+        target_keys == set(EXPECTED_REFERENCE_FLOOR_TARGETS),
+        "row56 reference-floor targets must match the reviewed b61n row 5/6 target set",
+    )
     expect(
         digit_floor == expected_digit_floor,
         "row56 reference-floor target digit floor must match minimum digit agreement",
@@ -534,13 +552,23 @@ def run_self_check() -> dict[str, Any]:
         duplicate_reference_floor_target["row56_reference_floor_targets"][0]["order"]
     )
 
+    unknown_reference_floor_target = copy.deepcopy(reference_floor)
+    unknown_reference_floor_target["row56_reference_floor_targets"][0]["integral"] = (
+        "box[9,9,9,9]"
+    )
+
+    stale_reference_floor_id = copy.deepcopy(reference_floor)
+    stale_reference_floor_id["row56_reference_floor_targets"][0]["reference_floor_id"] = (
+        "synthetic-stale-b61n-reference-floor"
+    )
+
     target_digit_floor_drift = copy.deepcopy(reference_floor)
-    target_digit_floor_drift["row56_reference_floor_targets"][0][
+    target_digit_floor_drift["row56_reference_floor_targets"][1][
         "reference_floor_real_digits"
-    ] = 12
-    target_digit_floor_drift["row56_reference_floor_targets"][0][
+    ] = 45
+    target_digit_floor_drift["row56_reference_floor_targets"][1][
         "reference_floor_imag_digits"
-    ] = 12
+    ] = 45
 
     promoted_gate = copy.deepcopy(publication)
     promoted_gate["amflow_cross_comparator_publication_gate_passed"] = True
@@ -602,12 +630,26 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             expected_error="duplicates a row/order reference-floor target",
         ),
+        "rejects_unknown_reference_floor_target": rejected(
+            reference_floor=unknown_reference_floor_target,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="not a reviewed b61n row 5/6 reference-floor target",
+        ),
+        "rejects_stale_reference_floor_id": rejected(
+            reference_floor=stale_reference_floor_id,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            expected_error="reference_floor_id must be",
+        ),
         "rejects_reference_floor_target_digit_floor_drift": rejected(
             reference_floor=target_digit_floor_drift,
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
-            expected_error="target digit floor must match",
+            expected_error="reference_floor_real_digits must be",
         ),
         "rejects_publication_gate_promotion": rejected(
             reference_floor=reference_floor,

@@ -258,6 +258,10 @@ def evidence_corpus_digest(root: Path, evidence_paths: list[str]) -> str:
     return evidence_corpus_digest_from_records(records)
 
 
+def manifest_bytes(manifest: dict[str, Any]) -> bytes:
+    return json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+
+
 def build_manifest(root: Path, readiness_sidecar: Path, bundle_root: str) -> dict[str, Any]:
     bundle_root = require_bundle_root(bundle_root)
     evidence_paths = collect_release_evidence_paths(root, readiness_sidecar)
@@ -310,8 +314,7 @@ def write_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> Non
     files = validate_manifest_shape(manifest)
     bundle_root = manifest["bundle_root"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_bytes = json.dumps(manifest, indent=2, sort_keys=True).encode("utf-8") + b"\n"
-    archive_entries: list[tuple[str, bytes]] = [(f"{bundle_root}/{MANIFEST_NAME}", manifest_bytes)]
+    archive_entries: list[tuple[str, bytes]] = [(f"{bundle_root}/{MANIFEST_NAME}", manifest_bytes(manifest))]
     for entry in files:
         relative_path = entry["path"]
         data = (root / relative_path).read_bytes()
@@ -331,6 +334,47 @@ def assert_safe_archive_name(name: str) -> None:
     path = Path(name)
     if path.is_absolute() or ".." in path.parts:
         raise BundleError(f"unsafe archive member path: {name}")
+
+
+def expected_archive_member_sizes(
+    manifest: dict[str, Any],
+    files: list[dict[str, Any]],
+) -> dict[str, int]:
+    expected = {f"{manifest['bundle_root']}/{MANIFEST_NAME}": len(manifest_bytes(manifest))}
+    expected.update({entry["archive_path"]: entry["bytes"] for entry in files})
+    return expected
+
+
+def assert_reproducible_archive_member(member: tarfile.TarInfo, expected_size: int) -> None:
+    if not member.isfile():
+        raise BundleError(f"bundle member is not a regular file: {member.name}")
+    if member.size != expected_size:
+        raise BundleError(
+            f"bundle member size mismatch: {member.name} "
+            f"manifest={expected_size} archive={member.size}"
+        )
+    expected_metadata = {
+        "mtime": 0,
+        "uid": 0,
+        "gid": 0,
+        "uname": "",
+        "gname": "",
+        "mode": 0o644,
+    }
+    actual_metadata = {
+        "mtime": member.mtime,
+        "uid": member.uid,
+        "gid": member.gid,
+        "uname": member.uname,
+        "gname": member.gname,
+        "mode": member.mode,
+    }
+    for key, expected_value in expected_metadata.items():
+        if actual_metadata[key] != expected_value:
+            raise BundleError(
+                f"bundle member metadata drift: {member.name} "
+                f"{key}={actual_metadata[key]!r} expected={expected_value!r}"
+            )
 
 
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
@@ -353,18 +397,24 @@ def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> 
 
     expected_names = {entry["archive_path"] for entry in files}
     expected_names.add(f"{manifest['bundle_root']}/{MANIFEST_NAME}")
+    expected_sizes = expected_archive_member_sizes(manifest, files)
 
     with tarfile.open(output_path, "r:gz") as tar:
         members = tar.getmembers()
         names = [member.name for member in members]
         for name in names:
             assert_safe_archive_name(name)
+        duplicate_names = sorted({name for name in names if names.count(name) > 1})
+        if duplicate_names:
+            raise BundleError(f"bundle contains duplicate archive members: {duplicate_names}")
         if names != sorted(names):
             raise BundleError("bundle entries must be sorted for reproducibility")
         if set(names) != expected_names:
             missing = sorted(expected_names.difference(names))
             unexpected = sorted(set(names).difference(expected_names))
             raise BundleError(f"bundle member drift; missing={missing}, unexpected={unexpected}")
+        for member in members:
+            assert_reproducible_archive_member(member, expected_sizes[member.name])
 
         bundled_manifest = tar.extractfile(f"{manifest['bundle_root']}/{MANIFEST_NAME}")
         if bundled_manifest is None:
@@ -390,6 +440,7 @@ def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -
         [f"{manifest['bundle_root']}/{MANIFEST_NAME}"]
         + [entry["archive_path"] for entry in files]
     )
+    expected_sizes = expected_archive_member_sizes(manifest, files)
 
     with tempfile.TemporaryDirectory(prefix="m7-release-evidence-roundtrip-") as temp_dir:
         extract_root = Path(temp_dir) / "extract"
@@ -399,8 +450,9 @@ def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -
         with tarfile.open(output_path, "r:gz") as tar:
             for member in tar.getmembers():
                 assert_safe_archive_name(member.name)
-                if not member.isfile():
-                    raise BundleError(f"bundle member is not a regular file: {member.name}")
+                if member.name not in expected_sizes:
+                    raise BundleError(f"unexpected bundle member: {member.name}")
+                assert_reproducible_archive_member(member, expected_sizes[member.name])
                 member_stream = tar.extractfile(member)
                 if member_stream is None:
                     raise BundleError(f"bundle member could not be read: {member.name}")
@@ -474,6 +526,27 @@ def self_check(root: Path) -> None:
         write_bundle(root, output_path, manifest)
         validate_bundle(root, output_path, manifest)
         round_trip_bundle(root, output_path, manifest)
+
+        metadata_drift_path = Path(temp_dir) / "m7-release-evidence-metadata-drift.tar.gz"
+        files = validate_manifest_shape(manifest)
+        archive_entries: list[tuple[str, bytes]] = [
+            (f"{manifest['bundle_root']}/{MANIFEST_NAME}", manifest_bytes(manifest))
+        ]
+        for entry in files:
+            archive_entries.append((entry["archive_path"], (root / entry["path"]).read_bytes()))
+        with metadata_drift_path.open("wb") as raw_output:
+            with gzip.GzipFile(filename="", mode="wb", fileobj=raw_output, mtime=0) as gz_output:
+                with tarfile.open(fileobj=gz_output, mode="w") as tar:
+                    for index, (archive_name, data) in enumerate(sorted(archive_entries)):
+                        info = make_tar_info(archive_name, len(data))
+                        if index == 0:
+                            info.mtime = 1
+                        tar.addfile(info, io.BytesIO(data))
+        expect_bundle_error(
+            "archive metadata reproducibility check",
+            "bundle member metadata drift",
+            lambda: validate_bundle(root, metadata_drift_path, manifest),
+        )
 
         bad_count_manifest = clone_manifest(manifest)
         bad_count_manifest["file_count"] = bad_count_manifest["file_count"] + 1
@@ -562,6 +635,8 @@ def main() -> int:
 
         manifest = build_manifest(root, args.readiness_sidecar, args.bundle_root)
         write_bundle(root, args.output, manifest)
+        validate_bundle(root, args.output, manifest)
+        round_trip_bundle(root, args.output, manifest)
         print(
             json.dumps(
                 {

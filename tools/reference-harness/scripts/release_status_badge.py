@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any
 
 
 HEALTH_SUMMARY_SCRIPT = Path("tools/reference-harness/scripts/release_health_summary.py")
+SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 class BadgeError(RuntimeError):
@@ -89,6 +91,24 @@ def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
         expect(isinstance(item, str), f"{field}[{index}] must be a string")
         values.append(item)
     return values
+
+
+def require_nonempty_string_list(payload: dict[str, Any], field: str) -> list[str]:
+    values = require_string_list(payload, field)
+    expect(values, f"{field} must be a non-empty list")
+    for index, item in enumerate(values):
+        expect(item.strip(), f"{field}[{index}] must be non-empty")
+        expect(item == item.strip(), f"{field}[{index}] must not carry surrounding whitespace")
+    return values
+
+
+def require_source_commit(payload: dict[str, Any]) -> str:
+    source_commit = require_nonempty_string(payload, "source_commit")
+    expect(
+        SOURCE_COMMIT_PATTERN.fullmatch(source_commit) is not None,
+        "source_commit must be a full lowercase 40-character git SHA",
+    )
+    return source_commit
 
 
 def validate_performance(health: dict[str, Any]) -> None:
@@ -177,6 +197,8 @@ def badge_payload(health: dict[str, Any]) -> dict[str, Any]:
     expect(health.get("schema_version") == 1, "release health schema_version must be 1")
     status = health.get("status")
     expect(status in {"ready", "blocked"}, "release health status must be ready or blocked")
+    require_source_commit(health)
+    require_nonempty_string_list(health, "withheld_claims")
 
     readiness = require_object(health, "readiness")
     inventory = require_object(health, "inventory")
@@ -242,8 +264,10 @@ def synthetic_health(
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
+        "source_commit": "a" * 40,
         "status": status,
         "blockers": [f"blocker-{index}" for index in range(blocker_count)],
+        "withheld_claims": ["Synthetic badge health does not create release evidence."],
         "readiness": {
             "release_signoff_ready": ready,
             "blocker_count": blocker_count,
@@ -397,6 +421,62 @@ def self_check() -> None:
         "blocker list type check",
         malformed_blockers,
         "blockers[0] must be a string",
+    )
+    missing_source_commit = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    missing_source_commit.pop("source_commit")
+    expect_badge_error(
+        "missing source commit check",
+        missing_source_commit,
+        "source_commit must be a non-empty string",
+    )
+    short_source_commit = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    short_source_commit["source_commit"] = "5fdba2c"
+    expect_badge_error(
+        "short source commit check",
+        short_source_commit,
+        "source_commit must be a full lowercase 40-character git SHA",
+    )
+    missing_withheld_claims = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    missing_withheld_claims.pop("withheld_claims")
+    expect_badge_error(
+        "missing withheld claims check",
+        missing_withheld_claims,
+        "withheld_claims must be a list",
+    )
+    empty_withheld_claims = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    empty_withheld_claims["withheld_claims"] = []
+    expect_badge_error(
+        "empty withheld claims check",
+        empty_withheld_claims,
+        "withheld_claims must be a non-empty list",
     )
     missing_performance = synthetic_health(
         status="ready",

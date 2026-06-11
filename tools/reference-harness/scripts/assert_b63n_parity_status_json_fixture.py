@@ -218,6 +218,21 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         f"{label}.scoped_gate_audit",
     )
     require_exact(
+        scoped_gate.get("runtime_checked"),
+        False,
+        f"{label}.scoped_gate_audit.runtime_checked",
+    )
+    require_exact(
+        scoped_gate.get("entry_count"),
+        None,
+        f"{label}.scoped_gate_audit.entry_count",
+    )
+    require_exact(
+        scoped_gate.get("passed"),
+        None,
+        f"{label}.scoped_gate_audit.passed",
+    )
+    require_exact(
         scoped_gate.get("queried_labels"),
         EXPECTED_SCOPED_GATE_LABELS,
         f"{label}.scoped_gate_audit.queried_labels",
@@ -226,6 +241,26 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         scoped_gate.get("queried_weights"),
         ["D2", "D7"],
         f"{label}.scoped_gate_audit.queried_weights",
+    )
+
+    audit_fingerprints = require_object(
+        payload.get("audit_fingerprints"),
+        f"{label}.audit_fingerprints",
+    )
+    require_exact(
+        audit_fingerprints.get("runtime_checked"),
+        False,
+        f"{label}.audit_fingerprints.runtime_checked",
+    )
+    require_exact(
+        audit_fingerprints.get("entry_count"),
+        None,
+        f"{label}.audit_fingerprints.entry_count",
+    )
+    require_exact(
+        audit_fingerprints.get("pins_match"),
+        None,
+        f"{label}.audit_fingerprints.pins_match",
     )
 
     require_exact(
@@ -342,6 +377,21 @@ def run_self_check(root: Path) -> int:
     stale_scoped_gate = copy.deepcopy(expected)
     stale_scoped_gate["scoped_gate_audit"]["queried_weights"] = ["D7", "D2"]
 
+    promoted_scoped_gate_runtime_check = copy.deepcopy(expected)
+    promoted_scoped_gate_runtime_check["scoped_gate_audit"]["runtime_checked"] = True
+
+    scoped_gate_entry_count_drift = copy.deepcopy(expected)
+    scoped_gate_entry_count_drift["scoped_gate_audit"]["entry_count"] = 2
+
+    promoted_audit_fingerprint_runtime_check = copy.deepcopy(expected)
+    promoted_audit_fingerprint_runtime_check["audit_fingerprints"]["runtime_checked"] = True
+
+    audit_fingerprint_entry_count_drift = copy.deepcopy(expected)
+    audit_fingerprint_entry_count_drift["audit_fingerprints"]["entry_count"] = 6
+
+    audit_fingerprint_pin_match_drift = copy.deepcopy(expected)
+    audit_fingerprint_pin_match_drift["audit_fingerprints"]["pins_match"] = True
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -390,6 +440,41 @@ def run_self_check(root: Path) -> int:
         "rejects_scoped_gate_weight_order_drift": rejected(
             lambda: validate_summary_contract(stale_scoped_gate, label="synthetic summary"),
             "scoped_gate_audit.queried_weights",
+        ),
+        "rejects_scoped_gate_runtime_check_promotion": rejected(
+            lambda: validate_summary_contract(
+                promoted_scoped_gate_runtime_check,
+                label="synthetic summary",
+            ),
+            "scoped_gate_audit.runtime_checked",
+        ),
+        "rejects_scoped_gate_entry_count_drift": rejected(
+            lambda: validate_summary_contract(
+                scoped_gate_entry_count_drift,
+                label="synthetic summary",
+            ),
+            "scoped_gate_audit.entry_count",
+        ),
+        "rejects_audit_fingerprint_runtime_check_promotion": rejected(
+            lambda: validate_summary_contract(
+                promoted_audit_fingerprint_runtime_check,
+                label="synthetic summary",
+            ),
+            "audit_fingerprints.runtime_checked",
+        ),
+        "rejects_audit_fingerprint_entry_count_drift": rejected(
+            lambda: validate_summary_contract(
+                audit_fingerprint_entry_count_drift,
+                label="synthetic summary",
+            ),
+            "audit_fingerprints.entry_count",
+        ),
+        "rejects_audit_fingerprint_pin_match_drift": rejected(
+            lambda: validate_summary_contract(
+                audit_fingerprint_pin_match_drift,
+                label="synthetic summary",
+            ),
+            "audit_fingerprints.pins_match",
         ),
         "rejects_invalid_json": rejected(
             lambda: parse_summary_json("{"),

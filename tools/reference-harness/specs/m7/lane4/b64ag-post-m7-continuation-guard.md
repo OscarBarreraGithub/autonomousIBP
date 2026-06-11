@@ -97,6 +97,25 @@ paths. It would not by itself recapture goldens, qualify the phase-0 packet set,
 close `linear_propagator -> b64ag`, change M7 release evidence, or prove release
 readiness.
 
+## Handoff Checks
+
+Before a future code lane attempts to promote a `linear_propagator` packet, it
+should first prove that this post-M7 routing record is still present and that the
+release-facing docs still route `linear_propagator -> b64ag` through this guard:
+
+```sh
+git cat-file -e HEAD:tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md
+rg -n "b64ag-post-m7-continuation-guard.md" docs/release/known-gaps.md docs/release/amflow-example-coverage.md
+python3 tools/reference-harness/scripts/validate_release_markdown.py
+git diff --check -- tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md docs/release/known-gaps.md docs/release/amflow-example-coverage.md
+```
+
+The expected result is: the guard exists at `HEAD`, both release-doc routes are
+still present, the release markdown validator passes, and whitespace validation
+is clean. If any of those checks fails, the next lane should repair the routing
+or docs validation first and still treat the selected lane147 evidence as
+non-promotable.
+
 Until such a helper or packet lands and passes review, the honest post-M7 lane 4
 status remains:
 

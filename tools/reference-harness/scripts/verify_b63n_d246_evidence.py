@@ -245,6 +245,24 @@ def require_raw_output_path_text(raw: Any, label: str) -> str:
     return value
 
 
+def require_run_log_path_text(raw: Any, label: str) -> str:
+    value = require_relative_artifact_path_text(raw, label)
+    filename = Path(value).name
+    banned_suffix = next(
+        (suffix for suffix in BANNED_RETAINED_ARTIFACT_SUFFIXES if filename.endswith(suffix)),
+        None,
+    )
+    expect(
+        banned_suffix is None,
+        f"{label} must not cite retained runtime/comparison artifacts as AMFlow run log",
+    )
+    expect(
+        COMPARE_ARTIFACT_RE.search(filename) is None,
+        f"{label} must not cite retained runtime/comparison artifacts as AMFlow run log",
+    )
+    return value
+
+
 def require_comparison_artifact_path_text(raw: Any, label: str) -> str:
     value = require_relative_artifact_path_text(raw, label)
     filename = Path(value).name
@@ -265,6 +283,12 @@ def optional_raw_output_path_text(raw: Any, label: str) -> str | None:
     if raw is None:
         return None
     return require_raw_output_path_text(raw, label)
+
+
+def optional_run_log_path_text(raw: Any, label: str) -> str | None:
+    if raw is None:
+        return None
+    return require_run_log_path_text(raw, label)
 
 
 def require_decimal_string(raw: Any, label: str) -> str:
@@ -376,7 +400,7 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         "amflow_parameter_set.working_precision_digits",
     )
     run_command = optional_string(parameters.get("run_command"), "amflow_parameter_set.run_command")
-    run_log = optional_relative_artifact_path_text(
+    run_log = optional_run_log_path_text(
         parameters.get("run_log"),
         "amflow_parameter_set.run_log",
     )
@@ -1068,6 +1092,23 @@ def run_self_check() -> dict[str, Any]:
     bad_absolute_run_log = full_fixture()
     bad_absolute_run_log["amflow_parameter_set"]["run_log"] = "/tmp/d246/run.log"
 
+    bad_cpp_result_run_log = full_fixture()
+    bad_cpp_result_run_log["amflow_parameter_set"]["run_log"] = (
+        "tools/reference-harness/specs/m5/proof-runs/lane45/"
+        "automatic_phasespace.cpp-result.json"
+    )
+
+    bad_compare_run_log = full_fixture()
+    bad_compare_run_log["amflow_parameter_set"]["run_log"] = (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.compare30.json"
+    )
+
+    bad_golden_manifest_run_log = full_fixture()
+    bad_golden_manifest_run_log["amflow_parameter_set"]["run_log"] = (
+        "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json"
+    )
+
     bad_parent_raw_output = full_fixture()
     bad_parent_raw_output["amflow_parameter_set"]["raw_output"] = (
         "artifacts/../d246/raw-output.json"
@@ -1262,6 +1303,18 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_absolute_run_log": rejected(
             bad_absolute_run_log,
             "run_log must be a relative artifact path",
+        ),
+        "full_rejects_cpp_result_run_log": rejected(
+            bad_cpp_result_run_log,
+            "AMFlow run log",
+        ),
+        "full_rejects_compare_run_log": rejected(
+            bad_compare_run_log,
+            "AMFlow run log",
+        ),
+        "full_rejects_golden_manifest_run_log": rejected(
+            bad_golden_manifest_run_log,
+            "AMFlow run log",
         ),
         "full_rejects_parent_raw_output": rejected(
             bad_parent_raw_output,

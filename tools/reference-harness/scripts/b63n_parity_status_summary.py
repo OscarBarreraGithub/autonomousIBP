@@ -199,6 +199,10 @@ def default_evidence_sources(root: Path) -> dict[str, Any]:
 
 def validate_evidence_sources(sources: dict[str, Any]) -> dict[str, str]:
     normalized = {field: require_evidence_source_path(sources, field) for field in EVIDENCE_SOURCE_FIELDS}
+    root = repo_root()
+    for field, source_path in normalized.items():
+        resolved = root / source_path
+        expect(resolved.is_file(), f"{field} source artifact must exist: {source_path}")
     first_paths = {
         normalized["first_evidence"],
         normalized["first_compare"],
@@ -751,6 +755,12 @@ def run_self_check() -> dict[str, Any]:
         "b63n-selected4-real-coefficients-evidence.json"
     )
 
+    missing_artifact_evidence_source = copy.deepcopy(evidence_sources)
+    missing_artifact_evidence_source["selected4_compare"] = (
+        "tools/reference-harness/specs/m6/lane146/"
+        "missing-b63n-selected4-cutkosky.compare30.json"
+    )
+
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-full-weighted-residue-surface",
         "rejects_full_contour_overclaim": rejected(
@@ -842,6 +852,15 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             evidence_sources=wrong_lane_evidence_source,
             expected_error="selected4_evidence must stay under tools/reference-harness/specs/m6/lane146/",
+        ),
+        "rejects_missing_evidence_source_artifact": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=missing_artifact_evidence_source,
+            expected_error="selected4_compare source artifact must exist",
         ),
     }
     expect(all(checks.values()), "b63n parity status summary self-check failed")

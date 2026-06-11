@@ -185,6 +185,65 @@ def assert_missing_m5_packet_failure(summary: dict[str, Any]) -> None:
     expect(prerequisite.get("blockers") == [], "missing M5 prerequisite must not invent blockers")
 
 
+def assert_missing_m6_packet_failure(summary: dict[str, Any]) -> None:
+    require_exact_blockers(
+        "missing M6 packet",
+        summary,
+        [
+            "prerequisite:milestone-m6:case-study-numerics",
+            "prerequisite:retained-reference-evidence:case-study-numerics",
+            "review:parity-signoff:milestone-m6",
+        ],
+    )
+    expect(summary.get("m5_qualification_ready") is True, "missing M6 must isolate M5")
+    expect(summary.get("m6_qualification_evidence_present") is False, "missing M6 must be absent")
+    expect(summary.get("m6_qualification_ready") is False, "missing M6 must not be ready")
+    expect(
+        summary.get("m6_qualification_blockers") == [],
+        "missing M6 must not invent sidecar-local blockers",
+    )
+
+    milestone_m6 = find_entry(
+        summary.get("release_prerequisites"),
+        "milestone-m6",
+        "release_prerequisites",
+    )
+    expect(
+        milestone_m6.get("current_state") == "blocked-on-qualification-closure",
+        "missing M6 must keep the M6 prerequisite blocked on qualification closure",
+    )
+    expect(
+        milestone_m6.get("blockers") == ["case-study-numerics"],
+        "missing M6 must preserve the derived case-study-numerics blocker",
+    )
+    expect(milestone_m6.get("satisfied") is False, "missing M6 prerequisite must not be satisfied")
+
+    retained_reference = find_entry(
+        summary.get("release_prerequisites"),
+        "retained-reference-evidence",
+        "release_prerequisites",
+    )
+    expect(
+        retained_reference.get("current_state") == "captured-but-phase0-not-qualified",
+        "missing M6 must keep retained references in the unqualified phase-0 state",
+    )
+    expect(
+        retained_reference.get("blockers") == ["case-study-numerics"],
+        "missing M6 must keep the retained-reference derived blocker visible",
+    )
+    expect(
+        retained_reference.get("satisfied") is False,
+        "missing M6 retained-reference prerequisite must not be satisfied",
+    )
+
+    parity_signoff = find_entry(summary.get("review_sections"), "parity-signoff", "review_sections")
+    expect(
+        parity_signoff.get("status") == "blocked"
+        and parity_signoff.get("blockers") == ["milestone-m6"],
+        "missing M6 must keep parity signoff blocked on milestone-m6",
+    )
+
+
 def stale_qualification_summary(root: Path, accepted_summary: dict[str, Any], path: Path) -> str:
     qualification_path = root / require_repo_path(
         root,
@@ -253,6 +312,15 @@ def main() -> int:
         )
         assert_missing_m5_packet_failure(missing_m5_summary)
 
+        missing_m6_summary = run_failure_case(
+            root,
+            accepted_summary,
+            "missing M6 packet",
+            temp_root / "missing-m6-release-readiness.json",
+            omitted_fields={"m6_qualification_summary_path"},
+        )
+        assert_missing_m6_packet_failure(missing_m6_summary)
+
         stale_qualification_path = stale_qualification_summary(
             root,
             accepted_summary,
@@ -267,7 +335,10 @@ def main() -> int:
         )
         assert_stale_qualification_failure(stale_qualification)
 
-    print("M7 release readiness failure-mode gate passed: missing M5 and stale qualification block")
+    print(
+        "M7 release readiness failure-mode gate passed: "
+        "missing M5, missing M6, and stale qualification block"
+    )
     return 0
 
 

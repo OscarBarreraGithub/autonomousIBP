@@ -16,6 +16,12 @@ DEFAULT_PRECISION_EVIDENCE = Path(
     "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
 )
 
+EXPECTED_TARGETS: tuple[tuple[str, int], ...] = (
+    ("box[1,0,1,1]", 0),
+    ("box[1,1,1,1]", -2),
+    ("box[1,1,1,1]", -1),
+    ("box[1,1,1,1]", 0),
+)
 COMPONENTS: tuple[str, ...] = ("real", "imag")
 
 
@@ -386,6 +392,10 @@ def verify_payloads(
         set(precision_target_keys) == set(diagnostic_by_target),
         "precision evidence target set must match diagnostic row 5/6 targets",
     )
+    expect(
+        tuple(precision_target_keys) == EXPECTED_TARGETS,
+        "precision evidence row 5/6 target order drifted",
+    )
 
     summary = require_object(precision_evidence.get("summary"), "precision_evidence.summary")
     expect(
@@ -480,6 +490,29 @@ def rejected(
 def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     exact_real = "1234567/1000000"
     exact_imag = "-7654321/1000000"
+    targets = [
+        {
+            "integral": integral,
+            "eps_order": eps_order,
+            "reference_floor_real_digits": 2,
+            "reference_floor_imag_digits": 2,
+            "standard_80": {"real": "1.234", "imag": "-7.654"},
+            "standard_serialization_matches_exact_rational_80": True,
+            "standard_serialized_fraction_digits": {"real": 3, "imag": 3},
+            "uplifted_120_prefix": {"real": "1.2345...", "imag": "-7.6543..."},
+            "uplifted_160_prefix": {"real": "1.2345...", "imag": "-7.6543..."},
+            "uplifted_160_extends_standard_80": True,
+            "uplifted_fraction_digits_exceed_reference_floor": True,
+            "uplifted_serialized_fraction_digits": {"real": 5, "imag": 5},
+            "additional_fraction_digits_after_standard_80": {"real": 2, "imag": 2},
+            "digits_beyond_reference_floor_in_uplifted_160": {"real": 3, "imag": 3},
+            "uplifted_tail_after_standard_80_has_nonzero_digit": {
+                "real": True,
+                "imag": True,
+            },
+        }
+        for integral, eps_order in EXPECTED_TARGETS
+    ]
     evidence = {
         "schema_version": 1,
         "evidence_id": "b61n-pipeline-precision-evidence",
@@ -491,55 +524,36 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
             "all_uplifted_tail_after_standard_80_has_nonzero_digit": True,
             "minimum_reference_floor_digits": 2,
             "minimum_uplifted_fraction_digits": 5,
-            "target_count": 1,
+            "target_count": len(EXPECTED_TARGETS),
         },
-        "targets": [
-            {
-                "integral": "box[1,0,1,1]",
-                "eps_order": 0,
-                "reference_floor_real_digits": 2,
-                "reference_floor_imag_digits": 2,
-                "standard_80": {"real": "1.234", "imag": "-7.654"},
-                "standard_serialization_matches_exact_rational_80": True,
-                "standard_serialized_fraction_digits": {"real": 3, "imag": 3},
-                "uplifted_120_prefix": {"real": "1.2345...", "imag": "-7.6543..."},
-                "uplifted_160_prefix": {"real": "1.2345...", "imag": "-7.6543..."},
-                "uplifted_160_extends_standard_80": True,
-                "uplifted_fraction_digits_exceed_reference_floor": True,
-                "uplifted_serialized_fraction_digits": {"real": 5, "imag": 5},
-                "additional_fraction_digits_after_standard_80": {"real": 2, "imag": 2},
-                "digits_beyond_reference_floor_in_uplifted_160": {"real": 3, "imag": 3},
-                "uplifted_tail_after_standard_80_has_nonzero_digit": {
-                    "real": True,
-                    "imag": True,
-                },
-            }
-        ],
+        "targets": targets,
     }
     cpp_result = {
         "benchmark_id": "complex_kinematics",
         "results": [
             {
-                "integral": "box[1,0,1,1]",
+                "integral": integral,
                 "epsilon_orders": [
                     {
-                        "order": 0,
+                        "order": eps_order,
                         "exact_real": exact_real,
                         "exact_imag": exact_imag,
                     }
                 ],
             }
+            for integral, eps_order in EXPECTED_TARGETS
         ],
     }
     diagnostic = {
         "diagnostic_id": "b61n-row56-specific-target-diagnostic",
         "target_diagnostics": [
             {
-                "integral": "box[1,0,1,1]",
-                "eps_order": 0,
+                "integral": integral,
+                "eps_order": eps_order,
                 "reference_floor_real_digits": 2,
                 "reference_floor_imag_digits": 2,
             }
+            for integral, eps_order in EXPECTED_TARGETS
         ],
     }
     return evidence, cpp_result, diagnostic
@@ -560,20 +574,27 @@ def run_self_check() -> dict[str, Any]:
 
     duplicate_target = copy.deepcopy(evidence)
     duplicate_target["targets"].append(copy.deepcopy(duplicate_target["targets"][0]))
-    duplicate_target["summary"]["target_count"] = 2
+    duplicate_target["summary"]["target_count"] = len(EXPECTED_TARGETS) + 1
 
     missing_diagnostic_target = copy.deepcopy(diagnostic)
     missing_diagnostic_target["target_diagnostics"].append(
         {
-            "integral": "box[1,1,1,1]",
+            "integral": "box[0,0,0,1]",
             "eps_order": 0,
             "reference_floor_real_digits": 2,
             "reference_floor_imag_digits": 2,
         }
     )
 
+    wrong_target_evidence = copy.deepcopy(evidence)
+    wrong_target_cpp_result = copy.deepcopy(cpp_result)
+    wrong_target_diagnostic = copy.deepcopy(diagnostic)
+    wrong_target_evidence["targets"][0]["integral"] = "box[0,0,0,1]"
+    wrong_target_cpp_result["results"][0]["integral"] = "box[0,0,0,1]"
+    wrong_target_diagnostic["target_diagnostics"][0]["integral"] = "box[0,0,0,1]"
+
     checks = {
-        "synthetic_fixture_passes": valid_summary["component_count"] == 2,
+        "synthetic_fixture_passes": valid_summary["component_count"] == 8,
         "rejects_nonmonotone_uplift": rejected(
             nonmonotone,
             cpp_result,
@@ -603,6 +624,12 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             missing_diagnostic_target,
             "target set must match diagnostic row 5/6 targets",
+        ),
+        "rejects_coherent_non_row56_retargeting": rejected(
+            wrong_target_evidence,
+            wrong_target_cpp_result,
+            wrong_target_diagnostic,
+            "row 5/6 target order drifted",
         ),
     }
     expect(all(checks.values()), "b61n precision-uplift monotonicity self-check failed")

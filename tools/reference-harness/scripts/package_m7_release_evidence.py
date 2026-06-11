@@ -131,6 +131,8 @@ def require_bundle_root(raw: str) -> str:
     value = raw.strip()
     if not value:
         raise BundleError("bundle root must not be empty")
+    if raw != value:
+        raise BundleError("bundle root must not carry surrounding whitespace")
     if "\\" in value:
         raise BundleError(f"bundle root must be a safe relative POSIX path: {raw}")
     parts = value.split("/")
@@ -657,6 +659,7 @@ def self_check(root: Path) -> None:
 
         for invalid_root, expected in (
             ("m7\\release-evidence", "safe relative POSIX path"),
+            (" m7-release-evidence ", "must not carry surrounding whitespace"),
             (".", "safe relative path"),
             ("m7//release-evidence", "safe relative path"),
         ):

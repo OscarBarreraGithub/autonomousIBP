@@ -59,6 +59,15 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not publish D2/D4/D6 weighted-residue coefficients.",
     "This summary does not widen runtime or public behavior.",
 )
+EVIDENCE_SOURCE_FIELDS: tuple[str, ...] = (
+    "first_evidence",
+    "first_compare",
+    "first_cpp_result",
+    "selected4_evidence",
+    "selected4_compare",
+    "selected4_cpp_result",
+    "d246_sidecar",
+)
 
 
 class StatusSummaryError(RuntimeError):
@@ -114,6 +123,12 @@ def require_bool(payload: dict[str, Any], field: str) -> bool:
     return value
 
 
+def require_string(payload: dict[str, Any], field: str) -> str:
+    value = payload.get(field)
+    expect(isinstance(value, str) and value, f"{field} must be a non-empty string")
+    return value
+
+
 def require_list(raw: Any, label: str) -> list[Any]:
     expect(isinstance(raw, list), f"{label} must be a list")
     return raw
@@ -122,6 +137,70 @@ def require_list(raw: Any, label: str) -> list[Any]:
 def require_object(raw: Any, label: str) -> dict[str, Any]:
     expect(isinstance(raw, dict), f"{label} must be an object")
     return raw
+
+
+def build_evidence_sources(
+    *,
+    root: Path,
+    first_evidence_path: Path,
+    first_compare_path: Path,
+    first_cpp_result_path: Path,
+    selected4_evidence_path: Path,
+    selected4_compare_path: Path,
+    selected4_cpp_result_path: Path,
+    d246_sidecar_path: Path,
+) -> dict[str, Any]:
+    return {
+        "first_evidence": repo_relative_text(root, first_evidence_path),
+        "first_compare": repo_relative_text(root, first_compare_path),
+        "first_cpp_result": repo_relative_text(root, first_cpp_result_path),
+        "selected4_evidence": repo_relative_text(root, selected4_evidence_path),
+        "selected4_compare": repo_relative_text(root, selected4_compare_path),
+        "selected4_cpp_result": repo_relative_text(root, selected4_cpp_result_path),
+        "d246_sidecar": repo_relative_text(root, d246_sidecar_path),
+    }
+
+
+def default_evidence_sources(root: Path) -> dict[str, Any]:
+    return build_evidence_sources(
+        root=root,
+        first_evidence_path=DEFAULT_FIRST_EVIDENCE,
+        first_compare_path=DEFAULT_FIRST_COMPARE,
+        first_cpp_result_path=DEFAULT_FIRST_CPP_RESULT,
+        selected4_evidence_path=DEFAULT_SELECTED4_EVIDENCE,
+        selected4_compare_path=DEFAULT_SELECTED4_COMPARE,
+        selected4_cpp_result_path=DEFAULT_SELECTED4_CPP_RESULT,
+        d246_sidecar_path=DEFAULT_D246_SIDECAR,
+    )
+
+
+def validate_evidence_sources(sources: dict[str, Any]) -> dict[str, str]:
+    normalized = {field: require_string(sources, field) for field in EVIDENCE_SOURCE_FIELDS}
+    first_paths = {
+        normalized["first_evidence"],
+        normalized["first_compare"],
+        normalized["first_cpp_result"],
+    }
+    selected4_paths = {
+        normalized["selected4_evidence"],
+        normalized["selected4_compare"],
+        normalized["selected4_cpp_result"],
+    }
+    expect(len(first_paths) == 3, "first coefficient evidence source paths must be distinct")
+    expect(len(selected4_paths) == 3, "selected4 evidence source paths must be distinct")
+    expect(
+        normalized["first_compare"] != normalized["selected4_compare"],
+        "first and selected4 compare sources must stay distinct",
+    )
+    expect(
+        normalized["first_cpp_result"] != normalized["selected4_cpp_result"],
+        "first and selected4 C++ result sources must stay distinct",
+    )
+    expect(
+        normalized["d246_sidecar"] not in first_paths | selected4_paths,
+        "D246 sidecar source must stay distinct from parity evidence sources",
+    )
+    return normalized
 
 
 def coefficient_orders(row: dict[str, Any], label: str) -> list[int]:
@@ -342,6 +421,7 @@ def summarize_payloads(
     d246: dict[str, Any],
     scoped_gate: dict[str, Any],
     fingerprints: dict[str, Any],
+    evidence_sources: dict[str, Any],
 ) -> dict[str, Any]:
     expect(first.get("evidence_valid") is True, "first coefficient evidence must be valid")
     expect(first.get("integral") == FIRST_INTEGRAL, "first coefficient integral drifted")
@@ -428,6 +508,7 @@ def summarize_payloads(
         "summary_id": "b63n-post-m7-parity-status-v1",
         "status": "blocked-full-weighted-residue-surface",
         "inputs_verified": True,
+        "evidence_sources": validate_evidence_sources(evidence_sources),
         "first_coefficient": {
             "lane": first["lane"],
             "integral": first["integral"],
@@ -465,6 +546,7 @@ def summarize_payloads(
 
 
 def render_text(summary: dict[str, Any]) -> str:
+    sources = summary["evidence_sources"]
     first = summary["first_coefficient"]
     selected4 = summary["selected4_parity"]
     d246 = summary["d246_weighted_residue_surface"]
@@ -473,6 +555,12 @@ def render_text(summary: dict[str, Any]) -> str:
     lines = [
         "b63n parity status summary",
         f"status: {summary['status']}",
+        (
+            "evidence_sources: "
+            f"first={sources['first_evidence']} "
+            f"selected4={sources['selected4_evidence']} "
+            f"d246={sources['d246_sidecar']}"
+        ),
         (
             "first_coefficient: "
             f"lane={first['lane']} integral={first['integral']} "
@@ -577,6 +665,7 @@ def rejected(
     d246: dict[str, Any],
     scoped_gate: dict[str, Any],
     fingerprints: dict[str, Any],
+    evidence_sources: dict[str, Any],
     expected_error: str,
 ) -> bool:
     try:
@@ -586,6 +675,7 @@ def rejected(
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
         )
     except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
         return expected_error in str(error)
@@ -594,12 +684,14 @@ def rejected(
 
 def run_self_check() -> dict[str, Any]:
     first, selected4, d246, scoped_gate, fingerprints = synthetic_payloads()
+    evidence_sources = default_evidence_sources(repo_root())
     valid = summarize_payloads(
         first=first,
         selected4=selected4,
         d246=d246,
         scoped_gate=scoped_gate,
         fingerprints=fingerprints,
+        evidence_sources=evidence_sources,
     )
 
     fake_full_contour = copy.deepcopy(selected4)
@@ -624,6 +716,9 @@ def run_self_check() -> dict[str, Any]:
     stale_fingerprints = copy.deepcopy(fingerprints)
     stale_fingerprints["pins_match"] = False
 
+    evidence_source_drift = copy.deepcopy(evidence_sources)
+    evidence_source_drift["selected4_compare"] = evidence_source_drift["first_compare"]
+
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-full-weighted-residue-surface",
         "rejects_full_contour_overclaim": rejected(
@@ -632,6 +727,7 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="full eta-zero contour",
         ),
         "rejects_selected4_digit_floor_regression": rejected(
@@ -640,6 +736,7 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="selected4 digit floor",
         ),
         "rejects_missing_d7_order_scope": rejected(
@@ -648,6 +745,7 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="D7 order scope",
         ),
         "rejects_selected4_transported_count_drift": rejected(
@@ -656,6 +754,7 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="transported integral count",
         ),
         "rejects_d246_silent_promotion": rejected(
@@ -664,6 +763,7 @@ def run_self_check() -> dict[str, Any]:
             d246=promoted_d246,
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="D2/D4/D6 must remain blocked",
         ),
         "rejects_scoped_gate_order_drift": rejected(
@@ -672,6 +772,7 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=stale_scoped_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="runtime scoped gate weights",
         ),
         "rejects_runtime_fingerprint_drift": rejected(
@@ -680,7 +781,17 @@ def run_self_check() -> dict[str, Any]:
             d246=d246,
             scoped_gate=scoped_gate,
             fingerprints=stale_fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="fingerprints must match pins",
+        ),
+        "rejects_evidence_source_drift": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_source_drift,
+            expected_error="first and selected4 compare sources",
         ),
     }
     expect(all(checks.values()), "b63n parity status summary self-check failed")
@@ -782,12 +893,23 @@ def main(argv: list[str]) -> int:
             else:
                 scoped_gate = summarize_scoped_gate_pinned()
                 fingerprints = summarize_fingerprint_pinned()
+            evidence_sources = build_evidence_sources(
+                root=root,
+                first_evidence_path=args.first_evidence_path,
+                first_compare_path=args.first_compare_path,
+                first_cpp_result_path=args.first_cpp_result_path,
+                selected4_evidence_path=args.selected4_evidence_path,
+                selected4_compare_path=args.selected4_compare_path,
+                selected4_cpp_result_path=args.selected4_cpp_result_path,
+                d246_sidecar_path=args.d246_sidecar_path,
+            )
             summary = summarize_payloads(
                 first=first,
                 selected4=selected4,
                 d246=d246,
                 scoped_gate=scoped_gate,
                 fingerprints=fingerprints,
+                evidence_sources=evidence_sources,
             )
         if args.summary_path is not None:
             write_json(resolve_repo_path(root, args.summary_path), summary)

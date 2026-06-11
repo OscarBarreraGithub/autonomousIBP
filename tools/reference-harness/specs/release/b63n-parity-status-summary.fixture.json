@@ -26,6 +26,15 @@
       "D6"
     ]
   },
+  "evidence_sources": {
+    "d246_sidecar": "tools/reference-harness/specs/m6/lane146/b63n-d246-weighted-residue-reference-evidence.json",
+    "first_compare": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.compare30.json",
+    "first_cpp_result": "tools/reference-harness/specs/m6/lane143/automatic_phasespace.first-cutkosky.cpp-result.json",
+    "first_evidence": "tools/reference-harness/specs/m6/lane143/b63n-first-real-coefficient-evidence.json",
+    "selected4_compare": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.compare30.json",
+    "selected4_cpp_result": "tools/reference-harness/specs/m6/lane146/automatic_phasespace.selected4-cutkosky.cpp-result.json",
+    "selected4_evidence": "tools/reference-harness/specs/m6/lane146/b63n-selected4-real-coefficients-evidence.json"
+  },
   "first_coefficient": {
     "compared_coefficient_count": 4,
     "full_eta_zero_contour_applied": false,

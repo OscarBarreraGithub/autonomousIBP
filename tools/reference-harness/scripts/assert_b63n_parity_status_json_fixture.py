@@ -54,6 +54,36 @@ EXPECTED_SCOPED_GATE_LABELS = [
     "blocked-D2-scoped-weighted-residue",
     "published-D7-scoped-weighted-residue",
 ]
+EXPECTED_EVIDENCE_SOURCES = {
+    "d246_sidecar": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "b63n-d246-weighted-residue-reference-evidence.json"
+    ),
+    "first_compare": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.compare30.json"
+    ),
+    "first_cpp_result": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.cpp-result.json"
+    ),
+    "first_evidence": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "b63n-first-real-coefficient-evidence.json"
+    ),
+    "selected4_compare": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.compare30.json"
+    ),
+    "selected4_cpp_result": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.cpp-result.json"
+    ),
+    "selected4_evidence": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "b63n-selected4-real-coefficients-evidence.json"
+    ),
+}
 
 
 def expect(condition: bool, message: str) -> None:
@@ -116,6 +146,11 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         f"{label}.status",
     )
     require_exact(payload.get("inputs_verified"), True, f"{label}.inputs_verified")
+    require_exact(
+        require_object(payload.get("evidence_sources"), f"{label}.evidence_sources"),
+        EXPECTED_EVIDENCE_SOURCES,
+        f"{label}.evidence_sources",
+    )
 
     first = require_object(
         payload.get("first_coefficient"),
@@ -411,6 +446,14 @@ def run_self_check(root: Path) -> int:
     audit_fingerprint_pin_match_drift = copy.deepcopy(expected)
     audit_fingerprint_pin_match_drift["audit_fingerprints"]["pins_match"] = True
 
+    evidence_source_drift = copy.deepcopy(expected)
+    evidence_source_drift["evidence_sources"]["selected4_compare"] = (
+        "tools/reference-harness/specs/m6/lane146/synthetic-b63n-selected4.compare30.json"
+    )
+
+    missing_evidence_sources = copy.deepcopy(expected)
+    missing_evidence_sources.pop("evidence_sources", None)
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -508,6 +551,14 @@ def run_self_check(root: Path) -> int:
                 label="synthetic summary",
             ),
             "audit_fingerprints.pins_match",
+        ),
+        "rejects_evidence_source_drift": rejected(
+            lambda: fixture_matches(expected, evidence_source_drift),
+            "actual summary.evidence_sources",
+        ),
+        "rejects_missing_evidence_sources": rejected(
+            lambda: fixture_matches(expected, missing_evidence_sources),
+            "actual summary.evidence_sources",
         ),
         "rejects_invalid_json": rejected(
             lambda: parse_summary_json("{"),

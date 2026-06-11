@@ -8,7 +8,7 @@ import copy
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from regenerate_b63n_weighted_residue_fingerprints import (
     run_emitter as run_fingerprint_emitter,
@@ -191,8 +191,33 @@ def build_evidence_sources(
     }
 
 
-def default_evidence_sources(root: Path) -> dict[str, Any]:
-    return build_evidence_sources(
+def normalize_evidence_sources_from_paths(
+    *,
+    root: Path,
+    first_evidence_path: Path,
+    first_compare_path: Path,
+    first_cpp_result_path: Path,
+    selected4_evidence_path: Path,
+    selected4_compare_path: Path,
+    selected4_cpp_result_path: Path,
+    d246_sidecar_path: Path,
+) -> dict[str, str]:
+    return validate_evidence_sources(
+        build_evidence_sources(
+            root=root,
+            first_evidence_path=first_evidence_path,
+            first_compare_path=first_compare_path,
+            first_cpp_result_path=first_cpp_result_path,
+            selected4_evidence_path=selected4_evidence_path,
+            selected4_compare_path=selected4_compare_path,
+            selected4_cpp_result_path=selected4_cpp_result_path,
+            d246_sidecar_path=d246_sidecar_path,
+        )
+    )
+
+
+def default_evidence_sources(root: Path) -> dict[str, str]:
+    return normalize_evidence_sources_from_paths(
         root=root,
         first_evidence_path=DEFAULT_FIRST_EVIDENCE,
         first_compare_path=DEFAULT_FIRST_COMPARE,
@@ -722,9 +747,18 @@ def rejected(
     return False
 
 
+def rejected_call(check: Callable[[], Any], expected_error: str) -> bool:
+    try:
+        check()
+    except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
+        return expected_error in str(error)
+    return False
+
+
 def run_self_check() -> dict[str, Any]:
     first, selected4, d246, scoped_gate, fingerprints = synthetic_payloads()
-    evidence_sources = default_evidence_sources(repo_root())
+    root = repo_root()
+    evidence_sources = default_evidence_sources(root)
     valid = summarize_payloads(
         first=first,
         selected4=selected4,
@@ -776,6 +810,19 @@ def run_self_check() -> dict[str, Any]:
         "tools/reference-harness/specs/m6/lane146/"
         "missing-b63n-selected4-cutkosky.compare30.json"
     )
+
+    def normalize_with(**overrides: Path) -> dict[str, str]:
+        path_args = {
+            "first_evidence_path": DEFAULT_FIRST_EVIDENCE,
+            "first_compare_path": DEFAULT_FIRST_COMPARE,
+            "first_cpp_result_path": DEFAULT_FIRST_CPP_RESULT,
+            "selected4_evidence_path": DEFAULT_SELECTED4_EVIDENCE,
+            "selected4_compare_path": DEFAULT_SELECTED4_COMPARE,
+            "selected4_cpp_result_path": DEFAULT_SELECTED4_CPP_RESULT,
+            "d246_sidecar_path": DEFAULT_D246_SIDECAR,
+        }
+        path_args.update(overrides)
+        return normalize_evidence_sources_from_paths(root=root, **path_args)
 
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-full-weighted-residue-surface",
@@ -887,6 +934,12 @@ def run_self_check() -> dict[str, Any]:
             evidence_sources=missing_artifact_evidence_source,
             expected_error="selected4_compare source artifact must exist",
         ),
+        "rejects_outside_repo_path_argument_before_read": rejected_call(
+            lambda: normalize_with(
+                first_evidence_path=Path("/tmp/b63n-first-real-coefficient-evidence.json"),
+            ),
+            "first_evidence must be repo-relative",
+        ),
     }
     expect(all(checks.values()), "b63n parity status summary self-check failed")
     return {
@@ -969,25 +1022,7 @@ def main(argv: list[str]) -> int:
         if args.self_check:
             summary = run_self_check()
         else:
-            first = summarize_first_paths(
-                evidence_path=args.first_evidence_path,
-                compare_path=args.first_compare_path,
-                cpp_result_path=args.first_cpp_result_path,
-            )
-            selected4 = summarize_selected4_paths(
-                evidence_path=args.selected4_evidence_path,
-                compare_path=args.selected4_compare_path,
-                cpp_result_path=args.selected4_cpp_result_path,
-            )
-            d246 = summarize_d246_path(args.d246_sidecar_path)
-            if args.include_runtime_audit:
-                test_binary = resolve_test_binary(args.test_binary, root)
-                scoped_gate = summarize_scoped_gate_runtime(test_binary, root)
-                fingerprints = summarize_fingerprint_runtime(test_binary, root)
-            else:
-                scoped_gate = summarize_scoped_gate_pinned()
-                fingerprints = summarize_fingerprint_pinned()
-            evidence_sources = build_evidence_sources(
+            evidence_sources = normalize_evidence_sources_from_paths(
                 root=root,
                 first_evidence_path=args.first_evidence_path,
                 first_compare_path=args.first_compare_path,
@@ -997,6 +1032,24 @@ def main(argv: list[str]) -> int:
                 selected4_cpp_result_path=args.selected4_cpp_result_path,
                 d246_sidecar_path=args.d246_sidecar_path,
             )
+            first = summarize_first_paths(
+                evidence_path=Path(evidence_sources["first_evidence"]),
+                compare_path=Path(evidence_sources["first_compare"]),
+                cpp_result_path=Path(evidence_sources["first_cpp_result"]),
+            )
+            selected4 = summarize_selected4_paths(
+                evidence_path=Path(evidence_sources["selected4_evidence"]),
+                compare_path=Path(evidence_sources["selected4_compare"]),
+                cpp_result_path=Path(evidence_sources["selected4_cpp_result"]),
+            )
+            d246 = summarize_d246_path(Path(evidence_sources["d246_sidecar"]))
+            if args.include_runtime_audit:
+                test_binary = resolve_test_binary(args.test_binary, root)
+                scoped_gate = summarize_scoped_gate_runtime(test_binary, root)
+                fingerprints = summarize_fingerprint_runtime(test_binary, root)
+            else:
+                scoped_gate = summarize_scoped_gate_pinned()
+                fingerprints = summarize_fingerprint_pinned()
             summary = summarize_payloads(
                 first=first,
                 selected4=selected4,

@@ -415,6 +415,14 @@ def validate_evidence_sidecar(evidence: dict[str, Any], compare_path: Path) -> d
     )
     expect(
         parse_int(
+            comparator.get("matched_integral_count"),
+            "selected4 comparator matched count",
+        )
+        == len(EXPECTED_SELECTED4_ORDERS),
+        "selected4 comparator matched integral count must stay at 4",
+    )
+    expect(
+        parse_int(
             comparator.get("compared_coefficient_count"),
             "selected4 comparator compared count",
         )
@@ -942,6 +950,8 @@ def run_self_check() -> dict[str, Any]:
     )
     bad_evidence = json.loads(json.dumps(evidence))
     bad_evidence["final_solution_samples_used_as_input"] = True
+    bad_evidence_matched_count = json.loads(json.dumps(evidence))
+    bad_evidence_matched_count["comparator"]["matched_integral_count"] = 3
     bad_missing_transported = json.loads(json.dumps(evidence))
     bad_missing_transported["eta_zero_endpoint_transported_integrals"] = [
         integral
@@ -1014,6 +1024,14 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             golden_text,
             "reject final solution samples",
+        ),
+        "rejects_evidence_matched_count_drift": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_evidence_matched_count,
+            compare,
+            cpp_result,
+            golden_text,
+            "matched integral count",
         ),
         "rejects_missing_transported_integral": rejected(
             CANONICAL_PERMUTATION_AUDIT,

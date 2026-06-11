@@ -448,8 +448,12 @@ def round_trip_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -
         resolved_extract_root = extract_root.resolve(strict=True)
 
         with tarfile.open(output_path, "r:gz") as tar:
+            seen_names: set[str] = set()
             for member in tar.getmembers():
                 assert_safe_archive_name(member.name)
+                if member.name in seen_names:
+                    raise BundleError(f"bundle contains duplicate archive member: {member.name}")
+                seen_names.add(member.name)
                 if member.name not in expected_sizes:
                     raise BundleError(f"unexpected bundle member: {member.name}")
                 assert_reproducible_archive_member(member, expected_sizes[member.name])
@@ -546,6 +550,19 @@ def self_check(root: Path) -> None:
             "archive metadata reproducibility check",
             "bundle member metadata drift",
             lambda: validate_bundle(root, metadata_drift_path, manifest),
+        )
+
+        duplicate_member_path = Path(temp_dir) / "m7-release-evidence-duplicate-member.tar.gz"
+        with duplicate_member_path.open("wb") as raw_output:
+            with gzip.GzipFile(filename="", mode="wb", fileobj=raw_output, mtime=0) as gz_output:
+                with tarfile.open(fileobj=gz_output, mode="w") as tar:
+                    first_entry = sorted(archive_entries)[0]
+                    for archive_name, data in sorted(archive_entries) + [first_entry]:
+                        add_bytes(tar, archive_name, data)
+        expect_bundle_error(
+            "round-trip duplicate member check",
+            "duplicate archive member",
+            lambda: round_trip_bundle(root, duplicate_member_path, manifest),
         )
 
         bad_count_manifest = clone_manifest(manifest)

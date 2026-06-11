@@ -129,10 +129,13 @@ def require_bundle_root(raw: str) -> str:
     value = raw.strip()
     if not value:
         raise BundleError("bundle root must not be empty")
+    if "\\" in value:
+        raise BundleError(f"bundle root must be a safe relative POSIX path: {raw}")
+    parts = value.split("/")
     path = Path(value)
-    if path.is_absolute() or ".." in path.parts:
+    if path.is_absolute() or any(part in {"", ".", ".."} for part in parts):
         raise BundleError(f"bundle root must be a safe relative path: {raw}")
-    return path.as_posix()
+    return value
 
 
 def require_manifest_string(payload: dict[str, Any], field: str, label: str) -> str:
@@ -639,6 +642,17 @@ def self_check(root: Path) -> None:
         write_bundle(root, output_path, manifest)
         validate_bundle(root, output_path, manifest)
         round_trip_bundle(root, output_path, manifest)
+
+        for invalid_root, expected in (
+            ("m7\\release-evidence", "safe relative POSIX path"),
+            (".", "safe relative path"),
+            ("m7//release-evidence", "safe relative path"),
+        ):
+            expect_bundle_error(
+                f"unsafe bundle root check {invalid_root!r}",
+                expected,
+                lambda invalid_root=invalid_root: require_bundle_root(invalid_root),
+            )
 
         metadata_drift_path = Path(temp_dir) / "m7-release-evidence-metadata-drift.tar.gz"
         files = validate_manifest_shape(manifest)

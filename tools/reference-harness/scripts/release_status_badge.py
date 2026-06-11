@@ -60,6 +60,27 @@ def require_int(payload: dict[str, Any], field: str) -> int:
     return value
 
 
+def require_positive_int(payload: dict[str, Any], field: str, label: str | None = None) -> int:
+    value = payload.get(field)
+    diagnostic = label or field
+    expect(type(value) is int and value > 0, f"{diagnostic} must be a positive integer")
+    return value
+
+
+def require_nonnegative_number(payload: dict[str, Any], field: str, label: str | None = None) -> float:
+    value = payload.get(field)
+    diagnostic = label or field
+    expect(type(value) in {int, float} and value >= 0, f"{diagnostic} must be a nonnegative number")
+    return float(value)
+
+
+def require_nonempty_string(payload: dict[str, Any], field: str, label: str | None = None) -> str:
+    value = payload.get(field)
+    diagnostic = label or field
+    expect(isinstance(value, str) and value.strip(), f"{diagnostic} must be a non-empty string")
+    return value.strip()
+
+
 def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
     value = payload.get(field)
     expect(isinstance(value, list), f"{field} must be a list")
@@ -68,6 +89,60 @@ def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
         expect(isinstance(item, str), f"{field}[{index}] must be a string")
         values.append(item)
     return values
+
+
+def validate_performance(health: dict[str, Any]) -> None:
+    performance = require_object(health, "performance")
+    expect(
+        performance.get("review_complete") is True,
+        "performance.review_complete must be true",
+    )
+    benchmark_count = require_positive_int(performance, "benchmark_count")
+    run_count = require_positive_int(performance, "run_count")
+    max_wall_seconds = require_nonnegative_number(performance, "max_wall_seconds")
+    max_rss_kb = require_int(performance, "max_rss_kb")
+    benchmarks = performance.get("benchmarks")
+    expect(isinstance(benchmarks, list), "performance.benchmarks must be a list")
+    expect(
+        len(benchmarks) == benchmark_count,
+        "performance benchmark count does not match performance.benchmarks length",
+    )
+    total_runs = 0
+    max_benchmark_wall = 0.0
+    max_benchmark_rss = 0
+    seen_labels: set[str] = set()
+    for index, benchmark in enumerate(benchmarks):
+        expect(isinstance(benchmark, dict), f"performance.benchmarks[{index}] must be an object")
+        label = require_nonempty_string(
+            benchmark,
+            "label",
+            f"performance.benchmarks[{index}].label",
+        )
+        expect(label not in seen_labels, f"duplicate performance benchmark label: {label}")
+        seen_labels.add(label)
+        benchmark_runs = require_positive_int(
+            benchmark,
+            "run_count",
+            f"performance.benchmarks[{index}].run_count",
+        )
+        benchmark_wall = require_nonnegative_number(
+            benchmark,
+            "max_wall_seconds",
+            f"performance.benchmarks[{index}].max_wall_seconds",
+        )
+        benchmark_rss = require_int(benchmark, "max_rss_kb")
+        total_runs += benchmark_runs
+        max_benchmark_wall = max(max_benchmark_wall, benchmark_wall)
+        max_benchmark_rss = max(max_benchmark_rss, benchmark_rss)
+    expect(total_runs == run_count, "performance run_count does not match benchmark run totals")
+    expect(
+        max_benchmark_wall == max_wall_seconds,
+        "performance max_wall_seconds does not match benchmark maximum",
+    )
+    expect(
+        max_benchmark_rss == max_rss_kb,
+        "performance max_rss_kb does not match benchmark maximum",
+    )
 
 
 def run_release_health(root: Path, *, verify: bool) -> dict[str, Any]:
@@ -128,6 +203,7 @@ def badge_payload(health: dict[str, Any]) -> dict[str, Any]:
         inventory.get("schema_reconciled") is True,
         "inventory.schema_reconciled must be true",
     )
+    validate_performance(health)
     expect(accepted_count <= sidecar_count, "inventory.accepted_count exceeds sidecar_count")
     expect(
         accepted_count + unaccepted_count == sidecar_count,
@@ -162,6 +238,7 @@ def synthetic_health(
     accepted_count: int,
     unaccepted_count: int,
     schema_reconciled: bool = True,
+    performance_complete: bool = True,
 ) -> dict[str, Any]:
     return {
         "schema_version": 1,
@@ -176,6 +253,21 @@ def synthetic_health(
             "accepted_count": accepted_count,
             "unaccepted_count": unaccepted_count,
             "schema_reconciled": schema_reconciled,
+        },
+        "performance": {
+            "review_complete": performance_complete,
+            "benchmark_count": 1,
+            "run_count": 3,
+            "max_wall_seconds": 1.25,
+            "max_rss_kb": 2048,
+            "benchmarks": [
+                {
+                    "label": "synthetic.release-badge",
+                    "run_count": 3,
+                    "max_wall_seconds": 1.25,
+                    "max_rss_kb": 2048,
+                }
+            ],
         },
     }
 
@@ -305,6 +397,47 @@ def self_check() -> None:
         "blocker list type check",
         malformed_blockers,
         "blockers[0] must be a string",
+    )
+    missing_performance = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    missing_performance.pop("performance")
+    expect_badge_error(
+        "missing performance summary check",
+        missing_performance,
+        "performance must be an object",
+    )
+    expect_badge_error(
+        "incomplete performance review check",
+        synthetic_health(
+            status="ready",
+            ready=True,
+            blocker_count=0,
+            sidecar_count=10,
+            accepted_count=8,
+            unaccepted_count=2,
+            performance_complete=False,
+        ),
+        "performance.review_complete must be true",
+    )
+    mismatched_performance = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    mismatched_performance["performance"]["benchmarks"][0]["run_count"] = 2
+    expect_badge_error(
+        "performance run-count coherence check",
+        mismatched_performance,
+        "performance run_count does not match benchmark run totals",
     )
 
     root = repo_root()

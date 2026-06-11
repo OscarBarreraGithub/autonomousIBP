@@ -104,6 +104,13 @@ not-full rows, the concrete missing work is:
 | `user_defined_amfmode` | Yes or promote the full retained three-target user-mode output into a comparator packet. | Yes. Execute the user-defined `AMFMode` hook through eta=0 endpoint extraction. |
 | `user_defined_ending` | Yes or promote both retained `final_Tradition` and `final_usr` outputs into comparator packets. | Yes. Execute both ending workflows, including manual boundary writes and Gamma-ratio handling. |
 
+For `linear_propagator`, the post-M7 lane 4 continuation guard is
+[`b64ag-post-m7-continuation-guard.md`](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).
+It records the non-promotion boundary for existing selected `b64ag` evidence
+and the expected fail-closed fixture shape for a future runtime-packet guard. It
+is routing documentation only; it does not add runtime evidence, promote the
+optional phase-0 packet, or change the accepted M7 release-readiness inputs.
+
 ## M7 Scope Statement
 
 The accepted M7 release-readiness path consumes an accepted M5 feature-parity

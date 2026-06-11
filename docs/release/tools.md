@@ -107,7 +107,9 @@ python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --ver
 | --- | --- | --- |
 | [`package_m7_release_evidence.py`](../../tools/reference-harness/scripts/package_m7_release_evidence.py) | Create a deterministic tarball containing the accepted readiness sidecar, direct inputs, M5 acceptance sidecar, referenced M5 sidecars, and checksum manifest. | `m7-release-evidence-bundle-self-check`. |
 | [`assert_m7_release_evidence_manifest_digest.py`](../../tools/reference-harness/scripts/assert_m7_release_evidence_manifest_digest.py) | Fixture guard for the committed evidence corpus digest. | `m7-release-evidence-manifest-digest-fixture`. |
-| [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, and performance-review summary from committed sidecars. | `m7-release-health-summary` and JSON/text fixture tests. |
+| [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, and performance-review summary from committed sidecars. | `m7-release-health-summary`, `m7-release-health-source-sidecar-self-check`, and `m7-release-health-summary-json`. |
+| [`assert_m7_release_health_json_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py) | Fixture gate for the machine-readable health JSON contract, including a synthetic drift self-check. | `m7-release-health-summary-json-fixture` and `m7-release-health-summary-json-fixture-self-check`. |
+| [`assert_m7_release_health_text_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py) | Fixture gate for the operator-facing text health contract. | `m7-release-health-summary-text-fixture`. |
 | [`release_status_badge.py`](../../tools/reference-harness/scripts/release_status_badge.py) | Render a Shields-compatible JSON status badge from the release health summary. | `m7-release-status-badge` and badge fixture tests. |
 | [`assert_m7_release_health_outputs_consistent.py`](../../tools/reference-harness/scripts/assert_m7_release_health_outputs_consistent.py) | Verify text, JSON, and badge health outputs remain mutually consistent. | `m7-release-health-output-consistency`. |
 
@@ -117,6 +119,10 @@ Operator commands:
 python3 tools/reference-harness/scripts/package_m7_release_evidence.py \
   --output /tmp/m7-release-evidence.tar.gz
 python3 tools/reference-harness/scripts/release_health_summary.py --verify
+python3 tools/reference-harness/scripts/release_health_summary.py --verify --format json
+python3 tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py
+python3 tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py --self-check
+python3 tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py
 python3 tools/reference-harness/scripts/release_status_badge.py --verify
 ```
 

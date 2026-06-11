@@ -202,6 +202,12 @@ def require_relative_artifact_path_text(raw: Any, label: str) -> str:
     return value
 
 
+def optional_relative_artifact_path_text(raw: Any, label: str) -> str | None:
+    if raw is None:
+        return None
+    return require_relative_artifact_path_text(raw, label)
+
+
 def require_decimal_string(raw: Any, label: str) -> str:
     value = require_string(raw, label)
     try:
@@ -311,8 +317,14 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         "amflow_parameter_set.working_precision_digits",
     )
     run_command = optional_string(parameters.get("run_command"), "amflow_parameter_set.run_command")
-    run_log = optional_string(parameters.get("run_log"), "amflow_parameter_set.run_log")
-    raw_output = optional_string(parameters.get("raw_output"), "amflow_parameter_set.raw_output")
+    run_log = optional_relative_artifact_path_text(
+        parameters.get("run_log"),
+        "amflow_parameter_set.run_log",
+    )
+    raw_output = optional_relative_artifact_path_text(
+        parameters.get("raw_output"),
+        "amflow_parameter_set.raw_output",
+    )
     raw_output_sha256 = parameters.get("raw_output_sha256")
     if raw_output_sha256 is not None:
         require_sha256(raw_output_sha256, "amflow_parameter_set.raw_output_sha256")
@@ -478,7 +490,7 @@ def validate_reference_validation(
         f"{label}.reference_validation.minimum_digit_agreement",
     )
     expect(minimum_digits >= MINIMUM_DIGITS, f"{label} must retain at least 50 digit agreement")
-    require_string(
+    require_relative_artifact_path_text(
         validation.get("comparison_artifact"),
         f"{label}.reference_validation.comparison_artifact",
     )
@@ -952,6 +964,19 @@ def run_self_check() -> dict[str, Any]:
     bad_raw_sha = full_fixture()
     bad_raw_sha["amflow_parameter_set"]["raw_output_sha256"] = "not-a-sha"
 
+    bad_absolute_run_log = full_fixture()
+    bad_absolute_run_log["amflow_parameter_set"]["run_log"] = "/tmp/d246/run.log"
+
+    bad_parent_raw_output = full_fixture()
+    bad_parent_raw_output["amflow_parameter_set"]["raw_output"] = (
+        "artifacts/../d246/raw-output.json"
+    )
+
+    bad_absolute_comparison_artifact = full_fixture()
+    bad_absolute_comparison_artifact["weights"][0]["reference_validation"][
+        "comparison_artifact"
+    ] = "/tmp/d2.compare.json"
+
     checks = {
         "skeleton_valid_but_not_published": (
             skeleton_summary["schema_valid"] is True
@@ -1078,6 +1103,18 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_bad_raw_sha": rejected(
             bad_raw_sha,
             "raw_output_sha256 must be a lowercase sha256",
+        ),
+        "full_rejects_absolute_run_log": rejected(
+            bad_absolute_run_log,
+            "run_log must be a relative artifact path",
+        ),
+        "full_rejects_parent_raw_output": rejected(
+            bad_parent_raw_output,
+            "raw_output must not contain . or .. components",
+        ),
+        "full_rejects_absolute_comparison_artifact": rejected(
+            bad_absolute_comparison_artifact,
+            "comparison_artifact must be a relative artifact path",
         ),
     }
     expect(all(checks.values()), "b63n D246 evidence verifier self-check failed")

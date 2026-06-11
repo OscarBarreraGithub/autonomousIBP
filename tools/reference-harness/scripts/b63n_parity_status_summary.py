@@ -84,6 +84,36 @@ EXPECTED_EVIDENCE_SOURCE_PREFIXES: dict[str, str] = {
     "selected4_cpp_result": "tools/reference-harness/specs/m6/lane146/",
     "d246_sidecar": "tools/reference-harness/specs/m6/lane146/",
 }
+EXPECTED_EVIDENCE_SOURCE_PATHS: dict[str, str] = {
+    "first_evidence": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "b63n-first-real-coefficient-evidence.json"
+    ),
+    "first_compare": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.compare30.json"
+    ),
+    "first_cpp_result": (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.cpp-result.json"
+    ),
+    "selected4_evidence": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "b63n-selected4-real-coefficients-evidence.json"
+    ),
+    "selected4_compare": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.compare30.json"
+    ),
+    "selected4_cpp_result": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.cpp-result.json"
+    ),
+    "d246_sidecar": (
+        "tools/reference-harness/specs/m6/lane146/"
+        "b63n-d246-weighted-residue-reference-evidence.json"
+    ),
+}
 
 
 class StatusSummaryError(RuntimeError):
@@ -259,6 +289,12 @@ def validate_evidence_sources(sources: dict[str, Any]) -> dict[str, str]:
         normalized["d246_sidecar"] not in first_paths | selected4_paths,
         "D246 sidecar source must stay distinct from parity evidence sources",
     )
+    for field, source_path in normalized.items():
+        expected_source_path = EXPECTED_EVIDENCE_SOURCE_PATHS[field]
+        expect(
+            source_path == expected_source_path,
+            f"{field} must stay bound to {expected_source_path}",
+        )
     return normalized
 
 
@@ -811,6 +847,12 @@ def run_self_check() -> dict[str, Any]:
         "missing-b63n-selected4-cutkosky.compare30.json"
     )
 
+    renamed_same_lane_evidence_source = copy.deepcopy(evidence_sources)
+    renamed_same_lane_evidence_source["first_cpp_result"] = (
+        "tools/reference-harness/specs/m6/lane143/"
+        "automatic_phasespace.first-cutkosky.stripped-result.json"
+    )
+
     def normalize_with(**overrides: Path) -> dict[str, str]:
         path_args = {
             "first_evidence_path": DEFAULT_FIRST_EVIDENCE,
@@ -934,11 +976,37 @@ def run_self_check() -> dict[str, Any]:
             evidence_sources=missing_artifact_evidence_source,
             expected_error="selected4_compare source artifact must exist",
         ),
+        "rejects_renamed_same_lane_evidence_source": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=renamed_same_lane_evidence_source,
+            expected_error=(
+                "first_cpp_result must stay bound to "
+                "tools/reference-harness/specs/m6/lane143/"
+                "automatic_phasespace.first-cutkosky.cpp-result.json"
+            ),
+        ),
         "rejects_outside_repo_path_argument_before_read": rejected_call(
             lambda: normalize_with(
                 first_evidence_path=Path("/tmp/b63n-first-real-coefficient-evidence.json"),
             ),
             "first_evidence must be repo-relative",
+        ),
+        "rejects_renamed_same_lane_path_argument_before_read": rejected_call(
+            lambda: normalize_with(
+                first_cpp_result_path=Path(
+                    "tools/reference-harness/specs/m6/lane143/"
+                    "automatic_phasespace.first-cutkosky.stripped-result.json"
+                ),
+            ),
+            (
+                "first_cpp_result must stay bound to "
+                "tools/reference-harness/specs/m6/lane143/"
+                "automatic_phasespace.first-cutkosky.cpp-result.json"
+            ),
         ),
     }
     expect(all(checks.values()), "b63n parity status summary self-check failed")

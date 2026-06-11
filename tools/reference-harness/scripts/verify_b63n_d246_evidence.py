@@ -245,6 +245,16 @@ def require_raw_output_path_text(raw: Any, label: str) -> str:
     return value
 
 
+def require_comparison_artifact_path_text(raw: Any, label: str) -> str:
+    value = require_relative_artifact_path_text(raw, label)
+    filename = Path(value).name
+    expect(
+        COMPARE_ARTIFACT_RE.search(filename) is not None,
+        f"{label} must cite a comparison artifact named *.compare*.json",
+    )
+    return value
+
+
 def optional_relative_artifact_path_text(raw: Any, label: str) -> str | None:
     if raw is None:
         return None
@@ -539,7 +549,7 @@ def validate_reference_validation(
         f"{label}.reference_validation.minimum_digit_agreement",
     )
     expect(minimum_digits >= MINIMUM_DIGITS, f"{label} must retain at least 50 digit agreement")
-    require_relative_artifact_path_text(
+    require_comparison_artifact_path_text(
         validation.get("comparison_artifact"),
         f"{label}.reference_validation.comparison_artifact",
     )
@@ -1085,6 +1095,19 @@ def run_self_check() -> dict[str, Any]:
         "comparison_artifact"
     ] = "/tmp/d2.compare.json"
 
+    bad_noncompare_comparison_artifact = full_fixture()
+    bad_noncompare_comparison_artifact["weights"][0]["reference_validation"][
+        "comparison_artifact"
+    ] = "artifacts/d2-validation.json"
+
+    bad_cpp_result_comparison_artifact = full_fixture()
+    bad_cpp_result_comparison_artifact["weights"][0]["reference_validation"][
+        "comparison_artifact"
+    ] = (
+        "tools/reference-harness/specs/m5/proof-runs/lane45/"
+        "automatic_phasespace.cpp-result.json"
+    )
+
     checks = {
         "skeleton_valid_but_not_published": (
             skeleton_summary["schema_valid"] is True
@@ -1259,6 +1282,14 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_absolute_comparison_artifact": rejected(
             bad_absolute_comparison_artifact,
             "comparison_artifact must be a relative artifact path",
+        ),
+        "full_rejects_noncompare_comparison_artifact": rejected(
+            bad_noncompare_comparison_artifact,
+            "comparison artifact named *.compare*.json",
+        ),
+        "full_rejects_cpp_result_comparison_artifact": rejected(
+            bad_cpp_result_comparison_artifact,
+            "comparison artifact named *.compare*.json",
         ),
     }
     expect(all(checks.values()), "b63n D246 evidence verifier self-check failed")

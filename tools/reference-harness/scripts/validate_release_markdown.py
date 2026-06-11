@@ -391,6 +391,11 @@ python3 tools/reference-harness/scripts/validate_release_markdown.py
             "# Release Known Gaps\n\n```sh\nif then\n```\n",
             "shell fenced code does not parse",
         ),
+        "bad_json_fence_rejected": expect_self_check_failure(
+            "bad-json",
+            "# Release Known Gaps\n\n```json\n{\"release\":\n```\n",
+            "json fenced code does not parse",
+        ),
         "unsupported_language_rejected": expect_self_check_failure(
             "unsupported-language",
             "# Release Known Gaps\n\n```python\nprint('not a release-doc fence')\n```\n",

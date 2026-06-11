@@ -622,6 +622,15 @@ if(BUILD_TESTING)
   set_tests_properties(b61n-parity-status-summary-json-fixture
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME b61n-parity-status-summary-json-fixture-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_b61n_parity_status_json_fixture.py
+      --self-check)
+  set_tests_properties(b61n-parity-status-summary-json-fixture-self-check
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_executable(cutkosky-weighted-residue-tests
     tests/cutkosky_weighted_residue_tests.cpp)

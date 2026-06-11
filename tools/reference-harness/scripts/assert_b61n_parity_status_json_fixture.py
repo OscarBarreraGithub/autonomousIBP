@@ -16,6 +16,61 @@ from typing import Any, Callable
 EXPECTED_JSON_FIXTURE = Path(
     "tools/reference-harness/specs/release/b61n-parity-status-summary.fixture.json"
 )
+EXPECTED_BLOCKERS = [
+    "row 5/6 comparison is matched to retained AMFlow reference floor, not 50-digit parity",
+    "publication gate remains blocked by the b61n AMFlow cross-comparator floor",
+]
+EXPECTED_WITHHELD_CLAIMS = [
+    "This summary reads committed b61n evidence and optional audit fingerprints only.",
+    "This summary does not rerun AMFlow numerics.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim full eta=0 contour execution.",
+    "This summary does not widen runtime or public behavior.",
+]
+EXPECTED_REFERENCE_FLOOR_TARGETS = [
+    {
+        "integral": "box[1,0,1,1]",
+        "order": 0,
+        "reference_floor_id": "b61n-row5-eps0-retained-amflow-floor",
+        "reference_floor_imag_digits": 11,
+        "reference_floor_real_digits": 11,
+    },
+    {
+        "integral": "box[1,1,1,1]",
+        "order": -2,
+        "reference_floor_id": "b61n-row6-eps-2-retained-amflow-floor",
+        "reference_floor_imag_digits": 46,
+        "reference_floor_real_digits": 46,
+    },
+    {
+        "integral": "box[1,1,1,1]",
+        "order": -1,
+        "reference_floor_id": "b61n-row6-eps-1-retained-amflow-floor",
+        "reference_floor_imag_digits": 13,
+        "reference_floor_real_digits": 12,
+    },
+    {
+        "integral": "box[1,1,1,1]",
+        "order": 0,
+        "reference_floor_id": "b61n-row6-eps0-retained-amflow-floor",
+        "reference_floor_imag_digits": 12,
+        "reference_floor_real_digits": 12,
+    },
+]
+EXPECTED_AUDIT_FINGERPRINT_ENTRIES = [
+    {
+        "category": "b61n-publication-contour-evaluation",
+        "label": "published-lane142-primitive-bubble",
+        "pinned_fingerprint": "fnv1a64:92f403f7f2c701d5",
+    }
+]
+
+
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
 
 
 def repo_root() -> Path:
@@ -46,6 +101,180 @@ def print_json_diff(expected: dict[str, Any], actual: dict[str, Any]) -> None:
     print("".join(diff), file=sys.stderr)
 
 
+def require_object(raw: Any, label: str) -> dict[str, Any]:
+    expect(isinstance(raw, dict), f"{label} must be an object")
+    return raw
+
+
+def require_list(raw: Any, label: str) -> list[Any]:
+    expect(isinstance(raw, list), f"{label} must be a list")
+    return raw
+
+
+def require_exact(raw: Any, expected: Any, label: str) -> None:
+    expect(raw == expected, f"{label} must be {expected!r}, got {raw!r}")
+
+
+def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
+    require_exact(payload.get("schema_version"), 1, f"{label}.schema_version")
+    require_exact(
+        payload.get("summary_id"),
+        "b61n-post-m7-parity-status-v1",
+        f"{label}.summary_id",
+    )
+    require_exact(
+        payload.get("status"),
+        "blocked-reference-floor-limited",
+        f"{label}.status",
+    )
+    require_exact(payload.get("inputs_verified"), True, f"{label}.inputs_verified")
+
+    reference_floor = require_object(
+        payload.get("reference_floor"),
+        f"{label}.reference_floor",
+    )
+    require_exact(
+        reference_floor.get("comparison_verdict"),
+        "matched-to-reference-floor",
+        f"{label}.reference_floor.comparison_verdict",
+    )
+    require_exact(
+        reference_floor.get("compared_coefficient_count"),
+        14,
+        f"{label}.reference_floor.compared_coefficient_count",
+    )
+    require_exact(
+        reference_floor.get("matched_to_tolerance_count"),
+        10,
+        f"{label}.reference_floor.matched_to_tolerance_count",
+    )
+    require_exact(
+        reference_floor.get("matched_to_reference_floor_count"),
+        len(EXPECTED_REFERENCE_FLOOR_TARGETS),
+        f"{label}.reference_floor.matched_to_reference_floor_count",
+    )
+    require_exact(
+        reference_floor.get("minimum_digit_agreement"),
+        11,
+        f"{label}.reference_floor.minimum_digit_agreement",
+    )
+    require_exact(
+        require_list(reference_floor.get("targets"), f"{label}.reference_floor.targets"),
+        EXPECTED_REFERENCE_FLOOR_TARGETS,
+        f"{label}.reference_floor.targets",
+    )
+
+    precision = require_object(payload.get("precision_uplift"), f"{label}.precision_uplift")
+    require_exact(
+        precision.get("target_count"),
+        len(EXPECTED_REFERENCE_FLOOR_TARGETS),
+        f"{label}.precision_uplift.target_count",
+    )
+    require_exact(
+        precision.get("component_count"),
+        8,
+        f"{label}.precision_uplift.component_count",
+    )
+    require_exact(
+        precision.get("minimum_reference_floor_digits"),
+        11,
+        f"{label}.precision_uplift.minimum_reference_floor_digits",
+    )
+    require_exact(
+        precision.get("minimum_standard_fraction_digits"),
+        80,
+        f"{label}.precision_uplift.minimum_standard_fraction_digits",
+    )
+    require_exact(
+        precision.get("minimum_uplifted_fraction_digits"),
+        160,
+        f"{label}.precision_uplift.minimum_uplifted_fraction_digits",
+    )
+    require_exact(
+        precision.get("amflow_reference_values_used_for_digit_count"),
+        False,
+        f"{label}.precision_uplift.amflow_reference_values_used_for_digit_count",
+    )
+
+    publication = require_object(payload.get("publication_gate"), f"{label}.publication_gate")
+    require_exact(
+        publication.get("variant_count"),
+        5,
+        f"{label}.publication_gate.variant_count",
+    )
+    require_exact(
+        publication.get("blocked_variant_count"),
+        5,
+        f"{label}.publication_gate.blocked_variant_count",
+    )
+    require_exact(
+        publication.get("minimum_digit_agreement_required"),
+        50,
+        f"{label}.publication_gate.minimum_digit_agreement_required",
+    )
+    require_exact(
+        publication.get("minimum_digit_agreement_observed"),
+        2,
+        f"{label}.publication_gate.minimum_digit_agreement_observed",
+    )
+    require_exact(
+        publication.get("gate_passed"),
+        False,
+        f"{label}.publication_gate.gate_passed",
+    )
+    require_exact(
+        publication.get("m6_qualifier_hook_prepositioned"),
+        True,
+        f"{label}.publication_gate.m6_qualifier_hook_prepositioned",
+    )
+    require_exact(
+        publication.get("m6_qualifier_hook_currently_promoted"),
+        False,
+        f"{label}.publication_gate.m6_qualifier_hook_currently_promoted",
+    )
+    require_exact(
+        publication.get("m7_parity_single_row_hook_prepositioned"),
+        True,
+        f"{label}.publication_gate.m7_parity_single_row_hook_prepositioned",
+    )
+
+    audit_fingerprints = require_object(
+        payload.get("audit_fingerprints"),
+        f"{label}.audit_fingerprints",
+    )
+    require_exact(
+        audit_fingerprints.get("runtime_checked"),
+        False,
+        f"{label}.audit_fingerprints.runtime_checked",
+    )
+    require_exact(
+        audit_fingerprints.get("entry_count"),
+        len(EXPECTED_AUDIT_FINGERPRINT_ENTRIES),
+        f"{label}.audit_fingerprints.entry_count",
+    )
+    require_exact(
+        audit_fingerprints.get("pins_match"),
+        None,
+        f"{label}.audit_fingerprints.pins_match",
+    )
+    require_exact(
+        require_list(audit_fingerprints.get("entries"), f"{label}.audit_fingerprints.entries"),
+        EXPECTED_AUDIT_FINGERPRINT_ENTRIES,
+        f"{label}.audit_fingerprints.entries",
+    )
+
+    require_exact(
+        require_list(payload.get("blockers"), f"{label}.blockers"),
+        EXPECTED_BLOCKERS,
+        f"{label}.blockers",
+    )
+    require_exact(
+        require_list(payload.get("withheld_claims"), f"{label}.withheld_claims"),
+        EXPECTED_WITHHELD_CLAIMS,
+        f"{label}.withheld_claims",
+    )
+
+
 def parse_summary_json(raw_output: str) -> dict[str, Any]:
     try:
         actual = json.loads(raw_output)
@@ -57,6 +286,8 @@ def parse_summary_json(raw_output: str) -> dict[str, Any]:
 
 
 def fixture_matches(expected: dict[str, Any], actual: dict[str, Any]) -> bool:
+    validate_summary_contract(expected, label="expected fixture")
+    validate_summary_contract(actual, label="actual summary")
     return actual == expected
 
 
@@ -91,7 +322,13 @@ def run_fixture_gate(root: Path) -> int:
         return 1
 
     expected = read_json(root / EXPECTED_JSON_FIXTURE)
-    if not fixture_matches(expected, actual):
+    try:
+        matches = fixture_matches(expected, actual)
+    except RuntimeError as error:
+        print(f"b61n parity status JSON fixture contract failed: {error}", file=sys.stderr)
+        return 1
+
+    if not matches:
         print_json_diff(expected, actual)
         return 1
 
@@ -115,8 +352,16 @@ def run_self_check(root: Path) -> int:
     promoted_publication_gate = copy.deepcopy(expected)
     promoted_publication_gate["publication_gate"]["gate_passed"] = True
 
+    publication_variant_drift = copy.deepcopy(expected)
+    publication_variant_drift["publication_gate"]["blocked_variant_count"] -= 1
+
     publication_digit_floor_drift = copy.deepcopy(expected)
     publication_digit_floor_drift["publication_gate"]["minimum_digit_agreement_required"] = 49
+
+    precision_source_drift = copy.deepcopy(expected)
+    precision_source_drift["precision_uplift"][
+        "amflow_reference_values_used_for_digit_count"
+    ] = True
 
     row56_target_floor_drift = copy.deepcopy(expected)
     row56_target_floor_drift["reference_floor"]["targets"][0][
@@ -131,6 +376,12 @@ def run_self_check(root: Path) -> int:
     missing_blocker = copy.deepcopy(expected)
     missing_blocker["blockers"] = missing_blocker["blockers"][:-1]
 
+    audit_runtime_check_drift = copy.deepcopy(expected)
+    audit_runtime_check_drift["audit_fingerprints"]["runtime_checked"] = True
+
+    audit_entry_count_drift = copy.deepcopy(expected)
+    audit_entry_count_drift["audit_fingerprints"]["entry_count"] = 2
+
     audit_fingerprint_pin_drift = copy.deepcopy(expected)
     audit_fingerprint_pin_drift["audit_fingerprints"]["entries"][0]["pinned_fingerprint"] = (
         "fnv1a64:syntheticb61n"
@@ -141,31 +392,53 @@ def run_self_check(root: Path) -> int:
 
     checks = {
         "accepts_current_fixture": fixture_matches(expected, copy.deepcopy(expected)),
-        "rejects_status_drift": not fixture_matches(expected, status_drift),
-        "rejects_publication_gate_promotion": not fixture_matches(
-            expected,
-            promoted_publication_gate,
+        "rejects_status_drift": rejected(
+            lambda: fixture_matches(expected, status_drift),
+            "actual summary.status",
         ),
-        "rejects_publication_digit_floor_drift": not fixture_matches(
-            expected,
-            publication_digit_floor_drift,
+        "rejects_publication_gate_promotion": rejected(
+            lambda: fixture_matches(expected, promoted_publication_gate),
+            "actual summary.publication_gate.gate_passed",
         ),
-        "rejects_row56_target_floor_drift": not fixture_matches(
-            expected,
-            row56_target_floor_drift,
+        "rejects_publication_variant_drift": rejected(
+            lambda: fixture_matches(expected, publication_variant_drift),
+            "actual summary.publication_gate.blocked_variant_count",
         ),
-        "rejects_row56_target_identity_drift": not fixture_matches(
-            expected,
-            row56_target_identity_drift,
+        "rejects_publication_digit_floor_drift": rejected(
+            lambda: fixture_matches(expected, publication_digit_floor_drift),
+            "actual summary.publication_gate.minimum_digit_agreement_required",
         ),
-        "rejects_missing_blocker": not fixture_matches(expected, missing_blocker),
-        "rejects_audit_fingerprint_pin_drift": not fixture_matches(
-            expected,
-            audit_fingerprint_pin_drift,
+        "rejects_precision_source_drift": rejected(
+            lambda: fixture_matches(expected, precision_source_drift),
+            "actual summary.precision_uplift.amflow_reference_values_used_for_digit_count",
         ),
-        "rejects_missing_withheld_claims": not fixture_matches(
-            expected,
-            missing_withheld_claims,
+        "rejects_row56_target_floor_drift": rejected(
+            lambda: fixture_matches(expected, row56_target_floor_drift),
+            "actual summary.reference_floor.targets",
+        ),
+        "rejects_row56_target_identity_drift": rejected(
+            lambda: fixture_matches(expected, row56_target_identity_drift),
+            "actual summary.reference_floor.targets",
+        ),
+        "rejects_missing_blocker": rejected(
+            lambda: fixture_matches(expected, missing_blocker),
+            "actual summary.blockers",
+        ),
+        "rejects_audit_runtime_check_drift": rejected(
+            lambda: fixture_matches(expected, audit_runtime_check_drift),
+            "actual summary.audit_fingerprints.runtime_checked",
+        ),
+        "rejects_audit_entry_count_drift": rejected(
+            lambda: fixture_matches(expected, audit_entry_count_drift),
+            "actual summary.audit_fingerprints.entry_count",
+        ),
+        "rejects_audit_fingerprint_pin_drift": rejected(
+            lambda: fixture_matches(expected, audit_fingerprint_pin_drift),
+            "actual summary.audit_fingerprints.entries",
+        ),
+        "rejects_missing_withheld_claims": rejected(
+            lambda: fixture_matches(expected, missing_withheld_claims),
+            "actual summary.withheld_claims",
         ),
         "rejects_invalid_json": rejected(
             lambda: parse_summary_json("{"),

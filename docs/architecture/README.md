@@ -42,6 +42,18 @@ scoped D7 evidence, and audit/fingerprint guard stages.
 Non-claim boundary: scoped D7 evidence does not imply D2/D4/D6 coverage,
 `feynman_prescription` closure, D246 retirement, or M6/M7 readiness.
 
+### B64ag Lane 4 Continuation Guard
+
+The `b64ag` post-M7 surface is intentionally tracked as a guard route, not as a
+new architecture note. Use the
+[Lane 4 B64ag Post-M7 Continuation Guard](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md)
+when reviewing `linear_propagator` status text or a future recapture/runtime
+packet guard.
+
+Non-claim boundary: selected lane147 evidence remains non-promotable until a
+fail-closed full `gaugex -> 0` recapture/runtime-packet guard and accepted
+phase-0 qualification evidence exist.
+
 ## Maintainer Rules
 
 - Keep architecture notes descriptive unless the same landing also changes the

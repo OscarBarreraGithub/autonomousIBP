@@ -167,6 +167,19 @@ def require_manifest_source_commit(value: str, label: str) -> str:
     return value
 
 
+def assert_manifest_source_commit_matches_head(root: Path, manifest: dict[str, Any]) -> None:
+    source_commit = require_manifest_source_commit(
+        require_manifest_string(manifest, "source_commit", "bundle manifest"),
+        "bundle manifest source_commit",
+    )
+    head = git_head(root)
+    if source_commit != head:
+        raise BundleError(
+            "bundle manifest source_commit does not match current HEAD: "
+            f"{source_commit} != {head}"
+        )
+
+
 def require_manifest_string_list(
     manifest: dict[str, Any],
     field: str,
@@ -482,6 +495,7 @@ def assert_reproducible_archive_member(member: tarfile.TarInfo, expected_size: i
 
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
+    assert_manifest_source_commit_matches_head(root, manifest)
     expected_corpus_digest = manifest.get("evidence_corpus_sha256")
     actual_corpus_digest = evidence_corpus_digest(
         root,
@@ -674,6 +688,14 @@ def self_check(root: Path) -> None:
             "manifest source commit provenance check",
             "source_commit must be a full lowercase 40-character git SHA",
             lambda: validate_bundle(root, output_path, short_commit_manifest),
+        )
+
+        stale_commit_manifest = clone_manifest(manifest)
+        stale_commit_manifest["source_commit"] = "0" * 40
+        expect_bundle_error(
+            "manifest source commit freshness check",
+            "source_commit does not match current HEAD",
+            lambda: validate_bundle(root, output_path, stale_commit_manifest),
         )
 
         missing_readiness_manifest = clone_manifest(manifest)

@@ -296,6 +296,25 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         require_sha256(raw_output_sha256, "amflow_parameter_set.raw_output_sha256")
 
     if not published:
+        expect(
+            precision is None,
+            "skeleton evidence must not record precision_requested_digits",
+        )
+        expect(
+            eps_order is None,
+            "skeleton evidence must not record eps_order_requested",
+        )
+        expect(
+            working_precision is None,
+            "skeleton evidence must not record working_precision_digits",
+        )
+        expect(run_command is None, "skeleton evidence must not record run_command")
+        expect(run_log is None, "skeleton evidence must not record run_log")
+        expect(raw_output is None, "skeleton evidence must not record raw_output")
+        expect(
+            raw_output_sha256 is None,
+            "skeleton evidence must not record raw_output_sha256",
+        )
         return
 
     expect(precision is not None and precision >= MINIMUM_DIGITS,
@@ -792,6 +811,12 @@ def run_self_check() -> dict[str, Any]:
     bad_skeleton_scope = skeleton_fixture()
     bad_skeleton_scope["weights"][1]["required_coefficient_scope"] = "eps0 only"
 
+    bad_skeleton_precision_claim = skeleton_fixture()
+    bad_skeleton_precision_claim["amflow_parameter_set"]["precision_requested_digits"] = 80
+
+    bad_skeleton_run_artifact_claim = skeleton_fixture()
+    bad_skeleton_run_artifact_claim["amflow_parameter_set"]["raw_output_sha256"] = "c" * 64
+
     bad_skeleton_placeholder_publication_blocker = skeleton_fixture()
     bad_skeleton_placeholder_publication_blocker["publication_blockers"] = ["todo"]
 
@@ -901,6 +926,14 @@ def run_self_check() -> dict[str, Any]:
         "skeleton_rejects_required_scope_drift": rejected(
             bad_skeleton_scope,
             "required_coefficient_scope",
+        ),
+        "skeleton_rejects_precision_claim": rejected(
+            bad_skeleton_precision_claim,
+            "skeleton evidence must not record precision_requested_digits",
+        ),
+        "skeleton_rejects_run_artifact_claim": rejected(
+            bad_skeleton_run_artifact_claim,
+            "skeleton evidence must not record raw_output_sha256",
         ),
         "skeleton_rejects_placeholder_publication_blocker": rejected(
             bad_skeleton_placeholder_publication_blocker,

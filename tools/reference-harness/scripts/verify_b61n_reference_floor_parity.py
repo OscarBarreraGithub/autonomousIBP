@@ -382,6 +382,13 @@ def validate_reference_floor_summary(summary: dict[str, Any], label: str) -> dic
     coefficients = index_coefficients(summary, label)
     reference_floor_matches = index_reference_floor_matches(summary, label)
     expect(
+        len(coefficients) == compared_count,
+        (
+            f"{label}.integrals contain {len(coefficients)} coefficient records, "
+            f"but compared_coefficient_count is {compared_count}"
+        ),
+    )
+    expect(
         set(reference_floor_matches) == set(EXPECTED_TARGETS),
         f"{label}.reference_floor_matches no longer names the row 5/6 target set",
     )
@@ -527,6 +534,9 @@ def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> 
     missing_target = copy.deepcopy(valid_summary)
     missing_target["reference_floor_matches"] = missing_target["reference_floor_matches"][:-1]
 
+    missing_non_floor_coefficient = copy.deepcopy(valid_summary)
+    missing_non_floor_coefficient["integrals"][0]["coefficients"].pop()
+
     duplicate_target = copy.deepcopy(valid_summary)
     duplicate_target["reference_floor_matches"][1]["integral"] = duplicate_target[
         "reference_floor_matches"
@@ -590,6 +600,10 @@ def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> 
         ),
         "rejects_fake_50_digit_row56_claim": rejected(fake_50_digit, "must not be reported"),
         "rejects_missing_row56_reference_floor_target": rejected(missing_target, "row 5/6 target set"),
+        "rejects_stale_compared_count_after_missing_coefficient": rejected(
+            missing_non_floor_coefficient,
+            "compared_coefficient_count",
+        ),
         "rejects_duplicate_row56_reference_floor_target": rejected(
             duplicate_target,
             "repeats reference-floor match",

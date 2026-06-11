@@ -395,8 +395,26 @@ def add_bytes(tar: tarfile.TarFile, archive_name: str, data: bytes) -> None:
     tar.addfile(make_tar_info(archive_name, len(data)), io.BytesIO(data))
 
 
+def assert_output_path_does_not_overwrite_inputs(
+    root: Path,
+    output_path: Path,
+    files: list[dict[str, Any]],
+) -> None:
+    resolved_output = output_path.resolve(strict=False)
+    for entry in files:
+        try:
+            resolved_input = (root / entry["path"]).resolve(strict=True)
+        except OSError as error:
+            raise BundleError(f"bundled evidence input is missing: {entry['path']}") from error
+        if resolved_output == resolved_input:
+            raise BundleError(
+                f"output path would overwrite bundled evidence input: {entry['path']}"
+            )
+
+
 def write_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
+    assert_output_path_does_not_overwrite_inputs(root, output_path, files)
     bundle_root = manifest["bundle_root"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     archive_entries: list[tuple[str, bytes]] = [(f"{bundle_root}/{MANIFEST_NAME}", manifest_bytes(manifest))]
@@ -693,6 +711,39 @@ def self_check(root: Path) -> None:
             "files must be sorted",
             lambda: validate_bundle(root, output_path, unsorted_manifest),
         )
+
+        collision_root = Path(temp_dir) / "collision-root"
+        collision_source = collision_root / "a" / "readiness.json"
+        collision_source.parent.mkdir(parents=True)
+        collision_data = b"{\"ready\":true}\n"
+        collision_source.write_bytes(collision_data)
+        collision_manifest = {
+            "schema_version": 1,
+            "bundle_kind": "m7-release-evidence-bundle",
+            "source_commit": "0" * 40,
+            "readiness_sidecar": "a/readiness.json",
+            "bundle_root": DEFAULT_BUNDLE_ROOT,
+            "file_count": 1,
+            "evidence_corpus_digest_algorithm": EVIDENCE_CORPUS_DIGEST_ALGORITHM,
+            "evidence_corpus_sha256": evidence_corpus_digest_from_records(
+                [("a/readiness.json", collision_data)]
+            ),
+            "files": [
+                {
+                    "path": "a/readiness.json",
+                    "archive_path": f"{DEFAULT_BUNDLE_ROOT}/a/readiness.json",
+                    "bytes": len(collision_data),
+                    "sha256": sha256_hex(collision_data),
+                }
+            ],
+            "withheld_claims": list(WITHHELD_CLAIMS),
+        }
+        expect_bundle_error(
+            "output collision with evidence input check",
+            "output path would overwrite bundled evidence input",
+            lambda: write_bundle(collision_root, collision_source, collision_manifest),
+        )
+
         expect_bundle_error(
             "readiness schema anchor check",
             "readiness sidecar must have schema release-readiness-output",

@@ -15,6 +15,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Callable
 
+from validate_m7_release_sidecar_schemas import SchemaError, validate_m7_sidecar
+
 
 DEFAULT_READINESS_SIDECAR = Path(
     "tools/reference-harness/specs/m7/lane3/"
@@ -99,6 +101,23 @@ def require_repo_file(root: Path, raw: Any, label: str) -> str:
         raise BundleError(f"{label} does not exist as a file: {raw}")
 
     return relative.as_posix()
+
+
+def require_m7_sidecar_schema(
+    root: Path,
+    relative_path: str,
+    *,
+    label: str,
+    expected_schema: str,
+) -> None:
+    try:
+        schema = validate_m7_sidecar(root / relative_path, root)
+    except (SchemaError, RuntimeError, OSError) as error:
+        raise BundleError(f"{label} failed M7 schema validation: {error}") from error
+    if schema != expected_schema:
+        raise BundleError(
+            f"{label} must have schema {expected_schema}: {relative_path} has {schema}"
+        )
 
 
 def append_unique(paths: list[str], path: str) -> None:
@@ -208,6 +227,12 @@ def validate_manifest_shape(manifest: dict[str, Any]) -> list[dict[str, Any]]:
 def collect_release_evidence_paths(root: Path, readiness_sidecar: Path) -> list[str]:
     evidence_paths: list[str] = []
     readiness_rel = require_repo_file(root, readiness_sidecar.as_posix(), "readiness sidecar")
+    require_m7_sidecar_schema(
+        root,
+        readiness_rel,
+        label="readiness sidecar",
+        expected_schema="release-readiness-output",
+    )
     append_unique(evidence_paths, readiness_rel)
 
     readiness_payload = read_json(root / readiness_rel)
@@ -221,6 +246,12 @@ def collect_release_evidence_paths(root: Path, readiness_sidecar: Path) -> list[
         root,
         DEFAULT_M5_ACCEPTANCE_SIDECAR.as_posix(),
         "M5 acceptance sidecar",
+    )
+    require_m7_sidecar_schema(
+        root,
+        m5_acceptance_rel,
+        label="M5 acceptance sidecar",
+        expected_schema="m7-prerequisite-m5-packet-acceptance",
     )
     append_unique(evidence_paths, m5_acceptance_rel)
 
@@ -589,6 +620,24 @@ def self_check(root: Path) -> None:
             "manifest sorted-path check",
             "files must be sorted",
             lambda: validate_bundle(root, output_path, unsorted_manifest),
+        )
+        expect_bundle_error(
+            "readiness schema anchor check",
+            "readiness sidecar must have schema release-readiness-output",
+            lambda: collect_release_evidence_paths(
+                root,
+                Path("tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json"),
+            ),
+        )
+        expect_bundle_error(
+            "M5 acceptance schema anchor check",
+            "M5 acceptance sidecar must have schema m7-prerequisite-m5-packet-acceptance",
+            lambda: require_m7_sidecar_schema(
+                root,
+                "tools/reference-harness/specs/m7/lane133/release-qualification-corpus.json",
+                label="M5 acceptance sidecar",
+                expected_schema="m7-prerequisite-m5-packet-acceptance",
+            ),
         )
 
     required_paths = {

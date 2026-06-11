@@ -161,7 +161,59 @@ def require_manifest_sha256(value: str, label: str) -> str:
     return value
 
 
+def require_manifest_source_commit(value: str, label: str) -> str:
+    if len(value) != 40 or any(char not in "0123456789abcdef" for char in value):
+        raise BundleError(f"{label} must be a full lowercase 40-character git SHA")
+    return value
+
+
+def require_manifest_string_list(
+    manifest: dict[str, Any],
+    field: str,
+    label: str,
+) -> list[str]:
+    raw = manifest.get(field)
+    if not isinstance(raw, list):
+        raise BundleError(f"{label}.{field} must be a list")
+    values: list[str] = []
+    for index, entry in enumerate(raw):
+        if not isinstance(entry, str) or not entry.strip():
+            raise BundleError(f"{label}.{field}[{index}] must be a non-empty string")
+        if entry != entry.strip():
+            raise BundleError(f"{label}.{field}[{index}] must not carry surrounding whitespace")
+        values.append(entry)
+    if len(values) != len(set(values)):
+        raise BundleError(f"{label}.{field} must not contain duplicates")
+    return values
+
+
 def validate_manifest_shape(manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    if manifest.get("schema_version") != 1:
+        raise BundleError("bundle manifest schema_version must be integer 1")
+    if manifest.get("bundle_kind") != "m7-release-evidence-bundle":
+        raise BundleError("bundle manifest bundle_kind must be m7-release-evidence-bundle")
+    require_manifest_source_commit(
+        require_manifest_string(manifest, "source_commit", "bundle manifest"),
+        "bundle manifest source_commit",
+    )
+    readiness_sidecar = require_manifest_relative_path(
+        require_manifest_string(manifest, "readiness_sidecar", "bundle manifest"),
+        "bundle manifest readiness_sidecar",
+    )
+    if (
+        manifest.get("evidence_corpus_digest_algorithm")
+        != EVIDENCE_CORPUS_DIGEST_ALGORITHM
+    ):
+        raise BundleError("bundle manifest has an unsupported evidence corpus digest algorithm")
+    require_manifest_sha256(
+        require_manifest_string(manifest, "evidence_corpus_sha256", "bundle manifest"),
+        "bundle manifest evidence_corpus_sha256",
+    )
+    if require_manifest_string_list(manifest, "withheld_claims", "bundle manifest") != list(
+        WITHHELD_CLAIMS
+    ):
+        raise BundleError("bundle manifest withheld_claims must match the canonical release caveats")
+
     raw_bundle_root = manifest.get("bundle_root")
     if not isinstance(raw_bundle_root, str):
         raise BundleError("bundle_root must be a string")
@@ -219,6 +271,8 @@ def validate_manifest_shape(manifest: dict[str, Any]) -> list[dict[str, Any]]:
         )
 
     paths = [entry["path"] for entry in normalized_files]
+    if readiness_sidecar not in paths:
+        raise BundleError("bundle manifest readiness_sidecar must be included in files")
     if paths != sorted(paths):
         raise BundleError("bundle manifest files must be sorted by repository path")
     return normalized_files
@@ -411,14 +465,6 @@ def assert_reproducible_archive_member(member: tarfile.TarInfo, expected_size: i
 def validate_bundle(root: Path, output_path: Path, manifest: dict[str, Any]) -> None:
     files = validate_manifest_shape(manifest)
     expected_corpus_digest = manifest.get("evidence_corpus_sha256")
-    if (
-        not isinstance(expected_corpus_digest, str)
-        or len(expected_corpus_digest) != 64
-        or any(char not in "0123456789abcdef" for char in expected_corpus_digest)
-    ):
-        raise BundleError("bundle manifest must publish a 64-character evidence_corpus_sha256")
-    if manifest.get("evidence_corpus_digest_algorithm") != EVIDENCE_CORPUS_DIGEST_ALGORITHM:
-        raise BundleError("bundle manifest has an unsupported evidence corpus digest algorithm")
     actual_corpus_digest = evidence_corpus_digest(
         root,
         [entry["path"] for entry in files],
@@ -602,6 +648,32 @@ def self_check(root: Path) -> None:
             "manifest file_count coherence check",
             "file_count must match files length",
             lambda: validate_bundle(root, output_path, bad_count_manifest),
+        )
+
+        short_commit_manifest = clone_manifest(manifest)
+        short_commit_manifest["source_commit"] = short_commit_manifest["source_commit"][:12]
+        expect_bundle_error(
+            "manifest source commit provenance check",
+            "source_commit must be a full lowercase 40-character git SHA",
+            lambda: validate_bundle(root, output_path, short_commit_manifest),
+        )
+
+        missing_readiness_manifest = clone_manifest(manifest)
+        missing_readiness_manifest["readiness_sidecar"] = (
+            "tools/reference-harness/specs/m7/lane3/not-bundled.json"
+        )
+        expect_bundle_error(
+            "manifest readiness sidecar inclusion check",
+            "readiness_sidecar must be included in files",
+            lambda: validate_bundle(root, output_path, missing_readiness_manifest),
+        )
+
+        missing_claim_manifest = clone_manifest(manifest)
+        missing_claim_manifest["withheld_claims"] = missing_claim_manifest["withheld_claims"][:-1]
+        expect_bundle_error(
+            "manifest withheld claims check",
+            "withheld_claims must match the canonical release caveats",
+            lambda: validate_bundle(root, output_path, missing_claim_manifest),
         )
 
         bad_archive_manifest = clone_manifest(manifest)

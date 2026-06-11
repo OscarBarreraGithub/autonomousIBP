@@ -1,0 +1,89 @@
+{
+  "audit_fingerprints": {
+    "entry_count": null,
+    "pins_match": null,
+    "runtime_checked": false
+  },
+  "blockers": [
+    "D2/D4/D6 weighted-residue evidence remains a skeleton sidecar with publication blockers",
+    "full automatic_phasespace weighted target phase[1,2,1,1,1,1,1] has no published high-precision AMFlow coefficient packet",
+    "full eta=0 contour execution remains deferred"
+  ],
+  "d246_weighted_residue_surface": {
+    "publication_blockers": [
+      "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
+      "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
+      "run_command, run_log, raw_output, and raw_output_sha256 unset",
+      "D2, D4, and D6 coefficient arrays are empty",
+      "independent comparison artifacts and 50-digit agreement claims are absent"
+    ],
+    "published_evidence": false,
+    "skeleton_evidence": true,
+    "surface_label": "phase[1,2,1,1,1,1,1]",
+    "weights": [
+      "D2",
+      "D4",
+      "D6"
+    ]
+  },
+  "first_coefficient": {
+    "compared_coefficient_count": 4,
+    "full_eta_zero_contour_applied": false,
+    "integral": "phase[1,0,1,0,1,0,0]",
+    "lane": "lane143",
+    "minimum_digit_agreement": 999,
+    "orders": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "inputs_verified": true,
+  "schema_version": 1,
+  "scoped_gate_audit": {
+    "entry_count": null,
+    "passed": null,
+    "queried_labels": [
+      "blocked-D2-scoped-weighted-residue",
+      "published-D7-scoped-weighted-residue"
+    ],
+    "queried_weights": [
+      "D2",
+      "D7"
+    ],
+    "runtime_checked": false
+  },
+  "selected4_parity": {
+    "compared_coefficient_count": 19,
+    "full_eta_zero_contour_applied": false,
+    "lane": "lane146",
+    "minimum_digit_agreement": 999,
+    "published_d7_integral": "phase[1,1,1,0,1,0,1]",
+    "published_d7_orders": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "transported_integral_count": 4,
+    "transported_integrals": [
+      "phase[1,0,1,0,1,0,0]",
+      "phase[1,-1,1,0,1,0,0]",
+      "phase[1,1,1,0,1,0,1]",
+      "phase[1,1,1,1,1,1,1]"
+    ]
+  },
+  "status": "blocked-full-weighted-residue-surface",
+  "summary_id": "b63n-post-m7-parity-status-v1",
+  "withheld_claims": [
+    "This summary reads committed b63n evidence and optional runtime audit fingerprints only.",
+    "This summary does not rerun AMFlow numerics.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim full eta=0 contour execution.",
+    "This summary does not publish D2/D4/D6 weighted-residue coefficients.",
+    "This summary does not widen runtime or public behavior."
+  ]
+}

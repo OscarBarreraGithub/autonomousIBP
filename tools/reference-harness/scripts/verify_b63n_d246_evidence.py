@@ -169,6 +169,9 @@ def require_explicit_null(payload: dict[str, Any], field: str, label: str) -> No
 
 
 def require_sha256(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    expect(raw == raw.strip(), f"{label} must not contain surrounding whitespace")
     value = require_string(raw, label)
     expect(SHA256_RE.fullmatch(value) is not None, f"{label} must be a lowercase sha256")
     return value
@@ -1089,6 +1092,11 @@ def run_self_check() -> dict[str, Any]:
     bad_raw_sha = full_fixture()
     bad_raw_sha["amflow_parameter_set"]["raw_output_sha256"] = "not-a-sha"
 
+    bad_raw_sha_whitespace = full_fixture()
+    bad_raw_sha_whitespace["amflow_parameter_set"]["raw_output_sha256"] = (
+        " " + bad_raw_sha_whitespace["amflow_parameter_set"]["raw_output_sha256"] + " "
+    )
+
     bad_absolute_run_log = full_fixture()
     bad_absolute_run_log["amflow_parameter_set"]["run_log"] = "/tmp/d246/run.log"
 
@@ -1299,6 +1307,10 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_bad_raw_sha": rejected(
             bad_raw_sha,
             "raw_output_sha256 must be a lowercase sha256",
+        ),
+        "full_rejects_raw_sha_surrounding_whitespace": rejected(
+            bad_raw_sha_whitespace,
+            "raw_output_sha256 must not contain surrounding whitespace",
         ),
         "full_rejects_absolute_run_log": rejected(
             bad_absolute_run_log,

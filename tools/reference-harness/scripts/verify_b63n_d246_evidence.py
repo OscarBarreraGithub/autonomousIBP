@@ -69,11 +69,22 @@ EXPECTED_WEIGHTS: dict[str, dict[str, Any]] = {
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMPARE_ARTIFACT_RE = re.compile(r"\.compare\d*(?:[.-][A-Za-z0-9_-]+)*\.json$")
+MATHEMATICA_RUN_COMMAND_RE = re.compile(
+    r"(^|[\s/])(math|wolframscript|MathKernel|WolframKernel|Mathematica)(?:$|[\s/.-])"
+)
 PLACEHOLDER_TEXT = {"", "placeholder", "todo", "tbd", "unknown", "none", "null"}
 MINIMUM_DIGITS = 50
 REQUIRED_PUBLISHED_EPS_ORDERS = [0, 1, 2, 3]
 FULL_WEIGHTED_TARGET = "j[phase,1,2,1,1,1,1,1]"
 BANNED_RETAINED_ARTIFACT_SUFFIXES = (
+    ".cpp-result.json",
+    ".stripped-result.json",
+    ".amflow-state.json",
+    ".golden-manifest.json",
+)
+BANNED_RUNTIME_RUN_COMMAND_MARKERS = (
+    "amflow-cli",
+    "solve-series",
     ".cpp-result.json",
     ".stripped-result.json",
     ".amflow-state.json",
@@ -316,6 +327,34 @@ def optional_string(raw: Any, label: str) -> str | None:
     return require_string(raw, label)
 
 
+def require_run_command_text(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    expect(raw == raw.strip(), f"{label} must not contain surrounding whitespace")
+    value = require_string(raw, label)
+    lowered = value.lower()
+    banned_markers = [
+        marker
+        for marker in BANNED_RUNTIME_RUN_COMMAND_MARKERS
+        if marker.lower() in lowered
+    ]
+    expect(
+        not banned_markers,
+        f"{label} must not invoke C++ runtime or retained-sample artifacts: {banned_markers!r}",
+    )
+    expect(
+        MATHEMATICA_RUN_COMMAND_RE.search(value) is not None,
+        f"{label} must invoke a Mathematica or Wolfram noninteractive runner",
+    )
+    return value
+
+
+def optional_run_command_text(raw: Any, label: str) -> str | None:
+    if raw is None:
+        return None
+    return require_run_command_text(raw, label)
+
+
 def require_string_list(raw: Any, expected: list[str], label: str) -> None:
     values = require_list(raw, label)
     expect(all(isinstance(item, str) for item in values), f"{label} entries must be strings")
@@ -402,7 +441,10 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         parameters.get("working_precision_digits"),
         "amflow_parameter_set.working_precision_digits",
     )
-    run_command = optional_string(parameters.get("run_command"), "amflow_parameter_set.run_command")
+    run_command = optional_run_command_text(
+        parameters.get("run_command"),
+        "amflow_parameter_set.run_command",
+    )
     run_log = optional_run_log_path_text(
         parameters.get("run_log"),
         "amflow_parameter_set.run_log",
@@ -1097,6 +1139,13 @@ def run_self_check() -> dict[str, Any]:
         " " + bad_raw_sha_whitespace["amflow_parameter_set"]["raw_output_sha256"] + " "
     )
 
+    bad_cpp_runtime_run_command = full_fixture()
+    bad_cpp_runtime_run_command["amflow_parameter_set"]["run_command"] = (
+        "./build/amflow-cli solve-series "
+        "tools/reference-harness/specs/phase0/automatic_phasespace.amflow-state.json "
+        "--eps-order 4 --digits 80"
+    )
+
     bad_absolute_run_log = full_fixture()
     bad_absolute_run_log["amflow_parameter_set"]["run_log"] = "/tmp/d246/run.log"
 
@@ -1311,6 +1360,10 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_raw_sha_surrounding_whitespace": rejected(
             bad_raw_sha_whitespace,
             "raw_output_sha256 must not contain surrounding whitespace",
+        ),
+        "full_rejects_cpp_runtime_run_command": rejected(
+            bad_cpp_runtime_run_command,
+            "run_command must not invoke C++ runtime",
         ),
         "full_rejects_absolute_run_log": rejected(
             bad_absolute_run_log,

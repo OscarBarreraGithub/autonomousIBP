@@ -31,21 +31,37 @@ EXPECTED_TARGETS: dict[tuple[str, int], dict[str, Any]] = {
         "reference_floor_id": "b61n-row5-eps0-retained-amflow-floor",
         "reference_floor_real_digits": 11,
         "reference_floor_imag_digits": 11,
+        "reference_floor_reason": (
+            "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference reaches only "
+            "11/11 component digits for this target"
+        ),
     },
     ("box[1,1,1,1]", -2): {
         "reference_floor_id": "b61n-row6-eps-2-retained-amflow-floor",
         "reference_floor_real_digits": 46,
         "reference_floor_imag_digits": 46,
+        "reference_floor_reason": (
+            "post-M7 b61n row 6 eps^-2 diagnostic: retained AMFlow reference reaches only "
+            "46/46 component digits for this target"
+        ),
     },
     ("box[1,1,1,1]", -1): {
         "reference_floor_id": "b61n-row6-eps-1-retained-amflow-floor",
         "reference_floor_real_digits": 12,
         "reference_floor_imag_digits": 13,
+        "reference_floor_reason": (
+            "post-M7 b61n row 6 eps^-1 diagnostic: retained AMFlow reference reaches only "
+            "12/13 component digits for this target"
+        ),
     },
     ("box[1,1,1,1]", 0): {
         "reference_floor_id": "b61n-row6-eps0-retained-amflow-floor",
         "reference_floor_real_digits": 12,
         "reference_floor_imag_digits": 12,
+        "reference_floor_reason": (
+            "post-M7 b61n row 6 eps^0 diagnostic: retained AMFlow reference reaches only "
+            "12/12 component digits for this target"
+        ),
     },
 }
 
@@ -113,6 +129,23 @@ def coefficient_key(integral: str, order: int) -> str:
     return f"{integral} eps^{order}"
 
 
+def expected_target_contract() -> list[dict[str, Any]]:
+    return [
+        {
+            "integral": integral,
+            "order": order,
+            "reference_floor_id": EXPECTED_TARGETS[(integral, order)]["reference_floor_id"],
+            "reference_floor_real_digits": EXPECTED_TARGETS[(integral, order)][
+                "reference_floor_real_digits"
+            ],
+            "reference_floor_imag_digits": EXPECTED_TARGETS[(integral, order)][
+                "reference_floor_imag_digits"
+            ],
+        }
+        for integral, order in sorted(EXPECTED_TARGETS)
+    ]
+
+
 def index_coefficients(summary: dict[str, Any], label: str) -> dict[tuple[str, int], dict[str, Any]]:
     indexed: dict[tuple[str, int], dict[str, Any]] = {}
     for integral_index, raw_integral in enumerate(require_list(summary.get("integrals"), f"{label}.integrals")):
@@ -164,13 +197,11 @@ def index_reference_floor_matches(
     return indexed
 
 
-def validate_reference_floor_record(
+def validate_reference_floor_metadata(
     record: dict[str, Any],
     expected: dict[str, Any],
     label: str,
 ) -> None:
-    real_digits = require_int(record.get("real_agreement_digits"), f"{label}.real_agreement_digits")
-    imag_digits = require_int(record.get("imag_agreement_digits"), f"{label}.imag_agreement_digits")
     real_floor = require_int(
         record.get("reference_floor_real_digits"),
         f"{label}.reference_floor_real_digits",
@@ -191,6 +222,33 @@ def validate_reference_floor_record(
         imag_floor == expected["reference_floor_imag_digits"],
         f"{label}.reference_floor_imag_digits drifted",
     )
+    reason = require_string(record.get("reference_floor_reason"), f"{label}.reference_floor_reason")
+    expect(
+        reason == expected["reference_floor_reason"],
+        f"{label}.reference_floor_reason drifted",
+    )
+    expect(
+        "retained AMFlow reference" in reason,
+        f"{label}.reference_floor_reason must identify the retained AMFlow floor",
+    )
+
+
+def validate_reference_floor_record(
+    record: dict[str, Any],
+    expected: dict[str, Any],
+    label: str,
+) -> None:
+    real_digits = require_int(record.get("real_agreement_digits"), f"{label}.real_agreement_digits")
+    imag_digits = require_int(record.get("imag_agreement_digits"), f"{label}.imag_agreement_digits")
+    real_floor = require_int(
+        record.get("reference_floor_real_digits"),
+        f"{label}.reference_floor_real_digits",
+    )
+    imag_floor = require_int(
+        record.get("reference_floor_imag_digits"),
+        f"{label}.reference_floor_imag_digits",
+    )
+    validate_reference_floor_metadata(record, expected, label)
     expect(
         real_digits >= real_floor,
         f"{label} real agreement {real_digits} dropped below reference floor {real_floor}",
@@ -199,11 +257,81 @@ def validate_reference_floor_record(
         imag_digits >= imag_floor,
         f"{label} imag agreement {imag_digits} dropped below reference floor {imag_floor}",
     )
-    reason = require_string(record.get("reference_floor_reason"), f"{label}.reference_floor_reason")
+
+
+def validate_reference_floor_manifest(manifest: dict[str, Any], label: str) -> dict[str, Any]:
+    expect(manifest.get("schema_version") == 1, f"{label}.schema_version must be 1")
     expect(
-        "retained AMFlow reference" in reason,
-        f"{label}.reference_floor_reason must identify the retained AMFlow floor",
+        manifest.get("benchmark_id") == "complex_kinematics",
+        f"{label}.benchmark_id drifted",
     )
+    raw_floors = require_list(
+        manifest.get("compare_cpp_vs_amflow_reference_floors"),
+        f"{label}.compare_cpp_vs_amflow_reference_floors",
+    )
+    expect(
+        len(raw_floors) == EXPECTED_REFERENCE_FLOOR_MATCHES,
+        f"{label} must declare exactly four row 5/6 reference floors",
+    )
+
+    indexed: dict[tuple[str, int], dict[str, Any]] = {}
+    for floor_index, raw_floor in enumerate(raw_floors):
+        floor = require_object(
+            raw_floor,
+            f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}]",
+        )
+        integral = require_string(
+            floor.get("integral"),
+            f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].integral",
+        )
+        order = require_int(
+            floor.get("order"),
+            f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].order",
+        )
+        key = (integral, order)
+        expect(key not in indexed, f"{label} repeats reference floor {coefficient_key(*key)}")
+        expected = EXPECTED_TARGETS.get(key)
+        expect(
+            expected is not None,
+            f"{label} declares non-row56 reference floor {coefficient_key(*key)}",
+        )
+        component_digits = require_object(
+            floor.get("component_digits"),
+            f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].component_digits",
+        )
+        normalized = {
+            "reference_floor_id": require_string(
+                floor.get("id"),
+                f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].id",
+            ),
+            "reference_floor_real_digits": require_int(
+                component_digits.get("real"),
+                f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].component_digits.real",
+            ),
+            "reference_floor_imag_digits": require_int(
+                component_digits.get("imag"),
+                f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].component_digits.imag",
+            ),
+            "reference_floor_reason": require_string(
+                floor.get("reason"),
+                f"{label}.compare_cpp_vs_amflow_reference_floors[{floor_index}].reason",
+            ),
+        }
+        validate_reference_floor_metadata(
+            normalized,
+            expected,
+            f"{label}.{coefficient_key(*key)}",
+        )
+        indexed[key] = normalized
+
+    expect(
+        set(indexed) == set(EXPECTED_TARGETS),
+        f"{label}.compare_cpp_vs_amflow_reference_floors no longer names the row 5/6 target set",
+    )
+    return {
+        "manifest_reference_floor_count": len(indexed),
+        "row56_reference_floor_targets": expected_target_contract(),
+    }
 
 
 def validate_reference_floor_summary(summary: dict[str, Any], label: str) -> dict[str, Any]:
@@ -321,10 +449,7 @@ def validate_reference_floor_summary(summary: dict[str, Any], label: str) -> dic
         "passed_coefficient_count": tolerance_pass_count,
         "reference_floor_matched_coefficient_count": reference_floor_count,
         "minimum_digit_agreement": summary["minimum_digit_agreement"],
-        "row56_reference_floor_targets": [
-            {"integral": integral, "order": order, **EXPECTED_TARGETS[(integral, order)]}
-            for integral, order in sorted(EXPECTED_TARGETS)
-        ],
+        "row56_reference_floor_targets": expected_target_contract(),
     }
 
 
@@ -333,6 +458,10 @@ def verify_paths(
     amflow_golden_path: Path,
     retained_comparison_path: Path,
 ) -> dict[str, Any]:
+    manifest_contract = validate_reference_floor_manifest(
+        load_json(amflow_golden_path),
+        "amflow_golden",
+    )
     fresh_summary = compare_cpp_vs_amflow(
         cpp_result_path=cpp_result_path,
         amflow_golden_path=amflow_golden_path,
@@ -345,10 +474,16 @@ def verify_paths(
         fresh_contract == retained_contract,
         "fresh comparison and retained comparison disagree on the b61n reference-floor contract",
     )
+    expect(
+        manifest_contract["row56_reference_floor_targets"]
+        == fresh_contract["row56_reference_floor_targets"],
+        "AMFlow reference-floor manifest and comparator summary disagree on row 5/6 floors",
+    )
     return {
         "schema_version": 1,
         "verifier": "b61n-row56-reference-floor-parity-gate-v1",
         "cross_check_passed": True,
+        "manifest_contract_matched": True,
         "cpp_result": str(cpp_result_path),
         "amflow_golden": str(amflow_golden_path),
         "retained_comparison": str(retained_comparison_path),
@@ -366,9 +501,22 @@ def rejected(summary: dict[str, Any], expected_error: str) -> bool:
     return False
 
 
-def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
+def manifest_rejected(manifest: dict[str, Any], expected_error: str) -> bool:
+    try:
+        validate_reference_floor_manifest(manifest, "self_check.manifest")
+    except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
+        return expected_error in str(error)
+    return False
+
+
+def run_self_check(retained_comparison_path: Path, amflow_golden_path: Path) -> dict[str, Any]:
     valid_summary = load_json(retained_comparison_path)
     valid_contract = validate_reference_floor_summary(valid_summary, "self_check.valid")
+    valid_manifest = load_json(amflow_golden_path)
+    manifest_contract = validate_reference_floor_manifest(
+        valid_manifest,
+        "self_check.valid_manifest",
+    )
 
     masked_row56_regression = copy.deepcopy(valid_summary)
     masked_row56_regression["integrals"][-1]["coefficients"][-1]["imag_agreement_digits"] = 11
@@ -400,8 +548,42 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
         "reference_floor_reason"
     ] = "synthetic missing retained-reference rationale"
 
+    stale_summary_floor_reason = copy.deepcopy(valid_summary)
+    stale_summary_floor_reason["reference_floor_matches"][0][
+        "reference_floor_reason"
+    ] = "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference floor drifted"
+
+    missing_manifest_target = copy.deepcopy(valid_manifest)
+    missing_manifest_target["compare_cpp_vs_amflow_reference_floors"] = missing_manifest_target[
+        "compare_cpp_vs_amflow_reference_floors"
+    ][:-1]
+
+    duplicate_manifest_target = copy.deepcopy(valid_manifest)
+    duplicate_manifest_target["compare_cpp_vs_amflow_reference_floors"][1]["integral"] = (
+        duplicate_manifest_target["compare_cpp_vs_amflow_reference_floors"][0]["integral"]
+    )
+    duplicate_manifest_target["compare_cpp_vs_amflow_reference_floors"][1]["order"] = (
+        duplicate_manifest_target["compare_cpp_vs_amflow_reference_floors"][0]["order"]
+    )
+
+    stale_manifest_floor_id = copy.deepcopy(valid_manifest)
+    stale_manifest_floor_id["compare_cpp_vs_amflow_reference_floors"][0]["id"] = (
+        "synthetic-b61n-reference-floor-id"
+    )
+
+    manifest_digit_metadata_drift = copy.deepcopy(valid_manifest)
+    manifest_digit_metadata_drift["compare_cpp_vs_amflow_reference_floors"][0][
+        "component_digits"
+    ]["real"] += 1
+
+    stale_manifest_floor_reason = copy.deepcopy(valid_manifest)
+    stale_manifest_floor_reason["compare_cpp_vs_amflow_reference_floors"][0]["reason"] = (
+        "post-M7 b61n row 5 eps^0 diagnostic: retained AMFlow reference floor drifted"
+    )
+
     checks = {
         "retained_fixture_passes": valid_contract["reference_floor_matched_coefficient_count"] == 4,
+        "manifest_fixture_passes": manifest_contract["manifest_reference_floor_count"] == 4,
         "rejects_matched_reference_floor_below_floor_regression": rejected(
             masked_row56_regression,
             "dropped below reference floor",
@@ -422,7 +604,31 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
         ),
         "rejects_missing_retained_floor_reason": rejected(
             missing_retained_floor_reason,
-            "retained AMFlow floor",
+            "reference_floor_reason drifted",
+        ),
+        "rejects_reference_floor_reason_drift": rejected(
+            stale_summary_floor_reason,
+            "reference_floor_reason drifted",
+        ),
+        "rejects_missing_manifest_reference_floor_target": manifest_rejected(
+            missing_manifest_target,
+            "exactly four row 5/6 reference floors",
+        ),
+        "rejects_duplicate_manifest_reference_floor_target": manifest_rejected(
+            duplicate_manifest_target,
+            "repeats reference floor",
+        ),
+        "rejects_stale_manifest_reference_floor_id": manifest_rejected(
+            stale_manifest_floor_id,
+            "reference_floor_id drifted",
+        ),
+        "rejects_manifest_reference_floor_digit_metadata_drift": manifest_rejected(
+            manifest_digit_metadata_drift,
+            "reference_floor_real_digits drifted",
+        ),
+        "rejects_manifest_reference_floor_reason_drift": manifest_rejected(
+            stale_manifest_floor_reason,
+            "reference_floor_reason drifted",
         ),
     }
     expect(all(checks.values()), "b61n reference-floor verifier self-check failed")
@@ -464,7 +670,7 @@ def main(argv: list[str]) -> int:
     args = parse_args(argv)
     try:
         if args.self_check:
-            summary = run_self_check(args.retained_comparison_path)
+            summary = run_self_check(args.retained_comparison_path, args.amflow_golden_path)
         else:
             summary = verify_paths(
                 args.cpp_result_path,

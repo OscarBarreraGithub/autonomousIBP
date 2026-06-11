@@ -105,12 +105,12 @@ release-facing docs still route `linear_propagator -> b64ag` through this guard:
 
 ```sh
 git cat-file -e HEAD:tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md
-rg -n "b64ag-post-m7-continuation-guard.md" docs/release/known-gaps.md docs/release/amflow-example-coverage.md
+rg -n "b64ag-post-m7-continuation-guard.md" docs/release/known-gaps.md docs/release/amflow-example-coverage.md docs/release-signoff-checklist.md
 python3 tools/reference-harness/scripts/validate_release_markdown.py
-git diff --check -- tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md docs/release/known-gaps.md docs/release/amflow-example-coverage.md
+git diff --check -- tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md docs/release/known-gaps.md docs/release/amflow-example-coverage.md docs/release-signoff-checklist.md
 ```
 
-The expected result is: the guard exists at `HEAD`, both release-doc routes are
+The expected result is: the guard exists at `HEAD`, all three release-doc routes are
 still present, the release markdown validator passes, and whitespace validation
 is clean. If any of those checks fails, the next lane should repair the routing
 or docs validation first and still treat the selected lane147 evidence as

@@ -15,6 +15,17 @@
     "row 5/6 comparison is matched to retained AMFlow reference floor, not 50-digit parity",
     "publication gate remains blocked by the b61n AMFlow cross-comparator floor"
   ],
+  "evidence_sources": {
+    "precision_evidence": "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json",
+    "precision_source_cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
+    "precision_source_diagnostic": "tools/reference-harness/specs/m7/lane2/b61n-row56-specific-target-diagnostic.json",
+    "publication_precision_evidence": "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json",
+    "publication_precision_source_cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
+    "publication_qualifier_sidecar": "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json",
+    "reference_floor_amflow_golden": "tools/reference-harness/specs/m7/lane2/complex_kinematics.b61n-reference-floor-golden-manifest.json",
+    "reference_floor_cpp_result": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.cpp-result.json",
+    "reference_floor_retained_comparison": "tools/reference-harness/specs/m7/lane2/complex_kinematics.c267-stripped.eps0.compare50.reference-floor.json"
+  },
   "inputs_verified": true,
   "precision_uplift": {
     "amflow_reference_values_used_for_digit_count": false,

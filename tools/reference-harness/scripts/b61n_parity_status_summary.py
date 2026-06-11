@@ -43,6 +43,17 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not claim full eta=0 contour execution.",
     "This summary does not widen runtime or public behavior.",
 )
+EVIDENCE_SOURCE_FIELDS: tuple[str, ...] = (
+    "reference_floor_cpp_result",
+    "reference_floor_amflow_golden",
+    "reference_floor_retained_comparison",
+    "precision_evidence",
+    "precision_source_cpp_result",
+    "precision_source_diagnostic",
+    "publication_qualifier_sidecar",
+    "publication_precision_evidence",
+    "publication_precision_source_cpp_result",
+)
 
 
 class StatusSummaryError(RuntimeError):
@@ -56,6 +67,14 @@ def expect(condition: bool, message: str) -> None:
 
 def resolve_repo_path(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
+
+
+def repo_relative_path(root: Path, path: Path | str) -> str:
+    resolved = resolve_repo_path(root, Path(path)).resolve()
+    try:
+        return resolved.relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
 
 
 def print_json(payload: dict[str, Any]) -> None:
@@ -79,6 +98,12 @@ def require_bool(payload: dict[str, Any], field: str) -> bool:
     return value
 
 
+def require_string(payload: dict[str, Any], field: str) -> str:
+    value = payload.get(field)
+    expect(isinstance(value, str) and value, f"{field} must be a non-empty string")
+    return value
+
+
 def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
     value = payload.get(field)
     expect(isinstance(value, list), f"{field} must be a list")
@@ -87,6 +112,93 @@ def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
         expect(isinstance(item, str) and item, f"{field}[{index}] must be a non-empty string")
         strings.append(item)
     return strings
+
+
+def build_evidence_sources(
+    *,
+    root: Path,
+    reference_floor: dict[str, Any],
+    precision: dict[str, Any],
+    publication: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "reference_floor_cpp_result": repo_relative_path(
+            root,
+            require_string(reference_floor, "cpp_result"),
+        ),
+        "reference_floor_amflow_golden": repo_relative_path(
+            root,
+            require_string(reference_floor, "amflow_golden"),
+        ),
+        "reference_floor_retained_comparison": repo_relative_path(
+            root,
+            require_string(reference_floor, "retained_comparison"),
+        ),
+        "precision_evidence": repo_relative_path(
+            root,
+            require_string(precision, "precision_evidence"),
+        ),
+        "precision_source_cpp_result": repo_relative_path(
+            root,
+            require_string(precision, "source_cpp_result"),
+        ),
+        "precision_source_diagnostic": repo_relative_path(
+            root,
+            require_string(precision, "source_diagnostic"),
+        ),
+        "publication_qualifier_sidecar": repo_relative_path(
+            root,
+            require_string(publication, "sidecar_path"),
+        ),
+        "publication_precision_evidence": repo_relative_path(
+            root,
+            require_string(publication, "precision_evidence_sidecar_path"),
+        ),
+        "publication_precision_source_cpp_result": repo_relative_path(
+            root,
+            require_string(publication, "precision_evidence_source_cpp_result"),
+        ),
+    }
+
+
+def default_evidence_sources(root: Path) -> dict[str, Any]:
+    return {
+        "reference_floor_cpp_result": repo_relative_path(root, DEFAULT_CPP_RESULT),
+        "reference_floor_amflow_golden": repo_relative_path(root, DEFAULT_AMFLOW_GOLDEN),
+        "reference_floor_retained_comparison": repo_relative_path(root, DEFAULT_RETAINED_COMPARISON),
+        "precision_evidence": repo_relative_path(root, DEFAULT_PRECISION_EVIDENCE),
+        "precision_source_cpp_result": repo_relative_path(root, DEFAULT_CPP_RESULT),
+        "precision_source_diagnostic": repo_relative_path(
+            root,
+            "tools/reference-harness/specs/m7/lane2/b61n-row56-specific-target-diagnostic.json",
+        ),
+        "publication_qualifier_sidecar": repo_relative_path(
+            root,
+            default_publication_qualifier_sidecar_path(),
+        ),
+        "publication_precision_evidence": repo_relative_path(root, DEFAULT_PRECISION_EVIDENCE),
+        "publication_precision_source_cpp_result": repo_relative_path(root, DEFAULT_CPP_RESULT),
+    }
+
+
+def validate_evidence_sources(sources: dict[str, Any]) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    for field in EVIDENCE_SOURCE_FIELDS:
+        normalized[field] = require_string(sources, field)
+    expect(
+        normalized["reference_floor_cpp_result"] == normalized["precision_source_cpp_result"],
+        "reference-floor C++ result and precision source C++ result must match",
+    )
+    expect(
+        normalized["precision_source_cpp_result"]
+        == normalized["publication_precision_source_cpp_result"],
+        "precision source C++ result and publication precision source C++ result must match",
+    )
+    expect(
+        normalized["precision_evidence"] == normalized["publication_precision_evidence"],
+        "precision evidence and publication precision evidence must match",
+    )
+    return normalized
 
 
 def require_reference_floor_targets(
@@ -214,6 +326,7 @@ def summarize_payloads(
     precision: dict[str, Any],
     publication: dict[str, Any],
     fingerprints: dict[str, Any],
+    evidence_sources: dict[str, Any],
 ) -> dict[str, Any]:
     expect(reference_floor.get("schema_version") == 1, "reference-floor schema_version must be 1")
     expect(precision.get("schema_version") == 1, "precision schema_version must be 1")
@@ -336,6 +449,7 @@ def summarize_payloads(
         "summary_id": "b61n-post-m7-parity-status-v1",
         "status": "blocked-reference-floor-limited",
         "inputs_verified": True,
+        "evidence_sources": validate_evidence_sources(evidence_sources),
         "reference_floor": {
             "comparison_verdict": reference_floor["comparison_verdict"],
             "compared_coefficient_count": compared_count,
@@ -386,6 +500,7 @@ def summarize_payloads(
 
 
 def render_text(summary: dict[str, Any]) -> str:
+    sources = summary["evidence_sources"]
     reference = summary["reference_floor"]
     precision = summary["precision_uplift"]
     publication = summary["publication_gate"]
@@ -393,6 +508,14 @@ def render_text(summary: dict[str, Any]) -> str:
     lines = [
         "b61n parity status summary",
         f"status: {summary['status']}",
+        (
+            "evidence_sources: "
+            f"cpp_result={sources['reference_floor_cpp_result']} "
+            f"amflow_golden={sources['reference_floor_amflow_golden']} "
+            f"retained_comparison={sources['reference_floor_retained_comparison']} "
+            f"precision={sources['precision_evidence']} "
+            f"publication={sources['publication_qualifier_sidecar']}"
+        ),
         (
             "reference_floor: "
             f"verdict={reference['comparison_verdict']} "
@@ -438,6 +561,7 @@ def rejected(
     precision: dict[str, Any],
     publication: dict[str, Any],
     fingerprints: dict[str, Any],
+    evidence_sources: dict[str, Any],
     expected_error: str,
 ) -> bool:
     try:
@@ -446,6 +570,7 @@ def rejected(
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
         )
     except Exception as error:  # noqa: BLE001 - self-check intentionally probes failures.
         return expected_error in str(error)
@@ -531,11 +656,13 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
 
 def run_self_check() -> dict[str, Any]:
     reference_floor, precision, publication, fingerprints = synthetic_payloads()
+    evidence_sources = default_evidence_sources(repo_root())
     valid = summarize_payloads(
         reference_floor=reference_floor,
         precision=precision,
         publication=publication,
         fingerprints=fingerprints,
+        evidence_sources=evidence_sources,
     )
 
     fake_50_digit = copy.deepcopy(reference_floor)
@@ -604,6 +731,16 @@ def run_self_check() -> dict[str, Any]:
     fingerprint_count_drift = copy.deepcopy(fingerprints)
     fingerprint_count_drift["entry_count"] += 1
 
+    precision_source_drift = copy.deepcopy(evidence_sources)
+    precision_source_drift["precision_source_cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/synthetic-b61n-source.cpp-result.json"
+    )
+
+    publication_precision_drift = copy.deepcopy(evidence_sources)
+    publication_precision_drift["publication_precision_evidence"] = (
+        "tools/reference-harness/specs/m7/lane2/synthetic-b61n-precision-evidence.json"
+    )
+
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-reference-floor-limited",
         "rejects_fake_50_digit_row56_status": rejected(
@@ -611,6 +748,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="matched-to-reference-floor",
         ),
         "rejects_precision_uplift_regression": rejected(
@@ -618,6 +756,7 @@ def run_self_check() -> dict[str, Any]:
             precision=lost_uplift,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="160 fractional digits",
         ),
         "rejects_amflow_reference_backed_digit_count": rejected(
@@ -625,6 +764,7 @@ def run_self_check() -> dict[str, Any]:
             precision=amflow_reference_backed_digit_count,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="must not use AMFlow reference values",
         ),
         "rejects_precision_target_count_drift": rejected(
@@ -632,6 +772,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision_target_count_drift,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="target count must match",
         ),
         "rejects_reference_floor_target_count_drift": rejected(
@@ -639,6 +780,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="target list length must match",
         ),
         "rejects_duplicate_reference_floor_target": rejected(
@@ -646,6 +788,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="duplicates a row/order reference-floor target",
         ),
         "rejects_unknown_reference_floor_target": rejected(
@@ -653,6 +796,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="not a reviewed b61n row 5/6 reference-floor target",
         ),
         "rejects_stale_reference_floor_id": rejected(
@@ -660,6 +804,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="reference_floor_id must be",
         ),
         "rejects_reference_floor_target_digit_floor_drift": rejected(
@@ -667,6 +812,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="reference_floor_real_digits must be",
         ),
         "rejects_publication_gate_promotion": rejected(
@@ -674,6 +820,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=promoted_gate,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="publication gate must stay blocked",
         ),
         "rejects_amflow_reference_backed_precision_mislabel": rejected(
@@ -681,6 +828,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=amflow_reference_backed_precision,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="explicitly non-AMFlow-reference-backed",
         ),
         "rejects_m6_hook_promotion": rejected(
@@ -688,6 +836,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=promoted_m6_hook,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="M6 qualifier hook must not be promoted",
         ),
         "rejects_missing_withheld_m7_claim": rejected(
@@ -695,6 +844,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=missing_withheld_claim,
             fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
             expected_error="withheld_claims missing",
         ),
         "rejects_runtime_fingerprint_drift": rejected(
@@ -702,6 +852,7 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprint_drift,
+            evidence_sources=evidence_sources,
             expected_error="fingerprints must match pins",
         ),
         "rejects_fingerprint_count_drift": rejected(
@@ -709,7 +860,24 @@ def run_self_check() -> dict[str, Any]:
             precision=precision,
             publication=publication,
             fingerprints=fingerprint_count_drift,
+            evidence_sources=evidence_sources,
             expected_error="fingerprint entry_count must match entries",
+        ),
+        "rejects_precision_source_path_drift": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            evidence_sources=precision_source_drift,
+            expected_error="precision source C++ result",
+        ),
+        "rejects_publication_precision_path_drift": rejected(
+            reference_floor=reference_floor,
+            precision=precision,
+            publication=publication,
+            fingerprints=fingerprints,
+            evidence_sources=publication_precision_drift,
+            expected_error="publication precision evidence",
         ),
     }
     expect(all(checks.values()), "b61n parity status summary self-check failed")
@@ -795,11 +963,18 @@ def main(argv: list[str]) -> int:
                 )
             else:
                 fingerprints = summarize_pinned_fingerprints()
+            evidence_sources = build_evidence_sources(
+                root=root,
+                reference_floor=reference_floor,
+                precision=precision,
+                publication=publication,
+            )
             summary = summarize_payloads(
                 reference_floor=reference_floor,
                 precision=precision,
                 publication=publication,
                 fingerprints=fingerprints,
+                evidence_sources=evidence_sources,
             )
         if args.summary_path is not None:
             write_json(resolve_repo_path(root, args.summary_path), summary)

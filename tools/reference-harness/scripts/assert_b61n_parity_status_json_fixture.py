@@ -66,6 +66,40 @@ EXPECTED_AUDIT_FINGERPRINT_ENTRIES = [
         "pinned_fingerprint": "fnv1a64:92f403f7f2c701d5",
     }
 ]
+EXPECTED_EVIDENCE_SOURCES = {
+    "precision_evidence": (
+        "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
+    ),
+    "precision_source_cpp_result": (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+    ),
+    "precision_source_diagnostic": (
+        "tools/reference-harness/specs/m7/lane2/b61n-row56-specific-target-diagnostic.json"
+    ),
+    "publication_precision_evidence": (
+        "tools/reference-harness/specs/m7/lane2/b61n-pipeline-precision-evidence.json"
+    ),
+    "publication_precision_source_cpp_result": (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+    ),
+    "publication_qualifier_sidecar": (
+        "tools/reference-harness/specs/m6/lane5-next7/b61n-publication-qualifier-hook.json"
+    ),
+    "reference_floor_amflow_golden": (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.b61n-reference-floor-golden-manifest.json"
+    ),
+    "reference_floor_cpp_result": (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.c267-stripped.eps0.cpp-result.json"
+    ),
+    "reference_floor_retained_comparison": (
+        "tools/reference-harness/specs/m7/lane2/"
+        "complex_kinematics.c267-stripped.eps0.compare50.reference-floor.json"
+    ),
+}
 
 
 def expect(condition: bool, message: str) -> None:
@@ -128,6 +162,11 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         f"{label}.status",
     )
     require_exact(payload.get("inputs_verified"), True, f"{label}.inputs_verified")
+    require_exact(
+        require_object(payload.get("evidence_sources"), f"{label}.evidence_sources"),
+        EXPECTED_EVIDENCE_SOURCES,
+        f"{label}.evidence_sources",
+    )
 
     reference_floor = require_object(
         payload.get("reference_floor"),
@@ -387,6 +426,14 @@ def run_self_check(root: Path) -> int:
         "fnv1a64:syntheticb61n"
     )
 
+    evidence_source_drift = copy.deepcopy(expected)
+    evidence_source_drift["evidence_sources"]["precision_source_cpp_result"] = (
+        "tools/reference-harness/specs/m7/lane2/synthetic-b61n-source.cpp-result.json"
+    )
+
+    missing_evidence_sources = copy.deepcopy(expected)
+    missing_evidence_sources.pop("evidence_sources", None)
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -435,6 +482,14 @@ def run_self_check(root: Path) -> int:
         "rejects_audit_fingerprint_pin_drift": rejected(
             lambda: fixture_matches(expected, audit_fingerprint_pin_drift),
             "actual summary.audit_fingerprints.entries",
+        ),
+        "rejects_evidence_source_drift": rejected(
+            lambda: fixture_matches(expected, evidence_source_drift),
+            "actual summary.evidence_sources",
+        ),
+        "rejects_missing_evidence_sources": rejected(
+            lambda: fixture_matches(expected, missing_evidence_sources),
+            "actual summary.evidence_sources",
         ),
         "rejects_missing_withheld_claims": rejected(
             lambda: fixture_matches(expected, missing_withheld_claims),

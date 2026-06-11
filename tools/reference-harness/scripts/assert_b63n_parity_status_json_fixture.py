@@ -116,6 +116,9 @@ def run_self_check(root: Path) -> int:
     promoted_d246["d246_weighted_residue_surface"]["published_evidence"] = True
     promoted_d246["d246_weighted_residue_surface"]["skeleton_evidence"] = False
 
+    promoted_full_contour = copy.deepcopy(expected)
+    promoted_full_contour["selected4_parity"]["full_eta_zero_contour_applied"] = True
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -123,6 +126,10 @@ def run_self_check(root: Path) -> int:
         "accepts_current_fixture": fixture_matches(expected, copy.deepcopy(expected)),
         "rejects_status_drift": not fixture_matches(expected, status_drift),
         "rejects_d246_silent_promotion": not fixture_matches(expected, promoted_d246),
+        "rejects_full_contour_promotion": not fixture_matches(
+            expected,
+            promoted_full_contour,
+        ),
         "rejects_missing_withheld_claims": not fixture_matches(
             expected,
             missing_withheld_claims,

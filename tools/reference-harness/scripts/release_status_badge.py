@@ -106,7 +106,10 @@ def require_nonempty_string_list(payload: dict[str, Any], field: str) -> list[st
 
 
 def require_source_commit(payload: dict[str, Any]) -> str:
-    source_commit = require_nonempty_string(payload, "source_commit")
+    raw = payload.get("source_commit")
+    expect(isinstance(raw, str) and raw.strip(), "source_commit must be a non-empty string")
+    expect(raw == raw.strip(), "source_commit must not carry surrounding whitespace")
+    source_commit = raw
     expect(
         SOURCE_COMMIT_PATTERN.fullmatch(source_commit) is not None,
         "source_commit must be a full lowercase 40-character git SHA",
@@ -475,6 +478,20 @@ def self_check() -> None:
         short_source_commit,
         "source_commit must be a full lowercase 40-character git SHA",
     )
+    whitespace_source_commit = synthetic_health(
+        status="ready",
+        ready=True,
+        blocker_count=0,
+        sidecar_count=10,
+        accepted_count=8,
+        unaccepted_count=2,
+    )
+    whitespace_source_commit["source_commit"] = f" {whitespace_source_commit['source_commit']} "
+    expect_badge_error(
+        "source commit whitespace check",
+        whitespace_source_commit,
+        "source_commit must not carry surrounding whitespace",
+    )
     missing_withheld_claims = synthetic_health(
         status="ready",
         ready=True,
@@ -575,7 +592,7 @@ def self_check() -> None:
     fixture_health = read_json(fixture_absolute)
     expect(
         require_known_source_commit(root, fixture_health)
-        == fixture_health["source_commit"].strip(),
+        == fixture_health["source_commit"],
         "committed health fixture source commit was not reachable",
     )
     unknown_source_commit = synthetic_health(

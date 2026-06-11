@@ -163,8 +163,20 @@ def require_sha256(raw: Any, label: str) -> str:
 
 
 def require_absolute_path_text(raw: Any, label: str) -> str:
+    if not isinstance(raw, str):
+        raise TypeError(f"{label} must be a string")
+    expect(raw == raw.strip(), f"{label} must not contain surrounding whitespace")
     value = require_string(raw, label)
-    expect(Path(value).is_absolute(), f"{label} must be an absolute path")
+    expect("\\" not in value, f"{label} must use POSIX path separators")
+    path = Path(value)
+    expect(path.is_absolute(), f"{label} must be an absolute path")
+    expect(path.as_posix() == value, f"{label} must be a normalized POSIX path")
+    expect(
+        "." not in path.parts and ".." not in path.parts,
+        f"{label} must not contain . or .. components",
+    )
+    if value != "/":
+        expect(not value.endswith("/"), f"{label} must not end with a slash")
     return value
 
 
@@ -813,6 +825,14 @@ def run_self_check() -> dict[str, Any]:
         "path"
     ] = "/example/amflow/examples/feynman_prescription/run.wl"
 
+    bad_source_root_whitespace = skeleton_fixture()
+    bad_source_root_whitespace["source_root"] = " /example/amflow"
+
+    bad_source_path_parent_component = skeleton_fixture()
+    bad_source_path_parent_component["source_files"]["amflow_m"][
+        "path"
+    ] = "/example/amflow/examples/../AMFlow.m"
+
     bad_full_blocked_reason = full_fixture()
     bad_full_blocked_reason["weights"][0]["reference_validation"][
         "blocked_reason"
@@ -909,6 +929,14 @@ def run_self_check() -> dict[str, Any]:
         "rejects_wrong_source_file_path": rejected(
             bad_source_path,
             "source_files.automatic_phasespace_run_wl.path",
+        ),
+        "rejects_source_root_surrounding_whitespace": rejected(
+            bad_source_root_whitespace,
+            "source_root must not contain surrounding whitespace",
+        ),
+        "rejects_source_path_parent_component": rejected(
+            bad_source_path_parent_component,
+            "source_files.amflow_m.path must not contain . or .. components",
         ),
         "published_rejects_weight_blocked_reason": rejected(
             bad_full_blocked_reason,

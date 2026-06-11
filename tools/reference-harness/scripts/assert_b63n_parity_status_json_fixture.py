@@ -27,6 +27,13 @@ EXPECTED_BLOCKERS = [
     ),
     "full eta=0 contour execution remains deferred",
 ]
+EXPECTED_D246_PUBLICATION_BLOCKERS = [
+    "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
+    "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
+    "run_command, run_log, raw_output, and raw_output_sha256 unset",
+    "D2, D4, and D6 coefficient arrays are empty for the full j[phase,1,2,1,1,1,1,1] target",
+    "independent comparison artifacts and 50-digit agreement claims are absent",
+]
 EXPECTED_WITHHELD_CLAIMS = [
     (
         "This summary reads committed b63n evidence and optional runtime audit "
@@ -252,13 +259,10 @@ def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
         d246.get("publication_blockers"),
         f"{label}.d246_weighted_residue_surface.publication_blockers",
     )
-    expect(
-        all(isinstance(blocker, str) and blocker for blocker in d246_blockers),
-        f"{label}.d246_weighted_residue_surface.publication_blockers must be non-empty strings",
-    )
-    expect(
-        len(d246_blockers) >= 3,
-        f"{label}.d246_weighted_residue_surface.publication_blockers must retain blocker detail",
+    require_exact(
+        d246_blockers,
+        EXPECTED_D246_PUBLICATION_BLOCKERS,
+        f"{label}.d246_weighted_residue_surface.publication_blockers",
     )
 
     scoped_gate = require_object(
@@ -419,6 +423,11 @@ def run_self_check(root: Path) -> int:
     thin_d246_blockers = copy.deepcopy(expected)
     thin_d246_blockers["d246_weighted_residue_surface"]["publication_blockers"] = []
 
+    stale_d246_blockers = copy.deepcopy(expected)
+    stale_d246_blockers["d246_weighted_residue_surface"]["publication_blockers"][3] = (
+        "D2, D4, and D6 coefficient arrays are empty"
+    )
+
     wrong_transported_count = copy.deepcopy(expected)
     wrong_transported_count["selected4_parity"]["transported_integral_count"] -= 1
 
@@ -493,7 +502,11 @@ def run_self_check(root: Path) -> int:
         ),
         "rejects_empty_d246_publication_blockers": rejected(
             lambda: validate_summary_contract(thin_d246_blockers, label="synthetic summary"),
-            "publication_blockers must retain blocker detail",
+            "d246_weighted_residue_surface.publication_blockers",
+        ),
+        "rejects_stale_d246_publication_blockers": rejected(
+            lambda: validate_summary_contract(stale_d246_blockers, label="synthetic summary"),
+            "d246_weighted_residue_surface.publication_blockers",
         ),
         "rejects_selected4_transported_count_drift": rejected(
             lambda: validate_summary_contract(wrong_transported_count, label="synthetic summary"),

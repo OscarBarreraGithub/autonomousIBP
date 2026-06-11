@@ -59,6 +59,13 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not publish D2/D4/D6 weighted-residue coefficients.",
     "This summary does not widen runtime or public behavior.",
 )
+EXPECTED_D246_PUBLICATION_BLOCKERS: tuple[str, ...] = (
+    "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
+    "eps_order_requested unset; publish a contiguous epsilon range matching the runtime scope",
+    "run_command, run_log, raw_output, and raw_output_sha256 unset",
+    "D2, D4, and D6 coefficient arrays are empty for the full j[phase,1,2,1,1,1,1,1] target",
+    "independent comparison artifacts and 50-digit agreement claims are absent",
+)
 EVIDENCE_SOURCE_FIELDS: tuple[str, ...] = (
     "first_evidence",
     "first_compare",
@@ -383,7 +390,10 @@ def summarize_d246_path(sidecar_path: Path) -> dict[str, Any]:
     expect(summary.get("published_evidence") is False, "D2/D4/D6 must remain blocked, not published")
     expect(summary.get("skeleton_evidence") is True, "D246 sidecar must remain skeleton evidence")
     blockers = require_list(sidecar.get("publication_blockers"), "D246 publication_blockers")
-    expect(blockers, "D246 blockers must remain visible")
+    expect(
+        blockers == list(EXPECTED_D246_PUBLICATION_BLOCKERS),
+        "D246 publication blockers drifted from the pinned skeleton contract",
+    )
     return {
         "schema_valid": True,
         "surface_label": summary["surface_label"],
@@ -515,7 +525,10 @@ def summarize_payloads(
         "D2/D4/D6 must remain blocked as skeleton evidence",
     )
     blockers = require_list(d246.get("publication_blockers"), "D246 publication_blockers")
-    expect(blockers, "D246 publication blockers must remain visible")
+    expect(
+        blockers == list(EXPECTED_D246_PUBLICATION_BLOCKERS),
+        "D246 publication blockers drifted from the pinned skeleton contract",
+    )
 
     if scoped_gate.get("runtime_checked") is True:
         expect(scoped_gate.get("passed") is True, "runtime scoped gate audit must pass")
@@ -665,7 +678,7 @@ def synthetic_payloads() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]
         "skeleton_evidence": True,
         "minimum_digit_agreement": None,
         "publication_blockers": [
-            "D2, D4, and D6 coefficient arrays are empty",
+            *EXPECTED_D246_PUBLICATION_BLOCKERS,
         ],
         "m6_closure_claimed": False,
         "m7_closure_claimed": False,
@@ -737,6 +750,9 @@ def run_self_check() -> dict[str, Any]:
     promoted_d246["published_evidence"] = True
     promoted_d246["skeleton_evidence"] = False
 
+    stale_d246_blockers = copy.deepcopy(d246)
+    stale_d246_blockers["publication_blockers"][3] = "D2, D4, and D6 coefficient arrays are empty"
+
     stale_scoped_gate = copy.deepcopy(scoped_gate)
     stale_scoped_gate["queried_weights"] = ["D7", "D2"]
 
@@ -807,6 +823,15 @@ def run_self_check() -> dict[str, Any]:
             fingerprints=fingerprints,
             evidence_sources=evidence_sources,
             expected_error="D2/D4/D6 must remain blocked",
+        ),
+        "rejects_d246_publication_blocker_drift": rejected(
+            first=first,
+            selected4=selected4,
+            d246=stale_d246_blockers,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=evidence_sources,
+            expected_error="D246 publication blockers drifted",
         ),
         "rejects_scoped_gate_order_drift": rejected(
             first=first,

@@ -117,6 +117,7 @@ def numeric_value(raw: Any, field: str) -> float:
 
 def require_source_commit(root: Path, raw: Any, field: str) -> str:
     expect(isinstance(raw, str) and raw.strip(), f"{field} must be non-empty")
+    expect(raw == raw.strip(), f"{field} must not carry surrounding whitespace")
     commit = raw.strip()
     expect(
         SOURCE_COMMIT_PATTERN.fullmatch(commit) is not None,
@@ -484,6 +485,20 @@ def self_check(root: Path) -> None:
             "short source commit check",
             lambda: summarize_readiness(root, short_commit_path.relative_to(root)),
             "source_commit must be a full lowercase 40-character git SHA",
+        )
+        whitespace_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
+        whitespace_commit_payload["source_commit"] = (
+            f" {whitespace_commit_payload['source_commit']} "
+        )
+        whitespace_commit_path = Path(temp_dir) / "whitespace-source-commit-readiness.json"
+        whitespace_commit_path.write_text(
+            json.dumps(whitespace_commit_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "source commit whitespace check",
+            lambda: summarize_readiness(root, whitespace_commit_path.relative_to(root)),
+            "source_commit must not carry surrounding whitespace",
         )
         unknown_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
         unknown_commit_payload["source_commit"] = "f" * 40

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -31,6 +33,7 @@ WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary reads committed sidecars only; it does not create new release evidence.",
     "This summary does not rerun AMFlow numerics or widen release claims.",
 )
+SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 class HealthError(RuntimeError):
@@ -108,6 +111,24 @@ def numeric_value(raw: Any, field: str) -> float:
     return float(raw)
 
 
+def require_source_commit(root: Path, raw: Any, field: str) -> str:
+    expect(isinstance(raw, str) and raw.strip(), f"{field} must be non-empty")
+    commit = raw.strip()
+    expect(
+        SOURCE_COMMIT_PATTERN.fullmatch(commit) is not None,
+        f"{field} must be a full lowercase 40-character git SHA",
+    )
+    completed = subprocess.run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expect(completed.returncode == 0, f"{field} is not a known commit")
+    return commit
+
+
 def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary:
     readiness_path = root / readiness_sidecar
     payload = read_json(readiness_path)
@@ -130,8 +151,7 @@ def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary
         if section.get("status") == "reviewed" and section_blockers == []:
             reviewed_sections += 1
 
-    source_commit = payload.get("source_commit")
-    expect(isinstance(source_commit, str) and source_commit.strip(), "source_commit must be non-empty")
+    source_commit = require_source_commit(root, payload.get("source_commit"), "source_commit")
     performance_review_path = require_repo_file(
         root,
         payload.get("performance_review_summary_path"),
@@ -141,7 +161,7 @@ def summarize_readiness(root: Path, readiness_sidecar: Path) -> ReadinessSummary
         ready=payload.get("release_signoff_ready") is True,
         blocker_count=len(blockers),
         blockers=blockers,
-        source_commit=source_commit.strip(),
+        source_commit=source_commit,
         prerequisite_count=len(prerequisites),
         satisfied_prerequisite_count=satisfied_prerequisites,
         review_section_count=len(reviews),
@@ -427,6 +447,30 @@ def self_check(root: Path) -> None:
             "negative performance benchmark timing check",
             lambda: summarize_performance(root, str(negative_timing_path.relative_to(root))),
             "wall_seconds_max must be nonnegative",
+        )
+        short_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
+        short_commit_payload["source_commit"] = "5fdba2c"
+        short_commit_path = Path(temp_dir) / "short-source-commit-readiness.json"
+        short_commit_path.write_text(
+            json.dumps(short_commit_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "short source commit check",
+            lambda: summarize_readiness(root, short_commit_path.relative_to(root)),
+            "source_commit must be a full lowercase 40-character git SHA",
+        )
+        unknown_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
+        unknown_commit_payload["source_commit"] = "f" * 40
+        unknown_commit_path = Path(temp_dir) / "unknown-source-commit-readiness.json"
+        unknown_commit_path.write_text(
+            json.dumps(unknown_commit_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "unknown source commit check",
+            lambda: summarize_readiness(root, unknown_commit_path.relative_to(root)),
+            "source_commit is not a known commit",
         )
 
     expect_health_error(

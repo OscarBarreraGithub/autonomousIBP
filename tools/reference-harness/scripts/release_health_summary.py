@@ -229,8 +229,16 @@ def benchmark_label(entry: dict[str, Any], index: int) -> str:
     benchmark_id = entry.get("benchmark_id")
     label = entry.get("label")
     expect(isinstance(benchmark_id, str) and benchmark_id.strip(), f"benchmark[{index}].benchmark_id missing")
+    expect(
+        benchmark_id == benchmark_id.strip(),
+        f"benchmark[{index}].benchmark_id must not carry surrounding whitespace",
+    )
     expect(isinstance(label, str) and label.strip(), f"benchmark[{index}].label missing")
-    return f"{benchmark_id.strip()}.{label.strip()}"
+    expect(
+        label == label.strip(),
+        f"benchmark[{index}].label must not carry surrounding whitespace",
+    )
+    return f"{benchmark_id}.{label}"
 
 
 def summarize_performance(root: Path, performance_review_path: str) -> PerformanceSummary:
@@ -473,6 +481,34 @@ def self_check(root: Path) -> None:
             "infinite performance benchmark timing check",
             lambda: summarize_performance(root, str(infinite_timing_path.relative_to(root))),
             "wall_seconds_max must be finite",
+        )
+        whitespace_label_payload = json.loads(json.dumps(performance_payload))
+        whitespace_label_payload["benchmark_timing_evidence"][0]["label"] = (
+            f" {whitespace_label_payload['benchmark_timing_evidence'][0]['label']} "
+        )
+        whitespace_label_path = Path(temp_dir) / "whitespace-performance-benchmark-label.json"
+        whitespace_label_path.write_text(
+            json.dumps(whitespace_label_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "performance benchmark label whitespace check",
+            lambda: summarize_performance(root, str(whitespace_label_path.relative_to(root))),
+            "benchmark[0].label must not carry surrounding whitespace",
+        )
+        whitespace_benchmark_id_payload = json.loads(json.dumps(performance_payload))
+        whitespace_benchmark_id_payload["benchmark_timing_evidence"][0]["benchmark_id"] = (
+            f" {whitespace_benchmark_id_payload['benchmark_timing_evidence'][0]['benchmark_id']} "
+        )
+        whitespace_benchmark_id_path = Path(temp_dir) / "whitespace-performance-benchmark-id.json"
+        whitespace_benchmark_id_path.write_text(
+            json.dumps(whitespace_benchmark_id_payload, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        expect_health_error(
+            "performance benchmark id whitespace check",
+            lambda: summarize_performance(root, str(whitespace_benchmark_id_path.relative_to(root))),
+            "benchmark[0].benchmark_id must not carry surrounding whitespace",
         )
         short_commit_payload = json.loads(json.dumps(read_json(root / ACCEPTED_READINESS_SIDECAR)))
         short_commit_payload["source_commit"] = "5fdba2c"

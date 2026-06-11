@@ -362,6 +362,18 @@ def validate_evidence_sidecar(evidence: dict[str, Any], compare_path: Path) -> d
         "selected4 eta_zero_endpoint_transported_integrals",
     )
     expect(
+        all(isinstance(integral, str) for integral in transported),
+        "selected4 transported integral entries must be strings",
+    )
+    expect(
+        len(set(transported)) == len(transported),
+        "selected4 transported integral entries must be unique",
+    )
+    expect(
+        set(transported) == set(EXPECTED_SELECTED4_ORDERS),
+        "selected4 evidence transported integral scope must match the reviewed selected4 set",
+    )
+    expect(
         PUBLISHED_D7_INTEGRAL in transported,
         "selected4 evidence must transport the published D7 weighted integral",
     )
@@ -821,6 +833,20 @@ def run_self_check() -> dict[str, Any]:
     )
     bad_evidence = json.loads(json.dumps(evidence))
     bad_evidence["final_solution_samples_used_as_input"] = True
+    bad_missing_transported = json.loads(json.dumps(evidence))
+    bad_missing_transported["eta_zero_endpoint_transported_integrals"] = [
+        integral
+        for integral in bad_missing_transported["eta_zero_endpoint_transported_integrals"]
+        if integral != "phase[1,0,1,0,1,0,0]"
+    ]
+    bad_extra_transported = json.loads(json.dumps(evidence))
+    bad_extra_transported["eta_zero_endpoint_transported_integrals"].append(
+        "phase[1,2,1,1,1,1,1]"
+    )
+    bad_duplicate_transported = json.loads(json.dumps(evidence))
+    bad_duplicate_transported["eta_zero_endpoint_transported_integrals"].append(
+        "phase[1,1,1,0,1,0,1]"
+    )
     bad_compare = json.loads(json.dumps(compare))
     bad_compare["integrals"][2]["coefficients"][1]["passed"] = False
     bad_cpp_result = json.loads(json.dumps(cpp_result))
@@ -858,6 +884,30 @@ def run_self_check() -> dict[str, Any]:
             cpp_result,
             golden_text,
             "reject final solution samples",
+        ),
+        "rejects_missing_transported_integral": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_missing_transported,
+            compare,
+            cpp_result,
+            golden_text,
+            "transported integral scope",
+        ),
+        "rejects_extra_transported_integral": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_extra_transported,
+            compare,
+            cpp_result,
+            golden_text,
+            "transported integral scope",
+        ),
+        "rejects_duplicate_transported_integral": rejected(
+            CANONICAL_PERMUTATION_AUDIT,
+            bad_duplicate_transported,
+            compare,
+            cpp_result,
+            golden_text,
+            "entries must be unique",
         ),
         "rejects_failed_compare_coefficient": rejected(
             CANONICAL_PERMUTATION_AUDIT,

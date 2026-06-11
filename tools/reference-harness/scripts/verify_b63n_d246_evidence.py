@@ -90,6 +90,17 @@ BANNED_RUNTIME_RUN_COMMAND_MARKERS = (
     ".amflow-state.json",
     ".golden-manifest.json",
 )
+REQUIRED_D246_RUN_COMMAND_TOPIC_MARKERS = (
+    "d246",
+    "d2d4d6",
+    "d2-d4-d6",
+    "d2_d4_d6",
+)
+REQUIRED_D246_RUN_COMMAND_SCOPE_MARKERS = (
+    "automatic_phasespace",
+    "automatic-phasespace",
+    "b63n",
+)
 REQUIRED_SKELETON_COEFFICIENT_SCOPE = (
     "contiguous epsilon range matching the future runtime publication scope"
 )
@@ -345,6 +356,14 @@ def require_run_command_text(raw: Any, label: str) -> str:
     expect(
         MATHEMATICA_RUN_COMMAND_RE.search(value) is not None,
         f"{label} must invoke a Mathematica or Wolfram noninteractive runner",
+    )
+    expect(
+        any(marker in lowered for marker in REQUIRED_D246_RUN_COMMAND_TOPIC_MARKERS),
+        f"{label} must identify the D2/D4/D6 extraction scope",
+    )
+    expect(
+        any(marker in lowered for marker in REQUIRED_D246_RUN_COMMAND_SCOPE_MARKERS),
+        f"{label} must identify b63n or automatic_phasespace extraction scope",
     )
     return value
 
@@ -1146,6 +1165,11 @@ def run_self_check() -> dict[str, Any]:
         "--eps-order 4 --digits 80"
     )
 
+    bad_generic_mathematica_run_command = full_fixture()
+    bad_generic_mathematica_run_command["amflow_parameter_set"][
+        "run_command"
+    ] = "math -script unrelated_reference_run.wls"
+
     bad_absolute_run_log = full_fixture()
     bad_absolute_run_log["amflow_parameter_set"]["run_log"] = "/tmp/d246/run.log"
 
@@ -1364,6 +1388,10 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_cpp_runtime_run_command": rejected(
             bad_cpp_runtime_run_command,
             "run_command must not invoke C++ runtime",
+        ),
+        "full_rejects_generic_mathematica_run_command": rejected(
+            bad_generic_mathematica_run_command,
+            "run_command must identify the D2/D4/D6 extraction scope",
         ),
         "full_rejects_absolute_run_log": rejected(
             bad_absolute_run_log,

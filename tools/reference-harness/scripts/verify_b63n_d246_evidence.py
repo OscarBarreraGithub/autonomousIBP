@@ -73,7 +73,7 @@ PLACEHOLDER_TEXT = {"", "placeholder", "todo", "tbd", "unknown", "none", "null"}
 MINIMUM_DIGITS = 50
 REQUIRED_PUBLISHED_EPS_ORDERS = [0, 1, 2, 3]
 FULL_WEIGHTED_TARGET = "j[phase,1,2,1,1,1,1,1]"
-BANNED_COEFFICIENT_SOURCE_SUFFIXES = (
+BANNED_RETAINED_ARTIFACT_SUFFIXES = (
     ".cpp-result.json",
     ".stripped-result.json",
     ".amflow-state.json",
@@ -213,7 +213,7 @@ def require_coefficient_source_path_text(raw: Any, label: str) -> str:
     value = require_relative_artifact_path_text(raw, label)
     filename = Path(value).name
     banned_suffix = next(
-        (suffix for suffix in BANNED_COEFFICIENT_SOURCE_SUFFIXES if filename.endswith(suffix)),
+        (suffix for suffix in BANNED_RETAINED_ARTIFACT_SUFFIXES if filename.endswith(suffix)),
         None,
     )
     expect(
@@ -227,10 +227,34 @@ def require_coefficient_source_path_text(raw: Any, label: str) -> str:
     return value
 
 
+def require_raw_output_path_text(raw: Any, label: str) -> str:
+    value = require_relative_artifact_path_text(raw, label)
+    filename = Path(value).name
+    banned_suffix = next(
+        (suffix for suffix in BANNED_RETAINED_ARTIFACT_SUFFIXES if filename.endswith(suffix)),
+        None,
+    )
+    expect(
+        banned_suffix is None,
+        f"{label} must not cite retained runtime/comparison artifacts as raw AMFlow output",
+    )
+    expect(
+        COMPARE_ARTIFACT_RE.search(filename) is None,
+        f"{label} must not cite retained runtime/comparison artifacts as raw AMFlow output",
+    )
+    return value
+
+
 def optional_relative_artifact_path_text(raw: Any, label: str) -> str | None:
     if raw is None:
         return None
     return require_relative_artifact_path_text(raw, label)
+
+
+def optional_raw_output_path_text(raw: Any, label: str) -> str | None:
+    if raw is None:
+        return None
+    return require_raw_output_path_text(raw, label)
 
 
 def require_decimal_string(raw: Any, label: str) -> str:
@@ -346,7 +370,7 @@ def validate_parameter_set(parameters: dict[str, Any], *, published: bool) -> No
         parameters.get("run_log"),
         "amflow_parameter_set.run_log",
     )
-    raw_output = optional_relative_artifact_path_text(
+    raw_output = optional_raw_output_path_text(
         parameters.get("raw_output"),
         "amflow_parameter_set.raw_output",
     )
@@ -1039,6 +1063,23 @@ def run_self_check() -> dict[str, Any]:
         "artifacts/../d246/raw-output.json"
     )
 
+    bad_cpp_result_raw_output = full_fixture()
+    bad_cpp_result_raw_output["amflow_parameter_set"]["raw_output"] = (
+        "tools/reference-harness/specs/m5/proof-runs/lane45/"
+        "automatic_phasespace.cpp-result.json"
+    )
+
+    bad_compare_raw_output = full_fixture()
+    bad_compare_raw_output["amflow_parameter_set"]["raw_output"] = (
+        "tools/reference-harness/specs/m6/lane146/"
+        "automatic_phasespace.selected4-cutkosky.compare30.json"
+    )
+
+    bad_golden_manifest_raw_output = full_fixture()
+    bad_golden_manifest_raw_output["amflow_parameter_set"]["raw_output"] = (
+        "tools/reference-harness/specs/phase0/automatic_phasespace.golden-manifest.json"
+    )
+
     bad_absolute_comparison_artifact = full_fixture()
     bad_absolute_comparison_artifact["weights"][0]["reference_validation"][
         "comparison_artifact"
@@ -1202,6 +1243,18 @@ def run_self_check() -> dict[str, Any]:
         "full_rejects_parent_raw_output": rejected(
             bad_parent_raw_output,
             "raw_output must not contain . or .. components",
+        ),
+        "full_rejects_cpp_result_raw_output": rejected(
+            bad_cpp_result_raw_output,
+            "raw AMFlow output",
+        ),
+        "full_rejects_compare_raw_output": rejected(
+            bad_compare_raw_output,
+            "raw AMFlow output",
+        ),
+        "full_rejects_golden_manifest_raw_output": rejected(
+            bad_golden_manifest_raw_output,
+            "raw AMFlow output",
         ),
         "full_rejects_absolute_comparison_artifact": rejected(
             bad_absolute_comparison_artifact,

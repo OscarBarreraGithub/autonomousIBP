@@ -16,6 +16,45 @@ from typing import Any, Callable
 EXPECTED_JSON_FIXTURE = Path(
     "tools/reference-harness/specs/release/b63n-parity-status-summary.fixture.json"
 )
+EXPECTED_BLOCKERS = [
+    (
+        "D2/D4/D6 weighted-residue evidence remains a skeleton sidecar with "
+        "publication blockers"
+    ),
+    (
+        "full automatic_phasespace weighted target phase[1,2,1,1,1,1,1] has no "
+        "published high-precision AMFlow coefficient packet"
+    ),
+    "full eta=0 contour execution remains deferred",
+]
+EXPECTED_WITHHELD_CLAIMS = [
+    (
+        "This summary reads committed b63n evidence and optional runtime audit "
+        "fingerprints only."
+    ),
+    "This summary does not rerun AMFlow numerics.",
+    "This summary does not claim Milestone M6 closure.",
+    "This summary does not claim Milestone M7 closure.",
+    "This summary does not claim release readiness.",
+    "This summary does not claim full eta=0 contour execution.",
+    "This summary does not publish D2/D4/D6 weighted-residue coefficients.",
+    "This summary does not widen runtime or public behavior.",
+]
+EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS = [
+    "phase[1,0,1,0,1,0,0]",
+    "phase[1,-1,1,0,1,0,0]",
+    "phase[1,1,1,0,1,0,1]",
+    "phase[1,1,1,1,1,1,1]",
+]
+EXPECTED_SCOPED_GATE_LABELS = [
+    "blocked-D2-scoped-weighted-residue",
+    "published-D7-scoped-weighted-residue",
+]
+
+
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
 
 
 def repo_root() -> Path:
@@ -46,6 +85,128 @@ def print_json_diff(expected: dict[str, Any], actual: dict[str, Any]) -> None:
     print("".join(diff), file=sys.stderr)
 
 
+def require_object(raw: Any, label: str) -> dict[str, Any]:
+    expect(isinstance(raw, dict), f"{label} must be an object")
+    return raw
+
+
+def require_list(raw: Any, label: str) -> list[Any]:
+    expect(isinstance(raw, list), f"{label} must be a list")
+    return raw
+
+
+def require_exact(raw: Any, expected: Any, label: str) -> None:
+    expect(raw == expected, f"{label} must be {expected!r}, got {raw!r}")
+
+
+def validate_summary_contract(payload: dict[str, Any], *, label: str) -> None:
+    require_exact(payload.get("schema_version"), 1, f"{label}.schema_version")
+    require_exact(
+        payload.get("summary_id"),
+        "b63n-post-m7-parity-status-v1",
+        f"{label}.summary_id",
+    )
+    require_exact(
+        payload.get("status"),
+        "blocked-full-weighted-residue-surface",
+        f"{label}.status",
+    )
+    require_exact(payload.get("inputs_verified"), True, f"{label}.inputs_verified")
+
+    selected4 = require_object(
+        payload.get("selected4_parity"),
+        f"{label}.selected4_parity",
+    )
+    require_exact(
+        selected4.get("transported_integrals"),
+        EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS,
+        f"{label}.selected4_parity.transported_integrals",
+    )
+    require_exact(
+        selected4.get("transported_integral_count"),
+        len(EXPECTED_SELECTED4_TRANSPORTED_INTEGRALS),
+        f"{label}.selected4_parity.transported_integral_count",
+    )
+    require_exact(
+        selected4.get("published_d7_integral"),
+        "phase[1,1,1,0,1,0,1]",
+        f"{label}.selected4_parity.published_d7_integral",
+    )
+    require_exact(
+        selected4.get("published_d7_orders"),
+        [0, 1, 2, 3],
+        f"{label}.selected4_parity.published_d7_orders",
+    )
+    require_exact(
+        selected4.get("full_eta_zero_contour_applied"),
+        False,
+        f"{label}.selected4_parity.full_eta_zero_contour_applied",
+    )
+
+    d246 = require_object(
+        payload.get("d246_weighted_residue_surface"),
+        f"{label}.d246_weighted_residue_surface",
+    )
+    require_exact(
+        d246.get("surface_label"),
+        "phase[1,2,1,1,1,1,1]",
+        f"{label}.d246_weighted_residue_surface.surface_label",
+    )
+    require_exact(
+        d246.get("weights"),
+        ["D2", "D4", "D6"],
+        f"{label}.d246_weighted_residue_surface.weights",
+    )
+    require_exact(
+        d246.get("published_evidence"),
+        False,
+        f"{label}.d246_weighted_residue_surface.published_evidence",
+    )
+    require_exact(
+        d246.get("skeleton_evidence"),
+        True,
+        f"{label}.d246_weighted_residue_surface.skeleton_evidence",
+    )
+    d246_blockers = require_list(
+        d246.get("publication_blockers"),
+        f"{label}.d246_weighted_residue_surface.publication_blockers",
+    )
+    expect(
+        all(isinstance(blocker, str) and blocker for blocker in d246_blockers),
+        f"{label}.d246_weighted_residue_surface.publication_blockers must be non-empty strings",
+    )
+    expect(
+        len(d246_blockers) >= 3,
+        f"{label}.d246_weighted_residue_surface.publication_blockers must retain blocker detail",
+    )
+
+    scoped_gate = require_object(
+        payload.get("scoped_gate_audit"),
+        f"{label}.scoped_gate_audit",
+    )
+    require_exact(
+        scoped_gate.get("queried_labels"),
+        EXPECTED_SCOPED_GATE_LABELS,
+        f"{label}.scoped_gate_audit.queried_labels",
+    )
+    require_exact(
+        scoped_gate.get("queried_weights"),
+        ["D2", "D7"],
+        f"{label}.scoped_gate_audit.queried_weights",
+    )
+
+    require_exact(
+        require_list(payload.get("blockers"), f"{label}.blockers"),
+        EXPECTED_BLOCKERS,
+        f"{label}.blockers",
+    )
+    require_exact(
+        require_list(payload.get("withheld_claims"), f"{label}.withheld_claims"),
+        EXPECTED_WITHHELD_CLAIMS,
+        f"{label}.withheld_claims",
+    )
+
+
 def parse_summary_json(raw_output: str) -> dict[str, Any]:
     try:
         actual = json.loads(raw_output)
@@ -57,6 +218,8 @@ def parse_summary_json(raw_output: str) -> dict[str, Any]:
 
 
 def fixture_matches(expected: dict[str, Any], actual: dict[str, Any]) -> bool:
+    validate_summary_contract(expected, label="expected fixture")
+    validate_summary_contract(actual, label="actual summary")
     return actual == expected
 
 
@@ -91,7 +254,13 @@ def run_fixture_gate(root: Path) -> int:
         return 1
 
     expected = read_json(root / EXPECTED_JSON_FIXTURE)
-    if not fixture_matches(expected, actual):
+    try:
+        matches = fixture_matches(expected, actual)
+    except RuntimeError as error:
+        print(f"b63n parity status JSON fixture contract failed: {error}", file=sys.stderr)
+        return 1
+
+    if not matches:
         print_json_diff(expected, actual)
         return 1
 
@@ -119,20 +288,61 @@ def run_self_check(root: Path) -> int:
     promoted_full_contour = copy.deepcopy(expected)
     promoted_full_contour["selected4_parity"]["full_eta_zero_contour_applied"] = True
 
+    digit_floor_drift = copy.deepcopy(expected)
+    digit_floor_drift["first_coefficient"]["minimum_digit_agreement"] = 998
+
+    missing_blockers = copy.deepcopy(expected)
+    missing_blockers["blockers"] = []
+
+    thin_d246_blockers = copy.deepcopy(expected)
+    thin_d246_blockers["d246_weighted_residue_surface"]["publication_blockers"] = []
+
+    wrong_transported_count = copy.deepcopy(expected)
+    wrong_transported_count["selected4_parity"]["transported_integral_count"] -= 1
+
+    stale_scoped_gate = copy.deepcopy(expected)
+    stale_scoped_gate["scoped_gate_audit"]["queried_weights"] = ["D7", "D2"]
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
     checks = {
         "accepts_current_fixture": fixture_matches(expected, copy.deepcopy(expected)),
-        "rejects_status_drift": not fixture_matches(expected, status_drift),
-        "rejects_d246_silent_promotion": not fixture_matches(expected, promoted_d246),
-        "rejects_full_contour_promotion": not fixture_matches(
-            expected,
-            promoted_full_contour,
+        "rejects_status_drift": rejected(
+            lambda: fixture_matches(expected, status_drift),
+            "actual summary.status",
         ),
-        "rejects_missing_withheld_claims": not fixture_matches(
+        "rejects_d246_silent_promotion": rejected(
+            lambda: fixture_matches(expected, promoted_d246),
+            "d246_weighted_residue_surface.published_evidence",
+        ),
+        "rejects_full_contour_promotion": rejected(
+            lambda: fixture_matches(expected, promoted_full_contour),
+            "selected4_parity.full_eta_zero_contour_applied",
+        ),
+        "rejects_exact_fixture_digit_drift": not fixture_matches(
             expected,
-            missing_withheld_claims,
+            digit_floor_drift,
+        ),
+        "rejects_missing_withheld_claims": rejected(
+            lambda: fixture_matches(expected, missing_withheld_claims),
+            "actual summary.withheld_claims",
+        ),
+        "rejects_missing_blockers": rejected(
+            lambda: validate_summary_contract(missing_blockers, label="synthetic summary"),
+            "synthetic summary.blockers",
+        ),
+        "rejects_empty_d246_publication_blockers": rejected(
+            lambda: validate_summary_contract(thin_d246_blockers, label="synthetic summary"),
+            "publication_blockers must retain blocker detail",
+        ),
+        "rejects_selected4_transported_count_drift": rejected(
+            lambda: validate_summary_contract(wrong_transported_count, label="synthetic summary"),
+            "transported_integral_count",
+        ),
+        "rejects_scoped_gate_weight_order_drift": rejected(
+            lambda: validate_summary_contract(stale_scoped_gate, label="synthetic summary"),
+            "scoped_gate_audit.queried_weights",
         ),
         "rejects_invalid_json": rejected(
             lambda: parse_summary_json("{"),

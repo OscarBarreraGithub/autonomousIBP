@@ -60,6 +60,43 @@ true:
 - the packet can satisfy the phase-0 qualification path without weakening
   comparison, digit-scoring, failure-code, or sidecar-root guards.
 
+## Helper Fixture Contract
+
+This docs-only follow-up does not replace the helper above. It freezes the
+minimum fixture surface that the future helper should cover before any b64ag
+packet can be proposed for promotion.
+
+The positive fixture must be one coherent candidate packet with these
+repo-local inputs:
+
+- a `linear_propagator` C++ result whose runtime diagnostics name lane `b64ag`
+  and publish full `gaugex -> 0` contour evidence;
+- a comparison summary bound to that exact result and to the retained AMFlow
+  state used as the golden source;
+- a retained AMFlow state that exposes the six-master gauge-link basis and the
+  finite `gaugex -> 1/40` boundary provenance;
+- a packet manifest whose target list, result integrals, comparison integrals,
+  coefficient rows, and provenance hashes all describe the same surface.
+
+The negative fixtures must include the current selected evidence plus small
+mutations that prove each anti-fake guard is active:
+
+- selected endpoint scope with `full_eta_zero_contour_applied=false`;
+- any final solution sample marked or implied as runtime input;
+- missing contour, pole, finite-part, target-reduction, precision, or
+  provenance diagnostics;
+- mismatched candidate-result, comparison, retained-state, or manifest
+  provenance;
+- top-level comparison pass with failing, missing, real-only, imag-only, or
+  all-`999` sentinel coefficient rows;
+- digit evidence below the required optional packet floor or disconnected from
+  the detailed coefficient table.
+
+Passing these fixtures would only show that the helper rejects fake promotion
+paths. It would not by itself recapture goldens, qualify the phase-0 packet set,
+close `linear_propagator -> b64ag`, change M7 release evidence, or prove release
+readiness.
+
 Until such a helper or packet lands and passes review, the honest post-M7 lane 4
 status remains:
 

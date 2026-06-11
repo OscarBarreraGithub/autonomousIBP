@@ -372,6 +372,10 @@ def validate_reference_validation(
 
     expect(passed, f"{label} published validation must pass")
     expect(coefficient_published, f"{label} published validation must publish coefficients")
+    expect(
+        validation.get("blocked_reason") is None,
+        f"{label} published validation must not retain blocked_reason",
+    )
     minimum_digits = require_int(
         validation.get("minimum_digit_agreement"),
         f"{label}.reference_validation.minimum_digit_agreement",
@@ -463,9 +467,17 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
     published = passed and not skeleton
     if skeleton:
         status = require_string(payload.get("status"), "status")
+        status_text = status.lower()
         expect(
-            "skeleton" in status and "pending" in status,
+            "skeleton" in status_text and "pending" in status_text,
             "skeleton evidence status must say skeleton and pending",
+        )
+    elif payload.get("status") is not None:
+        status = require_string(payload.get("status"), "status")
+        status_text = status.lower()
+        expect(
+            "skeleton" not in status_text and "pending" not in status_text,
+            "published evidence status must not retain skeleton or pending text",
         )
 
     validate_source_files(payload)
@@ -713,10 +725,18 @@ def run_self_check() -> dict[str, Any]:
         "comparison_artifact"
     ] = "artifacts/d6.compare.json"
 
+    bad_full_skeleton_status = full_fixture()
+    bad_full_skeleton_status["status"] = "skeleton-pending-amflow-reference-run"
+
     bad_source_path = skeleton_fixture()
     bad_source_path["source_files"]["automatic_phasespace_run_wl"][
         "path"
     ] = "/example/amflow/examples/feynman_prescription/run.wl"
+
+    bad_full_blocked_reason = full_fixture()
+    bad_full_blocked_reason["weights"][0]["reference_validation"][
+        "blocked_reason"
+    ] = "pending high-precision AMFlow extraction for D2"
 
     bad_full_missing_coefficients = full_fixture()
     bad_full_missing_coefficients["weights"][0]["coefficients"] = []
@@ -786,9 +806,17 @@ def run_self_check() -> dict[str, Any]:
             bad_skeleton_comparison_claim,
             "skeleton must not record comparison_artifact",
         ),
+        "published_rejects_skeleton_status": rejected(
+            bad_full_skeleton_status,
+            "published evidence status must not retain skeleton or pending text",
+        ),
         "rejects_wrong_source_file_path": rejected(
             bad_source_path,
             "source_files.automatic_phasespace_run_wl.path",
+        ),
+        "published_rejects_weight_blocked_reason": rejected(
+            bad_full_blocked_reason,
+            "published validation must not retain blocked_reason",
         ),
         "full_requires_nonempty_coefficients": rejected(
             bad_full_missing_coefficients,

@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +45,11 @@ class CodeBlock:
 
 class MarkdownError(RuntimeError):
     """Raised when release markdown validation cannot continue."""
+
+
+def expect(condition: bool, message: str) -> None:
+    if not condition:
+        raise MarkdownError(message)
 
 
 def repo_root() -> Path:
@@ -301,10 +308,120 @@ def validate_file(path: Path, root: Path, errors: list[str]) -> tuple[int, int]:
     return link_count, len(blocks)
 
 
+def write_fixture(root: Path, relative_path: Path, text: str) -> None:
+    path = root / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def write_self_check_fixture(root: Path, known_gaps_body: str) -> None:
+    fixture_docs = {
+        RELEASE_CHECKLIST: "# Release Signoff Checklist\n",
+        RELEASE_DOCS_ROOT / "amflow-example-coverage.md": "# AMFlow Example Coverage Inventory\n",
+        RELEASE_DOCS_ROOT / "known-gaps.md": known_gaps_body,
+        RELEASE_DOCS_ROOT / "m7-closure-evidence.md": "# M7 Closure Evidence\n\n## Release Evidence\n",
+        RELEASE_DOCS_ROOT / "re-run-release-readiness.md": "# Re-run M7 Release Readiness\n",
+        RELEASE_DOCS_ROOT / "tools.md": "# Release Tooling Catalog\n",
+    }
+    for relative_path, text in fixture_docs.items():
+        write_fixture(root, relative_path, text)
+
+
+def validate_root(root: Path) -> tuple[int, int, list[str]]:
+    errors: list[str] = []
+    paths = release_markdown_paths(root)
+    link_count = 0
+    code_block_count = 0
+    for path in paths:
+        file_links, file_blocks = validate_file(path, root, errors)
+        link_count += file_links
+        code_block_count += file_blocks
+    return link_count, code_block_count, errors
+
+
+def expect_self_check_failure(label: str, known_gaps_body: str, expected: str) -> bool:
+    with tempfile.TemporaryDirectory(prefix=f"release-markdown-{label}-") as tmp:
+        root = Path(tmp)
+        write_self_check_fixture(root, known_gaps_body)
+        _, _, errors = validate_root(root)
+    expect(errors, f"{label} unexpectedly passed")
+    detail = "\n".join(errors)
+    expect(expected in detail, f"{label} failed for the wrong reason: {detail}")
+    return True
+
+
+def run_self_check() -> dict[str, object]:
+    valid_known_gaps = """# Release Known Gaps
+
+See [evidence](m7-closure-evidence.md#release-evidence), [tools][tools-doc],
+and the [checklist](../release-signoff-checklist.md).
+
+```text
+[masked missing link](missing.md)
+```
+
+```sh
+python3 tools/reference-harness/scripts/validate_release_markdown.py
+```
+
+[tools-doc]: tools.md
+"""
+    with tempfile.TemporaryDirectory(prefix="release-markdown-self-check-") as tmp:
+        root = Path(tmp)
+        write_self_check_fixture(root, valid_known_gaps)
+        link_count, code_block_count, errors = validate_root(root)
+    expect(not errors, "valid release markdown fixture failed: " + "; ".join(errors))
+    expect(link_count == 3, f"valid fixture link count drifted: {link_count}")
+    expect(code_block_count == 2, f"valid fixture code block count drifted: {code_block_count}")
+
+    checks = {
+        "valid_fixture": True,
+        "markdown_anchor_rejected": expect_self_check_failure(
+            "missing-anchor",
+            "# Release Known Gaps\n\nSee [missing](m7-closure-evidence.md#missing-anchor).\n",
+            "markdown anchor does not exist",
+        ),
+        "repository_escape_rejected": expect_self_check_failure(
+            "escaped-link",
+            "# Release Known Gaps\n\nSee [escape](../../../outside.md).\n",
+            "link escapes repository",
+        ),
+        "bad_shell_fence_rejected": expect_self_check_failure(
+            "bad-shell",
+            "# Release Known Gaps\n\n```sh\nif then\n```\n",
+            "shell fenced code does not parse",
+        ),
+        "unsupported_language_rejected": expect_self_check_failure(
+            "unsupported-language",
+            "# Release Known Gaps\n\n```python\nprint('not a release-doc fence')\n```\n",
+            "unsupported fenced code language",
+        ),
+    }
+    expect(all(checks.values()), "release markdown validator self-check failed")
+    return {
+        "self_check_passed": True,
+        "checks": checks,
+    }
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="Run fixture-backed positive and negative release markdown checks.",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
+    args = parse_args()
     root = repo_root()
     errors: list[str] = []
     try:
+        if args.self_check:
+            print(json.dumps(run_self_check(), indent=2, sort_keys=True))
+            return 0
         paths = release_markdown_paths(root)
     except MarkdownError as error:
         print(f"release markdown validation failed: {error}", file=sys.stderr)

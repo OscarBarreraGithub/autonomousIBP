@@ -127,13 +127,16 @@ runtime, parity, or qualification evidence.
 
 | Tool | Primary use | CI coverage |
 | --- | --- | --- |
-| [`validate_release_markdown.py`](../../tools/reference-harness/scripts/validate_release_markdown.py) | Validate release markdown links and fenced code blocks under `docs/release/` plus [`docs/release-signoff-checklist.md`](../release-signoff-checklist.md). | `m7-release-markdown-docs-validation`. |
+| [`validate_release_markdown.py`](../../tools/reference-harness/scripts/validate_release_markdown.py) | Validate release markdown links and fenced code blocks under `docs/release/` plus [`docs/release-signoff-checklist.md`](../release-signoff-checklist.md). | `m7-release-markdown-docs-validation` and `m7-release-markdown-docs-self-check`. |
 
 Run it directly after editing release docs:
 
 ```sh
 python3 tools/reference-harness/scripts/validate_release_markdown.py
+python3 tools/reference-harness/scripts/validate_release_markdown.py --self-check
 ```
 
 The validator checks local links, markdown fragments, and parseability of `sh`,
-`bash`, and `json` fenced blocks. It does not decide release readiness.
+`bash`, and `json` fenced blocks. Its self-check exercises valid release-doc
+fixtures plus missing-anchor, repository-escape, bad-shell-fence, and
+unsupported-language failures. It does not decide release readiness.

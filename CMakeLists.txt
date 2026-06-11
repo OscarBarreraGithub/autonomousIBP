@@ -413,6 +413,16 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-markdown-docs-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/validate_release_markdown.py
+      --self-check
+  )
+  set_tests_properties(m7-release-markdown-docs-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-sidecar-inventory-audit
     COMMAND
       ${Python3_EXECUTABLE}

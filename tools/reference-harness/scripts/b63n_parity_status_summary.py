@@ -68,6 +68,15 @@ EVIDENCE_SOURCE_FIELDS: tuple[str, ...] = (
     "selected4_cpp_result",
     "d246_sidecar",
 )
+EXPECTED_EVIDENCE_SOURCE_PREFIXES: dict[str, str] = {
+    "first_evidence": "tools/reference-harness/specs/m6/lane143/",
+    "first_compare": "tools/reference-harness/specs/m6/lane143/",
+    "first_cpp_result": "tools/reference-harness/specs/m6/lane143/",
+    "selected4_evidence": "tools/reference-harness/specs/m6/lane146/",
+    "selected4_compare": "tools/reference-harness/specs/m6/lane146/",
+    "selected4_cpp_result": "tools/reference-harness/specs/m6/lane146/",
+    "d246_sidecar": "tools/reference-harness/specs/m6/lane146/",
+}
 
 
 class StatusSummaryError(RuntimeError):
@@ -139,6 +148,20 @@ def require_object(raw: Any, label: str) -> dict[str, Any]:
     return raw
 
 
+def require_evidence_source_path(sources: dict[str, Any], field: str) -> str:
+    value = require_string(sources, field)
+    path = Path(value)
+    expect(value == value.strip(), f"{field} must not contain surrounding whitespace")
+    expect("\\" not in value, f"{field} must use POSIX path separators")
+    expect(not path.is_absolute(), f"{field} must be repo-relative")
+    expect(".." not in path.parts, f"{field} must not escape the repository")
+    expect(path.as_posix() == value, f"{field} must be a normalized POSIX path")
+    expect(value.endswith(".json"), f"{field} must point to a JSON artifact")
+    expected_prefix = EXPECTED_EVIDENCE_SOURCE_PREFIXES[field]
+    expect(value.startswith(expected_prefix), f"{field} must stay under {expected_prefix}")
+    return value
+
+
 def build_evidence_sources(
     *,
     root: Path,
@@ -175,7 +198,7 @@ def default_evidence_sources(root: Path) -> dict[str, Any]:
 
 
 def validate_evidence_sources(sources: dict[str, Any]) -> dict[str, str]:
-    normalized = {field: require_string(sources, field) for field in EVIDENCE_SOURCE_FIELDS}
+    normalized = {field: require_evidence_source_path(sources, field) for field in EVIDENCE_SOURCE_FIELDS}
     first_paths = {
         normalized["first_evidence"],
         normalized["first_compare"],
@@ -717,7 +740,16 @@ def run_self_check() -> dict[str, Any]:
     stale_fingerprints["pins_match"] = False
 
     evidence_source_drift = copy.deepcopy(evidence_sources)
-    evidence_source_drift["selected4_compare"] = evidence_source_drift["first_compare"]
+    evidence_source_drift["first_compare"] = evidence_source_drift["first_evidence"]
+
+    outside_repo_evidence_source = copy.deepcopy(evidence_sources)
+    outside_repo_evidence_source["first_evidence"] = "/tmp/b63n-first-real-coefficient-evidence.json"
+
+    wrong_lane_evidence_source = copy.deepcopy(evidence_sources)
+    wrong_lane_evidence_source["selected4_evidence"] = (
+        "tools/reference-harness/specs/m6/lane143/"
+        "b63n-selected4-real-coefficients-evidence.json"
+    )
 
     checks = {
         "synthetic_summary_passes": valid["status"] == "blocked-full-weighted-residue-surface",
@@ -791,7 +823,25 @@ def run_self_check() -> dict[str, Any]:
             scoped_gate=scoped_gate,
             fingerprints=fingerprints,
             evidence_sources=evidence_source_drift,
-            expected_error="first and selected4 compare sources",
+            expected_error="first coefficient evidence source paths must be distinct",
+        ),
+        "rejects_outside_repo_evidence_source": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=outside_repo_evidence_source,
+            expected_error="first_evidence must be repo-relative",
+        ),
+        "rejects_wrong_lane_evidence_source": rejected(
+            first=first,
+            selected4=selected4,
+            d246=d246,
+            scoped_gate=scoped_gate,
+            fingerprints=fingerprints,
+            evidence_sources=wrong_lane_evidence_source,
+            expected_error="selected4_evidence must stay under tools/reference-harness/specs/m6/lane146/",
         ),
     }
     expect(all(checks.values()), "b63n parity status summary self-check failed")

@@ -115,6 +115,27 @@ def run_self_check(root: Path) -> int:
     promoted_publication_gate = copy.deepcopy(expected)
     promoted_publication_gate["publication_gate"]["gate_passed"] = True
 
+    publication_digit_floor_drift = copy.deepcopy(expected)
+    publication_digit_floor_drift["publication_gate"]["minimum_digit_agreement_required"] = 49
+
+    row56_target_floor_drift = copy.deepcopy(expected)
+    row56_target_floor_drift["reference_floor"]["targets"][0][
+        "reference_floor_real_digits"
+    ] += 1
+
+    row56_target_identity_drift = copy.deepcopy(expected)
+    row56_target_identity_drift["reference_floor"]["targets"][0]["reference_floor_id"] = (
+        "synthetic-b61n-reference-floor-id"
+    )
+
+    missing_blocker = copy.deepcopy(expected)
+    missing_blocker["blockers"] = missing_blocker["blockers"][:-1]
+
+    audit_fingerprint_pin_drift = copy.deepcopy(expected)
+    audit_fingerprint_pin_drift["audit_fingerprints"]["entries"][0]["pinned_fingerprint"] = (
+        "fnv1a64:syntheticb61n"
+    )
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -124,6 +145,23 @@ def run_self_check(root: Path) -> int:
         "rejects_publication_gate_promotion": not fixture_matches(
             expected,
             promoted_publication_gate,
+        ),
+        "rejects_publication_digit_floor_drift": not fixture_matches(
+            expected,
+            publication_digit_floor_drift,
+        ),
+        "rejects_row56_target_floor_drift": not fixture_matches(
+            expected,
+            row56_target_floor_drift,
+        ),
+        "rejects_row56_target_identity_drift": not fixture_matches(
+            expected,
+            row56_target_identity_drift,
+        ),
+        "rejects_missing_blocker": not fixture_matches(expected, missing_blocker),
+        "rejects_audit_fingerprint_pin_drift": not fixture_matches(
+            expected,
+            audit_fingerprint_pin_drift,
         ),
         "rejects_missing_withheld_claims": not fixture_matches(
             expected,

@@ -134,6 +134,12 @@ QUALIFICATION_CORPUS_REQUIRED_WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary does not widen runtime or public behavior.",
 )
 
+M6_QUALIFICATION_REQUIRED_WITHHELD_CLAIMS: tuple[str, ...] = (
+    "This summary does not launch the C++ runtime or create new retained captures.",
+    "This summary does not mark Milestone M7 or release readiness.",
+    "This summary does not widen runtime or public behavior.",
+)
+
 M5_ALL_PHASE_SCOPE = "m5-all-phase"
 M5_ALL_PHASE_CLOSED_STATE = "CLOSED/all-phase"
 M5_ALL_PHASE_BLOCKED_STATE = "blocked-on-m5-all-phase-closure"
@@ -1155,6 +1161,10 @@ def load_m6_qualification_summary(summary_path: Path) -> dict[str, Any]:
         "M6 qualification summary withheld_claims",
     )
     expect_unique(withheld_claims, "M6 qualification summary withheld_claims")
+    expect(
+        all(claim in withheld_claims for claim in M6_QUALIFICATION_REQUIRED_WITHHELD_CLAIMS),
+        "M6 qualification summary withheld_claims must preserve the M7/release/runtime non-claims",
+    )
 
     if summary["milestone_m6_ready"]:
         expect(
@@ -2822,11 +2832,24 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             },
         )
 
+        malformed_m6_withheld_claims_path = (
+            temp_root / "m6-qualification-malformed-withheld-claims.json"
+        )
         malformed_sections_path = temp_root / "parity-signoff-malformed-sections.json"
         malformed_withheld_claims_path = (
             temp_root / "parity-signoff-malformed-withheld-claims.json"
         )
         malformed_guardrails_path = temp_root / "parity-signoff-malformed-guardrails.json"
+        m6_qualification_fixture = load_json(m6_qualification_summary_path)
+        write_json(
+            malformed_m6_withheld_claims_path,
+            {
+                **m6_qualification_fixture,
+                "withheld_claims": [
+                    "This summary does not mark Milestone M7 or release readiness.",
+                ],
+            },
+        )
         parity_signoff_fixture = load_json(parity_signoff_summary_path)
         write_json(
             malformed_sections_path,
@@ -2858,6 +2881,11 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
                 "blocking_reasons": [],
             },
         )
+        try:
+            load_m6_qualification_summary(malformed_m6_withheld_claims_path)
+            m6_qualification_withheld_claims_schema_rejected = False
+        except Exception:
+            m6_qualification_withheld_claims_schema_rejected = True
         try:
             load_parity_signoff_summary(malformed_sections_path)
             parity_signoff_required_sections_schema_rejected = False
@@ -3075,6 +3103,10 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             unknown_source_commit_override_rejected,
             "unknown source commit override must be rejected",
         )
+        expect(
+            m6_qualification_withheld_claims_schema_rejected,
+            "M6 qualification summary must reject stripped M7/release/runtime non-claims",
+        )
 
         return {
             "checklist_sources_present": summary["checklist_sources_present"],
@@ -3198,6 +3230,9 @@ def run_self_check(checklist_path: Path) -> dict[str, Any]:
             ),
             "accepted_m6_sidecar_clears_carried_case_study_numerics": (
                 accepted_m6_sidecar_clears_carried_case_study_numerics
+            ),
+            "m6_qualification_withheld_claims_schema_rejected": (
+                m6_qualification_withheld_claims_schema_rejected
             ),
             "accepted_m5_sidecar_consumed": accepted_m5_m6_parity_summary[
                 "m5_qualification_evidence_present"

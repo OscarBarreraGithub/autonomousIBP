@@ -10,6 +10,7 @@ publication gate, transport precision, or AMFlow reference precision.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import sys
@@ -97,6 +98,41 @@ def contains(summary: str, needle: str) -> bool:
   return needle in summary
 
 
+def bool_field(payload: dict[str, Any], field: str, target_label: str) -> bool:
+  value = payload.get(field)
+  expect(isinstance(value, bool), f"{target_label} {field} must be boolean")
+  return value
+
+
+def validate_reference_floor_metadata(
+    comparison_entry: dict[str, Any],
+    integral: str,
+    order: int,
+    matched_to_reference_floor: bool,
+    matched_to_tolerance_digits: bool,
+    verdict: Any,
+) -> None:
+  target_label = f"{integral} eps^{order}"
+  if not matched_to_reference_floor:
+    return
+  expect(
+      matched_to_tolerance_digits is False,
+      f"{target_label} reference-floor match must not also be a tolerance match")
+  expect(
+      verdict == "matched-to-reference-floor",
+      f"{target_label} reference-floor match must use matched-to-reference-floor verdict")
+  for field in ("reference_floor_real_digits", "reference_floor_imag_digits"):
+    value = comparison_entry.get(field)
+    expect(
+        isinstance(value, int),
+        f"{target_label} reference-floor match must include integer {field}")
+  for field in ("reference_floor_id", "reference_floor_reason"):
+    value = comparison_entry.get(field)
+    expect(
+        isinstance(value, str) and value.strip(),
+        f"{target_label} reference-floor match must include non-empty {field}")
+
+
 def summarize_target(
     target: tuple[str, int],
     comparison_by_target: dict[tuple[str, int], dict[str, Any]],
@@ -110,15 +146,26 @@ def summarize_target(
   imag_digits = comparison_entry.get("imag_agreement_digits")
   expect(isinstance(real_digits, int), f"{integral} eps^{order} real digits must be integer")
   expect(isinstance(imag_digits, int), f"{integral} eps^{order} imag digits must be integer")
+  target_label = f"{integral} eps^{order}"
+  matched_to_reference_floor = bool_field(
+      comparison_entry, "matched_to_reference_floor", target_label)
+  matched_to_tolerance_digits = bool_field(
+      comparison_entry, "matched_to_tolerance_digits", target_label)
+  verdict = comparison_entry.get("verdict")
+  validate_reference_floor_metadata(
+      comparison_entry,
+      integral,
+      order,
+      matched_to_reference_floor,
+      matched_to_tolerance_digits,
+      verdict)
   return {
       "integral": integral,
       "eps_order": order,
       "passed": bool(comparison_entry.get("passed")),
-      "matched_to_tolerance_digits": bool(
-          comparison_entry.get("matched_to_tolerance_digits")),
-      "matched_to_reference_floor": bool(
-          comparison_entry.get("matched_to_reference_floor")),
-      "verdict": comparison_entry.get("verdict"),
+      "matched_to_tolerance_digits": matched_to_tolerance_digits,
+      "matched_to_reference_floor": matched_to_reference_floor,
+      "verdict": verdict,
       "real_agreement_digits": real_digits,
       "imag_agreement_digits": imag_digits,
       "minimum_component_agreement_digits": min(real_digits, imag_digits),
@@ -377,8 +424,10 @@ def run_self_check() -> None:
                      "matched_to_reference_floor": True,
                      "matched_to_tolerance_digits": False,
                      "verdict": "matched-to-reference-floor",
+                     "reference_floor_id": "b61n-row5-eps0-retained-amflow-floor",
                      "reference_floor_real_digits": 11,
                      "reference_floor_imag_digits": 11,
+                     "reference_floor_reason": "synthetic retained AMFlow floor",
                      "real_agreement_digits": 11, "imag_agreement_digits": 11,
                      "cpp_real": "1", "cpp_imag": "2",
                      "amflow_real": "1.1", "amflow_imag": "2.1"},
@@ -391,8 +440,10 @@ def run_self_check() -> None:
                      "matched_to_reference_floor": True,
                      "matched_to_tolerance_digits": False,
                      "verdict": "matched-to-reference-floor",
+                     "reference_floor_id": "b61n-row6-eps-2-retained-amflow-floor",
                      "reference_floor_real_digits": 46,
                      "reference_floor_imag_digits": 46,
+                     "reference_floor_reason": "synthetic retained AMFlow floor",
                      "real_agreement_digits": 46, "imag_agreement_digits": 46,
                      "cpp_real": "1", "cpp_imag": "1",
                      "amflow_real": "1", "amflow_imag": "1"},
@@ -400,8 +451,10 @@ def run_self_check() -> None:
                      "matched_to_reference_floor": True,
                      "matched_to_tolerance_digits": False,
                      "verdict": "matched-to-reference-floor",
+                     "reference_floor_id": "b61n-row6-eps-1-retained-amflow-floor",
                      "reference_floor_real_digits": 12,
                      "reference_floor_imag_digits": 13,
+                     "reference_floor_reason": "synthetic retained AMFlow floor",
                      "real_agreement_digits": 12, "imag_agreement_digits": 13,
                      "cpp_real": "2", "cpp_imag": "2",
                      "amflow_real": "2", "amflow_imag": "2"},
@@ -409,8 +462,10 @@ def run_self_check() -> None:
                      "matched_to_reference_floor": True,
                      "matched_to_tolerance_digits": False,
                      "verdict": "matched-to-reference-floor",
+                     "reference_floor_id": "b61n-row6-eps0-retained-amflow-floor",
                      "reference_floor_real_digits": 12,
                      "reference_floor_imag_digits": 12,
+                     "reference_floor_reason": "synthetic retained AMFlow floor",
                      "real_agreement_digits": 12, "imag_agreement_digits": 12,
                      "cpp_real": "3", "cpp_imag": "4",
                      "amflow_real": "3.1", "amflow_imag": "4.1"},
@@ -437,6 +492,32 @@ def run_self_check() -> None:
            result["classification"]["current_evidence_points_to"],
            "self-check should classify the retained-reference floor without "
            "claiming a 50-digit match")
+
+    missing_metadata_payload = copy.deepcopy(compare_payload)
+    del missing_metadata_payload["integrals"][0]["coefficients"][0][
+        "reference_floor_reason"]
+    write_json(missing_metadata_payload, compare_path)
+    try:
+      diagnose(load_json(cpp_path), load_json(compare_path))
+    except RuntimeError as error:
+      expect("reference_floor_reason" in str(error),
+             "missing floor metadata should identify the absent field")
+    else:
+      raise RuntimeError("self-check should reject a reference-floor target "
+                         "with missing floor metadata")
+
+    mixed_verdict_payload = copy.deepcopy(compare_payload)
+    mixed_verdict_payload["integrals"][0]["coefficients"][0][
+        "matched_to_tolerance_digits"] = True
+    write_json(mixed_verdict_payload, compare_path)
+    try:
+      diagnose(load_json(cpp_path), load_json(compare_path))
+    except RuntimeError as error:
+      expect("must not also be a tolerance match" in str(error),
+             "mixed floor/tolerance verdict should report the inconsistency")
+    else:
+      raise RuntimeError("self-check should reject a reference-floor target "
+                         "that also claims a tolerance match")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

@@ -35,6 +35,19 @@ def expect(condition: bool, message: str) -> None:
         raise BadgeError(message)
 
 
+def require_repo_file(root: Path, raw: Path, field: str) -> Path:
+    candidate = raw
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    try:
+        relative = candidate.resolve(strict=False).relative_to(root.resolve(strict=True))
+    except ValueError as error:
+        raise BadgeError(f"{field} must stay within the repository: {raw}") from error
+    path = root / relative
+    expect(path.is_file(), f"{field} does not exist as a file: {raw}")
+    return path
+
+
 def require_object(payload: dict[str, Any], field: str) -> dict[str, Any]:
     value = payload.get(field)
     expect(isinstance(value, dict), f"{field} must be an object")
@@ -176,6 +189,15 @@ def expect_badge_error(label: str, health: dict[str, Any], expected: str) -> Non
     raise BadgeError(f"{label} unexpectedly passed")
 
 
+def expect_path_error(label: str, root: Path, raw: Path, expected: str) -> None:
+    try:
+        require_repo_file(root, raw, "health JSON")
+    except BadgeError as error:
+        expect(expected in str(error), f"{label} failed for the wrong reason: {error}")
+        return
+    raise BadgeError(f"{label} unexpectedly passed")
+
+
 def self_check() -> None:
     ready_badge = badge_payload(
         synthetic_health(
@@ -285,13 +307,39 @@ def self_check() -> None:
         "blockers[0] must be a string",
     )
 
+    root = repo_root()
+    fixture_path = Path("tools/reference-harness/specs/release/m7-release-health-summary.fixture.json")
+    fixture_absolute = root / fixture_path
+    expect(
+        require_repo_file(root, fixture_path, "health JSON").resolve(strict=True)
+        == fixture_absolute.resolve(strict=True),
+        "relative health JSON path did not normalize to the committed fixture",
+    )
+    expect(
+        require_repo_file(root, fixture_absolute, "health JSON").resolve(strict=True)
+        == fixture_absolute.resolve(strict=True),
+        "absolute health JSON path did not normalize to the committed fixture",
+    )
+    expect_path_error(
+        "health JSON repository escape guard",
+        root,
+        root.parent / "m7-release-health-summary.fixture.json",
+        "health JSON must stay within the repository",
+    )
+    expect_path_error(
+        "health JSON missing-file guard",
+        root,
+        Path("tools/reference-harness/specs/release/missing-health-summary.json"),
+        "health JSON does not exist as a file",
+    )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--health-json",
         type=Path,
-        help="Existing release_health_summary.py JSON output to render instead of running it.",
+        help="Existing repository-local release_health_summary.py JSON output to render instead of running it.",
     )
     parser.add_argument(
         "--format",
@@ -324,9 +372,7 @@ def main() -> int:
         if args.health_json is None:
             health = run_release_health(root, verify=args.verify)
         else:
-            health_path = args.health_json
-            if not health_path.is_absolute():
-                health_path = root / health_path
+            health_path = require_repo_file(root, args.health_json, "health JSON")
             health = read_json(health_path)
 
         print(render_shields_json(badge_payload(health)))

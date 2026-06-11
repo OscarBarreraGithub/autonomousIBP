@@ -379,6 +379,27 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
     missing_target = copy.deepcopy(valid_summary)
     missing_target["reference_floor_matches"] = missing_target["reference_floor_matches"][:-1]
 
+    duplicate_target = copy.deepcopy(valid_summary)
+    duplicate_target["reference_floor_matches"][1]["integral"] = duplicate_target[
+        "reference_floor_matches"
+    ][0]["integral"]
+    duplicate_target["reference_floor_matches"][1]["order"] = duplicate_target[
+        "reference_floor_matches"
+    ][0]["order"]
+
+    stale_floor_id = copy.deepcopy(valid_summary)
+    stale_floor_id["reference_floor_matches"][0]["reference_floor_id"] = (
+        "synthetic-b61n-reference-floor-id"
+    )
+
+    floor_digit_metadata_drift = copy.deepcopy(valid_summary)
+    floor_digit_metadata_drift["reference_floor_matches"][0]["reference_floor_real_digits"] += 1
+
+    missing_retained_floor_reason = copy.deepcopy(valid_summary)
+    missing_retained_floor_reason["reference_floor_matches"][0][
+        "reference_floor_reason"
+    ] = "synthetic missing retained-reference rationale"
+
     checks = {
         "retained_fixture_passes": valid_contract["reference_floor_matched_coefficient_count"] == 4,
         "rejects_matched_reference_floor_below_floor_regression": rejected(
@@ -387,6 +408,22 @@ def run_self_check(retained_comparison_path: Path) -> dict[str, Any]:
         ),
         "rejects_fake_50_digit_row56_claim": rejected(fake_50_digit, "must not be reported"),
         "rejects_missing_row56_reference_floor_target": rejected(missing_target, "row 5/6 target set"),
+        "rejects_duplicate_row56_reference_floor_target": rejected(
+            duplicate_target,
+            "repeats reference-floor match",
+        ),
+        "rejects_stale_reference_floor_id": rejected(
+            stale_floor_id,
+            "reference_floor_id drifted",
+        ),
+        "rejects_reference_floor_digit_metadata_drift": rejected(
+            floor_digit_metadata_drift,
+            "reference_floor_real_digits drifted",
+        ),
+        "rejects_missing_retained_floor_reason": rejected(
+            missing_retained_floor_reason,
+            "retained AMFlow floor",
+        ),
     }
     expect(all(checks.values()), "b61n reference-floor verifier self-check failed")
     return {

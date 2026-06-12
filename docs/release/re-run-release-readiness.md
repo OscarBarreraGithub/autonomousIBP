@@ -34,9 +34,12 @@ python3 tools/reference-harness/scripts/release_health_summary.py --verify
 ```
 
 The summary reads the accepted readiness sidecar, reconciles the M7 sidecar
-inventory with schema validation, and summarizes the accepted performance review
-sidecar. It does not rerun AMFlow numerics or create new release evidence. CTest
-runs the same command as `m7-release-health-summary`.
+inventory with schema validation, summarizes the accepted performance review
+sidecar, and reports the documented AMFlow example reproduction gap counts from
+[`amflow-example-coverage.md`](amflow-example-coverage.md) and
+[`known-gaps.md`](known-gaps.md). It does not rerun AMFlow numerics, close
+runtime lanes, or create new release evidence. CTest runs the same command as
+`m7-release-health-summary`.
 
 ## Status Badge
 

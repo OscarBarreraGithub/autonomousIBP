@@ -122,6 +122,9 @@ def run_self_check(root: Path) -> int:
     performance_drift = copy.deepcopy(expected)
     performance_drift["performance"]["benchmarks"][0]["max_wall_seconds"] += 0.01
 
+    coverage_drift = copy.deepcopy(expected)
+    coverage_drift["amflow_example_coverage"]["not_full_runtime_count"] -= 1
+
     missing_withheld_claims = copy.deepcopy(expected)
     missing_withheld_claims.pop("withheld_claims", None)
 
@@ -131,6 +134,7 @@ def run_self_check(root: Path) -> int:
         "rejects_readiness_drift": not fixture_matches(expected, readiness_drift),
         "rejects_inventory_drift": not fixture_matches(expected, inventory_drift),
         "rejects_performance_drift": not fixture_matches(expected, performance_drift),
+        "rejects_coverage_drift": not fixture_matches(expected, coverage_drift),
         "rejects_missing_withheld_claims": not fixture_matches(
             expected,
             missing_withheld_claims,

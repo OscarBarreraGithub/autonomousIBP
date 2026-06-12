@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -33,8 +34,22 @@ from validate_m7_release_sidecar_schemas import SchemaError
 WITHHELD_CLAIMS: tuple[str, ...] = (
     "This summary reads committed sidecars only; it does not create new release evidence.",
     "This summary does not rerun AMFlow numerics or widen release claims.",
+    "This summary reports documented AMFlow example reproduction gaps without closing runtime lanes.",
 )
 SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+AMFLOW_EXAMPLE_COVERAGE = Path("docs/release/amflow-example-coverage.md")
+RELEASE_KNOWN_GAPS = Path("docs/release/known-gaps.md")
+KNOWN_EXAMPLE_STATUSES = frozenset(
+    (
+        "reproduced-fully",
+        "reproduced-fully-live",
+        "reproduced-partial",
+        "not-reproduced",
+        "upstream-only-no-data",
+    )
+)
+ZERO_EVIDENCE_STATUSES = frozenset(("not-reproduced", "upstream-only-no-data"))
+EXAMPLE_TOKEN_PATTERN = re.compile(r"`([^`]+)`")
 
 
 class HealthError(RuntimeError):
@@ -77,6 +92,21 @@ class PerformanceSummary:
     max_wall_seconds: float
     max_rss_kb: int
     benchmarks: list[BenchmarkSummary]
+
+
+@dataclass(frozen=True)
+class ExampleCoverageSummary:
+    inventory_path: str
+    known_gaps_path: str
+    total_example_count: int
+    full_compared_output_count: int
+    live_retained_golden_count: int
+    partial_retained_or_selected_count: int
+    not_full_runtime_count: int
+    zero_evidence_count: int
+    documented_gap_count: int
+    status_counts: dict[str, int]
+    not_full_runtime_examples: list[str]
 
 
 def expect(condition: bool, message: str) -> None:
@@ -285,10 +315,152 @@ def summarize_performance(root: Path, performance_review_path: str) -> Performan
     )
 
 
+def strip_markdown_code(raw: str) -> str:
+    value = raw.strip()
+    if value.startswith("`") and value.endswith("`") and len(value) >= 2:
+        return value[1:-1]
+    return value
+
+
+def section_lines(markdown: str, heading: str) -> list[str]:
+    lines = markdown.splitlines()
+    heading_line = f"## {heading}"
+    start: int | None = None
+    for index, line in enumerate(lines):
+        if line.strip() == heading_line:
+            start = index + 1
+            break
+    expect(start is not None, f"release coverage markdown is missing section: {heading}")
+    end = len(lines)
+    for index in range(start, len(lines)):
+        if lines[index].startswith("## "):
+            end = index
+            break
+    return lines[start:end]
+
+
+def split_markdown_table_row(line: str) -> list[str]:
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    return cells
+
+
+def table_rows(section: list[str], expected_header: list[str], label: str) -> list[list[str]]:
+    rows = [line for line in section if line.strip().startswith("|")]
+    expect(len(rows) >= 2, f"{label} table is missing")
+    header = split_markdown_table_row(rows[0])
+    expect(header == expected_header, f"{label} table header drifted: {header}")
+    separator = split_markdown_table_row(rows[1])
+    expect(
+        all(set(cell) <= {"-", ":"} and "-" in cell for cell in separator),
+        f"{label} table separator is malformed",
+    )
+    parsed_rows = [split_markdown_table_row(row) for row in rows[2:]]
+    for index, row in enumerate(parsed_rows):
+        expect(len(row) == len(expected_header), f"{label} table row {index} has wrong column count")
+    return parsed_rows
+
+
+def parse_upstream_inventory(markdown: str) -> dict[str, str]:
+    rows = table_rows(
+        section_lines(markdown, "Upstream Inventory"),
+        [
+            "Upstream example",
+            "Mathematica entry file(s)",
+            "C++ lane / evidence in this repo",
+            "Status",
+        ],
+        "upstream inventory",
+    )
+    inventory: dict[str, str] = {}
+    for index, row in enumerate(rows):
+        example = strip_markdown_code(row[0])
+        status = strip_markdown_code(row[3])
+        expect(example, f"upstream inventory row {index} has an empty example id")
+        expect(example not in inventory, f"duplicate upstream inventory example: {example}")
+        expect(status in KNOWN_EXAMPLE_STATUSES, f"unknown upstream inventory status for {example}: {status}")
+        inventory[example] = status
+    return inventory
+
+
+def parse_not_full_examples(markdown: str) -> list[str]:
+    examples: list[str] = []
+    for line in section_lines(markdown, "Not Full Rows"):
+        stripped = line.strip()
+        if not stripped.startswith("- `"):
+            continue
+        match = EXAMPLE_TOKEN_PATTERN.search(stripped)
+        expect(match is not None, f"not-full row is missing a backtick example id: {stripped}")
+        example = match.group(1)
+        expect(example not in examples, f"duplicate not-full example: {example}")
+        examples.append(example)
+    expect(examples, "not-full example list is empty")
+    return examples
+
+
+def parse_known_gap_examples(markdown: str) -> list[str]:
+    rows = table_rows(
+        section_lines(markdown, "Not Fully Reproduced Rows"),
+        ["AMFlow example", "Remaining gap"],
+        "known gaps",
+    )
+    examples: list[str] = []
+    for index, row in enumerate(rows):
+        example = strip_markdown_code(row[0])
+        expect(example, f"known gaps row {index} has an empty example id")
+        expect(example not in examples, f"duplicate known gap example: {example}")
+        examples.append(example)
+    return examples
+
+
+def summarize_example_coverage_from_paths(
+    root: Path,
+    inventory_path: Path,
+    known_gaps_path: Path,
+) -> ExampleCoverageSummary:
+    inventory_relative = require_repo_file(root, inventory_path.as_posix(), "amflow example coverage path")
+    known_gaps_relative = require_repo_file(root, known_gaps_path.as_posix(), "release known gaps path")
+    inventory_markdown = (root / inventory_relative).read_text(encoding="utf-8")
+    known_gaps_markdown = (root / known_gaps_relative).read_text(encoding="utf-8")
+
+    inventory = parse_upstream_inventory(inventory_markdown)
+    not_full_examples = parse_not_full_examples(inventory_markdown)
+    known_gap_examples = parse_known_gap_examples(known_gaps_markdown)
+    expect(
+        set(not_full_examples) == set(known_gap_examples),
+        "not-full example set must match docs/release/known-gaps.md table",
+    )
+    missing_from_inventory = [example for example in not_full_examples if example not in inventory]
+    expect(
+        not missing_from_inventory,
+        "not-full examples are missing from upstream inventory: " + ", ".join(missing_from_inventory),
+    )
+
+    status_counts = Counter(inventory.values())
+    zero_evidence_count = sum(status_counts[status] for status in ZERO_EVIDENCE_STATUSES)
+    return ExampleCoverageSummary(
+        inventory_path=inventory_relative,
+        known_gaps_path=known_gaps_relative,
+        total_example_count=len(inventory),
+        full_compared_output_count=status_counts["reproduced-fully"],
+        live_retained_golden_count=status_counts["reproduced-fully-live"],
+        partial_retained_or_selected_count=status_counts["reproduced-partial"],
+        not_full_runtime_count=len(known_gap_examples),
+        zero_evidence_count=zero_evidence_count,
+        documented_gap_count=len(known_gap_examples),
+        status_counts=dict(sorted(status_counts.items())),
+        not_full_runtime_examples=known_gap_examples,
+    )
+
+
+def summarize_example_coverage(root: Path) -> ExampleCoverageSummary:
+    return summarize_example_coverage_from_paths(root, AMFLOW_EXAMPLE_COVERAGE, RELEASE_KNOWN_GAPS)
+
+
 def render_text(
     readiness: ReadinessSummary,
     inventory: InventorySummary,
     performance: PerformanceSummary,
+    example_coverage: ExampleCoverageSummary,
 ) -> str:
     status = release_status(readiness).upper()
     benchmark_tokens = [
@@ -322,6 +494,17 @@ def render_text(
             f"max_rss_kb={performance.max_rss_kb}"
         ),
         "performance_benchmarks: " + "; ".join(benchmark_tokens),
+        (
+            "amflow_example_coverage: "
+            f"total={example_coverage.total_example_count} "
+            f"full_compared_output={example_coverage.full_compared_output_count} "
+            f"live_retained_golden={example_coverage.live_retained_golden_count} "
+            f"partial={example_coverage.partial_retained_or_selected_count} "
+            f"not_full_runtime={example_coverage.not_full_runtime_count} "
+            f"known_gap_rows={example_coverage.documented_gap_count} "
+            f"zero_evidence={example_coverage.zero_evidence_count}"
+        ),
+        "not_full_runtime_examples: " + "; ".join(example_coverage.not_full_runtime_examples),
         "blockers: " + ("none" if not readiness.blockers else "; ".join(readiness.blockers)),
         "withheld_claims: " + " ".join(WITHHELD_CLAIMS),
     ]
@@ -336,6 +519,7 @@ def render_json(
     readiness: ReadinessSummary,
     inventory: InventorySummary,
     performance: PerformanceSummary,
+    example_coverage: ExampleCoverageSummary,
 ) -> str:
     payload = {
         "schema_version": 1,
@@ -372,6 +556,19 @@ def render_json(
                 for benchmark in performance.benchmarks
             ],
         },
+        "amflow_example_coverage": {
+            "inventory_path": example_coverage.inventory_path,
+            "known_gaps_path": example_coverage.known_gaps_path,
+            "total_example_count": example_coverage.total_example_count,
+            "full_compared_output_count": example_coverage.full_compared_output_count,
+            "live_retained_golden_count": example_coverage.live_retained_golden_count,
+            "partial_retained_or_selected_count": example_coverage.partial_retained_or_selected_count,
+            "not_full_runtime_count": example_coverage.not_full_runtime_count,
+            "zero_evidence_count": example_coverage.zero_evidence_count,
+            "documented_gap_count": example_coverage.documented_gap_count,
+            "status_counts": example_coverage.status_counts,
+            "not_full_runtime_examples": example_coverage.not_full_runtime_examples,
+        },
         "blockers": readiness.blockers,
         "withheld_claims": list(WITHHELD_CLAIMS),
     }
@@ -396,6 +593,7 @@ def self_check(root: Path) -> None:
         readiness.performance_review_path,
     )
     summarize_performance(root, readiness.performance_review_path)
+    summarize_example_coverage(root)
 
     absolute_readiness_sidecar = Path(
         require_repo_file(
@@ -548,6 +746,37 @@ def self_check(root: Path) -> None:
             lambda: summarize_readiness(root, unknown_commit_path.relative_to(root)),
             "source_commit is not a known commit",
         )
+        coverage_payload = (root / AMFLOW_EXAMPLE_COVERAGE).read_text(encoding="utf-8")
+        missing_gap_payload = (root / RELEASE_KNOWN_GAPS).read_text(encoding="utf-8").replace(
+            "| `user_defined_ending` | Needs both `final_Tradition` and `final_usr` ending workflows, including manual boundary writes and Gamma-ratio boundary handling. |\n",
+            "",
+        )
+        missing_gap_path = Path(temp_dir) / "known-gaps-missing-user-defined-ending.md"
+        missing_gap_path.write_text(missing_gap_payload, encoding="utf-8")
+        expect_health_error(
+            "known gaps coverage coherence check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                AMFLOW_EXAMPLE_COVERAGE,
+                missing_gap_path.relative_to(root),
+            ),
+            "not-full example set must match docs/release/known-gaps.md table",
+        )
+        unknown_status_payload = coverage_payload.replace(
+            "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `reproduced-fully` |",
+            "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `unknown-status` |",
+        )
+        unknown_status_path = Path(temp_dir) / "amflow-example-coverage-unknown-status.md"
+        unknown_status_path.write_text(unknown_status_payload, encoding="utf-8")
+        expect_health_error(
+            "upstream inventory status vocabulary check",
+            lambda: summarize_example_coverage_from_paths(
+                root,
+                unknown_status_path.relative_to(root),
+                RELEASE_KNOWN_GAPS,
+            ),
+            "unknown upstream inventory status",
+        )
 
     expect_health_error(
         "unaccepted readiness sidecar check",
@@ -627,14 +856,15 @@ def main() -> int:
             readiness.performance_review_path,
         )
         performance = summarize_performance(root, readiness.performance_review_path)
+        example_coverage = summarize_example_coverage(root)
     except (HealthError, InventoryError, SchemaError, RuntimeError) as error:
         print(str(error), file=sys.stderr)
         return 1
 
     if args.format == "json":
-        print(render_json(readiness, inventory, performance))
+        print(render_json(readiness, inventory, performance, example_coverage))
     else:
-        print(render_text(readiness, inventory, performance))
+        print(render_text(readiness, inventory, performance, example_coverage))
     if args.verify:
         failures: list[str] = []
         if not readiness.ready:
@@ -647,6 +877,8 @@ def main() -> int:
             failures.append("not all release review sections are reviewed")
         if not performance.complete:
             failures.append("performance review is incomplete")
+        if example_coverage.zero_evidence_count != 0:
+            failures.append("AMFlow example coverage has zero-evidence rows")
         if failures:
             print("M7 release health verification failed: " + "; ".join(failures), file=sys.stderr)
             return 1

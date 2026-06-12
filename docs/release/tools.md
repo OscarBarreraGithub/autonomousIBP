@@ -107,7 +107,7 @@ python3 tools/reference-harness/scripts/audit_m6_sidecar_drift.py --verify --ver
 | --- | --- | --- |
 | [`package_m7_release_evidence.py`](../../tools/reference-harness/scripts/package_m7_release_evidence.py) | Create a deterministic tarball containing the accepted readiness sidecar, direct inputs, M5 acceptance sidecar, referenced M5 sidecars, and checksum manifest. | `m7-release-evidence-bundle-self-check`. |
 | [`assert_m7_release_evidence_manifest_digest.py`](../../tools/reference-harness/scripts/assert_m7_release_evidence_manifest_digest.py) | Fixture guard for the committed evidence corpus digest. | `m7-release-evidence-manifest-digest-fixture`. |
-| [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, and performance-review summary from committed sidecars. | `m7-release-health-summary`, `m7-release-health-source-sidecar-self-check`, and `m7-release-health-summary-json`. |
+| [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, performance-review, and documented AMFlow example coverage-gap summary from committed files. | `m7-release-health-summary`, `m7-release-health-source-sidecar-self-check`, and `m7-release-health-summary-json`. |
 | [`assert_m7_release_health_json_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py) | Fixture gate for the machine-readable health JSON contract, including a synthetic drift self-check. | `m7-release-health-summary-json-fixture` and `m7-release-health-summary-json-fixture-self-check`. |
 | [`assert_m7_release_health_text_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py) | Fixture gate for the operator-facing text health contract. | `m7-release-health-summary-text-fixture`. |
 | [`release_status_badge.py`](../../tools/reference-harness/scripts/release_status_badge.py) | Render a Shields-compatible JSON status badge from the release health summary. | `m7-release-status-badge` and badge fixture tests. |
@@ -128,6 +128,11 @@ python3 tools/reference-harness/scripts/release_status_badge.py --verify
 
 The evidence bundle is a packaging step only. It must not be treated as new
 runtime, parity, or qualification evidence.
+
+The health summary's AMFlow example coverage block is an inventory guard. It
+keeps the detailed coverage doc and release known-gaps table aligned, but it
+does not close the listed runtime lanes or change the accepted M7 readiness
+scope.
 
 ## Release Markdown
 

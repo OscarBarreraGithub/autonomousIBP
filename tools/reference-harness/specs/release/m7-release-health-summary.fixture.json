@@ -1,4 +1,30 @@
 {
+  "amflow_example_coverage": {
+    "documented_gap_count": 8,
+    "full_compared_output_count": 2,
+    "inventory_path": "docs/release/amflow-example-coverage.md",
+    "known_gaps_path": "docs/release/known-gaps.md",
+    "live_retained_golden_count": 1,
+    "not_full_runtime_count": 8,
+    "not_full_runtime_examples": [
+      "automatic_phasespace",
+      "complex_kinematics",
+      "differential_equation_solver",
+      "feynman_prescription",
+      "linear_propagator",
+      "spacetime_dimension",
+      "user_defined_amfmode",
+      "user_defined_ending"
+    ],
+    "partial_retained_or_selected_count": 7,
+    "status_counts": {
+      "reproduced-fully": 2,
+      "reproduced-fully-live": 1,
+      "reproduced-partial": 7
+    },
+    "total_example_count": 10,
+    "zero_evidence_count": 0
+  },
   "blockers": [],
   "inventory": {
     "accepted_count": 56,
@@ -47,6 +73,7 @@
   "status": "ready",
   "withheld_claims": [
     "This summary reads committed sidecars only; it does not create new release evidence.",
-    "This summary does not rerun AMFlow numerics or widen release claims."
+    "This summary does not rerun AMFlow numerics or widen release claims.",
+    "This summary reports documented AMFlow example reproduction gaps without closing runtime lanes."
   ]
 }

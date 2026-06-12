@@ -233,7 +233,7 @@
       "input_artifacts": [
         "tests/amflow_tests.cpp"
       ],
-      "input_hash": "sha256:16afa9f83647754bd18b519cac44b9cb2b7adeff734792171f27e27e1886ff14",
+      "input_hash": "sha256:34b6304b9229452c25891ef7149d622fff56b9cf79947182bf7af1788dff3265",
       "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
       "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
       "packet_id": "runtime_feature:arbitrary_D0",
@@ -359,7 +359,7 @@
         "src/runtime/physical_kinematics_guardrails.cpp",
         "tests/amflow_tests.cpp"
       ],
-      "input_hash": "sha256:9797a62f8098c685952f52bedbcb8993b81ce8143dd0e8c803406f95906e0763",
+      "input_hash": "sha256:1b919360ce3f3e2a77447f90777bf27df3198f606b1435df34dec3ce8ae3a121",
       "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
       "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
       "packet_id": "runtime_feature:singular_kinematics_guardrails",
@@ -380,7 +380,7 @@
       "input_artifacts": [
         "tests/amflow_tests.cpp"
       ],
-      "input_hash": "sha256:16afa9f83647754bd18b519cac44b9cb2b7adeff734792171f27e27e1886ff14",
+      "input_hash": "sha256:34b6304b9229452c25891ef7149d622fff56b9cf79947182bf7af1788dff3265",
       "output_hash": "sha256:daf1d40e4c3d8008863614a9577de26d15d84775f607db01cfc03da2b1275b4a",
       "output_path": "tools/reference-harness/specs/m5/runtime-feature-evidence-lane45.json",
       "packet_id": "runtime_feature:user_defined_hooks",

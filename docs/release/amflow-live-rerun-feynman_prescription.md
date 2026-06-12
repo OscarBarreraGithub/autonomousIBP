@@ -121,3 +121,5 @@ retained-golden reproducibility claim for Mathematica+AMFlow data generation,
 including the saved-output conjugacy check above. It does not claim new C++
 `b63n` Cutkosky runtime execution or prescription-aware comparator
 namespacing.
+
+last-re-verified: 2026-06-12 (sol1/sol2 live and retained hashes matched 7b2924b4cfd4a1f675157620540958e4b2a6c82ab12c147d7bb9fe857090160c/452d3c2d1de57cce7301535451f30fbe0789f69083478c20f621296e70ebe452 byte-for-byte with raw-cmp-exit=0/0; stdout diverged to 8413b51aa69fa048d9b736fe957c2587d50d66c950736fc0f1a8f72db906c38b from timing-only log deltas; stderr matched)

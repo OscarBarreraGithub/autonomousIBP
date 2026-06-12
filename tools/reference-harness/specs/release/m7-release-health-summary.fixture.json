@@ -5,7 +5,7 @@
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
     "live_retained_golden_count": 7,
-    "live_reverified_count": 6,
+    "live_reverified_count": 7,
     "live_reverified_examples": [
       {
         "date": "2026-06-12",
@@ -18,6 +18,12 @@
         "detail": "run.wl redtable/diffeq/sol1/sol2 matched; stdout diverged to 3637da422d9d90eb81ac6bc6b78e2c03d038d32be75f20340bf9595e2a43303e from timing-only log deltas; stderr matched",
         "example": "differential_equation_solver",
         "path": "docs/release/amflow-live-rerun-differential_equation_solver.md"
+      },
+      {
+        "date": "2026-06-12",
+        "detail": "sol1/sol2 live and retained hashes matched 7b2924b4cfd4a1f675157620540958e4b2a6c82ab12c147d7bb9fe857090160c/452d3c2d1de57cce7301535451f30fbe0789f69083478c20f621296e70ebe452 byte-for-byte with raw-cmp-exit=0/0; stdout diverged to 8413b51aa69fa048d9b736fe957c2587d50d66c950736fc0f1a8f72db906c38b from timing-only log deltas; stderr matched",
+        "example": "feynman_prescription",
+        "path": "docs/release/amflow-live-rerun-feynman_prescription.md"
       },
       {
         "date": "2026-06-12",

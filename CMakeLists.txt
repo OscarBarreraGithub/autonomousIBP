@@ -628,6 +628,25 @@ if(BUILD_TESTING)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
   add_test(
+    NAME m7-release-health-summary-json-schema
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_health_json_schema.py
+  )
+  set_tests_properties(m7-release-health-summary-json-schema PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
+    NAME m7-release-health-summary-json-schema-self-check
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/assert_m7_release_health_json_schema.py
+      --self-check
+  )
+  set_tests_properties(m7-release-health-summary-json-schema-self-check PROPERTIES
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+  add_test(
     NAME m7-release-health-summary-json-fixture
     COMMAND
       ${Python3_EXECUTABLE}

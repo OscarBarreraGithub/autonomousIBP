@@ -148,6 +148,7 @@ python3 tools/reference-harness/scripts/verify_b63n_d246_evidence.py
 | [`assert_m7_release_evidence_manifest_digest.py`](../../tools/reference-harness/scripts/assert_m7_release_evidence_manifest_digest.py) | Fixture guard for the committed evidence corpus digest. | `m7-release-evidence-manifest-digest-fixture`. |
 | [`verify_m5_golden_fingerprint_pins.py`](../../tools/reference-harness/scripts/verify_m5_golden_fingerprint_pins.py) | Verify the committed `tools/reference-harness/specs/m5/lane*/goldens/` byte fingerprints against the current M5 feature-evidence comparison surface. | `m5-golden-fingerprint-pins` and `m5-golden-fingerprint-pins-self-check`. |
 | [`release_health_summary.py`](../../tools/reference-harness/scripts/release_health_summary.py) | Print a compact readiness, inventory, performance-review, and documented AMFlow example coverage-gap summary from committed files. | `m7-release-health-summary`, `m7-release-health-source-sidecar-self-check`, and `m7-release-health-summary-json`. |
+| [`assert_m7_release_health_json_schema.py`](../../tools/reference-harness/scripts/assert_m7_release_health_json_schema.py) | Schema gate for the machine-readable health JSON contract, including required keys, exact JSON types, enum values, ranges, and count/list consistency. | `m7-release-health-summary-json-schema` and `m7-release-health-summary-json-schema-self-check`. |
 | [`assert_m7_release_health_json_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py) | Fixture gate for the machine-readable health JSON contract, including a synthetic drift self-check. | `m7-release-health-summary-json-fixture` and `m7-release-health-summary-json-fixture-self-check`. |
 | [`assert_m7_release_health_text_fixture.py`](../../tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py) | Fixture gate for the operator-facing text health contract. | `m7-release-health-summary-text-fixture`. |
 | [`release_status_badge.py`](../../tools/reference-harness/scripts/release_status_badge.py) | Render a Shields-compatible JSON status badge from the release health summary. | `m7-release-status-badge` and `m7-release-status-badge-self-check`. |
@@ -162,6 +163,8 @@ python3 tools/reference-harness/scripts/verify_m5_golden_fingerprint_pins.py --v
 python3 tools/reference-harness/scripts/verify_m5_golden_fingerprint_pins.py --self-check
 python3 tools/reference-harness/scripts/release_health_summary.py --verify
 python3 tools/reference-harness/scripts/release_health_summary.py --verify --format json
+python3 tools/reference-harness/scripts/assert_m7_release_health_json_schema.py
+python3 tools/reference-harness/scripts/assert_m7_release_health_json_schema.py --self-check
 python3 tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py
 python3 tools/reference-harness/scripts/assert_m7_release_health_json_fixture.py --self-check
 python3 tools/reference-harness/scripts/assert_m7_release_health_text_fixture.py

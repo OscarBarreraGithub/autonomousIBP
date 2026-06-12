@@ -751,6 +751,25 @@ def self_check(root: Path) -> None:
             lambda: validate_bundle(root, metadata_drift_path, manifest),
         )
 
+        manifest_drift_path = Path(temp_dir) / "m7-release-evidence-manifest-drift.tar.gz"
+        tampered_manifest = manifest_bytes(manifest).replace(
+            b'"schema_version": 1',
+            b'"schema_version": 2',
+            1,
+        )
+        with manifest_drift_path.open("wb") as raw_output:
+            with gzip.GzipFile(filename="", mode="wb", fileobj=raw_output, mtime=0) as gz_output:
+                with tarfile.open(fileobj=gz_output, mode="w") as tar:
+                    for archive_name, data in sorted(archive_entries):
+                        if archive_name == f"{manifest['bundle_root']}/{MANIFEST_NAME}":
+                            data = tampered_manifest
+                        add_bytes(tar, archive_name, data)
+        expect_bundle_error(
+            "archive manifest content drift check",
+            "bundle manifest content drifted",
+            lambda: validate_bundle(root, manifest_drift_path, manifest),
+        )
+
         duplicate_member_path = Path(temp_dir) / "m7-release-evidence-duplicate-member.tar.gz"
         with duplicate_member_path.open("wb") as raw_output:
             with gzip.GzipFile(filename="", mode="wb", fileobj=raw_output, mtime=0) as gz_output:

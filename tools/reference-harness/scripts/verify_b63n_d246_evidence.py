@@ -117,6 +117,17 @@ REQUIRED_SKELETON_PUBLICATION_BLOCKERS: tuple[tuple[str, tuple[str, ...]], ...] 
     ),
     ("comparison blocker", ("independent comparison", "50-digit")),
 )
+REQUIRED_SKELETON_ANTI_FAKE_NOTE_FRAGMENTS = (
+    "Skeleton only",
+    "publishes no AMFlow coefficient values",
+    "must not promote b63n",
+)
+PUBLISHED_ANTI_FAKE_NOTE_BANNED_FRAGMENTS = (
+    "Skeleton only",
+    "pending",
+    "publishes no AMFlow coefficient values",
+    "must not promote b63n",
+)
 
 
 def expect(condition: bool, message: str) -> None:
@@ -710,7 +721,7 @@ def validate_weight(weight: dict[str, Any], *, published: bool, index: int) -> t
     return denominator_id, sorted(eps_orders), minimum_digits
 
 
-def validate_anti_fake(anti_fake: dict[str, Any]) -> None:
+def validate_anti_fake(anti_fake: dict[str, Any], *, published: bool) -> None:
     for key in (
         "retained_solution_samples_used_as_input",
         "synthetic_fixture",
@@ -720,6 +731,22 @@ def validate_anti_fake(anti_fake: dict[str, Any]) -> None:
         expect(not require_bool(anti_fake.get(key), f"anti_fake.{key}"), f"anti_fake.{key} must be false")
     tolerance_digits = require_int(anti_fake.get("tolerance_digits"), "anti_fake.tolerance_digits")
     expect(tolerance_digits >= MINIMUM_DIGITS, "anti_fake.tolerance_digits must be at least 50")
+    if not published:
+        note = require_string(anti_fake.get("notes"), "anti_fake.notes")
+        require_text_fragments(
+            note,
+            "anti_fake.notes",
+            REQUIRED_SKELETON_ANTI_FAKE_NOTE_FRAGMENTS,
+        )
+        return
+    if "notes" not in anti_fake:
+        return
+    note = require_string(anti_fake.get("notes"), "anti_fake.notes")
+    banned = [fragment for fragment in PUBLISHED_ANTI_FAKE_NOTE_BANNED_FRAGMENTS if fragment in note]
+    expect(
+        not banned,
+        f"published anti_fake.notes must not retain skeleton non-claim text: {banned!r}",
+    )
 
 
 def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -762,7 +789,7 @@ def validate_sidecar_payload(payload: dict[str, Any]) -> dict[str, Any]:
     validate_cutkosky_structure(
         require_object(payload.get("cutkosky_structure"), "cutkosky_structure")
     )
-    validate_anti_fake(require_object(payload.get("anti_fake"), "anti_fake"))
+    validate_anti_fake(require_object(payload.get("anti_fake"), "anti_fake"), published=published)
 
     weights = require_list(payload.get("weights"), "weights")
     expect(len(weights) == 3, "weights must contain exactly D2, D4, and D6")
@@ -926,6 +953,10 @@ def skeleton_fixture() -> dict[str, Any]:
             "self_comparison": False,
             "tolerance_digits": 50,
             "full_eta_zero_contour_applied": False,
+            "notes": (
+                "Skeleton only. This file establishes the D2/D4/D6 evidence location and schema, "
+                "but it publishes no AMFlow coefficient values and must not promote b63n."
+            ),
         },
         "publication_blockers": [
             "precision_requested_digits unset; rerun or recapture the upstream Mathematica surface at reviewed high precision",
@@ -947,6 +978,7 @@ def full_fixture() -> dict[str, Any]:
     payload["skeleton"] = False
     payload["passed"] = True
     payload["publication_blockers"] = []
+    payload["anti_fake"].pop("notes", None)
     parameter_set = payload["amflow_parameter_set"]
     parameter_set["precision_requested_digits"] = 80
     parameter_set["eps_order_requested"] = 4
@@ -1032,6 +1064,11 @@ def run_self_check() -> dict[str, Any]:
         "D2, D4, and D6 coefficient arrays are empty"
     )
 
+    bad_skeleton_anti_fake_note = skeleton_fixture()
+    bad_skeleton_anti_fake_note["anti_fake"]["notes"] = (
+        "Skeleton only. This file establishes the evidence location."
+    )
+
     bad_skeleton_digit_claim = skeleton_fixture()
     bad_skeleton_digit_claim["weights"][1]["reference_validation"][
         "minimum_digit_agreement"
@@ -1049,6 +1086,11 @@ def run_self_check() -> dict[str, Any]:
 
     bad_full_skeleton_status = full_fixture()
     bad_full_skeleton_status["status"] = "skeleton-pending-amflow-reference-run"
+
+    bad_full_skeleton_anti_fake_note = full_fixture()
+    bad_full_skeleton_anti_fake_note["anti_fake"]["notes"] = (
+        "Skeleton only. This file publishes no AMFlow coefficient values and must not promote b63n."
+    )
 
     bad_source_path = skeleton_fixture()
     bad_source_path["source_files"]["automatic_phasespace_run_wl"][
@@ -1285,6 +1327,10 @@ def run_self_check() -> dict[str, Any]:
             bad_skeleton_publication_blocker_missing_target,
             "publication_blockers must include empty coefficient blocker",
         ),
+        "skeleton_rejects_anti_fake_note_without_nonclaims": rejected(
+            bad_skeleton_anti_fake_note,
+            "anti_fake.notes must contain",
+        ),
         "skeleton_rejects_digit_agreement_claim": rejected(
             bad_skeleton_digit_claim,
             "minimum_digit_agreement must be null",
@@ -1300,6 +1346,10 @@ def run_self_check() -> dict[str, Any]:
         "published_rejects_skeleton_status": rejected(
             bad_full_skeleton_status,
             "published evidence status must not retain skeleton or pending text",
+        ),
+        "published_rejects_skeleton_anti_fake_note": rejected(
+            bad_full_skeleton_anti_fake_note,
+            "published anti_fake.notes must not retain skeleton non-claim text",
         ),
         "rejects_wrong_source_file_path": rejected(
             bad_source_path,

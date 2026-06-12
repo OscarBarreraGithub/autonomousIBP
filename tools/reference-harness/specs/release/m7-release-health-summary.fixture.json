@@ -5,7 +5,7 @@
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
     "live_retained_golden_count": 7,
-    "live_reverified_count": 4,
+    "live_reverified_count": 5,
     "live_reverified_examples": [
       {
         "date": "2026-06-12",
@@ -30,6 +30,12 @@
         "detail": "scoped canonical InputForm matched 64fa1cf501aead66f6c9abf5f47146248d4e64a26eec4758d00a87c19bf99035; full sol matched bbb03a1ff78f37aabe1dcb3d505d8958c90311814d983baa46ab02665e5967a8; stdout diverged to ac3dd45b707ccfd97d1586c712c92cad6ce3e59181ee9e36de10b24d33f9fc9a from timing-only log deltas; stderr matched",
         "example": "user_defined_amfmode",
         "path": "docs/release/amflow-live-rerun-user_defined_amfmode.md"
+      },
+      {
+        "date": "2026-06-12",
+        "detail": "final_Tradition/final_usr live hashes matched 6a7509776b4881aa81b94782b241f7f0af2bebfccb79e481bc2744f33118a96c/7fb1781a2b6a827a8ba0b34292eb61bc21816ed1479489039531df540b2db964 byte-for-byte; scoped canonical InputForm matched 64fa1cf501aead66f6c9abf5f47146248d4e64a26eec4758d00a87c19bf99035; Wolfram SameQ=True for scoped final_usr rule; stdout diverged to f0eb89e24978f2b267b674f56a6fe5d28b096053b4ec73a09703713fc225b25e from timing-only log deltas; stderr matched",
+        "example": "user_defined_ending",
+        "path": "docs/release/amflow-live-rerun-user_defined_ending.md"
       }
     ],
     "not_full_runtime_count": 8,

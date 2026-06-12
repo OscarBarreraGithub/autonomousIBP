@@ -106,3 +106,5 @@ freshly rerun the upstream `user_defined_ending` example, including the built-in
 boundary writes, and the Gamma-ratio boundary path. This status is limited to
 the live AMFlow rerun and retained scoped/full-output evidence above; it does
 not claim new C++ ending-scheme execution coverage.
+
+last-re-verified: 2026-06-12 (final_Tradition/final_usr live hashes matched 6a7509776b4881aa81b94782b241f7f0af2bebfccb79e481bc2744f33118a96c/7fb1781a2b6a827a8ba0b34292eb61bc21816ed1479489039531df540b2db964 byte-for-byte; scoped canonical InputForm matched 64fa1cf501aead66f6c9abf5f47146248d4e64a26eec4758d00a87c19bf99035; Wolfram SameQ=True for scoped final_usr rule; stdout diverged to f0eb89e24978f2b267b674f56a6fe5d28b096053b4ec73a09703713fc225b25e from timing-only log deltas; stderr matched)

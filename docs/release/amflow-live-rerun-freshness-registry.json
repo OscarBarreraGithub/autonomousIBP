@@ -11,12 +11,6 @@
       "path": "docs/release/amflow-live-rerun-linear_propagator.md",
       "status": "pending-first-re-verify",
       "reason": "Awaiting first post-rotation last-re-verified metadata entry."
-    },
-    {
-      "example": "user_defined_ending",
-      "path": "docs/release/amflow-live-rerun-user_defined_ending.md",
-      "status": "pending-first-re-verify",
-      "reason": "Awaiting first post-rotation last-re-verified metadata entry."
     }
   ]
 }

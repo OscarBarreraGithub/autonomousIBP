@@ -4,9 +4,21 @@
     "full_compared_output_count": 2,
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
-    "live_retained_golden_count": 7,
-    "live_reverified_count": 7,
+    "live_retained_golden_count": 9,
+    "live_reverified_count": 9,
     "live_reverified_examples": [
+      {
+        "date": "2026-06-12",
+        "detail": "sol1/sol2 live canonical hashes matched original retained capture hashes 12a186ff4e0cd5eefc83d2ee75d011f5b660f6d71952e251a3731ef9b9301f53/2a2a0117b3d15452ffff2cad94497147c0b696b994e84372b7efe44eaa694516; promoted raw-cmp-exit=1/1; promoted-golden scorer skeleton matched with minimum observed digits 38/38 below the 50-digit floor; stdout hash 1bd1ef3e78f912cda3c198b0642711b06481c40e2a601156a5eca524fddb36f8; stderr matched empty hash",
+        "example": "automatic_loop",
+        "path": "docs/release/amflow-live-rerun-automatic_loop.md"
+      },
+      {
+        "date": "2026-06-12",
+        "detail": "auto/man live canonical hashes matched original retained capture hashes 77c17c56e247156c394aeca098b795caf6b4dbde3e9921e1886ac1465c3384de/eb84e216a5f18799997df038af6f96f40969cd536aa428812ee80d9c01540c71; promoted raw-cmp-exit=1/1; promoted-golden scorer skeleton matched with minimum observed digits 18/18 below the 50-digit floor; stdout hash 38ed96e7321f998520b30caee0c5633478151d10bdfdcf149571224223cb3a13; stderr matched empty hash",
+        "example": "automatic_vs_manual",
+        "path": "docs/release/amflow-live-rerun-automatic_vs_manual.md"
+      },
       {
         "date": "2026-06-12",
         "detail": "sol live and retained hashes matched f5668551872500393407710619598aa196f08635c93d13c1aa5852aefd6e7207 byte-for-byte; Wolfram SameQ=True for 7 rules; stdout diverged to dfc93dab3651a3a5bd7a89e7bf1798c7594234d79d8c4256462e65ec8bb2205f from timing-only log deltas; stderr matched",
@@ -63,8 +75,8 @@
     ],
     "partial_retained_or_selected_count": 1,
     "status_counts": {
-      "reproduced-fully": 2,
       "reproduced-fully-live": 7,
+      "reproduced-matches-golden-at-requested-precision": 2,
       "reproduced-partial": 1
     },
     "total_example_count": 10,

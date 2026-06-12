@@ -30,6 +30,8 @@ EXPECTED_AMFLOW_EXAMPLES = (
 
 EXPECTED_LIVE_RETAINED_GOLDEN_EXAMPLES = frozenset(
     (
+        "automatic_loop",
+        "automatic_vs_manual",
         "complex_kinematics",
         "differential_equation_solver",
         "feynman_prescription",
@@ -216,7 +218,9 @@ def validate_root(root: Path) -> tuple[dict[str, object], list[str]]:
     if extra_examples:
         errors.append("coverage table has unexpected AMFlow examples: " + ", ".join(extra_examples))
 
-    live_rows = {example for example, row in rows.items() if row.status == "reproduced-fully-live"}
+    live_rows = {
+        example for example, row in rows.items() if row.status in ACCEPTED_LIVE_DOC_STATUSES
+    }
     if live_rows != EXPECTED_LIVE_RETAINED_GOLDEN_EXAMPLES:
         errors.append(
             "coverage live retained-golden set drifted: expected "
@@ -397,8 +401,8 @@ def expect_self_check_failure(label: str, mutator, expected: str) -> bool:
 def run_self_check() -> dict[str, object]:
     summary, errors = run_fixture_validation()
     expect(not errors, "valid live-rerun doc fixture failed: " + "; ".join(errors))
-    expect(summary["live_retained_golden_count"] == 7, "valid fixture live count drifted")
-    expect(summary["live_doc_count"] == 7, "valid fixture doc count drifted")
+    expect(summary["live_retained_golden_count"] == 9, "valid fixture live count drifted")
+    expect(summary["live_doc_count"] == 9, "valid fixture doc count drifted")
 
     checks = {
         "valid_fixture": True,

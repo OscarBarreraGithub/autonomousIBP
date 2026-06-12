@@ -16,6 +16,8 @@ from urllib.parse import unquote, urlsplit
 RELEASE_DOCS_ROOT = Path("docs/release")
 EXPECTED_LIVE_RERUN_EXAMPLES = frozenset(
     (
+        "automatic_loop",
+        "automatic_vs_manual",
         "complex_kinematics",
         "differential_equation_solver",
         "feynman_prescription",
@@ -436,7 +438,7 @@ def replace_in_doc(root: Path, example: str, old: str, new: str) -> None:
 def run_self_check() -> dict[str, object]:
     summary, errors = run_fixture_validation()
     expect(not errors, "valid structured fixture failed: " + "; ".join(errors))
-    expect(summary["live_doc_count"] == 7, "valid fixture doc count drifted")
+    expect(summary["live_doc_count"] == 9, "valid fixture doc count drifted")
 
     checks = {
         "valid_fixture": True,

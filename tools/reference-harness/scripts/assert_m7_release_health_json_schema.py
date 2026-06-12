@@ -17,10 +17,14 @@ from typing import Any, Callable
 SOURCE_COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 DATE_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 KNOWN_RELEASE_STATUSES = frozenset(("ready", "blocked"))
+REQUESTED_PRECISION_LIVE_STATUS = "reproduced-matches-golden-at-requested-precision"
+FULL_COMPARED_OUTPUT_STATUSES = frozenset(("reproduced-fully", REQUESTED_PRECISION_LIVE_STATUS))
+LIVE_RETAINED_GOLDEN_STATUSES = frozenset(("reproduced-fully-live", REQUESTED_PRECISION_LIVE_STATUS))
 KNOWN_AMFLOW_EXAMPLE_STATUSES = frozenset(
     (
         "reproduced-fully",
         "reproduced-fully-live",
+        REQUESTED_PRECISION_LIVE_STATUS,
         "reproduced-partial",
         "not-reproduced",
         "upstream-only-no-data",
@@ -362,11 +366,13 @@ def assert_amflow_example_coverage_schema(coverage: dict[str, Any]) -> None:
         "$.amflow_example_coverage.status_counts must sum to total_example_count",
     )
     expect(
-        status_counts.get("reproduced-fully", 0) == full_compared_output_count,
+        sum(status_counts.get(status, 0) for status in FULL_COMPARED_OUTPUT_STATUSES)
+        == full_compared_output_count,
         "$.amflow_example_coverage.full_compared_output_count must match status_counts",
     )
     expect(
-        status_counts.get("reproduced-fully-live", 0) == live_retained_golden_count,
+        sum(status_counts.get(status, 0) for status in LIVE_RETAINED_GOLDEN_STATUSES)
+        == live_retained_golden_count,
         "$.amflow_example_coverage.live_retained_golden_count must match status_counts",
     )
     expect(

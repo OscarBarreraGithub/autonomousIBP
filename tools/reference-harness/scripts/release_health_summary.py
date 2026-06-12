@@ -44,10 +44,14 @@ LAST_REVERIFIED_LINE_PATTERN = re.compile(
     r"(?m)^last-re-verified:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})(?:\s+\(([^)\n]+)\))?\s*$"
 )
 LAST_REVERIFIED_PREFIX_PATTERN = re.compile(r"(?m)^last-re-verified:\s*(.+)$")
+REQUESTED_PRECISION_LIVE_STATUS = "reproduced-matches-golden-at-requested-precision"
+FULL_COMPARED_OUTPUT_STATUSES = frozenset(("reproduced-fully", REQUESTED_PRECISION_LIVE_STATUS))
+LIVE_RETAINED_GOLDEN_STATUSES = frozenset(("reproduced-fully-live", REQUESTED_PRECISION_LIVE_STATUS))
 KNOWN_EXAMPLE_STATUSES = frozenset(
     (
         "reproduced-fully",
         "reproduced-fully-live",
+        REQUESTED_PRECISION_LIVE_STATUS,
         "reproduced-partial",
         "not-reproduced",
         "upstream-only-no-data",
@@ -513,7 +517,7 @@ def summarize_example_coverage_from_paths(
     inventory_not_full_examples = [
         example
         for example, status in inventory.items()
-        if status != "reproduced-fully"
+        if status not in FULL_COMPARED_OUTPUT_STATUSES
     ]
     expect(
         set(not_full_examples) == set(inventory_not_full_examples),
@@ -528,7 +532,7 @@ def summarize_example_coverage_from_paths(
     live_examples = [
         example
         for example, status in inventory.items()
-        if status == "reproduced-fully-live"
+        if status in LIVE_RETAINED_GOLDEN_STATUSES
     ]
     live_reverified_examples = parse_live_reverification_metadata(root, live_examples)
     zero_evidence_count = sum(status_counts[status] for status in ZERO_EVIDENCE_STATUSES)
@@ -536,8 +540,8 @@ def summarize_example_coverage_from_paths(
         inventory_path=inventory_relative,
         known_gaps_path=known_gaps_relative,
         total_example_count=len(inventory),
-        full_compared_output_count=status_counts["reproduced-fully"],
-        live_retained_golden_count=status_counts["reproduced-fully-live"],
+        full_compared_output_count=sum(status_counts[status] for status in FULL_COMPARED_OUTPUT_STATUSES),
+        live_retained_golden_count=sum(status_counts[status] for status in LIVE_RETAINED_GOLDEN_STATUSES),
         live_reverified_count=len(live_reverified_examples),
         live_reverified_examples=live_reverified_examples,
         partial_retained_or_selected_count=status_counts["reproduced-partial"],
@@ -998,9 +1002,30 @@ def self_check(root: Path) -> None:
             ),
             "not-full example set must match upstream inventory non-full statuses",
         )
-        unknown_status_payload = coverage_payload.replace(
-            "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `reproduced-fully` |",
-            "| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `unknown-status` |",
+        unknown_status_lines = coverage_payload.splitlines()
+        automatic_loop_index = next(
+            (
+                index
+                for index, line in enumerate(unknown_status_lines)
+                if line.startswith("| `automatic_loop` |")
+            ),
+            None,
+        )
+        expect(
+            automatic_loop_index is not None,
+            "coverage self-check fixture must contain automatic_loop row",
+        )
+        unknown_status_lines[automatic_loop_index] = re.sub(
+            r"\| `[^`]+` \|$",
+            "| `unknown-status` |",
+            unknown_status_lines[automatic_loop_index],
+        )
+        unknown_status_payload = "\n".join(unknown_status_lines)
+        if coverage_payload.endswith("\n"):
+            unknown_status_payload += "\n"
+        expect(
+            unknown_status_payload != coverage_payload,
+            "coverage self-check fixture must unknown automatic_loop status",
         )
         unknown_status_path = Path(temp_dir) / "amflow-example-coverage-unknown-status.md"
         unknown_status_path.write_text(unknown_status_payload, encoding="utf-8")

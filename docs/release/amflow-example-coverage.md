@@ -30,9 +30,9 @@ files and no `.nb` notebooks:
 
 | Upstream example | Mathematica entry file(s) | C++ lane / evidence in this repo | Status |
 | --- | --- | --- | --- |
-| `automatic_loop` | `examples/automatic_loop/run.wl` | Core solve-series evidence: M5 lane39/lane45 `automatic_loop.eps8`, 126/126 coefficients, min 41 digits; phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. | `reproduced-fully` |
+| `automatic_loop` | `examples/automatic_loop/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 matched the original retained canonical AMFlow `sol1`/`sol2` capture hashes exactly; against the later promoted 80-precision retained goldens, the canonical skeleton matched with 38/38 minimum observed digits, below the promoted 50-digit floor; see `docs/release/amflow-live-rerun-automatic_loop.md`. Existing C++ evidence remains the M5 lane39/lane45 `automatic_loop.eps8` solve-series surface, 126/126 coefficients, min 41 digits, plus phase-0 retained state `tools/reference-harness/specs/phase0/automatic_loop.amflow-state.json`. This is live retained-capture reproducibility, not broader C++ runtime evidence beyond the accepted solve-series surface. | `reproduced-matches-golden-at-requested-precision` |
 | `automatic_phasespace` | `examples/automatic_phasespace/run.wl` | `b63n`: M6 lane143/lane146 selected Cutkosky endpoint evidence, 19/19 coefficients in lane146; M5 retained solution-sample comparison, 11/11 coefficients. | `reproduced-partial` |
-| `automatic_vs_manual` | `examples/automatic_vs_manual/run.wl` | Core solve-series evidence: M5 lane39, 89/89 coefficients, min 36 digits; golden manifest compares `auto` and records `man` as the same target surface. | `reproduced-fully` |
+| `automatic_vs_manual` | `examples/automatic_vs_manual/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 matched the original retained canonical AMFlow `auto`/`man` capture hashes exactly; against the later promoted 60-precision retained goldens, the canonical skeleton matched with 18/18 minimum observed digits, below the promoted 50-digit floor; see `docs/release/amflow-live-rerun-automatic_vs_manual.md`. Existing C++ evidence remains M5 lane39, 89/89 coefficients, min 36 digits, with comparator ingestion scoped to `auto` because `auto` and `man` carry the same target surface. This is live retained-capture reproducibility, not broader C++ runtime evidence beyond the accepted solve-series surface. | `reproduced-matches-golden-at-requested-precision` |
 | `complex_kinematics` | `examples/complex_kinematics/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 matched the retained full AMFlow seven-rule complex-mass box `sol` packet byte-for-byte; see `docs/release/amflow-live-rerun-complex_kinematics.md`. Existing C++ evidence remains scoped to M5 retained solution-sample comparison and M6 lane141/lane142 selected endpoint coefficients. This is live retained-golden reproducibility, not broader `b61n` complex eta-contour runtime coverage. | `reproduced-fully-live` |
 | `differential_equation_solver` | `examples/differential_equation_solver/run.wl`; `examples/differential_equation_solver/diffeq.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 matched the retained full AMFlow `de-d0-pair` `redtable`/`diffeq`/`sol1`/`sol2` packet byte-for-byte and reran the upstream DESolver `diffeq.wl` continuation/asymptotic-expansion workflow with only sub-precision printed-coefficient drift against retained Kira backup files; see `docs/release/amflow-live-rerun-differential_equation_solver.md`. This is a live AMFlow retained-golden reproduction claim, not C++ DESolver-runtime coverage. | `reproduced-fully-live` |
 | `feynman_prescription` | `examples/feynman_prescription/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-12 wrote both opposite-prescription outputs, matched the retained full AMFlow `sol1`/`sol2` packet exactly, and verified the conjugacy deltas over the saved outputs; see `docs/release/amflow-live-rerun-feynman_prescription.md`. Existing C++ comparator evidence remains scoped to `sol1` because prescription-aware output namespacing is separate. This is live retained-golden reproducibility, not broader `b63n` Cutkosky runtime coverage. | `reproduced-fully-live` |
@@ -44,19 +44,21 @@ files and no `.nb` notebooks:
 No upstream example is `upstream-only-no-data`: the upstream scripts are
 fetchable from AMFlow tag `1.2`, and every example has at least some retained or
 C++ comparison evidence in the current repository. The important limitation is
-that only two rows have full compared-output C++ parity. Seven additional rows
-now have live Mathematica+AMFlow retained-golden rerun evidence; the other one
-rows remain partial.
+that only two rows have full compared-output C++ parity. Nine rows now have live
+Mathematica+AMFlow retained-golden or retained-capture rerun evidence; the
+remaining row remains partial.
 
 ## Full Parity Rows
 
 Current full compared-output C++ parity is limited to:
 
 - `automatic_loop`: accepted fixed-epsilon solve-series comparison over the
-  retained box1/box2 state surface.
+  retained box1/box2 state surface. It now also has a live AMFlow rerun of the
+  upstream script at the script's requested 40-digit precision.
 - `automatic_vs_manual`: accepted comparison over the retained `auto` output;
   the manifest records `man` as the same integral surface and avoids duplicate
-  integral keys.
+  integral keys. It now also has a live AMFlow rerun of both the automatic and
+  manual upstream outputs at the script's requested 20-digit precision.
 
 This is not the same as rerunning the original Mathematica scripts from scratch,
 including reducer setup, inside C++. It is full only for the accepted retained

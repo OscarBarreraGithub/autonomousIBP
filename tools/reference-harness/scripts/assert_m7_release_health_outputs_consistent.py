@@ -10,6 +10,11 @@ from pathlib import Path
 from typing import Any
 
 
+REQUESTED_PRECISION_LIVE_STATUS = "reproduced-matches-golden-at-requested-precision"
+FULL_COMPARED_OUTPUT_STATUSES = frozenset(("reproduced-fully", REQUESTED_PRECISION_LIVE_STATUS))
+LIVE_RETAINED_GOLDEN_STATUSES = frozenset(("reproduced-fully-live", REQUESTED_PRECISION_LIVE_STATUS))
+
+
 class ConsistencyError(RuntimeError):
     """Raised when release health outputs disagree."""
 
@@ -187,14 +192,14 @@ def assert_amflow_example_coverage_matches_text(lines: list[str], health: dict[s
         "AMFlow status_counts do not sum to total_example_count",
     )
     expect(
-        status_counts.get("reproduced-fully", 0)
+        sum(status_counts.get(status, 0) for status in FULL_COMPARED_OUTPUT_STATUSES)
         == expect_nonnegative_int(coverage, "full_compared_output_count"),
-        "AMFlow reproduced-fully count mismatch",
+        "AMFlow full compared-output status count mismatch",
     )
     expect(
-        status_counts.get("reproduced-fully-live", 0)
+        sum(status_counts.get(status, 0) for status in LIVE_RETAINED_GOLDEN_STATUSES)
         == expect_nonnegative_int(coverage, "live_retained_golden_count"),
-        "AMFlow reproduced-fully-live count mismatch",
+        "AMFlow live retained-golden status count mismatch",
     )
     expect(
         status_counts.get("reproduced-partial", 0)

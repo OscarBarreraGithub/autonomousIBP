@@ -866,6 +866,14 @@ if(BUILD_TESTING)
   set_tests_properties(b63n-parity-status-summary-json-fixture-self-check
     PROPERTIES
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(
+    NAME parity-status-sidecar-audit
+    COMMAND
+      ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/tools/reference-harness/scripts/audit_parity_status_sidecars.py)
+  set_tests_properties(parity-status-sidecar-audit
+    PROPERTIES
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(
     amflow-tests
     amflow-cli

@@ -6,6 +6,12 @@
   "captured_at": "2026-05-05T15:18:24-04:00",
   "repo_head_at_assessment": "b81ae2d32768efc62010217a6332e86da6927ff4",
   "status": "dedicated-amflow-output-produced-but-verifier-failed",
+  "superseded_by": {
+    "lane": "lane103",
+    "path": "tools/reference-harness/specs/case-studies/diphoton-heavy-quark-form-factors.numeric-evidence.json",
+    "commit": "98ffe4d5e8a5ea0249dc3e480f15f2ff1481ff43",
+    "reason": "Lane103 repaired the verifier to accept AMFlow auxiliary-rule supersets while validating the requested J39-J42 targets and promoted the dedicated diphoton numeric evidence at the 200-digit profile; this lane102 sidecar remains the historical failed verifier record."
+  },
   "comparison_passed": false,
   "minimum_observed_correct_digits": null,
   "digit_threshold_profile": "2023-diphoton-heavy-quark-form-factors",

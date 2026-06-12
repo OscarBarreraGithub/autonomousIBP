@@ -39,7 +39,7 @@ the upstream AMFlow scripts:
 | `linear_propagator` | Needs full `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. |
 | `spacetime_dimension` | Needs full retained `D0 = 7/3` and `D0 = 1/3` output coverage plus the dimensional-recurrence check. |
 | `user_defined_amfmode` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. |
-| `user_defined_ending` | Needs both `final_Tradition` and `final_usr` ending workflows, including manual boundary writes and Gamma-ratio boundary handling. |
+| `user_defined_ending` | Live AMFlow rerun coverage now exists for both `final_Tradition` and `final_usr`, including manual boundary writes and the Gamma-ratio boundary path; the remaining release gap is C++ execution of both ending workflows. |
 
 For the `linear_propagator` row, the lane 4 post-M7 guard records the
 non-promotion boundary for existing selected `b64ag` evidence and the fixture
@@ -47,6 +47,12 @@ shape expected of a future fail-closed recapture/runtime-packet guard:
 [`b64ag-post-m7-continuation-guard.md`](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).
 It is a routing reference only, not new runtime evidence or a release-signoff
 input.
+
+For the `user_defined_ending` row, the post-M7 live rerun note records the
+closed upstream AMFlow data-generation side of the gap:
+[`amflow-live-rerun-user_defined_ending.md`](amflow-live-rerun-user_defined_ending.md).
+It is live AMFlow evidence only and does not claim C++ ending-scheme execution
+or change the accepted M7 release-readiness inputs.
 
 There are no zero-evidence upstream rows in the current inventory: all ten
 upstream example classes have at least some retained or C++ comparison evidence

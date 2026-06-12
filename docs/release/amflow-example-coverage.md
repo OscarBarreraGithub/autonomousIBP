@@ -39,7 +39,7 @@ files and no `.nb` notebooks:
 | `linear_propagator` | `examples/linear_propagator/run.wl` | `b64ag`: M6 lane145/lane147 selected gauge-link endpoint evidence, 18/18 coefficients in lane147; M5 retained finite-solution-sample comparison, 57/57 coefficients. | `reproduced-partial` |
 | `spacetime_dimension` | `examples/spacetime_dimension/run.wl` | M5 lane50 direct nondefault-D flag comparison, 2/2 coefficients, min 51 digits; retained phase-0 packet exists. This is not full retained `sol13D`/`sol73D` plus recurrence-check reproduction. | `reproduced-partial` |
 | `user_defined_amfmode` | `examples/user_defined_amfmode/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-10 matched the committed M5 lane50 scoped AMFlow golden exactly for `j[box1,-2,1,1,2]`; see `docs/release/amflow-live-rerun-user_defined_amfmode.md`. This is a live retained-golden reproducibility claim, not a broader C++ eta=0 endpoint-runtime claim. | `reproduced-fully-live` |
-| `user_defined_ending` | `examples/user_defined_ending/run.wl` | M5 lane50 scoped `final_usr` comparison, 6/6 coefficients, min 36 digits; current result is eta-infinity/asymptotic scoped and does not cover the full `final_Tradition` plus `final_usr` ending workflow. | `reproduced-partial` |
+| `user_defined_ending` | `examples/user_defined_ending/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-10 completed the upstream script, wrote both `final_Tradition` and `final_usr`, and matched the committed M5 lane50 scoped `final_usr` golden exactly for `j[box1,-2,1,1,2]`; see `docs/release/amflow-live-rerun-user_defined_ending.md`. This is a live retained-golden reproducibility claim, not broader C++ ending-scheme runtime coverage. | `reproduced-fully-live` |
 
 No upstream example is `upstream-only-no-data`: the upstream scripts are
 fetchable from AMFlow tag `1.2`, and every example has at least some retained or
@@ -86,9 +86,10 @@ The remaining eight upstream examples are not full C++ runtime reproductions:
 - `user_defined_amfmode` needs end-to-end execution of the user-defined
   `AMFMode` hook through eta=0 endpoint extraction on the full requested target
   surface.
-- `user_defined_ending` needs end-to-end user-defined ending-scheme execution
-  for both `final_Tradition` and `final_usr`, including the manual boundary
-  writes and Gamma-ratio boundary handling.
+- `user_defined_ending` has a fresh live AMFlow rerun for both
+  `final_Tradition` and `final_usr`; it still needs end-to-end C++ ending-scheme
+  execution, including the manual boundary writes and Gamma-ratio boundary
+  handling.
 
 There are no zero-evidence `not-reproduced` rows in this inventory. For the
 not-full rows, the concrete missing work is:
@@ -102,7 +103,7 @@ not-full rows, the concrete missing work is:
 | `linear_propagator` | Yes. Recapture/promote a high-precision gauge-link packet for the full target surface. | Yes. Implement full `b64ag` gauge-link transport and finite-part extraction. |
 | `spacetime_dimension` | Yes or promote retained `sol13D`/`sol73D` outputs and recurrence-check data into comparator-ready goldens. | Yes. Implement full retained D0 semantics for both dimensions and the recurrence check. |
 | `user_defined_amfmode` | Yes or promote the full retained three-target user-mode output into a comparator packet. | Yes. Execute the user-defined `AMFMode` hook through eta=0 endpoint extraction. |
-| `user_defined_ending` | Yes or promote both retained `final_Tradition` and `final_usr` outputs into comparator packets. | Yes. Execute both ending workflows, including manual boundary writes and Gamma-ratio handling. |
+| `user_defined_ending` | No fresh AMFlow script rerun is required for the two-output upstream surface; a live rerun now exists, while broader committed comparator promotion remains separate from the scoped M5 `final_usr` golden. | Yes. Execute both ending workflows, including manual boundary writes and Gamma-ratio handling. |
 
 For `linear_propagator`, the post-M7 lane 4 continuation guard is
 [`b64ag-post-m7-continuation-guard.md`](../../tools/reference-harness/specs/m7/lane4/b64ag-post-m7-continuation-guard.md).

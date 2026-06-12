@@ -747,9 +747,18 @@ def self_check(root: Path) -> None:
             "source_commit is not a known commit",
         )
         coverage_payload = (root / AMFLOW_EXAMPLE_COVERAGE).read_text(encoding="utf-8")
-        missing_gap_payload = (root / RELEASE_KNOWN_GAPS).read_text(encoding="utf-8").replace(
-            "| `user_defined_ending` | Needs both `final_Tradition` and `final_usr` ending workflows, including manual boundary writes and Gamma-ratio boundary handling. |\n",
-            "",
+        known_gaps_payload = (root / RELEASE_KNOWN_GAPS).read_text(encoding="utf-8")
+        missing_gap_lines = [
+            line
+            for line in known_gaps_payload.splitlines()
+            if not line.startswith("| `user_defined_ending` |")
+        ]
+        missing_gap_payload = "\n".join(missing_gap_lines)
+        if known_gaps_payload.endswith("\n"):
+            missing_gap_payload += "\n"
+        expect(
+            missing_gap_payload != known_gaps_payload,
+            "known gaps self-check fixture must remove user_defined_ending row",
         )
         missing_gap_path = Path(temp_dir) / "known-gaps-missing-user-defined-ending.md"
         missing_gap_path.write_text(missing_gap_payload, encoding="utf-8")

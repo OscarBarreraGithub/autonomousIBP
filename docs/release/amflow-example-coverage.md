@@ -1,6 +1,6 @@
 # AMFlow Example Coverage Inventory
 
-Date: 2026-06-10
+Date: 2026-06-11
 
 This inventory answers the narrow question "do we reproduce every upstream
 AMFlow example notebook/script?" The honest answer is no if "reproduce" means a
@@ -37,15 +37,16 @@ files and no `.nb` notebooks:
 | `differential_equation_solver` | `examples/differential_equation_solver/run.wl`; `examples/differential_equation_solver/diffeq.wl` | M5 lane39 compares the retained AMFlow `sol1` boundary-value surface, 3/3 coefficients; a `sol2` golden manifest exists, but the full `diffeq.wl` DESolver checks and asymptotic expansions are not reproduced end to end. | `reproduced-partial` |
 | `feynman_prescription` | `examples/feynman_prescription/run.wl` | `b63n` planned/pending; M5 lane39/lane45 compares retained `sol1` solution-sample output, 76/76 coefficients. No lane14x M6 coefficient evidence exists for this row, and the opposite-prescription `sol2` branch is not fully covered. | `reproduced-partial` |
 | `linear_propagator` | `examples/linear_propagator/run.wl` | `b64ag`: M6 lane145/lane147 selected gauge-link endpoint evidence, 18/18 coefficients in lane147; M5 retained finite-solution-sample comparison, 57/57 coefficients. | `reproduced-partial` |
-| `spacetime_dimension` | `examples/spacetime_dimension/run.wl` | M5 lane50 direct nondefault-D flag comparison, 2/2 coefficients, min 51 digits; retained phase-0 packet exists. This is not full retained `sol13D`/`sol73D` plus recurrence-check reproduction. | `reproduced-partial` |
+| `spacetime_dimension` | `examples/spacetime_dimension/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-11 matched the retained full AMFlow `de-d0-pair` `sol73D`/`sol13D` packet at the upstream script's requested 20-digit precision and verified the dimensional-recurrence residual through `O[eps]^2`; see `docs/release/amflow-live-rerun-spacetime_dimension.md`. The raw files are not byte-identical because the retained packet stores promoted 60-precision text. This is a live retained-golden reproducibility claim, not a broader C++ nondefault-`D0` runtime claim. | `reproduced-fully-live` |
 | `user_defined_amfmode` | `examples/user_defined_amfmode/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-10 matched the committed M5 lane50 scoped AMFlow golden exactly for `j[box1,-2,1,1,2]`; see `docs/release/amflow-live-rerun-user_defined_amfmode.md`. This is a live retained-golden reproducibility claim, not a broader C++ eta=0 endpoint-runtime claim. | `reproduced-fully-live` |
 | `user_defined_ending` | `examples/user_defined_ending/run.wl` | Live Mathematica+AMFlow rerun on 2026-06-10 completed the upstream script, wrote both `final_Tradition` and `final_usr`, and matched the committed M5 lane50 scoped `final_usr` golden exactly for `j[box1,-2,1,1,2]`; see `docs/release/amflow-live-rerun-user_defined_ending.md`. This is a live retained-golden reproducibility claim, not broader C++ ending-scheme runtime coverage. | `reproduced-fully-live` |
 
 No upstream example is `upstream-only-no-data`: the upstream scripts are
 fetchable from AMFlow tag `1.2`, and every example has at least some retained or
 C++ comparison evidence in the current repository. The important limitation is
-that only two rows are full for the currently compared output surface; the other
-eight rows are partial.
+that only two rows have full compared-output C++ parity. Three additional rows
+now have live Mathematica+AMFlow retained-golden rerun evidence; the other five
+rows remain partial.
 
 ## Full Parity Rows
 
@@ -80,9 +81,10 @@ The remaining eight upstream examples are not full C++ runtime reproductions:
 - `differential_equation_solver` needs C++ DESolver coverage for the `diffeq.wl`
   continuation and asymptotic-expansion workflow, not only the retained AMFlow
   `sol1` boundary-value comparison.
-- `spacetime_dimension` needs full retained `D0 = 7/3` and `D0 = 1/3` example
-  output coverage plus the dimensional-recurrence check, not only the current
-  direct nondefault-D flag slice.
+- `spacetime_dimension` now has live Mathematica+AMFlow retained-golden
+  reproduction of the full `D0 = 7/3` and `D0 = 1/3` output surface plus the
+  dimensional-recurrence check, but the C++ runtime still needs full retained
+  nondefault-`D0` semantics for both dimensions and the recurrence workflow.
 - `user_defined_amfmode` needs end-to-end execution of the user-defined
   `AMFMode` hook through eta=0 endpoint extraction on the full requested target
   surface.
@@ -101,7 +103,7 @@ not-full rows, the concrete missing work is:
 | `differential_equation_solver` | Yes or promote existing retained backup data for `sol2`, `asyexp0`, `asyexp1`, and `asyexp1-fit` into comparator-ready goldens. | Yes. Implement the DESolver continuation and asymptotic-expansion workflow. |
 | `feynman_prescription` | Yes. Generate/promote both `sol1` and `sol2` with a qualified conjugacy/comparator packet. | Yes. Implement prescription-aware `b63n` Cutkosky runtime coverage. |
 | `linear_propagator` | Yes. Recapture/promote a high-precision gauge-link packet for the full target surface. | Yes. Implement full `b64ag` gauge-link transport and finite-part extraction. |
-| `spacetime_dimension` | Yes or promote retained `sol13D`/`sol73D` outputs and recurrence-check data into comparator-ready goldens. | Yes. Implement full retained D0 semantics for both dimensions and the recurrence check. |
+| `spacetime_dimension` | No for live AMFlow retained-golden reproduction: the full `sol13D`/`sol73D` packet and recurrence check were rerun live on 2026-06-11. A repo-local comparator-ready manifest is still absent. | Yes. Implement full retained D0 semantics for both dimensions and the recurrence check. |
 | `user_defined_amfmode` | Yes or promote the full retained three-target user-mode output into a comparator packet. | Yes. Execute the user-defined `AMFMode` hook through eta=0 endpoint extraction. |
 | `user_defined_ending` | No fresh AMFlow script rerun is required for the two-output upstream surface; a live rerun now exists, while broader committed comparator promotion remains separate from the scoped M5 `final_usr` golden. | Yes. Execute both ending workflows, including manual boundary writes and Gamma-ratio handling. |
 

@@ -37,7 +37,7 @@ the upstream AMFlow scripts:
 | `differential_equation_solver` | Needs C++ coverage for the `diffeq.wl` continuation and asymptotic-expansion workflow, not only the retained AMFlow `sol1` boundary-value comparison. |
 | `feynman_prescription` | Needs prescription-aware `b63n` Cutkosky runtime coverage, both opposite-prescription branches, and the conjugacy check. |
 | `linear_propagator` | Needs full `b64ag` gauge-link transport, finite-part extraction, target reduction over the accepted surface, and a high-precision AMFlow comparison packet. |
-| `spacetime_dimension` | Needs full retained `D0 = 7/3` and `D0 = 1/3` output coverage plus the dimensional-recurrence check. |
+| `spacetime_dimension` | Live AMFlow retained-golden coverage now exists for `D0 = 7/3`, `D0 = 1/3`, and the dimensional-recurrence check; the remaining gap is full C++ runtime support for the retained nondefault-`D0` workflow. |
 | `user_defined_amfmode` | Needs end-to-end execution of the user-defined `AMFMode` hook through eta=0 endpoint extraction on the full requested target surface. |
 | `user_defined_ending` | Live AMFlow rerun coverage now exists for both `final_Tradition` and `final_usr`, including manual boundary writes and the Gamma-ratio boundary path; the remaining release gap is C++ execution of both ending workflows. |
 

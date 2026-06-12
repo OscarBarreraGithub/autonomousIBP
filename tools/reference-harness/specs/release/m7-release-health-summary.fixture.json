@@ -4,7 +4,7 @@
     "full_compared_output_count": 2,
     "inventory_path": "docs/release/amflow-example-coverage.md",
     "known_gaps_path": "docs/release/known-gaps.md",
-    "live_retained_golden_count": 2,
+    "live_retained_golden_count": 3,
     "not_full_runtime_count": 8,
     "not_full_runtime_examples": [
       "automatic_phasespace",
@@ -16,11 +16,11 @@
       "user_defined_amfmode",
       "user_defined_ending"
     ],
-    "partial_retained_or_selected_count": 6,
+    "partial_retained_or_selected_count": 5,
     "status_counts": {
       "reproduced-fully": 2,
-      "reproduced-fully-live": 2,
-      "reproduced-partial": 6
+      "reproduced-fully-live": 3,
+      "reproduced-partial": 5
     },
     "total_example_count": 10,
     "zero_evidence_count": 0
